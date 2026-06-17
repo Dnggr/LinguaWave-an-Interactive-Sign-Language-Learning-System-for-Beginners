@@ -26,21 +26,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
+
+  <script src="../js/auth.js"></script>
+  <script>
+    LWAuth.requireAuth('../index.html');
+  </script>
 </head>
 <body>
 
   <nav class="navbar">
     <div class="container navbar__inner">
-      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
       <ul class="navbar__links">
-        <li><a href="../index.html">Home</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
         <li><a href="learn.html" class="active">Learn</a></li>
-        <li><a href="about.html">About</a></li>
       </ul>
       <div class="navbar__user">
-        <span>👋 Alex</span>
-        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+        <span>👋 <span data-user-name>Learner</span></span>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
     </div>
   </nav>

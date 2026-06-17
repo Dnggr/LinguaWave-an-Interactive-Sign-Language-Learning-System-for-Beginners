@@ -4,10 +4,10 @@
   <!--
     pages/dashboard.html — User Dashboard
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Main hub after login.  Shows the user's overall
-               progress, level cards with % completion, and a
-               "Continue" button that jumps to the last incomplete
-               lesson.  Also shows a recap of previously learned signs.
+    PURPOSE  : Main hub after login. Now contains THREE things:
+                 1. "Your Account" — user details (name/email/level)
+                 2. "Overall Progress" — the content/level overview
+                 3. "Signs You've Learned" — recap of mastered signs
 
     CONNECTS : ← index.html (redirected here after login)
                → pages/learn.html      (level cards open lesson list)
@@ -15,10 +15,11 @@
                → pages/quiz.html       (retake an assessment)
                → pages/feedback.html   (survey after completing a level)
 
+    AUTH     : requireAuth() at the top kicks anyone who isn't logged
+               in back to index.html. See js/auth.js.
+
     TODO     : Pull real progress data from Firestore using the
-               logged-in user's UID.  Replace MOCK_USER entirely.
-               Add "Signs learned so far" recap section (flowchart
-               node: "Show previous signs").
+               logged-in user's UID. Replace MOCK_PROGRESS entirely.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -28,23 +29,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
+
+  <script src="../js/auth.js"></script>
+  <script>
+    LWAuth.requireAuth('../index.html');
+  </script>
 </head>
 <body>
 
   <!-- ── NAVBAR ───────────────────────────────────────────────── -->
   <nav class="navbar">
     <div class="container navbar__inner">
-      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
       <ul class="navbar__links">
-        <li><a href="../index.html">Home</a></li>
         <li><a href="dashboard.html" class="active">Dashboard</a></li>
         <li><a href="learn.html">Learn</a></li>
-        <li><a href="about.html">About</a></li>
       </ul>
       <div class="navbar__user">
-        <!-- TODO: show real user name from Firebase Auth currentUser.displayName -->
-        <span>👋 Alex</span>
-        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+        <span>👋 <span data-user-name>Learner</span></span>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
     </div>
   </nav>
@@ -56,8 +59,7 @@
         <div>
           <p class="section__eyebrow">Welcome back</p>
           <h1>Your Dashboard</h1>
-          <!-- TODO: show real name -->
-          <p class="mt-4">Keep going, Alex! You're making great progress on the ASL Alphabet.</p>
+          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! You're making great progress on the ASL Alphabet.</p>
         </div>
         <!-- Continue button — jumps to last incomplete lesson -->
         <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
@@ -68,7 +70,36 @@
     </div>
   </section>
 
-  <!-- ── OVERALL PROGRESS ──────────────────────────────────────── -->
+  <!-- ── YOUR ACCOUNT (user details) ───────────────────────────── -->
+  <!--
+    TODO: once Firestore is live, also surface editable fields here
+          (e.g. "Change starting level", "Update name") writing back
+          to users/{uid}.
+  -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8">Your Account</h2>
+      <div class="card account-card">
+        <div class="account-avatar" data-user-initial>?</div>
+        <div class="account-details">
+          <span class="account-details__name" data-user-name>Learner</span>
+          <span class="account-details__email" data-user-email>—</span>
+        </div>
+        <div class="account-meta">
+          <div class="account-meta__item">
+            <span class="account-meta__label">Current Level</span>
+            <span class="account-meta__value" data-user-level>Basic</span>
+          </div>
+          <div class="account-meta__item">
+            <span class="account-meta__label">Member Since</span>
+            <span class="account-meta__value" data-user-joined>—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OVERALL PROGRESS (content) ────────────────────────────── -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8">Overall Progress</h2>
@@ -126,8 +157,6 @@
   <!-- ── SIGNS LEARNED SO FAR (recap) ──────────────────────────── -->
   <!--
     Flowchart node: "Show previous signs (recap)"
-    This section appears at the top of each new session to remind
-    the user of signs they've already mastered.
     TODO: populate dynamically from Firestore (user.learnedSigns array).
   -->
   <section class="section section--sm">
@@ -135,7 +164,6 @@
       <h2 class="mb-8">Signs You've Learned</h2>
       <div class="recap-grid" id="recap-grid">
 
-        <!-- Repeat .recap-card for each learned sign -->
         <!-- TODO: generate these from Firestore data in main.js -->
         <div class="recap-card">
           <div class="recap-card__img" aria-label="ASL sign for A">A</div>

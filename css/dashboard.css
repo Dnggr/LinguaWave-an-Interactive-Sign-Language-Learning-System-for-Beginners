@@ -67,3 +67,63 @@
   border-radius: var(--radius-md);
   color: var(--clr-text-muted);
 }
+
+/* ── YOUR ACCOUNT (user details card) ───────────────────────────── */
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.account-avatar {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--clr-surface-2);
+  border: 2px solid var(--clr-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--clr-accent);
+}
+.account-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.account-details__name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.account-details__email {
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+.account-meta {
+  display: flex;
+  gap: var(--space-6);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.account-meta__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.account-meta__label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-text-muted);
+}
+.account-meta__value {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text);
+}

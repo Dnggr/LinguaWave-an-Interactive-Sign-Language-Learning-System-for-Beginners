@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <!--
-    index.html — Landing / Home Page
+    index.html — Log In / Sign Up (Landing Page)
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : First page a new visitor sees.  Explains what
-               LinguaWave is, shows the three learning levels, and
-               routes users to either Register or Dashboard.
+    PURPOSE  : This is now the ONLY entry point to the app. There is
+               no separate marketing landing page — visitors land
+               directly on Log In, with a Sign Up tab right next to
+               it. Logged-in users are bounced straight to the
+               dashboard before this page even renders.
 
-    CONNECTS : → pages/dashboard.html  (returning user shortcut)
-               → pages/register.html   (new user CTA)
-               → pages/learn.html      (quick preview of levels)
+    CONNECTS : → pages/dashboard.html  (after login/register)
 
-    TODO     : Replace "Get Started" CTA with Firebase Auth check:
-               if user is logged in → redirect to dashboard.html,
-               otherwise → register.html / login.html.
-               Add hero animation (hands signing A–Z loop).
+    AUTH MODE: js/auth.js is currently in BYPASS mode — the Log In
+               and Sign Up buttons accept whatever is typed (or
+               nothing) and log you straight in. See js/auth.js for
+               the 4 functions to swap with real Firebase Auth calls.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -25,201 +25,106 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/home.css" />
+  <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/toast.css" />
+
+  <!-- Auth must load before anything renders so a logged-in user
+       gets redirected immediately instead of seeing the login form. -->
+  <script src="js/auth.js"></script>
+  <script>
+    LWAuth.redirectIfLoggedIn('pages/dashboard.html');
+  </script>
 </head>
-<body>
+<body class="auth-page">
 
-  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
-  <nav class="navbar">
-    <div class="container navbar__inner">
-      <a href="index.html" class="navbar__logo">Lingua<span>Wave</span></a>
-      <ul class="navbar__links">
-        <li><a href="index.html" class="active">Home</a></li>
-        <li><a href="pages/dashboard.html">Dashboard</a></li>
-        <li><a href="pages/learn.html">Learn</a></li>
-        <li><a href="pages/about.html">About</a></li>
-      </ul>
-      <!-- TODO: swap these buttons for logged-in user avatar once Auth is live -->
-      <div class="navbar__user">
-        <a href="pages/login.html"    class="btn btn--ghost btn--sm">Log in</a>
-        <a href="pages/register.html" class="btn btn--primary btn--sm">Get Started</a>
+  <div class="auth-card">
+
+    <a href="index.html" class="navbar__logo" style="display:block;text-align:center;">
+      Lingua<span style="color:var(--clr-text-muted);font-weight:400;">Wave</span>
+    </a>
+    <p class="auth-tagline">Learn ASL — one sign at a time.</p>
+
+    <!-- ── TAB TOGGLE ───────────────────────────────────────────── -->
+    <div class="auth-tabs">
+      <button class="auth-tab auth-tab--active" id="tab-login" onclick="showAuthTab('login')">Log In</button>
+      <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Sign Up</button>
+    </div>
+
+    <!-- ── LOG IN FORM ──────────────────────────────────────────── -->
+    <form class="auth-form" id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
       </div>
-    </div>
-  </nav>
-
-  <!-- ── HERO ─────────────────────────────────────────────────── -->
-  <section class="hero">
-    <div class="container hero__inner">
-      <div class="hero__text">
-        <p class="section__eyebrow">American Sign Language · Beginner Friendly</p>
-        <h1 class="hero__headline">
-          Learn ASL — <br />
-          <span class="hero__headline--accent">one sign at a time.</span>
-        </h1>
-        <p class="hero__sub">
-          LinguaWave is a structured, step-by-step learning system for ASL beginners.
-          Start with the alphabet, build vocabulary, then form full sentences.
-        </p>
-        <div class="hero__cta flex gap-4">
-          <!-- TODO: auth check — logged-in users skip to dashboard -->
-          <a href="pages/register.html" class="btn btn--primary btn--lg">Start Learning Free</a>
-          <a href="pages/learn.html"    class="btn btn--ghost btn--lg">Preview Lessons</a>
-        </div>
+      <div class="form-group mt-4">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" />
       </div>
-
-      <!-- Placeholder visual: replace with animated hand SVG or lottie -->
-      <div class="hero__visual" aria-hidden="true">
-        <div class="hero__hand-grid">
-          <div class="hero__letter">A</div>
-          <div class="hero__letter">S</div>
-          <div class="hero__letter">L</div>
-        </div>
-        <p class="hero__visual-caption text-muted">
-          Images: pre-uploaded static ASL hand photos
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── LEVEL OVERVIEW ────────────────────────────────────────── -->
-  <section class="section" id="levels">
-    <div class="container">
-      <header class="section__header text-center">
-        <p class="section__eyebrow">Your Learning Path</p>
-        <h2>Three structured levels</h2>
-        <p>Progress through each level at your own pace. Each lesson is unlocked after you pass the one before it.</p>
-      </header>
-
-      <div class="grid-3">
-
-        <!-- BASIC -->
-        <div class="card level-card" data-level="basic">
-          <span class="badge badge--basic">Basic</span>
-          <h3 class="mt-4">A–Z Alphabet</h3>
-          <p class="mt-4">
-            Master all 26 ASL hand-shape letters using images, text descriptions,
-            and short video demonstrations.
-          </p>
-          <ul class="level-card__features mt-4">
-            <li>✦ 26 sign lessons</li>
-            <li>✦ Image + video per letter</li>
-            <li>✦ Multiple-choice quiz</li>
-          </ul>
-          <a href="pages/learn.html?level=basic" class="btn btn--primary btn--full mt-8">
-            Start Basic
-          </a>
-        </div>
-
-        <!-- MEDIUM -->
-        <div class="card level-card" data-level="medium">
-          <span class="badge badge--medium">Medium</span>
-          <h3 class="mt-4">Basic Vocabulary</h3>
-          <p class="mt-4">
-            Learn common ASL words and everyday phrases.  Combines multiple
-            signs into meaningful vocabulary blocks.
-          </p>
-          <ul class="level-card__features mt-4">
-            <li>✦ 10 vocabulary lessons</li>
-            <li>✦ Word + context video</li>
-            <li>✦ Multiple-choice quiz</li>
-          </ul>
-          <!-- Locked until Basic is complete -->
-          <button class="btn btn--secondary btn--full mt-8" disabled>
-            🔒 Complete Basic first
-          </button>
-        </div>
-
-        <!-- INTERMEDIATE -->
-        <div class="card level-card" data-level="intermediate">
-          <span class="badge badge--intermediate">Intermediate</span>
-          <h3 class="mt-4">Full Sentences</h3>
-          <p class="mt-4">
-            Construct and understand complete ASL sentences.  Understand sentence
-            structure and signing flow between words.
-          </p>
-          <ul class="level-card__features mt-4">
-            <li>✦ 8 sentence lessons</li>
-            <li>✦ Full sentence video</li>
-            <li>✦ Multiple-choice quiz</li>
-          </ul>
-          <button class="btn btn--secondary btn--full mt-8" disabled>
-            🔒 Complete Medium first
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ── HOW IT WORKS ───────────────────────────────────────────── -->
-  <section class="section section--sm" id="how">
-    <div class="container container--narrow">
-      <header class="section__header text-center">
-        <p class="section__eyebrow">Step-by-Step Flow</p>
-        <h2>How LinguaWave works</h2>
-      </header>
-      <ol class="steps-list">
-        <li class="steps-list__item">
-          <span class="steps-list__num">01</span>
-          <div>
-            <h4>Create your account</h4>
-            <p>Register with email and password.  Choose your starting proficiency level.</p>
-          </div>
-        </li>
-        <li class="steps-list__item">
-          <span class="steps-list__num">02</span>
-          <div>
-            <h4>Pick a lesson</h4>
-            <p>Your dashboard shows available lessons and your progress so far.</p>
-          </div>
-        </li>
-        <li class="steps-list__item">
-          <span class="steps-list__num">03</span>
-          <div>
-            <h4>Learn the sign</h4>
-            <p>View the image, read the description, then watch the short video demo.</p>
-          </div>
-        </li>
-        <li class="steps-list__item">
-          <span class="steps-list__num">04</span>
-          <div>
-            <h4>Take the quiz</h4>
-            <p>Answer multiple-choice questions.  Score ≥80% to unlock the next lesson.</p>
-          </div>
-        </li>
-        <li class="steps-list__item">
-          <span class="steps-list__num">05</span>
-          <div>
-            <h4>Track progress & give feedback</h4>
-            <p>Your dashboard updates automatically. Complete a short survey after each level.</p>
-          </div>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- ── CTA BANNER ────────────────────────────────────────────── -->
-  <section class="cta-banner section--sm">
-    <div class="container text-center">
-      <h2>Ready to sign your first letter?</h2>
-      <p class="mt-4">LinguaWave is free to use. No prior knowledge needed.</p>
-      <a href="pages/register.html" class="btn btn--primary btn--lg mt-8">
-        Create your free account →
-      </a>
-    </div>
-  </section>
-
-  <!-- ── FOOTER ────────────────────────────────────────────────── -->
-  <footer class="footer">
-    <div class="container">
-      <p>LinguaWave — ASL Learning System · Capstone Project 2025</p>
-      <p class="mt-4 text-muted">
-        American Sign Language only · Beginner learners · No gesture recognition
+      <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
+      <p class="auth-switch text-muted">
+        Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
       </p>
-    </div>
-  </footer>
+    </form>
+
+    <!-- ── REGISTER FORM ────────────────────────────────────────── -->
+    <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
+      <div class="form-group">
+        <label for="reg-name">Full name</label>
+        <input type="text" id="reg-name" class="form-input" placeholder="Alex Santos" autocomplete="name" />
+      </div>
+      <div class="form-group mt-4">
+        <label for="reg-email">Email</label>
+        <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="form-group mt-4">
+        <label for="reg-password">Password</label>
+        <input type="password" id="reg-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" />
+      </div>
+      <div class="form-group mt-4">
+        <label for="reg-level">Starting level</label>
+        <select id="reg-level" class="form-input">
+          <option value="basic">Beginner — I'm just starting</option>
+          <option value="medium">Intermediate — I know some signs</option>
+          <option value="intermediate">Advanced — I know the alphabet</option>
+        </select>
+        <small class="text-muted">You can change this later from your dashboard.</small>
+      </div>
+      <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
+      <p class="auth-switch text-muted">
+        Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
+      </p>
+    </form>
+
+  </div>
 
   <script src="js/main.js"></script>
+  <script>
+    'use strict';
+
+    function showAuthTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('login-form').style.display    = isLogin ? 'flex' : 'none';
+      document.getElementById('register-form').style.display  = isLogin ? 'none' : 'flex';
+      document.getElementById('tab-login').classList.toggle('auth-tab--active', isLogin);
+      document.getElementById('tab-register').classList.toggle('auth-tab--active', !isLogin);
+    }
+
+    // BYPASS MODE: no validation against a backend yet — see js/auth.js.
+    function handleLogin() {
+      const email    = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      LWAuth.login(email, password);
+      window.location.href = 'pages/dashboard.html';
+    }
+
+    function handleRegister() {
+      const name     = document.getElementById('reg-name').value;
+      const email    = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+      const level    = document.getElementById('reg-level').value;
+      LWAuth.register(name, email, password, level);
+      window.location.href = 'pages/dashboard.html';
+    }
+  </script>
 </body>
 </html>

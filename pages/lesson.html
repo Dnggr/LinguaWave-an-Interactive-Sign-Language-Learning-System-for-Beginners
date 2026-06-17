@@ -32,20 +32,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/lesson.css" />
+
+  <script src="../js/auth.js"></script>
+  <script>
+    LWAuth.requireAuth('../index.html');
+  </script>
 </head>
 <body>
 
   <nav class="navbar">
     <div class="container navbar__inner">
-      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
       <ul class="navbar__links">
-        <li><a href="../index.html">Home</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
         <li><a href="learn.html" class="active">Learn</a></li>
       </ul>
       <div class="navbar__user">
-        <span>👋 Alex</span>
-        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+        <span>👋 <span data-user-name>Learner</span></span>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
     </div>
   </nav>
@@ -85,7 +89,8 @@
       <!--
         TODO: replace src with Firestore imageUrl field.
               Images are stored in Firebase Storage under /signs/{level}/{sign}.jpg
-              Admin uploads them via admin.html content management.
+              Images are managed directly in code by the dev team
+              (no admin UI) — see js/data.js once content is wired in.
       -->
       <div class="lesson-image-wrap mt-8">
         <img
@@ -98,7 +103,7 @@
         <!-- Shown if image is missing (development placeholder) -->
         <div class="lesson-img-placeholder" id="lesson-img-placeholder">
           <span>📷 Sign image</span>
-          <small>Upload via Admin → Content Management</small>
+          <small>Image not added to the codebase yet</small>
         </div>
       </div>
 
@@ -125,7 +130,8 @@
       <!--
         Video is embedded from Firebase Storage or a static local file.
         TODO: replace src with Firestore sign.videoUrl field.
-              Admin uploads videos via admin.html.
+              Video files are added directly to /assets/videos by the
+              dev team (no admin UI).
       -->
       <div class="lesson-video-wrap mt-8">
         <h3>Video Demonstration</h3>

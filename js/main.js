@@ -3,34 +3,51 @@
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Shared utilities and UI behaviours that run on every
  *            page: active nav link highlighting, progress-bar
- *            animation, badge rendering, and mock user-state
- *            management (placeholder until Firebase Auth is wired).
+ *            animation, badge rendering, and user-detail rendering
+ *            (name/email/level pulled from js/auth.js's session).
  *
  * CONNECTS : Loaded by index.html and all pages/*.html via
  *            <script src="../js/main.js"> (or ./js/main.js from root).
+ *            Requires js/auth.js to be loaded first on every page.
  *
- * TODO     : Replace MOCK_USER and all localStorage calls with real
- *            Firebase Auth + Firestore reads once authentication is
- *            implemented.  See auth.js for the auth layer.
+ * TODO     : Replace MOCK_PROGRESS with a real Firestore read once
+ *            Firestore is wired in. Identity already comes from
+ *            auth.js — see auth.js for the Firebase Auth handoff.
  * ─────────────────────────────────────────────────────────────────
  */
 
 'use strict';
 
-/* ── MOCK USER STATE (remove when Firebase is live) ──────────────── */
+/* ── MOCK PROGRESS DATA (remove when Firestore is live) ──────────── */
 /*
- * Simulates a logged-in user so the static UI can render personalised
- * content without a backend.  Replace with a Firestore document read.
+ * Identity (name / email / level) now comes from js/auth.js's session
+ * — see getActiveUser() below. This object only simulates *progress*,
+ * since that will live in Firestore under users/{uid}.progress.
+ * TODO: replace with a Firestore document read keyed by uid.
  */
-const MOCK_USER = {
-  name: 'Alex',
-  level: 'basic',           // 'basic' | 'medium' | 'intermediate'
-  progress: {               // lesson completion by level
-    basic:        { completed: 5, total: 26 },   // A–Z alphabet
-    medium:       { completed: 0, total: 10 },   // Basic words
-    intermediate: { completed: 0, total: 8  },   // Full sentences
-  },
+const MOCK_PROGRESS = {
+  basic:        { completed: 5, total: 26 },   // A–Z alphabet
+  medium:       { completed: 0, total: 10 },   // Basic words
+  intermediate: { completed: 0, total: 8  },   // Full sentences
 };
+
+/* ── ACTIVE USER: merge real session with mock progress ──────────── */
+/*
+ * Reads the logged-in user from js/auth.js (window.LWAuth). Every
+ * protected page should already have run requireAuth(), so this
+ * should never be null in practice — the fallback just keeps pages
+ * from crashing if auth.js hasn't loaded for some reason.
+ */
+function getActiveUser() {
+  const session = window.LWAuth?.getCurrentUser?.();
+  return {
+    name:  session?.name  || 'Guest',
+    email: session?.email || '',
+    level: session?.level || 'basic',
+    joined: session?.joined || '',
+    progress: MOCK_PROGRESS,
+  };
+}
 
 
 /* ── UTILITY: get current page filename ─────────────────────────── */
@@ -76,11 +93,11 @@ function initProgressBars() {
 /*
  * Finds .level-card elements with [data-level] and toggles a
  * .level-card--locked class when the level hasn't been unlocked yet.
- * TODO: read unlock conditions from Firestore instead of MOCK_USER.
+ * TODO: read unlock conditions from Firestore instead of the mock.
  */
 function initLevelCards() {
   const levelOrder = ['basic', 'medium', 'intermediate'];
-  const userLevelIndex = levelOrder.indexOf(MOCK_USER.level);
+  const userLevelIndex = levelOrder.indexOf(getActiveUser().level);
 
   document.querySelectorAll('.level-card[data-level]').forEach(card => {
     const cardIndex = levelOrder.indexOf(card.dataset.level);
@@ -158,18 +175,49 @@ function initSignCards() {
 }
 
 
+/* ── NAVBAR / USER DETAILS: fill in placeholders from the session ──
+ * Any element with [data-user-name], [data-user-email],
+ * [data-user-level], or [data-user-joined] gets its text filled in.
+ * Any element with [data-logout="relative/path/to/index.html"]
+ * gets wired to call LWAuth.logout() instead of needing an href.
+ * Used by the navbar greeting on every page and the "Your Account"
+ * card on the dashboard.
+ */
+function capitalize(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
+
+function initUserDetails() {
+  const user = getActiveUser();
+
+  document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = user.name; });
+  document.querySelectorAll('[data-user-email]').forEach(el => { el.textContent = user.email; });
+  document.querySelectorAll('[data-user-level]').forEach(el => { el.textContent = capitalize(user.level); });
+  document.querySelectorAll('[data-user-joined]').forEach(el => { el.textContent = user.joined || '—'; });
+  document.querySelectorAll('[data-user-initial]').forEach(el => { el.textContent = (user.name || '?').charAt(0).toUpperCase(); });
+
+  document.querySelectorAll('[data-logout]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      window.LWAuth?.logout(btn.dataset.logout);
+    });
+  });
+}
+
+
 /* ── INIT ────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
   initProgressBars();
   initLevelCards();
   initSignCards();
+  initUserDetails();
 });
 
 
 /* ── EXPORTS (for use by page-specific JS files) ─────────────────── */
 window.LinguaWave = {
-  MOCK_USER,
+  getActiveUser,
   showToast,
   openModal,
   closeModal,
