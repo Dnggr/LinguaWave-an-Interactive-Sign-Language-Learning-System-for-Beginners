@@ -1,7 +1,7 @@
 # LinguaWave
 
 > An interactive, web-based ASL (American Sign Language) learning system for beginners.
-> Capstone Project 2025
+> Capstone Project 2026
 
 LinguaWave teaches beginner-level American Sign Language through structured, step-by-step lessons across three difficulty levels, with multiple-choice assessments and a survey-based feedback system. It's a static HTML/CSS/JS site designed to run on Firebase (Auth, Firestore, Storage, Hosting), though authentication currently runs in a **bypass/mock mode** so the frontend team can build against a stable flow while Firebase is wired in.
 
