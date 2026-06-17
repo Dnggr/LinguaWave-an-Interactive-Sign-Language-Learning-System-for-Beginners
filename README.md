@@ -185,7 +185,6 @@ Full detail on each step is in `SYSTEM_ARCHITECTURE.md`.
 
 This is a capstone project repo. If you're on the team:
 
-- Keep new pages consistent with the existing design tokens in `css/style.css` rather than introducing new colors/spacing ad hoc.
 - Any page that should require login must call `LWAuth.requireAuth('../index.html')` at the top of `<head>`, matching the existing pages.
 - Add new signs/questions to `js/data.js` rather than hand-coding more HTML cards, where practical.
 - Update `SYSTEM_ARCHITECTURE.md` if you change the file structure, the Firestore schema, or the user flow.
