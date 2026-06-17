@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/feedback.html — Survey-Based Feedback & Evaluation
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Short survey shown after a learner completes an entire
+               level.  Collects qualitative feedback about content
+               quality, difficulty, and learning experience.
+               Within scope: "Survey-based feedback and evaluation system."
+
+    CONNECTS : ← pages/quiz.html  (redirected here after level complete)
+               → pages/dashboard.html  (on survey submit)
+
+    URL PARAMS: ?level=basic | medium | intermediate
+                JS uses this to label the survey correctly.
+
+    TODO     : js/feedback.js — on submit, write answers to Firestore
+               collection "surveys" with userId, level, timestamp, answers.
+               Admin can view aggregated responses in admin.html.
+               Add form validation (all required questions answered).
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/feedback.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html">Learn</a></li>
+      </ul>
+      <div class="navbar__user">
+        <span>👋 Alex</span>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container container--narrow">
+
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <p class="section__eyebrow">Level Complete 🎉</p>
+        <h1>How was your experience?</h1>
+        <p class="text-muted mt-4">
+          You've completed the <strong id="level-name">Basic — A–Z Alphabet</strong> level!
+          Please take a moment to share your feedback — it helps us improve.
+        </p>
+      </div>
+
+      <!-- Survey form -->
+      <!--
+        All inputs are plain HTML; no library needed.
+        TODO: js/feedback.js handles submit, writes to Firestore.
+              Replace action="" with JavaScript handler (no form POST).
+      -->
+      <div class="survey card">
+
+        <!-- Q1: Overall satisfaction -->
+        <div class="survey__question">
+          <p class="survey__q-text">1. How satisfied are you with this level overall?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Satisfaction rating">
+            <label class="rating-option">
+              <input type="radio" name="q1" value="1" /> 1 — Poor
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="2" /> 2 — Fair
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="3" /> 3 — Good
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="4" /> 4 — Very Good
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="5" /> 5 — Excellent
+            </label>
+          </div>
+        </div>
+
+        <!-- Q2: Content clarity -->
+        <div class="survey__question">
+          <p class="survey__q-text">2. How clear were the sign images and video demonstrations?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Content clarity rating">
+            <label class="rating-option"><input type="radio" name="q2" value="1" /> 1 — Very Unclear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="2" /> 2 — Unclear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="3" /> 3 — Neutral</label>
+            <label class="rating-option"><input type="radio" name="q2" value="4" /> 4 — Clear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="5" /> 5 — Very Clear</label>
+          </div>
+        </div>
+
+        <!-- Q3: Difficulty -->
+        <div class="survey__question">
+          <p class="survey__q-text">3. How would you rate the difficulty of this level?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Difficulty rating">
+            <label class="rating-option"><input type="radio" name="q3" value="too_easy" /> Too Easy</label>
+            <label class="rating-option"><input type="radio" name="q3" value="just_right" /> Just Right</label>
+            <label class="rating-option"><input type="radio" name="q3" value="too_hard" /> Too Hard</label>
+          </div>
+        </div>
+
+        <!-- Q4: Would recommend -->
+        <div class="survey__question">
+          <p class="survey__q-text">4. Would you recommend LinguaWave to someone learning ASL?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Recommend rating">
+            <label class="rating-option"><input type="radio" name="q4" value="yes" /> Yes</label>
+            <label class="rating-option"><input type="radio" name="q4" value="maybe" /> Maybe</label>
+            <label class="rating-option"><input type="radio" name="q4" value="no" /> No</label>
+          </div>
+        </div>
+
+        <!-- Q5: Open text -->
+        <div class="survey__question">
+          <label class="survey__q-text" for="q5-text">
+            5. Any additional comments or suggestions? (optional)
+          </label>
+          <textarea
+            id="q5-text"
+            name="q5"
+            class="form-input"
+            rows="4"
+            placeholder="Share your thoughts…"
+          ></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-8">
+          <button
+            class="btn btn--primary btn--full btn--lg"
+            id="btn-submit-survey"
+            onclick="submitSurvey()"
+          >
+            Submit Feedback & Continue
+          </button>
+          <!-- TODO: on submit, call js/feedback.js → Firestore write → redirect dashboard -->
+        </div>
+
+        <!-- Skip option -->
+        <div class="text-center mt-4">
+          <a href="dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
+            Skip for now →
+          </a>
+        </div>
+
+      </div><!-- /survey card -->
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/feedback.js"></script>
+</body>
+</html>

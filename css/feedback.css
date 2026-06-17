@@ -1,0 +1,13 @@
+/* feedback.css — Survey page styles | CONNECTS: pages/feedback.html */
+.survey__question { padding-block: var(--space-6); border-bottom: 1px solid var(--clr-border); }
+.survey__question:last-child { border-bottom: none; }
+.survey__q-text { font-size: var(--fs-base); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-4); display: block; }
+.rating-group { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.rating-option {
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border); border-radius: var(--radius-md);
+  cursor: pointer; font-size: var(--fs-sm); color: var(--clr-text-muted);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.rating-option:hover { border-color: var(--clr-accent); color: var(--clr-text); }
+.rating-option input[type="radio"] { accent-color: var(--clr-accent); }

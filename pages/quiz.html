@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/quiz.html — End-of-Lesson Assessment
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Multiple-choice quiz shown after all signs in a lesson
+               have been viewed.  Presents questions one at a time.
+               Submits score; if ≥80% → saves progress and redirects
+               to dashboard; if <80% → shows "Retry" option.
+
+    CONNECTS : ← pages/lesson.html  (triggered after last sign)
+               → pages/dashboard.html  (on pass: score ≥80%)
+               → pages/feedback.html   (after completing a full level)
+               → pages/lesson.html     (on fail: retry)
+
+    URL PARAMS: ?level=basic&lesson=F  (or just ?level=basic for whole level)
+
+    TODO     : js/quiz.js — fetch questions from Firestore collection
+               "questions" where level == param.
+               On submit: compute score, write result to Firestore
+               user.progress.{level}.completedLessons[lesson].score.
+               If score < 0.8 → show retry modal.
+               If all lessons in level done → redirect to feedback.html.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/quiz.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html" class="active">Learn</a></li>
+      </ul>
+      <div class="navbar__user">
+        <span>👋 Alex</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── QUIZ WRAPPER ──────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container container--narrow">
+
+      <!-- Quiz header -->
+      <div class="quiz-header">
+        <div>
+          <p class="section__eyebrow">End-of-Lesson Assessment</p>
+          <h1 id="quiz-title">Basic Alphabet Quiz</h1>
+          <p class="text-muted mt-4">Answer all questions. You need 80% or higher to pass.</p>
+        </div>
+        <!-- Question counter -->
+        <div class="quiz-counter">
+          <span id="q-current">1</span> / <span id="q-total">5</span>
+        </div>
+      </div>
+
+      <!-- Progress bar showing quiz completion -->
+      <div class="progress-bar mt-4">
+        <div class="progress-bar__fill" data-progress="0" id="quiz-progress"></div>
+      </div>
+
+      <!-- ── QUESTION CARD ──────────────────────────────────────── -->
+      <!--
+        One question displayed at a time.
+        TODO: js/quiz.js renders questions dynamically from Firestore.
+              Question fields: id, prompt, imageUrl (optional),
+              options: [{id, text}], correctId.
+      -->
+      <div class="quiz-question card mt-8" id="question-card">
+
+        <!-- Question prompt -->
+        <p class="quiz-question__prompt" id="q-prompt">
+          Which image shows the correct ASL hand sign for the letter <strong>F</strong>?
+        </p>
+
+        <!-- Optional: sign image clue (show image, ask for letter — or vice versa) -->
+        <!--
+          TODO: toggle between two question modes:
+            Mode A — show image, pick correct letter
+            Mode B — show letter, pick correct image
+        -->
+        <div class="quiz-question__img-clue" id="q-img-clue">
+          <!-- <img src="…" alt="Sign image clue" /> -->
+          <div class="quiz-question__img-placeholder">
+            Sign image displayed here (if applicable)
+          </div>
+        </div>
+
+        <!-- Answer options — 4 choices -->
+        <div class="quiz-options" id="q-options">
+          <button class="quiz-option" data-option="A" onclick="selectOption(this)">A</button>
+          <button class="quiz-option" data-option="B" onclick="selectOption(this)">B</button>
+          <button class="quiz-option" data-option="C" onclick="selectOption(this)">C</button>
+          <button class="quiz-option" data-option="F" onclick="selectOption(this)">F ← correct</button>
+          <!-- TODO: randomise option order in js/quiz.js, never hardcode correct -->
+        </div>
+
+        <!-- Submit / Next -->
+        <div class="quiz-actions mt-8">
+          <button class="btn btn--primary btn--lg btn--full" id="btn-submit" onclick="submitAnswer()" disabled>
+            Submit Answer
+          </button>
+        </div>
+
+        <!-- Feedback (shown after submit) -->
+        <div class="quiz-feedback" id="q-feedback" style="display:none;">
+          <!-- js/quiz.js injects .alert--success or .alert--error here -->
+        </div>
+
+      </div><!-- /question-card -->
+
+      <!-- ── RESULTS CARD (shown after last question) ──────────── -->
+      <!--
+        TODO: js/quiz.js hides question-card and shows results-card
+               when all questions are answered.
+      -->
+      <div class="quiz-results card mt-8" id="results-card" style="display:none;">
+        <div class="text-center">
+          <div class="quiz-results__score" id="results-score">80%</div>
+          <h2 id="results-title">You passed! 🎉</h2>
+          <p class="text-muted mt-4" id="results-message">
+            Great job! Your progress has been saved and the next lesson is now unlocked.
+          </p>
+          <div class="flex-center gap-4 mt-8">
+            <!-- Pass path: save progress → go to dashboard -->
+            <a href="dashboard.html" class="btn btn--primary btn--lg" id="btn-continue">
+              Continue to Dashboard →
+            </a>
+            <!-- Fail path: retry lesson -->
+            <a href="lesson.html?level=basic&sign=F" class="btn btn--ghost" id="btn-retry" style="display:none;">
+              Retry Lesson
+            </a>
+          </div>
+        </div>
+      </div><!-- /results-card -->
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/quiz.js"></script>
+</body>
+</html>

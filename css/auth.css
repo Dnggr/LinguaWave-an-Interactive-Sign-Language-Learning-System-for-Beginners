@@ -1,0 +1,8 @@
+/* auth.css — Login/Register page styles | CONNECTS: login.html, register.html */
+.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--space-6); }
+.auth-card {
+  width: 100%; max-width: 420px;
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl); padding: var(--space-8); box-shadow: var(--shadow-card);
+}
+.auth-form { display: flex; flex-direction: column; }

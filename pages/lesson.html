@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/lesson.html — Individual Sign Lesson Viewer
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Shows the learning content for one ASL sign:
+               • Text explanation (how to form the hand shape)
+               • Static image of the sign
+               • Short video demonstration
+               User clicks NEXT to advance to the next sign in the
+               lesson, or finishes all signs to trigger the quiz.
+
+    CONNECTS : ← pages/learn.html  (lesson card click)
+               ← pages/dashboard.html  (Continue button)
+               → pages/quiz.html  (when all signs in lesson are viewed)
+
+    URL PARAMS: ?level=basic&sign=F
+                JS reads these to load the correct content.
+
+    TODO     : js/lesson.js — fetch sign data (text, imageUrl, videoUrl)
+               from Firestore collection "signs" where id == sign param.
+               Implement NEXT button logic: increment sign, or if last
+               sign → redirect to quiz.html?level=X&lesson=Y.
+               Track viewedSigns array in Firestore user document.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/lesson.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html" class="active">Learn</a></li>
+      </ul>
+      <div class="navbar__user">
+        <span>👋 Alex</span>
+        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── LESSON PROGRESS STRIP ─────────────────────────────────── -->
+  <!--
+    Shows "Sign 6 of 26" and a progress bar.
+    TODO: js/lesson.js updates these values dynamically.
+  -->
+  <div class="lesson-strip">
+    <div class="container lesson-strip__inner">
+      <a href="learn.html?level=basic" class="btn btn--ghost btn--sm">← Back to lessons</a>
+      <div class="lesson-strip__progress">
+        <span class="text-muted" id="lesson-counter">Sign 6 of 26</span>
+        <div class="progress-bar" style="width: 200px;">
+          <div class="progress-bar__fill" data-progress="23" id="lesson-progress-fill"></div>
+        </div>
+      </div>
+      <span class="badge badge--basic">Basic · A–Z</span>
+    </div>
+  </div>
+
+  <!-- ── LESSON CONTENT ────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container container--narrow">
+
+      <!-- Sign header -->
+      <div class="lesson-header">
+        <div class="lesson-letter" id="lesson-letter">F</div>
+        <div>
+          <h1 id="lesson-title">Letter F</h1>
+          <p class="text-muted" id="lesson-subtitle">ASL Alphabet · Basic Level</p>
+        </div>
+      </div>
+
+      <!-- Sign image -->
+      <!--
+        TODO: replace src with Firestore imageUrl field.
+              Images are stored in Firebase Storage under /signs/{level}/{sign}.jpg
+              Admin uploads them via admin.html content management.
+      -->
+      <div class="lesson-image-wrap mt-8">
+        <img
+          id="lesson-image"
+          src="../assets/images/placeholder-sign.png"
+          alt="ASL hand sign for the letter F"
+          class="lesson-image"
+          onerror="this.style.display='none'; document.getElementById('lesson-img-placeholder').style.display='flex';"
+        />
+        <!-- Shown if image is missing (development placeholder) -->
+        <div class="lesson-img-placeholder" id="lesson-img-placeholder">
+          <span>📷 Sign image</span>
+          <small>Upload via Admin → Content Management</small>
+        </div>
+      </div>
+
+      <!-- Text explanation -->
+      <!--
+        TODO: replace with Firestore sign.description field.
+      -->
+      <div class="lesson-desc card mt-8" id="lesson-desc">
+        <h3>How to form Letter F</h3>
+        <p class="mt-4">
+          Touch the tip of your index finger to the tip of your thumb,
+          forming a circle.  Keep your middle, ring, and pinky fingers
+          extended straight up and slightly spread apart.
+          Hold your hand upright with your palm facing forward.
+        </p>
+        <ul class="lesson-desc__tips mt-4">
+          <li>✦ Index finger and thumb form an "OK" circle</li>
+          <li>✦ Three remaining fingers point up</li>
+          <li>✦ Palm faces the person you're signing to</li>
+        </ul>
+      </div>
+
+      <!-- Video demonstration -->
+      <!--
+        Video is embedded from Firebase Storage or a static local file.
+        TODO: replace src with Firestore sign.videoUrl field.
+              Admin uploads videos via admin.html.
+      -->
+      <div class="lesson-video-wrap mt-8">
+        <h3>Video Demonstration</h3>
+        <div class="lesson-video mt-4">
+          <video
+            id="lesson-video"
+            controls
+            poster="../assets/images/placeholder-poster.png"
+          >
+            <!-- TODO: <source src="firestore-video-url" type="video/mp4" /> -->
+            <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+
+      <!-- Navigation buttons -->
+      <!--
+        NEXT checks:
+          - If more signs remain in lesson  → load next sign (same page, new params)
+          - If this was the last sign       → redirect to quiz.html
+        PREV always goes to previous sign.
+        TODO: implement full logic in js/lesson.js.
+      -->
+      <div class="lesson-nav mt-8">
+        <button class="btn btn--ghost" id="btn-prev" onclick="window.location='lesson.html?level=basic&sign=E'">
+          ← Previous
+        </button>
+        <button class="btn btn--primary btn--lg" id="btn-next" onclick="window.location='lesson.html?level=basic&sign=G'">
+          Next Sign →
+        </button>
+        <!-- When last sign: btn-next says "Go to Quiz →" and links to quiz.html -->
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/lesson.js"></script>
+</body>
+</html>

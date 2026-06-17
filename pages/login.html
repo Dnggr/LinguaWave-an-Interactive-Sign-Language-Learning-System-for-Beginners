@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/login.html — User Login (Auth Stub)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Login form with email + password.  Currently a stub —
+               clicking Log In just redirects to the dashboard demo.
+
+    CONNECTS : ← index.html navbar "Log in" button
+               ← register.html "Already have an account?" link
+               → pages/dashboard.html  (on successful login)
+
+    TODO     : js/auth.js — wire to Firebase Auth
+               signInWithEmailAndPassword().
+               On success → redirect to dashboard.html.
+               On failure → show inline error (wrong password, etc.).
+               Add "Forgot password?" flow using sendPasswordResetEmail().
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log In — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+</head>
+<body class="auth-page">
+
+  <div class="auth-card">
+    <a href="../index.html" class="navbar__logo" style="display:block;text-align:center;margin-bottom:2rem;">
+      Lingua<span style="color:var(--clr-text-muted);font-weight:400;">Wave</span>
+    </a>
+
+    <h2>Welcome back</h2>
+    <p class="text-muted mt-4">Log in to continue your ASL journey.</p>
+
+    <div class="auth-form mt-8">
+
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+      </div>
+
+      <div class="form-group mt-4">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" />
+      </div>
+
+      <!-- TODO: replace onclick with Firebase Auth signInWithEmailAndPassword -->
+      <button
+        class="btn btn--primary btn--full btn--lg mt-8"
+        onclick="window.location='dashboard.html';"
+      >
+        Log In
+      </button>
+
+      <p class="text-center text-muted mt-4" style="font-size: var(--fs-sm);">
+        Don't have an account? <a href="register.html">Sign up free →</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>

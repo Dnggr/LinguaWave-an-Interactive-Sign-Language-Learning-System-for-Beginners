@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/dashboard.html — User Dashboard
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Main hub after login.  Shows the user's overall
+               progress, level cards with % completion, and a
+               "Continue" button that jumps to the last incomplete
+               lesson.  Also shows a recap of previously learned signs.
+
+    CONNECTS : ← index.html (redirected here after login)
+               → pages/learn.html      (level cards open lesson list)
+               → pages/lesson.html     (Continue button)
+               → pages/quiz.html       (retake an assessment)
+               → pages/feedback.html   (survey after completing a level)
+
+    TODO     : Pull real progress data from Firestore using the
+               logged-in user's UID.  Replace MOCK_USER entirely.
+               Add "Signs learned so far" recap section (flowchart
+               node: "Show previous signs").
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+</head>
+<body>
+
+  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="dashboard.html" class="active">Dashboard</a></li>
+        <li><a href="learn.html">Learn</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+      <div class="navbar__user">
+        <!-- TODO: show real user name from Firebase Auth currentUser.displayName -->
+        <span>👋 Alex</span>
+        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <div class="dash-header">
+        <div>
+          <p class="section__eyebrow">Welcome back</p>
+          <h1>Your Dashboard</h1>
+          <!-- TODO: show real name -->
+          <p class="mt-4">Keep going, Alex! You're making great progress on the ASL Alphabet.</p>
+        </div>
+        <!-- Continue button — jumps to last incomplete lesson -->
+        <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
+        <a href="lesson.html?level=basic&sign=F" class="btn btn--primary btn--lg">
+          ▶ Continue Learning
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OVERALL PROGRESS ──────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8">Overall Progress</h2>
+      <div class="grid-3">
+
+        <!-- BASIC -->
+        <div class="card progress-card">
+          <div class="progress-card__head">
+            <span class="badge badge--basic">Basic</span>
+            <!-- TODO: calculate pct from Firestore (completed/total * 100) -->
+            <span class="progress-card__pct">19%</span>
+          </div>
+          <p class="progress-card__label">A–Z Alphabet</p>
+          <div class="progress-bar mt-4">
+            <div class="progress-bar__fill" data-progress="19"></div>
+          </div>
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">5 / 26 signs completed</p>
+          <a href="learn.html?level=basic" class="btn btn--secondary btn--full mt-4">
+            View Lessons
+          </a>
+        </div>
+
+        <!-- MEDIUM -->
+        <div class="card progress-card progress-card--locked">
+          <div class="progress-card__head">
+            <span class="badge badge--medium">Medium</span>
+            <span class="progress-card__pct">0%</span>
+          </div>
+          <p class="progress-card__label">Basic Vocabulary</p>
+          <div class="progress-bar mt-4">
+            <div class="progress-bar__fill" data-progress="0"></div>
+          </div>
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">Locked — complete Basic first</p>
+          <button class="btn btn--secondary btn--full mt-4" disabled>🔒 Locked</button>
+        </div>
+
+        <!-- INTERMEDIATE -->
+        <div class="card progress-card progress-card--locked">
+          <div class="progress-card__head">
+            <span class="badge badge--intermediate">Intermediate</span>
+            <span class="progress-card__pct">0%</span>
+          </div>
+          <p class="progress-card__label">Full Sentences</p>
+          <div class="progress-bar mt-4">
+            <div class="progress-bar__fill" data-progress="0"></div>
+          </div>
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">Locked — complete Medium first</p>
+          <button class="btn btn--secondary btn--full mt-4" disabled>🔒 Locked</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SIGNS LEARNED SO FAR (recap) ──────────────────────────── -->
+  <!--
+    Flowchart node: "Show previous signs (recap)"
+    This section appears at the top of each new session to remind
+    the user of signs they've already mastered.
+    TODO: populate dynamically from Firestore (user.learnedSigns array).
+  -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8">Signs You've Learned</h2>
+      <div class="recap-grid" id="recap-grid">
+
+        <!-- Repeat .recap-card for each learned sign -->
+        <!-- TODO: generate these from Firestore data in main.js -->
+        <div class="recap-card">
+          <div class="recap-card__img" aria-label="ASL sign for A">A</div>
+          <span>A</span>
+        </div>
+        <div class="recap-card">
+          <div class="recap-card__img" aria-label="ASL sign for B">B</div>
+          <span>B</span>
+        </div>
+        <div class="recap-card">
+          <div class="recap-card__img" aria-label="ASL sign for C">C</div>
+          <span>C</span>
+        </div>
+        <div class="recap-card">
+          <div class="recap-card__img" aria-label="ASL sign for D">D</div>
+          <span>D</span>
+        </div>
+        <div class="recap-card">
+          <div class="recap-card__img" aria-label="ASL sign for E">E</div>
+          <span>E</span>
+        </div>
+
+        <!-- Placeholder for letters not yet learned -->
+        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
+        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
+        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <p>LinguaWave — Capstone Project 2025</p>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>

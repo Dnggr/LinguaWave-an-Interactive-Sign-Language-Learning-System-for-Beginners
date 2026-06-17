@@ -1,0 +1,21 @@
+/* lesson.css — Lesson Viewer styles | CONNECTS: pages/lesson.html */
+.lesson-strip { background: var(--clr-surface); border-bottom: 1px solid var(--clr-border); }
+.lesson-strip__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding-block: var(--space-3); flex-wrap: wrap; }
+.lesson-strip__progress { display: flex; align-items: center; gap: var(--space-4); }
+.lesson-header { display: flex; align-items: center; gap: var(--space-6); }
+.lesson-letter {
+  width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;
+  background: var(--clr-surface-2); border: 2px solid var(--clr-accent); border-radius: var(--radius-lg);
+  font-family: var(--font-display); font-size: var(--fs-3xl); font-weight: 700; color: var(--clr-accent);
+  box-shadow: var(--shadow-glow); flex-shrink: 0;
+}
+.lesson-image-wrap { border-radius: var(--radius-xl); overflow: hidden; background: var(--clr-surface); border: 1px solid var(--clr-border); }
+.lesson-image { width: 100%; max-height: 400px; object-fit: contain; background: var(--clr-surface-2); }
+.lesson-img-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 300px; color: var(--clr-text-muted); gap: var(--space-2); font-size: var(--fs-sm);
+}
+.lesson-desc .lesson-desc__tips { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--fs-sm); color: var(--clr-text-muted); }
+.lesson-video { border-radius: var(--radius-lg); overflow: hidden; background: #000; }
+.lesson-video video { width: 100%; max-height: 400px; }
+.lesson-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    index.html — Landing / Home Page
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : First page a new visitor sees.  Explains what
+               LinguaWave is, shows the three learning levels, and
+               routes users to either Register or Dashboard.
+
+    CONNECTS : → pages/dashboard.html  (returning user shortcut)
+               → pages/register.html   (new user CTA)
+               → pages/learn.html      (quick preview of levels)
+
+    TODO     : Replace "Get Started" CTA with Firebase Auth check:
+               if user is logged in → redirect to dashboard.html,
+               otherwise → register.html / login.html.
+               Add hero animation (hands signing A–Z loop).
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinguaWave — Learn ASL Sign Language</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/home.css" />
+  <link rel="stylesheet" href="css/toast.css" />
+</head>
+<body>
+
+  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="pages/dashboard.html">Dashboard</a></li>
+        <li><a href="pages/learn.html">Learn</a></li>
+        <li><a href="pages/about.html">About</a></li>
+      </ul>
+      <!-- TODO: swap these buttons for logged-in user avatar once Auth is live -->
+      <div class="navbar__user">
+        <a href="pages/login.html"    class="btn btn--ghost btn--sm">Log in</a>
+        <a href="pages/register.html" class="btn btn--primary btn--sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ─────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="container hero__inner">
+      <div class="hero__text">
+        <p class="section__eyebrow">American Sign Language · Beginner Friendly</p>
+        <h1 class="hero__headline">
+          Learn ASL — <br />
+          <span class="hero__headline--accent">one sign at a time.</span>
+        </h1>
+        <p class="hero__sub">
+          LinguaWave is a structured, step-by-step learning system for ASL beginners.
+          Start with the alphabet, build vocabulary, then form full sentences.
+        </p>
+        <div class="hero__cta flex gap-4">
+          <!-- TODO: auth check — logged-in users skip to dashboard -->
+          <a href="pages/register.html" class="btn btn--primary btn--lg">Start Learning Free</a>
+          <a href="pages/learn.html"    class="btn btn--ghost btn--lg">Preview Lessons</a>
+        </div>
+      </div>
+
+      <!-- Placeholder visual: replace with animated hand SVG or lottie -->
+      <div class="hero__visual" aria-hidden="true">
+        <div class="hero__hand-grid">
+          <div class="hero__letter">A</div>
+          <div class="hero__letter">S</div>
+          <div class="hero__letter">L</div>
+        </div>
+        <p class="hero__visual-caption text-muted">
+          Images: pre-uploaded static ASL hand photos
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LEVEL OVERVIEW ────────────────────────────────────────── -->
+  <section class="section" id="levels">
+    <div class="container">
+      <header class="section__header text-center">
+        <p class="section__eyebrow">Your Learning Path</p>
+        <h2>Three structured levels</h2>
+        <p>Progress through each level at your own pace. Each lesson is unlocked after you pass the one before it.</p>
+      </header>
+
+      <div class="grid-3">
+
+        <!-- BASIC -->
+        <div class="card level-card" data-level="basic">
+          <span class="badge badge--basic">Basic</span>
+          <h3 class="mt-4">A–Z Alphabet</h3>
+          <p class="mt-4">
+            Master all 26 ASL hand-shape letters using images, text descriptions,
+            and short video demonstrations.
+          </p>
+          <ul class="level-card__features mt-4">
+            <li>✦ 26 sign lessons</li>
+            <li>✦ Image + video per letter</li>
+            <li>✦ Multiple-choice quiz</li>
+          </ul>
+          <a href="pages/learn.html?level=basic" class="btn btn--primary btn--full mt-8">
+            Start Basic
+          </a>
+        </div>
+
+        <!-- MEDIUM -->
+        <div class="card level-card" data-level="medium">
+          <span class="badge badge--medium">Medium</span>
+          <h3 class="mt-4">Basic Vocabulary</h3>
+          <p class="mt-4">
+            Learn common ASL words and everyday phrases.  Combines multiple
+            signs into meaningful vocabulary blocks.
+          </p>
+          <ul class="level-card__features mt-4">
+            <li>✦ 10 vocabulary lessons</li>
+            <li>✦ Word + context video</li>
+            <li>✦ Multiple-choice quiz</li>
+          </ul>
+          <!-- Locked until Basic is complete -->
+          <button class="btn btn--secondary btn--full mt-8" disabled>
+            🔒 Complete Basic first
+          </button>
+        </div>
+
+        <!-- INTERMEDIATE -->
+        <div class="card level-card" data-level="intermediate">
+          <span class="badge badge--intermediate">Intermediate</span>
+          <h3 class="mt-4">Full Sentences</h3>
+          <p class="mt-4">
+            Construct and understand complete ASL sentences.  Understand sentence
+            structure and signing flow between words.
+          </p>
+          <ul class="level-card__features mt-4">
+            <li>✦ 8 sentence lessons</li>
+            <li>✦ Full sentence video</li>
+            <li>✦ Multiple-choice quiz</li>
+          </ul>
+          <button class="btn btn--secondary btn--full mt-8" disabled>
+            🔒 Complete Medium first
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ───────────────────────────────────────────── -->
+  <section class="section section--sm" id="how">
+    <div class="container container--narrow">
+      <header class="section__header text-center">
+        <p class="section__eyebrow">Step-by-Step Flow</p>
+        <h2>How LinguaWave works</h2>
+      </header>
+      <ol class="steps-list">
+        <li class="steps-list__item">
+          <span class="steps-list__num">01</span>
+          <div>
+            <h4>Create your account</h4>
+            <p>Register with email and password.  Choose your starting proficiency level.</p>
+          </div>
+        </li>
+        <li class="steps-list__item">
+          <span class="steps-list__num">02</span>
+          <div>
+            <h4>Pick a lesson</h4>
+            <p>Your dashboard shows available lessons and your progress so far.</p>
+          </div>
+        </li>
+        <li class="steps-list__item">
+          <span class="steps-list__num">03</span>
+          <div>
+            <h4>Learn the sign</h4>
+            <p>View the image, read the description, then watch the short video demo.</p>
+          </div>
+        </li>
+        <li class="steps-list__item">
+          <span class="steps-list__num">04</span>
+          <div>
+            <h4>Take the quiz</h4>
+            <p>Answer multiple-choice questions.  Score ≥80% to unlock the next lesson.</p>
+          </div>
+        </li>
+        <li class="steps-list__item">
+          <span class="steps-list__num">05</span>
+          <div>
+            <h4>Track progress & give feedback</h4>
+            <p>Your dashboard updates automatically. Complete a short survey after each level.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── CTA BANNER ────────────────────────────────────────────── -->
+  <section class="cta-banner section--sm">
+    <div class="container text-center">
+      <h2>Ready to sign your first letter?</h2>
+      <p class="mt-4">LinguaWave is free to use. No prior knowledge needed.</p>
+      <a href="pages/register.html" class="btn btn--primary btn--lg mt-8">
+        Create your free account →
+      </a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <p>LinguaWave — ASL Learning System · Capstone Project 2025</p>
+      <p class="mt-4 text-muted">
+        American Sign Language only · Beginner learners · No gesture recognition
+      </p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

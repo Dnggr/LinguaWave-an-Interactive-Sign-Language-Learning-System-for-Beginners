@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    pages/learn.html — Level & Lesson Selector
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Shows all lessons within a given level as a grid of
+               cards.  Completed lessons show a green ✔, locked ones
+               show a 🔒.  Clicking an unlocked card opens lesson.html.
+
+    CONNECTS : ← dashboard.html  (via level card "View Lessons" link)
+               → pages/lesson.html  (on lesson card click)
+
+    URL PARAM: ?level=basic | medium | intermediate
+               JS reads this to filter visible lessons.
+
+    TODO     : Fetch real lesson metadata (title, locked state, image)
+               from Firestore collection "lessons" filtered by level.
+               Replace static lesson card list below with dynamic render.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learn — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/learn.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html" class="active">Learn</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+      <div class="navbar__user">
+        <span>👋 Alex</span>
+        <a href="../index.html" class="btn btn--ghost btn--sm">Log out</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── LEVEL TABS ────────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <h1>Select a Lesson</h1>
+      <p class="mt-4 text-muted">
+        Choose your level below, then pick a lesson to start.
+        Complete each lesson in order to unlock the next.
+      </p>
+
+      <!-- Level tab switcher -->
+      <!-- TODO: js/learn.js reads ?level= param and activates the correct tab -->
+      <div class="level-tabs mt-8">
+        <button class="level-tab level-tab--active" data-level="basic">
+          <span class="badge badge--basic">Basic</span> A–Z Alphabet
+        </button>
+        <button class="level-tab" data-level="medium" disabled title="Complete Basic first">
+          <span class="badge badge--medium">Medium</span> Vocabulary 🔒
+        </button>
+        <button class="level-tab" data-level="intermediate" disabled title="Complete Medium first">
+          <span class="badge badge--intermediate">Intermediate</span> Sentences 🔒
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LESSON GRID ───────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+
+      <!-- Basic level lesson list (A–Z, 26 items) -->
+      <!-- TODO: render these from Firestore "lessons" collection
+                 fields: id, letter, title, videoUrl, imageUrl, isCompleted -->
+      <div class="lesson-grid" id="lesson-grid">
+
+        <!-- Completed lessons -->
+        <a href="lesson.html?level=basic&sign=A" class="lesson-card lesson-card--done">
+          <div class="lesson-card__letter">A</div>
+          <span class="lesson-card__title">Letter A</span>
+          <span class="badge badge--done">✔ Done</span>
+        </a>
+        <a href="lesson.html?level=basic&sign=B" class="lesson-card lesson-card--done">
+          <div class="lesson-card__letter">B</div>
+          <span class="lesson-card__title">Letter B</span>
+          <span class="badge badge--done">✔ Done</span>
+        </a>
+        <a href="lesson.html?level=basic&sign=C" class="lesson-card lesson-card--done">
+          <div class="lesson-card__letter">C</div>
+          <span class="lesson-card__title">Letter C</span>
+          <span class="badge badge--done">✔ Done</span>
+        </a>
+        <a href="lesson.html?level=basic&sign=D" class="lesson-card lesson-card--done">
+          <div class="lesson-card__letter">D</div>
+          <span class="lesson-card__title">Letter D</span>
+          <span class="badge badge--done">✔ Done</span>
+        </a>
+        <a href="lesson.html?level=basic&sign=E" class="lesson-card lesson-card--done">
+          <div class="lesson-card__letter">E</div>
+          <span class="lesson-card__title">Letter E</span>
+          <span class="badge badge--done">✔ Done</span>
+        </a>
+
+        <!-- Current / available lesson -->
+        <a href="lesson.html?level=basic&sign=F" class="lesson-card lesson-card--current">
+          <div class="lesson-card__letter">F</div>
+          <span class="lesson-card__title">Letter F</span>
+          <span class="badge badge--basic">Start →</span>
+        </a>
+
+        <!-- Remaining locked lessons (G–Z) -->
+        <!-- TODO: generate all 26 dynamically in js/learn.js from Firestore -->
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">G</div><span>G</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">H</div><span>H</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">I</div><span>I</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">J</div><span>J</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">K</div><span>K</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">L</div><span>L</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">M</div><span>M</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">N</div><span>N</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">O</div><span>O</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">P</div><span>P</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Q</div><span>Q</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">R</div><span>R</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">S</div><span>S</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">T</div><span>T</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">U</div><span>U</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">V</div><span>V</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">W</div><span>W</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">X</div><span>X</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Y</div><span>Y</span><span class="badge badge--locked">🔒</span></div>
+        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Z</div><span>Z</span><span class="badge badge--locked">🔒</span></div>
+
+      </div><!-- /lesson-grid -->
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/learn.js"></script>
+</body>
+</html>

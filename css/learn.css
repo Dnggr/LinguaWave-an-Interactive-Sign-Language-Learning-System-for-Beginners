@@ -1,0 +1,30 @@
+/* learn.css — Level & Lesson Selector styles | CONNECTS: pages/learn.html */
+.level-tabs { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.level-tab {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md); cursor: pointer; color: var(--clr-text-muted);
+  font-size: var(--fs-sm); font-family: var(--font-body);
+  transition: all var(--dur-fast) var(--ease);
+}
+.level-tab--active { border-color: var(--clr-accent); color: var(--clr-text); background: var(--clr-surface-2); }
+.level-tab:disabled { opacity: .4; cursor: not-allowed; }
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-4); }
+.lesson-card {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  padding: var(--space-4); background: var(--clr-surface);
+  border: 1px solid var(--clr-border); border-radius: var(--radius-lg);
+  text-align: center; text-decoration: none; color: var(--clr-text);
+  transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.lesson-card:hover:not(.lesson-card--locked) { border-color: var(--clr-accent); transform: translateY(-2px); text-decoration: none; }
+.lesson-card--done { border-color: rgba(63,185,80,.3); }
+.lesson-card--current { border-color: var(--clr-accent); box-shadow: var(--shadow-glow); }
+.lesson-card--locked { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.lesson-card__letter {
+  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+  background: var(--clr-surface-2); border-radius: var(--radius-md);
+  font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--clr-accent);
+}
+.lesson-card__title { font-size: var(--fs-xs); color: var(--clr-text-muted); }

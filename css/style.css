@@ -1,0 +1,351 @@
+/*
+ * style.css — Global Stylesheet
+ * ─────────────────────────────────────────────────────────────────
+ * PURPOSE  : Design tokens, resets, layout utilities, and shared
+ *            component styles used across every page of LinguaWave.
+ * CONNECTS : Imported by index.html and all pages/*.html files.
+ * TODO     : Add dark-mode media query once content is finalized.
+ *            Swap placeholder colors with final brand palette if needed.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+/* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --clr-bg:          #0d1117;   /* deep navy-black page background   */
+  --clr-surface:     #161b22;   /* card / panel surface              */
+  --clr-surface-2:   #21262d;   /* elevated surface (hover, modal)   */
+  --clr-border:      #30363d;   /* subtle dividers                   */
+
+  --clr-accent:      #3fb950;   /* primary green — "go / learn"      */
+  --clr-accent-dim:  #238636;   /* darker green for hover states     */
+  --clr-yellow:      #d29922;   /* MEDIUM level badge                */
+  --clr-orange:      #e3822a;   /* INTERMEDIATE level badge          */
+  --clr-blue:        #388bfd;   /* links, info states                */
+  --clr-red:         #f85149;   /* error / locked                    */
+
+  --clr-text:        #e6edf3;   /* primary text                      */
+  --clr-text-muted:  #8b949e;   /* secondary / caption text          */
+  --clr-text-invert: #0d1117;   /* text on bright surfaces           */
+
+  /* Type scale */
+  --font-display:  'Space Grotesk', sans-serif;
+  --font-body:     'Inter', sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
+
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.875rem;
+  --fs-base: 1rem;
+  --fs-lg:   1.125rem;
+  --fs-xl:   1.375rem;
+  --fs-2xl:  1.75rem;
+  --fs-3xl:  2.25rem;
+  --fs-hero: clamp(2.5rem, 5vw, 4rem);
+
+  /* Spacing */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0,0,0,.4);
+  --shadow-glow: 0 0 24px rgba(63,185,80,.18);
+
+  /* Transitions */
+  --ease: cubic-bezier(.4,0,.2,1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+}
+
+/* ── 2. RESET ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+img, video { display: block; max-width: 100%; }
+a { color: var(--clr-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font-family: inherit; }
+ul, ol { list-style: none; }
+
+/* ── 3. TYPOGRAPHY ──────────────────────────────────────────────── */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  color: var(--clr-text);
+}
+h1 { font-size: var(--fs-3xl); }
+h2 { font-size: var(--fs-2xl); }
+h3 { font-size: var(--fs-xl); }
+h4 { font-size: var(--fs-lg); }
+p  { color: var(--clr-text-muted); line-height: 1.7; }
+
+/* ── 4. LAYOUT ──────────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+}
+.container--narrow { max-width: 800px; }
+.container--wide   { max-width: 1400px; }
+
+/* ── 5. NAVBAR ──────────────────────────────────────────────────── */
+/*
+ * .navbar — top navigation bar
+ * Appears on all pages except the auth screen.
+ * TODO: collapse into hamburger on mobile (<768px).
+ */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13,17,23,.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--clr-border);
+}
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  height: 60px;
+}
+.navbar__logo {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-accent);
+  letter-spacing: -.5px;
+  text-decoration: none;
+}
+.navbar__logo span { color: var(--clr-text-muted); font-weight: 400; }
+.navbar__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.navbar__links a {
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease);
+}
+.navbar__links a:hover,
+.navbar__links a.active { color: var(--clr-text); text-decoration: none; }
+.navbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+
+/* ── 6. BUTTONS ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: none;
+  transition: background var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease);
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn--primary {
+  background: var(--clr-accent);
+  color: var(--clr-text-invert);
+}
+.btn--primary:hover { background: var(--clr-accent-dim); box-shadow: var(--shadow-glow); }
+
+.btn--secondary {
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border);
+}
+.btn--secondary:hover { background: var(--clr-border); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--clr-text-muted);
+  border: 1px solid var(--clr-border);
+}
+.btn--ghost:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }
+
+.btn--danger {
+  background: var(--clr-red);
+  color: #fff;
+}
+
+.btn--lg { padding: var(--space-4) var(--space-8); font-size: var(--fs-base); }
+.btn--sm { padding: var(--space-2) var(--space-4); font-size: var(--fs-xs); }
+.btn--full { width: 100%; }
+.btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+
+/* ── 7. CARDS ───────────────────────────────────────────────────── */
+.card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--dur-base) var(--ease),
+              box-shadow var(--dur-base) var(--ease);
+}
+.card:hover {
+  border-color: var(--clr-accent);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── 8. LEVEL BADGES ────────────────────────────────────────────── */
+/*
+ * Used on level cards and lesson headers to indicate difficulty tier.
+ * Colors match the flowchart legend: blue/green/orange.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.badge--basic        { background: rgba(56,139,253,.18); color: #388bfd; }
+.badge--medium       { background: rgba(210,153,34,.18); color: #d29922; }
+.badge--intermediate { background: rgba(227,130,42,.18); color: #e3822a; }
+.badge--locked       { background: rgba(248,81,73,.1);   color: var(--clr-red); }
+.badge--done         { background: rgba(63,185,80,.15);  color: var(--clr-accent); }
+
+/* ── 9. PROGRESS BAR ────────────────────────────────────────────── */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--clr-surface-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.progress-bar__fill {
+  height: 100%;
+  background: var(--clr-accent);
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-slow) var(--ease);
+}
+
+/* ── 10. FORM ELEMENTS ──────────────────────────────────────────── */
+.form-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.form-group label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text);
+}
+.form-input {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--clr-text);
+  font-size: var(--fs-base);
+  font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px rgba(63,185,80,.15);
+}
+.form-input::placeholder { color: var(--clr-text-muted); }
+
+/* ── 11. ALERTS / TOASTS ────────────────────────────────────────── */
+.alert {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  border-left: 4px solid;
+}
+.alert--success { background: rgba(63,185,80,.1);  border-color: var(--clr-accent); color: var(--clr-accent); }
+.alert--error   { background: rgba(248,81,73,.1);  border-color: var(--clr-red);    color: var(--clr-red); }
+.alert--info    { background: rgba(56,139,253,.1); border-color: var(--clr-blue);   color: var(--clr-blue); }
+
+/* ── 12. SECTION LAYOUT HELPERS ─────────────────────────────────── */
+.section { padding-block: var(--space-16); }
+.section--sm { padding-block: var(--space-8); }
+.section__header { margin-bottom: var(--space-8); }
+.section__eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--clr-accent);
+  margin-bottom: var(--space-2);
+}
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-6); }
+
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ── 13. FOOTER ─────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--clr-border);
+  padding-block: var(--space-8);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+
+/* ── 14. UTILITIES ──────────────────────────────────────────────── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+.text-center { text-align: center; }
+.text-muted   { color: var(--clr-text-muted); }
+.text-accent  { color: var(--clr-accent); }
+.flex         { display: flex; }
+.flex-center  { display: flex; align-items: center; justify-content: center; }
+.gap-2 { gap: var(--space-2); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-8 { margin-top: var(--space-8); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-8 { margin-bottom: var(--space-8); }
+
+/* ── 15. REDUCED MOTION ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

@@ -1,0 +1,24 @@
+/* Append to style.css: Toast notification styles */
+
+/* ── 16. TOAST NOTIFICATIONS (injected by main.js) ──────────────── */
+.toast {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--fs-sm);
+  color: var(--clr-text);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { border-color: var(--clr-accent); color: var(--clr-accent); }
+.toast--error   { border-color: var(--clr-red);    color: var(--clr-red); }
+.toast--info    { border-color: var(--clr-blue);   color: var(--clr-blue); }
