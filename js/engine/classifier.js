@@ -67,7 +67,25 @@ export async function loadModels() {
     console.log('[classifier] Static model ready. Labels:', staticLabels);
   } catch (e) {
     console.error('[classifier] Failed to load static model:', e.message);
-    console.error('[classifier] → Verify: /asl_static_model/model.json exists in project root.');
+    if (/no target variable/i.test(e.message)) {
+      // KNOWN ISSUE: model.json was exported from a Keras 3.x
+      // environment, whose layer configs use a nested DTypePolicy
+      // object for "dtype" instead of a plain string. TF.js's layers
+      // loader can't fully reconstruct layers (e.g. BatchNormalization)
+      // from that shape, so the weight binder can't find a matching
+      // variable to attach the saved weights to. This is a model
+      // export problem, not something fixable here — re-export the
+      // model with `tfjs.converters.save_keras_model()` from a Python
+      // environment (see fix_model_for_tfjs.py) instead of editing
+      // model.json by hand.
+      console.error(
+        '[classifier] → This looks like a Keras 3 / TF.js export incompatibility ' +
+        '(nested DTypePolicy in the layer config). The model needs to be ' +
+        're-exported from Python with tensorflowjs_converter, not patched here.'
+      );
+    } else {
+      console.error('[classifier] → Verify: /asl_static_model/model.json exists in project root.');
+    }
     throw e;
   }
 
@@ -80,7 +98,15 @@ export async function loadModels() {
     console.log('[classifier] Motion model ready. Labels:', motionLabels);
   } catch (e) {
     // Motion model is optional for Basic-level static signs only
-    console.warn('[classifier] Motion model not loaded (J, Z, HELLO, THANK YOU disabled):', e.message);
+    if (/no target variable/i.test(e.message)) {
+      console.warn(
+        '[classifier] Motion model not loaded — same Keras 3 / TF.js export ' +
+        'incompatibility as the static model (see fix_model_for_tfjs.py). ' +
+        'J, Z, HELLO, THANK YOU disabled until it is re-exported:', e.message
+      );
+    } else {
+      console.warn('[classifier] Motion model not loaded (J, Z, HELLO, THANK YOU disabled):', e.message);
+    }
   }
 }
 

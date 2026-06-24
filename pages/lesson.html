@@ -7,9 +7,7 @@
     PURPOSE  : Shows the learning content for one ASL sign AND provides
                a live camera panel for real-time gesture practice.
                After reviewing the sign, the user clicks "Start Assessment"
-               to enter scored assessment mode — the camera detects whether
-               they perform the correct sign (≥75% confidence held for ~1.5s).
-               Score ≥80% → lesson complete, progress saved, next lesson unlocked.
+               to enter scored assessment mode.
 
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
@@ -17,6 +15,21 @@
 
     URL PARAMS: ?level=basic&sign=A
     SCRIPTS   : js/lesson.js (type="module") orchestrates all detection modules.
+
+    ══════════════════════════════════════════════════════════════════
+    BUG FIXES IN THIS FILE (matches lesson.js bug log):
+    ══════════════════════════════════════════════════════════════════
+
+    BUG 1 FIX — Added <div id="classifier-warn"> below the detection
+    panel. This is the non-blocking warning badge that lesson.js writes
+    to when the TF.js model fails to load. Previously the error was
+    written into the full-screen camera-status overlay, which covered
+    the camera feed. Now it appears BELOW the camera, not on top of it.
+
+    BUG 4 FIX — assessment-prompt-box and score-display start hidden
+    (style="display:none") and are shown/hidden by lesson.js when
+    assessment starts/ends. No change needed here — they were already
+    hidden in HTML; the bug was that lesson.js never showed them.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -153,7 +166,14 @@
 
           <!-- Camera viewport -->
           <div class="camera-viewport">
-            <!-- Status overlay (loading / error states) -->
+            <!--
+              BUG 1+2 NOTE: #camera-status is the FULL-SCREEN overlay used
+              only during boot (loading / hard camera error states).
+              lesson.js hides it (display:none) as soon as the camera is live
+              by calling setStatus('', 'ready').
+              DO NOT use this element for post-boot notifications — they will
+              cover the camera feed. Use #classifier-warn below instead.
+            -->
             <div class="camera-status camera-status--loading" id="camera-status">
               ⏳ Starting camera…
             </div>
@@ -191,6 +211,22 @@
             </div>
           </div><!-- /detection-panel -->
 
+          <!--
+            BUG 1 FIX: Non-blocking classifier warning zone.
+            lesson.js writes here (via setClassifierWarn()) when the TF.js
+            model fails to load (Keras 3 / DTypePolicy export incompatibility).
+            This sits BELOW the camera, not on top of it, so the camera feed
+            is always visible regardless of model load state.
+            Hidden by default; shown only when there is a warning to display.
+          -->
+          <div
+            id="classifier-warn"
+            style="display:none; margin-top: 8px; padding: 10px 14px;
+                   background: rgba(248,81,73,0.10); border: 1px solid rgba(248,81,73,0.3);
+                   border-radius: 8px; font-size: 0.8rem; color: var(--clr-red,#f85149);
+                   line-height: 1.4;"
+          ></div>
+
           <!-- Assessment section -->
           <div class="assessment-panel mt-4">
 
@@ -199,13 +235,15 @@
               🎯 Start Assessment
             </button>
 
-            <!-- Assessment prompt (shown during assessment) -->
+            <!-- Assessment prompt (shown during assessment only) -->
+            <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
             <div class="assessment-prompt-box" id="assessment-prompt-box" style="display:none;">
               <p class="assessment-prompt" id="assessment-prompt">Sign: "A"</p>
               <div class="assessment-feedback" id="assessment-feedback" style="display:none;"></div>
             </div>
 
-            <!-- Score display -->
+            <!-- Score display (shown during assessment only) -->
+            <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
             <div class="score-display mt-3" id="score-display" style="display:none;">
               Score: <strong>0 / 1</strong>
             </div>
@@ -254,9 +292,10 @@
   </footer>
 
   <script src="../js/main.js"></script>
-  <!-- data.js must load before lesson.js — it provides per-letter
-       lesson content (title, description, tips, image) via
-       window.LWData.getSign(). -->
+  <!--
+    data.js must load before lesson.js — it provides per-letter lesson
+    content (title, description, tips, image) via window.LWData.getSign().
+  -->
   <script src="../js/data.js"></script>
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
