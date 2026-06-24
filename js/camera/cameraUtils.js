@@ -6,6 +6,14 @@
   CONNECTS : Imported by js/lesson.js (the lesson-page orchestrator).
   MIGRATED : Ported from system_with_motion_detection/js/camera/cameraUtils.js
              with error-display ID updated to match LinguaWave's lesson.html DOM.
+
+  FIX — Camera zoom / resolution:
+    Previously used `ideal: 1280x720` constraints which caused browsers to
+    either zoom/crop into the stream or return a mismatched resolution that
+    the CSS `object-fit: cover` then further cropped.
+    Fix: remove hard-coded ideal dimensions so the browser picks the camera's
+    native resolution. The CSS side is also fixed (object-fit: contain) so the
+    video is never cropped — it fits within the viewport at its natural ratio.
   ─────────────────────────────────────────────────────────────────
 */
 
@@ -23,11 +31,12 @@ export async function startCamera(videoElement, canvasElement) {
     throw new Error('getUserMedia not supported');
   }
 
+  // FIX: Don't force a specific resolution — let the browser use the camera's
+  // native resolution. This prevents zoom/crop artifacts caused by the browser
+  // trying to scale a mismatched stream into a fixed constraint box.
   const constraints = {
     video: {
-      width:      { ideal: 1280 },
-      height:     { ideal: 720  },
-      facingMode: 'user',          // Front-facing (selfie) camera
+      facingMode: 'user',   // Front-facing (selfie) camera
     },
     audio: false,
   };

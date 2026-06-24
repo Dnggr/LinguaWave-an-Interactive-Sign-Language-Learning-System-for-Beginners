@@ -75,10 +75,10 @@
 
 import { startCamera, stopCamera }             from '../js/camera/cameraUtils.js';
 import { initMediaPipe, processFrame }         from '../js/tracking/mediapipe.js';
-import { loadModels, classifyGesture,
-         classifyMotion, resetMotionBuffer }   from '../js/engine/classifier.js';
 import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
+import { classifyGesture, classifyMotion, resetMotionBuffer,
+         isMotionModelReady, getMotionModelError, loadModels }  from '../js/engine/classifier.js';
 
 // ── DOM references ─────────────────────────────────────────────────
 
@@ -283,15 +283,19 @@ async function bootDetectionEngine() {
   // as a full overlay that covers the camera feed.
   setStatus('', 'ready');   // hides the overlay — camera feed now visible
 
-  try {
+try {
     await loadModels();
-    // Models loaded fine — no warning needed.
+    // Check motion model specifically — it fails silently and breaks J/Z
+    const motionErr = getMotionModelError();
+    if (motionErr) {
+      setClassifierWarn(
+        '⚠️ Motion model failed to load — J, Z, HELLO, and THANK YOU cannot be detected. ' +
+        'Check that /asl_motion_model/model.json exists. (' + motionErr + ')'
+      );
+    }
   } catch (err) {
     console.error('[lesson.js] Classifier failed to load — camera still running:', err);
-    // Show a small non-blocking warning under the camera panel.
-    // Do NOT call setStatus() here — that would re-show the overlay
-    // and hide the camera feed again (that was the original bug).
-    setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (likely a Keras 3 / TF.js model export issue).');
+    setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
 
   startRenderLoop();
@@ -347,7 +351,9 @@ function updateMotionBuffer(buffering) {
   if (buffering) {
     motionBuffer_progress = Math.min(motionBuffer_progress + (1 / 30), 1);
     motionBufEl.style.width = `${motionBuffer_progress * 100}%`;
-  } else {
+  } else if (motionBuffer_progress > 0) {
+    // Only reset if we were actually filling — avoids flicker on the
+    // 1 frame between prediction completion and the next buffer start
     motionBuffer_progress = 0;
     motionBufEl.style.width = '0%';
   }
@@ -356,18 +362,33 @@ function updateMotionBuffer(buffering) {
 // ── Practice mode ──────────────────────────────────────────────────
 
 function handlePracticeFrame(result) {
-  if (result.matched && !cooldown) {
-    debounceCount++;
+  // For motion signs: a single matched result IS the debounced signal
+  // (the 30-frame buffer already acts as a temporal filter).
+  // For static signs: keep the existing debounce behaviour.
+  const isMotion = getDetectionType(sign) === 'motion';
 
-    if (debounceCount >= DEBOUNCE_FRAMES && lastDetected === result.label) {
+  if (result.matched && !cooldown) {
+    if (isMotion) {
+      // One confident prediction from the motion model is enough
       showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
       debounceCount = 0;
+      lastDetected  = null;
+    } else {
+      debounceCount++;
+      if (debounceCount >= DEBOUNCE_FRAMES && lastDetected === result.label) {
+        showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
+        enterCooldown(1200);
+        debounceCount = 0;
+      }
+      lastDetected = result.label;
     }
-    lastDetected = result.label;
-  } else if (!result.matched) {
-    debounceCount = 0;
-    lastDetected  = null;
+  } else if (!result.matched && !result.buffering) {
+    // Only reset debounce on a confident wrong answer, not while buffering
+    if (!isMotion) {
+      debounceCount = 0;
+      lastDetected  = null;
+    }
   }
 }
 
@@ -428,10 +449,17 @@ function handleAssessmentFrame(result) {
   const currentSign = quizSigns[quizIdx];
   if (!result.matched || !result.label) return;
 
-  debounceCount++;
-  if (debounceCount < DEBOUNCE_FRAMES) return;
+  const isMotion = getDetectionType(currentSign) === 'motion';
 
-  debounceCount = 0;
+  if (isMotion) {
+    // Motion model already waited 30 frames — accept immediately
+    debounceCount = 0;
+  } else {
+    debounceCount++;
+    if (debounceCount < DEBOUNCE_FRAMES) return;
+    debounceCount = 0;
+  }
+
   enterCooldown(1500);
   clearTimeout(promptTimer);
 

@@ -6,6 +6,14 @@
              added to pages/lesson.html during the motion-detection migration.
   CONNECTS : pages/lesson.html (loaded alongside css/lesson.css)
   ─────────────────────────────────────────────────────────────────
+
+  FIX — Camera zoom:
+    Changed .camera-viewport video and canvas from `object-fit: cover` to
+    `object-fit: contain`. Cover cropped/zoomed the stream to fill the
+    fixed 4/3 aspect-ratio box. Contain lets the full camera frame be
+    visible at the camera's native aspect ratio without any cropping.
+    Also removed the forced `aspect-ratio: 4 / 3` so the viewport adapts
+    to the actual stream dimensions reported after the camera starts.
 */
 
 /* ── 1. TWO-COLUMN LESSON LAYOUT ──────────────────────────────────── */
@@ -72,13 +80,21 @@
 }
 
 /* ── 4. CAMERA VIEWPORT ───────────────────────────────────────────── */
+/*
+  FIX: Removed `aspect-ratio: 4 / 3` — the viewport now sizes itself
+  to the video's natural dimensions. This prevents the browser from
+  cropping a 16:9 (or any other ratio) stream into a mismatched box.
+
+  The `position: relative` + `overflow: hidden` are kept so the canvas
+  skeleton overlay still clips correctly inside the viewport boundary.
+*/
 .camera-viewport {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: #000;
   border: 2px solid var(--clr-border);
-  aspect-ratio: 4 / 3;
+  /* aspect-ratio removed — let video dictate the height naturally */
   transition: border-color var(--dur-base) var(--ease);
 }
 
@@ -86,19 +102,40 @@
   border-color: var(--clr-accent);
 }
 
-/* Video and canvas both fill the viewport */
+/*
+  FIX: Changed `object-fit: cover` → `object-fit: contain`.
+  `cover` zoomed/cropped the video to fill the fixed box — users saw
+  a magnified, cropped version of their hand rather than the full frame.
+  `contain` shows the entire camera frame without cropping, letterboxing
+  with the background colour (#000) if the aspect ratios differ.
+
+  Both video AND canvas must use the same object-fit value so the
+  skeleton overlay stays perfectly aligned on top of the video.
+*/
 .camera-viewport video,
 .camera-viewport canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;          /* was: cover — now shows full frame */
   /* Mirror webcam so it feels like a mirror to the user */
   transform: scaleX(-1);
 }
 
+/*
+  Because video is now position:absolute inside a position:relative
+  parent, the parent has no intrinsic height when the video hasn't
+  loaded yet. We set a min-height so the viewport doesn't collapse
+  to 0px before the stream attaches.
+*/
+.camera-viewport video {
+  position: relative;          /* first child drives parent height */
+  min-height: 240px;
+}
+
 .camera-viewport canvas {
+  position: absolute;          /* overlay on top of video */
   background: transparent;
 }
 
@@ -261,71 +298,61 @@
   border: 1px solid rgba(248,81,73,.25);
 }
 
-/* Score display */
+/* Score line (e.g. "Score: 0 / 1") */
 .score-display {
   font-size: var(--fs-sm);
+  font-weight: 600;
   color: var(--clr-text-muted);
   text-align: center;
 }
 
-/* ── 9. CAMERA TIPS ───────────────────────────────────────────────── */
+/* ── 9. TIPS BOX ──────────────────────────────────────────────────── */
 .camera-tips {
-  padding: var(--space-4);
+  font-size: var(--fs-sm);
 }
 
 .camera-tips__title {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--clr-text);
-  font-size: var(--fs-sm);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .camera-tips__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
+  gap: var(--space-1);
   color: var(--clr-text-muted);
-}
-
-.camera-tips__list li::before {
-  content: '→ ';
-  color: var(--clr-accent);
 }
 
 /* ── 10. COMPLETION OVERLAY ───────────────────────────────────────── */
 .completion-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  background: rgba(13,17,23,.88);
-  backdrop-filter: blur(8px);
+  background: rgba(13,17,23,.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-6);
+  z-index: 200;
+  backdrop-filter: blur(4px);
 }
 
 .completion-card {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   padding: var(--space-12);
-  max-width: 480px;
-  width: 100%;
   text-align: center;
+  max-width: 480px;
+  width: 90%;
   box-shadow: var(--shadow-card);
-  animation: slideUp .3s var(--ease) both;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(24px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
 }
 
 .completion-score {
   font-family: var(--font-display);
-  font-size: 5rem;
+  font-size: 4rem;
   font-weight: 700;
   color: var(--clr-accent);
   line-height: 1;
@@ -336,5 +363,4 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  align-items: center;
 }
