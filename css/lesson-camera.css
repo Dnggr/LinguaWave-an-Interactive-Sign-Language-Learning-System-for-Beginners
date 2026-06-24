@@ -1,0 +1,340 @@
+/*
+  css/lesson-camera.css — Camera Panel & Assessment UI Styles
+  ─────────────────────────────────────────────────────────────────
+  PURPOSE  : Styles for the live camera feed, skeleton canvas overlay,
+             detection readout, assessment prompt, and completion overlay
+             added to pages/lesson.html during the motion-detection migration.
+  CONNECTS : pages/lesson.html (loaded alongside css/lesson.css)
+  ─────────────────────────────────────────────────────────────────
+*/
+
+/* ── 1. TWO-COLUMN LESSON LAYOUT ──────────────────────────────────── */
+.lesson-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .lesson-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 2. MODE BAR ─────────────────────────────────────────────────── */
+.mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: .04em;
+  border-bottom: 1px solid var(--clr-border);
+  transition: background var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.mode-bar--practice {
+  background: rgba(56,139,253,.08);
+  color: var(--clr-blue);
+}
+
+.mode-bar--assessment {
+  background: rgba(63,185,80,.08);
+  color: var(--clr-accent);
+  animation: modePulse 2s ease-in-out infinite;
+}
+
+@keyframes modePulse {
+  0%, 100% { background: rgba(63,185,80,.08); }
+  50%       { background: rgba(63,185,80,.16); }
+}
+
+/* ── 3. CAMERA PANEL CONTAINER ────────────────────────────────────── */
+.camera-panel {
+  position: sticky;
+  top: calc(60px + var(--space-4));   /* stick below navbar */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.camera-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.camera-panel__header h2 {
+  font-size: var(--fs-lg);
+}
+
+/* ── 4. CAMERA VIEWPORT ───────────────────────────────────────────── */
+.camera-viewport {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+  border: 2px solid var(--clr-border);
+  aspect-ratio: 4 / 3;
+  transition: border-color var(--dur-base) var(--ease);
+}
+
+.camera-viewport:has(#lw-webcam[srcObject]) {
+  border-color: var(--clr-accent);
+}
+
+/* Video and canvas both fill the viewport */
+.camera-viewport video,
+.camera-viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Mirror webcam so it feels like a mirror to the user */
+  transform: scaleX(-1);
+}
+
+.camera-viewport canvas {
+  background: transparent;
+}
+
+/* ── 5. STATUS OVERLAY ────────────────────────────────────────────── */
+.camera-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.camera-status--loading {
+  background: rgba(13,17,23,.85);
+  color: var(--clr-text-muted);
+}
+
+.camera-status--error {
+  background: rgba(248,81,73,.1);
+  color: var(--clr-red);
+}
+
+/* ── 6. HAND STATUS PILL ─────────────────────────────────────────── */
+.hand-status-pill {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.hand-status-pill--none {
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+}
+
+.hand-status-pill--ok {
+  background: rgba(63,185,80,.15);
+  color: var(--clr-accent);
+  border: 1px solid rgba(63,185,80,.3);
+}
+
+/* ── 7. DETECTION PANEL ───────────────────────────────────────────── */
+.detection-panel {
+  padding: var(--space-4);
+}
+
+.detection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detection-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+}
+
+.detection-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+/* Confidence bar */
+.confidence-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.confidence-track {
+  flex: 1;
+  height: 8px;
+  background: var(--clr-surface-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--clr-accent);
+  border-radius: var(--radius-pill);
+  transition: width .1s linear, background .15s var(--ease);
+}
+
+.confidence-bar-fill--motion {
+  background: var(--clr-blue);
+}
+
+.confidence-text {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Motion buffer row (only visible for J, Z, HELLO, THANK YOU) */
+.motion-buffer-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── 8. ASSESSMENT PANEL ──────────────────────────────────────────── */
+.assessment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Prompt box (shown during assessment) */
+.assessment-prompt-box {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.assessment-prompt {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+/* Feedback states */
+.assessment-feedback {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.assessment-feedback--success {
+  background: rgba(63,185,80,.12);
+  color: var(--clr-accent);
+  border: 1px solid rgba(63,185,80,.3);
+}
+
+.assessment-feedback--error {
+  background: rgba(248,81,73,.10);
+  color: var(--clr-red);
+  border: 1px solid rgba(248,81,73,.25);
+}
+
+/* Score display */
+.score-display {
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  text-align: center;
+}
+
+/* ── 9. CAMERA TIPS ───────────────────────────────────────────────── */
+.camera-tips {
+  padding: var(--space-4);
+}
+
+.camera-tips__title {
+  font-weight: 600;
+  color: var(--clr-text);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-3);
+}
+
+.camera-tips__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+}
+
+.camera-tips__list li::before {
+  content: '→ ';
+  color: var(--clr-accent);
+}
+
+/* ── 10. COMPLETION OVERLAY ───────────────────────────────────────── */
+.completion-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(13,17,23,.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.completion-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-12);
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  animation: slideUp .3s var(--ease) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.completion-score {
+  font-family: var(--font-display);
+  font-size: 5rem;
+  font-weight: 700;
+  color: var(--clr-accent);
+  line-height: 1;
+  margin-bottom: var(--space-4);
+}
+
+.completion-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}

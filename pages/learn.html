@@ -116,28 +116,29 @@
           <span class="badge badge--basic">Start →</span>
         </a>
 
-        <!-- Remaining locked lessons (G–Z) -->
-        <!-- TODO: generate all 26 dynamically in js/learn.js from Firestore -->
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">G</div><span>G</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">H</div><span>H</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">I</div><span>I</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">J</div><span>J</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">K</div><span>K</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">L</div><span>L</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">M</div><span>M</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">N</div><span>N</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">O</div><span>O</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">P</div><span>P</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Q</div><span>Q</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">R</div><span>R</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">S</div><span>S</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">T</div><span>T</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">U</div><span>U</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">V</div><span>V</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">W</div><span>W</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">X</div><span>X</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Y</div><span>Y</span><span class="badge badge--locked">🔒</span></div>
-        <div class="lesson-card lesson-card--locked"><div class="lesson-card__letter">Z</div><span>Z</span><span class="badge badge--locked">🔒</span></div>
+        <!-- Remaining lessons (G–Z) — unlocked for testing the full
+             motion-detection flow. Swap back to locked <div>s once
+             real progression gating is wired to Firestore. -->
+        <a href="lesson.html?level=basic&sign=G" class="lesson-card"><div class="lesson-card__letter">G</div><span class="lesson-card__title">Letter G</span></a>
+        <a href="lesson.html?level=basic&sign=H" class="lesson-card"><div class="lesson-card__letter">H</div><span class="lesson-card__title">Letter H</span></a>
+        <a href="lesson.html?level=basic&sign=I" class="lesson-card"><div class="lesson-card__letter">I</div><span class="lesson-card__title">Letter I</span></a>
+        <a href="lesson.html?level=basic&sign=J" class="lesson-card"><div class="lesson-card__letter">J</div><span class="lesson-card__title">Letter J</span></a>
+        <a href="lesson.html?level=basic&sign=K" class="lesson-card"><div class="lesson-card__letter">K</div><span class="lesson-card__title">Letter K</span></a>
+        <a href="lesson.html?level=basic&sign=L" class="lesson-card"><div class="lesson-card__letter">L</div><span class="lesson-card__title">Letter L</span></a>
+        <a href="lesson.html?level=basic&sign=M" class="lesson-card"><div class="lesson-card__letter">M</div><span class="lesson-card__title">Letter M</span></a>
+        <a href="lesson.html?level=basic&sign=N" class="lesson-card"><div class="lesson-card__letter">N</div><span class="lesson-card__title">Letter N</span></a>
+        <a href="lesson.html?level=basic&sign=O" class="lesson-card"><div class="lesson-card__letter">O</div><span class="lesson-card__title">Letter O</span></a>
+        <a href="lesson.html?level=basic&sign=P" class="lesson-card"><div class="lesson-card__letter">P</div><span class="lesson-card__title">Letter P</span></a>
+        <a href="lesson.html?level=basic&sign=Q" class="lesson-card"><div class="lesson-card__letter">Q</div><span class="lesson-card__title">Letter Q</span></a>
+        <a href="lesson.html?level=basic&sign=R" class="lesson-card"><div class="lesson-card__letter">R</div><span class="lesson-card__title">Letter R</span></a>
+        <a href="lesson.html?level=basic&sign=S" class="lesson-card"><div class="lesson-card__letter">S</div><span class="lesson-card__title">Letter S</span></a>
+        <a href="lesson.html?level=basic&sign=T" class="lesson-card"><div class="lesson-card__letter">T</div><span class="lesson-card__title">Letter T</span></a>
+        <a href="lesson.html?level=basic&sign=U" class="lesson-card"><div class="lesson-card__letter">U</div><span class="lesson-card__title">Letter U</span></a>
+        <a href="lesson.html?level=basic&sign=V" class="lesson-card"><div class="lesson-card__letter">V</div><span class="lesson-card__title">Letter V</span></a>
+        <a href="lesson.html?level=basic&sign=W" class="lesson-card"><div class="lesson-card__letter">W</div><span class="lesson-card__title">Letter W</span></a>
+        <a href="lesson.html?level=basic&sign=X" class="lesson-card"><div class="lesson-card__letter">X</div><span class="lesson-card__title">Letter X</span></a>
+        <a href="lesson.html?level=basic&sign=Y" class="lesson-card"><div class="lesson-card__letter">Y</div><span class="lesson-card__title">Letter Y</span></a>
+        <a href="lesson.html?level=basic&sign=Z" class="lesson-card"><div class="lesson-card__letter">Z</div><span class="lesson-card__title">Letter Z</span></a>
 
       </div><!-- /lesson-grid -->
     </div>

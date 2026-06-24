@@ -2,36 +2,31 @@
 <html lang="en">
 <head>
   <!--
-    pages/lesson.html — Individual Sign Lesson Viewer
+    pages/lesson.html — Sign Lesson Viewer + Live Camera Assessment
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Shows the learning content for one ASL sign:
-               • Text explanation (how to form the hand shape)
-               • Static image of the sign
-               • Short video demonstration
-               User clicks NEXT to advance to the next sign in the
-               lesson, or finishes all signs to trigger the quiz.
+    PURPOSE  : Shows the learning content for one ASL sign AND provides
+               a live camera panel for real-time gesture practice.
+               After reviewing the sign, the user clicks "Start Assessment"
+               to enter scored assessment mode — the camera detects whether
+               they perform the correct sign (≥75% confidence held for ~1.5s).
+               Score ≥80% → lesson complete, progress saved, next lesson unlocked.
 
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
-               → pages/quiz.html  (when all signs in lesson are viewed)
+               → next lesson.html (on completion)
 
-    URL PARAMS: ?level=basic&sign=F
-                JS reads these to load the correct content.
-
-    TODO     : js/lesson.js — fetch sign data (text, imageUrl, videoUrl)
-               from Firestore collection "signs" where id == sign param.
-               Implement NEXT button logic: increment sign, or if last
-               sign → redirect to quiz.html?level=X&lesson=Y.
-               Track viewedSigns array in Firestore user document.
+    URL PARAMS: ?level=basic&sign=A
+    SCRIPTS   : js/lesson.js (type="module") orchestrates all detection modules.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lesson — LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/lesson.css" />
+  <link rel="stylesheet" href="../css/lesson-camera.css" />
 
   <script src="../js/auth.js"></script>
   <script>
@@ -40,6 +35,7 @@
 </head>
 <body>
 
+  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
   <nav class="navbar">
     <div class="container navbar__inner">
       <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
@@ -55,125 +51,218 @@
   </nav>
 
   <!-- ── LESSON PROGRESS STRIP ─────────────────────────────────── -->
-  <!--
-    Shows "Sign 6 of 26" and a progress bar.
-    TODO: js/lesson.js updates these values dynamically.
-  -->
   <div class="lesson-strip">
     <div class="container lesson-strip__inner">
       <a href="learn.html?level=basic" class="btn btn--ghost btn--sm">← Back to lessons</a>
       <div class="lesson-strip__progress">
-        <span class="text-muted" id="lesson-counter">Sign 6 of 26</span>
+        <span class="text-muted" id="lesson-counter">Sign 1 of 26</span>
         <div class="progress-bar" style="width: 200px;">
-          <div class="progress-bar__fill" data-progress="23" id="lesson-progress-fill"></div>
+          <div class="progress-bar__fill" data-progress="4" id="lesson-progress-fill"></div>
         </div>
       </div>
       <span class="badge badge--basic">Basic · A–Z</span>
     </div>
   </div>
 
-  <!-- ── LESSON CONTENT ────────────────────────────────────────── -->
+  <!-- ── MODE BAR ──────────────────────────────────────────────── -->
+  <div class="mode-bar mode-bar--practice" id="mode-bar">📖 Practice Mode</div>
+
+  <!-- ── MAIN LESSON + CAMERA LAYOUT ──────────────────────────── -->
   <section class="section section--sm">
-    <div class="container container--narrow">
+    <div class="container container--wide">
+      <div class="lesson-layout">
 
-      <!-- Sign header -->
-      <div class="lesson-header">
-        <div class="lesson-letter" id="lesson-letter">F</div>
-        <div>
-          <h1 id="lesson-title">Letter F</h1>
-          <p class="text-muted" id="lesson-subtitle">ASL Alphabet · Basic Level</p>
-        </div>
-      </div>
+        <!-- ══════════════════════════════════════════════════════
+             LEFT PANEL — Reference lesson content
+             ══════════════════════════════════════════════════════ -->
+        <div class="lesson-content-panel">
 
-      <!-- Sign image -->
-      <!--
-        TODO: replace src with Firestore imageUrl field.
-              Images are stored in Firebase Storage under /signs/{level}/{sign}.jpg
-              Images are managed directly in code by the dev team
-              (no admin UI) — see js/data.js once content is wired in.
-      -->
-      <div class="lesson-image-wrap mt-8">
-        <img
-          id="lesson-image"
-          src="../assets/images/placeholder-sign.png"
-          alt="ASL hand sign for the letter F"
-          class="lesson-image"
-          onerror="this.style.display='none'; document.getElementById('lesson-img-placeholder').style.display='flex';"
-        />
-        <!-- Shown if image is missing (development placeholder) -->
-        <div class="lesson-img-placeholder" id="lesson-img-placeholder">
-          <span>📷 Sign image</span>
-          <small>Image not added to the codebase yet</small>
-        </div>
-      </div>
+          <!-- Sign header -->
+          <div class="lesson-header">
+            <div class="lesson-letter" id="lesson-letter">A</div>
+            <div>
+              <h1 id="lesson-title">Letter A</h1>
+              <p class="text-muted" id="lesson-subtitle">ASL Alphabet · Basic Level</p>
+            </div>
+          </div>
 
-      <!-- Text explanation -->
-      <!--
-        TODO: replace with Firestore sign.description field.
-      -->
-      <div class="lesson-desc card mt-8" id="lesson-desc">
-        <h3>How to form Letter F</h3>
-        <p class="mt-4">
-          Touch the tip of your index finger to the tip of your thumb,
-          forming a circle.  Keep your middle, ring, and pinky fingers
-          extended straight up and slightly spread apart.
-          Hold your hand upright with your palm facing forward.
-        </p>
-        <ul class="lesson-desc__tips mt-4">
-          <li>✦ Index finger and thumb form an "OK" circle</li>
-          <li>✦ Three remaining fingers point up</li>
-          <li>✦ Palm faces the person you're signing to</li>
-        </ul>
-      </div>
+          <!-- Sign image -->
+          <div class="lesson-image-wrap mt-8">
+            <img
+              id="lesson-image"
+              src="../assets/images/placeholder-sign.png"
+              alt="ASL hand sign reference"
+              class="lesson-image"
+              onerror="this.style.display='none'; document.getElementById('lesson-img-placeholder').style.display='flex';"
+            />
+            <div class="lesson-img-placeholder" id="lesson-img-placeholder">
+              <span>📷 Sign reference image</span>
+              <small id="lesson-img-placeholder-hint">Add image to assets/images/basic/A.png</small>
+            </div>
+          </div>
 
-      <!-- Video demonstration -->
-      <!--
-        Video is embedded from Firebase Storage or a static local file.
-        TODO: replace src with Firestore sign.videoUrl field.
-              Video files are added directly to /assets/videos by the
-              dev team (no admin UI).
-      -->
-      <div class="lesson-video-wrap mt-8">
-        <h3>Video Demonstration</h3>
-        <div class="lesson-video mt-4">
-          <video
-            id="lesson-video"
-            controls
-            poster="../assets/images/placeholder-poster.png"
-          >
-            <!-- TODO: <source src="firestore-video-url" type="video/mp4" /> -->
-            <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      </div>
+          <!-- Text explanation -->
+          <div class="lesson-desc card mt-8" id="lesson-desc">
+            <h3>How to form this sign</h3>
+            <p class="mt-4" id="lesson-description">
+              Make a fist with your thumb resting against the side of your
+              index finger — not tucked underneath. Hold your hand upright
+              with your palm facing the person you're signing to.
+            </p>
+            <ul class="lesson-desc__tips mt-4" id="lesson-tips">
+              <li>✦ Close all fingers into a firm fist</li>
+              <li>✦ Rest your thumb against the side of your index finger</li>
+              <li>✦ Keep your wrist straight and hand relaxed</li>
+            </ul>
+          </div>
 
-      <!-- Navigation buttons -->
-      <!--
-        NEXT checks:
-          - If more signs remain in lesson  → load next sign (same page, new params)
-          - If this was the last sign       → redirect to quiz.html
-        PREV always goes to previous sign.
-        TODO: implement full logic in js/lesson.js.
-      -->
-      <div class="lesson-nav mt-8">
-        <button class="btn btn--ghost" id="btn-prev" onclick="window.location='lesson.html?level=basic&sign=E'">
-          ← Previous
-        </button>
-        <button class="btn btn--primary btn--lg" id="btn-next" onclick="window.location='lesson.html?level=basic&sign=G'">
-          Next Sign →
-        </button>
-        <!-- When last sign: btn-next says "Go to Quiz →" and links to quiz.html -->
-      </div>
+          <!-- Video demonstration -->
+          <div class="lesson-video-wrap mt-8">
+            <h3>Video Demonstration</h3>
+            <div class="lesson-video mt-4">
+              <video
+                id="lesson-video"
+                controls
+                poster="../assets/images/placeholder-poster.png"
+              >
+                <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
 
+          <!-- PREV / NEXT navigation -->
+          <div class="lesson-nav mt-8">
+            <button class="btn btn--ghost" id="btn-prev">← Previous</button>
+            <button class="btn btn--primary btn--lg" id="btn-next">Next Sign →</button>
+          </div>
+
+        </div><!-- /lesson-content-panel -->
+
+
+        <!-- ══════════════════════════════════════════════════════
+             RIGHT PANEL — Live camera + detection
+             ══════════════════════════════════════════════════════ -->
+        <div class="camera-panel">
+
+          <!-- Camera header -->
+          <div class="camera-panel__header">
+            <h2>Live Camera</h2>
+            <div class="hand-status-pill hand-status-pill--none" id="hand-status-pill">No hand detected</div>
+          </div>
+
+          <!-- Camera viewport -->
+          <div class="camera-viewport">
+            <!-- Status overlay (loading / error states) -->
+            <div class="camera-status camera-status--loading" id="camera-status">
+              ⏳ Starting camera…
+            </div>
+            <!-- Live webcam feed -->
+            <video
+              id="lw-webcam"
+              autoplay
+              playsinline
+              muted
+              aria-label="Live webcam feed for sign detection"
+            ></video>
+            <!-- Skeleton overlay -->
+            <canvas id="lw-canvas" aria-hidden="true"></canvas>
+          </div><!-- /camera-viewport -->
+
+          <!-- Detection readout -->
+          <div class="detection-panel card mt-4">
+            <div class="detection-row">
+              <span class="detection-label">Detected sign</span>
+              <span class="detection-value" id="detected-sign">–</span>
+            </div>
+            <div class="confidence-wrap mt-3">
+              <div class="confidence-track">
+                <div class="confidence-bar-fill" id="confidence-bar-fill"></div>
+              </div>
+              <span class="confidence-text" id="confidence-text">0%</span>
+            </div>
+
+            <!-- Motion buffer (shown for motion signs only) -->
+            <div class="motion-buffer-wrap mt-3" id="motion-buffer-wrap">
+              <span class="detection-label">Collecting frames</span>
+              <div class="confidence-track">
+                <div class="confidence-bar-fill confidence-bar-fill--motion" id="motion-buffer-bar"></div>
+              </div>
+            </div>
+          </div><!-- /detection-panel -->
+
+          <!-- Assessment section -->
+          <div class="assessment-panel mt-4">
+
+            <!-- Start button (practice → assessment) -->
+            <button class="btn btn--primary btn--full btn--lg" id="btn-start-assessment">
+              🎯 Start Assessment
+            </button>
+
+            <!-- Assessment prompt (shown during assessment) -->
+            <div class="assessment-prompt-box" id="assessment-prompt-box" style="display:none;">
+              <p class="assessment-prompt" id="assessment-prompt">Sign: "A"</p>
+              <div class="assessment-feedback" id="assessment-feedback" style="display:none;"></div>
+            </div>
+
+            <!-- Score display -->
+            <div class="score-display mt-3" id="score-display" style="display:none;">
+              Score: <strong>0 / 1</strong>
+            </div>
+
+          </div><!-- /assessment-panel -->
+
+          <!-- Tips box -->
+          <div class="camera-tips card mt-4">
+            <p class="camera-tips__title">📸 Camera Tips</p>
+            <ul class="camera-tips__list">
+              <li>Make sure your hand is well-lit and fully visible</li>
+              <li>Hold the sign steady for about 1.5 seconds to register</li>
+              <li>Keep your hand centred in the frame</li>
+            </ul>
+          </div>
+
+        </div><!-- /camera-panel -->
+
+      </div><!-- /lesson-layout -->
     </div>
   </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       COMPLETION OVERLAY (shown after assessment ends)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="completion-overlay" id="completion-overlay" style="display:none;" role="dialog" aria-modal="true">
+    <div class="completion-card">
+      <div class="completion-score" id="final-score">80%</div>
+      <h2 id="overlay-result-title">🎉 Lesson Passed!</h2>
+      <p class="text-muted mt-4" id="overlay-result-msg">
+        Great work! Your progress has been saved.
+      </p>
+      <div class="completion-actions mt-8">
+        <button class="btn btn--primary btn--lg" id="btn-overlay-continue" onclick="continueToNext()">
+          Continue to Next Sign →
+        </button>
+        <button class="btn btn--ghost" id="btn-overlay-retry" onclick="retryLesson()" style="display:none;">
+          Practice &amp; Retry
+        </button>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
   </footer>
 
   <script src="../js/main.js"></script>
-  <script src="../js/lesson.js"></script>
+  <!-- data.js must load before lesson.js — it provides per-letter
+       lesson content (title, description, tips, image) via
+       window.LWData.getSign(). -->
+  <script src="../js/data.js"></script>
+  <!--
+    lesson.js is loaded as type="module" so it can use ES6 imports
+    (cameraUtils, mediapipe, classifier, renderer, dictionary).
+    All other page scripts are plain <script> tags — no conflict.
+  -->
+  <script type="module" src="../js/lesson.js"></script>
 </body>
 </html>
