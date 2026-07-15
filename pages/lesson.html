@@ -41,9 +41,11 @@
   <link rel="stylesheet" href="../css/lesson.css" />
   <link rel="stylesheet" href="../css/lesson-camera.css" />
 
-  <script src="../js/auth.js"></script>
+  <script type="module" src="../js/auth.js"></script>
   <script>
+  window.addEventListener('lwauth-ready', () => {
     LWAuth.requireAuth('../index.html');
+  });
   </script>
 </head>
 <body>

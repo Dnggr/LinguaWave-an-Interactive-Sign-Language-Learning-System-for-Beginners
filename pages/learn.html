@@ -27,9 +27,11 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
 
-  <script src="../js/auth.js"></script>
+  <script type="module" src="../js/auth.js"></script>
   <script>
+  window.addEventListener('lwauth-ready', () => {
     LWAuth.requireAuth('../index.html');
+  });
   </script>
 </head>
 <body>

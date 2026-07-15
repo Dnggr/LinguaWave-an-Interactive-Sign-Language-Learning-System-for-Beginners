@@ -20,9 +20,64 @@
  *            directly.
  * ─────────────────────────────────────────────────────────────────
  */
+ // Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {
+getAuth,
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword,
+signOut, 
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBpiKsa6ySEBy7IggejmT8TDWaxAFr5E2c",
+  authDomain: "linguawave-63911.firebaseapp.com",
+  projectId: "linguawave-63911",
+  storageBucket: "linguawave-63911.firebasestorage.app",
+  messagingSenderId: "34514540529",
+  appId: "1:34514540529:web:18f5b1cd7f04e965fe1650",
+  measurementId: "G-6CLTW0GZXJ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
 'use strict';
 
+
 const LW_SESSION_KEY = 'lw_session';
+
+// ── AUTH STATE SYNC ─────────────────────────────────────────────
+// Fires once on page load (after Firebase checks for an existing
+// session) and again any time login/logout state changes. Keeps
+// localStorage as an accurate cache of who's currently signed in.
+let authReady = false;
+
+onAuthStateChanged(auth, (firebaseUser) => {
+  if (firebaseUser) {
+    const existing = getCurrentUser();
+    const user = {
+      uid: firebaseUser.uid,
+      name: existing?.name || firebaseUser.email.split('@')[0] || 'Learner',
+      email: firebaseUser.email,
+      level: existing?.level || 'basic',
+      joined: existing?.joined || new Date().toISOString().slice(0, 10),
+    };
+    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(LW_SESSION_KEY);
+  }
+
+  authReady = true;
+  window.dispatchEvent(new Event('lwauth-ready'));
+});
+
 
 /* ── READ SESSION ─────────────────────────────────────────────── */
 function getCurrentUser() {
@@ -45,7 +100,7 @@ function isLoggedIn() {
  * typed (or left blank) logs the user in immediately. This is
  * intentional for now — remove the bypass once real auth is wired.
  * ──────────────────────────────────────────────────────────────── */
-function login(email, password) {
+/*function login(email, password) {
   const safeEmail = (email || '').trim() || 'guest@linguawave.app';
   const existing = getCurrentUser();
 
@@ -53,6 +108,23 @@ function login(email, password) {
     uid: existing?.uid || 'demo-uid',
     name: existing?.name || safeEmail.split('@')[0] || 'Learner',
     email: safeEmail,
+    level: existing?.level || 'basic',
+    joined: existing?.joined || new Date().toISOString().slice(0, 10),
+  };
+
+  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  return user;
+}*/
+
+async function login(email, password) {
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  const firebaseUser = result.user;
+
+  const existing = getCurrentUser();
+  const user = {
+    uid: firebaseUser.uid,
+    name: existing?.name || firebaseUser.email.split('@')[0] || 'Learner',
+    email: firebaseUser.email,
     level: existing?.level || 'basic',
     joined: existing?.joined || new Date().toISOString().slice(0, 10),
   };
@@ -67,13 +139,28 @@ function login(email, password) {
  *
  * BYPASS MODE: same as login — accepts any input, creates a session.
  * ──────────────────────────────────────────────────────────────── */
-function register(name, email, password, level) {
+/*function register(name, email, password, level) {
   const safeEmail = (email || '').trim() || 'guest@linguawave.app';
-
+  
   const user = {
     uid: 'demo-uid',
     name: (name || '').trim() || safeEmail.split('@')[0] || 'Learner',
     email: safeEmail,
+    level: level || 'basic',
+    joined: new Date().toISOString().slice(0, 10),
+  };
+
+  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  return user;
+}*/
+async function register(name, email, password, level) {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  const firebaseUser = result.user;
+
+  const user = {
+    uid: firebaseUser.uid,
+    name: (name || '').trim() || firebaseUser.email.split('@')[0] || 'Learner',
+    email: firebaseUser.email,
     level: level || 'basic',
     joined: new Date().toISOString().slice(0, 10),
   };
@@ -85,7 +172,12 @@ function register(name, email, password, level) {
 /* ── LOG OUT ──────────────────────────────────────────────────────
  * REPLACE WITH FIREBASE: firebase.auth().signOut()
  * ──────────────────────────────────────────────────────────────── */
-function logout(redirectPath) {
+/*function logout(redirectPath) {
+  localStorage.removeItem(LW_SESSION_KEY);
+  window.location.href = redirectPath || '/index.html';
+}*/
+async function logout(redirectPath) {
+  await signOut(auth);
   localStorage.removeItem(LW_SESSION_KEY);
   window.location.href = redirectPath || '/index.html';
 }
@@ -96,10 +188,19 @@ function logout(redirectPath) {
  * Call redirectIfLoggedIn() on index.html so a returning user skips
  * straight past the login form.
  * ──────────────────────────────────────────────────────────────── */
-function requireAuth(loginPath) {
+/*function requireAuth(loginPath) {
   if (!isLoggedIn()) {
     window.location.href = loginPath || '/index.html';
   }
+}*/
+function requireAuth(loginPath) {
+  if (authReady) {
+    if (!isLoggedIn()) window.location.href = loginPath || '/index.html';
+    return;
+  }
+  window.addEventListener('lwauth-ready', () => {
+    if (!isLoggedIn()) window.location.href = loginPath || '/index.html';
+  }, { once: true });
 }
 
 function redirectIfLoggedIn(dashboardPath) {
@@ -121,3 +222,6 @@ window.LWAuth = {
   requireAuth,
   redirectIfLoggedIn,
 };
+
+
+

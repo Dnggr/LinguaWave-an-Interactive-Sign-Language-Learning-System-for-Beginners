@@ -30,9 +30,11 @@
 
   <!-- Elfa Auth must load before anything renders so a logged-in user
        gets redirected immediately instead of seeing the login form. -->
-  <script src="js/auth.js"></script>
+  <script type="module" src="js/auth.js"></script>
   <script>
+    window.addEventListener('lwauth-ready', () => {
     LWAuth.redirectIfLoggedIn('pages/dashboard.html');
+  });
   </script>
 </head>
 <body class="auth-page">
@@ -110,20 +112,28 @@
     }
 
     // BYPASS MODE: no validation against a backend yet — see js/auth.js.
-    function handleLogin() {
-      const email    = document.getElementById('login-email').value;
+    async function handleLogin() {
+      const email    = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      LWAuth.login(email, password);
-      window.location.href = 'pages/dashboard.html';
+      try {
+        await LWAuth.login(email, password);
+        window.location.href = 'pages/dashboard.html';
+      } catch (error) {
+        alert(`Login failed: ${error.message}`);
+      }
     }
 
-    function handleRegister() {
+    async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value;
+      const email    = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
       const level    = document.getElementById('reg-level').value;
-      LWAuth.register(name, email, password, level);
-      window.location.href = 'pages/dashboard.html';
+      try {
+        await LWAuth.register(name, email, password, level);
+        window.location.href = 'pages/dashboard.html';
+      } catch (error) {
+        alert(`Registration failed: ${error.message}`);
+      }
     }
   </script>
 </body>
