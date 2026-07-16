@@ -32,3 +32,38 @@
 .auth-form { display: flex; flex-direction: column; margin-top: var(--space-6); }
 
 .auth-switch { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
+
+/* 
+Eto yung style para dun sa modal na mag aapear kapag may error sa login or register
+*/
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.auth-modal.hidden {
+  display: none;
+}
+
+.auth-modal__box {
+  background: #0d1117;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+  padding: 24px;
+  width: 90%;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.auth-modal__message {
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
