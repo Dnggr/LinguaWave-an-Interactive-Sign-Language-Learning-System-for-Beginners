@@ -200,6 +200,40 @@ export const SIGN_DICTIONARY = {
   // MEDIUM LEVEL — WORDS (motion signs — need motion model)
   // ══════════════════════════════════════════════════════════
 
+    // ══════════════════════════════════════════════════════════
+  // MEDIUM LEVEL — WORDS — FAMILY (motion, face-relative signs)
+  // ─────────────────────────────────────────────────────────
+  // MOM vs DAD is the textbook "minimal pair" the face-relative
+  // feature guide is built around: same handshape (open 5, thumb
+  // out), same movement (short tap), same orientation — only the
+  // LOCATION differs (chin vs forehead). The static/motion models
+  // can only tell these apart once retrained on the 67-value
+  // feature vector (63 hand + 4 face-relative distances).
+  // See 01_face_relative_landmarks_guide.txt §1, Tier A.
+  // ══════════════════════════════════════════════════════════
+ 
+  'MOM': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Open "5" hand, thumb tip taps the CHIN',
+    category: 'family', imageFile: 'mom.gif', detectionType: 'motion',
+  },
+  'DAD': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Open "5" hand, thumb tip taps the FOREHEAD',
+    category: 'family', imageFile: 'dad.gif', detectionType: 'motion',
+  },
+  'BOY': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Flat hand near the forehead, closes into a small grasping motion (like tipping a cap)',
+    category: 'family', imageFile: 'boy.gif', detectionType: 'motion',
+  },
+  'GIRL': {
+    fingerStates: [1, 0, 0, 0, 0],
+    description:  'Thumb of an "A" hand brushes down along the jaw/cheek',
+    category: 'family', imageFile: 'girl.gif', detectionType: 'motion',
+  },
+
+
   'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion' },
   'THANK YOU':{ fingerStates:[1,1,1,1,1], category:'word', imageFile:'thank-you.gif',detectionType:'motion' },
   'YES':      { fingerStates:[0,0,0,0,0], category:'word', imageFile:'yes.gif',      detectionType:'motion', disabled:true },

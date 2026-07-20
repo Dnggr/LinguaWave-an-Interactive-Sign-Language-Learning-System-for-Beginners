@@ -1,34 +1,44 @@
 /*
-  js/engine/classifier.js — TensorFlow.js Static-Sign Classifier
+  js/engine/classifier.js — TensorFlow.js Sign Classifier
   ─────────────────────────────────────────────────────────────────
-  PURPOSE  : Loads the trained asl_static_model and classifies a set
-             of 21 hand landmarks into a sign label with a confidence %.
-             For motion signs (J, Z, HELLO, THANK YOU) a separate
-             motion model path is provided — see classifyMotion().
+  PURPOSE  : Loads the trained asl_static_model / asl_motion_model and
+             classifies hand landmarks (+ face-relative features) into
+             a sign label with a confidence %.
   CONNECTS : Imported by js/lesson.js.
 
   MODEL PATHS (relative to the project root served by your HTTP server):
     Static model:   /asl_static_model/model.json
     Motion model:   /asl_motion_model/model.json
 
-  If you see 404s:  make sure the asl_static_model/ and asl_motion_model/
-  folders are in the project root alongside index.html.
+  ─────────────────────────────────────────────────────────────────
+  FACE-RELATIVE FEATURES (see 01_face_relative_landmarks_guide.txt)
+  ─────────────────────────────────────────────────────────────────
+  Feature vector per frame is now 67 values instead of 63:
+    - 63 : the existing 21 hand landmarks (x, y, z)
+    - 4  : normalized face-relative distances
+             dist(thumbTip, chin)     / faceScale
+             dist(thumbTip, forehead) / faceScale
+             dist(indexTip, chin)     / faceScale
+             dist(wrist, chin)        / faceScale
+  faceScale = dist(forehead, chin) — cancels out camera distance.
 
+  This is applied to ALL signs (not hand-picked), per the guide's
+  recommendation — it costs nothing at inference and future-proofs
+  every sign added later. Both asl_static_model and asl_motion_model
+  MUST be retrained with 67-wide input for this to work (see the
+  Colab training script). Training-time and inference-time feature
+  order MUST match exactly — that's handled by computeFaceRelativeFeatures()
+  below being the single source of truth used both here and in your
+  capture tool.
+
+  MediaPipe FaceLandmarker point indices used as anchors:
+    FOREHEAD_IDX = 10   (top-center of forehead)
+    CHIN_IDX     = 152  (bottom-center of chin)
+  These are the standard MediaPipe Face Mesh (468-point) indices.
+  Sanity-check them visually if results look off (draw a dot at each
+  index over the video feed) — index numbers are easy to mix up.
   ─────────────────────────────────────────────────────────────────
-  KERAS 3 COMPAT FIX
-  ─────────────────────────────────────────────────────────────────
-  These models were exported from Keras 3.x. Keras 3's serializer
-  writes "dtype" as a nested object:
-      "dtype": { "module": "keras", "class_name": "DTypePolicy",
-                 "config": { "name": "float32" }, "registered_name": null }
-  tf.js's layer deserializer expects "dtype" to be a plain string
-  ("float32"). When it isn't, layer construction silently goes wrong
-  and the weight binder can't match saved weights to layer variables
-  (the "no target variable" error). Re-exporting from Python is the
-  "proper" fix, but we don't need to touch the model files at all —
-  we just rewrite that one field in memory, right after fetching
-  model.json and before handing it to tf.loadLayersModel(). See
-  fixKeras3DtypePolicy() + loadKeras3CompatModel() below.
+  KERAS 3 COMPAT FIX (unchanged, preserved from previous version)
   ─────────────────────────────────────────────────────────────────
 */
 
@@ -56,6 +66,13 @@ const MATCH_THRESHOLD        = 75;   // minimum % confidence to count as "matche
 const MOTION_THRESHOLD       = 70;   // slightly lower for motion signs
 const MOTION_FRAMES_REQUIRED = 30;   // frames to collect before running motion model
 
+// ── Face-relative feature config ─────────────────────────────────
+const FOREHEAD_IDX = 10;
+const CHIN_IDX      = 152;
+export const FACE_FEATURE_COUNT = 4;
+export const HAND_FEATURE_COUNT = 63;
+export const TOTAL_FEATURE_COUNT = HAND_FEATURE_COUNT + FACE_FEATURE_COUNT; // 67
+
 // ── State ─────────────────────────────────────────────────────────
 let staticModel  = null;
 let staticLabels = null;
@@ -65,12 +82,58 @@ let motionModelError = null;   // set if motion model fails to load
 
 export function getMotionModelError() { return motionModelError; }
 
-// Frame buffer for motion detection (30 frames × 63 values)
+// Frame buffer for motion detection (30 frames × 67 values)
 let motionBuffer = [];
-let lastFrameFlat = null;   // ← add this
+let lastFrameFlat = null;
 
+// ── Face-relative feature helper ─────────────────────────────────
 
-// ── Keras 3 compat loader ───────────────────────────────────────────
+function dist3(a, b) {
+  const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Builds the 4-value normalized face-relative feature set from a set
+ * of 21 hand landmarks and 468 face landmarks. This is the SAME
+ * function that must be used at capture/training time — keep it in
+ * sync with whatever your capture tool uses.
+ *
+ * @param {Array<{x,y,z}>} handLm  - 21 hand landmarks
+ * @param {Array<{x,y,z}>|null} faceLm - full face landmark set, or null
+ * @returns {number[]|null} 4 values, or null if no face was detected
+ */
+export function computeFaceRelativeFeatures(handLm, faceLm) {
+  if (!faceLm) return null;
+  const chin     = faceLm[CHIN_IDX];
+  const forehead = faceLm[FOREHEAD_IDX];
+  if (!chin || !forehead) return null;
+
+  const faceScale = dist3(forehead, chin) || 1e-6;
+  const thumbTip = handLm[4];
+  const indexTip = handLm[8];
+  const wrist    = handLm[0];
+
+  return [
+    dist3(thumbTip, chin)     / faceScale,
+    dist3(thumbTip, forehead) / faceScale,
+    dist3(indexTip, chin)     / faceScale,
+    dist3(wrist, chin)        / faceScale,
+  ];
+}
+
+/**
+ * Flattens hand landmarks + face-relative features into the exact
+ * 67-value order the models expect. Returns null if face features
+ * can't be computed (no face in frame).
+ */
+function buildFeatureVector(landmarks, faceLandmarks) {
+  const faceFeat = computeFaceRelativeFeatures(landmarks, faceLandmarks);
+  if (!faceFeat) return null;
+  return landmarks.flatMap(p => [p.x, p.y, p.z]).concat(faceFeat);
+}
+
+// ── Keras 3 compat loader (unchanged) ────────────────────────────
 
 function fixKeras3DtypePolicy(node) {
   if (Array.isArray(node)) {
@@ -93,15 +156,6 @@ function fixKeras3DtypePolicy(node) {
   }
 }
 
-/**
- * Recursively walks a Keras model_config tree and rewrites any
- * Keras-3-style nested DTypePolicy "dtype" field into the plain
- * string tf.js expects, in place.
- */
-/**
- * Keras 3 exports InputLayer config with "batch_shape" instead of
- * "batchInputShape" that TF.js expects. Fix it in-place.
- */
 function fixKeras3InputLayer(node) {
   if (Array.isArray(node)) {
     node.forEach(fixKeras3InputLayer);
@@ -109,7 +163,6 @@ function fixKeras3InputLayer(node) {
   }
   if (!node || typeof node !== 'object') return;
 
-  // If this is an InputLayer config, rename batch_shape → batchInputShape
   if (node.class_name === 'InputLayer' && node.config) {
     if (node.config.batch_shape && !node.config.batchInputShape) {
       node.config.batchInputShape = node.config.batch_shape;
@@ -139,31 +192,14 @@ async function fetchArrayBuffer(url) {
   return res.arrayBuffer();
 }
 
-/**
- * Loads a tf.js layers model from a model.json path, patching the
- * Keras 3 DTypePolicy dtype fields before tf.js parses the topology.
- * Drop-in replacement for tf.loadLayersModel(modelJsonPath).
- */
 async function loadKeras3CompatModel(modelJsonPath) {
   const res = await fetch(modelJsonPath);
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${modelJsonPath}`);
   const modelJSON = await res.json();
 
-fixKeras3DtypePolicy(modelJSON.modelTopology);
-fixKeras3InputLayer(modelJSON.modelTopology);  // ← add this line
+  fixKeras3DtypePolicy(modelJSON.modelTopology);
+  fixKeras3InputLayer(modelJSON.modelTopology);
 
-  // ── Name-scope fix ────────────────────────────────────────────────
-  // The Python tfjs converter wrote weight names as
-  // "<model_name>/<layer_name>/<weight_name>" (e.g.
-  // "asl_static_model/batch_normalization/gamma"), because Keras 3
-  // tracks variables under a full name-scope that includes the
-  // top-level model's own name. tf.js's Sequential container, when
-  // rebuilt from modelTopology, does NOT prefix its sublayers' weight
-  // names with the container's own name — it expects just
-  // "<layer_name>/<weight_name>" (e.g. "batch_normalization/gamma").
-  // That mismatch is what throws "no target variable" even after the
-  // dtype fix above. Strip the leading "<model_name>/" segment so the
-  // names line up with what tf.js will actually look for.
   const modelName = modelJSON.modelTopology?.model_config?.config?.name;
   const stripPrefix = (name) =>
     modelName && name.startsWith(`${modelName}/`) ? name.slice(modelName.length + 1) : name;
@@ -200,10 +236,6 @@ fixKeras3InputLayer(modelJSON.modelTopology);  // ← add this line
 
 // ── Load ──────────────────────────────────────────────────────────
 
-/**
- * Loads both the static and motion models.
- * Static model is required; motion model logs a warning if missing.
- */
 export async function loadModels() {
   console.log('[classifier] Loading static model…');
   try {
@@ -226,7 +258,7 @@ export async function loadModels() {
     motionLabels = await res2.json();
     console.log('[classifier] Motion model ready. Labels:', motionLabels);
   } catch (e) {
-    console.warn('[classifier] Motion model not loaded (J, Z, HELLO, THANK YOU disabled):', e.message);
+    console.warn('[classifier] Motion model not loaded:', e.message);
     motionModelError = e.message;   // expose for lesson.js warning
   }
 }
@@ -245,14 +277,21 @@ export function isMotionModelReady() {
  * Classifies a single-frame hand pose using the static model.
  *
  * @param {Array<{x,y,z}>} landmarks - 21 landmarks from mediapipe.js (dominantLandmarks)
- * @returns {{ label: string|null, confidence: number (0–100), matched: boolean }}
+ * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set from mediapipe.js
+ * @returns {{ label: string|null, confidence: number (0–100), matched: boolean, faceMissing?: boolean }}
  */
-export function classifyGesture(landmarks) {
+export function classifyGesture(landmarks, faceLandmarks) {
   if (!staticModel || !staticLabels) return { label: null, confidence: 0, matched: false };
   if (!landmarks || landmarks.length !== 21) return { label: null, confidence: 0, matched: false };
 
-  const flat  = landmarks.flatMap(p => [p.x, p.y, p.z]);
-  const input = tf.tensor2d([flat]);   // shape [1, 63]
+  const flat = buildFeatureVector(landmarks, faceLandmarks);
+  if (!flat) {
+    // No face in frame — reject outright rather than falling back to
+    // zeros, which could be misread by the model as "very close".
+    return { label: null, confidence: 0, matched: false, faceMissing: true };
+  }
+
+  const input = tf.tensor2d([flat]);   // shape [1, 67]
 
   let rawLabel   = null;
   let confidence = 0;
@@ -269,7 +308,6 @@ export function classifyGesture(landmarks) {
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
 
-  // ILY key fix: model outputs "ILY", dictionary key is "ILY" (both match now)
   const entry = SIGN_DICTIONARY[rawLabel];
   if (!entry || entry.disabled) return { label: null, confidence: 0, matched: false };
 
@@ -287,10 +325,10 @@ export function classifyGesture(landmarks) {
  * runs the LSTM motion model and returns a result.
  *
  * @param {Array<{x,y,z}>} landmarks - 21 landmarks
- * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean }}
- *   buffering: true while still collecting frames (caller can show progress indicator)
+ * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set
+ * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean, faceMissing?: boolean }}
  */
-export function classifyMotion(landmarks) {
+export function classifyMotion(landmarks, faceLandmarks) {
   if (!motionModel || !motionLabels) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
@@ -298,7 +336,13 @@ export function classifyMotion(landmarks) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  const flat = landmarks.flatMap(p => [p.x, p.y, p.z]);
+  const flat = buildFeatureVector(landmarks, faceLandmarks);
+  if (!flat) {
+    // No face — don't wipe an in-progress buffer over a transient loss
+    // (mediapipe.js already applies ghost-frame tolerance upstream);
+    // just skip this frame and surface faceMissing for the UI.
+    return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0, faceMissing: true };
+  }
 
   // Only collect frame if hand moved enough since last frame
   if (lastFrameFlat) {
@@ -326,7 +370,7 @@ export function classifyMotion(landmarks) {
   const frameWindow = motionBuffer.slice(-MOTION_FRAMES_REQUIRED);
   motionBuffer = [];
 
-  const input = tf.tensor3d([frameWindow]);
+  const input = tf.tensor3d([frameWindow]);   // shape [1, 30, 67]
 
   let rawLabel   = null;
   let confidence = 0;

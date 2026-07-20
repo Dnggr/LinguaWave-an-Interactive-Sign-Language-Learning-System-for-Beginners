@@ -10,19 +10,107 @@
  *
  * CONNECTS : js/lesson.js reads SIGNS (via window.LWData.getSign) to
  *            populate the left-hand content panel (title, description,
- *            tips, image) for whichever letter is in the ?sign= param.
+ *            tips, image) for whichever letter is in the ?sign= param,
+ *            and reads CATEGORIES (via getCategorySigns / getCategory)
+ *            to build the sign order for a lesson.
  *
- * EDITING  : To add a new sign, add another object to the array
- *            below — no upload form, no Storage bucket. `signId`
- *            must match a key in js/engine/dictionary.js so the
- *            detection engine and the lesson content stay in sync.
+ * CATEGORIES : level=basic is still the alphabet (unchanged — this
+ *            preserves every existing ?level=basic&sign=X link).
+ *            level=medium is now organized into word categories
+ *            pulled from the LinguaWave ASL Lesson Compilation
+ *            (Level 1 — Basic). Only signs the classifier can
+ *            actually detect are marked functional; everything else
+ *            from the source doc is listed as comingSoon so the
+ *            structure is ready the moment more data is captured —
+ *            it won't show up as a playable lesson until you flip
+ *            comingSoon to false AND add a SIGNS content entry.
+ *
+ * EDITING  : To add a new sign, add another object to SIGNS below.
+ *            `signId` must match a key in js/engine/dictionary.js so
+ *            the detection engine and the lesson content stay in sync.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
 
+/* ── CATEGORIES ──────────────────────────────────────────────────
+ * One entry per lesson grouping. `words` on comingSoon categories is
+ * just a content preview (source: LinguaWave_ASL_Lessons.docx) — it
+ * is NOT wired to the detection engine until real SIGNS entries and
+ * a trained model exist for those labels.
+ * ──────────────────────────────────────────────────────────────── */
+const CATEGORIES = [
+  // level=basic (Beginner tier in the flowchart) — alphabet only,
+  // unchanged from before this update.
+  { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false },
+
+  // level=medium (Basic/Words tier in the flowchart)
+  {
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false,
+    source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
+  },
+  {
+    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: true,
+    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR/DRIVE', 'IN/OUT', 'WITH'],
+  },
+  {
+    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: true,
+    words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'TODAY/NOW', 'FINISH'],
+  },
+  {
+    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: true,
+    words: ['HOT', 'COLD'],
+  },
+  {
+    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true,
+    words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'WATER', 'CANDY', 'COOKIE', 'HUNGRY'],
+  },
+  {
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true,
+    words: ['SHIRT', 'PANTS', 'SOCKS', 'SHOES', 'COAT', 'UNDERWEAR'],
+  },
+  {
+    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true,
+    words: ['WASH', 'HURT', 'BATHROOM', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
+  },
+  {
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true,
+    words: ['HAPPY', 'ANGRY', 'SAD', 'SORRY', 'CRY', 'LIKE', 'GOOD/BAD', 'LOVE'],
+  },
+  {
+    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: true,
+    words: ['PLEASE', 'EXCUSE', 'THANK YOU', 'HELP', 'WHO', 'WHAT', 'WHEN', 'WHERE', 'WHY', 'HOW', 'STOP'],
+  },
+  {
+    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true,
+    words: ['BIG', 'TALL', 'FULL', 'MORE'],
+  },
+  {
+    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true,
+    words: ['BLUE', 'GREEN', 'YELLOW', 'RED', 'BROWN', 'ORANGE', 'GOLD', 'SILVER'],
+  },
+  {
+    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true,
+    words: ['DOLLARS', 'CENTS', 'COST'],
+  },
+  {
+    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true,
+    words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
+  },
+  {
+    id: 'greetings', level: 'medium', title: 'Greetings & Phrases', order: 14, comingSoon: true,
+    words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME", 'MY NAME IS'],
+  },
+
+  // level=intermediate (Sentences tier in the flowchart)
+  {
+    id: 'sentences', level: 'intermediate', title: 'Everyday Sentences', order: 1, comingSoon: true,
+    words: ['HELLO MY NAME IS', 'I AM A STUDENT', 'CAN YOU HELP ME', 'WHERE IS THE RESTROOM', 'I NEED HELP'],
+  },
+];
+
 /* ── SIGNS ────────────────────────────────────────────────────────
- * Mirrors Firestore signs/{id} — level, signId, title, description,
- * tips, imageUrl, videoUrl, order, detectionType.
+ * Mirrors Firestore signs/{id} — level, signId, category, title,
+ * description, tips, imageUrl, videoUrl, order, detectionType.
  *
  * description/tips are written from the same hand-shape rules
  * defined in js/engine/dictionary.js so the lesson content panel
@@ -289,6 +377,52 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/basic/Z.png', videoUrl: '../assets/videos/basic/Z.mp4', detectionType: 'motion',
   },
+
+  /* ── MEDIUM · FAMILY ──────────────────────────────────────────
+   * MOM/DAD are the canonical face-relative minimal pair — same
+   * handshape, same movement, only the location (chin vs forehead)
+   * differs. That's exactly why the classifier now needs face
+   * landmarks to tell them apart at all. */
+  {
+    id: 'medium_family_MOM', level: 'medium', category: 'family', signId: 'MOM', title: 'Mom', order: 1,
+    description: 'Open your hand into a "5" shape (all fingers spread) and tap your thumb tip against your CHIN once.',
+    tips: [
+      'Palm faces the person you\u2019re signing to',
+      'Thumb makes contact with the chin, not the cheek or neck',
+      'Keep the tap short and deliberate — this is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/family/MOM.png', videoUrl: '../assets/videos/medium/family/MOM.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_DAD', level: 'medium', category: 'family', signId: 'DAD', title: 'Dad', order: 2,
+    description: 'Open your hand into the same "5" shape as MOM, but tap your thumb tip against your FOREHEAD instead of your chin.',
+    tips: [
+      'Same handshape as MOM — the location is what changes the meaning',
+      'Thumb makes contact near the top of the forehead',
+      'Keep the tap short and deliberate — this is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/family/DAD.png', videoUrl: '../assets/videos/medium/family/DAD.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_BOY', level: 'medium', category: 'family', signId: 'BOY', title: 'Boy', order: 3,
+    description: 'Hold a flat hand near your forehead, then close your fingers toward your thumb in a small grasping motion, as if tipping an imaginary cap.',
+    tips: [
+      'Starting position is near the forehead, like DAD',
+      'The closing/grasping motion is what makes this different from DAD',
+      'Keep the motion small and close to the forehead',
+    ],
+    imageUrl: '../assets/images/medium/family/BOY.png', videoUrl: '../assets/videos/medium/family/BOY.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_GIRL', level: 'medium', category: 'family', signId: 'GIRL', title: 'Girl', order: 4,
+    description: 'Make an "A" handshape (thumb resting beside a fist) and brush your thumb down along your jaw/cheek.',
+    tips: [
+      'Thumb traces a short downward line near the jawline',
+      'Keep the rest of the hand in a loose fist, thumb doing the work',
+      'This is a MOTION sign — the brushing motion matters, not just the pose',
+    ],
+    imageUrl: '../assets/images/medium/family/GIRL.png', videoUrl: '../assets/videos/medium/family/GIRL.mp4', detectionType: 'motion',
+  },
 ];
 
 /* ── QUESTIONS ────────────────────────────────────────────────────
@@ -314,6 +448,15 @@ const QUESTIONS = [
   },
 ];
 
+/* ── Category defaults ───────────────────────────────────────────
+ * SIGNS entries under level=basic didn't previously have a
+ * `category` field (alphabet was the only thing on that level).
+ * Backfill it so getCategorySigns() works uniformly for every level
+ * without having to touch all 26 alphabet entries above. */
+SIGNS.forEach(s => {
+  if (!s.category) s.category = s.level === 'basic' ? 'alphabet' : 'general';
+});
+
 /* ── Helpers ─────────────────────────────────────────────────────── */
 
 /**
@@ -325,5 +468,41 @@ function getSign(level, signId) {
   return SIGNS.find(s => s.level === level && s.signId === signId.toUpperCase()) ?? null;
 }
 
+/**
+ * Returns the ordered array of signId strings that belong to a
+ * given level + category (only signs with an actual SIGNS content
+ * entry — comingSoon categories with no SIGNS entries return []).
+ * @param {string} level
+ * @param {string} categoryId
+ * @returns {string[]}
+ */
+function getCategorySigns(level, categoryId) {
+  return SIGNS
+    .filter(s => s.level === level && s.category === categoryId)
+    .sort((a, b) => a.order - b.order)
+    .map(s => s.signId);
+}
+
+/**
+ * Returns all category metadata objects for a given level, sorted
+ * by their display order.
+ * @param {string} level
+ */
+function getCategoriesForLevel(level) {
+  return CATEGORIES.filter(c => c.level === level).sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Returns a single category's metadata, or null.
+ * @param {string} level
+ * @param {string} categoryId
+ */
+function getCategory(level, categoryId) {
+  return CATEGORIES.find(c => c.level === level && c.id === categoryId) ?? null;
+}
+
 /* ── EXPORTS ─────────────────────────────────────────────────────── */
-window.LWData = { SIGNS, QUESTIONS, getSign };
+window.LWData = {
+  SIGNS, QUESTIONS, CATEGORIES,
+  getSign, getCategorySigns, getCategoriesForLevel, getCategory,
+};

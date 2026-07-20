@@ -9,6 +9,7 @@
              js/engine/classifier.js
              js/engine/renderer.js
              js/engine/dictionary.js
+             js/data.js (window.LWData — categories + sign order)
   ─────────────────────────────────────────────────────────────────
 
   ══════════════════════════════════════════════════════════════════
@@ -16,65 +17,48 @@
   ══════════════════════════════════════════════════════════════════
 
   BUG 1 — Camera feed hidden by status overlay when classifier fails
-  ─────────────────────────────────────────────────────────────────
-  WHERE:   bootDetectionEngine() — the classifier-failure catch block
-  SYMPTOM: Camera starts, skeleton runs, but you only see "⚠️ Camera is
-           live…" text — the actual camera video never appears.
-  CAUSE:   setStatus() sets display:none only when message === ''. When
-           the classifier fails we pass a non-empty error string, so the
-           status overlay stays display:flex and sits on top of the <video>
-           + <canvas>, covering them permanently. The camera IS running —
-           you just can't see it.
-  FIX:     On classifier failure, hide the full-screen status overlay
-           (display:none) so the camera feed shows through, then display
-           the error as a smaller non-blocking warning badge below the
-           camera panel (id="classifier-warn") instead of as a full overlay.
-           See setClassifierWarn() below.
-
   BUG 2 — setStatus keeps overlay visible even after camera is fully ready
-  ─────────────────────────────────────────────────────────────────
-  WHERE:   bootDetectionEngine() — the success path
-  SYMPTOM: On a slow machine the "Loading sign classifier…" message
-           flickers because setStatus is called three times in sequence
-           (loading → starting camera → loading classifier → ready).
-           On classifier failure the last setStatus never hides.
-  FIX:     Already partly fixed by BUG 1. Additionally, the overlay is
-           now hidden (display:none) immediately after camera starts,
-           regardless of classifier outcome. Classifier state is shown
-           in the separate non-blocking badge.
-
   BUG 3 — DOMContentLoaded timing race (pre-existing fix, preserved)
-  ─────────────────────────────────────────────────────────────────
-  WHERE:   Module-level boot logic at the bottom of this file
-  SYMPTOM: lesson.js is type="module" (deferred). On fast/cached loads
-           DOMContentLoaded fires before the module finishes loading, so
-           the listener is registered too late and boot() never runs.
-           Camera stays on "Starting camera…" forever with no console output.
-  FIX:     Check document.readyState — if already 'interactive' or
-           'complete', call boot() immediately instead of adding the listener.
-           (This fix was in place before; preserved here.)
-
   BUG 4 — Score display element never shown during assessment
-  ─────────────────────────────────────────────────────────────────
-  WHERE:   startAssessment() — score-display div wiring
-  SYMPTOM: The score badge (id="score-display") stays hidden throughout
-           assessment because startAssessment() never sets display to ''.
-  FIX:     Show score-display and assessment-prompt-box in startAssessment(),
-           hide them again in endAssessment() / retryLesson().
-
   BUG 5 — btn-start-assessment wired via addEventListener AND onclick
+  (See previous version for full write-ups on BUG 1–5 — unchanged.)
+
+  BUG 6 — Sign order was hardcoded per level, so word categories
+          (family, places, ...) had nowhere to live
   ─────────────────────────────────────────────────────────────────
-  WHERE:   updateLessonMeta() adds addEventListener('click', startAssessment)
-           every time it runs. If updateLessonMeta is ever called twice
-           (e.g. on a hot reload), startAssessment fires twice per click.
-  FIX:     Use startBtnEl.onclick = startAssessment (idempotent assignment)
-           instead of addEventListener.
+  WHERE:   module-level SIGN_ORDER constant
+  FIX:     Sign order for a lesson is now pulled from window.LWData
+           .getCategorySigns(level, category) — the alphabet's order
+           is unchanged (same A→Y, J, Z sequence as before), but
+           level=medium/intermediate now branch by ?category=.
+
+  BUG 7 — Classifier now requires a face in frame (face-relative
+          features), but there was no UI signal for "no face detected"
+  ─────────────────────────────────────────────────────────────────
+  WHERE:   startRenderLoop() classify calls
+  FIX:     classifyGesture/classifyMotion now return `faceMissing`.
+           A new non-blocking badge (#face-warn, same pattern as
+           #classifier-warn) tells the user to step back so their
+           whole head is visible.
+
+  BUG 8 — Assessment only ever tested one sign, so category lessons
+          (multiple words) had no way to test the whole lesson
+  ─────────────────────────────────────────────────────────────────
+  WHERE:   startAssessment() / handleAssessmentFrame() / endAssessment()
+  FIX:     For category !== 'alphabet', quizSigns is now the FULL
+           ordered sign list for that category (matches the flowchart:
+           "More signs in lesson?" loop → single "End-of-lesson
+           assessment" covering everything just viewed). Missed signs
+           are tracked and shown in a "Review missed signs" list on
+           fail, matching the flowchart's review step. Alphabet lessons
+           are untouched — still one letter, one assessment, exactly
+           like before.
 
   ══════════════════════════════════════════════════════════════════
 */
 
 import { startCamera, stopCamera }             from '../js/camera/cameraUtils.js';
-import { initMediaPipe, processFrame }         from '../js/tracking/mediapipe.js';
+import { initMediaPipe, processFrame, isFaceModelReady, getFaceModelError } from '../js/tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
@@ -100,11 +84,12 @@ const overlayEl       = document.getElementById('completion-overlay');
 const finalScoreEl    = document.getElementById('final-score');
 const motionBufEl     = document.getElementById('motion-buffer-bar');
 const motionBufWrapEl = document.getElementById('motion-buffer-wrap');
+const missedListEl    = document.getElementById('missed-signs-review'); // BUG 8 — optional, see lesson.html snippet
 
 // BUG 1 FIX: separate non-blocking classifier warning element.
-// This is injected into the DOM below the camera panel so it doesn't
-// cover the camera feed. See setClassifierWarn() and lesson.html comment.
 let classifierWarnEl  = null;
+// BUG 7 FIX: separate non-blocking face warning element.
+let faceWarnEl        = null;
 
 // Lesson content refs
 const lessonImageEl       = document.getElementById('lesson-image');
@@ -117,20 +102,38 @@ const lessonSubtitleEl    = document.getElementById('lesson-subtitle');
 // ── URL params ─────────────────────────────────────────────────────
 const params     = new URLSearchParams(window.location.search);
 const level      = params.get('level') || 'basic';
-const sign       = (params.get('sign') || 'A').toUpperCase();
+// BUG 6 FIX: category defaults to 'alphabet' for the basic level
+// (preserves every existing ?level=basic&sign=X link untouched).
+// For other levels it defaults to the first non-comingSoon category.
+const category   = params.get('category') || defaultCategoryFor(level);
 
-// ── Lesson sign order per level ────────────────────────────────────
-const SIGN_ORDER = {
-  basic:        'ABCDEFGHIKLMNOPQRSTUVWXY'.split(''),
-  medium:       ['HELLO','THANK YOU'],
-  intermediate: [],
-};
-if (!SIGN_ORDER.basic.includes('J'))  SIGN_ORDER.basic.push('J');
-if (!SIGN_ORDER.basic.includes('Z'))  SIGN_ORDER.basic.push('Z');
+function defaultCategoryFor(lvl) {
+  if (lvl === 'basic') return 'alphabet';
+  const cats = window.LWData?.getCategoriesForLevel?.(lvl) ?? [];
+  const firstLive = cats.find(c => !c.comingSoon);
+  return firstLive ? firstLive.id : (cats[0]?.id ?? 'general');
+}
 
-const signOrder  = SIGN_ORDER[level] || SIGN_ORDER.basic;
+// BUG 6 FIX: sign order now comes from data.js instead of a hardcoded
+// per-level array. Falls back to the old hardcoded alphabet order if
+// data.js somehow isn't loaded yet, so the alphabet lesson never breaks.
+const FALLBACK_ALPHABET_ORDER = 'ABCDEFGHIKLMNOPQRSTUVWXYJZ'.split('');
+
+function computeSignOrder() {
+  const fromData = window.LWData?.getCategorySigns?.(level, category) ?? [];
+  if (fromData.length > 0) return fromData;
+  if (category === 'alphabet') return FALLBACK_ALPHABET_ORDER;
+  return [];
+}
+
+const signOrder  = computeSignOrder();
+const sign       = (params.get('sign') || signOrder[0] || 'A').toUpperCase();
 const signIdx    = Math.max(signOrder.indexOf(sign), 0);
 const totalSigns = signOrder.length;
+
+// BUG 8: whether this lesson tests one sign (alphabet, as before) or
+// the whole category as a single assessment (word lessons).
+const isCategoryAssessment = category !== 'alphabet';
 
 // ── Assessment state ───────────────────────────────────────────────
 const PASS_THRESHOLD  = 0.80;
@@ -140,6 +143,7 @@ let mode           = 'practice';
 let quizSigns      = [];
 let quizIdx        = 0;
 let score          = 0;
+let missedSigns    = [];   // BUG 8: [{ expected, got }]
 let promptTimer    = null;
 let rafId          = null;
 
@@ -153,6 +157,13 @@ let cooldown       = false;
 // when lesson.js (type="module") loads after the event already fired.
 
 async function boot() {
+  if (totalSigns === 0) {
+    // Category has no functional signs yet (comingSoon) — bail out
+    // of camera boot entirely and just say so.
+    setStatus(`"${category}" isn't trained yet — check back soon.`, 'error');
+    updateLessonMeta();
+    return;
+  }
   updateLessonMeta();
   setupNavButtons();
   await bootDetectionEngine();
@@ -172,11 +183,16 @@ function updateLessonMeta() {
   const letter  = document.getElementById('lesson-letter');
   const title   = document.getElementById('lesson-title');
 
-  if (counter) counter.textContent = `Sign ${signIdx + 1} of ${totalSigns}`;
-  if (fill)    fill.dataset.progress = Math.round(((signIdx + 1) / totalSigns) * 100);
+  if (counter) counter.textContent = `Sign ${signIdx + 1} of ${totalSigns || 1}`;
+  if (fill)    fill.dataset.progress = totalSigns ? Math.round(((signIdx + 1) / totalSigns) * 100) : 0;
   if (letter)  letter.textContent   = sign;
   if (title)   title.textContent    = sign.length === 1 ? `Letter ${sign}` : sign;
-  if (lessonSubtitleEl) lessonSubtitleEl.textContent = `ASL Alphabet · ${level[0].toUpperCase()}${level.slice(1)} Level`;
+
+  const categoryMeta = window.LWData?.getCategory?.(level, category) ?? null;
+  if (lessonSubtitleEl) {
+    const label = categoryMeta?.title ?? category;
+    lessonSubtitleEl.textContent = `${label} · ${level[0].toUpperCase()}${level.slice(1)} Level`;
+  }
 
   if (motionBufWrapEl) {
     motionBufWrapEl.style.display = getDetectionType(sign) === 'motion' ? '' : 'none';
@@ -197,7 +213,7 @@ function updateLessonMeta() {
       const placeholder = document.getElementById('lesson-img-placeholder');
       if (placeholder) placeholder.style.display = 'none';
     }
-    if (lessonImgHintEl) lessonImgHintEl.textContent = `Add image to assets/images/basic/${sign}.png`;
+    if (lessonImgHintEl) lessonImgHintEl.textContent = `Add image to ${signData.imageUrl}`;
 
     if (lessonVideoEl) {
       const source = lessonVideoEl.querySelector('source');
@@ -211,7 +227,6 @@ function updateLessonMeta() {
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
-    if (lessonImgHintEl) lessonImgHintEl.textContent = `Add image to assets/images/basic/${sign}.png`;
   }
 
   // BUG 5 FIX: use .onclick assignment (idempotent) instead of
@@ -228,6 +243,10 @@ function escapeHtml(str) {
 
 // ── Prev / Next navigation ─────────────────────────────────────────
 
+function navUrl(targetSign) {
+  return `lesson.html?level=${level}&category=${category}&sign=${targetSign}`;
+}
+
 function setupNavButtons() {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
@@ -238,7 +257,7 @@ function setupNavButtons() {
     } else {
       btnPrev.onclick = () => {
         shutdown();
-        window.location = `lesson.html?level=${level}&sign=${signOrder[signIdx - 1]}`;
+        window.location = navUrl(signOrder[signIdx - 1]);
       };
     }
   }
@@ -255,7 +274,7 @@ function setupNavButtons() {
       btnNext.textContent = 'Next Sign →';
       btnNext.onclick = () => {
         shutdown();
-        window.location = `lesson.html?level=${level}&sign=${signOrder[signIdx + 1]}`;
+        window.location = navUrl(signOrder[signIdx + 1]);
       };
     }
   }
@@ -264,32 +283,32 @@ function setupNavButtons() {
 // ── Boot camera + models ───────────────────────────────────────────
 
 async function bootDetectionEngine() {
-  setStatus('Loading hand-tracking model…', 'loading');
+  setStatus('Loading hand + face tracking model…', 'loading');
 
   try {
     await initMediaPipe();
     setStatus('Starting camera…', 'loading');
     await startCamera(videoEl, canvasEl);
   } catch (err) {
-    // Camera or hand-tracking failed — real blocking error.
     console.error('[lesson.js] Boot failed:', err);
     setStatus(`Failed to start: ${err.message}`, 'error');
     return;
   }
 
   // BUG 1 + 2 FIX: camera is now live — hide the full-screen status
-  // overlay immediately so the video is visible. Classifier errors are
-  // shown in a small non-blocking badge (setClassifierWarn) instead of
-  // as a full overlay that covers the camera feed.
-  setStatus('', 'ready');   // hides the overlay — camera feed now visible
+  // overlay immediately so the video is visible.
+  setStatus('', 'ready');
 
-try {
+  if (!isFaceModelReady()) {
+    setFaceWarn(`⚠️ Face tracking failed to load — sign detection is disabled until this recovers. (${getFaceModelError() ?? 'unknown error'})`);
+  }
+
+  try {
     await loadModels();
-    // Check motion model specifically — it fails silently and breaks J/Z
     const motionErr = getMotionModelError();
     if (motionErr) {
       setClassifierWarn(
-        '⚠️ Motion model failed to load — J, Z, HELLO, and THANK YOU cannot be detected. ' +
+        '⚠️ Motion model failed to load — motion signs cannot be detected. ' +
         'Check that /asl_motion_model/model.json exists. (' + motionErr + ')'
       );
     }
@@ -309,7 +328,7 @@ function startRenderLoop() {
 
     if (!videoEl || videoEl.readyState < 2) return;
 
-    const { landmarks, dominantLandmarks } = processFrame(videoEl);
+    const { landmarks, dominantLandmarks, faceLandmarks } = processFrame(videoEl);
 
     if (landmarks.length > 0) {
       drawSkeleton(ctx, landmarks, canvasEl.width, canvasEl.height);
@@ -321,16 +340,21 @@ function startRenderLoop() {
       lastDetected  = null;
     }
 
+    // BUG 7 FIX: face-relative detection needs the whole head in frame.
+    if (isFaceModelReady()) {
+      setFaceWarn(faceLandmarks ? '' : '⚠️ Face not detected — step back so your whole head is visible.');
+    }
+
     if (!dominantLandmarks) return;
 
     const detType = getDetectionType(sign);
     let result;
 
     if (detType === 'motion') {
-      result = classifyMotion(dominantLandmarks);
+      result = classifyMotion(dominantLandmarks, faceLandmarks);
       updateMotionBuffer(result.buffering);
     } else {
-      result = classifyGesture(dominantLandmarks);
+      result = classifyGesture(dominantLandmarks, faceLandmarks);
     }
 
     updateConfidenceUI(result);
@@ -352,8 +376,6 @@ function updateMotionBuffer(buffering) {
     motionBuffer_progress = Math.min(motionBuffer_progress + (1 / 30), 1);
     motionBufEl.style.width = `${motionBuffer_progress * 100}%`;
   } else if (motionBuffer_progress > 0) {
-    // Only reset if we were actually filling — avoids flicker on the
-    // 1 frame between prediction completion and the next buffer start
     motionBuffer_progress = 0;
     motionBufEl.style.width = '0%';
   }
@@ -362,14 +384,10 @@ function updateMotionBuffer(buffering) {
 // ── Practice mode ──────────────────────────────────────────────────
 
 function handlePracticeFrame(result) {
-  // For motion signs: a single matched result IS the debounced signal
-  // (the 30-frame buffer already acts as a temporal filter).
-  // For static signs: keep the existing debounce behaviour.
   const isMotion = getDetectionType(sign) === 'motion';
 
   if (result.matched && !cooldown) {
     if (isMotion) {
-      // One confident prediction from the motion model is enough
       showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
       debounceCount = 0;
@@ -384,7 +402,6 @@ function handlePracticeFrame(result) {
       lastDetected = result.label;
     }
   } else if (!result.matched && !result.buffering) {
-    // Only reset debounce on a confident wrong answer, not while buffering
     if (!isMotion) {
       debounceCount = 0;
       lastDetected  = null;
@@ -395,10 +412,13 @@ function handlePracticeFrame(result) {
 // ── Assessment mode ────────────────────────────────────────────────
 
 function startAssessment() {
-  quizSigns = [sign];
-  quizIdx   = 0;
-  score     = 0;
-  mode      = 'assessment';
+  // BUG 8 FIX: word/category lessons test every sign in the category
+  // in one assessment; the alphabet keeps testing just the one letter.
+  quizSigns   = isCategoryAssessment ? [...signOrder] : [sign];
+  quizIdx     = 0;
+  score       = 0;
+  missedSigns = [];
+  mode        = 'assessment';
   debounceCount = 0;
   lastDetected  = null;
 
@@ -435,6 +455,7 @@ function showNextPrompt() {
 
   clearTimeout(promptTimer);
   promptTimer = setTimeout(() => {
+    missedSigns.push({ expected: currentSign, got: null });
     showFeedback('⏱ Time up — moving on', 'error');
     setTimeout(() => {
       quizIdx++;
@@ -452,7 +473,6 @@ function handleAssessmentFrame(result) {
   const isMotion = getDetectionType(currentSign) === 'motion';
 
   if (isMotion) {
-    // Motion model already waited 30 frames — accept immediately
     debounceCount = 0;
   } else {
     debounceCount++;
@@ -468,6 +488,7 @@ function handleAssessmentFrame(result) {
     showFeedback(`✅ Correct! (${result.confidence}%)`, 'success');
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
   } else {
+    missedSigns.push({ expected: currentSign, got: result.label });
     showFeedback(`❌ Detected ${result.label} — expected ${currentSign}`, 'error');
   }
 
@@ -496,6 +517,23 @@ function endAssessment() {
     modeBarEl.className   = 'mode-bar mode-bar--practice';
   }
 
+  // BUG 8 FIX: "Review missed signs" — only relevant/shown on fail,
+  // and only meaningful for multi-sign (category) assessments.
+  if (missedListEl) {
+    if (!passed && missedSigns.length > 0) {
+      missedListEl.innerHTML =
+        `<p><strong>Review these signs:</strong></p><ul>` +
+        missedSigns.map(m =>
+          `<li>${escapeHtml(m.expected)}${m.got ? ` — detected as ${escapeHtml(m.got)}` : ' — not detected in time'}</li>`
+        ).join('') +
+        `</ul>`;
+      missedListEl.style.display = '';
+    } else {
+      missedListEl.innerHTML = '';
+      missedListEl.style.display = 'none';
+    }
+  }
+
   if (overlayEl && finalScoreEl) {
     finalScoreEl.textContent = `${Math.round(pct * 100)}%`;
     document.getElementById('overlay-result-title').textContent =
@@ -503,7 +541,7 @@ function endAssessment() {
     document.getElementById('overlay-result-msg').textContent =
       passed
         ? 'Great work! Your progress has been saved. The next lesson is now unlocked.'
-        : `You scored ${Math.round(pct * 100)}%. You need 80% to pass. Review the sign and try again.`;
+        : `You scored ${Math.round(pct * 100)}%. You need 80% to pass. Review the sign${quizSigns.length > 1 ? 's' : ''} below and try again.`;
 
     const continueBtn = document.getElementById('btn-overlay-continue');
     const retryBtn    = document.getElementById('btn-overlay-retry');
@@ -513,7 +551,10 @@ function endAssessment() {
     overlayEl.style.display = 'flex';
 
     if (passed) {
-      saveProgress(sign, pct);
+      // BUG 8: category assessments mark every sign in the category
+      // as passed at this score (single lw_progress schema, unchanged
+      // shape — dashboard.html keeps working without changes).
+      quizSigns.forEach(s => saveProgress(s, pct));
     }
   }
 
@@ -565,12 +606,6 @@ function showFeedback(message, type) {
   feedbackEl.style.display = message ? '' : 'none';
 }
 
-// BUG 1+2 FIX: setStatus controls only the full-screen camera-status
-// overlay. It is called to show loading/error states BEFORE the camera
-// is live. Once the camera is running, call setStatus('', 'ready') to
-// hide this overlay and reveal the video. After that point, DO NOT call
-// setStatus with a non-empty message — use setClassifierWarn() instead
-// for non-blocking notifications that appear below the camera panel.
 function setStatus(message, type) {
   if (!statusEl) return;
   if (!message) { statusEl.style.display = 'none'; return; }
@@ -579,11 +614,6 @@ function setStatus(message, type) {
   statusEl.className       = `camera-status camera-status--${type}`;
 }
 
-// BUG 1 FIX: non-blocking classifier warning that does NOT cover the camera.
-// Injected once into the DOM below the detection panel. Calling it again
-// updates the message in place.
-// lesson.html needs to have a <div id="classifier-warn"></div> after
-// the detection-panel — see lesson.html for the matching change.
 function setClassifierWarn(message) {
   if (!classifierWarnEl) {
     classifierWarnEl = document.getElementById('classifier-warn');
@@ -591,6 +621,18 @@ function setClassifierWarn(message) {
   if (!classifierWarnEl) return;
   classifierWarnEl.textContent = message;
   classifierWarnEl.style.display = message ? '' : 'none';
+}
+
+// BUG 7 FIX: non-blocking "no face detected" warning, same pattern as
+// setClassifierWarn(). lesson.html needs a <div id="face-warn"></div>
+// below #classifier-warn — see lesson.html snippet.
+function setFaceWarn(message) {
+  if (!faceWarnEl) {
+    faceWarnEl = document.getElementById('face-warn');
+  }
+  if (!faceWarnEl) return;
+  faceWarnEl.textContent = message;
+  faceWarnEl.style.display = message ? '' : 'none';
 }
 
 function setHandStatus(count) {
@@ -634,7 +676,6 @@ window.retryLesson = function() {
     startBtnEl.textContent = 'Start Assessment';
     startBtnEl.style.display = '';
   }
-  // BUG 4 FIX: also hide prompt/score when retrying
   if (promptBoxEl) promptBoxEl.style.display = 'none';
   if (scoreEl)     scoreEl.style.display     = 'none';
   if (modeBarEl) {
@@ -648,7 +689,7 @@ window.continueToNext = function() {
   shutdown();
   const nextIdx = signIdx + 1;
   if (nextIdx < totalSigns) {
-    window.location = `lesson.html?level=${level}&sign=${signOrder[nextIdx]}`;
+    window.location = navUrl(signOrder[nextIdx]);
   } else {
     window.location = `dashboard.html`;
   }
