@@ -93,15 +93,17 @@ function initProgressBars() {
 /*
  * Finds .level-card elements with [data-level] and toggles a
  * .level-card--locked class when the level hasn't been unlocked yet.
- * TODO: read unlock conditions from Firestore instead of the mock.
+ *
+ * Basic, Medium, and Intermediate are all open to every learner —
+ * only a level in UNLOCKED_LEVELS' complement (i.e. a future
+ * "advanced" tier) stays gated behind progress. TODO: read real
+ * unlock conditions from Firestore once that tier ships.
  */
-function initLevelCards() {
-  const levelOrder = ['basic', 'medium', 'intermediate'];
-  const userLevelIndex = levelOrder.indexOf(getActiveUser().level);
+const UNLOCKED_LEVELS = ['basic', 'medium', 'intermediate'];
 
+function initLevelCards() {
   document.querySelectorAll('.level-card[data-level]').forEach(card => {
-    const cardIndex = levelOrder.indexOf(card.dataset.level);
-    if (cardIndex > userLevelIndex) {
+    if (!UNLOCKED_LEVELS.includes(card.dataset.level)) {
       card.classList.add('level-card--locked');
       card.querySelector('.btn')?.setAttribute('disabled', 'true');
     }

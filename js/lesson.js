@@ -131,13 +131,25 @@ const sign       = (params.get('sign') || signOrder[0] || 'A').toUpperCase();
 const signIdx    = Math.max(signOrder.indexOf(sign), 0);
 const totalSigns = signOrder.length;
 
-// BUG 8: whether this lesson tests one sign (alphabet, as before) or
-// the whole category as a single assessment (word lessons).
-const isCategoryAssessment = category !== 'alphabet';
+// BUG 8 (reverted): category assessments used to test every sign in
+// the category in one run. Per feedback, every lesson — letters,
+// words, phrases — now assesses just the one sign on screen, same
+// as the alphabet always has. quizSigns below always resolves to a
+// single-item array.
+const isCategoryAssessment = false;
 
 // ── Assessment state ───────────────────────────────────────────────
 const PASS_THRESHOLD  = 0.80;
-const PROMPT_TIMEOUT  = 10000;
+// BUG 9 FIX: assessment used to slam straight into the next sign with
+// only a 1.5s cooldown and a 10s countdown — no time to reposition
+// for the next sign, especially motion signs (family category) which
+// need a clear run-up. PROMPT_TIMEOUT is now longer, and a short
+// "Get ready" pause (GETREADY_DELAY) runs before each prompt's timer
+// starts, so the countdown only begins once the user can actually see
+// what's being asked of them.
+const PROMPT_TIMEOUT   = 15000;
+const GETREADY_DELAY   = 2500;
+const NEXT_SIGN_DELAY  = 2200;   // pause after each answer before advancing
 
 let mode           = 'practice';
 let quizSigns      = [];
@@ -145,6 +157,7 @@ let quizIdx        = 0;
 let score          = 0;
 let missedSigns    = [];   // BUG 8: [{ expected, got }]
 let promptTimer    = null;
+let getReadyTimer  = null;
 let rafId          = null;
 
 const DEBOUNCE_FRAMES = 45;
@@ -194,6 +207,18 @@ function updateLessonMeta() {
     lessonSubtitleEl.textContent = `${label} · ${level[0].toUpperCase()}${level.slice(1)} Level`;
   }
 
+  // Back link should return to this lesson's own level tab, not a
+  // hardcoded "basic" — was always sending word/phrase lessons back
+  // to the alphabet grid.
+  const backBtnEl = document.getElementById('btn-back-to-lessons');
+  if (backBtnEl) backBtnEl.href = `learn.html?level=${level}`;
+
+  const stripBadgeEl = document.getElementById('lesson-strip-badge');
+  if (stripBadgeEl) {
+    stripBadgeEl.textContent = `${level[0].toUpperCase()}${level.slice(1)} · ${categoryMeta?.title ?? category}`;
+    stripBadgeEl.className   = `badge badge--${level}`;
+  }
+
   if (motionBufWrapEl) {
     motionBufWrapEl.style.display = getDetectionType(sign) === 'motion' ? '' : 'none';
   }
@@ -227,6 +252,15 @@ function updateLessonMeta() {
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+  }
+
+  // BUG 9 FIX: category lessons assess every sign in the category at
+  // once — make that explicit on the button up front instead of
+  // surprising the learner mid-assessment.
+  if (startBtnEl) {
+    startBtnEl.textContent = isCategoryAssessment
+      ? `🎯 Start Assessment (${totalSigns} signs)`
+      : '🎯 Start Assessment';
   }
 
   // BUG 5 FIX: use .onclick assignment (idempotent) instead of
@@ -446,22 +480,34 @@ function showNextPrompt() {
   const currentSign = quizSigns[quizIdx];
   debounceCount     = 0;
   lastDetected      = null;
-  cooldown          = false;
+  cooldown          = true;               // stay in cooldown through the get-ready pause
   resetMotionBuffer();
 
-  if (promptEl) promptEl.textContent = `Sign: "${currentSign}"`;
   if (scoreEl)  scoreEl.textContent  = `Score: ${score} / ${quizSigns.length}`;
   showFeedback('', '');
 
   clearTimeout(promptTimer);
-  promptTimer = setTimeout(() => {
-    missedSigns.push({ expected: currentSign, got: null });
-    showFeedback('⏱ Time up — moving on', 'error');
-    setTimeout(() => {
-      quizIdx++;
-      showNextPrompt();
-    }, 1200);
-  }, PROMPT_TIMEOUT);
+  clearTimeout(getReadyTimer);
+
+  // BUG 9 FIX: brief "get ready" pause before the sign is revealed and
+  // the countdown starts — gives time to relax the hands between signs
+  // instead of chaining straight into the next one.
+  const isFirst = quizIdx === 0;
+  if (promptEl) promptEl.textContent = isFirst ? `Sign: "${currentSign}"` : 'Get ready…';
+
+  getReadyTimer = setTimeout(() => {
+    cooldown = false;
+    if (promptEl) promptEl.textContent = `Sign: "${currentSign}"`;
+
+    promptTimer = setTimeout(() => {
+      missedSigns.push({ expected: currentSign, got: null });
+      showFeedback('⏱ Time up — moving on', 'error');
+      setTimeout(() => {
+        quizIdx++;
+        showNextPrompt();
+      }, NEXT_SIGN_DELAY);
+    }, PROMPT_TIMEOUT);
+  }, isFirst ? 0 : GETREADY_DELAY);
 }
 
 function handleAssessmentFrame(result) {
@@ -495,12 +541,13 @@ function handleAssessmentFrame(result) {
   setTimeout(() => {
     quizIdx++;
     showNextPrompt();
-  }, 1500);
+  }, NEXT_SIGN_DELAY);
 }
 
 function endAssessment() {
   mode = 'practice';
   clearTimeout(promptTimer);
+  clearTimeout(getReadyTimer);
 
   const pct   = quizSigns.length > 0 ? score / quizSigns.length : 0;
   const passed = pct >= PASS_THRESHOLD;
@@ -560,7 +607,9 @@ function endAssessment() {
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    startBtnEl.textContent   = 'Retry Assessment';
+    startBtnEl.textContent   = isCategoryAssessment
+      ? `Retry Assessment (${totalSigns} signs)`
+      : 'Retry Assessment';
   }
 }
 
@@ -657,6 +706,7 @@ function shutdown() {
   if (rafId) cancelAnimationFrame(rafId);
   stopCamera(videoEl);
   clearTimeout(promptTimer);
+  clearTimeout(getReadyTimer);
 }
 
 window.addEventListener('beforeunload', shutdown);
@@ -673,7 +723,9 @@ window.closeOverlay = function() {
 window.retryLesson = function() {
   closeOverlay();
   if (startBtnEl) {
-    startBtnEl.textContent = 'Start Assessment';
+    startBtnEl.textContent = isCategoryAssessment
+      ? `Retry Assessment (${totalSigns} signs)`
+      : 'Retry Assessment';
     startBtnEl.style.display = '';
   }
   if (promptBoxEl) promptBoxEl.style.display = 'none';

@@ -53,96 +53,39 @@
   <!-- ── LEVEL TABS ────────────────────────────────────────────── -->
   <section class="section section--sm">
     <div class="container">
-      <h1>Select a Lesson</h1>
-      <p class="mt-4 text-muted">
-        Choose your level below, then pick a lesson to start.
-        Complete each lesson in order to unlock the next.
+      <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+      <h1 class="mt-4">Select a Lesson</h1>
+      <p class="mt-2 text-muted">
+        Choose your level below, then pick a category to start.
       </p>
 
-      <!-- Level tab switcher -->
-      <!-- TODO: js/learn.js reads ?level= param and activates the correct tab -->
+      <!-- Level tab switcher — all three levels are unlocked; only a
+           future "advanced" tier would stay gated. js/learn.js reads
+           ?level= and re-renders the grid below on tab click. -->
       <div class="level-tabs mt-8">
         <button class="level-tab level-tab--active" data-level="basic">
-          <span class="badge badge--basic">Basic</span> A–Z Alphabet
+          <span class="badge badge--basic">Basic</span> Letters
         </button>
-        <button class="level-tab" data-level="medium" disabled title="Complete Basic first">
-          <span class="badge badge--medium">Medium</span> Vocabulary 🔒
+        <button class="level-tab" data-level="medium">
+          <span class="badge badge--medium">Medium</span> Words
         </button>
-        <button class="level-tab" data-level="intermediate" disabled title="Complete Medium first">
-          <span class="badge badge--intermediate">Intermediate</span> Sentences 🔒
+        <button class="level-tab" data-level="intermediate">
+          <span class="badge badge--intermediate">Intermediate</span> Phrases
         </button>
       </div>
     </div>
   </section>
 
-  <!-- ── LESSON GRID ───────────────────────────────────────────── -->
+  <!-- ── CATEGORY / LESSON GRID ────────────────────────────────── -->
+  <!-- js/learn.js renders this from window.LWData.CATEGORIES + SIGNS
+       for whichever level tab is active. Basic renders the 26-letter
+       alphabet grid directly (unchanged behaviour); Medium and
+       Intermediate render one card per category — functional
+       categories (comingSoon: false) link into the camera lesson,
+       everything else shows a "Coming Soon" preview of its words. -->
   <section class="section section--sm">
     <div class="container">
-
-      <!-- Basic level lesson list (A–Z, 26 items) -->
-      <!-- TODO: render these from Firestore "lessons" collection
-                 fields: id, letter, title, videoUrl, imageUrl, isCompleted -->
-      <div class="lesson-grid" id="lesson-grid">
-
-        <!-- Completed lessons -->
-        <a href="lesson.html?level=basic&sign=A" class="lesson-card lesson-card--done">
-          <div class="lesson-card__letter">A</div>
-          <span class="lesson-card__title">Letter A</span>
-          <span class="badge badge--done">✔ Done</span>
-        </a>
-        <a href="lesson.html?level=basic&sign=B" class="lesson-card lesson-card--done">
-          <div class="lesson-card__letter">B</div>
-          <span class="lesson-card__title">Letter B</span>
-          <span class="badge badge--done">✔ Done</span>
-        </a>
-        <a href="lesson.html?level=basic&sign=C" class="lesson-card lesson-card--done">
-          <div class="lesson-card__letter">C</div>
-          <span class="lesson-card__title">Letter C</span>
-          <span class="badge badge--done">✔ Done</span>
-        </a>
-        <a href="lesson.html?level=basic&sign=D" class="lesson-card lesson-card--done">
-          <div class="lesson-card__letter">D</div>
-          <span class="lesson-card__title">Letter D</span>
-          <span class="badge badge--done">✔ Done</span>
-        </a>
-        <a href="lesson.html?level=basic&sign=E" class="lesson-card lesson-card--done">
-          <div class="lesson-card__letter">E</div>
-          <span class="lesson-card__title">Letter E</span>
-          <span class="badge badge--done">✔ Done</span>
-        </a>
-
-        <!-- Current / available lesson -->
-        <a href="lesson.html?level=basic&sign=F" class="lesson-card lesson-card--current">
-          <div class="lesson-card__letter">F</div>
-          <span class="lesson-card__title">Letter F</span>
-          <span class="badge badge--basic">Start →</span>
-        </a>
-
-        <!-- Remaining lessons (G–Z) — unlocked for testing the full
-             motion-detection flow. Swap back to locked <div>s once
-             real progression gating is wired to Firestore. -->
-        <a href="lesson.html?level=basic&sign=G" class="lesson-card"><div class="lesson-card__letter">G</div><span class="lesson-card__title">Letter G</span></a>
-        <a href="lesson.html?level=basic&sign=H" class="lesson-card"><div class="lesson-card__letter">H</div><span class="lesson-card__title">Letter H</span></a>
-        <a href="lesson.html?level=basic&sign=I" class="lesson-card"><div class="lesson-card__letter">I</div><span class="lesson-card__title">Letter I</span></a>
-        <a href="lesson.html?level=basic&sign=J" class="lesson-card"><div class="lesson-card__letter">J</div><span class="lesson-card__title">Letter J</span></a>
-        <a href="lesson.html?level=basic&sign=K" class="lesson-card"><div class="lesson-card__letter">K</div><span class="lesson-card__title">Letter K</span></a>
-        <a href="lesson.html?level=basic&sign=L" class="lesson-card"><div class="lesson-card__letter">L</div><span class="lesson-card__title">Letter L</span></a>
-        <a href="lesson.html?level=basic&sign=M" class="lesson-card"><div class="lesson-card__letter">M</div><span class="lesson-card__title">Letter M</span></a>
-        <a href="lesson.html?level=basic&sign=N" class="lesson-card"><div class="lesson-card__letter">N</div><span class="lesson-card__title">Letter N</span></a>
-        <a href="lesson.html?level=basic&sign=O" class="lesson-card"><div class="lesson-card__letter">O</div><span class="lesson-card__title">Letter O</span></a>
-        <a href="lesson.html?level=basic&sign=P" class="lesson-card"><div class="lesson-card__letter">P</div><span class="lesson-card__title">Letter P</span></a>
-        <a href="lesson.html?level=basic&sign=Q" class="lesson-card"><div class="lesson-card__letter">Q</div><span class="lesson-card__title">Letter Q</span></a>
-        <a href="lesson.html?level=basic&sign=R" class="lesson-card"><div class="lesson-card__letter">R</div><span class="lesson-card__title">Letter R</span></a>
-        <a href="lesson.html?level=basic&sign=S" class="lesson-card"><div class="lesson-card__letter">S</div><span class="lesson-card__title">Letter S</span></a>
-        <a href="lesson.html?level=basic&sign=T" class="lesson-card"><div class="lesson-card__letter">T</div><span class="lesson-card__title">Letter T</span></a>
-        <a href="lesson.html?level=basic&sign=U" class="lesson-card"><div class="lesson-card__letter">U</div><span class="lesson-card__title">Letter U</span></a>
-        <a href="lesson.html?level=basic&sign=V" class="lesson-card"><div class="lesson-card__letter">V</div><span class="lesson-card__title">Letter V</span></a>
-        <a href="lesson.html?level=basic&sign=W" class="lesson-card"><div class="lesson-card__letter">W</div><span class="lesson-card__title">Letter W</span></a>
-        <a href="lesson.html?level=basic&sign=X" class="lesson-card"><div class="lesson-card__letter">X</div><span class="lesson-card__title">Letter X</span></a>
-        <a href="lesson.html?level=basic&sign=Y" class="lesson-card"><div class="lesson-card__letter">Y</div><span class="lesson-card__title">Letter Y</span></a>
-        <a href="lesson.html?level=basic&sign=Z" class="lesson-card"><div class="lesson-card__letter">Z</div><span class="lesson-card__title">Letter Z</span></a>
-
-      </div><!-- /lesson-grid -->
+      <div class="lesson-grid" id="lesson-grid"></div>
     </div>
   </section>
 
@@ -151,6 +94,7 @@
   </footer>
 
   <script src="../js/main.js"></script>
+  <script src="../js/data.js"></script>
   <script src="../js/learn.js"></script>
 </body>
 </html>

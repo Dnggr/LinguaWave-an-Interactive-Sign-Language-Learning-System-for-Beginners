@@ -33,17 +33,23 @@
 'use strict';
 
 /* ── CATEGORIES ──────────────────────────────────────────────────
- * One entry per lesson grouping. `words` on comingSoon categories is
- * just a content preview (source: LinguaWave_ASL_Lessons.docx) — it
- * is NOT wired to the detection engine until real SIGNS entries and
- * a trained model exist for those labels.
+ * One entry per lesson grouping, nested under its level. Content is
+ * transcribed straight from the LinguaWave ASL Lesson Compilation
+ * (LinguaWave_ASL_Lessons.docx) so every level maps to one content
+ * type from that doc:
+ *   level=basic        → LETTERS   (Level 1 — the alphabet)
+ *   level=medium        → WORDS     (Level 1 — 100 Basic ASL Signs, by category)
+ *   level=intermediate  → PHRASES   (Level 2 Common Phrases + Level 3 Everyday Sentences)
+ *
+ * `words` on comingSoon categories is just a content preview — it is
+ * NOT wired to the detection engine until real SIGNS entries and a
+ * trained model exist for those labels.
  * ──────────────────────────────────────────────────────────────── */
 const CATEGORIES = [
-  // level=basic (Beginner tier in the flowchart) — alphabet only,
-  // unchanged from before this update.
+  // ── level=basic — LETTERS (Level 1: Letters — ASL Alphabet A–Z) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false },
 
-  // level=medium (Basic/Words tier in the flowchart)
+  // ── level=medium — WORDS (Level 1: 100 Basic ASL Signs, by category) ──
   {
     id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false,
     source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
@@ -96,15 +102,86 @@ const CATEGORIES = [
     id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true,
     words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
   },
+
+  // ── level=intermediate — PHRASES ────────────────────────────────
+  // Level 2 — Basic (Common Phrases), Modules 1–8
   {
-    id: 'greetings', level: 'medium', title: 'Greetings & Phrases', order: 14, comingSoon: true,
-    words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME", 'MY NAME IS'],
+    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: true,
+    words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
+  },
+  {
+    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: true,
+    words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
+  },
+  {
+    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: true,
+    words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
+  },
+  {
+    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: true,
+    words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
+  },
+  {
+    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: true,
+    words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
+  },
+  {
+    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: true,
+    words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
+  },
+  {
+    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: true,
+    words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
+  },
+  {
+    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: true,
+    words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
   },
 
-  // level=intermediate (Sentences tier in the flowchart)
+  // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
   {
-    id: 'sentences', level: 'intermediate', title: 'Everyday Sentences', order: 1, comingSoon: true,
-    words: ['HELLO MY NAME IS', 'I AM A STUDENT', 'CAN YOU HELP ME', 'WHERE IS THE RESTROOM', 'I NEED HELP'],
+    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: true,
+    words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
+  },
+  {
+    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: true,
+    words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
+  },
+  {
+    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: true,
+    words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
+  },
+  {
+    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: true,
+    words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
+  },
+  {
+    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: true,
+    words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
+  },
+  {
+    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: true,
+    words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
+  },
+  {
+    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: true,
+    words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
+  },
+  {
+    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: true,
+    words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
+  },
+  {
+    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: true,
+    words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
+  },
+  {
+    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: true,
+    words: [
+      'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
+      'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
+      'SHOPPING: HOW MUCH IS THIS? / IT IS TEN DOLLARS. / I WILL BUY IT. / THANK YOU.',
+    ],
   },
 ];
 
