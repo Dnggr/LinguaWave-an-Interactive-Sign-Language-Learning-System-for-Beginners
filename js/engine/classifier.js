@@ -64,14 +64,17 @@ const MOTION_LABELS_PATH = '../asl_motion_model/labels.json';
 
 const MATCH_THRESHOLD        = 75;   // minimum % confidence to count as "matched"
 const MOTION_THRESHOLD       = 70;   // slightly lower for motion signs
-const MOTION_FRAMES_REQUIRED = 30;   // frames to collect before running motion model
+const MOTION_FRAMES_REQUIRED = 20;   // matches capture.html's signFrameLengths for J/Z/MOM/DAD/BOY/GIRL
+// NOTE: capture.html supports variable per-sign frame lengths (15–60).
+// The LSTM model needs a FIXED window, so any new motion sign you train
+// must also use 20 frames, or you'll need a separate model/window per length.
 
 // ── Face-relative feature config ─────────────────────────────────
 const FOREHEAD_IDX = 10;
 const CHIN_IDX      = 152;
-export const FACE_FEATURE_COUNT = 4;
+export const FACE_FEATURE_COUNT = 2;
 export const HAND_FEATURE_COUNT = 63;
-export const TOTAL_FEATURE_COUNT = HAND_FEATURE_COUNT + FACE_FEATURE_COUNT; // 67
+export const TOTAL_FEATURE_COUNT = HAND_FEATURE_COUNT + FACE_FEATURE_COUNT; // 65
 
 // ── State ─────────────────────────────────────────────────────────
 let staticModel  = null;
@@ -104,32 +107,24 @@ function dist3(a, b) {
  * @returns {number[]|null} 4 values, or null if no face was detected
  */
 export function computeFaceRelativeFeatures(handLm, faceLm) {
-  if (!faceLm) return null;
+  // Matches capture.html's faceRelativeFeatures() exactly — same
+  // fallback behavior (no face => [0,0], never reject the frame).
+  if (!faceLm || !handLm || !handLm.length) return [0, 0];
   const chin     = faceLm[CHIN_IDX];
   const forehead = faceLm[FOREHEAD_IDX];
-  if (!chin || !forehead) return null;
+  if (!chin || !forehead) return [0, 0];
 
-  const faceScale = dist3(forehead, chin) || 1e-6;
-  const thumbTip = handLm[4];
-  const indexTip = handLm[8];
-  const wrist    = handLm[0];
+  const faceHeight = dist3(forehead, chin) || 1e-6;
+  const wrist = handLm[0];
 
   return [
-    dist3(thumbTip, chin)     / faceScale,
-    dist3(thumbTip, forehead) / faceScale,
-    dist3(indexTip, chin)     / faceScale,
-    dist3(wrist, chin)        / faceScale,
+    dist3(wrist, chin)     / faceHeight,
+    dist3(wrist, forehead) / faceHeight,
   ];
 }
 
-/**
- * Flattens hand landmarks + face-relative features into the exact
- * 67-value order the models expect. Returns null if face features
- * can't be computed (no face in frame).
- */
 function buildFeatureVector(landmarks, faceLandmarks) {
   const faceFeat = computeFaceRelativeFeatures(landmarks, faceLandmarks);
-  if (!faceFeat) return null;
   return landmarks.flatMap(p => [p.x, p.y, p.z]).concat(faceFeat);
 }
 
@@ -285,11 +280,13 @@ export function classifyGesture(landmarks, faceLandmarks) {
   if (!landmarks || landmarks.length !== 21) return { label: null, confidence: 0, matched: false };
 
   const flat = buildFeatureVector(landmarks, faceLandmarks);
+  /**
   if (!flat) {
     // No face in frame — reject outright rather than falling back to
     // zeros, which could be misread by the model as "very close".
     return { label: null, confidence: 0, matched: false, faceMissing: true };
   }
+   */
 
   const input = tf.tensor2d([flat]);   // shape [1, 67]
 
@@ -337,12 +334,14 @@ export function classifyMotion(landmarks, faceLandmarks) {
   }
 
   const flat = buildFeatureVector(landmarks, faceLandmarks);
+  /**
   if (!flat) {
     // No face — don't wipe an in-progress buffer over a transient loss
     // (mediapipe.js already applies ghost-frame tolerance upstream);
     // just skip this frame and surface faceMissing for the UI.
     return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0, faceMissing: true };
   }
+     */
 
   // Only collect frame if hand moved enough since last frame
   if (lastFrameFlat) {
