@@ -30,9 +30,11 @@
 
   <!-- Elfa Auth must load before anything renders so a logged-in user
        gets redirected immediately instead of seeing the login form. -->
-  <script src="js/auth.js"></script>
+  <script type="module" src="js/auth.js"></script>
   <script>
+    window.addEventListener('lwauth-ready', () => {
     LWAuth.redirectIfLoggedIn('pages/dashboard.html');
+  });
   </script>
 </head>
 <body class="auth-page">
@@ -96,7 +98,14 @@
     </form>
 
   </div>
-
+  
+  <div id="auth-modal" class="auth-modal hidden">
+    <div class="auth-modal__box">
+      <p id="auth-modal-message" class="auth-modal__message"></p>
+      <button id="auth-modal-close" class="btn btn--primary btn--full">OK</button>
+    </div>
+  </div>
+  
   <script src="js/main.js"></script>
   <script>
     'use strict';
@@ -110,21 +119,44 @@
     }
 
     // BYPASS MODE: no validation against a backend yet — see js/auth.js.
-    function handleLogin() {
-      const email    = document.getElementById('login-email').value;
+    async function handleLogin() {
+      const email    = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      LWAuth.login(email, password);
-      window.location.href = 'pages/dashboard.html';
+      try {
+        await LWAuth.login(email, password);
+        window.location.href = 'pages/dashboard.html';
+      } catch (error) {
+        //alert(error.message)
+        showAuthModal(error.message)
+      }
     }
 
-    function handleRegister() {
+    async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value;
+      const email    = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
       const level    = document.getElementById('reg-level').value;
-      LWAuth.register(name, email, password, level);
-      window.location.href = 'pages/dashboard.html';
+      try {
+        await LWAuth.register(name, email, password, level);
+        window.location.href = 'pages/dashboard.html';
+      } catch (error) {
+        //alert(error.message)
+        showAuthModal(error.message)
+      }
     }
+    
+     const authModal = document.getElementById('auth-modal');
+     const authModalMessage = document.getElementById('auth-modal-message');
+     const authModalClose = document.getElementById('auth-modal-close');
+
+     function showAuthModal(message) {
+       authModalMessage.textContent = message;
+       authModal.classList.remove('hidden');
+     }
+
+     authModalClose.addEventListener('click', () => {
+       authModal.classList.add('hidden');
+     });
   </script>
 </body>
 </html>
