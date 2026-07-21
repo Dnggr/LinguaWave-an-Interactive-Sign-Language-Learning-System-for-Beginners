@@ -89,6 +89,16 @@ export function getMotionModelError() { return motionModelError; }
 let motionBuffer = [];
 let lastFrameFlat = null;
 
+// BUG 10 FIX: a single 20-frame window can land mid-gesture (e.g. the
+// tail end of BOY's closing grasp looks a lot like DAD's open-hand
+// tap once the hand starts relaxing back open). Instead of trusting
+// the very first window, require the SAME label to come back on two
+// windows in a row before calling it matched — the accidental
+// "reopening" window essentially never survives that check because
+// it doesn't repeat.
+let pendingMotionLabel      = null;
+let pendingMotionConfidence = 0;
+
 // ── Face-relative feature helper ─────────────────────────────────
 
 function dist3(a, b) {
@@ -384,14 +394,31 @@ export function classifyMotion(landmarks, faceLandmarks) {
 
   input.dispose();
 
-  if (!rawLabel) return { label: null, confidence: 0, matched: false, buffering: false };
+  if (!rawLabel) {
+    pendingMotionLabel = null;
+    return { label: null, confidence: 0, matched: false, buffering: false };
+  }
 
-  return {
-    label:    rawLabel,
-    confidence,
-    matched:  confidence >= MOTION_THRESHOLD,
-    buffering: false,
-  };
+  const passesThreshold = confidence >= MOTION_THRESHOLD;
+
+  if (!passesThreshold) {
+    pendingMotionLabel = null;
+    // Still surface the low-confidence guess so the UI can show what
+    // it's leaning toward, just not accept it yet.
+    return { label: rawLabel, confidence, matched: false, buffering: false };
+  }
+
+  if (pendingMotionLabel === rawLabel) {
+    // Confirmed on two consecutive windows — accept it.
+    pendingMotionLabel = null;
+    return { label: rawLabel, confidence, matched: true, buffering: false };
+  }
+
+  // First window to clear the threshold for this label — hold it and
+  // wait for the next window to agree before committing.
+  pendingMotionLabel      = rawLabel;
+  pendingMotionConfidence = confidence;
+  return { label: rawLabel, confidence, matched: false, buffering: false, confirming: true };
 }
 
 /**
@@ -399,8 +426,10 @@ export function classifyMotion(landmarks, faceLandmarks) {
  * or exiting assessment mode.
  */
 export function resetMotionBuffer() {
-  motionBuffer  = [];
-  lastFrameFlat = null;
+  motionBuffer        = [];
+  lastFrameFlat        = null;
+  pendingMotionLabel      = null;
+  pendingMotionConfidence = 0;
 }
 
 // ── Utility ───────────────────────────────────────────────────────

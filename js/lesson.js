@@ -385,7 +385,17 @@ function startRenderLoop() {
     let result;
 
     if (detType === 'motion') {
-      result = classifyMotion(dominantLandmarks, faceLandmarks);
+      // BUG 10 FIX: keep classifying through cooldown and the trailing
+      // "relax" motion (hand opening back up after e.g. BOY's grasp)
+      // gets swept into a fresh window and can flip the result to a
+      // different sign (DAD) right after the correct one already
+      // matched. Stop feeding the buffer entirely while cooldown is
+      // active — there's nothing left to detect until the next prompt.
+      if (cooldown) {
+        result = { label: null, confidence: 0, matched: false, buffering: false };
+      } else {
+        result = classifyMotion(dominantLandmarks, faceLandmarks);
+      }
       updateMotionBuffer(result.buffering);
     } else {
       result = classifyGesture(dominantLandmarks, faceLandmarks);
@@ -424,6 +434,7 @@ function handlePracticeFrame(result) {
     if (isMotion) {
       showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
+      resetMotionBuffer();
       debounceCount = 0;
       lastDetected  = null;
     } else {
@@ -528,6 +539,7 @@ function handleAssessmentFrame(result) {
 
   enterCooldown(1500);
   clearTimeout(promptTimer);
+  if (isMotion) resetMotionBuffer();
 
   if (result.label === currentSign) {
     score++;
@@ -635,7 +647,9 @@ function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
   if (result.label) {
-    detectedEl.textContent        = result.label;
+    // BUG 10: motion signs now need two agreeing windows before they
+    // lock in — show that as "holding" so it doesn't look stuck.
+    detectedEl.textContent        = result.confirming ? `${result.label} (hold…)` : result.label;
     detectedEl.style.color        = result.matched ? 'var(--clr-accent)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
     confidenceEl.style.background = result.matched ? 'var(--clr-accent)' : 'var(--clr-yellow)';
