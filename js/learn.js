@@ -71,18 +71,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
 
       if (!cat.comingSoon) {
-        // Functional category — has real SIGNS entries, link straight
-        // into the first sign's camera lesson.
-        const firstSign = window.LWData.getCategorySigns(level, cat.id)[0];
+        const signs = window.LWData.getCategorySigns(level, cat.id);
+        const hasContent = signs.length > 0;
+        // Always pass &category= explicitly so lesson.js opens THIS
+        // category's content, not just whatever category is order:1.
+        // If there's no trained sign yet, skip &sign= entirely --
+        // lesson.js's boot() already shows a friendly "isn't trained
+        // yet" message instead of the camera when totalSigns is 0.
+        const signParam = hasContent ? `&sign=${signs[0]}` : '';
         return `
-          <a href="lesson.html?level=${level}&sign=${firstSign}" class="lesson-card category-card">
+          <a href="lesson.html?level=${level}&category=${cat.id}${signParam}" class="lesson-card category-card">
             <div class="category-card__icon">${icon}</div>
             <span class="category-card__title">${cat.title}</span>
-            <span class="badge badge--${level}">Start →</span>
+            <span class="badge badge--${level}">${hasContent ? 'Start →' : 'Preview'}</span>
           </a>
         `;
       }
-      // Coming-soon category — name only, not clickable yet.
+      // Kept for any future comingSoon category.
       return `
         <div class="lesson-card category-card lesson-card--locked">
           <div class="category-card__icon">${icon}</div>

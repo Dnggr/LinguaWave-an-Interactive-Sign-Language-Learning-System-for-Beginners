@@ -232,6 +232,16 @@ export const SIGN_DICTIONARY = {
     description:  'Thumb of an "A" hand brushes down along the jaw/cheek',
     category: 'family', imageFile: 'girl.gif', detectionType: 'motion',
   },
+  'BROTHER': {
+    fingerStates: [1, 1, 0, 0, 0],
+    description:  'L-hand near forehead (like BOY), then both index fingers meet',
+    category: 'family', imageFile: 'brother.gif', detectionType: 'motion',
+  },
+  'MARRIAGE': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Hands clasp together and interlock in front of the chest',
+    category: 'family', imageFile: 'marriage.gif', detectionType: 'motion',
+  },
 
 
   'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion' },

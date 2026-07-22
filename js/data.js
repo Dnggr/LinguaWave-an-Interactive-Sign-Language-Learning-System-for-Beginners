@@ -55,128 +55,128 @@ const CATEGORIES = [
     source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
   },
   {
-    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: true,
+    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false,
     words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR/DRIVE', 'IN/OUT', 'WITH'],
   },
   {
-    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: true,
+    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false,
     words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'TODAY/NOW', 'FINISH'],
   },
   {
-    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: true,
+    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false,
     words: ['HOT', 'COLD'],
   },
   {
-    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true,
+    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: false,
     words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'WATER', 'CANDY', 'COOKIE', 'HUNGRY'],
   },
   {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true,
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: false,
     words: ['SHIRT', 'PANTS', 'SOCKS', 'SHOES', 'COAT', 'UNDERWEAR'],
   },
   {
-    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true,
+    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: false,
     words: ['WASH', 'HURT', 'BATHROOM', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
   },
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true,
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: false,
     words: ['HAPPY', 'ANGRY', 'SAD', 'SORRY', 'CRY', 'LIKE', 'GOOD/BAD', 'LOVE'],
   },
   {
-    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: true,
+    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: false,
     words: ['PLEASE', 'EXCUSE', 'THANK YOU', 'HELP', 'WHO', 'WHAT', 'WHEN', 'WHERE', 'WHY', 'HOW', 'STOP'],
   },
   {
-    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true,
+    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: false,
     words: ['BIG', 'TALL', 'FULL', 'MORE'],
   },
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true,
+    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: false,
     words: ['BLUE', 'GREEN', 'YELLOW', 'RED', 'BROWN', 'ORANGE', 'GOLD', 'SILVER'],
   },
   {
-    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true,
+    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: false,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true,
+    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: false,
     words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
   },
 
   // ── level=intermediate — PHRASES ────────────────────────────────
   // Level 2 — Basic (Common Phrases), Modules 1–8
   {
-    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: true,
+    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false,
     words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
   },
   {
-    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: true,
+    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false,
     words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
   },
   {
-    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: true,
+    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false,
     words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
   },
   {
-    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: true,
+    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false,
     words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
   },
   {
-    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: true,
+    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false,
     words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
   },
   {
-    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: true,
+    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false,
     words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
   },
   {
-    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: true,
+    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false,
     words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
   },
   {
-    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: true,
+    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false,
     words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
   },
 
   // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
   {
-    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: true,
+    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false,
     words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
   },
   {
-    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: true,
+    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false,
     words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
   },
   {
-    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: true,
+    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false,
     words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
   },
   {
-    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: true,
+    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false,
     words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
   },
   {
-    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: true,
+    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false,
     words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
   },
   {
-    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: true,
+    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false,
     words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
   },
   {
-    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: true,
+    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false,
     words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
   },
   {
-    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: true,
+    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false,
     words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
   },
   {
-    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: true,
+    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false,
     words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
   },
   {
-    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: true,
+    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false,
     words: [
       'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
       'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
@@ -499,6 +499,26 @@ const SIGNS = [
       'This is a MOTION sign — the brushing motion matters, not just the pose',
     ],
     imageUrl: '../assets/images/medium/family/GIRL.png', videoUrl: '../assets/videos/medium/family/GIRL.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_BROTHER', level: 'medium', category: 'family', signId: 'BROTHER', title: 'Brother', order: 5,
+    description: 'Make an "L" handshape near your forehead (same starting position as BOY), then bring both hands together so the index fingers meet, showing a family link.',
+    tips: [
+      'Start with the BOY handshape near the forehead',
+      'Bring both index fingers together at the end of the motion',
+      'This is a MOTION sign — the two-part movement is what separates it from BOY',
+    ],
+    imageUrl: '../assets/images/medium/family/BROTHER.png', videoUrl: '../assets/videos/medium/family/BROTHER.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_MARRIAGE', level: 'medium', category: 'family', signId: 'MARRIAGE', title: 'Marriage', order: 6,
+    description: 'Clasp your hands together in front of your chest, interlocking the fingers, then bring them down slightly — symbolizing two people joining together.',
+    tips: [
+      'Hands fully interlock, not just touch',
+      'The downward motion after clasping matters — this is a MOTION sign',
+      'Keep the motion smooth and centered in front of your chest',
+    ],
+    imageUrl: '../assets/images/medium/family/MARRIAGE.png', videoUrl: '../assets/videos/medium/family/MARRIAGE.mp4', detectionType: 'motion',
   },
 ];
 
