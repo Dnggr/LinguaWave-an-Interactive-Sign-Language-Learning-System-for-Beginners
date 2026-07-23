@@ -29,6 +29,12 @@ signInWithEmailAndPassword,
 signOut, 
 onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -47,6 +53,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 'use strict';
 
@@ -58,6 +65,7 @@ const LW_SESSION_KEY = 'lw_session';
 // session) and again any time login/logout state changes. Keeps
 // localStorage as an accurate cache of who's currently signed in.
 let authReady = false;
+let hasFiredReady = false;
 
 onAuthStateChanged(auth, (firebaseUser) => {
   if (firebaseUser) {
@@ -75,7 +83,11 @@ onAuthStateChanged(auth, (firebaseUser) => {
   }
 
   authReady = true;
-  window.dispatchEvent(new Event('lwauth-ready'));
+  
+  if (!hasFiredReady) {
+    hasFiredReady = true;
+    window.dispatchEvent(new Event('lwauth-ready'));
+  }
 });
 
 
@@ -162,8 +174,12 @@ async function register(name, email, password, level) {
     name: (name || '').trim() || firebaseUser.email.split('@')[0] || 'Learner',
     email: firebaseUser.email,
     level: level || 'basic',
-    joined: new Date().toISOString().slice(0, 10),
+    joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
+
+  const userRef = doc(db, 'users', firebaseUser.uid);
+  await setDoc(userRef, user);
+  
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   return user;
