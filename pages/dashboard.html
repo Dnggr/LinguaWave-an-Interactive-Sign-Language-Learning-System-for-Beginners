@@ -65,7 +65,7 @@
         </div>
         <!-- Continue button — jumps to last incomplete lesson -->
         <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
-        <a href="lesson.html?level=basic&sign=F" class="btn btn--primary btn--lg">
+        <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">
           ▶ Continue Learning
         </a>
       </div>
@@ -107,51 +107,53 @@
       <h2 class="mb-8">Overall Progress</h2>
       <div class="grid-3">
 
-        <!-- BASIC -->
-        <div class="card progress-card">
+        <!-- BASIC / MEDIUM / INTERMEDIATE — filled in by js/dashboard.js
+             from window.LWProgress.getLevelStats(level). Markup below is
+             just a loading-state placeholder. -->
+        <div class="card progress-card" data-level-card="basic">
           <div class="progress-card__head">
             <span class="badge badge--basic">Basic</span>
-            <!-- TODO: calculate pct from Firestore (completed/total * 100) -->
-            <span class="progress-card__pct">19%</span>
+            <span class="progress-card__pct" data-pct>–</span>
           </div>
           <p class="progress-card__label">A–Z Alphabet</p>
           <div class="progress-bar mt-4">
-            <div class="progress-bar__fill" data-progress="19"></div>
+            <div class="progress-bar__fill" data-progress="0"></div>
           </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">5 / 26 signs completed</p>
-          <a href="learn.html?level=basic" class="btn btn--secondary btn--full mt-4">
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
+          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
+          <a href="learn.html?level=basic" class="btn btn--secondary btn--full mt-4" data-cta>
             View Lessons
           </a>
         </div>
 
-        <!-- MEDIUM -->
-        <div class="card progress-card">
+        <div class="card progress-card" data-level-card="medium">
           <div class="progress-card__head">
             <span class="badge badge--medium">Medium</span>
-            <span class="progress-card__pct">0%</span>
+            <span class="progress-card__pct" data-pct>–</span>
           </div>
           <p class="progress-card__label">Basic Vocabulary</p>
           <div class="progress-bar mt-4">
             <div class="progress-bar__fill" data-progress="0"></div>
           </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">0 / 10 signs completed</p>
-          <a href="learn.html?level=medium" class="btn btn--secondary btn--full mt-4">
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
+          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
+          <a href="learn.html?level=medium" class="btn btn--secondary btn--full mt-4" data-cta>
             View Lessons
           </a>
         </div>
 
-        <!-- INTERMEDIATE -->
-        <div class="card progress-card">
+        <div class="card progress-card" data-level-card="intermediate">
           <div class="progress-card__head">
             <span class="badge badge--intermediate">Intermediate</span>
-            <span class="progress-card__pct">0%</span>
+            <span class="progress-card__pct" data-pct>–</span>
           </div>
           <p class="progress-card__label">Full Sentences</p>
           <div class="progress-bar mt-4">
             <div class="progress-bar__fill" data-progress="0"></div>
           </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);">0 / 8 signs completed</p>
-          <a href="learn.html?level=intermediate" class="btn btn--secondary btn--full mt-4">
+          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
+          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
+          <a href="learn.html?level=intermediate" class="btn btn--secondary btn--full mt-4" data-cta>
             View Lessons
           </a>
         </div>
@@ -163,40 +165,13 @@
   <!-- ── SIGNS LEARNED SO FAR (recap) ──────────────────────────── -->
   <!--
     Flowchart node: "Show previous signs (recap)"
-    TODO: populate dynamically from Firestore (user.learnedSigns array).
+    Populated by js/dashboard.js from window.LWProgress.getAllLearnedSigns().
   -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8">Signs You've Learned</h2>
       <div class="recap-grid" id="recap-grid">
-
-        <!-- TODO: generate these from Firestore data in main.js -->
-        <div class="recap-card">
-          <div class="recap-card__img" aria-label="ASL sign for A">A</div>
-          <span>A</span>
-        </div>
-        <div class="recap-card">
-          <div class="recap-card__img" aria-label="ASL sign for B">B</div>
-          <span>B</span>
-        </div>
-        <div class="recap-card">
-          <div class="recap-card__img" aria-label="ASL sign for C">C</div>
-          <span>C</span>
-        </div>
-        <div class="recap-card">
-          <div class="recap-card__img" aria-label="ASL sign for D">D</div>
-          <span>D</span>
-        </div>
-        <div class="recap-card">
-          <div class="recap-card__img" aria-label="ASL sign for E">E</div>
-          <span>E</span>
-        </div>
-
-        <!-- Placeholder for letters not yet learned -->
-        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
-        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
-        <div class="recap-card recap-card--locked" aria-label="Not yet learned">?</div>
-
+        <p class="text-muted" id="recap-empty">Nothing practiced yet — open a lesson to get started!</p>
       </div>
     </div>
   </section>
@@ -209,5 +184,8 @@
   </footer>
 
   <script src="../js/main.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/engine/progress.js"></script>
+  <script src="../js/dashboard.js"></script>
 </body>
 </html>

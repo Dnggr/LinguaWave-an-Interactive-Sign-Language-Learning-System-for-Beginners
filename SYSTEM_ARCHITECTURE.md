@@ -1,6 +1,51 @@
 # LinguaWave — System Architecture & Developer Handoff
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
+> **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
+
+## Rev 3 — What changed (lesson · assessment · progress)
+
+**Scope of this revision:** UI polish and auth were explicitly left alone.
+Everything below is about how a lesson is assessed and how progress is
+tracked.
+
+1. **Per-sign camera assessment is now OPTIONAL practice, not a gate.**
+   `pages/lesson.html`'s "Start Assessment" button is now "🎥 Practice
+   Check (optional)". MediaPipe/webcam accuracy has real limits, so it
+   no longer decides pass/fail or blocks navigation — it just gives
+   the learner a live feedback loop if they want it. Opening a sign at
+   all is enough to mark it "practiced" (`LWProgress.recordSignPracticed`).
+
+2. **New graded assessment layer: one per CATEGORY, one per LEVEL.**
+   `pages/quiz.html` + `js/quiz.js` now run a real assessment with
+   three rounds, matching the flowchart's "End-of-lesson assessment" /
+   "Score ≥ 80%?" nodes, just resolved per category and per level:
+     - **Round 1 — Multiple Choice** (graded): read a description, pick the sign.
+     - **Round 2 — Identification** (graded): see the sign, pick its name.
+     - **Round 3 — Camera Check** (optional, bonus only): live MediaPipe
+       gesture/motion detection. Never counted toward the 80% pass
+       threshold — same reasoning as #1.
+   `?level=X&category=Y` runs a category assessment; `?level=X&final=1`
+   runs a level-final assessment across every category in that level.
+
+3. **New progress engine: `js/engine/progress.js` (`window.LWProgress`).**
+   Single source of truth for: signs practiced, category-assessment
+   results, level-assessment results, and unlock rules (a category
+   unlocks once the previous one is passed; a level's final assessment
+   unlocks once every category in it is passed; the next level unlocks
+   once the current level's final assessment is passed). Storage is
+   `localStorage` today (`lw_progress_v2`) but every read/write goes
+   through this module, so swapping in Firestore later only touches
+   this one file.
+
+4. **`js/learn.js` and `pages/dashboard.html` now read real progress**
+   instead of hardcoded numbers/MOCK_PROGRESS — lock icons, "✔ Passed"
+   badges, category/level assessment CTAs, and the "Signs You've
+   Learned" recap grid are all driven by `LWProgress`.
+
+**Not changed in this revision:** `js/auth.js` (still bypass mode),
+all page styling/layout, and the admin-free content model
+(`js/data.js` is still hand-edited — see below).
 
 ---
 

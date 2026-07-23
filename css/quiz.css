@@ -22,3 +22,12 @@
 .quiz-results__score { font-family: var(--font-display); font-size: 5rem; font-weight: 700; color: var(--clr-accent); line-height: 1; margin-bottom: var(--space-4); }
 .quiz-actions { }
 @media (max-width: 480px) { .quiz-options { grid-template-columns: 1fr; } }
+
+/* ── Assessment engine additions (js/quiz.js) ─────────────────────── */
+.quiz-feedback {
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+  font-size: var(--fs-sm); font-weight: 600;
+}
+.quiz-feedback--success { background: rgba(63,185,80,.1); color: var(--clr-accent); }
+.quiz-feedback--error   { background: rgba(248,81,73,.1); color: var(--clr-red); }
+.quiz-option:disabled { cursor: default; opacity: .85; }

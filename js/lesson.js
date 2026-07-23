@@ -60,6 +60,29 @@
   instead of dominantLandmarks, and isFaceModelReady()/getFaceModelError()
   were replaced by isModelReady()/getModelError() (one combined model
   now, not a separate hand + face model).
+
+  REV 3 — Assessment moved out of the per-sign lesson page
+  ─────────────────────────────────────────────────────────────────
+  Per product decision: live camera/motion detection inside a single
+  lesson is now an OPTIONAL "Practice Check" only — MediaPipe/webcam
+  accuracy is too inconsistent to gate progress on one sign at a
+  time. It no longer decides pass/fail or unlocks anything; it's just
+  a formative confidence check the learner can try or skip.
+
+  The REAL, graded assessment now happens once per CATEGORY (and once
+  more per LEVEL) in pages/quiz.html, which mixes multiple choice,
+  identification, and an optional camera round. See js/quiz.js and
+  js/engine/progress.js.
+
+  So here:
+    - Viewing/opening a sign now calls LWProgress.recordSignPracticed()
+      immediately (no camera needed) — this is what "Signs You've
+      Learned" on the dashboard and the learn.js grid track.
+    - The old "Start Assessment" button is now "🎥 Practice Check
+      (optional)" and never blocks navigation.
+    - "Next" on the last sign in a lesson now goes straight to
+      pages/quiz.html?level=X&category=Y (the category assessment)
+      instead of forcing the in-page camera quiz.
   ══════════════════════════════════════════════════════════════════
 */
 
@@ -219,6 +242,10 @@ function updateLessonMeta() {
   const backBtnEl = document.getElementById('btn-back-to-lessons');
   if (backBtnEl) backBtnEl.href = `learn.html?level=${level}`;
 
+  // REV 3: viewing a sign is enough to count as "practiced" — the
+  // graded check now happens in the category assessment, not here.
+  window.LWProgress?.recordSignPracticed?.(level, category, sign);
+
   const stripBadgeEl = document.getElementById('lesson-strip-badge');
   if (stripBadgeEl) {
     stripBadgeEl.textContent = `${level[0].toUpperCase()}${level.slice(1)} · ${categoryMeta?.title ?? category}`;
@@ -260,14 +287,9 @@ function updateLessonMeta() {
     if (placeholder) placeholder.style.display = 'flex';
   }
 
-  // BUG 9 FIX: category lessons assess every sign in the category at
-  // once — make that explicit on the button up front instead of
-  // surprising the learner mid-assessment.
-  if (startBtnEl) {
-    startBtnEl.textContent = isCategoryAssessment
-      ? `🎯 Start Assessment (${totalSigns} signs)`
-      : '🎯 Start Assessment';
-  }
+  // REV 3: this is now an optional, ungraded practice check — the
+  // real assessment lives in quiz.html (category / level).
+  if (startBtnEl) startBtnEl.textContent = '🎥 Practice Check (optional)';
 
   // BUG 5 FIX: use .onclick assignment (idempotent) instead of
   // addEventListener, which stacks duplicate listeners if called twice.
@@ -305,10 +327,12 @@ function setupNavButtons() {
   if (btnNext) {
     const isLast = signIdx >= totalSigns - 1;
     if (isLast) {
-      btnNext.textContent = 'Go to Assessment →';
+      // REV 3: the graded check is now the category assessment page,
+      // not the in-lesson camera quiz (which is optional practice only).
+      btnNext.textContent = 'Finish → Category Assessment 📝';
       btnNext.onclick = () => {
         shutdown();
-        startAssessment();
+        window.location = `quiz.html?level=${level}&category=${category}`;
       };
     } else {
       btnNext.textContent = 'Next Sign →';
@@ -600,51 +624,32 @@ function endAssessment() {
     }
   }
 
+  // REV 3: this camera round is optional practice, not a gate — always
+  // record the sign(s) as practiced and always let the learner continue,
+  // whatever the score. The graded pass/fail lives in quiz.html.
   if (overlayEl && finalScoreEl) {
     finalScoreEl.textContent = `${Math.round(pct * 100)}%`;
     document.getElementById('overlay-result-title').textContent =
-      passed ? '🎉 Lesson Passed!' : 'Not quite — keep practicing!';
+      passed ? '🎉 Nice practice run!' : 'Good attempt — keep practicing!';
     document.getElementById('overlay-result-msg').textContent =
       passed
-        ? 'Great work! Your progress has been saved. The next lesson is now unlocked.'
-        : `You scored ${Math.round(pct * 100)}%. You need 80% to pass. Review the sign${quizSigns.length > 1 ? 's' : ''} below and try again.`;
+        ? 'That looked great. This was just an optional camera practice check — head to the category assessment when you\u2019re ready.'
+        : `You scored ${Math.round(pct * 100)}% this time. Camera detection has its limits, so this is just optional practice — it won\u2019t stop you from continuing.`;
 
     const continueBtn = document.getElementById('btn-overlay-continue');
     const retryBtn    = document.getElementById('btn-overlay-retry');
-    if (continueBtn) continueBtn.style.display = passed ? '' : 'none';
-    if (retryBtn)    retryBtn.style.display    = passed ? 'none' : '';
+    // Both actions are always available now — nothing is gated.
+    if (continueBtn) continueBtn.style.display = '';
+    if (retryBtn)    retryBtn.style.display    = '';
 
     overlayEl.style.display = 'flex';
 
-    if (passed) {
-      // BUG 8: category assessments mark every sign in the category
-      // as passed at this score (single lw_progress schema, unchanged
-      // shape — dashboard.html keeps working without changes).
-      quizSigns.forEach(s => saveProgress(s, pct));
-    }
+    quizSigns.forEach(s => window.LWProgress?.recordSignPracticed?.(level, category, s));
   }
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    startBtnEl.textContent   = isCategoryAssessment
-      ? `Retry Assessment (${totalSigns} signs)`
-      : 'Retry Assessment';
-  }
-}
-
-// ── Progress persistence (localStorage → TODO: Firestore) ─────────
-
-function saveProgress(signId, pct) {
-  try {
-    const key    = 'lw_progress';
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    if (!stored[level]) stored[level] = {};
-    const prev = stored[level][signId]?.score ?? 0;
-    stored[level][signId] = { score: Math.max(prev, pct), completedAt: new Date().toISOString() };
-    localStorage.setItem(key, JSON.stringify(stored));
-    console.log(`[lesson.js] Progress saved: ${level}/${signId} = ${Math.round(pct * 100)}%`);
-  } catch (e) {
-    console.warn('[lesson.js] Could not save progress:', e);
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
   }
 }
 
@@ -744,9 +749,7 @@ window.closeOverlay = function() {
 window.retryLesson = function() {
   closeOverlay();
   if (startBtnEl) {
-    startBtnEl.textContent = isCategoryAssessment
-      ? `Retry Assessment (${totalSigns} signs)`
-      : 'Retry Assessment';
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
     startBtnEl.style.display = '';
   }
   if (promptBoxEl) promptBoxEl.style.display = 'none';
@@ -764,6 +767,8 @@ window.continueToNext = function() {
   if (nextIdx < totalSigns) {
     window.location = navUrl(signOrder[nextIdx]);
   } else {
-    window.location = `dashboard.html`;
+    // REV 3: last sign in the category → the graded category assessment,
+    // not straight to the dashboard.
+    window.location = `quiz.html?level=${level}&category=${category}`;
   }
 };

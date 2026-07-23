@@ -2,35 +2,34 @@
 <html lang="en">
 <head>
   <!--
-    pages/quiz.html — End-of-Lesson Assessment
+    pages/quiz.html — Category / Level Assessment
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Multiple-choice quiz shown after all signs in a lesson
-               have been viewed.  Presents questions one at a time.
-               Submits score; if ≥80% → saves progress and redirects
-               to dashboard; if <80% → shows "Retry" option.
+    PURPOSE  : The GRADED assessment. Runs once at the end of every
+               category, and once more at the end of a level. Three
+               rounds: Multiple Choice, Identification (both graded,
+               80% combined to pass), and an OPTIONAL Camera Check
+               (MediaPipe motion/gesture detection — bonus only, never
+               blocks passing, since webcam accuracy has real limits).
 
-    CONNECTS : ← pages/lesson.html  (triggered after last sign)
-               → pages/dashboard.html  (on pass: score ≥80%)
-               → pages/feedback.html   (after completing a full level)
-               → pages/lesson.html     (on fail: retry)
+    CONNECTS : ← pages/lesson.html   (Finish button on last sign)
+               ← pages/learn.html    (category / level assessment CTAs)
+               → pages/lesson.html   (retry / review on fail)
+               → pages/quiz.html     (?final=1 once every category passes)
+               → pages/feedback.html (after a level assessment passes)
+               → pages/dashboard.html
 
-    URL PARAMS: ?level=basic&lesson=F  (or just ?level=basic for whole level)
-
-    TODO     : js/quiz.js — fetch questions from Firestore collection
-               "questions" where level == param.
-               On submit: compute score, write result to Firestore
-               user.progress.{level}.completedLessons[lesson].score.
-               If score < 0.8 → show retry modal.
-               If all lessons in level done → redirect to feedback.html.
+    URL PARAMS: ?level=basic&category=alphabet   (category assessment)
+                ?level=basic&final=1              (level assessment)
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quiz — LinguaWave</title>
+  <title>Assessment — LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/quiz.css" />
+  <link rel="stylesheet" href="../css/lesson-camera.css" />
 
   <script type="module" src="../js/auth.js"></script>
   <script>
@@ -55,102 +54,78 @@
     </div>
   </nav>
 
-  <!-- ── QUIZ WRAPPER ──────────────────────────────────────────── -->
   <section class="section section--sm">
     <div class="container container--narrow">
 
-      <!-- Quiz header -->
+      <!-- Header -->
       <div class="quiz-header">
         <div>
-          <p class="section__eyebrow">End-of-Lesson Assessment</p>
-          <h1 id="quiz-title">Basic Alphabet Quiz</h1>
-          <p class="text-muted mt-4">Answer all questions. You need 80% or higher to pass.</p>
+          <p class="section__eyebrow" id="round-badge">Round 1 of 2: Multiple Choice</p>
+          <h1 id="assessment-title">Category Assessment</h1>
+          <p class="text-muted mt-4" id="assessment-subtitle">Basic Level · Alphabet</p>
         </div>
-        <!-- Question counter -->
         <div class="quiz-counter">
-          <span id="q-current">1</span> / <span id="q-total">5</span>
+          <span id="q-counter">1 / 10</span>
         </div>
       </div>
 
-      <!-- Progress bar showing quiz completion -->
       <div class="progress-bar mt-4">
         <div class="progress-bar__fill" data-progress="0" id="quiz-progress"></div>
       </div>
 
-      <!-- ── QUESTION CARD ──────────────────────────────────────── -->
-      <!--
-        One question displayed at a time.
-        TODO: js/quiz.js renders questions dynamically from Firestore.
-              Question fields: id, prompt, imageUrl (optional),
-              options: [{id, text}], correctId.
-      -->
+      <!-- ── QUESTION CARD (Multiple Choice + Identification share this) ── -->
       <div class="quiz-question card mt-8" id="question-card">
+        <p class="quiz-question__prompt" id="q-prompt" style="white-space: pre-line;">Loading…</p>
 
-        <!-- Question prompt -->
-        <p class="quiz-question__prompt" id="q-prompt">
-          Which image shows the correct ASL hand sign for the letter <strong>F</strong>?
+        <div class="quiz-question__img-clue" id="q-image-wrap" style="display:none;">
+          <img id="q-image" alt="Sign reference" style="max-height:180px; border-radius: var(--radius-md); display:none;" />
+          <div class="quiz-question__img-placeholder" id="q-image-fallback"></div>
+        </div>
+
+        <div class="quiz-options" id="q-options"></div>
+
+        <div class="quiz-feedback mt-4" id="q-feedback" style="display:none;"></div>
+      </div>
+
+      <!-- ── OPTIONAL CAMERA ROUND — GATE ─────────────────────────── -->
+      <div class="card mt-8 text-center" id="camera-gate-card" style="display:none;">
+        <h2>🎥 Optional Camera Check</h2>
+        <p class="text-muted mt-4">
+          Your graded score so far is <strong id="gate-score-so-far">0%</strong>. You can optionally try an extra
+          live camera round for bonus practice — webcam sign detection has real accuracy limits, so this round
+          is never counted against you and never required.
         </p>
-
-        <!-- Optional: sign image clue (show image, ask for letter — or vice versa) -->
-        <!--
-          TODO: toggle between two question modes:
-            Mode A — show image, pick correct letter
-            Mode B — show letter, pick correct image
-        -->
-        <div class="quiz-question__img-clue" id="q-img-clue">
-          <!-- <img src="…" alt="Sign image clue" /> -->
-          <div class="quiz-question__img-placeholder">
-            Sign image displayed here (if applicable)
-          </div>
+        <div class="flex-center gap-4 mt-8">
+          <button class="btn btn--secondary btn--lg" onclick="startCameraRound()">🎥 Try Camera Check</button>
+          <button class="btn btn--primary btn--lg" onclick="skipCameraRound()">Skip → See Results</button>
         </div>
+      </div>
 
-        <!-- Answer options — 4 choices -->
-        <div class="quiz-options" id="q-options">
-          <button class="quiz-option" data-option="A" onclick="selectOption(this)">A</button>
-          <button class="quiz-option" data-option="B" onclick="selectOption(this)">B</button>
-          <button class="quiz-option" data-option="C" onclick="selectOption(this)">C</button>
-          <button class="quiz-option" data-option="F" onclick="selectOption(this)">F ← correct</button>
-          <!-- TODO: randomise option order in js/quiz.js, never hardcode correct -->
+      <!-- ── OPTIONAL CAMERA ROUND — LIVE ─────────────────────────── -->
+      <div class="card mt-8" id="camera-round-card" style="display:none;">
+        <div class="mode-bar mode-bar--assessment">🎥 Optional Camera Check (bonus, not graded)</div>
+        <div class="camera-viewport mt-4">
+          <div class="camera-status camera-status--loading" id="quiz-camera-status">⏳ Starting camera…</div>
+          <video id="quiz-webcam" autoplay playsinline muted aria-label="Live webcam feed"></video>
+          <canvas id="quiz-canvas" aria-hidden="true"></canvas>
         </div>
-
-        <!-- Submit / Next -->
-        <div class="quiz-actions mt-8">
-          <button class="btn btn--primary btn--lg btn--full" id="btn-submit" onclick="submitAnswer()" disabled>
-            Submit Answer
-          </button>
+        <div class="assessment-prompt-box mt-4">
+          <p class="assessment-prompt" id="quiz-camera-prompt">Get ready…</p>
+          <div class="assessment-feedback" id="quiz-camera-feedback" style="display:none;"></div>
         </div>
+        <div class="score-display mt-3" id="quiz-camera-score">Bonus score: 0 / 0</div>
+      </div>
 
-        <!-- Feedback (shown after submit) -->
-        <div class="quiz-feedback" id="q-feedback" style="display:none;">
-          <!-- js/quiz.js injects .alert--success or .alert--error here -->
-        </div>
-
-      </div><!-- /question-card -->
-
-      <!-- ── RESULTS CARD (shown after last question) ──────────── -->
-      <!--
-        TODO: js/quiz.js hides question-card and shows results-card
-               when all questions are answered.
-      -->
+      <!-- ── RESULTS CARD ──────────────────────────────────────────── -->
       <div class="quiz-results card mt-8" id="results-card" style="display:none;">
         <div class="text-center">
           <div class="quiz-results__score" id="results-score">80%</div>
           <h2 id="results-title">You passed! 🎉</h2>
-          <p class="text-muted mt-4" id="results-message">
-            Great job! Your progress has been saved and the next lesson is now unlocked.
-          </p>
-          <div class="flex-center gap-4 mt-8">
-            <!-- Pass path: save progress → go to dashboard -->
-            <a href="dashboard.html" class="btn btn--primary btn--lg" id="btn-continue">
-              Continue to Dashboard →
-            </a>
-            <!-- Fail path: retry lesson -->
-            <a href="lesson.html?level=basic&sign=F" class="btn btn--ghost" id="btn-retry" style="display:none;">
-              Retry Lesson
-            </a>
-          </div>
+          <p class="text-muted mt-4" id="results-message">Great job!</p>
+          <ul class="mt-4" style="list-style:none; padding:0; display:flex; flex-direction:column; gap:6px; color:var(--clr-text-muted); font-size:var(--fs-sm);" id="results-breakdown"></ul>
+          <div class="flex-center gap-4 mt-8" id="results-actions" style="flex-wrap:wrap;"></div>
         </div>
-      </div><!-- /results-card -->
+      </div>
 
     </div>
   </section>
@@ -160,6 +135,8 @@
   </footer>
 
   <script src="../js/main.js"></script>
-  <script src="../js/quiz.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/engine/progress.js"></script>
+  <script type="module" src="../js/quiz.js"></script>
 </body>
 </html>

@@ -245,12 +245,21 @@
                    line-height: 1.4;"
           ></div>
 
-          <!-- Assessment section -->
+          <!-- Assessment section — REV 3: this is now an OPTIONAL,
+               ungraded camera practice check. It never blocks progress;
+               the graded assessment lives in quiz.html per category. -->
           <div class="assessment-panel mt-4">
 
-            <!-- Start button (practice → assessment) -->
-            <button class="btn btn--primary btn--full btn--lg" id="btn-start-assessment">
-              🎯 Start Assessment
+            <p class="text-muted" style="font-size: var(--fs-xs); margin-bottom: var(--space-2);">
+              Optional — webcam sign detection has real accuracy limits, so this
+              won't block your progress. Your real assessment happens after all
+              signs in this category, mixing multiple choice, identification,
+              and an optional camera round.
+            </p>
+
+            <!-- Start button (practice check only, not graded) -->
+            <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
+              🎥 Practice Check (optional)
             </button>
 
             <!-- Assessment prompt (shown during assessment only) -->
@@ -329,6 +338,8 @@
     content (title, description, tips, image) via window.LWData.getSign().
   -->
   <script src="../js/data.js"></script>
+  <!-- Progress engine: tracks practiced signs / category & level assessments. -->
+  <script src="../js/engine/progress.js"></script>
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).
