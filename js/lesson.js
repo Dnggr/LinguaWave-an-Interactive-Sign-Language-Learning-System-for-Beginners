@@ -36,8 +36,7 @@
           features), but there was no UI signal for "no face detected"
   ─────────────────────────────────────────────────────────────────
   WHERE:   startRenderLoop() classify calls
-  FIX:     classifyGesture/classifyMotion now return `faceMissing`.
-           A new non-blocking badge (#face-warn, same pattern as
+  FIX:     A non-blocking badge (#face-warn, same pattern as
            #classifier-warn) tells the user to step back so their
            whole head is visible.
 
@@ -54,11 +53,18 @@
            are untouched — still one letter, one assessment, exactly
            like before.
 
+  CAPTURE-FORMAT UPDATE — mediapipe.js now uses HolisticLandmarker and
+  tracks BOTH hands (left/right) instead of a single "dominant" hand,
+  to match capturesystem's new 130-value feature vector. processFrame()
+  now returns leftHandLandmarks/rightHandLandmarks/anyHandPresent
+  instead of dominantLandmarks, and isFaceModelReady()/getFaceModelError()
+  were replaced by isModelReady()/getModelError() (one combined model
+  now, not a separate hand + face model).
   ══════════════════════════════════════════════════════════════════
 */
 
 import { startCamera, stopCamera }             from '../js/camera/cameraUtils.js';
-import { initMediaPipe, processFrame, isFaceModelReady, getFaceModelError } from '../js/tracking/mediapipe.js';
+import { initMediaPipe, processFrame, isModelReady, getModelError } from '../js/tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
@@ -333,8 +339,8 @@ async function bootDetectionEngine() {
   // overlay immediately so the video is visible.
   setStatus('', 'ready');
 
-  if (!isFaceModelReady()) {
-    setFaceWarn(`⚠️ Face tracking failed to load — sign detection is disabled until this recovers. (${getFaceModelError() ?? 'unknown error'})`);
+  if (!isModelReady()) {
+    setFaceWarn(`⚠️ Hand/face tracking failed to load — sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
   }
 
   try {
@@ -362,11 +368,12 @@ function startRenderLoop() {
 
     if (!videoEl || videoEl.readyState < 2) return;
 
-    const { landmarks, dominantLandmarks, faceLandmarks } = processFrame(videoEl);
+    const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, anyHandPresent } = processFrame(videoEl);
+    const handsForDrawing = [leftHandLandmarks, rightHandLandmarks].filter(Boolean);
 
-    if (landmarks.length > 0) {
-      drawSkeleton(ctx, landmarks, canvasEl.width, canvasEl.height);
-      setHandStatus(landmarks.length);
+    if (handsForDrawing.length > 0) {
+      drawSkeleton(ctx, handsForDrawing, canvasEl.width, canvasEl.height);
+      setHandStatus(handsForDrawing.length);
     } else {
       clearCanvas(ctx, canvasEl.width, canvasEl.height);
       setHandStatus(0);
@@ -375,11 +382,11 @@ function startRenderLoop() {
     }
 
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
-    if (isFaceModelReady()) {
+    if (isModelReady()) {
       setFaceWarn(faceLandmarks ? '' : '⚠️ Face not detected — step back so your whole head is visible.');
     }
 
-    if (!dominantLandmarks) return;
+    if (!anyHandPresent) return;
 
     const detType = getDetectionType(sign);
     let result;
@@ -394,11 +401,11 @@ function startRenderLoop() {
       if (cooldown) {
         result = { label: null, confidence: 0, matched: false, buffering: false };
       } else {
-        result = classifyMotion(dominantLandmarks, faceLandmarks);
+        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
       }
       updateMotionBuffer(result.buffering);
     } else {
-      result = classifyGesture(dominantLandmarks, faceLandmarks);
+      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
     }
 
     updateConfidenceUI(result);

@@ -1,15 +1,24 @@
 /*
-  js/tracking/mediapipe.js — MediaPipe Hand + Face Tracking Module
+  js/tracking/mediapipe.js — MediaPipe Holistic Tracking Module
   ─────────────────────────────────────────────────────────────────
-  PURPOSE  : Loads MediaPipe HandLandmarker AND FaceLandmarker and
-             extracts landmark coordinates from each webcam frame.
+  PURPOSE  : Loads MediaPipe HolisticLandmarker and extracts left-hand,
+             right-hand, and face landmark data from each webcam frame.
              Returns raw landmark data ONLY — no drawing, no classification.
   CONNECTS : Imported by js/lesson.js.
 
-  UPDATE (face-relative landmarks): FaceLandmarker added alongside
-  HandLandmarker so classifier.js can compute face-relative distance
-  features (see 01_face_relative_landmarks_guide.txt §3/§5). Mirrors
-  the exact ghost-frame tolerance pattern already used for hands.
+  UPDATE (holistic switch — matches capture.html): capturesystem now
+  uses ONE HolisticLandmarker instead of separate HandLandmarker +
+  FaceLandmarker, and keeps BOTH hands (not a single "dominant" hand)
+  so the exported training JSON and this live-inference pipeline stay
+  in lockstep. This file mirrors capture.html's buildFeatureVec()
+  exactly — same ghost-frame handling, same 130-value layout:
+
+    [63 left-hand xyz][63 right-hand xyz][leftPresent][rightPresent]
+    [handToChin][handToForehead]  = 130 values total.
+
+  If you ever change this layout, change it in capture.html first,
+  then copy the change here — the two MUST match exactly or the
+  model gets inconsistent input between training and inference.
   ─────────────────────────────────────────────────────────────────
 
   LANDMARK INDICES (0–20) — hand:
@@ -22,171 +31,183 @@
 */
 
 import {
-  HandLandmarker,
-  FaceLandmarker,
+  HolisticLandmarker,
   FilesetResolver,
-} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm';
+} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 
 // ── Module state ──────────────────────────────────────────────────
-let handLandmarker  = null;
-let faceLandmarker  = null;
-let faceModelError  = null;
-let lastVideoTime   = -1;
+let holisticLandmarker = null;
+let modelError         = null;
+let lastVideoTime      = -1;
 
-// Ghost-frame persistence: tolerate up to 5 consecutive empty frames
-// (~167ms at 30fps) before declaring the hand/face truly gone.
-const GHOST_FRAMES = 5;
+// Ghost-frame persistence — same tolerance pattern as capture.html,
+// tracked independently per hand + face so one occluded hand doesn't
+// zero out the other or the face mid-sign.
+const GHOST_FRAMES = 10;
 
-let ghostCounter       = 0;
-let lastGoodLandmarks  = null;
-let lastGoodHandedness = null;
-let lastGoodDominant   = null;
+let lastGoodLeftPts   = null, leftGhostCounter   = 0;
+let lastGoodRightPts  = null, rightGhostCounter  = 0;
 
-let faceGhostCounter   = 0;
-let lastGoodFace       = null;
+const FACE_GHOST_FRAMES = 10;
+let faceGhostCounter    = 0;
+let lastGoodForehead    = null;
+let lastGoodChin        = null;
+
+const FOREHEAD_IDX = 10;   // MediaPipe canonical face mesh: top of forehead
+const CHIN_IDX     = 152;  // MediaPipe canonical face mesh: bottom of chin
+
+const HAND_ZERO = new Array(63).fill(0);
+
+let anyHandPresent = false;
 
 // ── Public API ────────────────────────────────────────────────────
 
-/**
- * Loads the MediaPipe HandLandmarker + FaceLandmarker models from CDN.
- * Must be awaited once before calling processFrame().
- * Hand model is required (throws on failure). Face model is best-effort:
- * if it fails, processFrame() will keep returning faceLandmarks: null
- * and classifier.js will reject detections (see classifier.js comments).
- */
 export async function initMediaPipe() {
-  console.log('[mediapipe] Loading HandLandmarker model…');
+  console.log('[mediapipe] Loading HolisticLandmarker model…');
 
   const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm'
   );
 
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath:
-        'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-      delegate: 'GPU',   // Falls back to CPU automatically if GPU unavailable
-    },
-    runningMode:                'VIDEO',
-    numHands:                   2,
-    minHandDetectionConfidence: 0.7,
-    minHandPresenceConfidence:  0.7,
-    minTrackingConfidence:      0.6,
-  });
-
-  console.log('[mediapipe] HandLandmarker model ready.');
-
-  console.log('[mediapipe] Loading FaceLandmarker model…');
   try {
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+    holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
       baseOptions: {
-        modelAssetPath:
-          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task',
         delegate: 'CPU',
       },
       runningMode: 'VIDEO',
-      numFaces: 1,
+      minFaceDetectionConfidence:  0.5,
+      minFacePresenceConfidence:   0.5,
+      minFaceSuppressionThreshold: 0.3,
+      minPoseDetectionConfidence:  0.5,
+      minPoseSuppressionThreshold: 0.3,
+      minHandLandmarksConfidence:  0.5,
     });
-    console.log('[mediapipe] FaceLandmarker model ready.');
+    console.log('[mediapipe] HolisticLandmarker model ready.');
   } catch (e) {
-    console.error('[mediapipe] FaceLandmarker failed to load:', e.message);
-    faceModelError = e.message;
-    faceLandmarker = null;
+    console.error('[mediapipe] HolisticLandmarker failed to load:', e.message);
+    modelError = e.message;
+    throw e; // hand tracking is required
   }
+}
+
+function firstOf(list) {
+  if (!list || list.length === 0) return null;
+  return Array.isArray(list[0]) ? list[0] : list;
+}
+
+function dist3(a, b) {
+  const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function faceRelativeFeatures(handLandmarks, forehead, chin) {
+  if (!forehead || !chin || !handLandmarks || !handLandmarks.length) return [0, 0];
+  const wrist = handLandmarks[0];
+  const faceHeight = dist3(forehead, chin) || 1e-6;
+  return [
+    dist3(wrist, chin)     / faceHeight,
+    dist3(wrist, forehead) / faceHeight,
+  ];
+}
+
+/**
+ * Builds the 130-value feature vector, IDENTICAL layout to
+ * capture.html's buildFeatureVec():
+ *   [63 left xyz][63 right xyz][leftPresent][rightPresent]
+ *   [handToChin][handToForehead]
+ */
+export function buildFeatureVec(leftPts, rightPts, forehead, chin) {
+  const leftPresent  = leftPts  ? 1 : 0;
+  const rightPresent = rightPts ? 1 : 0;
+  if (!leftPts && !rightPts) return null;
+
+  const faceExtra = faceRelativeFeatures(rightPts || leftPts, forehead, chin);
+  const leftVec   = leftPts  ? leftPts.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
+  const rightVec  = rightPts ? rightPts.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
+
+  return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceExtra];
 }
 
 /**
  * Processes a single video frame and returns hand + face landmark data.
  * Call this inside a requestAnimationFrame loop.
- *
- * @param {HTMLVideoElement} videoElement
- * @returns {{
- *   landmarks:          Array<Array<{x,y,z}>>,
- *   handedness:         Array<{categoryName, score}>,
- *   dominantLandmarks:  Array<{x,y,z}> | null,
- *   faceLandmarks:      Array<{x,y,z}> | null
- * }}
  */
 export function processFrame(videoElement) {
-  if (!handLandmarker) {
-    return { landmarks: [], handedness: [], dominantLandmarks: null, faceLandmarks: null };
+  if (!holisticLandmarker) {
+    return {
+      leftHandLandmarks: null, rightHandLandmarks: null, faceLandmarks: null,
+      forehead: null, chin: null, anyHandPresent: false, featureVec: null,
+    };
   }
 
   if (videoElement.currentTime === lastVideoTime) {
+    const leftPts   = lastGoodLeftPts;
+    const rightPts  = lastGoodRightPts;
+    const forehead  = lastGoodForehead;
+    const chin      = lastGoodChin;
     return {
-      landmarks:         lastGoodLandmarks  ?? [],
-      handedness:        lastGoodHandedness ?? [],
-      dominantLandmarks: lastGoodDominant,
-      faceLandmarks:     lastGoodFace,
+      leftHandLandmarks: leftPts, rightHandLandmarks: rightPts, faceLandmarks: null,
+      forehead, chin, anyHandPresent, featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin),
     };
   }
   lastVideoTime = videoElement.currentTime;
 
-  const now = performance.now();
+  const now    = performance.now();
+  const result = holisticLandmarker.detectForVideo(videoElement, now);
 
-  // ── Hands (unchanged logic) ───────────────────────────────────
-  const result    = handLandmarker.detectForVideo(videoElement, now);
-  const landmarks = result.landmarks  ?? [];
-  const handedness= result.handedness ?? [];
+  const leftRaw  = firstOf(result.leftHandLandmarks);
+  const rightRaw = firstOf(result.rightHandLandmarks);
+  const faceRaw  = firstOf(result.faceLandmarks);
 
-  if (landmarks.length > 0) {
-    ghostCounter       = 0;
-    lastGoodLandmarks  = landmarks;
-    lastGoodHandedness = handedness;
-    lastGoodDominant   = pickDominantHand(landmarks, handedness);
+  // ── Face — same ghost-fill pattern as capture.html ────────────
+  let forehead, chin;
+  if (faceRaw) {
+    faceGhostCounter = 0;
+    forehead = faceRaw[FOREHEAD_IDX];
+    chin     = faceRaw[CHIN_IDX];
+    lastGoodForehead = forehead;
+    lastGoodChin     = chin;
   } else {
-    ghostCounter++;
-    if (ghostCounter > GHOST_FRAMES || !lastGoodLandmarks) {
-      lastGoodLandmarks  = null;
-      lastGoodHandedness = null;
-      lastGoodDominant   = null;
+    faceGhostCounter++;
+    if (faceGhostCounter <= FACE_GHOST_FRAMES && lastGoodForehead && lastGoodChin) {
+      forehead = lastGoodForehead;
+      chin     = lastGoodChin;
+    } else {
+      forehead = null; chin = null;
+      lastGoodForehead = null; lastGoodChin = null;
     }
   }
 
-  // ── Face (same ghost-frame tolerance pattern) ─────────────────
-  if (faceLandmarker) {
-    const faceResult = faceLandmarker.detectForVideo(videoElement, now);
-    if (faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0) {
-      faceGhostCounter = 0;
-      lastGoodFace      = faceResult.faceLandmarks[0];
-    } else {
-      faceGhostCounter++;
-      if (faceGhostCounter > GHOST_FRAMES || !lastGoodFace) {
-        lastGoodFace = null;
-      }
-    }
-  }
+  // ── Left hand, ghost-filled ────────────────────────────────────
+  let leftPts = leftRaw;
+  if (leftPts) { lastGoodLeftPts = leftPts; leftGhostCounter = 0; }
+  else if (lastGoodLeftPts && leftGhostCounter < GHOST_FRAMES) { leftPts = lastGoodLeftPts; leftGhostCounter++; }
+  else { leftPts = null; lastGoodLeftPts = null; }
+
+  // ── Right hand, ghost-filled ───────────────────────────────────
+  let rightPts = rightRaw;
+  if (rightPts) { lastGoodRightPts = rightPts; rightGhostCounter = 0; }
+  else if (lastGoodRightPts && rightGhostCounter < GHOST_FRAMES) { rightPts = lastGoodRightPts; rightGhostCounter++; }
+  else { rightPts = null; lastGoodRightPts = null; }
+
+  anyHandPresent = !!(leftPts || rightPts);
 
   return {
-    landmarks:         lastGoodLandmarks  ?? [],
-    handedness:        lastGoodHandedness ?? [],
-    dominantLandmarks: lastGoodDominant,
-    faceLandmarks:     lastGoodFace,
+    leftHandLandmarks:  leftPts,
+    rightHandLandmarks: rightPts,
+    faceLandmarks:      faceRaw ?? null,
+    forehead,
+    chin,
+    anyHandPresent,
+    featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin),
   };
 }
 
 export function isModelReady() {
-  return handLandmarker !== null;
+  return holisticLandmarker !== null;
 }
 
-export function isFaceModelReady() {
-  return faceLandmarker !== null;
-}
-
-export function getFaceModelError() {
-  return faceModelError;
-}
-
-// ── Internal: dominant hand selection ────────────────────────────
-
-function pickDominantHand(landmarks, handedness) {
-  if (!landmarks || landmarks.length === 0) return null;
-  if (landmarks.length === 1) return landmarks[0];
-
-  // MediaPipe labels the user's right hand as "Left" in mirrored-webcam mode
-  for (let i = 0; i < handedness.length; i++) {
-    const cat = handedness[i]?.[0]?.categoryName ?? '';
-    if (cat === 'Left') return landmarks[i];
-  }
-  return landmarks[0];
+export function getModelError() {
+  return modelError;
 }
