@@ -34,7 +34,7 @@
   <script>
     window.addEventListener('lwauth-ready', () => {
     LWAuth.redirectIfLoggedIn('pages/dashboard.html');
-  });
+   });
   </script>
 </head>
 <body class="auth-page">
@@ -120,7 +120,7 @@
 
     // BYPASS MODE: no validation against a backend yet — see js/auth.js.
     async function handleLogin() {
-      const email    = document.getElementById('login-email').value.trim();
+      const email    = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
       try {
         await LWAuth.login(email, password);
@@ -133,7 +133,7 @@
 
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value.trim();
+      const email    = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
       const level    = document.getElementById('reg-level').value;
       try {
