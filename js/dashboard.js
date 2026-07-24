@@ -25,16 +25,6 @@ function renderLevelCard(level) {
   const barEl    = card.querySelector('.progress-bar__fill');
   const countEl  = card.querySelector('[data-count]');
   const statusEl = card.querySelector('[data-assessment-status]');
-  const ctaEl    = card.querySelector('[data-cta]');
-
-  if (!stats.unlocked) {
-    if (pctEl) pctEl.textContent = '🔒';
-    if (countEl) countEl.textContent = `Locked — pass the previous level's final assessment first`;
-    if (statusEl) statusEl.textContent = '';
-    if (ctaEl) { ctaEl.textContent = 'Locked'; ctaEl.classList.add('btn--ghost'); ctaEl.removeAttribute('href'); }
-    if (barEl) { barEl.dataset.progress = 0; barEl.style.width = '0%'; }
-    return;
-  }
 
   if (pctEl) pctEl.textContent = `${stats.pct}%`;
   if (barEl) { barEl.dataset.progress = stats.pct; barEl.style.width = `${stats.pct}%`; }
@@ -78,15 +68,12 @@ function renderContinueButton() {
   if (!btn || !window.LWProgress) return;
 
   for (const level of LEVELS) {
-    if (!window.LWProgress.isLevelUnlocked(level)) continue;
     const live = window.LWProgress.liveCategoriesFor(level);
     for (const cat of live) {
       const prog = window.LWProgress.getCategoryProgress(level, cat.id);
       if (!prog.assessment?.passed && window.LWProgress.isCategoryUnlocked(level, cat.id)) {
         const signs = window.LWData.getCategorySigns(level, cat.id);
         const nextSign = signs.find(s => !prog.signs[s]) || signs[0];
-        btn.href = `learn.html?level=${level}&category=${cat.id}` +
-          (nextSign ? '' : '') ;
         btn.href = `lesson.html?level=${level}&category=${cat.id}&sign=${nextSign}`;
         return;
       }

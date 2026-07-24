@@ -194,6 +194,18 @@ let debounceCount  = 0;
 let lastDetected   = null;
 let cooldown       = false;
 
+// BUG 11 FIX: MediaPipe's per-frame face/hand presence flips true/false
+// even when the person hasn't moved (confidence hovers right at the
+// detection threshold), which made '#face-warn' and the hand-status
+// pill flash on/off every few frames. Fix: only trust "missing" after
+// it's been missing continuously for HOLD_MS — a single dropped frame
+// no longer flips the UI, only a real, sustained loss does.
+const FACE_WARN_HOLD_MS   = 600;
+const HAND_STATUS_HOLD_MS = 400;
+let lastFaceSeenAt = Date.now();
+let lastHandSeenAt = Date.now();
+let lastHandCount  = 0;
+
 // ── Page boot ──────────────────────────────────────────────────────
 // BUG 3 FIX (preserved): check readyState so we don't miss DOMContentLoaded
 // when lesson.js (type="module") loads after the event already fired.
@@ -394,20 +406,33 @@ function startRenderLoop() {
 
     const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, anyHandPresent } = processFrame(videoEl);
     const handsForDrawing = [leftHandLandmarks, rightHandLandmarks].filter(Boolean);
+    const now = Date.now();
+
+    if (handsForDrawing.length > 0) { lastHandSeenAt = now; lastHandCount = handsForDrawing.length; }
+    if (faceLandmarks)              lastFaceSeenAt = now;
 
     if (handsForDrawing.length > 0) {
       drawSkeleton(ctx, handsForDrawing, canvasEl.width, canvasEl.height);
-      setHandStatus(handsForDrawing.length);
     } else {
       clearCanvas(ctx, canvasEl.width, canvasEl.height);
-      setHandStatus(0);
+      // Reset the gesture debounce immediately — that's an internal
+      // stability check, not user-facing, so no hysteresis needed here.
       debounceCount = 0;
       lastDetected  = null;
     }
+    // BUG 11 FIX: only report "no hand" once it's actually been gone
+    // for a beat, so the pill doesn't flicker between states.
+    setHandStatus(now - lastHandSeenAt > HAND_STATUS_HOLD_MS ? 0 : lastHandCount);
 
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
+    // BUG 11 FIX: same hysteresis — don't flash the warning on a single
+    // dropped face-detection frame, only on a sustained loss.
     if (isModelReady()) {
-      setFaceWarn(faceLandmarks ? '' : '⚠️ Face not detected — step back so your whole head is visible.');
+      setFaceWarn(
+        now - lastFaceSeenAt > FACE_WARN_HOLD_MS
+          ? '⚠️ Face not detected — step back so your whole head is visible.'
+          : ''
+      );
     }
 
     if (!anyHandPresent) return;
@@ -497,6 +522,12 @@ function startAssessment() {
   mode        = 'assessment';
   debounceCount = 0;
   lastDetected  = null;
+  // BUG 11 FIX: don't carry over stale "last seen" timestamps from a
+  // previous run — that could otherwise show a false warning for the
+  // first HOLD_MS of a fresh practice check.
+  lastFaceSeenAt = Date.now();
+  lastHandSeenAt = Date.now();
+  lastHandCount  = 0;
 
   if (startBtnEl) startBtnEl.style.display = 'none';
 

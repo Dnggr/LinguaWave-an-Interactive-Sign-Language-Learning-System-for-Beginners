@@ -145,11 +145,15 @@
     return !!prevProg.assessment?.passed;
   }
 
-  /** A level is unlocked if it's "basic", or the previous level's final assessment passed. */
-  function isLevelUnlocked(level) {
-    const idx = LEVEL_ORDER.indexOf(level);
-    if (idx <= 0) return true;
-    return !!getLevelAssessment(LEVEL_ORDER[idx - 1])?.passed;
+  /**
+   * Levels themselves are never locked — a learner can jump straight
+   * into Medium or Intermediate if that's what they want to practice.
+   * Progress/assessments are still tracked per level regardless; this
+   * only ever gated ACCESS, which product decided against. Categories
+   * within a level are still sequential (see isCategoryUnlocked).
+   */
+  function isLevelUnlocked(_level) {
+    return true;
   }
 
   /** The level-final assessment unlocks once every live category has passed. */
