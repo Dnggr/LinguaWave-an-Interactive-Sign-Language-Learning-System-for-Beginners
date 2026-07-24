@@ -156,7 +156,18 @@ function computeSignOrder() {
 }
 
 const signOrder  = computeSignOrder();
-const sign       = (params.get('sign') || signOrder[0] || 'A').toUpperCase();
+// BUG 11 FIX: this used to fall back to the literal letter 'A' any
+// time signOrder was empty (i.e. a category with no SIGNS content),
+// which is why clicking into Places/Food/phrase categories/etc. used
+// to silently show "Letter A" instead of that category's own word.
+// Every shipped category now has real content (see data.js), so
+// signOrder should never actually be empty — but if it somehow is
+// (a future category added without content yet), fall back to the
+// requested ?sign= value as-is instead of inventing 'A', so the
+// "content not written yet" branch in updateLessonMeta()/loadContent
+// below can show an honest message instead of a wrong letter.
+const requestedSign = params.get('sign');
+const sign       = (requestedSign || signOrder[0] || '').toUpperCase();
 const signIdx    = Math.max(signOrder.indexOf(sign), 0);
 const totalSigns = signOrder.length;
 
@@ -239,8 +250,15 @@ function updateLessonMeta() {
 
   if (counter) counter.textContent = `Sign ${signIdx + 1} of ${totalSigns || 1}`;
   if (fill)    fill.dataset.progress = totalSigns ? Math.round(((signIdx + 1) / totalSigns) * 100) : 0;
-  if (letter)  letter.textContent   = sign;
-  if (title)   title.textContent    = sign.length === 1 ? `Letter ${sign}` : sign;
+
+  // BUGFIX: previously always showed the raw signId (e.g. the whole
+  // phrase "WHAT'S YOUR NAME?" crammed into the little "letter"
+  // badge). Use the human-friendly title from data.js when we have
+  // it, and only show the big single-letter badge for actual letters.
+  const signDataForTitle = window.LWData?.getSign?.(level, sign) ?? null;
+  const displayTitle = signDataForTitle?.title ?? sign;
+  if (letter)  letter.textContent   = sign.length === 1 ? sign : '✋';
+  if (title)   title.textContent    = sign.length === 1 ? `Letter ${sign}` : displayTitle;
 
   const categoryMeta = window.LWData?.getCategory?.(level, category) ?? null;
   if (lessonSubtitleEl) {
@@ -248,11 +266,16 @@ function updateLessonMeta() {
     lessonSubtitleEl.textContent = `${label} · ${level[0].toUpperCase()}${level.slice(1)} Level`;
   }
 
-  // Back link should return to this lesson's own level tab, not a
-  // hardcoded "basic" — was always sending word/phrase lessons back
-  // to the alphabet grid.
+  // Back link should return to this lesson's own level tab AND the
+  // category picker it came from (was previously just the bare level
+  // tab, dropping the learner back at the category grid instead of
+  // the word/phrase list they picked from).
   const backBtnEl = document.getElementById('btn-back-to-lessons');
-  if (backBtnEl) backBtnEl.href = `learn.html?level=${level}`;
+  if (backBtnEl) {
+    backBtnEl.href = category && category !== 'alphabet'
+      ? `learn.html?level=${encodeURIComponent(level)}&category=${encodeURIComponent(category)}`
+      : `learn.html?level=${encodeURIComponent(level)}`;
+  }
 
   // REV 3: viewing a sign is enough to count as "practiced" — the
   // graded check now happens in the category assessment, not here.
@@ -268,7 +291,7 @@ function updateLessonMeta() {
     motionBufWrapEl.style.display = getDetectionType(sign) === 'motion' ? '' : 'none';
   }
 
-  const signData = window.LWData?.getSign?.(level, sign) ?? null;
+  const signData = signDataForTitle;
 
   if (signData) {
     if (lessonDescriptionEl) lessonDescriptionEl.textContent = signData.description;
@@ -290,13 +313,28 @@ function updateLessonMeta() {
       if (source) source.src = signData.videoUrl;
       lessonVideoEl.load();
     }
+
+    // NEW: link out to Lifeprint.com (ASL University) for a second,
+    // authoritative reference on this sign, when we have one.
+    const referenceEl = document.getElementById('lesson-reference-link');
+    if (referenceEl) {
+      if (signData.referenceUrl) {
+        referenceEl.innerHTML =
+          `📖 <a href="${escapeHtml(signData.referenceUrl)}" target="_blank" rel="noopener noreferrer">See this sign on Lifeprint.com (ASL University)</a>`;
+        referenceEl.style.display = '';
+      } else {
+        referenceEl.style.display = 'none';
+      }
+    }
   } else {
     if (lessonDescriptionEl) lessonDescriptionEl.textContent =
-      `Lesson content for "${sign}" hasn't been written yet. The camera detection still works — try practicing the sign below.`;
+      `Lesson content for "${displayTitle}" hasn't been written yet. The camera detection still works — try practicing the sign below.`;
     if (lessonTipsEl) lessonTipsEl.innerHTML = '';
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+    const referenceEl = document.getElementById('lesson-reference-link');
+    if (referenceEl) referenceEl.style.display = 'none';
   }
 
   // REV 3: this is now an optional, ungraded practice check — the
@@ -318,7 +356,10 @@ function escapeHtml(str) {
 // ── Prev / Next navigation ─────────────────────────────────────────
 
 function navUrl(targetSign) {
-  return `lesson.html?level=${level}&category=${category}&sign=${targetSign}`;
+  // BUGFIX: was interpolating category/targetSign raw into the URL,
+  // which breaks for Intermediate phrases like "WHAT'S YOUR NAME?"
+  // (spaces, apostrophe, question mark all corrupt the query string).
+  return `lesson.html?level=${encodeURIComponent(level)}&category=${encodeURIComponent(category)}&sign=${encodeURIComponent(targetSign)}`;
 }
 
 function setupNavButtons() {
