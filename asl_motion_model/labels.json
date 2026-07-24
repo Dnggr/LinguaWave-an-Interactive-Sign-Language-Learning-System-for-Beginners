@@ -1,10 +1,18 @@
 {
-  "0": "BOY",
-  "1": "BROTHER",
-  "2": "DAD",
-  "3": "GIRL",
-  "4": "J",
-  "5": "MARRIAGE",
-  "6": "MOM",
-  "7": "Z"
+  "0": "AUNT",
+  "1": "BABY",
+  "2": "BOY",
+  "3": "BROTHER",
+  "4": "DAD",
+  "5": "DIVORCED",
+  "6": "GIRL",
+  "7": "GRANDMA",
+  "8": "GRANDPA",
+  "9": "J",
+  "10": "MARRIAGE",
+  "11": "MOM",
+  "12": "SINGLE",
+  "13": "SISTER",
+  "14": "UNCLE",
+  "15": "Z"
 }
