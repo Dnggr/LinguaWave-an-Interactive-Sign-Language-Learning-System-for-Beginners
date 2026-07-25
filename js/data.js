@@ -53,6 +53,7 @@ const CATEGORIES = [
   {
     id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false,
     source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
+    words: ['MOM', 'DAD', 'BOY', 'GIRL', 'MARRIAGE', 'BROTHER', 'SISTER', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'BABY', 'SINGLE', 'DIVORCED'],
   },
   {
     id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false,
@@ -520,6 +521,86 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/family/MARRIAGE.png', videoUrl: '../assets/videos/medium/family/MARRIAGE.mp4', detectionType: 'motion',
   },
+  {
+    id: 'medium_family_SISTER', level: 'medium', category: 'family', signId: 'SISTER', title: 'Sister', order: 7,
+    description: 'Make an "L" handshape and brush your thumb down along your jaw (the GIRL location), then bring both hands together so the index fingers meet.',
+    tips: [
+      'Starting position is at the jaw/chin, like GIRL — not the forehead like BOY',
+      'Bring both index fingers together at the end of the motion, same finish as BROTHER',
+      'This is a MOTION sign — the two-part movement is what separates it from GIRL',
+    ],
+    imageUrl: '../assets/images/medium/family/SISTER.png', videoUrl: '../assets/videos/medium/family/SISTER.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_GRANDMA', level: 'medium', category: 'family', signId: 'GRANDMA', title: 'Grandma', order: 8,
+    description: 'Start in the MOM position — open "5" hand, thumb tapping the chin — then hop the hand forward and tap again.',
+    tips: [
+      'Same handshape and starting tap as MOM',
+      'The forward double-hop is what turns MOM into GRANDMA',
+      'Keep both taps at chin height',
+    ],
+    imageUrl: '../assets/images/medium/family/GRANDMA.png', videoUrl: '../assets/videos/medium/family/GRANDMA.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_GRANDPA', level: 'medium', category: 'family', signId: 'GRANDPA', title: 'Grandpa', order: 9,
+    description: 'Start in the DAD position — open "5" hand, thumb tapping the forehead — then hop the hand forward and tap again.',
+    tips: [
+      'Same handshape and starting tap as DAD',
+      'The forward double-hop is what turns DAD into GRANDPA',
+      'Keep both taps at forehead height',
+    ],
+    imageUrl: '../assets/images/medium/family/GRANDPA.png', videoUrl: '../assets/videos/medium/family/GRANDPA.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_AUNT', level: 'medium', category: 'family', signId: 'AUNT', title: 'Aunt', order: 10,
+    description: 'Make an "A" handshape (fist, thumb resting on the side) near your cheek and shake it slightly.',
+    tips: [
+      'Handshape is the letter "A", held near the cheek — not the chin or forehead',
+      'A small back-and-forth shake is part of the sign',
+      'This is a MOTION sign — a static A near the cheek is not enough',
+    ],
+    imageUrl: '../assets/images/medium/family/AUNT.png', videoUrl: '../assets/videos/medium/family/AUNT.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_UNCLE', level: 'medium', category: 'family', signId: 'UNCLE', title: 'Uncle', order: 11,
+    description: 'Make a "U" handshape (index and middle finger together, pointing up) near your temple and shake it slightly.',
+    tips: [
+      'Handshape is the letter "U", held near the temple — not the chin or cheek',
+      'A small back-and-forth shake is part of the sign',
+      'This is a MOTION sign — a static U near the temple is not enough',
+    ],
+    imageUrl: '../assets/images/medium/family/UNCLE.png', videoUrl: '../assets/videos/medium/family/UNCLE.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_BABY', level: 'medium', category: 'family', signId: 'BABY', title: 'Baby', order: 12,
+    description: 'Cross both forearms in front of your chest, palms up, and rock them gently side to side like cradling an infant.',
+    tips: [
+      'Both arms cradle in front of the chest, not just one hand moving',
+      'The rocking motion is what makes this a MOTION sign',
+      'Keep the rock small and centered on the chest',
+    ],
+    imageUrl: '../assets/images/medium/family/BABY.png', videoUrl: '../assets/videos/medium/family/BABY.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_SINGLE', level: 'medium', category: 'family', signId: 'SINGLE', title: 'Single', order: 13,
+    description: 'Hold up an "I" handshape (pinky extended, other fingers curled) and trace it along the ring finger of your other hand.',
+    tips: [
+      'Handshape is the letter "I" — pinky up, rest of the hand curled',
+      'The tracing motion along the ring finger is what completes the sign',
+      'This distinguishes SINGLE from a plain pinky-up letter I',
+    ],
+    imageUrl: '../assets/images/medium/family/SINGLE.png', videoUrl: '../assets/videos/medium/family/SINGLE.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_family_DIVORCED', level: 'medium', category: 'family', signId: 'DIVORCED', title: 'Divorced', order: 14,
+    description: 'Hold both hands in flat "D"/bent shapes facing each other, touching, then twist and pull them apart in opposite directions.',
+    tips: [
+      'Hands start touching, then rotate apart — the separation motion is the key part',
+      'Keep the pulling-apart motion deliberate and visible',
+      'This is a MOTION sign — the split matters more than the starting handshape',
+    ],
+    imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/medium/family/DIVORCED.mp4', detectionType: 'motion',
+  },
 
   /* ── MEDIUM · WORDS (auto-generated content — see BUGFIX notes) ── */
 
@@ -533,7 +614,6 @@ const SIGNS = [
       'Motion sign — the two-part movement matters',
     ],
     imageUrl: '../assets/images/medium/places/home.png', videoUrl: '../assets/videos/medium/places/home.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/home.htm',
   },
   {
     id: 'medium_places_WORK', level: 'medium', category: 'places', signId: 'WORK', title: 'Work', order: 2,
@@ -544,7 +624,6 @@ const SIGNS = [
       'Two clear taps',
     ],
     imageUrl: '../assets/images/medium/places/work.png', videoUrl: '../assets/videos/medium/places/work.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/work.htm',
   },
   {
     id: 'medium_places_SCHOOL', level: 'medium', category: 'places', signId: 'SCHOOL', title: 'School', order: 3,
@@ -555,7 +634,6 @@ const SIGNS = [
       'Two claps, like getting a class\'s attention',
     ],
     imageUrl: '../assets/images/medium/places/school.png', videoUrl: '../assets/videos/medium/places/school.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/school.htm',
   },
   {
     id: 'medium_places_STORE', level: 'medium', category: 'places', signId: 'STORE', title: 'Store', order: 4,
@@ -566,7 +644,6 @@ const SIGNS = [
       'Repeat the motion twice',
     ],
     imageUrl: '../assets/images/medium/places/store.png', videoUrl: '../assets/videos/medium/places/store.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/store.htm',
   },
   {
     id: 'medium_places_CHURCH', level: 'medium', category: 'places', signId: 'CHURCH', title: 'Church', order: 5,
@@ -577,7 +654,6 @@ const SIGNS = [
       'Two taps on the back of the fist',
     ],
     imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/church.htm',
   },
   {
     id: 'medium_places_COME', level: 'medium', category: 'places', signId: 'COME/GO', title: 'Come / Go', order: 6,
@@ -588,7 +664,6 @@ const SIGNS = [
       'This entry covers a pair of opposite-direction signs',
     ],
     imageUrl: '../assets/images/medium/places/come.png', videoUrl: '../assets/videos/medium/places/come.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/comego.htm',
   },
   {
     id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR/DRIVE', title: 'Car / Drive', order: 7,
@@ -599,7 +674,6 @@ const SIGNS = [
       'Motion sign — keep it continuous while holding',
     ],
     imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cardrive.htm',
   },
   {
     id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN/OUT', title: 'In / Out', order: 8,
@@ -610,7 +684,6 @@ const SIGNS = [
       'Fingers open as they exit for OUT',
     ],
     imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/medium/places/in.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/inout.htm',
   },
   {
     id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 9,
@@ -621,7 +694,6 @@ const SIGNS = [
       'Hold briefly once they touch',
     ],
     imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/with.htm',
   },
 
   // ── MEDIUM · TIME ──
@@ -634,7 +706,6 @@ const SIGNS = [
       'One smooth downward sweep',
     ],
     imageUrl: '../assets/images/medium/time/day.png', videoUrl: '../assets/videos/medium/time/day.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/day.htm',
   },
   {
     id: 'medium_time_NIGHT', level: 'medium', category: 'time', signId: 'NIGHT', title: 'Night', order: 2,
@@ -645,7 +716,6 @@ const SIGNS = [
       'Slow, deliberate downward motion',
     ],
     imageUrl: '../assets/images/medium/time/night.png', videoUrl: '../assets/videos/medium/time/night.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/night.htm',
   },
   {
     id: 'medium_time_WEEK', level: 'medium', category: 'time', signId: 'WEEK', title: 'Week', order: 3,
@@ -656,7 +726,6 @@ const SIGNS = [
       'Ends past the fingertips of the base hand',
     ],
     imageUrl: '../assets/images/medium/time/week.png', videoUrl: '../assets/videos/medium/time/week.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/week.htm',
   },
   {
     id: 'medium_time_MONTH', level: 'medium', category: 'time', signId: 'MONTH', title: 'Month', order: 4,
@@ -667,7 +736,6 @@ const SIGNS = [
       'Represents days moving down a calendar',
     ],
     imageUrl: '../assets/images/medium/time/month.png', videoUrl: '../assets/videos/medium/time/month.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
     id: 'medium_time_YEAR', level: 'medium', category: 'time', signId: 'YEAR', title: 'Year', order: 5,
@@ -678,7 +746,6 @@ const SIGNS = [
       'Ends with one fist resting on the other',
     ],
     imageUrl: '../assets/images/medium/time/year.png', videoUrl: '../assets/videos/medium/time/year.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/y/year.htm',
   },
   {
     id: 'medium_time_WILL', level: 'medium', category: 'time', signId: 'WILL', title: 'Will (future)', order: 6,
@@ -689,7 +756,6 @@ const SIGNS = [
       'Also used more generally to mean ‘future’',
     ],
     imageUrl: '../assets/images/medium/time/will.png', videoUrl: '../assets/videos/medium/time/will.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/future.htm',
   },
   {
     id: 'medium_time_BEFORE', level: 'medium', category: 'time', signId: 'BEFORE', title: 'Before', order: 7,
@@ -700,7 +766,6 @@ const SIGNS = [
       'Short, controlled motion',
     ],
     imageUrl: '../assets/images/medium/time/before.png', videoUrl: '../assets/videos/medium/time/before.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/past.htm',
   },
   {
     id: 'medium_time_TODAY', level: 'medium', category: 'time', signId: 'TODAY/NOW', title: 'Today / Now', order: 8,
@@ -711,7 +776,6 @@ const SIGNS = [
       'Signed twice in a row it can emphasize ‘right now’',
     ],
     imageUrl: '../assets/images/medium/time/today.png', videoUrl: '../assets/videos/medium/time/today.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-layout/time.htm',
   },
   {
     id: 'medium_time_FINISH', level: 'medium', category: 'time', signId: 'FINISH', title: 'Finish', order: 9,
@@ -722,7 +786,6 @@ const SIGNS = [
       'Both hands move together',
     ],
     imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/medium/time/finish.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/finish.htm',
   },
 
   // ── MEDIUM · TEMPERATURE ──
@@ -735,7 +798,6 @@ const SIGNS = [
       'Starts close to the mouth',
     ],
     imageUrl: '../assets/images/medium/temperature/hot.png', videoUrl: '../assets/videos/medium/temperature/hot.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hotcold.htm',
   },
   {
     id: 'medium_temperature_COLD', level: 'medium', category: 'temperature', signId: 'COLD', title: 'Cold', order: 2,
@@ -746,7 +808,6 @@ const SIGNS = [
       'A shivering facial expression reinforces the meaning',
     ],
     imageUrl: '../assets/images/medium/temperature/cold.png', videoUrl: '../assets/videos/medium/temperature/cold.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hotcold.htm',
   },
 
   // ── MEDIUM · FOOD ──
@@ -759,7 +820,6 @@ const SIGNS = [
       'Traced in the air in front of you',
     ],
     imageUrl: '../assets/images/medium/food/pizza.png', videoUrl: '../assets/videos/medium/food/pizza.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pizza.htm',
   },
   {
     id: 'medium_food_MILK', level: 'medium', category: 'food', signId: 'MILK', title: 'Milk', order: 2,
@@ -770,7 +830,6 @@ const SIGNS = [
       'Keep the motion at chest height',
     ],
     imageUrl: '../assets/images/medium/food/milk.png', videoUrl: '../assets/videos/medium/food/milk.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/milk.htm',
   },
   {
     id: 'medium_food_HAMBURGER', level: 'medium', category: 'food', signId: 'HAMBURGER', title: 'Hamburger', order: 3,
@@ -781,7 +840,6 @@ const SIGNS = [
       'Like patting a burger patty into shape',
     ],
     imageUrl: '../assets/images/medium/food/hamburger.png', videoUrl: '../assets/videos/medium/food/hamburger.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hamburger.htm',
   },
   {
     id: 'medium_food_HOT_DOG', level: 'medium', category: 'food', signId: 'HOT DOG', title: 'Hot Dog', order: 4,
@@ -792,7 +850,6 @@ const SIGNS = [
       'Keep hands level with each other',
     ],
     imageUrl: '../assets/images/medium/food/hot_dog.png', videoUrl: '../assets/videos/medium/food/hot_dog.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hotdog.htm',
   },
   {
     id: 'medium_food_EGG', level: 'medium', category: 'food', signId: 'EGG', title: 'Egg', order: 5,
@@ -803,7 +860,6 @@ const SIGNS = [
       'One clean ‘crack’ motion',
     ],
     imageUrl: '../assets/images/medium/food/egg.png', videoUrl: '../assets/videos/medium/food/egg.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/egg.htm',
   },
   {
     id: 'medium_food_APPLE', level: 'medium', category: 'food', signId: 'APPLE', title: 'Apple', order: 6,
@@ -814,7 +870,6 @@ const SIGNS = [
       'Contact point is the cheek near the mouth',
     ],
     imageUrl: '../assets/images/medium/food/apple.png', videoUrl: '../assets/videos/medium/food/apple.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/apple.htm',
   },
   {
     id: 'medium_food_CHEESE', level: 'medium', category: 'food', signId: 'CHEESE', title: 'Cheese', order: 7,
@@ -825,7 +880,6 @@ const SIGNS = [
       'Hands stay close together',
     ],
     imageUrl: '../assets/images/medium/food/cheese.png', videoUrl: '../assets/videos/medium/food/cheese.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cheese.htm',
   },
   {
     id: 'medium_food_DRINK', level: 'medium', category: 'food', signId: 'DRINK', title: 'Drink', order: 8,
@@ -836,7 +890,6 @@ const SIGNS = [
       'One smooth lift-and-tilt motion',
     ],
     imageUrl: '../assets/images/medium/food/drink.png', videoUrl: '../assets/videos/medium/food/drink.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/drink.htm',
   },
   {
     id: 'medium_food_SPOON', level: 'medium', category: 'food', signId: 'SPOON', title: 'Spoon', order: 9,
@@ -847,7 +900,6 @@ const SIGNS = [
       'One smooth scoop across the palm',
     ],
     imageUrl: '../assets/images/medium/food/spoon.png', videoUrl: '../assets/videos/medium/food/spoon.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sponfork.htm',
   },
   {
     id: 'medium_food_FORK', level: 'medium', category: 'food', signId: 'FORK', title: 'Fork', order: 10,
@@ -858,7 +910,6 @@ const SIGNS = [
       'Base hand stays flat and still',
     ],
     imageUrl: '../assets/images/medium/food/fork.png', videoUrl: '../assets/videos/medium/food/fork.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sponfork.htm',
   },
   {
     id: 'medium_food_CUP', level: 'medium', category: 'food', signId: 'CUP', title: 'Cup', order: 11,
@@ -869,7 +920,6 @@ const SIGNS = [
       'One or two light taps',
     ],
     imageUrl: '../assets/images/medium/food/cup.png', videoUrl: '../assets/videos/medium/food/cup.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cup.htm',
   },
   {
     id: 'medium_food_CEREAL', level: 'medium', category: 'food', signId: 'CEREAL', title: 'Cereal', order: 12,
@@ -880,7 +930,6 @@ const SIGNS = [
       'Facial expression can show it\'s a meal, reinforcing context',
     ],
     imageUrl: '../assets/images/medium/food/cereal.png', videoUrl: '../assets/videos/medium/food/cereal.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cereal.htm',
   },
   {
     id: 'medium_food_WATER', level: 'medium', category: 'food', signId: 'WATER', title: 'Water', order: 13,
@@ -891,7 +940,6 @@ const SIGNS = [
       'Two light taps',
     ],
     imageUrl: '../assets/images/medium/food/water.png', videoUrl: '../assets/videos/medium/food/water.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/water.htm',
   },
   {
     id: 'medium_food_CANDY', level: 'medium', category: 'food', signId: 'CANDY', title: 'Candy', order: 14,
@@ -902,7 +950,6 @@ const SIGNS = [
       'Similar to APPLE but with just the index finger',
     ],
     imageUrl: '../assets/images/medium/food/candy.png', videoUrl: '../assets/videos/medium/food/candy.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/candy.htm',
   },
   {
     id: 'medium_food_COOKIE', level: 'medium', category: 'food', signId: 'COOKIE', title: 'Cookie', order: 15,
@@ -913,7 +960,6 @@ const SIGNS = [
       'Twist happens after the press-down',
     ],
     imageUrl: '../assets/images/medium/food/cookie.png', videoUrl: '../assets/videos/medium/food/cookie.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cookie.htm',
   },
   {
     id: 'medium_food_HUNGRY', level: 'medium', category: 'food', signId: 'HUNGRY', title: 'Hungry', order: 16,
@@ -924,7 +970,6 @@ const SIGNS = [
       'A slightly pained facial expression reinforces the meaning',
     ],
     imageUrl: '../assets/images/medium/food/hungry.png', videoUrl: '../assets/videos/medium/food/hungry.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hungry.htm',
   },
 
   // ── MEDIUM · CLOTHES ──
@@ -937,7 +982,6 @@ const SIGNS = [
       'Keep the motion close to the body',
     ],
     imageUrl: '../assets/images/medium/clothes/shirt.png', videoUrl: '../assets/videos/medium/clothes/shirt.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shirt.htm',
   },
   {
     id: 'medium_clothes_PANTS', level: 'medium', category: 'clothes', signId: 'PANTS', title: 'Pants', order: 2,
@@ -948,7 +992,6 @@ const SIGNS = [
       'Keep hands flat against the legs',
     ],
     imageUrl: '../assets/images/medium/clothes/pants.png', videoUrl: '../assets/videos/medium/clothes/pants.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pants.htm',
   },
   {
     id: 'medium_clothes_SOCKS', level: 'medium', category: 'clothes', signId: 'SOCKS', title: 'Socks', order: 3,
@@ -959,7 +1002,6 @@ const SIGNS = [
       'Fingers stay parallel and close together',
     ],
     imageUrl: '../assets/images/medium/clothes/socks.png', videoUrl: '../assets/videos/medium/clothes/socks.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/socks.htm',
   },
   {
     id: 'medium_clothes_SHOES', level: 'medium', category: 'clothes', signId: 'SHOES', title: 'Shoes', order: 4,
@@ -970,7 +1012,6 @@ const SIGNS = [
       'Two clear taps',
     ],
     imageUrl: '../assets/images/medium/clothes/shoes.png', videoUrl: '../assets/videos/medium/clothes/shoes.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shoes.htm',
   },
   {
     id: 'medium_clothes_COAT', level: 'medium', category: 'clothes', signId: 'COAT', title: 'Coat', order: 5,
@@ -981,7 +1022,6 @@ const SIGNS = [
       'One smooth downward motion',
     ],
     imageUrl: '../assets/images/medium/clothes/coat.png', videoUrl: '../assets/videos/medium/clothes/coat.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/coat.htm',
   },
   {
     id: 'medium_clothes_UNDERWEAR', level: 'medium', category: 'clothes', signId: 'UNDERWEAR', title: 'Underwear', order: 6,
@@ -992,7 +1032,6 @@ const SIGNS = [
       'Two light taps',
     ],
     imageUrl: '../assets/images/medium/clothes/underwear.png', videoUrl: '../assets/videos/medium/clothes/underwear.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/u/underwear.htm',
   },
 
   // ── MEDIUM · HEALTH ──
@@ -1005,7 +1044,6 @@ const SIGNS = [
       'Keep the motion at chest/waist height',
     ],
     imageUrl: '../assets/images/medium/health/wash.png', videoUrl: '../assets/videos/medium/health/wash.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wash.htm',
   },
   {
     id: 'medium_health_HURT', level: 'medium', category: 'health', signId: 'HURT', title: 'Hurt', order: 2,
@@ -1016,7 +1054,6 @@ const SIGNS = [
       'Can be signed near whichever body part hurts',
     ],
     imageUrl: '../assets/images/medium/health/hurt.png', videoUrl: '../assets/videos/medium/health/hurt.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hurt.htm',
   },
   {
     id: 'medium_health_BATHROOM', level: 'medium', category: 'health', signId: 'BATHROOM', title: 'Bathroom', order: 3,
@@ -1027,7 +1064,6 @@ const SIGNS = [
       'Also commonly used for ‘restroom’/‘toilet’',
     ],
     imageUrl: '../assets/images/medium/health/bathroom.png', videoUrl: '../assets/videos/medium/health/bathroom.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bathroom.htm',
   },
   {
     id: 'medium_health_BRUSH_TEETH', level: 'medium', category: 'health', signId: 'BRUSH TEETH', title: 'Brush Teeth', order: 4,
@@ -1038,7 +1074,6 @@ const SIGNS = [
       'Keep it right in front of the teeth/mouth',
     ],
     imageUrl: '../assets/images/medium/health/brush_teeth.png', videoUrl: '../assets/videos/medium/health/brush_teeth.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/brushteeth.htm',
   },
   {
     id: 'medium_health_SLEEP', level: 'medium', category: 'health', signId: 'SLEEP', title: 'Sleep', order: 5,
@@ -1049,7 +1084,6 @@ const SIGNS = [
       'One smooth downward motion',
     ],
     imageUrl: '../assets/images/medium/health/sleep.png', videoUrl: '../assets/videos/medium/health/sleep.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sleep.htm',
   },
   {
     id: 'medium_health_NICE', level: 'medium', category: 'health', signId: 'NICE/CLEAN', title: 'Nice / Clean', order: 6,
@@ -1060,7 +1094,6 @@ const SIGNS = [
       'Also commonly used to mean ‘nice’',
     ],
     imageUrl: '../assets/images/medium/health/nice.png', videoUrl: '../assets/videos/medium/health/nice.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nice.htm',
   },
 
   // ── MEDIUM · FEELINGS ──
@@ -1073,7 +1106,6 @@ const SIGNS = [
       'A genuine smile reinforces the meaning',
     ],
     imageUrl: '../assets/images/medium/feelings/happy.png', videoUrl: '../assets/videos/medium/feelings/happy.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/happy.htm',
   },
   {
     id: 'medium_feelings_ANGRY', level: 'medium', category: 'feelings', signId: 'ANGRY', title: 'Angry', order: 2,
@@ -1084,7 +1116,6 @@ const SIGNS = [
       'A tense facial expression matches the sign',
     ],
     imageUrl: '../assets/images/medium/feelings/angry.png', videoUrl: '../assets/videos/medium/feelings/angry.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/angry.htm',
   },
   {
     id: 'medium_feelings_SAD', level: 'medium', category: 'feelings', signId: 'SAD', title: 'Sad', order: 3,
@@ -1095,7 +1126,6 @@ const SIGNS = [
       'Facial expression should look genuinely down',
     ],
     imageUrl: '../assets/images/medium/feelings/sad.png', videoUrl: '../assets/videos/medium/feelings/sad.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sad.htm',
   },
   {
     id: 'medium_feelings_SORRY', level: 'medium', category: 'feelings', signId: 'SORRY', title: 'Sorry', order: 4,
@@ -1106,7 +1136,6 @@ const SIGNS = [
       'Keep it centered over the chest',
     ],
     imageUrl: '../assets/images/medium/feelings/sorry.png', videoUrl: '../assets/videos/medium/feelings/sorry.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sorry.htm',
   },
   {
     id: 'medium_feelings_CRY', level: 'medium', category: 'feelings', signId: 'CRY', title: 'Cry', order: 5,
@@ -1117,7 +1146,6 @@ const SIGNS = [
       'Repeat a couple of times',
     ],
     imageUrl: '../assets/images/medium/feelings/cry.png', videoUrl: '../assets/videos/medium/feelings/cry.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cry.htm',
   },
   {
     id: 'medium_feelings_LIKE', level: 'medium', category: 'feelings', signId: 'LIKE', title: 'Like', order: 6,
@@ -1128,7 +1156,6 @@ const SIGNS = [
       'One smooth outward motion',
     ],
     imageUrl: '../assets/images/medium/feelings/like.png', videoUrl: '../assets/videos/medium/feelings/like.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/like.htm',
   },
   {
     id: 'medium_feelings_GOOD', level: 'medium', category: 'feelings', signId: 'GOOD/BAD', title: 'Good / Bad', order: 7,
@@ -1139,7 +1166,6 @@ const SIGNS = [
       'This entry covers a common opposite pair',
     ],
     imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/medium/feelings/good.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/good.htm',
   },
   {
     id: 'medium_feelings_LOVE', level: 'medium', category: 'feelings', signId: 'LOVE', title: 'Love', order: 8,
@@ -1150,7 +1176,6 @@ const SIGNS = [
       'Hold briefly once crossed',
     ],
     imageUrl: '../assets/images/medium/feelings/love.png', videoUrl: '../assets/videos/medium/feelings/love.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/love.htm',
   },
 
   // ── MEDIUM · REQUESTS ──
@@ -1163,7 +1188,6 @@ const SIGNS = [
       'A polite, warm facial expression helps',
     ],
     imageUrl: '../assets/images/medium/requests/please.png', videoUrl: '../assets/videos/medium/requests/please.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/please.htm',
   },
   {
     id: 'medium_requests_EXCUSE', level: 'medium', category: 'requests', signId: 'EXCUSE', title: 'Excuse', order: 2,
@@ -1174,7 +1198,6 @@ const SIGNS = [
       'Used for ‘excuse me’ in context',
     ],
     imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/medium/requests/excuse.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/excuse.htm',
   },
   {
     id: 'medium_requests_THANK_YOU', level: 'medium', category: 'requests', signId: 'THANK YOU', title: 'Thank You', order: 3,
@@ -1185,7 +1208,6 @@ const SIGNS = [
       'Keep the motion smooth, not abrupt',
     ],
     imageUrl: '../assets/images/medium/requests/thank_you.png', videoUrl: '../assets/videos/medium/requests/thank_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/thankyou.htm',
   },
   {
     id: 'medium_requests_HELP', level: 'medium', category: 'requests', signId: 'HELP', title: 'Help', order: 4,
@@ -1196,7 +1218,6 @@ const SIGNS = [
       'One smooth upward motion',
     ],
     imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/help.htm',
   },
   {
     id: 'medium_requests_WHO', level: 'medium', category: 'requests', signId: 'WHO', title: 'Who', order: 5,
@@ -1207,7 +1228,6 @@ const SIGNS = [
       'Pair with a questioning facial expression',
     ],
     imageUrl: '../assets/images/medium/requests/who.png', videoUrl: '../assets/videos/medium/requests/who.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/who.htm',
   },
   {
     id: 'medium_requests_WHAT', level: 'medium', category: 'requests', signId: 'WHAT', title: 'What', order: 6,
@@ -1218,7 +1238,6 @@ const SIGNS = [
       'Eyebrows typically furrow for WH-questions',
     ],
     imageUrl: '../assets/images/medium/requests/what.png', videoUrl: '../assets/videos/medium/requests/what.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/what.htm',
   },
   {
     id: 'medium_requests_WHEN', level: 'medium', category: 'requests', signId: 'WHEN', title: 'When', order: 7,
@@ -1229,7 +1248,6 @@ const SIGNS = [
       'Both hands use a ‘1’ handshape',
     ],
     imageUrl: '../assets/images/medium/requests/when.png', videoUrl: '../assets/videos/medium/requests/when.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/when.htm',
   },
   {
     id: 'medium_requests_WHERE', level: 'medium', category: 'requests', signId: 'WHERE', title: 'Where', order: 8,
@@ -1240,7 +1258,6 @@ const SIGNS = [
       'Pair with a questioning facial expression',
     ],
     imageUrl: '../assets/images/medium/requests/where.png', videoUrl: '../assets/videos/medium/requests/where.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/where.htm',
   },
   {
     id: 'medium_requests_WHY', level: 'medium', category: 'requests', signId: 'WHY', title: 'Why', order: 9,
@@ -1251,7 +1268,6 @@ const SIGNS = [
       'Small shake once it pulls away',
     ],
     imageUrl: '../assets/images/medium/requests/why.png', videoUrl: '../assets/videos/medium/requests/why.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/why.htm',
   },
   {
     id: 'medium_requests_HOW', level: 'medium', category: 'requests', signId: 'HOW', title: 'How', order: 10,
@@ -1262,7 +1278,6 @@ const SIGNS = [
       'Ends with both palms facing up',
     ],
     imageUrl: '../assets/images/medium/requests/how.png', videoUrl: '../assets/videos/medium/requests/how.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/how.htm',
   },
   {
     id: 'medium_requests_STOP', level: 'medium', category: 'requests', signId: 'STOP', title: 'Stop', order: 11,
@@ -1273,7 +1288,6 @@ const SIGNS = [
       'Contact is the edge (pinky-side) of the dominant hand',
     ],
     imageUrl: '../assets/images/medium/requests/stop.png', videoUrl: '../assets/videos/medium/requests/stop.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/stop.htm',
   },
 
   // ── MEDIUM · AMOUNTS ──
@@ -1286,7 +1300,6 @@ const SIGNS = [
       'Keep the curved handshape throughout',
     ],
     imageUrl: '../assets/images/medium/amounts/big.png', videoUrl: '../assets/videos/medium/amounts/big.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/big.htm',
   },
   {
     id: 'medium_amounts_TALL', level: 'medium', category: 'amounts', signId: 'TALL', title: 'Tall', order: 2,
@@ -1297,7 +1310,6 @@ const SIGNS = [
       'Only the index fingers are extended',
     ],
     imageUrl: '../assets/images/medium/amounts/tall.png', videoUrl: '../assets/videos/medium/amounts/tall.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tall.htm',
   },
   {
     id: 'medium_amounts_FULL', level: 'medium', category: 'amounts', signId: 'FULL', title: 'Full', order: 3,
@@ -1308,7 +1320,6 @@ const SIGNS = [
       'Like scraping a measuring cup level',
     ],
     imageUrl: '../assets/images/medium/amounts/full.png', videoUrl: '../assets/videos/medium/amounts/full.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/full.htm',
   },
   {
     id: 'medium_amounts_MORE', level: 'medium', category: 'amounts', signId: 'MORE', title: 'More', order: 4,
@@ -1319,7 +1330,6 @@ const SIGNS = [
       'Two clear taps',
     ],
     imageUrl: '../assets/images/medium/amounts/more.png', videoUrl: '../assets/videos/medium/amounts/more.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/more.htm',
   },
 
   // ── MEDIUM · COLORS ──
@@ -1332,7 +1342,6 @@ const SIGNS = [
       'Held at chest/shoulder height',
     ],
     imageUrl: '../assets/images/medium/colors/blue.png', videoUrl: '../assets/videos/medium/colors/blue.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/blue.htm',
   },
   {
     id: 'medium_colors_GREEN', level: 'medium', category: 'colors', signId: 'GREEN', title: 'Green', order: 2,
@@ -1343,7 +1352,6 @@ const SIGNS = [
       'Held at chest/shoulder height',
     ],
     imageUrl: '../assets/images/medium/colors/green.png', videoUrl: '../assets/videos/medium/colors/green.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/green.htm',
   },
   {
     id: 'medium_colors_YELLOW', level: 'medium', category: 'colors', signId: 'YELLOW', title: 'Yellow', order: 3,
@@ -1354,7 +1362,6 @@ const SIGNS = [
       'Held at chest/shoulder height',
     ],
     imageUrl: '../assets/images/medium/colors/yellow.png', videoUrl: '../assets/videos/medium/colors/yellow.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/y/yellow.htm',
   },
   {
     id: 'medium_colors_RED', level: 'medium', category: 'colors', signId: 'RED', title: 'Red', order: 4,
@@ -1365,7 +1372,6 @@ const SIGNS = [
       'Starts at the lips',
     ],
     imageUrl: '../assets/images/medium/colors/red.png', videoUrl: '../assets/videos/medium/colors/red.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/red.htm',
   },
   {
     id: 'medium_colors_BROWN', level: 'medium', category: 'colors', signId: 'BROWN', title: 'Brown', order: 5,
@@ -1376,7 +1382,6 @@ const SIGNS = [
       'Contact stays along the cheek',
     ],
     imageUrl: '../assets/images/medium/colors/brown.png', videoUrl: '../assets/videos/medium/colors/brown.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/brown.htm',
   },
   {
     id: 'medium_colors_ORANGE', level: 'medium', category: 'colors', signId: 'ORANGE', title: 'Orange', order: 6,
@@ -1387,7 +1392,6 @@ const SIGNS = [
       'Keep it close to the chin/mouth',
     ],
     imageUrl: '../assets/images/medium/colors/orange.png', videoUrl: '../assets/videos/medium/colors/orange.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/orange.htm',
   },
   {
     id: 'medium_colors_GOLD', level: 'medium', category: 'colors', signId: 'GOLD', title: 'Gold', order: 7,
@@ -1398,7 +1402,6 @@ const SIGNS = [
       'Small twisting motion',
     ],
     imageUrl: '../assets/images/medium/colors/gold.png', videoUrl: '../assets/videos/medium/colors/gold.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/gold.htm',
   },
   {
     id: 'medium_colors_SILVER', level: 'medium', category: 'colors', signId: 'SILVER', title: 'Silver', order: 8,
@@ -1409,7 +1412,6 @@ const SIGNS = [
       'Small twisting motion for the sign version',
     ],
     imageUrl: '../assets/images/medium/colors/silver.png', videoUrl: '../assets/videos/medium/colors/silver.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/gold.htm',
   },
 
   // ── MEDIUM · MONEY ──
@@ -1422,7 +1424,6 @@ const SIGNS = [
       'One smooth motion',
     ],
     imageUrl: '../assets/images/medium/money/dollars.png', videoUrl: '../assets/videos/medium/money/dollars.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dollars.htm',
   },
   {
     id: 'medium_money_CENTS', level: 'medium', category: 'money', signId: 'CENTS', title: 'Cents', order: 2,
@@ -1433,7 +1434,6 @@ const SIGNS = [
       'Followed by the relevant number handshape for a specific amount',
     ],
     imageUrl: '../assets/images/medium/money/cents.png', videoUrl: '../assets/videos/medium/money/cents.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dollars.htm',
   },
   {
     id: 'medium_money_COST', level: 'medium', category: 'money', signId: 'COST', title: 'Cost', order: 3,
@@ -1444,7 +1444,6 @@ const SIGNS = [
       'Only the index finger is extended on the dominant hand',
     ],
     imageUrl: '../assets/images/medium/money/cost.png', videoUrl: '../assets/videos/medium/money/cost.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cost.htm',
   },
 
   // ── MEDIUM · ANIMALS ──
@@ -1457,7 +1456,6 @@ const SIGNS = [
       'Repeat on one or both sides',
     ],
     imageUrl: '../assets/images/medium/animals/cat.png', videoUrl: '../assets/videos/medium/animals/cat.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cat.htm',
   },
   {
     id: 'medium_animals_DOG', level: 'medium', category: 'animals', signId: 'DOG', title: 'Dog', order: 2,
@@ -1468,7 +1466,6 @@ const SIGNS = [
       'Repeat a couple of times',
     ],
     imageUrl: '../assets/images/medium/animals/dog.png', videoUrl: '../assets/videos/medium/animals/dog.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dog.htm',
   },
   {
     id: 'medium_animals_BIRD', level: 'medium', category: 'animals', signId: 'BIRD', title: 'Bird', order: 3,
@@ -1479,7 +1476,6 @@ const SIGNS = [
       'Held right in front of the mouth',
     ],
     imageUrl: '../assets/images/medium/animals/bird.png', videoUrl: '../assets/videos/medium/animals/bird.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bird.htm',
   },
   {
     id: 'medium_animals_HORSE', level: 'medium', category: 'animals', signId: 'HORSE', title: 'Horse', order: 4,
@@ -1490,7 +1486,6 @@ const SIGNS = [
       'Bending motion, like flicking ears',
     ],
     imageUrl: '../assets/images/medium/animals/horse.png', videoUrl: '../assets/videos/medium/animals/horse.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/horse.htm',
   },
   {
     id: 'medium_animals_COW', level: 'medium', category: 'animals', signId: 'COW', title: 'Cow', order: 5,
@@ -1501,7 +1496,6 @@ const SIGNS = [
       'Small twisting motion',
     ],
     imageUrl: '../assets/images/medium/animals/cow.png', videoUrl: '../assets/videos/medium/animals/cow.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cow.htm',
   },
   {
     id: 'medium_animals_SHEEP', level: 'medium', category: 'animals', signId: 'SHEEP', title: 'Sheep', order: 6,
@@ -1512,7 +1506,6 @@ const SIGNS = [
       'Edge of the hand does the ‘shearing’',
     ],
     imageUrl: '../assets/images/medium/animals/sheep.png', videoUrl: '../assets/videos/medium/animals/sheep.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sheep.htm',
   },
   {
     id: 'medium_animals_PIG', level: 'medium', category: 'animals', signId: 'PIG', title: 'Pig', order: 7,
@@ -1523,7 +1516,6 @@ const SIGNS = [
       'Repeat a couple of times',
     ],
     imageUrl: '../assets/images/medium/animals/pig.png', videoUrl: '../assets/videos/medium/animals/pig.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pig.htm',
   },
   {
     id: 'medium_animals_BUG', level: 'medium', category: 'animals', signId: 'BUG', title: 'Bug', order: 8,
@@ -1534,7 +1526,6 @@ const SIGNS = [
       'Small twitching motion',
     ],
     imageUrl: '../assets/images/medium/animals/bug.png', videoUrl: '../assets/videos/medium/animals/bug.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bug.htm',
   },
 
   /* ── INTERMEDIATE · PHRASES (auto-generated content) ── */
@@ -1548,7 +1539,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/good_morning.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_morning.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/morning.htm',
   },
   {
     id: 'intermediate_greetings_intro_2_good_afternoon', level: 'intermediate', category: 'greetings_intro', signId: 'GOOD AFTERNOON', title: 'Good Afternoon', order: 2,
@@ -1558,7 +1548,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/good_afternoon.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_afternoon.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/afternoon.htm',
   },
   {
     id: 'intermediate_greetings_intro_3_good_evening', level: 'intermediate', category: 'greetings_intro', signId: 'GOOD EVENING', title: 'Good Evening', order: 3,
@@ -1568,7 +1557,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/good_evening.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_evening.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/evening.htm',
   },
   {
     id: 'intermediate_greetings_intro_4_nice_to_meet_you', level: 'intermediate', category: 'greetings_intro', signId: 'NICE TO MEET YOU', title: 'Nice to Meet You', order: 4,
@@ -1578,7 +1566,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/nice_to_meet_you.png', videoUrl: '../assets/videos/intermediate/greetings_intro/nice_to_meet_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/meet.htm',
   },
   {
     id: 'intermediate_greetings_intro_5_what_s_your_name', level: 'intermediate', category: 'greetings_intro', signId: 'WHAT\'S YOUR NAME?', title: 'What’s Your Name?', order: 5,
@@ -1589,7 +1576,6 @@ const SIGNS = [
       'In ASL, WH-questions often place the question word at the END of the sentence, not the start',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/what_s_your_name.png', videoUrl: '../assets/videos/intermediate/greetings_intro/what_s_your_name.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
   },
   {
     id: 'intermediate_greetings_intro_6_my_name_is', level: 'intermediate', category: 'greetings_intro', signId: 'MY NAME IS ___', title: 'My Name Is ___', order: 6,
@@ -1600,7 +1586,6 @@ const SIGNS = [
       'Names without a common ASL sign are fingerspelled letter by letter',
     ],
     imageUrl: '../assets/images/intermediate/greetings_intro/my_name_is.png', videoUrl: '../assets/videos/intermediate/greetings_intro/my_name_is.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
   },
 
   // ── INTERMEDIATE · BASIC_RESPONSES ──
@@ -1612,7 +1597,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/basic_responses/i_am_fine.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_am_fine.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/fine.htm',
   },
   {
     id: 'intermediate_basic_responses_2_i_am_good', level: 'intermediate', category: 'basic_responses', signId: 'I AM GOOD', title: 'I Am Good', order: 2,
@@ -1622,7 +1606,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/basic_responses/i_am_good.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_am_good.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/good.htm',
   },
   {
     id: 'intermediate_basic_responses_3_not_bad', level: 'intermediate', category: 'basic_responses', signId: 'NOT BAD', title: 'Not Bad', order: 3,
@@ -1632,7 +1615,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/basic_responses/not_bad.png', videoUrl: '../assets/videos/intermediate/basic_responses/not_bad.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bad.htm',
   },
   {
     id: 'intermediate_basic_responses_4_maybe_later', level: 'intermediate', category: 'basic_responses', signId: 'MAYBE LATER', title: 'Maybe Later', order: 4,
@@ -1642,7 +1624,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/basic_responses/maybe_later.png', videoUrl: '../assets/videos/intermediate/basic_responses/maybe_later.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/later.htm',
   },
   {
     id: 'intermediate_basic_responses_5_i_don_t_know', level: 'intermediate', category: 'basic_responses', signId: 'I DON\'T KNOW', title: 'I Don’t Know', order: 5,
@@ -1652,7 +1633,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/basic_responses/i_don_t_know.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_don_t_know.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/know.htm',
   },
 
   // ── INTERMEDIATE · FAMILY_PHRASES ──
@@ -1664,7 +1644,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_phrases/my_mother.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_mother.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mom.htm',
   },
   {
     id: 'intermediate_family_phrases_2_my_father', level: 'intermediate', category: 'family_phrases', signId: 'MY FATHER', title: 'My Father', order: 2,
@@ -1674,7 +1653,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_phrases/my_father.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_father.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dad.htm',
   },
   {
     id: 'intermediate_family_phrases_3_my_brother', level: 'intermediate', category: 'family_phrases', signId: 'MY BROTHER', title: 'My Brother', order: 3,
@@ -1684,7 +1662,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_phrases/my_brother.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_brother.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/brosis.htm',
   },
   {
     id: 'intermediate_family_phrases_4_my_sister', level: 'intermediate', category: 'family_phrases', signId: 'MY SISTER', title: 'My Sister', order: 4,
@@ -1694,7 +1671,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_phrases/my_sister.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_sister.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/brosis.htm',
   },
   {
     id: 'intermediate_family_phrases_5_my_friend', level: 'intermediate', category: 'family_phrases', signId: 'MY FRIEND', title: 'My Friend', order: 5,
@@ -1704,7 +1680,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_phrases/my_friend.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_friend.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/friend.htm',
   },
 
   // ── INTERMEDIATE · DAILY_NEEDS ──
@@ -1716,7 +1691,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_am_hungry.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_hungry.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hungry.htm',
   },
   {
     id: 'intermediate_daily_needs_2_i_am_thirsty', level: 'intermediate', category: 'daily_needs', signId: 'I AM THIRSTY', title: 'I Am Thirsty', order: 2,
@@ -1726,7 +1700,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_am_thirsty.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_thirsty.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/thirsty.htm',
   },
   {
     id: 'intermediate_daily_needs_3_i_am_tired', level: 'intermediate', category: 'daily_needs', signId: 'I AM TIRED', title: 'I Am Tired', order: 3,
@@ -1736,7 +1709,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_am_tired.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_tired.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tired.htm',
   },
   {
     id: 'intermediate_daily_needs_4_i_need_help', level: 'intermediate', category: 'daily_needs', signId: 'I NEED HELP', title: 'I Need Help', order: 4,
@@ -1746,7 +1718,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_need_help.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_help.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/help.htm',
   },
   {
     id: 'intermediate_daily_needs_5_i_need_water', level: 'intermediate', category: 'daily_needs', signId: 'I NEED WATER', title: 'I Need Water', order: 5,
@@ -1756,7 +1727,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_need_water.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_water.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/water.htm',
   },
   {
     id: 'intermediate_daily_needs_6_i_need_food', level: 'intermediate', category: 'daily_needs', signId: 'I NEED FOOD', title: 'I Need Food', order: 6,
@@ -1766,7 +1736,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_needs/i_need_food.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_food.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/eat.htm',
   },
 
   // ── INTERMEDIATE · ASKING_QUESTIONS ──
@@ -1778,7 +1747,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/how_are_you.png', videoUrl: '../assets/videos/intermediate/asking_questions/how_are_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/how.htm',
   },
   {
     id: 'intermediate_asking_questions_2_what_s_up', level: 'intermediate', category: 'asking_questions', signId: 'WHAT\'S UP?', title: 'What’s Up?', order: 2,
@@ -1788,7 +1756,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/what_s_up.png', videoUrl: '../assets/videos/intermediate/asking_questions/what_s_up.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/what.htm',
   },
   {
     id: 'intermediate_asking_questions_3_how_old_are_you', level: 'intermediate', category: 'asking_questions', signId: 'HOW OLD ARE YOU?', title: 'How Old Are You?', order: 3,
@@ -1798,7 +1765,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/how_old_are_you.png', videoUrl: '../assets/videos/intermediate/asking_questions/how_old_are_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
   },
   {
     id: 'intermediate_asking_questions_4_where_do_you_live', level: 'intermediate', category: 'asking_questions', signId: 'WHERE DO YOU LIVE?', title: 'Where Do You Live?', order: 4,
@@ -1808,7 +1774,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/where_do_you_live.png', videoUrl: '../assets/videos/intermediate/asking_questions/where_do_you_live.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/live.htm',
   },
   {
     id: 'intermediate_asking_questions_5_what_time', level: 'intermediate', category: 'asking_questions', signId: 'WHAT TIME?', title: 'What Time?', order: 5,
@@ -1818,7 +1783,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/what_time.png', videoUrl: '../assets/videos/intermediate/asking_questions/what_time.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/time.htm',
   },
   {
     id: 'intermediate_asking_questions_6_can_you_help', level: 'intermediate', category: 'asking_questions', signId: 'CAN YOU HELP?', title: 'Can You Help?', order: 6,
@@ -1828,7 +1792,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/can_you_help.png', videoUrl: '../assets/videos/intermediate/asking_questions/can_you_help.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/can.htm',
   },
   {
     id: 'intermediate_asking_questions_7_can_i_go', level: 'intermediate', category: 'asking_questions', signId: 'CAN I GO?', title: 'Can I Go?', order: 7,
@@ -1838,7 +1801,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_questions/can_i_go.png', videoUrl: '../assets/videos/intermediate/asking_questions/can_i_go.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/can.htm',
   },
 
   // ── INTERMEDIATE · POLITE_EXPRESSIONS ──
@@ -1850,7 +1812,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/polite_expressions/thank_you.png', videoUrl: '../assets/videos/intermediate/polite_expressions/thank_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/thankyou.htm',
   },
   {
     id: 'intermediate_polite_expressions_2_you_re_welcome', level: 'intermediate', category: 'polite_expressions', signId: 'YOU\'RE WELCOME', title: 'You’re Welcome', order: 2,
@@ -1860,7 +1821,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/polite_expressions/you_re_welcome.png', videoUrl: '../assets/videos/intermediate/polite_expressions/you_re_welcome.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/welcome.htm',
   },
   {
     id: 'intermediate_polite_expressions_3_excuse_me', level: 'intermediate', category: 'polite_expressions', signId: 'EXCUSE ME', title: 'Excuse Me', order: 3,
@@ -1870,7 +1830,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/polite_expressions/excuse_me.png', videoUrl: '../assets/videos/intermediate/polite_expressions/excuse_me.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/excuse.htm',
   },
   {
     id: 'intermediate_polite_expressions_4_have_a_nice_day', level: 'intermediate', category: 'polite_expressions', signId: 'HAVE A NICE DAY', title: 'Have a Nice Day', order: 4,
@@ -1880,7 +1839,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/polite_expressions/have_a_nice_day.png', videoUrl: '../assets/videos/intermediate/polite_expressions/have_a_nice_day.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nice.htm',
   },
   {
     id: 'intermediate_polite_expressions_5_see_you_later', level: 'intermediate', category: 'polite_expressions', signId: 'SEE YOU LATER', title: 'See You Later', order: 5,
@@ -1890,7 +1848,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/polite_expressions/see_you_later.png', videoUrl: '../assets/videos/intermediate/polite_expressions/see_you_later.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/later.htm',
   },
 
   // ── INTERMEDIATE · AFFECTION_FEELINGS ──
@@ -1902,7 +1859,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_love_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_love_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/iloveyou.htm',
   },
   {
     id: 'intermediate_affection_feelings_2_i_like_you', level: 'intermediate', category: 'affection_feelings', signId: 'I LIKE YOU', title: 'I Like You', order: 2,
@@ -1912,7 +1868,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_like_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_like_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/like.htm',
   },
   {
     id: 'intermediate_affection_feelings_3_i_miss_you', level: 'intermediate', category: 'affection_feelings', signId: 'I MISS YOU', title: 'I Miss You', order: 3,
@@ -1922,7 +1877,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_miss_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_miss_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/miss.htm',
   },
   {
     id: 'intermediate_affection_feelings_4_happy_birthday', level: 'intermediate', category: 'affection_feelings', signId: 'HAPPY BIRTHDAY', title: 'Happy Birthday', order: 4,
@@ -1932,7 +1886,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/happy_birthday.png', videoUrl: '../assets/videos/intermediate/affection_feelings/happy_birthday.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/happy.htm',
   },
   {
     id: 'intermediate_affection_feelings_5_i_don_t_like_it', level: 'intermediate', category: 'affection_feelings', signId: 'I DON\'T LIKE IT', title: 'I Don’t Like It', order: 5,
@@ -1942,7 +1895,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_don_t_like_it.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_don_t_like_it.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/like.htm',
   },
   {
     id: 'intermediate_affection_feelings_6_i_don_t_like_you', level: 'intermediate', category: 'affection_feelings', signId: 'I DON\'T LIKE YOU', title: 'I Don’t Like You', order: 6,
@@ -1952,7 +1904,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_don_t_like_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_don_t_like_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/like.htm',
   },
   {
     id: 'intermediate_affection_feelings_7_i_hate_it', level: 'intermediate', category: 'affection_feelings', signId: 'I HATE IT', title: 'I Hate It', order: 7,
@@ -1962,7 +1913,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/i_hate_it.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_hate_it.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hate.htm',
   },
   {
     id: 'intermediate_affection_feelings_8_leave_me_alone', level: 'intermediate', category: 'affection_feelings', signId: 'LEAVE ME ALONE', title: 'Leave Me Alone', order: 8,
@@ -1972,7 +1922,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/affection_feelings/leave_me_alone.png', videoUrl: '../assets/videos/intermediate/affection_feelings/leave_me_alone.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/alone.htm',
   },
 
   // ── INTERMEDIATE · DESCRIBING_THINGS ──
@@ -1985,7 +1934,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/red_car.png', videoUrl: '../assets/videos/intermediate/describing_things/red_car.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/red.htm',
   },
   {
     id: 'intermediate_describing_things_2_blue_shirt', level: 'intermediate', category: 'describing_things', signId: 'BLUE SHIRT', title: 'Blue Shirt', order: 2,
@@ -1996,7 +1944,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/blue_shirt.png', videoUrl: '../assets/videos/intermediate/describing_things/blue_shirt.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/blue.htm',
   },
   {
     id: 'intermediate_describing_things_3_green_tree', level: 'intermediate', category: 'describing_things', signId: 'GREEN TREE', title: 'Green Tree', order: 3,
@@ -2007,7 +1954,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/green_tree.png', videoUrl: '../assets/videos/intermediate/describing_things/green_tree.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tree.htm',
   },
   {
     id: 'intermediate_describing_things_4_big_house', level: 'intermediate', category: 'describing_things', signId: 'BIG HOUSE', title: 'Big House', order: 4,
@@ -2018,7 +1964,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/big_house.png', videoUrl: '../assets/videos/intermediate/describing_things/big_house.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/big.htm',
   },
   {
     id: 'intermediate_describing_things_5_small_dog', level: 'intermediate', category: 'describing_things', signId: 'SMALL DOG', title: 'Small Dog', order: 5,
@@ -2029,7 +1974,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/small_dog.png', videoUrl: '../assets/videos/intermediate/describing_things/small_dog.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/small.htm',
   },
   {
     id: 'intermediate_describing_things_6_good_job', level: 'intermediate', category: 'describing_things', signId: 'GOOD JOB', title: 'Good Job', order: 6,
@@ -2039,7 +1983,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/good_job.png', videoUrl: '../assets/videos/intermediate/describing_things/good_job.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/good.htm',
   },
   {
     id: 'intermediate_describing_things_7_bad_day', level: 'intermediate', category: 'describing_things', signId: 'BAD DAY', title: 'Bad Day', order: 7,
@@ -2050,7 +1993,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/describing_things/bad_day.png', videoUrl: '../assets/videos/intermediate/describing_things/bad_day.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bad.htm',
   },
 
   // ── INTERMEDIATE · SELF_INTRODUCTION ──
@@ -2063,7 +2005,6 @@ const SIGNS = [
       'Names without a common ASL sign are fingerspelled letter by letter',
     ],
     imageUrl: '../assets/images/intermediate/self_introduction/hello_my_name_is.png', videoUrl: '../assets/videos/intermediate/self_introduction/hello_my_name_is.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hello.htm',
   },
   {
     id: 'intermediate_self_introduction_2_nice_to_meet_you', level: 'intermediate', category: 'self_introduction', signId: 'NICE TO MEET YOU.', title: 'Nice to Meet You.', order: 2,
@@ -2073,7 +2014,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/self_introduction/nice_to_meet_you.png', videoUrl: '../assets/videos/intermediate/self_introduction/nice_to_meet_you.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/meet.htm',
   },
   {
     id: 'intermediate_self_introduction_3_i_am_years_old', level: 'intermediate', category: 'self_introduction', signId: 'I AM ___ YEARS OLD.', title: 'I Am ___ Years Old.', order: 3,
@@ -2083,7 +2023,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/self_introduction/i_am_years_old.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_am_years_old.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
   },
   {
     id: 'intermediate_self_introduction_4_i_live_in', level: 'intermediate', category: 'self_introduction', signId: 'I LIVE IN ___.', title: 'I Live In ___.', order: 4,
@@ -2093,7 +2032,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/self_introduction/i_live_in.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_live_in.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/live.htm',
   },
   {
     id: 'intermediate_self_introduction_5_i_am_a_student', level: 'intermediate', category: 'self_introduction', signId: 'I AM A STUDENT.', title: 'I Am a Student.', order: 5,
@@ -2103,7 +2041,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/self_introduction/i_am_a_student.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_am_a_student.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/student.htm',
   },
 
   // ── INTERMEDIATE · DAILY_ACTIVITIES ──
@@ -2115,7 +2052,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_wake_up_early.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_wake_up_early.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wake.htm',
   },
   {
     id: 'intermediate_daily_activities_2_i_go_to_school', level: 'intermediate', category: 'daily_activities', signId: 'I GO TO SCHOOL.', title: 'I Go to School.', order: 2,
@@ -2126,7 +2062,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_go_to_school.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_go_to_school.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/school.htm',
   },
   {
     id: 'intermediate_daily_activities_3_i_study_every_day', level: 'intermediate', category: 'daily_activities', signId: 'I STUDY EVERY DAY.', title: 'I Study Every Day.', order: 3,
@@ -2136,7 +2071,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_study_every_day.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_study_every_day.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/study.htm',
   },
   {
     id: 'intermediate_daily_activities_4_i_eat_breakfast', level: 'intermediate', category: 'daily_activities', signId: 'I EAT BREAKFAST.', title: 'I Eat Breakfast.', order: 4,
@@ -2146,7 +2080,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_eat_breakfast.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_eat_breakfast.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/eat.htm',
   },
   {
     id: 'intermediate_daily_activities_5_i_go_home_after_school', level: 'intermediate', category: 'daily_activities', signId: 'I GO HOME AFTER SCHOOL.', title: 'I Go Home After School.', order: 5,
@@ -2156,7 +2089,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_go_home_after_school.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_go_home_after_school.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/home.htm',
   },
   {
     id: 'intermediate_daily_activities_6_i_sleep_at_10_pm', level: 'intermediate', category: 'daily_activities', signId: 'I SLEEP AT 10 PM.', title: 'I Sleep at 10 PM.', order: 6,
@@ -2167,7 +2099,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/daily_activities/i_sleep_at_10_pm.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_sleep_at_10_pm.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sleep.htm',
   },
 
   // ── INTERMEDIATE · FAMILY_CONVERSATIONS ──
@@ -2179,7 +2110,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_conversations/i_have_two_brothers.png', videoUrl: '../assets/videos/intermediate/family_conversations/i_have_two_brothers.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/brosis.htm',
   },
   {
     id: 'intermediate_family_conversations_2_my_mother_works_at_home', level: 'intermediate', category: 'family_conversations', signId: 'MY MOTHER WORKS AT HOME.', title: 'My Mother Works at Home.', order: 2,
@@ -2190,7 +2120,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/family_conversations/my_mother_works_at_home.png', videoUrl: '../assets/videos/intermediate/family_conversations/my_mother_works_at_home.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/work.htm',
   },
   {
     id: 'intermediate_family_conversations_3_my_father_is_a_teacher', level: 'intermediate', category: 'family_conversations', signId: 'MY FATHER IS A TEACHER.', title: 'My Father Is a Teacher.', order: 3,
@@ -2200,7 +2129,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_conversations/my_father_is_a_teacher.png', videoUrl: '../assets/videos/intermediate/family_conversations/my_father_is_a_teacher.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/teacher.htm',
   },
   {
     id: 'intermediate_family_conversations_4_i_love_my_family', level: 'intermediate', category: 'family_conversations', signId: 'I LOVE MY FAMILY.', title: 'I Love My Family.', order: 4,
@@ -2210,7 +2138,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/family_conversations/i_love_my_family.png', videoUrl: '../assets/videos/intermediate/family_conversations/i_love_my_family.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/love.htm',
   },
 
   // ── INTERMEDIATE · TALKING_ABOUT_FEELINGS ──
@@ -2223,7 +2150,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_happy_today.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_happy_today.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/happy.htm',
   },
   {
     id: 'intermediate_talking_about_feelings_2_i_am_nervous', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM NERVOUS.', title: 'I Am Nervous.', order: 2,
@@ -2233,7 +2159,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_nervous.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_nervous.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nervous.htm',
   },
   {
     id: 'intermediate_talking_about_feelings_3_i_feel_tired', level: 'intermediate', category: 'talking_about_feelings', signId: 'I FEEL TIRED.', title: 'I Feel Tired.', order: 3,
@@ -2243,7 +2168,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/talking_about_feelings/i_feel_tired.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_feel_tired.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tired.htm',
   },
   {
     id: 'intermediate_talking_about_feelings_4_i_am_excited_for_tomorrow', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM EXCITED FOR TOMORROW.', title: 'I Am Excited for Tomorrow.', order: 4,
@@ -2254,7 +2178,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_excited_for_tomorrow.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_excited_for_tomorrow.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/excited.htm',
   },
   {
     id: 'intermediate_talking_about_feelings_5_i_am_worried_about_school', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM WORRIED ABOUT SCHOOL.', title: 'I Am Worried About School.', order: 5,
@@ -2265,7 +2188,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_worried_about_school.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_worried_about_school.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/worry.htm',
   },
 
   // ── INTERMEDIATE · ASKING_FOR_HELP ──
@@ -2277,7 +2199,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_for_help/can_you_help_me.png', videoUrl: '../assets/videos/intermediate/asking_for_help/can_you_help_me.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/help.htm',
   },
   {
     id: 'intermediate_asking_for_help_2_where_is_the_restroom', level: 'intermediate', category: 'asking_for_help', signId: 'WHERE IS THE RESTROOM?', title: 'Where Is the Restroom?', order: 2,
@@ -2287,7 +2208,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_for_help/where_is_the_restroom.png', videoUrl: '../assets/videos/intermediate/asking_for_help/where_is_the_restroom.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bathroom.htm',
   },
   {
     id: 'intermediate_asking_for_help_3_i_need_assistance', level: 'intermediate', category: 'asking_for_help', signId: 'I NEED ASSISTANCE.', title: 'I Need Assistance.', order: 3,
@@ -2297,7 +2217,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_for_help/i_need_assistance.png', videoUrl: '../assets/videos/intermediate/asking_for_help/i_need_assistance.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/help.htm',
   },
   {
     id: 'intermediate_asking_for_help_4_please_repeat_that', level: 'intermediate', category: 'asking_for_help', signId: 'PLEASE REPEAT THAT.', title: 'Please Repeat That.', order: 4,
@@ -2307,7 +2226,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_for_help/please_repeat_that.png', videoUrl: '../assets/videos/intermediate/asking_for_help/please_repeat_that.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/please.htm',
   },
   {
     id: 'intermediate_asking_for_help_5_i_don_t_understand', level: 'intermediate', category: 'asking_for_help', signId: 'I DON\'T UNDERSTAND.', title: 'I Don’t Understand.', order: 5,
@@ -2317,7 +2235,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/asking_for_help/i_don_t_understand.png', videoUrl: '../assets/videos/intermediate/asking_for_help/i_don_t_understand.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/u/understand.htm',
   },
 
   // ── INTERMEDIATE · SCHOOL_CONVERSATIONS ──
@@ -2329,7 +2246,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/school_conversations/what_is_your_favorite_subject.png', videoUrl: '../assets/videos/intermediate/school_conversations/what_is_your_favorite_subject.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/favorite.htm',
   },
   {
     id: 'intermediate_school_conversations_2_my_favorite_subject_is_english', level: 'intermediate', category: 'school_conversations', signId: 'MY FAVORITE SUBJECT IS ENGLISH.', title: 'My Favorite Subject Is English.', order: 2,
@@ -2339,7 +2255,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/school_conversations/my_favorite_subject_is_english.png', videoUrl: '../assets/videos/intermediate/school_conversations/my_favorite_subject_is_english.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/english.htm',
   },
   {
     id: 'intermediate_school_conversations_3_when_is_the_exam', level: 'intermediate', category: 'school_conversations', signId: 'WHEN IS THE EXAM?', title: 'When Is the Exam?', order: 3,
@@ -2349,7 +2264,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/school_conversations/when_is_the_exam.png', videoUrl: '../assets/videos/intermediate/school_conversations/when_is_the_exam.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/when.htm',
   },
   {
     id: 'intermediate_school_conversations_4_i_finished_my_assignment', level: 'intermediate', category: 'school_conversations', signId: 'I FINISHED MY ASSIGNMENT.', title: 'I Finished My Assignment.', order: 4,
@@ -2359,7 +2273,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/school_conversations/i_finished_my_assignment.png', videoUrl: '../assets/videos/intermediate/school_conversations/i_finished_my_assignment.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/finish.htm',
   },
   {
     id: 'intermediate_school_conversations_5_the_lesson_is_difficult', level: 'intermediate', category: 'school_conversations', signId: 'THE LESSON IS DIFFICULT.', title: 'The Lesson Is Difficult.', order: 5,
@@ -2369,7 +2282,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/school_conversations/the_lesson_is_difficult.png', videoUrl: '../assets/videos/intermediate/school_conversations/the_lesson_is_difficult.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hard.htm',
   },
 
   // ── INTERMEDIATE · SHOPPING_ORDERING ──
@@ -2381,7 +2293,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/shopping_ordering/how_much_is_this.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/how_much_is_this.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cost.htm',
   },
   {
     id: 'intermediate_shopping_ordering_2_i_want_to_buy_this', level: 'intermediate', category: 'shopping_ordering', signId: 'I WANT TO BUY THIS.', title: 'I Want to Buy This.', order: 2,
@@ -2391,7 +2302,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/shopping_ordering/i_want_to_buy_this.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/i_want_to_buy_this.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/buy.htm',
   },
   {
     id: 'intermediate_shopping_ordering_3_do_you_have_another_color', level: 'intermediate', category: 'shopping_ordering', signId: 'DO YOU HAVE ANOTHER COLOR?', title: 'Do You Have Another Color?', order: 3,
@@ -2401,7 +2311,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/shopping_ordering/do_you_have_another_color.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/do_you_have_another_color.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/color.htm',
   },
   {
     id: 'intermediate_shopping_ordering_4_where_is_the_cashier', level: 'intermediate', category: 'shopping_ordering', signId: 'WHERE IS THE CASHIER?', title: 'Where Is the Cashier?', order: 4,
@@ -2411,7 +2320,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/shopping_ordering/where_is_the_cashier.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/where_is_the_cashier.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/where.htm',
   },
   {
     id: 'intermediate_shopping_ordering_5_thank_you_for_your_help', level: 'intermediate', category: 'shopping_ordering', signId: 'THANK YOU FOR YOUR HELP.', title: 'Thank You for Your Help.', order: 5,
@@ -2421,7 +2329,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/shopping_ordering/thank_you_for_your_help.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/thank_you_for_your_help.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/thankyou.htm',
   },
 
   // ── INTERMEDIATE · SOCIAL_CONVERSATIONS ──
@@ -2434,7 +2341,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/social_conversations/what_are_you_doing_today.png', videoUrl: '../assets/videos/intermediate/social_conversations/what_are_you_doing_today.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/what.htm',
   },
   {
     id: 'intermediate_social_conversations_2_i_am_going_with_my_friends', level: 'intermediate', category: 'social_conversations', signId: 'I AM GOING WITH MY FRIENDS.', title: 'I Am Going With My Friends.', order: 2,
@@ -2444,7 +2350,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/social_conversations/i_am_going_with_my_friends.png', videoUrl: '../assets/videos/intermediate/social_conversations/i_am_going_with_my_friends.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/friend.htm',
   },
   {
     id: 'intermediate_social_conversations_3_would_you_like_to_join_us', level: 'intermediate', category: 'social_conversations', signId: 'WOULD YOU LIKE TO JOIN US?', title: 'Would You Like to Join Us?', order: 3,
@@ -2454,7 +2359,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/social_conversations/would_you_like_to_join_us.png', videoUrl: '../assets/videos/intermediate/social_conversations/would_you_like_to_join_us.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/j/join.htm',
   },
   {
     id: 'intermediate_social_conversations_4_that_s_a_good_idea', level: 'intermediate', category: 'social_conversations', signId: 'THAT\'S A GOOD IDEA.', title: 'That’s a Good Idea.', order: 4,
@@ -2464,7 +2368,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/social_conversations/that_s_a_good_idea.png', videoUrl: '../assets/videos/intermediate/social_conversations/that_s_a_good_idea.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/idea.htm',
   },
   {
     id: 'intermediate_social_conversations_5_see_you_tomorrow', level: 'intermediate', category: 'social_conversations', signId: 'SEE YOU TOMORROW.', title: 'See You Tomorrow.', order: 5,
@@ -2475,7 +2378,6 @@ const SIGNS = [
       'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
     ],
     imageUrl: '../assets/images/intermediate/social_conversations/see_you_tomorrow.png', videoUrl: '../assets/videos/intermediate/social_conversations/see_you_tomorrow.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tomorrow.htm',
   },
 
   // ── INTERMEDIATE · EMERGENCY_SITUATIONS ──
@@ -2487,7 +2389,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/i_need_help.png', videoUrl: '../assets/videos/intermediate/emergency_situations/i_need_help.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/help.htm',
   },
   {
     id: 'intermediate_emergency_situations_2_call_the_police', level: 'intermediate', category: 'emergency_situations', signId: 'CALL THE POLICE.', title: 'Call the Police.', order: 2,
@@ -2497,7 +2398,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/call_the_police.png', videoUrl: '../assets/videos/intermediate/emergency_situations/call_the_police.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/police.htm',
   },
   {
     id: 'intermediate_emergency_situations_3_call_an_ambulance', level: 'intermediate', category: 'emergency_situations', signId: 'CALL AN AMBULANCE.', title: 'Call an Ambulance.', order: 3,
@@ -2507,7 +2407,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/call_an_ambulance.png', videoUrl: '../assets/videos/intermediate/emergency_situations/call_an_ambulance.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/ambulance.htm',
   },
   {
     id: 'intermediate_emergency_situations_4_i_am_lost', level: 'intermediate', category: 'emergency_situations', signId: 'I AM LOST.', title: 'I Am Lost.', order: 4,
@@ -2517,7 +2416,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/i_am_lost.png', videoUrl: '../assets/videos/intermediate/emergency_situations/i_am_lost.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/lost.htm',
   },
   {
     id: 'intermediate_emergency_situations_5_where_is_the_hospital', level: 'intermediate', category: 'emergency_situations', signId: 'WHERE IS THE HOSPITAL?', title: 'Where Is the Hospital?', order: 5,
@@ -2527,7 +2425,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/where_is_the_hospital.png', videoUrl: '../assets/videos/intermediate/emergency_situations/where_is_the_hospital.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hospital.htm',
   },
   {
     id: 'intermediate_emergency_situations_6_this_is_an_emergency', level: 'intermediate', category: 'emergency_situations', signId: 'THIS IS AN EMERGENCY.', title: 'This Is an Emergency.', order: 6,
@@ -2537,7 +2434,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/emergency_situations/this_is_an_emergency.png', videoUrl: '../assets/videos/intermediate/emergency_situations/this_is_an_emergency.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/emergency.htm',
   },
 
   // ── INTERMEDIATE · EVERYDAY_DIALOGUES ──
@@ -2550,7 +2446,6 @@ const SIGNS = [
       'Look up at the other person between lines — eye contact signals whose turn it is to sign',
     ],
     imageUrl: '../assets/images/intermediate/everyday_dialogues/meeting_someone_hello_hello_what_is_your.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/meeting_someone_hello_hello_what_is_your.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hello.htm',
   },
   {
     id: 'intermediate_everyday_dialogues_2_asking_for_help_excuse_me_can_you_help_m', level: 'intermediate', category: 'everyday_dialogues', signId: 'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.', title: 'Dialogue: Asking for Help', order: 2,
@@ -2561,7 +2456,6 @@ const SIGNS = [
       'LOOK-FOR sweeps a bent ‘V’ hand around, like scanning for something',
     ],
     imageUrl: '../assets/images/intermediate/everyday_dialogues/asking_for_help_excuse_me_can_you_help_m.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/asking_for_help_excuse_me_can_you_help_m.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/excuse.htm',
   },
   {
     id: 'intermediate_everyday_dialogues_3_shopping_how_much_is_this_it_is_ten_doll', level: 'intermediate', category: 'everyday_dialogues', signId: 'SHOPPING: HOW MUCH IS THIS? / IT IS TEN DOLLARS. / I WILL BUY IT. / THANK YOU.', title: 'Dialogue: Shopping', order: 3,
@@ -2572,7 +2466,6 @@ const SIGNS = [
       'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
     ],
     imageUrl: '../assets/images/intermediate/everyday_dialogues/shopping_how_much_is_this_it_is_ten_doll.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/shopping_how_much_is_this_it_is_ten_doll.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dollars.htm',
   },
 ];
 

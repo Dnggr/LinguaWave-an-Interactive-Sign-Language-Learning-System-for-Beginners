@@ -405,6 +405,20 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
+  // BUG FIX: classifyGesture() already refuses to report a label that
+  // has no SIGN_DICTIONARY entry (or is marked disabled). classifyMotion()
+  // was missing this same guard, so a motion model trained on more labels
+  // than the dictionary knows about (e.g. new family words) could either
+  // silently report labels lesson.js has no content for, or — the more
+  // common case — a label that IS in the dictionary but hasn't been
+  // wired into data.js/dictionary.js yet would still show up as a
+  // "detected" word with no matching lesson. Keep both files in sync.
+  const dictEntry = SIGN_DICTIONARY[rawLabel];
+  if (!dictEntry || dictEntry.disabled) {
+    pendingMotionLabel = null;
+    return { label: null, confidence: 0, matched: false, buffering: false };
+  }
+
   const passesThreshold = confidence >= MOTION_THRESHOLD;
 
   if (!passesThreshold) {

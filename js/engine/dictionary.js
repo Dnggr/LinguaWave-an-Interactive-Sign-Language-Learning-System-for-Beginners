@@ -242,6 +242,46 @@ export const SIGN_DICTIONARY = {
     description:  'Hands clasp together and interlock in front of the chest',
     category: 'family', imageFile: 'marriage.gif', detectionType: 'motion',
   },
+  'SISTER': {
+    fingerStates: [1, 1, 0, 0, 0],
+    description:  'L-hand near the jaw (like GIRL), then both index fingers meet',
+    category: 'family', imageFile: 'sister.gif', detectionType: 'motion',
+  },
+  'GRANDMA': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Open "5" hand taps the chin (like MOM), then hops forward and taps again',
+    category: 'family', imageFile: 'grandma.gif', detectionType: 'motion',
+  },
+  'GRANDPA': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Open "5" hand taps the forehead (like DAD), then hops forward and taps again',
+    category: 'family', imageFile: 'grandpa.gif', detectionType: 'motion',
+  },
+  'AUNT': {
+    fingerStates: [1, 0, 0, 0, 0],
+    description:  '"A" handshape shaken near the cheek',
+    category: 'family', imageFile: 'aunt.gif', detectionType: 'motion',
+  },
+  'UNCLE': {
+    fingerStates: [0, 1, 1, 0, 0],
+    description:  '"U" handshape shaken near the temple',
+    category: 'family', imageFile: 'uncle.gif', detectionType: 'motion',
+  },
+  'BABY': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Both forearms cross and rock gently, like cradling an infant',
+    category: 'family', imageFile: 'baby.gif', detectionType: 'motion',
+  },
+  'SINGLE': {
+    fingerStates: [0, 0, 0, 0, 1],
+    description:  '"I" handshape traced along the ring finger of the other hand',
+    category: 'family', imageFile: 'single.gif', detectionType: 'motion',
+  },
+  'DIVORCED': {
+    fingerStates: [0, 1, 1, 1, 1],
+    description:  'Two flat hands touch, then twist and pull apart',
+    category: 'family', imageFile: 'divorced.gif', detectionType: 'motion',
+  },
 
 
   'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion' },
