@@ -61,10 +61,15 @@ const MOTION_LABELS_PATH = '../asl_motion_model/labels.json';
 
 const MATCH_THRESHOLD        = 75;   // minimum % confidence to count as "matched"
 const MOTION_THRESHOLD       = 70;   // slightly lower for motion signs
-const MOTION_FRAMES_REQUIRED = 20;   // matches capture.html's signFrameLengths for J/Z/MOM/DAD/BOY/GIRL
-// NOTE: capture.html supports variable per-sign frame lengths (15–60).
-// The LSTM model needs a FIXED window, so any new motion sign you train
-// must also use 20 frames, or you'll need a separate model/window per length.
+// CHANGED (today): 20 -> 40. capture.html used to assign a DIFFERENT frame
+// length per sign (15 for short taps like IN/OUT/WITH, up to 60 for full
+// sentences) — that's what made the Colab notebook reject exports the
+// moment a batch mixed more than one sign type ("mixed sequence lengths").
+// Every motion sign now records/imports to ONE universal 40-frame window
+// (see signFrameLengths / DEFAULT_FRAME_LENGTH / MOTION_MODEL_SEQ_LEN in
+// capture.html, and MOTION_FRAMES in the Colab notebook). All three MUST
+// stay equal — this is the number that actually shapes the LSTM's input.
+const MOTION_FRAMES_REQUIRED = 40;   // MUST match capture.html's frame window AND the notebook's MOTION_FRAMES
 
 // ── Feature vector config — MUST mirror capture.html's buildFeatureVec()
 // Layout: [63 left xyz][63 right xyz][leftPresent][rightPresent][handToChin][handToForehead]
