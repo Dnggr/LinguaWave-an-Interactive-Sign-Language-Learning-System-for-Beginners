@@ -132,13 +132,17 @@ async function login(email, password) {
   const result = await signInWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
 
-  const existing = getCurrentUser();
+  // Fetch the real profile from Firestore instead of guessing
+  const userRef = doc(db, 'users', firebaseUser.uid);
+  const snapshot = await getDoc(userRef);
+  const profile = snapshot.exists() ? snapshot.data() : {};
+
   const user = {
     uid: firebaseUser.uid,
-    name: existing?.name || firebaseUser.email.split('@')[0] || 'Learner',
+    name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
     email: firebaseUser.email,
-    level: existing?.level || 'basic',
-    joined: existing?.joined || new Date().toISOString().slice(0, 10),
+    level: profile.level || 'basic',
+    joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
