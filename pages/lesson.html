@@ -223,7 +223,10 @@
             <canvas id="lw-canvas" aria-hidden="true"></canvas>
           </div><!-- /camera-viewport -->
 
-          <!-- Detection readout -->
+          <!-- Detection readout + log — merged into one card. These
+               used to be two separate cards; the log now lives inside
+               the same panel as the live readout since they're really
+               one feature (see current + history of the same thing). -->
           <div class="detection-panel card mt-4">
             <div class="detection-row">
               <span class="detection-label">Detected sign</span>
@@ -236,56 +239,39 @@
               <span class="confidence-text" id="confidence-text">0%</span>
             </div>
 
-            <!-- Motion buffer (shown for motion signs only) -->
+            <!--
+              Motion buffer (shown for motion signs only). CHANGED: the
+              separate "Start Recording" button and hint text are gone —
+              Start Recording and the Assessment button below are now
+              the same action (clicking "Start Assessment" runs the
+              3-2-1 countdown automatically once the get-ready pause
+              ends, see showNextPrompt() in lesson.js). This label now
+              just reports status: "Collecting frames" while idle,
+              "Get ready… 3/2/1/GO!" during the countdown, "Recording",
+              "Confirming", etc.
+            -->
             <div class="motion-buffer-wrap mt-3" id="motion-buffer-wrap">
-              <span class="detection-label">Collecting frames</span>
+              <span class="detection-label" id="motion-status-label">Collecting frames</span>
               <div class="confidence-track">
                 <div class="confidence-bar-fill confidence-bar-fill--motion" id="motion-buffer-bar"></div>
               </div>
+            </div>
 
-              <!--
-                NEW: explicit "Start Recording" button for motion signs,
-                same idea as capture.html's record button. Motion signs
-                used to detect passively/continuously in the background,
-                which caused two problems: (1) the classifier requires
-                TWO consecutive agreeing 40-frame windows to confirm a
-                match, so with no on-screen cue you'd often have to
-                repeat the sign without knowing why nothing happened —
-                it looked like you "had to move your hand" to trigger
-                anything; (2) frame windows were captured on an arbitrary
-                ~1.3s cycle unsynced to when you actually started signing,
-                so a window could catch half-idle + half-gesture instead
-                of the full motion. Detection for motion signs now only
-                runs while armed by this button, so every window is
-                deliberately synced to a real attempt.
-              -->
-              <button class="btn btn--primary btn--full mt-2" id="btn-start-motion">
-                🔴 Start Recording
-              </button>
-              <p class="text-muted" id="motion-hint" style="font-size:var(--fs-xs); margin-top:6px; min-height:1.2em;">
-                Click, then get your hand ready — recording starts after a short countdown.
-              </p>
+            <!-- Detection log — persistent, scrollable history of every
+                 classification result, newest first. The live readout
+                 above updates every frame and can change/vanish in well
+                 under a second, especially for motion signs mid-
+                 confirmation, so this keeps a running record. -->
+            <div class="detection-log-inline mt-4">
+              <div class="detection-log__header">
+                <span class="detection-label">Detection log</span>
+                <button class="detection-log__clear" id="btn-clear-log" type="button">Clear</button>
+              </div>
+              <ul class="detection-log__list" id="detection-log-list">
+                <li class="detection-log__empty">No detections yet</li>
+              </ul>
             </div>
           </div><!-- /detection-panel -->
-
-          <!--
-            NEW: Detection log — a persistent, scrollable history of every
-            classification result (letters AND motion signs), newest on
-            top. The live "Detected sign" readout above updates every
-            frame and can change/vanish in well under a second, especially
-            for motion signs mid-confirmation, which made it hard to see
-            what the system actually saw. This panel keeps a running
-            record so nothing is missed.
-          -->
-          <div class="detection-log card mt-3" id="detection-log">
-            <div class="detection-log__header">
-              <span class="detection-label">Detection log</span>
-              <button class="detection-log__clear" id="btn-clear-log" type="button">Clear</button>
-            </div>
-            <ul class="detection-log__list" id="detection-log-list">
-              <li class="detection-log__empty">No detections yet</li>
-            </ul>
-          </div><!-- /detection-log -->
 
           <!--
             BUG 1 FIX: Non-blocking classifier warning zone.
@@ -303,9 +289,16 @@
                    line-height: 1.4;"
           ></div>
 
-          <!-- Assessment section — REV 3: this is now an OPTIONAL,
-               ungraded camera practice check. It never blocks progress;
-               the graded assessment lives in quiz.html per category. -->
+          <!-- Assessment section — an OPTIONAL, ungraded camera check.
+               It never blocks progress; the graded assessment lives in
+               quiz.html per category. CHANGED: this button used to be
+               "Practice Check", separate from a "Start Recording"
+               button in the detection panel above. They did the same
+               job (both meant "attempt this sign for real"), so
+               they're merged — clicking this now also runs the 3-2-1
+               countdown + recording automatically for motion signs
+               once the get-ready pause ends (see showNextPrompt() in
+               lesson.js). -->
           <div class="assessment-panel mt-4">
 
             <p class="text-muted" style="font-size: var(--fs-xs); margin-bottom: var(--space-2);">
@@ -315,9 +308,10 @@
               and an optional camera round.
             </p>
 
-            <!-- Start button (practice check only, not graded) -->
+            <!-- Start button — triggers get-ready, then (for motion
+                 signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
-              🎥 Practice Check (optional)
+              🎥 Start Assessment
             </button>
 
             <!-- Assessment prompt (shown during assessment only) -->
@@ -340,7 +334,7 @@
             <p class="camera-tips__title">📸 Camera Tips</p>
             <ul class="camera-tips__list">
               <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
-              <li>Motion signs: click "Start Recording" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
+              <li>Motion signs: click "Start Assessment" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
               <li>Make sure your hand is well-lit and fully visible</li>
               <li>Keep your hand centred in the frame</li>
             </ul>

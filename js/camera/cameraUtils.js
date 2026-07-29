@@ -44,6 +44,31 @@ export async function startCamera(videoElement, canvasElement) {
   try {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+    // NEW — always zoom out to the widest field of view.
+    // Some webcams (and some OS-level camera drivers, notably on
+    // Windows and macOS Continuity Camera) default to a digital zoom
+    // greater than 1x, which crops in tighter than the sensor's actual
+    // field of view. object-fit:contain (see lesson-camera.css) already
+    // stops the BROWSER from cropping the stream further, but it can't
+    // undo a zoom the camera itself already applied before the frame
+    // ever reaches the page. If the camera exposes a `zoom` capability
+    // (part of the standard MediaTrackConstraints — most external
+    // webcams and modern laptop cameras do), explicitly set it to the
+    // capability's minimum, which is the widest angle the hardware can
+    // produce. Safe no-op wrapped in try/catch: unsupported devices/
+    // browsers just skip this silently and keep their default zoom.
+    try {
+      const [track] = stream.getVideoTracks();
+      const capabilities = track.getCapabilities?.();
+      if (capabilities?.zoom) {
+        await track.applyConstraints({ advanced: [{ zoom: capabilities.zoom.min }] });
+        console.log(`[cameraUtils] Zoomed out to widest FOV (zoom=${capabilities.zoom.min}).`);
+      }
+    } catch (zoomErr) {
+      // Non-fatal — camera still works, it just keeps its default zoom.
+      console.log('[cameraUtils] Camera does not support zoom control; using default.', zoomErr);
+    }
+
     await new Promise((resolve, reject) => {
       // BUG FIX: previously the onloadedmetadata handler was attached
       // AFTER srcObject was assigned. Because <video> has the `autoplay`

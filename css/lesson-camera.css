@@ -365,32 +365,34 @@
   gap: var(--space-3);
 }
 
-/* ── NEW: Start Recording button (motion signs) ─────────────────── */
-/* Sits inside .motion-buffer-wrap, only visible when that wrap is
-   visible (motion signs only — toggled in lesson.js updateLessonMeta()). */
-#btn-start-motion {
-  transition: background var(--dur-base) var(--ease), opacity var(--dur-base) var(--ease);
-}
-#btn-start-motion:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-#btn-start-motion.is-recording {
-  background: var(--clr-red);
-  border-color: var(--clr-red);
+/* ── Motion recording status pulse ───────────────────────────────── */
+/* CHANGED: this used to highlight a dedicated "Start Recording"
+   button (#btn-start-motion), which no longer exists — Start
+   Recording is now triggered automatically from the Assessment flow
+   (see showNextPrompt() in lesson.js). The pulse now highlights the
+   whole #motion-buffer-wrap instead, so there's still a clear "this
+   is actively happening" cue even with no button to style. */
+#motion-buffer-wrap.is-recording {
   animation: motionRecordPulse 1.1s ease-in-out infinite;
+}
+#motion-buffer-wrap.is-recording #motion-status-label {
+  color: var(--clr-red);
+  font-weight: 700;
 }
 @keyframes motionRecordPulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.75; }
 }
 
-/* ── NEW: Detection log panel ────────────────────────────────────── */
-/* Persistent scrollable history of classification results, since the
-   live "Detected sign" readout above can change/vanish in well under
-   a second (especially motion signs mid two-window confirmation). */
-.detection-log {
-  padding: var(--space-3) var(--space-4);
+/* ── Detection log ────────────────────────────────────────────────
+   CHANGED: this used to be its own top-level .card; it now lives
+   nested inside .detection-panel (see lesson.html), sharing one card
+   with the live "Detected sign" readout instead of sitting in a
+   separate box right below it — same information, one less visual
+   seam. A top border + padding stand in for the old card boundary. */
+.detection-log-inline {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clr-border);
 }
 .detection-log__header {
   display: flex;
