@@ -948,9 +948,9 @@ function updateConfidenceUI(result) {
     // BUG 10: motion signs now need two agreeing windows before they
     // lock in — show that as "holding" so it doesn't look stuck.
     detectedEl.textContent        = result.confirming ? `${result.label} (hold…)` : result.label;
-    detectedEl.style.color        = result.matched ? 'var(--clr-accent)' : 'var(--clr-text-muted)';
+    detectedEl.style.color        = result.matched ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
-    confidenceEl.style.background = result.matched ? 'var(--clr-accent)' : 'var(--clr-yellow)';
+    confidenceEl.style.background = result.matched ? 'var(--clr-success)' : 'var(--clr-yellow)';
     confTextEl.textContent        = `${result.confidence}%`;
   } else {
     detectedEl.textContent    = '–';

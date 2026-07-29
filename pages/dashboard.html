@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- NEW: sets data-theme before any CSS loads, so the page never
+       flashes the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('lw-theme');
+      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <!--
     pages/dashboard.html — User Dashboard
     ─────────────────────────────────────────────────────────────────
@@ -31,6 +40,7 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
 
   <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
     LWAuth.requireAuth('../index.html');
@@ -48,6 +58,10 @@
         <li><a href="learn.html">Learn</a></li>
       </ul>
       <div class="navbar__user">
+        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
+                aria-label="Toggle light/dark theme">
+          <span class="theme-toggle__thumb"></span>
+        </button>
         <span>👋 <span data-user-name>Learner</span></span>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>

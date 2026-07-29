@@ -4,29 +4,31 @@
  * PURPOSE  : Design tokens, resets, layout utilities, and shared
  *            component styles used across every page of LinguaWave.
  * CONNECTS : Imported by index.html and all pages/*.html files.
- * TODO     : Add dark-mode media query once content is finalized.
- *            Swap placeholder colors with final brand palette if needed.
  * ─────────────────────────────────────────────────────────────────
+ *
+ * THEME SYSTEM (NEW): minimalist two-theme system, toggled by setting
+ * data-theme="light" or data-theme="dark" on <html>. See js/theme.js
+ * for the toggle control + persistence (localStorage + system
+ * preference fallback) — it sets data-theme before first paint to
+ * avoid a flash of the wrong theme.
+ *
+ * DESIGN NOTE: the previous palette used one green (--clr-accent) for
+ * BOTH the brand/interactive color (buttons, links, focus rings) AND
+ * "success/correct" states (done badges, correct quiz answers, matched
+ * detection). A true black/white minimalist theme needs --clr-accent
+ * to become ink (black on light, white on dark) for buttons/links to
+ * make sense — so success now has its own dedicated --clr-success
+ * token instead, kept as a muted, deliberately restrained green even
+ * inside an otherwise monochrome UI, since correct/incorrect feedback
+ * is functional information, not decoration. Same idea for the "soft"
+ * tinted backgrounds: the original had six different opacity values
+ * for the same green (.06 to .35) scattered across files — consolidated
+ * to one soft variant per color below.
  */
 
 /* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
 :root {
-  /* Palette */
-  --clr-bg:          #0d1117;   /* deep navy-black page background   */
-  --clr-surface:     #161b22;   /* card / panel surface              */
-  --clr-surface-2:   #21262d;   /* elevated surface (hover, modal)   */
-  --clr-border:      #30363d;   /* subtle dividers                   */
-
-  --clr-accent:      #3fb950;   /* primary green — "go / learn"      */
-  --clr-accent-dim:  #238636;   /* darker green for hover states     */
-  --clr-yellow:      #d29922;   /* MEDIUM level badge                */
-  --clr-orange:      #e3822a;   /* INTERMEDIATE level badge          */
-  --clr-blue:        #388bfd;   /* links, info states                */
-  --clr-red:         #f85149;   /* error / locked                    */
-
-  --clr-text:        #e6edf3;   /* primary text                      */
-  --clr-text-muted:  #8b949e;   /* secondary / caption text          */
-  --clr-text-invert: #0d1117;   /* text on bright surfaces           */
+  color-scheme: light dark;
 
   /* Type scale */
   --font-display:  'Space Grotesk', sans-serif;
@@ -53,22 +55,100 @@
   --space-16: 4rem;
   --space-24: 6rem;
 
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 20px;
+  /* Radius — tightened slightly from the original scale for a
+     crisper, less "app-store default" minimalist feel. */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
   --radius-pill: 9999px;
-
-  /* Shadows */
-  --shadow-card: 0 4px 24px rgba(0,0,0,.4);
-  --shadow-glow: 0 0 24px rgba(63,185,80,.18);
 
   /* Transitions */
   --ease: cubic-bezier(.4,0,.2,1);
   --dur-fast: 150ms;
   --dur-base: 250ms;
   --dur-slow: 400ms;
+}
+
+/* ── 1a. COLOR TOKENS — theme-aware ──────────────────────────────
+   :root carries the dark palette as the pre-JS fallback, [data-theme]
+   blocks below are what JS actually switches between.
+
+   REVISED: the first pass of this used literal #000/#fff for bg and
+   an ink-only accent, which read as flat and generic rather than
+   "designed." This version uses layered, slightly-tinted neutrals
+   (surfaces are visibly distinct from the page background, not just
+   different by a hairline) plus one real accent hue — a warm violet —
+   instead of relying on grayscale alone to carry the whole UI,
+   similar to how Material-You-style apps (e.g. Mihon) build a dark
+   theme: never pure black, always a few visible layers of elevation,
+   one accent color that shows up consistently rather than "brand =
+   whatever grayscale value is left." */
+:root,
+[data-theme="dark"] {
+  --clr-bg:          #121316;   /* near-black, warm-neutral tint — not pure black */
+  --clr-surface:     #1b1d22;   /* card surface, one visible step up from bg      */
+  --clr-surface-2:   #24272e;   /* elevated surface (hover, modal, icon chips)    */
+  --clr-border:      #34383f;   /* subtle dividers                                */
+
+  --clr-accent:      #9b8cfa;   /* primary — soft violet, the one recurring color */
+  --clr-accent-dim:  #7c6df0;
+  --clr-accent-soft: rgba(155,140,250,.14);
+
+  --clr-success:      #4caf6d;
+  --clr-success-soft: rgba(76,175,109,.14);
+
+  --clr-red:         #e5534b;
+  --clr-red-soft:    rgba(229,83,75,.14);
+
+  --clr-yellow:      #d4a72c;
+  --clr-yellow-soft: rgba(212,167,44,.16);
+
+  --clr-orange:      #e08a4b;
+  --clr-orange-soft: rgba(224,138,75,.16);
+
+  --clr-blue:        #5b9df9;
+  --clr-blue-soft:   rgba(91,157,249,.14);
+
+  --clr-text:        #eceef2;
+  --clr-text-muted:  #9498a3;
+  --clr-text-invert: #14151a;
+
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.35);
+  --backdrop:    rgba(10,11,14,.85);
+}
+
+[data-theme="light"] {
+  --clr-bg:          #f6f5f9;   /* soft lavender-tinted off-white — not pure white */
+  --clr-surface:     #ffffff;   /* cards pop against the tinted bg                 */
+  --clr-surface-2:   #edebf5;
+  --clr-border:      #e1ddef;
+
+  --clr-accent:      #6c5ce7;   /* same violet family, deepened for light contrast */
+  --clr-accent-dim:  #5849c9;
+  --clr-accent-soft: rgba(108,92,231,.09);
+
+  --clr-success:      #2f7d4f;
+  --clr-success-soft: rgba(47,125,79,.10);
+
+  --clr-red:         #c0392b;
+  --clr-red-soft:    rgba(192,57,43,.09);
+
+  --clr-yellow:      #a67c00;
+  --clr-yellow-soft: rgba(166,124,0,.10);
+
+  --clr-orange:      #b5601f;
+  --clr-orange-soft: rgba(181,96,31,.10);
+
+  --clr-blue:        #2f5fa8;
+  --clr-blue-soft:   rgba(47,95,168,.09);
+
+  --clr-text:        #1c1b22;
+  --clr-text-muted:  #6b6875;
+  --clr-text-invert: #ffffff;
+
+  --shadow-card: 0 1px 2px rgba(28,20,50,.04), 0 8px 24px rgba(28,20,50,.07);
+  --backdrop:    rgba(246,245,249,.85);
 }
 
 /* ── 2. RESET ───────────────────────────────────────────────────── */
@@ -120,7 +200,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(13,17,23,.85);
+  background: var(--backdrop);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--clr-border);
 }
@@ -161,6 +241,49 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   color: var(--clr-text-muted);
 }
 
+/* ── 5a. THEME TOGGLE ───────────────────────────────────────────── */
+/* A plain pill switch — deliberately the only "colorful" moving part
+   in the whole nav, since it's the one control whose entire job is
+   to visually represent "light vs dark." See js/theme.js for wiring. */
+.theme-toggle {
+  --toggle-w: 44px;
+  --toggle-h: 24px;
+  width: var(--toggle-w);
+  height: var(--toggle-h);
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  position: relative;
+  padding: 0;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.theme-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(var(--toggle-h) - 6px);
+  height: calc(var(--toggle-h) - 6px);
+  border-radius: 50%;
+  background: var(--clr-text);
+  transition: transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease);
+}
+.theme-toggle__thumb::before {
+  content: '☾';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--clr-surface);
+}
+.theme-toggle--light .theme-toggle__thumb {
+  transform: translateX(calc(var(--toggle-w) - var(--toggle-h)));
+}
+.theme-toggle--light .theme-toggle__thumb::before { content: '☀'; }
+.theme-toggle:hover { border-color: var(--clr-text-muted); }
+
 /* ── 6. BUTTONS ─────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -184,7 +307,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   background: var(--clr-accent);
   color: var(--clr-text-invert);
 }
-.btn--primary:hover { background: var(--clr-accent-dim); box-shadow: var(--shadow-glow); }
+.btn--primary:hover { background: var(--clr-accent-dim); }
 
 .btn--secondary {
   background: var(--clr-surface-2);
@@ -202,7 +325,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 
 .btn--danger {
   background: var(--clr-red);
-  color: #fff;
+  color: #ffffff;
 }
 
 .btn--lg { padding: var(--space-4) var(--space-8); font-size: var(--fs-base); }
@@ -222,7 +345,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 }
 .card:hover {
   border-color: var(--clr-accent);
-  box-shadow: var(--shadow-glow);
+  box-shadow: var(--shadow-card);
 }
 
 /* ── 8. LEVEL BADGES ────────────────────────────────────────────── */
@@ -241,11 +364,11 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   text-transform: uppercase;
   letter-spacing: .06em;
 }
-.badge--basic        { background: rgba(56,139,253,.18); color: #388bfd; }
-.badge--medium       { background: rgba(210,153,34,.18); color: #d29922; }
-.badge--intermediate { background: rgba(227,130,42,.18); color: #e3822a; }
-.badge--locked       { background: rgba(248,81,73,.1);   color: var(--clr-red); }
-.badge--done         { background: rgba(63,185,80,.15);  color: var(--clr-accent); }
+.badge--basic        { background: var(--clr-blue-soft);   color: var(--clr-blue); }
+.badge--medium       { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
+.badge--intermediate { background: var(--clr-orange-soft); color: var(--clr-orange); }
+.badge--locked       { background: var(--clr-red-soft);    color: var(--clr-red); }
+.badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
 
 /* ── 9. PROGRESS BAR ────────────────────────────────────────────── */
 .progress-bar {
@@ -282,7 +405,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .form-input:focus {
   outline: none;
   border-color: var(--clr-accent);
-  box-shadow: 0 0 0 3px rgba(63,185,80,.15);
+  box-shadow: 0 0 0 3px var(--clr-accent-soft);
 }
 .form-input::placeholder { color: var(--clr-text-muted); }
 
@@ -293,9 +416,9 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   font-size: var(--fs-sm);
   border-left: 4px solid;
 }
-.alert--success { background: rgba(63,185,80,.1);  border-color: var(--clr-accent); color: var(--clr-accent); }
-.alert--error   { background: rgba(248,81,73,.1);  border-color: var(--clr-red);    color: var(--clr-red); }
-.alert--info    { background: rgba(56,139,253,.1); border-color: var(--clr-blue);   color: var(--clr-blue); }
+.alert--success { background: var(--clr-success-soft); border-color: var(--clr-success); color: var(--clr-success); }
+.alert--error   { background: var(--clr-red-soft);     border-color: var(--clr-red);     color: var(--clr-red); }
+.alert--info    { background: var(--clr-blue-soft);    border-color: var(--clr-blue);    color: var(--clr-blue); }
 
 /* ── 12. SECTION LAYOUT HELPERS ─────────────────────────────────── */
 .section { padding-block: var(--space-16); }

@@ -40,7 +40,7 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 .auth-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,14 +52,14 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 }
 
 .auth-modal__box {
-  background: #0d1117;
-  border-radius: 12px;
-  border: 1px solid #30363d;
+  background: var(--clr-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-border);
   padding: 24px;
   width: 90%;
   max-width: 320px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-card);
 }
 
 .auth-modal__message {

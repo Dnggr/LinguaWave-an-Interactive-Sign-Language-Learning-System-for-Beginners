@@ -39,14 +39,16 @@
   border-color: var(--clr-accent); transform: translateY(-3px);
   box-shadow: var(--shadow-card); text-decoration: none;
 }
-.lesson-card--done { border-color: rgba(63,185,80,.35); }
-.lesson-card--current { border-color: var(--clr-accent); box-shadow: var(--shadow-glow); }
+.lesson-card--done { border-color: var(--clr-success); }
+.lesson-card--current { border-color: var(--clr-accent); border-width: 2px; box-shadow: var(--shadow-card); }
 .lesson-card--locked { opacity: .55; cursor: not-allowed; pointer-events: none; }
 .lesson-card__letter {
   width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
-  background: var(--clr-surface-2); border-radius: var(--radius-md);
+  background: var(--clr-accent-soft); border-radius: var(--radius-md);
   font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--clr-accent);
+  transition: transform var(--dur-base) var(--ease);
 }
+.lesson-card:hover:not(.lesson-card--locked) .lesson-card__letter { transform: scale(1.08); }
 .lesson-card__title { font-size: var(--fs-xs); color: var(--clr-text-muted); }
 
 /* ── Category cards (Medium/Words + Intermediate/Phrases grids) ──────
@@ -57,8 +59,10 @@
 .category-card__icon {
   font-size: var(--fs-2xl); line-height: 1;
   width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
-  background: var(--clr-surface-2); border-radius: var(--radius-pill);
+  background: var(--clr-accent-soft); border-radius: var(--radius-pill);
+  transition: transform var(--dur-base) var(--ease);
 }
+.lesson-card:hover:not(.lesson-card--locked) .category-card__icon { transform: scale(1.08); }
 .category-card__title {
   font-family: var(--font-display); font-size: var(--fs-base); font-weight: 700;
   color: var(--clr-text); line-height: 1.3;

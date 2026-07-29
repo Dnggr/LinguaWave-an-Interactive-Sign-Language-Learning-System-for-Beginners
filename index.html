@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- NEW: sets data-theme before any CSS loads, so the page never
+       flashes the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('lw-theme');
+      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <!--
     index.html — Log In / Sign Up (Landing Page)
     ─────────────────────────────────────────────────────────────────
@@ -31,6 +40,7 @@
   <!-- Elfa Auth must load before anything renders so a logged-in user
        gets redirected immediately instead of seeing the login form. -->
   <script type="module" src="js/auth.js"></script>
+  <script src="js/theme.js" defer></script>
   <script>
     window.addEventListener('lwauth-ready', () => {
     LWAuth.redirectIfLoggedIn('pages/dashboard.html');
@@ -44,6 +54,10 @@
     <a href="index.html" class="navbar__logo" style="display:block;text-align:center;">
       Lingua<span style="color:var(--clr-text-muted);font-weight:400;">Wave</span>
     </a>
+    <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
+            style="margin: var(--space-3) auto 0;" aria-label="Toggle light/dark theme">
+      <span class="theme-toggle__thumb"></span>
+    </button>
     <p class="auth-tagline">Learn ASL — one sign at a time.</p>
 
     <!-- ── TAB TOGGLE ───────────────────────────────────────────── -->

@@ -19,6 +19,6 @@
   white-space: nowrap;
 }
 .toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast--success { border-color: var(--clr-accent); color: var(--clr-accent); }
+.toast--success { border-color: var(--clr-success); color: var(--clr-success); }
 .toast--error   { border-color: var(--clr-red);    color: var(--clr-red); }
 .toast--info    { border-color: var(--clr-blue);   color: var(--clr-blue); }

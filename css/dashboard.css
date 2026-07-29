@@ -1,7 +1,6 @@
 /*
  * dashboard.css — Dashboard Page Styles
  * CONNECTS : pages/dashboard.html
- * TODO     : Progress ring chart for overall completion %
  */
 .dash-header {
   display: flex;
@@ -10,6 +9,25 @@
   gap: var(--space-6);
   flex-wrap: wrap;
 }
+
+/* ── Progress cards: colored top edge per tier (CSS-only, keyed off
+   the data-level-card attribute already in the markup — no HTML/JS
+   changes needed) + a matching icon, so the three level cards read as
+   distinct at a glance instead of three identical gray boxes. */
+.progress-card {
+  position: relative;
+  overflow: hidden;
+}
+.progress-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.progress-card[data-level-card="basic"]::before        { background: var(--clr-blue); }
+.progress-card[data-level-card="medium"]::before        { background: var(--clr-yellow); }
+.progress-card[data-level-card="intermediate"]::before  { background: var(--clr-orange); }
+
 .progress-card__head {
   display: flex;
   align-items: center;
@@ -17,9 +35,10 @@
 }
 .progress-card__pct {
   font-family: var(--font-display);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  color: var(--clr-accent);
+  color: var(--clr-text);
+  font-variant-numeric: tabular-nums;
 }
 .progress-card__label {
   font-size: var(--fs-sm);
@@ -28,43 +47,70 @@
 }
 .progress-card--locked .progress-card__pct { color: var(--clr-text-muted); }
 
-/* Recap grid */
+/* Progress bar fill gets a subtle gradient instead of a flat block —
+   small touch, but flat single-tone bars are the most "generic admin
+   dashboard" tell there is. */
+.progress-card .progress-bar__fill {
+  background: linear-gradient(90deg, var(--clr-accent-dim), var(--clr-accent));
+}
+
+/* Recap grid — chips, not squares */
 .recap-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
+
+/*
+  BUG FIX: this used to be a fixed 56x56px square trying to fit
+  whatever sign title was practiced — fine for a single letter, but
+  multi-word entries like "I AM FINE" or "MY SISTER" wrapped inside a
+  box sized for one character and visually overlapped/collided.
+  Rebuilt as an auto-width pill: short signs (single letters) stay
+  compact, phrases grow to fit, and anything genuinely too long
+  truncates cleanly with an ellipsis + native tooltip instead of
+  wrapping garbage.
+*/
 .recap-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--clr-text-muted);
+  gap: 0;
 }
 .recap-card__img {
-  width: 56px;
-  height: 56px;
-  background: var(--clr-surface-2);
-  border: 2px solid var(--clr-accent);
-  border-radius: var(--radius-md);
+  min-width: 40px;
+  height: 40px;
+  max-width: 160px;
+  padding: 0 var(--space-3);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-sm);
   font-weight: 700;
+  color: var(--clr-text);
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.recap-card:hover .recap-card__img {
+  border-color: var(--clr-accent);
   color: var(--clr-accent);
 }
 .recap-card--locked {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  background: var(--clr-surface);
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: transparent;
   border: 1px dashed var(--clr-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   color: var(--clr-text-muted);
 }
 
@@ -80,15 +126,15 @@
   height: 64px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--clr-surface-2);
-  border: 2px solid var(--clr-accent);
+  background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-dim));
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-size: var(--fs-2xl);
   font-weight: 700;
-  color: var(--clr-accent);
+  color: var(--clr-text-invert);
+  box-shadow: var(--shadow-card);
 }
 .account-details {
   display: flex;
