@@ -95,15 +95,22 @@ export function getMotionModelError() { return motionModelError; }
 let motionBuffer = [];
 let lastFrameFlat = null;
 
-// BUG 10 FIX: a single 20-frame window can land mid-gesture (e.g. the
-// tail end of BOY's closing grasp looks a lot like DAD's open-hand
-// tap once the hand starts relaxing back open). Instead of trusting
-// the very first window, require the SAME label to come back on two
-// windows in a row before calling it matched — the accidental
-// "reopening" window essentially never survives that check because
-// it doesn't repeat.
-let pendingMotionLabel      = null;
-let pendingMotionConfidence = 0;
+// REMOVED (see classifyMotion): this used to hold a label across two
+// consecutive windows before accepting a match, guarding against a
+// single window landing mid-gesture (e.g. the tail end of BOY's
+// closing grasp briefly resembling DAD's open-hand tap). That's a
+// real risk in principle, but now that recording is explicitly
+// triggered (3-2-1 countdown synced to the actual attempt, not a
+// passive always-on cycle), the window is synced to the real
+// performance rather than landing on an arbitrary slice of whatever
+// the hand was doing — and the two-window requirement was causing a
+// worse, more visible bug: the second confirmation window routinely
+// got filled with the user relaxing their hand right after finishing,
+// which predictably failed and overwrote a correct first read with
+// "no sign, 0%". If specific sign pairs turn out to still get
+// confused on a single window, the fix is to widen their fingerState/
+// tiebreaker distinction in dictionary.js, not to reintroduce a
+// second required window.
 
 // ── Feature vector helpers ────────────────────────────────────────
 
@@ -406,7 +413,6 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
   input.dispose();
 
   if (!rawLabel) {
-    pendingMotionLabel = null;
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
@@ -420,30 +426,30 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
   // "detected" word with no matching lesson. Keep both files in sync.
   const dictEntry = SIGN_DICTIONARY[rawLabel];
   if (!dictEntry || dictEntry.disabled) {
-    pendingMotionLabel = null;
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
   const passesThreshold = confidence >= MOTION_THRESHOLD;
 
   if (!passesThreshold) {
-    pendingMotionLabel = null;
     // Still surface the low-confidence guess so the UI can show what
-    // it's leaning toward, just not accept it yet.
+    // it's leaning toward, just not accept it.
     return { label: rawLabel, confidence, matched: false, buffering: false };
   }
 
-  if (pendingMotionLabel === rawLabel) {
-    // Confirmed on two consecutive windows — accept it.
-    pendingMotionLabel = null;
-    return { label: rawLabel, confidence, matched: true, buffering: false };
-  }
-
-  // First window to clear the threshold for this label — hold it and
-  // wait for the next window to agree before committing.
-  pendingMotionLabel      = rawLabel;
-  pendingMotionConfidence = confidence;
-  return { label: rawLabel, confidence, matched: false, buffering: false, confirming: true };
+  // CHANGED: this used to require the SAME label on two consecutive
+  // windows before accepting a match ("confirming" state) — a holdover
+  // from when detection ran passively/continuously and needed extra
+  // protection against noise. Now that recording is explicitly
+  // triggered (3-2-1 countdown, one deliberate attempt), that second
+  // window caused a real bug instead of preventing one: after a good
+  // first window, the classifier immediately started buffering a
+  // SECOND window — but the user, thinking they were done, would
+  // relax/lower their hand right then, feeding that irrelevant motion
+  // into window two, which predictably failed and overwrote the
+  // correct first result with "no sign, 0%" a moment later. A single
+  // clean window is the deliberate attempt now; accept it immediately.
+  return { label: rawLabel, confidence, matched: true, buffering: false };
 }
 
 /**
@@ -451,10 +457,8 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
  * or exiting assessment mode.
  */
 export function resetMotionBuffer() {
-  motionBuffer        = [];
-  lastFrameFlat        = null;
-  pendingMotionLabel      = null;
-  pendingMotionConfidence = 0;
+  motionBuffer  = [];
+  lastFrameFlat = null;
 }
 
 // ── Utility ───────────────────────────────────────────────────────

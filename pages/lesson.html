@@ -240,18 +240,24 @@
             </div>
 
             <!--
-              Motion buffer (shown for motion signs only). CHANGED: the
-              separate "Start Recording" button and hint text are gone —
-              Start Recording and the Assessment button below are now
-              the same action (clicking "Start Assessment" runs the
-              3-2-1 countdown automatically once the get-ready pause
-              ends, see showNextPrompt() in lesson.js). This label now
-              just reports status: "Collecting frames" while idle,
-              "Get ready… 3/2/1/GO!" during the countdown, "Recording",
-              "Confirming", etc.
+              Motion buffer (shown for motion signs only). CHANGED:
+              the standalone "Start Recording" button is gone, folded
+              into "Start Assessment" — but detection also needs to
+              work in plain practice mode (browsing a sign before
+              taking the assessment), not only during a scored
+              attempt. So this compact "Try it" trigger is back for
+              PRACTICE mode specifically (lesson.js hides it once
+              assessment mode starts, since that auto-triggers its own
+              countdown per prompt — see showNextPrompt()). Two
+              triggers that both call the same startMotionRecording()
+              function isn't duplication, it's the same action exposed
+              in two contexts: casual practice vs. a scored attempt.
             -->
             <div class="motion-buffer-wrap mt-3" id="motion-buffer-wrap">
-              <span class="detection-label" id="motion-status-label">Collecting frames</span>
+              <div class="motion-buffer-wrap__head">
+                <span class="detection-label" id="motion-status-label">Collecting frames</span>
+                <button class="motion-try-btn" id="btn-try-practice" type="button">▶ Try it</button>
+              </div>
               <div class="confidence-track">
                 <div class="confidence-bar-fill confidence-bar-fill--motion" id="motion-buffer-bar"></div>
               </div>

@@ -121,6 +121,7 @@ const missedListEl    = document.getElementById('missed-signs-review'); // BUG 8
 // now shows in this label instead, which lives right above the frame-
 // collecting bar in the merged detection panel.
 const motionStatusLabelEl = document.getElementById('motion-status-label');
+const btnTryPracticeEl    = document.getElementById('btn-try-practice');
 const detectionLogListEl = document.getElementById('detection-log-list');
 const btnClearLogEl      = document.getElementById('btn-clear-log');
 
@@ -405,10 +406,17 @@ function updateLessonMeta() {
   // addEventListener, which stacks duplicate listeners if called twice.
   if (startBtnEl) startBtnEl.onclick = startAssessment;
 
+  // NEW: the "Try it" practice trigger — same idempotent wiring, same
+  // startMotionRecording() function the Assessment flow calls
+  // automatically. Only relevant for motion signs; syncMotionUIForMode()
+  // handles show/hide based on practice vs. assessment mode.
+  if (btnTryPracticeEl) btnTryPracticeEl.onclick = startMotionRecording;
+
   // Put motion UI back to a clean idle state every time a sign loads —
   // a half-finished recording/countdown from a previous sign should
   // never carry over.
   resetMotionUI();
+  syncMotionUIForMode();
 }
 
 function escapeHtml(str) {
@@ -531,15 +539,16 @@ function startRenderLoop() {
     const handLostForAWhile = now - lastHandSeenAt > HAND_STATUS_HOLD_MS;
     setHandStatus(handLostForAWhile ? 0 : lastHandCount);
 
-    // If a motion recording is armed and the hand disappears for a
-    // sustained beat (not just one dropped frame), cancel it instead
-    // of leaving the status stuck on "Recording…" forever.
-    if (motionArmed && handLostForAWhile) {
-      motionArmed = false;
-      resetMotionBuffer();
-      setMotionStatus('idle');
-      if (motionStatusLabelEl) motionStatusLabelEl.textContent = 'Recording canceled — hand left the frame';
-    }
+    // CHANGED: this used to auto-cancel an armed recording if the hand
+    // left frame for a sustained beat. Removed — a recording attempt
+    // should keep waiting patiently while the hand is briefly out of
+    // frame (e.g. mid-motion for a sign that dips low or wide), not
+    // abort and force a full restart. classifyMotion() already handles
+    // "no hand" gracefully on its own (it simply doesn't add a frame
+    // that beat — see the `if (!anyHandPresent) return;` guard below),
+    // so there's nothing here that actually needs resetting. The
+    // per-prompt PROMPT_TIMEOUT (15s) is still the real safety net for
+    // a genuinely abandoned attempt.
 
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
     // BUG 11 FIX: same hysteresis — don't flash the warning on a single
@@ -559,8 +568,9 @@ function startRenderLoop() {
 
     if (detType === 'motion') {
       // Only feed frames to the motion classifier while armed (set by
-      // startMotionRecording(), triggered automatically from the
-      // Assessment flow — see showNextPrompt()).
+      // startMotionRecording(), triggered automatically from
+      // showNextPrompt() in assessment mode, or manually via the
+      // "Try it" button in practice mode).
       // BUG 10 (unchanged): also skip entirely during cooldown, so the
       // trailing "relax" motion after a match doesn't bleed into a
       // fresh window.
@@ -570,22 +580,12 @@ function startRenderLoop() {
         result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
 
         if (!result.buffering) {
-          // A window just finished (matched, rejected, or holding for
-          // confirmation) — this is the moment to log it and update
-          // the status label, regardless of which mode
-          // (practice/assessment) consumes `result` below.
-          if (result.confirming) {
-            // First window cleared the threshold; classifier is
-            // holding it and waiting for a second agreeing window.
-            // Stay armed so the user doesn't need to click again
-            // mid-gesture — just repeat the sign once more.
-            logDetection(result.label, result.confidence, 'confirming');
-            setMotionStatus('confirming', result.label);
-          } else {
-            motionArmed = false;
-            logDetection(result.label, result.confidence, result.matched ? 'success' : 'fail');
-            setMotionStatus(result.matched ? 'success' : 'fail', result.label);
-          }
+          // A window just finished (matched or rejected) — this is a
+          // conclusive result now (single-window match, see
+          // classifier.js), so the recording session always ends here.
+          motionArmed = false;
+          logDetection(result.label, result.confidence, result.matched ? 'success' : 'fail');
+          setMotionStatus(result.matched ? 'success' : 'fail', result.label);
         }
       }
       updateMotionBuffer(motionArmed && result.buffering);
@@ -628,10 +628,9 @@ function updateMotionBuffer(buffering) {
  */
 function setMotionStatus(state, label) {
   if (!motionStatusLabelEl) return;
-  motionBufWrapEl?.classList.toggle(
-    'is-recording',
-    state === 'recording' || state === 'confirming' || state === 'countdown'
-  );
+  const isActive = state === 'recording' || state === 'countdown';
+  motionBufWrapEl?.classList.toggle('is-recording', isActive);
+  if (btnTryPracticeEl) btnTryPracticeEl.disabled = isActive;
 
   switch (state) {
     case 'countdown':
@@ -640,11 +639,8 @@ function setMotionStatus(state, label) {
     case 'recording':
       motionStatusLabelEl.textContent = 'Recording — perform the sign now';
       break;
-    case 'confirming':
-      motionStatusLabelEl.textContent = `Got "${label}" — do it once more to confirm`;
-      break;
     case 'success':
-      motionStatusLabelEl.textContent = `✅ Confirmed "${label}"`;
+      motionStatusLabelEl.textContent = `✅ Detected "${label}"`;
       break;
     case 'fail':
       motionStatusLabelEl.textContent = label
@@ -698,6 +694,19 @@ function resetMotionUI() {
   motionBuffer_progress = 0;
   if (motionBufEl) motionBufEl.style.width = '0%';
   setMotionStatus('idle');
+}
+
+/**
+ * Shows/hides the "Try it" practice trigger based on the current
+ * mode. Practice mode: visible, so motion detection has a way to run
+ * outside a scored assessment. Assessment mode: hidden, since
+ * showNextPrompt() already triggers recording automatically per
+ * prompt and a second manual trigger would just be confusing there.
+ */
+function syncMotionUIForMode() {
+  if (!btnTryPracticeEl) return;
+  btnTryPracticeEl.style.display =
+    (mode === 'practice' && getDetectionType(sign) === 'motion') ? '' : 'none';
 }
 
 const MAX_LOG_ENTRIES = 20;
@@ -767,6 +776,7 @@ function startAssessment() {
   score       = 0;
   missedSigns = [];
   mode        = 'assessment';
+  syncMotionUIForMode();
   debounceCount = 0;
   lastDetected  = null;
   // BUG 11 FIX: don't carry over stale "last seen" timestamps from a
@@ -876,6 +886,7 @@ function handleAssessmentFrame(result) {
 
 function endAssessment() {
   mode = 'practice';
+  syncMotionUIForMode();
   clearTimeout(promptTimer);
   clearTimeout(getReadyTimer);
   resetMotionUI(); // NEW: don't leave a stale "Recording…" button if time ran out mid-attempt
@@ -947,14 +958,27 @@ function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
   if (result.label) {
-    // BUG 10: motion signs now need two agreeing windows before they
-    // lock in — show that as "holding" so it doesn't look stuck.
-    detectedEl.textContent        = result.confirming ? `${result.label} (hold…)` : result.label;
+    confidenceEl.classList.remove('confidence-bar-fill--pulse');
+    detectedEl.textContent        = result.label;
     detectedEl.style.color        = result.matched ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
     confidenceEl.style.background = result.matched ? 'var(--clr-success)' : 'var(--clr-yellow)';
     confTextEl.textContent        = `${result.confidence}%`;
+  } else if (motionArmed) {
+    // NEW: classifyMotion() only returns a label once its ~1.3s frame
+    // window completes — the whole time it's collecting, result.label
+    // is null, which meant this readout just sat on a flat "– 0%" the
+    // entire time. That reads as frozen even though it's actively
+    // working (the thin frame-collecting bar below is the only thing
+    // that moved). Show an explicit pulsing "Listening" state instead.
+    detectedEl.textContent   = '🎥 Listening…';
+    detectedEl.style.color   = 'var(--clr-accent)';
+    confidenceEl.style.width = '100%';
+    confidenceEl.style.background = 'var(--clr-accent)';
+    confidenceEl.classList.add('confidence-bar-fill--pulse');
+    confTextEl.textContent   = '…';
   } else {
+    confidenceEl.classList.remove('confidence-bar-fill--pulse');
     detectedEl.textContent    = '–';
     detectedEl.style.color    = 'var(--clr-text-muted)';
     confidenceEl.style.width  = '0%';
@@ -1047,6 +1071,7 @@ window.retryLesson = function() {
     modeBarEl.className   = 'mode-bar mode-bar--practice';
   }
   mode = 'practice';
+  syncMotionUIForMode();
 };
 
 window.continueToNext = function() {
