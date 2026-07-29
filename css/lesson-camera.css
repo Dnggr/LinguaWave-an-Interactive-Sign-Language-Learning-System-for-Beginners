@@ -364,3 +364,95 @@
   flex-direction: column;
   gap: var(--space-3);
 }
+
+/* ── NEW: Start Recording button (motion signs) ─────────────────── */
+/* Sits inside .motion-buffer-wrap, only visible when that wrap is
+   visible (motion signs only — toggled in lesson.js updateLessonMeta()). */
+#btn-start-motion {
+  transition: background var(--dur-base) var(--ease), opacity var(--dur-base) var(--ease);
+}
+#btn-start-motion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+#btn-start-motion.is-recording {
+  background: var(--clr-red, #f85149);
+  border-color: var(--clr-red, #f85149);
+  animation: motionRecordPulse 1.1s ease-in-out infinite;
+}
+@keyframes motionRecordPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.75; }
+}
+
+/* ── NEW: Detection log panel ────────────────────────────────────── */
+/* Persistent scrollable history of classification results, since the
+   live "Detected sign" readout above can change/vanish in well under
+   a second (especially motion signs mid two-window confirmation). */
+.detection-log {
+  padding: var(--space-3) var(--space-4);
+}
+.detection-log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.detection-log__clear {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted, #8b949e);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.detection-log__clear:hover {
+  color: var(--clr-text);
+  background: var(--clr-surface-2);
+}
+.detection-log__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse; /* newest entry (appended last) reads at the top */
+  gap: 4px;
+}
+.detection-log__list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--clr-surface-2);
+  animation: logEntryIn 0.2s ease-out;
+}
+@keyframes logEntryIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.detection-log__time {
+  color: var(--clr-text-muted, #8b949e);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.detection-log__label {
+  font-weight: 600;
+  flex: 1;
+}
+.detection-log__conf {
+  color: var(--clr-text-muted, #8b949e);
+  flex-shrink: 0;
+}
+.detection-log__list li.detection-log__entry--success .detection-log__label { color: var(--clr-accent); }
+.detection-log__list li.detection-log__entry--confirming .detection-log__label { color: var(--clr-yellow, #f0ab19); }
+.detection-log__list li.detection-log__entry--fail .detection-log__label { color: var(--clr-red, #f85149); }
+.detection-log__empty {
+  color: var(--clr-text-muted, #8b949e);
+  font-style: italic;
+  justify-content: center;
+}

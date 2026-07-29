@@ -115,6 +115,13 @@ const motionBufEl     = document.getElementById('motion-buffer-bar');
 const motionBufWrapEl = document.getElementById('motion-buffer-wrap');
 const missedListEl    = document.getElementById('missed-signs-review'); // BUG 8 — optional, see lesson.html snippet
 
+// NEW: explicit motion "Start Recording" button + hint text, and the
+// persistent detection log panel (see startRenderLoop() for the wiring).
+const startMotionBtnEl   = document.getElementById('btn-start-motion');
+const motionHintEl       = document.getElementById('motion-hint');
+const detectionLogListEl = document.getElementById('detection-log-list');
+const btnClearLogEl      = document.getElementById('btn-clear-log');
+
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
@@ -205,6 +212,41 @@ let debounceCount  = 0;
 let lastDetected   = null;
 let cooldown       = false;
 
+// NEW: motion signs now require the user to explicitly click "Start
+// Recording" before classifyMotion() is fed any frames. Previously
+// detection ran continuously/passively the whole time a motion sign
+// was on screen, which had two hidden problems: classifyMotion()
+// requires TWO consecutive agreeing 40-frame windows to confirm a
+// match (see js/engine/classifier.js), with no UI cue that a second
+// attempt was even needed — it just looked broken. And each window
+// was captured on an arbitrary ~1.3s cycle unsynced to when the user
+// actually started signing, so a window could catch half-idle +
+// half-gesture instead of the whole motion. Gating on this flag means
+// every window is deliberately synced to a real, intentional attempt.
+let motionArmed    = false;
+
+// NEW: 3-2-1 countdown before recording actually arms, matching
+// capture.html's existing countdown pattern (same steps/timing) so the
+// UX is consistent across the project. This exists because clicking
+// "Start Recording" with a mouse and then needing your hand back in
+// frame INSTANTLY was the actual friction point — the countdown buys
+// that repositioning time.
+const MOTION_COUNTDOWN_STEPS   = ['3', '2', '1', 'GO!'];
+const MOTION_COUNTDOWN_STEP_MS = 450;
+let motionCountdownTimer = null;
+
+// BUG FIX: this used to be declared right before updateMotionBuffer(),
+// much further down the file. updateLessonMeta() -> resetMotionUI() can
+// run synchronously during boot() (module scripts often execute after
+// DOMContentLoaded has already fired, so boot() can run immediately,
+// not just via the event listener), which reads/assigns this variable
+// before that later `let` line ever executed — a temporal-dead-zone
+// ReferenceError. That error was thrown inside boot(), which meant
+// bootDetectionEngine() (the thing that actually starts the camera)
+// never ran at all. Declaring it up here with the other state avoids
+// that entirely.
+let motionBuffer_progress = 0;
+
 // BUG 11 FIX: MediaPipe's per-frame face/hand presence flips true/false
 // even when the person hasn't moved (confidence hovers right at the
 // detection threshold), which made '#face-warn' and the hand-status
@@ -231,6 +273,18 @@ async function boot() {
   }
   updateLessonMeta();
   setupNavButtons();
+
+  // NEW: clear-log button only needs wiring once (not per-sign like
+  // updateLessonMeta's other bindings), since the log itself persists
+  // across sign changes on purpose.
+  if (btnClearLogEl) {
+    btnClearLogEl.onclick = () => {
+      if (detectionLogListEl) {
+        detectionLogListEl.innerHTML = '<li class="detection-log__empty">No detections yet</li>';
+      }
+    };
+  }
+
   await bootDetectionEngine();
 }
 
@@ -344,6 +398,13 @@ function updateLessonMeta() {
   // BUG 5 FIX: use .onclick assignment (idempotent) instead of
   // addEventListener, which stacks duplicate listeners if called twice.
   if (startBtnEl) startBtnEl.onclick = startAssessment;
+
+  // NEW: wire the motion Start Recording button the same idempotent
+  // way (BUG 5's fix), and put it back to a clean idle state every
+  // time a sign loads — a half-finished recording from a previous
+  // sign should never carry over.
+  if (startMotionBtnEl) startMotionBtnEl.onclick = startMotionRecording;
+  resetMotionUI();
 }
 
 function escapeHtml(str) {
@@ -463,7 +524,26 @@ function startRenderLoop() {
     }
     // BUG 11 FIX: only report "no hand" once it's actually been gone
     // for a beat, so the pill doesn't flicker between states.
-    setHandStatus(now - lastHandSeenAt > HAND_STATUS_HOLD_MS ? 0 : lastHandCount);
+    const handLostForAWhile = now - lastHandSeenAt > HAND_STATUS_HOLD_MS;
+    setHandStatus(handLostForAWhile ? 0 : lastHandCount);
+
+    // NEW: if a motion recording is armed and the hand disappears for
+    // a sustained beat (not just one dropped frame), cancel it instead
+    // of leaving the button stuck on "Recording…" forever.
+    if (motionArmed && handLostForAWhile) {
+      motionArmed = false;
+      resetMotionBuffer();
+      setMotionButtonState('idle');
+      if (motionHintEl) motionHintEl.textContent = 'Recording canceled — hand left the frame. Click to try again.';
+    }
+
+    // NEW: while a match/mismatch cooldown is running, keep the button
+    // disabled too — otherwise a click during that ~1-2s window would
+    // silently no-op (startMotionRecording() already checks `cooldown`
+    // and bails, but with no visible feedback that anything happened).
+    if (startMotionBtnEl && !motionArmed) {
+      startMotionBtnEl.disabled = cooldown;
+    }
 
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
     // BUG 11 FIX: same hysteresis — don't flash the warning on a single
@@ -482,18 +562,36 @@ function startRenderLoop() {
     let result;
 
     if (detType === 'motion') {
-      // BUG 10 FIX: keep classifying through cooldown and the trailing
-      // "relax" motion (hand opening back up after e.g. BOY's grasp)
-      // gets swept into a fresh window and can flip the result to a
-      // different sign (DAD) right after the correct one already
-      // matched. Stop feeding the buffer entirely while cooldown is
-      // active — there's nothing left to detect until the next prompt.
-      if (cooldown) {
+      // NEW: only feed frames to the motion classifier while armed via
+      // the Start Recording button (see motionArmed declaration above).
+      // BUG 10 (unchanged): also skip entirely during cooldown, so the
+      // trailing "relax" motion after a match doesn't bleed into a
+      // fresh window.
+      if (cooldown || !motionArmed) {
         result = { label: null, confidence: 0, matched: false, buffering: false };
       } else {
         result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
+
+        if (!result.buffering) {
+          // A window just finished (matched, rejected, or holding for
+          // confirmation) — this is the moment to log it and update
+          // the button, regardless of which mode (practice/assessment)
+          // consumes `result` below.
+          if (result.confirming) {
+            // First window cleared the threshold; classifier is
+            // holding it and waiting for a second agreeing window.
+            // Stay armed so the user doesn't need to click again
+            // mid-gesture — just repeat the sign once more.
+            logDetection(result.label, result.confidence, 'confirming');
+            setMotionButtonState('confirming', result.label);
+          } else {
+            motionArmed = false;
+            logDetection(result.label, result.confidence, result.matched ? 'success' : 'fail');
+            setMotionButtonState(result.matched ? 'success' : 'fail', result.label);
+          }
+        }
       }
-      updateMotionBuffer(result.buffering);
+      updateMotionBuffer(motionArmed && result.buffering);
     } else {
       result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
     }
@@ -509,8 +607,6 @@ function startRenderLoop() {
   loop();
 }
 
-let motionBuffer_progress = 0;
-
 function updateMotionBuffer(buffering) {
   if (!motionBufEl) return;
   if (buffering) {
@@ -519,6 +615,123 @@ function updateMotionBuffer(buffering) {
   } else if (motionBuffer_progress > 0) {
     motionBuffer_progress = 0;
     motionBufEl.style.width = '0%';
+  }
+}
+
+// ── NEW: motion "Start Recording" button + detection log ──────────
+
+/**
+ * Updates the Start Recording button + hint text for one of five
+ * states. Called from startRenderLoop() as classification results
+ * come in, and from startMotionRecording()/resetMotionUI() below.
+ */
+function setMotionButtonState(state, label) {
+  if (!startMotionBtnEl) return;
+  startMotionBtnEl.classList.toggle('is-recording', state === 'recording' || state === 'confirming' || state === 'countdown');
+
+  switch (state) {
+    case 'countdown':
+      startMotionBtnEl.disabled    = true;
+      startMotionBtnEl.textContent = label; // '3' / '2' / '1' / 'GO!'
+      if (motionHintEl) motionHintEl.textContent = 'Get your hand into position…';
+      break;
+    case 'recording':
+      startMotionBtnEl.disabled    = true;
+      startMotionBtnEl.textContent = '🎥 Recording…';
+      if (motionHintEl) motionHintEl.textContent = 'Perform the sign now.';
+      break;
+    case 'confirming':
+      startMotionBtnEl.disabled    = true;
+      startMotionBtnEl.textContent = '🔁 Confirming…';
+      if (motionHintEl) motionHintEl.textContent = `Got "${label}" — do it once more to confirm.`;
+      break;
+    case 'success':
+      startMotionBtnEl.disabled    = false;
+      startMotionBtnEl.textContent = '🔴 Record Again';
+      if (motionHintEl) motionHintEl.textContent = `Nice! Confirmed "${label}". Click to try another rep.`;
+      break;
+    case 'fail':
+      startMotionBtnEl.disabled    = false;
+      startMotionBtnEl.textContent = '🔴 Try Again';
+      if (motionHintEl) {
+        motionHintEl.textContent = label
+          ? `Wasn't confident enough (saw "${label}") — click to retry.`
+          : 'No clear motion detected — click to retry.';
+      }
+      break;
+    case 'idle':
+    default:
+      startMotionBtnEl.disabled    = false;
+      startMotionBtnEl.textContent = '🔴 Start Recording';
+      if (motionHintEl) motionHintEl.textContent = 'Click, then get your hand ready — recording starts after a short countdown.';
+      break;
+  }
+}
+
+/**
+ * Click handler for #btn-start-motion. Runs a 3-2-1-GO countdown
+ * (same pattern/timing as capture.html) before actually arming
+ * recording — clicking with a mouse and needing your hand back in
+ * frame instantly was the real friction point, not the recording
+ * itself, so this buys that repositioning time.
+ */
+function startMotionRecording() {
+  if (getDetectionType(sign) !== 'motion' || cooldown) return;
+  resetMotionBuffer();
+  motionBuffer_progress = 0;
+  if (motionBufEl) motionBufEl.style.width = '0%';
+  runMotionCountdown(0);
+}
+
+function runMotionCountdown(stepIdx) {
+  if (stepIdx >= MOTION_COUNTDOWN_STEPS.length) {
+    motionArmed = true;
+    setMotionButtonState('recording');
+    return;
+  }
+  setMotionButtonState('countdown', MOTION_COUNTDOWN_STEPS[stepIdx]);
+  motionCountdownTimer = setTimeout(() => runMotionCountdown(stepIdx + 1), MOTION_COUNTDOWN_STEP_MS);
+}
+
+/**
+ * Fully resets motion recording state — used whenever a sign/prompt
+ * changes so a half-finished recording (or a countdown still ticking)
+ * from before doesn't linger.
+ */
+function resetMotionUI() {
+  clearTimeout(motionCountdownTimer);
+  motionArmed = false;
+  resetMotionBuffer();
+  motionBuffer_progress = 0;
+  if (motionBufEl) motionBufEl.style.width = '0%';
+  setMotionButtonState('idle');
+}
+
+const MAX_LOG_ENTRIES = 20;
+
+/**
+ * Appends one entry to the persistent detection log panel. Newest
+ * entries render at the top (see .detection-log__list's
+ * column-reverse in css/lesson-camera.css) — appendChild here keeps
+ * DOM order oldest→newest while the CSS flips the visual order.
+ */
+function logDetection(label, confidence, kind) {
+  if (!detectionLogListEl) return;
+  const emptyEl = detectionLogListEl.querySelector('.detection-log__empty');
+  if (emptyEl) emptyEl.remove();
+
+  const icon = kind === 'success' ? '✅' : kind === 'confirming' ? '🔁' : '❌';
+  const li = document.createElement('li');
+  li.className = `detection-log__entry--${kind}`;
+  const time = new Date().toLocaleTimeString([], { hour12: false });
+  li.innerHTML =
+    `<span class="detection-log__time">${time}</span>` +
+    `<span class="detection-log__label">${icon} ${label ? escapeHtml(label) : 'no sign'}</span>` +
+    `<span class="detection-log__conf">${confidence}%</span>`;
+  detectionLogListEl.appendChild(li);
+
+  while (detectionLogListEl.children.length > MAX_LOG_ENTRIES) {
+    detectionLogListEl.removeChild(detectionLogListEl.firstChild);
   }
 }
 
@@ -595,7 +808,7 @@ function showNextPrompt() {
   debounceCount     = 0;
   lastDetected      = null;
   cooldown          = true;               // stay in cooldown through the get-ready pause
-  resetMotionBuffer();
+  resetMotionUI();
 
   if (scoreEl)  scoreEl.textContent  = `Score: ${score} / ${quizSigns.length}`;
   showFeedback('', '');
@@ -663,6 +876,7 @@ function endAssessment() {
   mode = 'practice';
   clearTimeout(promptTimer);
   clearTimeout(getReadyTimer);
+  resetMotionUI(); // NEW: don't leave a stale "Recording…" button if time ran out mid-attempt
 
   const pct   = quizSigns.length > 0 ? score / quizSigns.length : 0;
   const passed = pct >= PASS_THRESHOLD;

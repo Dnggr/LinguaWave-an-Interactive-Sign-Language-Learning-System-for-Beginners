@@ -228,8 +228,50 @@
               <div class="confidence-track">
                 <div class="confidence-bar-fill confidence-bar-fill--motion" id="motion-buffer-bar"></div>
               </div>
+
+              <!--
+                NEW: explicit "Start Recording" button for motion signs,
+                same idea as capture.html's record button. Motion signs
+                used to detect passively/continuously in the background,
+                which caused two problems: (1) the classifier requires
+                TWO consecutive agreeing 40-frame windows to confirm a
+                match, so with no on-screen cue you'd often have to
+                repeat the sign without knowing why nothing happened —
+                it looked like you "had to move your hand" to trigger
+                anything; (2) frame windows were captured on an arbitrary
+                ~1.3s cycle unsynced to when you actually started signing,
+                so a window could catch half-idle + half-gesture instead
+                of the full motion. Detection for motion signs now only
+                runs while armed by this button, so every window is
+                deliberately synced to a real attempt.
+              -->
+              <button class="btn btn--primary btn--full mt-2" id="btn-start-motion">
+                🔴 Start Recording
+              </button>
+              <p class="text-muted" id="motion-hint" style="font-size:var(--fs-xs); margin-top:6px; min-height:1.2em;">
+                Click, then get your hand ready — recording starts after a short countdown.
+              </p>
             </div>
           </div><!-- /detection-panel -->
+
+          <!--
+            NEW: Detection log — a persistent, scrollable history of every
+            classification result (letters AND motion signs), newest on
+            top. The live "Detected sign" readout above updates every
+            frame and can change/vanish in well under a second, especially
+            for motion signs mid-confirmation, which made it hard to see
+            what the system actually saw. This panel keeps a running
+            record so nothing is missed.
+          -->
+          <div class="detection-log card mt-3" id="detection-log">
+            <div class="detection-log__header">
+              <span class="detection-label">Detection log</span>
+              <button class="detection-log__clear" id="btn-clear-log" type="button">Clear</button>
+            </div>
+            <ul class="detection-log__list" id="detection-log-list">
+              <li class="detection-log__empty">No detections yet</li>
+            </ul>
+          </div><!-- /detection-log -->
 
           <!--
             BUG 1 FIX: Non-blocking classifier warning zone.
@@ -283,8 +325,9 @@
           <div class="camera-tips card mt-4">
             <p class="camera-tips__title">📸 Camera Tips</p>
             <ul class="camera-tips__list">
+              <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
+              <li>Motion signs: click "Start Recording" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
               <li>Make sure your hand is well-lit and fully visible</li>
-              <li>Hold the sign steady for about 1.5 seconds to register</li>
               <li>Keep your hand centred in the frame</li>
             </ul>
           </div>
