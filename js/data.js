@@ -503,11 +503,21 @@ const SIGNS = [
   },
   {
     id: 'medium_family_BROTHER', level: 'medium', category: 'family', signId: 'BROTHER', title: 'Brother', order: 5,
-    description: 'Make an "L" handshape near your forehead (same starting position as BOY), then bring both hands together so the index fingers meet, showing a family link.',
+    // CHANGED — corrected against ASLU (lifeprint.com/asl101/pages-signs/b/brosis.htm):
+    // the old description ("both hands in L, come together, index fingers meet")
+    // is ASLU's documented OLDER/legacy version — now associated with dated
+    // "Signed English" style, not what fluent signers use today. The modern,
+    // ASLU-recommended sign moves only the dominant hand: it starts as a
+    // modified "L" near the forehead and morphs into a "1" as it comes down
+    // onto a STATIONARY base hand already held in a "1" handshape. If
+    // capture.html's training clips for BROTHER were recorded using the old
+    // two-hands-meeting description, they were captured against the wrong
+    // variant — worth spot-checking / re-recording.
+    description: 'Hold your non-dominant hand steady in a "1" handshape (index finger up, palm facing you). Start your dominant hand in a modified "L" shape near your forehead, then bring it straight down onto your non-dominant hand — the handshape shifts from "L" to "1" as it lands.',
     tips: [
-      'Start with the BOY handshape near the forehead',
-      'Bring both index fingers together at the end of the motion',
-      'This is a MOTION sign — the two-part movement is what separates it from BOY',
+      'Only the dominant hand moves — the non-dominant "1" hand stays still',
+      'Dominant hand starts near the forehead (same starting spot as BOY), not the jaw',
+      'This is a MOTION sign — the handshape change (L → 1) as it lands is what matters, not two hands meeting in the middle',
     ],
     imageUrl: '../assets/images/medium/family/BROTHER.png', videoUrl: '../assets/videos/medium/family/BROTHER.mp4', detectionType: 'motion',
   },
@@ -523,11 +533,15 @@ const SIGNS = [
   },
   {
     id: 'medium_family_SISTER', level: 'medium', category: 'family', signId: 'SISTER', title: 'Sister', order: 7,
-    description: 'Make an "L" handshape and brush your thumb down along your jaw (the GIRL location), then bring both hands together so the index fingers meet.',
+    // CHANGED — same ASLU correction as BROTHER above (same source page:
+    // lifeprint.com/asl101/pages-signs/b/brosis.htm). Only the dominant
+    // hand moves; it starts as a modified "L" near the jaw/chin and morphs
+    // into a "1" as it comes down onto a stationary base hand.
+    description: 'Hold your non-dominant hand steady in a "1" handshape (index finger up, palm facing you). Start your dominant hand in a modified "L" shape near your jaw/chin, then bring it straight down onto your non-dominant hand — the handshape shifts from "L" to "1" as it lands.',
     tips: [
-      'Starting position is at the jaw/chin, like GIRL — not the forehead like BOY',
-      'Bring both index fingers together at the end of the motion, same finish as BROTHER',
-      'This is a MOTION sign — the two-part movement is what separates it from GIRL',
+      'Only the dominant hand moves — the non-dominant "1" hand stays still',
+      'Dominant hand starts near the jaw/chin (same starting spot as GIRL), not the forehead — that\'s BROTHER',
+      'This is a MOTION sign — the handshape change (L → 1) as it lands is what matters, not two hands meeting in the middle',
     ],
     imageUrl: '../assets/images/medium/family/SISTER.png', videoUrl: '../assets/videos/medium/family/SISTER.mp4', detectionType: 'motion',
   },
