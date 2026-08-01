@@ -91,7 +91,15 @@ import { initMediaPipe, processFrame, isModelReady, getModelError } from '../js/
 import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
-         isMotionModelReady, getMotionModelError, loadModels }  from '../js/engine/classifier.js';
+         isMotionModelReady, getMotionModelError, loadModels,
+         // CHANGED: getMotionBufferStatus() gives the REAL frame count
+         // (see classifier.js) instead of the old synthetic time-based
+         // progress estimate. finalizeMotionWindow() lets us force-finish
+         // a short recording when the user's hand has clearly left the
+         // frame for good, instead of silently hanging until the 15s
+         // PROMPT_TIMEOUT. Both are part of the "hand dropped too soon /
+         // % bar lied" fix — see the block comment near HAND_LOST_GRACE_MS.
+         getMotionBufferStatus, finalizeMotionWindow }  from '../js/engine/classifier.js';
 
 // ── DOM references ─────────────────────────────────────────────────
 
@@ -238,17 +246,35 @@ const MOTION_COUNTDOWN_STEPS   = ['3', '2', '1', 'GO!'];
 const MOTION_COUNTDOWN_STEP_MS = 450;
 let motionCountdownTimer = null;
 
-// BUG FIX: this used to be declared right before updateMotionBuffer(),
-// much further down the file. updateLessonMeta() -> resetMotionUI() can
-// run synchronously during boot() (module scripts often execute after
-// DOMContentLoaded has already fired, so boot() can run immediately,
-// not just via the event listener), which reads/assigns this variable
-// before that later `let` line ever executed — a temporal-dead-zone
-// ReferenceError. That error was thrown inside boot(), which meant
-// bootDetectionEngine() (the thing that actually starts the camera)
-// never ran at all. Declaring it up here with the other state avoids
-// that entirely.
-let motionBuffer_progress = 0;
+// CHANGED: this used to be a fake, time-based progress estimate
+// (motionBuffer_progress += 1/30 per buffering tick, assuming a steady
+// 30fps) that had no real connection to how many frames the classifier
+// had actually collected. Under any lag, or whenever classifyMotion()
+// skips a "frozen hand" frame (see classifier.js), the bar and the
+// real buffer drifted apart — the bar could show "almost done" while
+// the model was nowhere close, which is exactly what taught users to
+// drop their hand early. It's gone now; the render loop reads the
+// REAL count straight from classifier.js's getMotionBufferStatus()
+// every tick instead (see updateMotionBuffer() below).
+//
+// Declared up here (not lower down near updateMotionBuffer, where it
+// used to live) for the same temporal-dead-zone reason as before:
+// updateLessonMeta() -> resetMotionUI() can run synchronously during
+// boot(), before a later `let` further down the file would have
+// executed yet.
+
+// NEW — "hand dropped too soon" fix. While a recording is armed and
+// actively buffering, if the hand disappears from frame we don't want
+// to just sit there quietly until the 15s PROMPT_TIMEOUT gives up —
+// that's the exact silent-failure behavior driving the complaint. Once
+// the hand has been gone continuously for HAND_LOST_GRACE_MS, we treat
+// it as "they're done, on purpose or not" and force-finish the window
+// via classifier.js's finalizeMotionWindow() (pads with the last real
+// frame instead of throwing the attempt away), so the user gets an
+// actual result — success, fail, or a clear "too short" message —
+// within about a second instead of a frozen bar and a 15s wait.
+const HAND_LOST_GRACE_MS = 1200;
+let handLostSinceArmedAt = null;
 
 // BUG 11 FIX: MediaPipe's per-frame face/hand presence flips true/false
 // even when the person hasn't moved (confidence hovers right at the
@@ -539,17 +565,6 @@ function startRenderLoop() {
     const handLostForAWhile = now - lastHandSeenAt > HAND_STATUS_HOLD_MS;
     setHandStatus(handLostForAWhile ? 0 : lastHandCount);
 
-    // CHANGED: this used to auto-cancel an armed recording if the hand
-    // left frame for a sustained beat. Removed — a recording attempt
-    // should keep waiting patiently while the hand is briefly out of
-    // frame (e.g. mid-motion for a sign that dips low or wide), not
-    // abort and force a full restart. classifyMotion() already handles
-    // "no hand" gracefully on its own (it simply doesn't add a frame
-    // that beat — see the `if (!anyHandPresent) return;` guard below),
-    // so there's nothing here that actually needs resetting. The
-    // per-prompt PROMPT_TIMEOUT (15s) is still the real safety net for
-    // a genuinely abandoned attempt.
-
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
     // BUG 11 FIX: same hysteresis — don't flash the warning on a single
     // dropped face-detection frame, only on a sustained loss.
@@ -561,7 +576,46 @@ function startRenderLoop() {
       );
     }
 
-    if (!anyHandPresent) return;
+    if (!anyHandPresent) {
+      // CHANGED (was: unconditional early return, no grace handling —
+      // see the removed BUG-10-era comment this replaced). A recording
+      // attempt should still tolerate the hand being briefly out of
+      // frame (e.g. mid-motion for a sign that dips low or wide), so
+      // this does NOT abort the instant the hand disappears. But if
+      // the hand stays gone for HAND_LOST_GRACE_MS while we're actively
+      // armed and buffering, that's almost always "the user finished
+      // signing and put their hand down" — so instead of silently
+      // waiting out the full 15s PROMPT_TIMEOUT, force-finish the
+      // window right now with whatever real frames were captured.
+      if (motionArmed && !cooldown) {
+        if (handLostSinceArmedAt === null) handLostSinceArmedAt = now;
+
+        if (now - handLostSinceArmedAt > HAND_LOST_GRACE_MS) {
+          const forced = finalizeMotionWindow();
+          motionArmed = false;
+          handLostSinceArmedAt = null;
+
+          if (forced) {
+            // Enough real frames were captured to make a fair (if
+            // padded) guess — treat exactly like a normal completed
+            // window so scoring/logging/UI all stay consistent.
+            logDetection(forced.label, forced.confidence, forced.matched ? 'success' : 'fail');
+            setMotionStatus(forced.matched ? 'success' : 'fail', forced.label);
+            updateConfidenceUI(forced);
+            if (mode === 'practice') handlePracticeFrame(forced);
+            else if (mode === 'assessment') handleAssessmentFrame(forced);
+          } else {
+            // Too little real motion captured to guess fairly — tell
+            // the user plainly what happened instead of a vague fail.
+            setMotionStatus('hand-lost');
+            updateConfidenceUI({ label: null, confidence: 0, matched: false, buffering: false });
+          }
+          updateMotionBuffer();
+        }
+      }
+      return;
+    }
+    handLostSinceArmedAt = null;
 
     const detType = getDetectionType(sign);
     let result;
@@ -588,7 +642,7 @@ function startRenderLoop() {
           setMotionStatus(result.matched ? 'success' : 'fail', result.label);
         }
       }
-      updateMotionBuffer(motionArmed && result.buffering);
+      updateMotionBuffer();
     } else {
       result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
     }
@@ -604,14 +658,25 @@ function startRenderLoop() {
   loop();
 }
 
-function updateMotionBuffer(buffering) {
+// CHANGED: no longer takes a `buffering` bool and fakes a time-based
+// fill — reads the REAL frame count straight from classifier.js. Also
+// writes an explicit "N/40 frames" readout into the status label while
+// armed, since a bare percentage bar turned out not to be a strong
+// enough signal to keep users' hands up (see HAND_LOST_GRACE_MS above
+// and the getMotionBufferStatus() comment in classifier.js).
+function updateMotionBuffer() {
   if (!motionBufEl) return;
-  if (buffering) {
-    motionBuffer_progress = Math.min(motionBuffer_progress + (1 / 30), 1);
-    motionBufEl.style.width = `${motionBuffer_progress * 100}%`;
-  } else if (motionBuffer_progress > 0) {
-    motionBuffer_progress = 0;
+
+  if (!motionArmed) {
     motionBufEl.style.width = '0%';
+    return;
+  }
+
+  const { count, required, progress } = getMotionBufferStatus();
+  motionBufEl.style.width = `${Math.round(progress * 100)}%`;
+
+  if (motionStatusLabelEl && count > 0) {
+    motionStatusLabelEl.textContent = `Recording — ${count}/${required} frames — keep signing!`;
   }
 }
 
@@ -647,6 +712,13 @@ function setMotionStatus(state, label) {
         ? `❌ Wasn't confident enough (saw "${label}")`
         : '❌ No clear motion detected';
       break;
+    case 'hand-lost':
+      // NEW: shown when the hand left frame with too little of the
+      // sign captured to even guess — see HAND_LOST_GRACE_MS handling
+      // in the render loop. Explicit and actionable, unlike the old
+      // silent hang.
+      motionStatusLabelEl.textContent = '⚠️ Hand left the frame too soon — keep it up until recording finishes, then try again';
+      break;
     case 'idle':
     default:
       motionStatusLabelEl.textContent = 'Collecting frames';
@@ -667,7 +739,7 @@ function setMotionStatus(state, label) {
 function startMotionRecording() {
   if (getDetectionType(sign) !== 'motion' || cooldown) return;
   resetMotionBuffer();
-  motionBuffer_progress = 0;
+  handLostSinceArmedAt = null;
   if (motionBufEl) motionBufEl.style.width = '0%';
   runMotionCountdown(0);
 }
@@ -690,8 +762,8 @@ function runMotionCountdown(stepIdx) {
 function resetMotionUI() {
   clearTimeout(motionCountdownTimer);
   motionArmed = false;
+  handLostSinceArmedAt = null;
   resetMotionBuffer();
-  motionBuffer_progress = 0;
   if (motionBufEl) motionBufEl.style.width = '0%';
   setMotionStatus('idle');
 }

@@ -31,12 +31,28 @@ export async function startCamera(videoElement, canvasElement) {
     throw new Error('getUserMedia not supported');
   }
 
-  // FIX: Don't force a specific resolution — let the browser use the camera's
-  // native resolution. This prevents zoom/crop artifacts caused by the browser
-  // trying to scale a mismatched stream into a fixed constraint box.
+  // FIX (original): Don't force a specific resolution — let the browser
+  // use the camera's native resolution. This prevented zoom/crop artifacts
+  // caused by the browser trying to scale a mismatched stream into a fixed
+  // constraint box.
+  //
+  // CHANGED (perf pass — "so laggy"): re-added a resolution cap, but as
+  // `ideal` (a hint, not a hard requirement) rather than the old fixed
+  // 1280x720 `min`/exact-style constraint that caused the original crop
+  // bug. The crop bug was actually caused by object-fit: cover fighting
+  // an aspect-ratio mismatch, not by capping resolution itself — and
+  // css/lesson-camera.css now uses object-fit: contain (see that file's
+  // own fix notes), so a smaller/mismatched stream just letterboxes
+  // instead of cropping. Feeding HolisticLandmarker a smaller frame
+  // (pose + full face mesh + both hands, every detection) is one of the
+  // biggest wins available for the lag complaint — this pairs with the
+  // GPU delegate + detection throttle in js/tracking/mediapipe.js.
   const constraints = {
     video: {
       facingMode: 'user',   // Front-facing (selfie) camera
+      width:  { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: 30, max: 30 },
     },
     audio: false,
   };

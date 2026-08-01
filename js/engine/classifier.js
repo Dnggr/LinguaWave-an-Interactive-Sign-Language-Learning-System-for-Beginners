@@ -349,6 +349,97 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
 
 // ── Motion Classify ───────────────────────────────────────────────
 
+// ══════════════════════════════════════════════════════════════════
+// CHANGED — "user puts their hand down while it's still capturing"
+// ══════════════════════════════════════════════════════════════════
+// Two related problems were happening together:
+//
+//   1) The UI's progress bar was a fake, time-based estimate (see the
+//      OLD comment that used to be in lesson.js's updateMotionBuffer)
+//      instead of reflecting the REAL motionBuffer.length — so it could
+//      read as "basically done" while the model was still nowhere near
+//      MOTION_FRAMES_REQUIRED, especially once frame-skipping (frozen-
+//      hand frames, below) is factored in. Users trusted the bar and
+//      dropped their hand early. FIX: getMotionBufferStatus() below
+//      exposes the TRUE count/required/progress, and lesson.js now
+//      reads directly from it instead of guessing.
+//
+//   2) Even with an accurate bar, a user who drops their hand mid-sign
+//      used to just... hang. classifyMotion() already tolerates the
+//      hand vanishing (it simply stops adding frames — see the
+//      `!leftLm && !rightLm` guard), but nothing ever finished the
+//      window early, so the attempt would silently sit there until the
+//      15s PROMPT_TIMEOUT in lesson.js finally gave up. FIX:
+//      finalizeMotionWindow() (new) lets lesson.js force-finish a
+//      short window after a brief "hand's really gone" grace period,
+//      padding the buffer by repeating its last real frame out to
+//      MOTION_FRAMES_REQUIRED so the LSTM still gets the input shape
+//      it expects. The sign's real motion is still intact at the
+//      front of the window — we're stretching the tail, not fabricating
+//      the gesture. If too FEW real frames were captured to make that
+//      a fair guess (MOTION_MIN_FRAMES_TO_FINALIZE), it bails out
+//      cleanly instead of guessing on mostly-padding.
+// ══════════════════════════════════════════════════════════════════
+
+// Require at least 40% of a real window before we'll even attempt a
+// padded guess — below that there's not enough real motion to judge.
+const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
+
+/**
+ * Shared inference path used by both a normal full window (classifyMotion)
+ * and a forced/padded window (finalizeMotionWindow), so the "what counts
+ * as a match" logic only lives in one place.
+ */
+function runMotionInference(frameWindow) {
+  const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 130]
+
+  let rawLabel   = null;
+  let confidence = 0;
+
+  tf.tidy(() => {
+    const output = motionModel.predict(input);
+    const probs  = Array.from(output.dataSync());
+    const maxIdx = probs.indexOf(Math.max(...probs));
+    confidence   = Math.round(probs[maxIdx] * 100);
+    rawLabel     = motionLabels[String(maxIdx)] ?? null;
+  });
+
+  input.dispose();
+
+  if (!rawLabel) {
+    return { label: null, confidence: 0, matched: false, buffering: false };
+  }
+
+  // BUG FIX: classifyGesture() already refuses to report a label that
+  // has no SIGN_DICTIONARY entry (or is marked disabled). classifyMotion()
+  // was missing this same guard, so a motion model trained on more labels
+  // than the dictionary knows about (e.g. new family words) could either
+  // silently report labels lesson.js has no content for, or — the more
+  // common case — a label that IS in the dictionary but hasn't been
+  // wired into data.js/dictionary.js yet would still show up as a
+  // "detected" word with no matching lesson. Keep both files in sync.
+  const dictEntry = SIGN_DICTIONARY[rawLabel];
+  if (!dictEntry || dictEntry.disabled) {
+    return { label: null, confidence: 0, matched: false, buffering: false };
+  }
+
+  const passesThreshold = confidence >= MOTION_THRESHOLD;
+
+  // CHANGED: this used to require the SAME label on two consecutive
+  // windows before accepting a match ("confirming" state) — a holdover
+  // from when detection ran passively/continuously and needed extra
+  // protection against noise. Now that recording is explicitly
+  // triggered (3-2-1 countdown, one deliberate attempt), that second
+  // window caused a real bug instead of preventing one: after a good
+  // first window, the classifier immediately started buffering a
+  // SECOND window — but the user, thinking they were done, would
+  // relax/lower their hand right then, feeding that irrelevant motion
+  // into window two, which predictably failed and overwrote the
+  // correct first result with "no sign, 0%" a moment later. A single
+  // clean window is the deliberate attempt now; accept it immediately.
+  return { label: rawLabel, confidence, matched: passesThreshold, buffering: false };
+}
+
 /**
  * Adds a frame to the motion buffer. Once MOTION_FRAMES_REQUIRED frames
  * are collected, runs the LSTM motion model and returns a result.
@@ -396,60 +487,53 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
 
   const frameWindow = motionBuffer.slice(-MOTION_FRAMES_REQUIRED);
   motionBuffer = [];
+  return runMotionInference(frameWindow);
+}
 
-  const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 130]
-
-  let rawLabel   = null;
-  let confidence = 0;
-
-  tf.tidy(() => {
-    const output = motionModel.predict(input);
-    const probs  = Array.from(output.dataSync());
-    const maxIdx = probs.indexOf(Math.max(...probs));
-    confidence   = Math.round(probs[maxIdx] * 100);
-    rawLabel     = motionLabels[String(maxIdx)] ?? null;
-  });
-
-  input.dispose();
-
-  if (!rawLabel) {
-    return { label: null, confidence: 0, matched: false, buffering: false };
+/**
+ * NEW — force-finishes a short (in-progress) motion window instead of
+ * waiting for it to naturally reach MOTION_FRAMES_REQUIRED. Call this
+ * when the hand has been missing for a "they clearly dropped their
+ * hand" grace period while a recording is armed (see lesson.js).
+ *
+ * Pads the short buffer by repeating its last captured frame out to
+ * MOTION_FRAMES_REQUIRED and runs inference on that. If too few real
+ * frames were captured to make that a fair attempt, returns null and
+ * clears the buffer — the caller should treat that as "no sign,
+ * try again" rather than a real (if low-confidence) guess.
+ *
+ * @returns {{label,confidence,matched,buffering}|null}
+ */
+export function finalizeMotionWindow() {
+  if (!motionModel || !motionLabels) return null;
+  if (motionBuffer.length < MOTION_MIN_FRAMES_TO_FINALIZE) {
+    motionBuffer  = [];
+    lastFrameFlat = null;
+    return null;
   }
 
-  // BUG FIX: classifyGesture() already refuses to report a label that
-  // has no SIGN_DICTIONARY entry (or is marked disabled). classifyMotion()
-  // was missing this same guard, so a motion model trained on more labels
-  // than the dictionary knows about (e.g. new family words) could either
-  // silently report labels lesson.js has no content for, or — the more
-  // common case — a label that IS in the dictionary but hasn't been
-  // wired into data.js/dictionary.js yet would still show up as a
-  // "detected" word with no matching lesson. Keep both files in sync.
-  const dictEntry = SIGN_DICTIONARY[rawLabel];
-  if (!dictEntry || dictEntry.disabled) {
-    return { label: null, confidence: 0, matched: false, buffering: false };
-  }
+  const lastFrame = motionBuffer[motionBuffer.length - 1];
+  const padded    = motionBuffer.slice();
+  while (padded.length < MOTION_FRAMES_REQUIRED) padded.push(lastFrame);
 
-  const passesThreshold = confidence >= MOTION_THRESHOLD;
+  motionBuffer  = [];
+  lastFrameFlat = null;
+  return runMotionInference(padded);
+}
 
-  if (!passesThreshold) {
-    // Still surface the low-confidence guess so the UI can show what
-    // it's leaning toward, just not accept it.
-    return { label: rawLabel, confidence, matched: false, buffering: false };
-  }
-
-  // CHANGED: this used to require the SAME label on two consecutive
-  // windows before accepting a match ("confirming" state) — a holdover
-  // from when detection ran passively/continuously and needed extra
-  // protection against noise. Now that recording is explicitly
-  // triggered (3-2-1 countdown, one deliberate attempt), that second
-  // window caused a real bug instead of preventing one: after a good
-  // first window, the classifier immediately started buffering a
-  // SECOND window — but the user, thinking they were done, would
-  // relax/lower their hand right then, feeding that irrelevant motion
-  // into window two, which predictably failed and overwrote the
-  // correct first result with "no sign, 0%" a moment later. A single
-  // clean window is the deliberate attempt now; accept it immediately.
-  return { label: rawLabel, confidence, matched: true, buffering: false };
+/**
+ * NEW — real (not estimated) buffering progress, for the UI. Returns
+ * how many frames are actually in the buffer right now, versus how
+ * many are required, plus a 0–1 fraction. lesson.js's progress bar
+ * reads from this directly instead of a synthetic per-tick increment,
+ * which is what let the bar drift out of sync with the real state.
+ */
+export function getMotionBufferStatus() {
+  return {
+    count:    motionBuffer.length,
+    required: MOTION_FRAMES_REQUIRED,
+    progress: Math.min(motionBuffer.length / MOTION_FRAMES_REQUIRED, 1),
+  };
 }
 
 /**
