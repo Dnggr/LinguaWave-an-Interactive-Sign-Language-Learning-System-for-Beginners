@@ -87,7 +87,12 @@
 */
 
 import { startCamera, stopCamera }             from '../js/camera/cameraUtils.js';
-import { initMediaPipe, processFrame, isModelReady, getModelError } from '../js/tracking/mediapipe.js';
+import { initMediaPipe, processFrame, isModelReady, getModelError,
+         // NEW: lets us throttle detection down during assessment's
+         // get-ready pause + countdown (dead time where nothing is
+         // being recorded yet) and back up the instant recording
+         // actually starts — see the constants + call sites below.
+         setDetectionInterval } from '../js/tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
@@ -245,6 +250,24 @@ let motionArmed    = false;
 const MOTION_COUNTDOWN_STEPS   = ['3', '2', '1', 'GO!'];
 const MOTION_COUNTDOWN_STEP_MS = 450;
 let motionCountdownTimer = null;
+
+// NEW — "assessment mode motion detection is laggy" fix. Every prompt
+// spends GETREADY_DELAY (2.5s) + the 4-step countdown above (1.8s) —
+// 4.3s total — with full-rate Holistic tracking running for no benefit,
+// since nothing is recorded until motionArmed flips true at the end of
+// the countdown. A single practice attempt pays that cost once; a full
+// category assessment pays it on EVERY sign, back-to-back, non-stop —
+// that sustained load is what actually made it feel laggy. DETECT_RATE_IDLE_MS
+// is used for that dead time; DETECT_RATE_ACTIVE_MS (matches
+// mediapipe.js's own default) is restored the instant recording starts
+// or for any static sign (which needs continuous full-rate detection
+// throughout, no countdown to spare). See setMotionDetectionRate() below.
+const DETECT_RATE_ACTIVE_MS = 50;  // ~20fps — while actually consuming frames
+const DETECT_RATE_IDLE_MS   = 150; // ~6-7fps — get-ready pause + countdown dead time
+
+function setMotionDetectionRate(active) {
+  setDetectionInterval(active ? DETECT_RATE_ACTIVE_MS : DETECT_RATE_IDLE_MS);
+}
 
 // CHANGED: this used to be a fake, time-based progress estimate
 // (motionBuffer_progress += 1/30 per buffering tick, assuming a steady
@@ -747,6 +770,11 @@ function startMotionRecording() {
 function runMotionCountdown(stepIdx) {
   if (stepIdx >= MOTION_COUNTDOWN_STEPS.length) {
     motionArmed = true;
+    // NEW (assessment lag fix): this is the actual moment frames start
+    // getting consumed — full-rate detection kicks back in right here,
+    // not at the top of the countdown (that would defeat the point;
+    // see DETECT_RATE_IDLE_MS's comment).
+    setMotionDetectionRate(true);
     setMotionStatus('recording');
     return;
   }
@@ -766,6 +794,12 @@ function resetMotionUI() {
   resetMotionBuffer();
   if (motionBufEl) motionBufEl.style.width = '0%';
   setMotionStatus('idle');
+  // NEW (assessment lag fix): default back to full-rate detection —
+  // this is the "normal" state for idle browsing, practice mode, and
+  // the end of an assessment. showNextPrompt() explicitly drops back
+  // to the idle rate right after calling this, specifically for
+  // assessment's get-ready dead time — see the call site there.
+  setMotionDetectionRate(true);
 }
 
 /**
@@ -885,6 +919,14 @@ function showNextPrompt() {
   cooldown          = true;               // stay in cooldown through the get-ready pause
   resetMotionUI();
 
+  // NEW (assessment lag fix): drop to the idle detection rate for the
+  // get-ready pause below — full-rate tracking isn't needed until
+  // frames are actually being consumed (see the block comment near
+  // DETECT_RATE_IDLE_MS). Restored to active rate further down: right
+  // away for static signs, or at the end of the countdown for motion
+  // signs (see runMotionCountdown()'s terminal branch).
+  setMotionDetectionRate(false);
+
   if (scoreEl)  scoreEl.textContent  = `Score: ${score} / ${quizSigns.length}`;
   showFeedback('', '');
 
@@ -908,6 +950,12 @@ function showNextPrompt() {
     // starts automatically the instant the get-ready pause ends.
     if (getDetectionType(currentSign) === 'motion') {
       startMotionRecording();
+    } else {
+      // NEW: static signs have no countdown to wait through — they
+      // start consuming frames the instant cooldown lifts, so the
+      // active rate needs to be back on right now, not at some later
+      // "recording started" point (there isn't one for static).
+      setMotionDetectionRate(true);
     }
 
     promptTimer = setTimeout(() => {

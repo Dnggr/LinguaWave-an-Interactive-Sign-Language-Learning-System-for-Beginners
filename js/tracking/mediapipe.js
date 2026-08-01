@@ -106,7 +106,20 @@ let lastVideoTime      = -1;
 // video's own frame rate / the caller's rAF rate. 20fps is plenty for
 // sign detection (signs unfold over hundreds of ms) and roughly halves
 // or quarters CPU/GPU load on a 30–60fps camera.
-const DETECT_INTERVAL_MS = 50; // ~20 detections/sec
+//
+// CHANGED (assessment-mode lag fix): this is now a `let` with a setter
+// (setDetectionInterval() below) instead of a fixed const. lesson.js's
+// category assessment auto-chains every sign back-to-back — for each
+// MOTION sign specifically, that's a 2.5s "get ready" pause plus a
+// 1.8s countdown (4.3s total) where full-rate Holistic tracking keeps
+// running for no benefit (nothing is recorded until the countdown
+// ends). Practice mode only ever pays that cost once per click;
+// a full category assessment pays it on EVERY sign, non-stop, which is
+// what made the sustained load — and the lag — so much more noticeable
+// there specifically. lesson.js now drops to a slower rate during that
+// dead time and restores full rate the instant recording actually
+// starts (see startMotionRecording()/runMotionCountdown() in lesson.js).
+let DETECT_INTERVAL_MS = 50; // ~20 detections/sec (default/active rate)
 let lastDetectAt = 0;
 let cachedResult = null; // last frame's { leftPts, rightPts, faceRaw, forehead, chin, anyHandPresent, featureVec }
 
@@ -394,6 +407,17 @@ export function processFrame(videoElement) {
     featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin),
   };
   return cachedResult;
+}
+
+// NEW (assessment-mode lag fix): lets lesson.js dial the detection
+// rate up/down based on whether frames are actually being consumed
+// right now. Ignores nonsense values defensively — a stray call with
+// 0 or a negative number would otherwise disable the throttle entirely
+// and defeat the whole point of this function.
+export function setDetectionInterval(ms) {
+  if (typeof ms === 'number' && ms > 0) {
+    DETECT_INTERVAL_MS = ms;
+  }
 }
 
 export function isModelReady() {
