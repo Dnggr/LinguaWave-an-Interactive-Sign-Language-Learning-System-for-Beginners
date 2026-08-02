@@ -234,7 +234,12 @@ export const SIGN_DICTIONARY = {
   },
   'BROTHER': {
     fingerStates: [1, 1, 0, 0, 0],
-    description:  'L-hand near forehead (like BOY), then both index fingers meet',
+    // CHANGED — this still described the OLDER/legacy version (both
+    // hands in L, index fingers meet) after data.js's description was
+    // already corrected against ASLU. Only the dominant hand moves;
+    // see data.js's medium_family_BROTHER entry for the full sourced
+    // explanation (lifeprint.com/asl101/pages-signs/b/brosis.htm).
+    description:  'L-hand at forehead morphs to "1" as it lands on a stationary "1"-hand base',
     category: 'family', imageFile: 'brother.gif', detectionType: 'motion',
   },
   'MARRIAGE': {
@@ -244,7 +249,8 @@ export const SIGN_DICTIONARY = {
   },
   'SISTER': {
     fingerStates: [1, 1, 0, 0, 0],
-    description:  'L-hand near the jaw (like GIRL), then both index fingers meet',
+    // CHANGED — same fix as BROTHER above, same ASLU source.
+    description:  'L-hand at jaw morphs to "1" as it lands on a stationary "1"-hand base',
     category: 'family', imageFile: 'sister.gif', detectionType: 'motion',
   },
   'GRANDMA': {
@@ -281,6 +287,80 @@ export const SIGN_DICTIONARY = {
     fingerStates: [0, 1, 1, 1, 1],
     description:  'Two flat hands touch, then twist and pull apart',
     category: 'family', imageFile: 'divorced.gif', detectionType: 'motion',
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // PLACES — added once merged_motion.json (2026-08-01 batch)
+  // finished training. 8 of data.js's 9 "places" SIGNS entries are
+  // wired here; the other 4 signId issues found during that wire-up:
+  //
+  //   • SCHOOL   — SKIPPED on purpose (no trained data yet, per
+  //     explicit instruction — data.js's entry is untouched, still
+  //     undetectable until it's actually recorded).
+  //   • COME/GO  — SKIPPED — data.js has a lesson entry for this, but
+  //     NEITHER "COME" nor "GO" nor "COME/GO" is in the trained model's
+  //     label set at all. Same "browsable but undetectable" gap as
+  //     SCHOOL — not something this pass could fix, flagging so it
+  //     doesn't get assumed covered.
+  //   • CAR/DRIVE → CAR — data.js's signId was 'CAR/DRIVE', but the
+  //     model only has a literal "CAR" label (no separate "DRIVE").
+  //     'CAR/DRIVE' would never have matched model output — data.js's
+  //     signId was changed to 'CAR' to actually line up (see data.js).
+  //   • IN/OUT → IN + OUT — data.js had ONE lesson entry for both
+  //     directions, but the model was trained with IN and OUT as two
+  //     separate, genuinely different motions (down-and-in vs
+  //     up-and-out) — matching data.js's own description text, which
+  //     already described two distinct movements under one signId.
+  //     Split into two independent entries in data.js so each is its
+  //     own practicable/assessable sign, matching what the model
+  //     actually does.
+  // ══════════════════════════════════════════════════════════
+
+  'HOME': {
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Flattened-O hand touches mouth corner, then cheek/ear',
+    category: 'places', imageFile: 'home.gif', detectionType: 'motion',
+  },
+  'WORK': {
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Two S-fists, dominant wrist taps non-dominant fist twice',
+    category: 'places', imageFile: 'work.gif', detectionType: 'motion',
+  },
+  'STORE': {
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Two flat-O hands near chest, wrists rotate forward twice',
+    category: 'places', imageFile: 'store.gif', detectionType: 'motion',
+  },
+  'CHURCH': {
+    fingerStates: [1, 1, 1, 1, 0],
+    description:  'C-hand taps twice on the back of an S-fist base hand',
+    category: 'places', imageFile: 'church.gif', detectionType: 'motion',
+  },
+  'WITH': {
+    fingerStates: [1, 0, 0, 0, 0],
+    description:  'Two A-fists brought together, knuckles touching',
+    category: 'places', imageFile: 'with.gif', detectionType: 'motion',
+  },
+  'CAR': {
+    // NEW signId — data.js's SIGNS entry used to say 'CAR/DRIVE' (see
+    // block comment above). Lesson title can stay "Car / Drive"; this
+    // key just needs to match the model's literal output string.
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Both hands grip an imaginary steering wheel, small alternating turns',
+    category: 'places', imageFile: 'car.gif', detectionType: 'motion',
+  },
+  'IN': {
+    // NEW — split out of the old combined 'IN/OUT' signId (see block
+    // comment above). data.js now has a separate medium_places_IN entry.
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Bunched fingertips dip down into a curved "container" base hand',
+    category: 'places', imageFile: 'in.gif', detectionType: 'motion',
+  },
+  'OUT': {
+    // NEW — the other half of the old combined 'IN/OUT' signId.
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Bunched fingers pull up and out of the base hand, opening as they exit',
+    category: 'places', imageFile: 'out.gif', detectionType: 'motion',
   },
 
 

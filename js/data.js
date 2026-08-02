@@ -57,7 +57,10 @@ const CATEGORIES = [
   },
   {
     id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false,
-    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR/DRIVE', 'IN/OUT', 'WITH'],
+    // CHANGED: 'CAR/DRIVE' -> 'CAR', 'IN/OUT' -> 'IN','OUT' — kept in
+    // sync with the SIGNS entries' signId fixes below (see those entries
+    // and dictionary.js's PLACES block comment for why).
+    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR', 'IN', 'OUT', 'WITH'],
   },
   {
     id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false,
@@ -680,7 +683,12 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/come.png', videoUrl: '../assets/videos/medium/places/come.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR/DRIVE', title: 'Car / Drive', order: 7,
+    id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 7,
+    // CHANGED — signId was 'CAR/DRIVE', but the trained model only has
+    // a literal "CAR" label (no separate "DRIVE" motion was recorded).
+    // 'CAR/DRIVE' would never have matched classifyMotion()'s output —
+    // fixed to the string that's actually detectable. Title kept as-is
+    // since the lesson content/description still covers the concept.
     description: 'Hold both hands as if gripping a steering wheel and move them in a small alternating turning motion, as if driving.',
     tips: [
       'Hands stay shoulder-width apart',
@@ -690,17 +698,36 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN/OUT', title: 'In / Out', order: 8,
-    description: 'IN: bring your fingertips together and dip that hand down into the opening made by your other curved hand. OUT: reverse the motion — pull your bunched fingers up and out of the curved hand, opening them as they exit.',
+    id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN', title: 'In', order: 8,
+    // CHANGED — split out of a single combined 'IN/OUT' entry. The
+    // model was trained with IN and OUT as two separate, genuinely
+    // different motions (matching what the old description already
+    // said: "IN moves down and inward; OUT moves up and outward" —
+    // that was always two signs, not one). A single 'IN/OUT' signId
+    // could never have matched either "IN" or "OUT" coming back from
+    // classifyMotion() — see dictionary.js's PLACES block comment.
+    description: 'Bring your fingertips together and dip that hand down into the opening made by your other curved hand.',
     tips: [
       'Non-dominant hand forms a loose ‘container’ shape',
-      'IN moves down and inward; OUT moves up and outward',
-      'Fingers open as they exit for OUT',
+      'Motion goes down and inward',
+      'Fingers stay bunched together the whole time',
     ],
     imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/medium/places/in.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 9,
+    id: 'medium_places_OUT', level: 'medium', category: 'places', signId: 'OUT', title: 'Out', order: 9,
+    // CHANGED — the other half of the old combined 'IN/OUT' entry, see
+    // the note on medium_places_IN just above.
+    description: 'Pull your bunched fingers up and out of the curved base hand, opening them as they exit.',
+    tips: [
+      'Non-dominant hand forms a loose ‘container’ shape',
+      'Motion goes up and outward — the reverse of IN',
+      'Fingers open as they exit',
+    ],
+    imageUrl: '../assets/images/medium/places/out.png', videoUrl: '../assets/videos/medium/places/out.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 10,
     description: 'Make two fists (A-handshape) and bring them together side by side so the knuckles touch, palms facing each other.',
     tips: [
       'Both hands are closed fists',
