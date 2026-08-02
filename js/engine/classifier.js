@@ -93,7 +93,10 @@ export function getMotionModelError() { return motionModelError; }
 
 // Frame buffer for motion detection (MOTION_FRAMES_REQUIRED × 130 values)
 let motionBuffer = [];
-let lastFrameFlat = null;
+// REMOVED: lastFrameFlat used to track the previous frame for the
+// frozen-frame movement filter in classifyMotion() (see that function's
+// comment for why the filter itself was removed). Nothing reads it
+// anymore, so it's gone rather than left as dead state.
 
 // REMOVED (see classifyMotion): this used to hold a label across two
 // consecutive windows before accepting a match, guarding against a
@@ -440,9 +443,71 @@ function runMotionInference(frameWindow) {
   return { label: rawLabel, confidence, matched: passesThreshold, buffering: false };
 }
 
+// ══════════════════════════════════════════════════════════════════
+// CHANGED — "recording is way too fast now, I can't perform the sign"
+// ══════════════════════════════════════════════════════════════════
+// The frozen-frame filter removed above was, it turns out, doing double
+// duty: besides being wrong (see the comment in classifyMotion()), it
+// was ACCIDENTALLY acting as the pacing mechanism. Because a frame only
+// "counted" while the hand was actively moving, reaching MOTION_FRAMES_
+// REQUIRED (40) counted frames took as long as the sign itself took —
+// pauses, hesitation, and a natural pace all just... didn't count
+// against the total, so the window stretched to fit however long a
+// real performance took.
+//
+// Removing that filter (correctly — the model still needs to see it)
+// meant EVERY frame counts now, so 40 frames complete in exactly
+// 40 × DETECT_RATE_ACTIVE_MS (see lesson.js) — a hard, rigid ~2 second
+// ceiling with zero room to actually perform a sign naturally. That's
+// its own real bug, and worth calling out: it's also a strong candidate
+// for why misclassification persisted after the last fix — a sign
+// rushed/cut off by a too-short window doesn't resemble the complete,
+// natural gesture the model was trained on either.
+//
+// FIX: stop tying "recording complete" to a raw frame COUNT at all.
+// Record for a fixed, comfortable real-TIME window instead
+// (MOTION_RECORD_DURATION_MS below), capturing however many raw frames
+// come in during that time — could be more or fewer than 40 depending
+// on the device's actual detection rate — then RESAMPLE the captured
+// sequence to exactly MOTION_FRAMES_REQUIRED frames via linear
+// interpolation before running inference. This is not a new technique —
+// it's the exact same resampleSequence()/resample_sequence() algorithm
+// already used in capture.html and merge_linguawave_data.py for
+// normalizing variable-length clips; it's just being applied live here
+// instead of offline. This permanently decouples "how long you get to
+// sign" from "how many frames the model wants," so it also won't need
+// re-tuning again if the detection rate ever changes.
+const MOTION_RECORD_DURATION_MS = 2500; // comfortable real-world signing time
+let motionRecordStartAt = null;
+
 /**
- * Adds a frame to the motion buffer. Once MOTION_FRAMES_REQUIRED frames
- * are collected, runs the LSTM motion model and returns a result.
+ * Port of capture.html's resampleSequence() — linear interpolation
+ * between the two nearest source frames to stretch/compress a
+ * variable-length clip to a fixed target frame count. MUST stay
+ * identical to capture.html's version and merge_linguawave_data.py's
+ * resample_sequence() — all three need to treat a clip the same way.
+ */
+function resampleSequence(frames, targetLength) {
+  const clean = frames.filter(Boolean);
+  if (!clean.length) return null;
+  if (clean.length === targetLength) return clean;
+
+  const out = [];
+  for (let i = 0; i < targetLength; i++) {
+    const srcIdx = targetLength === 1 ? 0 : (i / (targetLength - 1)) * (clean.length - 1);
+    const lo = Math.floor(srcIdx), hi = Math.ceil(srcIdx);
+    const t = srcIdx - lo;
+    if (lo === hi) { out.push(clean[lo]); continue; }
+    out.push(clean[lo].map((v, j) => v + (clean[hi][j] - v) * t));
+  }
+  return out;
+}
+
+/**
+ * Adds a frame to the motion buffer. Once MOTION_RECORD_DURATION_MS has
+ * elapsed since the first frame of this recording, resamples whatever
+ * was captured to MOTION_FRAMES_REQUIRED frames and runs the LSTM
+ * motion model.
  *
  * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks
  * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks
@@ -462,44 +527,39 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
     return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0 };
   }
 
-  // Only collect frame if hand moved enough since last frame
-  if (lastFrameFlat) {
-    let diff = 0;
-    for (let i = 0; i < flat.length; i++) {
-      diff += Math.abs(flat[i] - lastFrameFlat[i]);
-    }
-    const avgDiff = diff / flat.length;
-
-    if (avgDiff < 0.001) {
-      // Hand is essentially frozen — skip this frame but DON'T reset
-      // the buffer so a brief pause mid-stroke doesn't wipe progress
-      lastFrameFlat = flat;
-      return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0 };
-    }
+  // First frame of a fresh recording — start the clock. Every frame
+  // from here on is pushed unconditionally (see the block comment
+  // above classifyMotion — no movement filter, matches capture.html).
+  if (motionBuffer.length === 0) {
+    motionRecordStartAt = performance.now();
   }
-
-  lastFrameFlat = flat;
   motionBuffer.push(flat);
 
-  if (motionBuffer.length < MOTION_FRAMES_REQUIRED) {
+  const elapsed = performance.now() - motionRecordStartAt;
+  if (elapsed < MOTION_RECORD_DURATION_MS) {
     return { label: null, confidence: 0, matched: false, buffering: true };
   }
 
-  const frameWindow = motionBuffer.slice(-MOTION_FRAMES_REQUIRED);
+  const resampled = resampleSequence(motionBuffer, MOTION_FRAMES_REQUIRED);
   motionBuffer = [];
-  return runMotionInference(frameWindow);
+  motionRecordStartAt = null;
+  if (!resampled) {
+    return { label: null, confidence: 0, matched: false, buffering: false };
+  }
+  return runMotionInference(resampled);
 }
 
 /**
  * NEW — force-finishes a short (in-progress) motion window instead of
- * waiting for it to naturally reach MOTION_FRAMES_REQUIRED. Call this
- * when the hand has been missing for a "they clearly dropped their
- * hand" grace period while a recording is armed (see lesson.js).
+ * waiting for it to naturally reach MOTION_RECORD_DURATION_MS. Call
+ * this when the hand has been missing for a "they clearly dropped
+ * their hand" grace period while a recording is armed (see lesson.js).
  *
- * Pads the short buffer by repeating its last captured frame out to
- * MOTION_FRAMES_REQUIRED and runs inference on that. If too few real
- * frames were captured to make that a fair attempt, returns null and
- * clears the buffer — the caller should treat that as "no sign,
+ * Resamples whatever was captured so far up to MOTION_FRAMES_REQUIRED
+ * frames (same technique as a normal completed window — see
+ * resampleSequence() above) and runs inference on that. If too few
+ * real frames were captured to make that a fair attempt, returns null
+ * and clears the buffer — the caller should treat that as "no sign,
  * try again" rather than a real (if low-confidence) guess.
  *
  * @returns {{label,confidence,matched,buffering}|null}
@@ -507,32 +567,32 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
 export function finalizeMotionWindow() {
   if (!motionModel || !motionLabels) return null;
   if (motionBuffer.length < MOTION_MIN_FRAMES_TO_FINALIZE) {
-    motionBuffer  = [];
-    lastFrameFlat = null;
+    motionBuffer = [];
+    motionRecordStartAt = null;
     return null;
   }
 
-  const lastFrame = motionBuffer[motionBuffer.length - 1];
-  const padded    = motionBuffer.slice();
-  while (padded.length < MOTION_FRAMES_REQUIRED) padded.push(lastFrame);
-
-  motionBuffer  = [];
-  lastFrameFlat = null;
-  return runMotionInference(padded);
+  const resampled = resampleSequence(motionBuffer, MOTION_FRAMES_REQUIRED);
+  motionBuffer = [];
+  motionRecordStartAt = null;
+  if (!resampled) return null;
+  return runMotionInference(resampled);
 }
 
 /**
- * NEW — real (not estimated) buffering progress, for the UI. Returns
- * how many frames are actually in the buffer right now, versus how
- * many are required, plus a 0–1 fraction. lesson.js's progress bar
- * reads from this directly instead of a synthetic per-tick increment,
- * which is what let the bar drift out of sync with the real state.
+ * NEW — real (not estimated) buffering progress, for the UI. Now
+ * TIME-based rather than frame-count-based (see the block comment near
+ * MOTION_RECORD_DURATION_MS for why) — reports elapsed/total recording
+ * time plus a 0–1 fraction. lesson.js's progress bar reads from this
+ * directly.
  */
 export function getMotionBufferStatus() {
+  const elapsedMs = motionRecordStartAt ? performance.now() - motionRecordStartAt : 0;
   return {
-    count:    motionBuffer.length,
-    required: MOTION_FRAMES_REQUIRED,
-    progress: Math.min(motionBuffer.length / MOTION_FRAMES_REQUIRED, 1),
+    count:      motionBuffer.length,
+    elapsedMs,
+    durationMs: MOTION_RECORD_DURATION_MS,
+    progress:   Math.min(elapsedMs / MOTION_RECORD_DURATION_MS, 1),
   };
 }
 
@@ -541,8 +601,8 @@ export function getMotionBufferStatus() {
  * or exiting assessment mode.
  */
 export function resetMotionBuffer() {
-  motionBuffer  = [];
-  lastFrameFlat = null;
+  motionBuffer = [];
+  motionRecordStartAt = null;
 }
 
 // ── Utility ───────────────────────────────────────────────────────

@@ -97,8 +97,9 @@ import { drawSkeleton, clearCanvas }           from '../js/engine/renderer.js';
 import { getDetectionType }                    from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
          isMotionModelReady, getMotionModelError, loadModels,
-         // CHANGED: getMotionBufferStatus() gives the REAL frame count
-         // (see classifier.js) instead of the old synthetic time-based
+         // getMotionBufferStatus() gives the REAL recording progress
+         // (see classifier.js — now time-based: elapsed/total ms, not
+         // frame count) instead of the old synthetic time-based
          // progress estimate. finalizeMotionWindow() lets us force-finish
          // a short recording when the user's hand has clearly left the
          // frame for good, instead of silently hanging until the 15s
@@ -687,6 +688,13 @@ function startRenderLoop() {
 // armed, since a bare percentage bar turned out not to be a strong
 // enough signal to keep users' hands up (see HAND_LOST_GRACE_MS above
 // and the getMotionBufferStatus() comment in classifier.js).
+// CHANGED: getMotionBufferStatus() is now time-based, not frame-count-
+// based (see classifier.js's block comment near MOTION_RECORD_DURATION_MS
+// for why — the old frame-count target combined with a fast/throttled
+// detection rate produced a rigid ~2 second recording window with no
+// room to actually perform a sign). Shows elapsed/total seconds instead
+// of a frame count, which is also just a more honest thing to show the
+// user — "frames" was never a meaningful unit to them anyway.
 function updateMotionBuffer() {
   if (!motionBufEl) return;
 
@@ -695,11 +703,13 @@ function updateMotionBuffer() {
     return;
   }
 
-  const { count, required, progress } = getMotionBufferStatus();
+  const { elapsedMs, durationMs, progress } = getMotionBufferStatus();
   motionBufEl.style.width = `${Math.round(progress * 100)}%`;
 
-  if (motionStatusLabelEl && count > 0) {
-    motionStatusLabelEl.textContent = `Recording — ${count}/${required} frames — keep signing!`;
+  if (motionStatusLabelEl && elapsedMs > 0) {
+    const elapsedSec  = (elapsedMs / 1000).toFixed(1);
+    const durationSec = (durationMs / 1000).toFixed(1);
+    motionStatusLabelEl.textContent = `Recording — ${elapsedSec}s / ${durationSec}s — keep signing!`;
   }
 }
 
