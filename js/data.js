@@ -62,6 +62,23 @@ const CATEGORIES = [
     // and dictionary.js's PLACES block comment for why).
     words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR', 'IN', 'OUT', 'WITH'],
   },
+  // NEW — Tier 0 phrase-chaining proof of concept (lesson.js). Chains
+  // several already-working atomic detections (letters and/or trained
+  // word-signs) in sequence instead of needing a whole new
+  // continuous-recognition model — see the phraseSteps block comment
+  // in lesson.js for the full mechanism. Both entries below use ONLY
+  // vocabulary that's already trained end-to-end, so this actually
+  // works right now, not just architecturally. Wiring up your real
+  // Intermediate-category phrases works the same way — add a
+  // `sequence` array to a SIGNS entry — but is gated on THOSE
+  // component words being trained first; this category is deliberately
+  // separate demo content, not meant to replace real curriculum.
+  // order: 100 keeps this out of the way of your real category
+  // numbering rather than needing to renumber anything.
+  {
+    id: 'sequence_demo', level: 'medium', title: 'Sequence Practice (Demo)', order: 100, comingSoon: false,
+    words: ['CAR_SPELL', 'HOME_WORK_DEMO'],
+  },
   {
     id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false,
     words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'TODAY/NOW', 'FINISH'],
@@ -735,6 +752,41 @@ const SIGNS = [
       'Hold briefly once they touch',
     ],
     imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · SEQUENCE_DEMO (Tier 0 phrase-chaining proof) ──
+  {
+    id: 'medium_sequence_demo_CAR_SPELL', level: 'medium', category: 'sequence_demo', signId: 'CAR_SPELL',
+    title: 'Fingerspell: C-A-R', order: 1,
+    // `sequence` is what makes this a phrase-type sign — lesson.js
+    // walks through each entry in order as a separate, already-working
+    // atomic detection, instead of one single-gesture check. All 3
+    // letters are in the trained static alphabet already.
+    sequence: ['C', 'A', 'R'],
+    description: 'A real ASL fallback pattern: if you don\'t know (or forget) the dedicated sign for a word, you can fingerspell it letter by letter instead. This lesson chains the three letters C, A, R — sign each one clearly and hold it until it registers before moving to the next.',
+    tips: [
+      'Each letter is checked independently, in order',
+      'A brief pause between letters is fine — the countdown gives you time to reset your hand shape',
+      'This is a DEMO of the sequence-detection mechanism, not a full curriculum entry',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/car_spell.png', videoUrl: '../assets/videos/medium/sequence_demo/car_spell.mp4', detectionType: 'static',
+  },
+  {
+    id: 'medium_sequence_demo_HOME_WORK', level: 'medium', category: 'sequence_demo', signId: 'HOME_WORK_DEMO',
+    title: 'Sequence Practice: HOME \u2192 WORK', order: 2,
+    // Proves the mechanism generalizes to WORD-level (not just letter-
+    // level) chaining, and to a MOTION-then-MOTION sequence. Labeled as
+    // a mechanics exercise, not a claim about real ASL sentence
+    // grammar — chaining two independent word-signs back to back isn't
+    // the same thing as a grammatically real ASL sentence.
+    sequence: ['HOME', 'WORK'],
+    description: 'A mechanics exercise for signing two words back to back in one go, using signs you already know: HOME, then WORK. (This chains two independent word-signs — it\'s a sequencing exercise, not a claim about correct ASL sentence grammar.)',
+    tips: [
+      'Sign HOME first, hold until it registers',
+      'Then sign WORK — you get a fresh 3-2-1 countdown for it',
+      'This is a DEMO of the sequence-detection mechanism, not a full curriculum entry',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/home_work.png', videoUrl: '../assets/videos/medium/sequence_demo/home_work.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · TIME ──

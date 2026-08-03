@@ -300,6 +300,76 @@ function setMotionDetectionRate(active) {
 const HAND_LOST_GRACE_MS = 1200;
 let handLostSinceArmedAt = null;
 
+// ══════════════════════════════════════════════════════════════════
+// NEW — Tier 0 phrase chaining: "I AM A STUDENT" walks through I ->
+// AM -> STUDENT as separate, already-working atomic detections, one
+// after another, instead of needing a whole new continuous-recognition
+// model. A phrase-type SIGNS entry (data.js) carries a `sequence`
+// array of component signIds that DO each have a real dictionary.js
+// entry + trained model output — dictionary.js itself is untouched,
+// it only ever sees real atomic signIds, never a phrase's own made-up
+// top-level signId.
+//
+// phraseSteps / phraseStepIdx track progress through the CURRENT
+// phrase attempt. getActiveSignId() is the one thing that changed
+// everywhere else: every detection-relevant call site that used to
+// read the bare `sign` constant now reads getActiveSignId() instead,
+// which resolves to the current step's real signId while a phrase is
+// active, or just `sign` unchanged otherwise (so nothing about a
+// plain, non-phrase lesson behaves differently).
+let phraseSteps   = null;
+let phraseStepIdx = 0;
+
+const PHRASE_STEP_DELAY = 700; // brief pause between phrase steps
+
+function getPhraseSequence(signId) {
+  const data = window.LWData?.getSign?.(level, signId);
+  return (data && Array.isArray(data.sequence) && data.sequence.length > 0) ? data.sequence : null;
+}
+
+function isPhrase(signId) {
+  return getPhraseSequence(signId) !== null;
+}
+
+function getActiveSignId() {
+  return (phraseSteps && phraseStepIdx < phraseSteps.length) ? phraseSteps[phraseStepIdx] : sign;
+}
+
+// Whether THIS lesson's sign needs the motion-recording UI panel /
+// explicit "Try it" trigger at all, as opposed to a plain static sign
+// which just detects passively/continuously with no start boundary.
+// A phrase ALWAYS needs an explicit start, even if its first component
+// happens to be static — a multi-step sequence needs a clear "go"
+// moment the same way a motion sign does.
+function needsExplicitStart(signId) {
+  return getDetectionType(signId) === 'motion' || isPhrase(signId);
+}
+
+function updatePhrasePromptText() {
+  if (!phraseSteps) return;
+  const stepLabel = phraseSteps[phraseStepIdx];
+  const text = `Step ${phraseStepIdx + 1}/${phraseSteps.length}: "${stepLabel}"`;
+  if (mode === 'assessment' && promptEl) promptEl.textContent = text;
+  if (motionStatusLabelEl) motionStatusLabelEl.textContent = text;
+}
+
+/**
+ * Starts (or restarts) the CURRENT phrase step — runs the same
+ * "3,2,1,GO!" countdown regardless of whether this step's component is
+ * motion or static (see runMotionCountdown()'s terminal branch, which
+ * now checks getActiveSignId() rather than assuming motion). A
+ * standalone static sign never needed a countdown because it has no
+ * "start" boundary; a step WITHIN a sequence does, the same way a
+ * motion sign does, so every step gets one for consistency.
+ */
+function startPhraseStep() {
+  resetMotionBuffer();
+  handLostSinceArmedAt = null;
+  if (motionBufEl) motionBufEl.style.width = '0%';
+  cooldown = true; // hold through the countdown below
+  runMotionCountdown(0);
+}
+
 // BUG 11 FIX: MediaPipe's per-frame face/hand presence flips true/false
 // even when the person hasn't moved (confidence hovers right at the
 // detection threshold), which made '#face-warn' and the hand-status
@@ -395,7 +465,7 @@ function updateLessonMeta() {
   }
 
   if (motionBufWrapEl) {
-    motionBufWrapEl.style.display = getDetectionType(sign) === 'motion' ? '' : 'none';
+    motionBufWrapEl.style.display = needsExplicitStart(sign) ? '' : 'none';
   }
 
   const signData = signDataForTitle;
@@ -460,7 +530,7 @@ function updateLessonMeta() {
   // startMotionRecording() function the Assessment flow calls
   // automatically. Only relevant for motion signs; syncMotionUIForMode()
   // handles show/hide based on practice vs. assessment mode.
-  if (btnTryPracticeEl) btnTryPracticeEl.onclick = startMotionRecording;
+  if (btnTryPracticeEl) btnTryPracticeEl.onclick = handleTryItClick;
 
   // Put motion UI back to a clean idle state every time a sign loads —
   // a half-finished recording/countdown from a previous sign should
@@ -641,7 +711,7 @@ function startRenderLoop() {
     }
     handLostSinceArmedAt = null;
 
-    const detType = getDetectionType(sign);
+    const detType = getDetectionType(getActiveSignId());
     let result;
 
     if (detType === 'motion') {
@@ -769,8 +839,26 @@ function setMotionStatus(state, label) {
  * this is called automatically from showNextPrompt() the moment the
  * get-ready pause ends, for motion signs only.
  */
+/**
+ * NEW — the "Try it" button's actual click handler. A phrase-type sign
+ * needs its sequence state initialized before anything starts; a plain
+ * motion sign just starts recording exactly as before.
+ */
+function handleTryItClick() {
+  const seq = getPhraseSequence(sign);
+  if (seq) {
+    phraseSteps   = seq;
+    phraseStepIdx = 0;
+    updatePhrasePromptText();
+    startPhraseStep();
+  } else {
+    phraseSteps = null;
+    startMotionRecording();
+  }
+}
+
 function startMotionRecording() {
-  if (getDetectionType(sign) !== 'motion' || cooldown) return;
+  if (getDetectionType(getActiveSignId()) !== 'motion' || cooldown) return;
   resetMotionBuffer();
   handLostSinceArmedAt = null;
   if (motionBufEl) motionBufEl.style.width = '0%';
@@ -779,13 +867,29 @@ function startMotionRecording() {
 
 function runMotionCountdown(stepIdx) {
   if (stepIdx >= MOTION_COUNTDOWN_STEPS.length) {
-    motionArmed = true;
-    // NEW (assessment lag fix): this is the actual moment frames start
-    // getting consumed — full-rate detection kicks back in right here,
-    // not at the top of the countdown (that would defeat the point;
-    // see DETECT_RATE_IDLE_MS's comment).
+    // CHANGED: cooldown is now explicitly cleared here (it used to just
+    // rely on showNextPrompt already having cleared it before this ever
+    // ran). startPhraseStep() sets cooldown=true for the duration of
+    // ITS countdown — including for a static phrase step, which never
+    // had a countdown before and needs cooldown to actually gate the
+    // render loop's passive/continuous static check during those 3
+    // seconds. Harmless no-op for the plain non-phrase motion flow,
+    // where cooldown was already false by this point anyway.
+    cooldown = false;
     setMotionDetectionRate(true);
-    setMotionStatus('recording');
+
+    if (getDetectionType(getActiveSignId()) === 'motion') {
+      motionArmed = true;
+      setMotionStatus('recording');
+    } else {
+      // NEW: a static step within a phrase (see startPhraseStep()) —
+      // static detection is passive/continuous once cooldown lifts, so
+      // there's nothing to "arm," just reset the debounce state for a
+      // clean start on this step.
+      debounceCount = 0;
+      lastDetected  = null;
+      setMotionStatus('idle');
+    }
     return;
   }
   setMotionStatus('countdown', MOTION_COUNTDOWN_STEPS[stepIdx]);
@@ -801,6 +905,10 @@ function resetMotionUI() {
   clearTimeout(motionCountdownTimer);
   motionArmed = false;
   handLostSinceArmedAt = null;
+  // NEW: clear phrase progress too — a fresh prompt (or a wrong-answer
+  // restart) should never inherit a half-finished sequence from before.
+  phraseSteps   = null;
+  phraseStepIdx = 0;
   resetMotionBuffer();
   if (motionBufEl) motionBufEl.style.width = '0%';
   setMotionStatus('idle');
@@ -822,7 +930,7 @@ function resetMotionUI() {
 function syncMotionUIForMode() {
   if (!btnTryPracticeEl) return;
   btnTryPracticeEl.style.display =
-    (mode === 'practice' && getDetectionType(sign) === 'motion') ? '' : 'none';
+    (mode === 'practice' && needsExplicitStart(sign)) ? '' : 'none';
 }
 
 const MAX_LOG_ENTRIES = 20;
@@ -856,6 +964,61 @@ function logDetection(label, confidence, kind) {
 // ── Practice mode ──────────────────────────────────────────────────
 
 function handlePracticeFrame(result) {
+  // NEW — phrase-type sign in practice mode. Uses a STRICT per-step
+  // correctness check (must match the CURRENT step's expected
+  // component), unlike plain practice's existing "any confident match
+  // counts" behavior just below — a sequence specifically needs to
+  // verify the right component was signed at each step, or advancing
+  // on a wrong letter/word would silently break the whole point of
+  // practicing the sequence. Left the existing plain-sign behavior
+  // completely untouched below; this only intercepts when a phrase is
+  // actually active.
+  if (phraseSteps) {
+    if (cooldown || !result.matched || !result.label) return;
+    const expectedStep = getActiveSignId();
+    const isMotion = getDetectionType(expectedStep) === 'motion';
+
+    if (isMotion) {
+      if (result.label !== expectedStep) {
+        // Forgiving in practice mode: retry just this step rather than
+        // aborting the whole sequence, unlike assessment's strict fail.
+        showFeedback(`❌ Detected "${result.label}" — try "${expectedStep}" again`, 'error');
+        enterCooldown(1000);
+        resetMotionBuffer();
+        setTimeout(() => startPhraseStep(), 1000);
+        return;
+      }
+      debounceCount = 0;
+    } else {
+      if (result.label !== expectedStep) {
+        debounceCount = 0;
+        lastDetected  = null;
+        return; // just keep waiting — static path has no "wrong guess" moment to react to
+      }
+      debounceCount++;
+      lastDetected = result.label;
+      if (debounceCount < DEBOUNCE_FRAMES) return;
+      debounceCount = 0;
+    }
+
+    if (phraseStepIdx < phraseSteps.length - 1) {
+      enterCooldown(PHRASE_STEP_DELAY);
+      if (isMotion) resetMotionBuffer();
+      phraseStepIdx++;
+      updatePhrasePromptText();
+      showFeedback(`✅ Got it — next: "${phraseSteps[phraseStepIdx]}"`, 'success');
+      setTimeout(() => startPhraseStep(), PHRASE_STEP_DELAY);
+      return;
+    }
+
+    enterCooldown(1200);
+    if (isMotion) resetMotionBuffer();
+    showFeedback('✅ Phrase complete!', 'success');
+    phraseSteps = null;
+    return;
+  }
+
+  // ── existing non-phrase logic, unchanged below ──
   const isMotion = getDetectionType(sign) === 'motion';
 
   if (result.matched && !cooldown) {
@@ -953,19 +1116,32 @@ function showNextPrompt() {
     cooldown = false;
     if (promptEl) promptEl.textContent = `Sign: "${currentSign}"`;
 
-    // CHANGED: Start Recording and Assessment are now one action.
-    // Static letters need nothing extra here — they've always detected
-    // passively/continuously once cooldown lifts. Motion signs used to
-    // need a separate button click; now the countdown + recording
-    // starts automatically the instant the get-ready pause ends.
-    if (getDetectionType(currentSign) === 'motion') {
-      startMotionRecording();
+    // NEW: phrase-type prompt — walk through its component signs one
+    // at a time (see the phrase-chaining block comment near
+    // phraseSteps) instead of a single detection attempt.
+    const seq = getPhraseSequence(currentSign);
+    if (seq) {
+      phraseSteps   = seq;
+      phraseStepIdx = 0;
+      updatePhrasePromptText();
+      startPhraseStep();
     } else {
-      // NEW: static signs have no countdown to wait through — they
-      // start consuming frames the instant cooldown lifts, so the
-      // active rate needs to be back on right now, not at some later
-      // "recording started" point (there isn't one for static).
-      setMotionDetectionRate(true);
+      phraseSteps = null;
+
+      // CHANGED: Start Recording and Assessment are now one action.
+      // Static letters need nothing extra here — they've always detected
+      // passively/continuously once cooldown lifts. Motion signs used to
+      // need a separate button click; now the countdown + recording
+      // starts automatically the instant the get-ready pause ends.
+      if (getDetectionType(currentSign) === 'motion') {
+        startMotionRecording();
+      } else {
+        // NEW: static signs have no countdown to wait through — they
+        // start consuming frames the instant cooldown lifts, so the
+        // active rate needs to be back on right now, not at some later
+        // "recording started" point (there isn't one for static).
+        setMotionDetectionRate(true);
+      }
     }
 
     promptTimer = setTimeout(() => {
@@ -983,6 +1159,71 @@ function handleAssessmentFrame(result) {
   if (cooldown || quizIdx >= quizSigns.length) return;
 
   const currentSign = quizSigns[quizIdx];
+
+  // NEW — phrase-type prompt: check against the CURRENT STEP's expected
+  // component, not the outer phrase signId (which has no dictionary
+  // entry of its own — it's just a label for "these N signs in order").
+  // Any wrong component fails the whole phrase attempt immediately,
+  // same bar as a normal wrong-answer assessment prompt; the final
+  // step's success falls through to the exact same scoring/feedback/
+  // advance path a plain prompt uses.
+  if (phraseSteps) {
+    if (!result.matched || !result.label) return;
+    const expectedStep = getActiveSignId();
+    const isMotion = getDetectionType(expectedStep) === 'motion';
+
+    if (isMotion) {
+      debounceCount = 0;
+    } else {
+      debounceCount++;
+      if (debounceCount < DEBOUNCE_FRAMES) return;
+      debounceCount = 0;
+    }
+
+    if (result.label !== expectedStep) {
+      enterCooldown(1500);
+      clearTimeout(promptTimer);
+      if (isMotion) resetMotionBuffer();
+      const stepInfo = `${result.label} (step ${phraseStepIdx + 1}/${phraseSteps.length})`;
+      phraseSteps = null;
+      missedSigns.push({ expected: currentSign, got: stepInfo });
+      showFeedback(`❌ Detected "${result.label}" — expected "${expectedStep}"`, 'error');
+      setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
+      return;
+    }
+
+    if (phraseStepIdx < phraseSteps.length - 1) {
+      enterCooldown(PHRASE_STEP_DELAY);
+      clearTimeout(promptTimer);
+      if (isMotion) resetMotionBuffer();
+      phraseStepIdx++;
+      updatePhrasePromptText();
+      // re-arm the timeout for the next step, same total-attempt spirit
+      // as the single-step case — a phrase just gets steps' worth of
+      // extra time rather than one shared clock ticking under it
+      promptTimer = setTimeout(() => {
+        missedSigns.push({ expected: currentSign, got: null });
+        showFeedback('⏱ Time up — moving on', 'error');
+        phraseSteps = null;
+        setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
+      }, PROMPT_TIMEOUT);
+      setTimeout(() => startPhraseStep(), PHRASE_STEP_DELAY);
+      return;
+    }
+
+    // Final step correct — whole phrase succeeded.
+    enterCooldown(1500);
+    clearTimeout(promptTimer);
+    if (isMotion) resetMotionBuffer();
+    phraseSteps = null;
+    score++;
+    showFeedback(`✅ Correct! (${result.confidence}%)`, 'success');
+    if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
+    setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
+    return;
+  }
+
+  // ── existing non-phrase logic, unchanged below ──
   if (!result.matched || !result.label) return;
 
   const isMotion = getDetectionType(currentSign) === 'motion';
