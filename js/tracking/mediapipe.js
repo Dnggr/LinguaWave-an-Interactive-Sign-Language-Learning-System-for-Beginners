@@ -121,6 +121,25 @@ let lastVideoTime      = -1;
 // starts (see startMotionRecording()/runMotionCountdown() in lesson.js).
 let DETECT_INTERVAL_MS = 50; // ~20 detections/sec (default/active rate)
 let lastDetectAt = 0;
+
+// NEW — diagnostic for the "gets laggier on retry" symptom, the other
+// half of the pair added in classifier.js (see that file's
+// logTfMemoryIfDue comment). This measures HolisticLandmarker's own
+// detectForVideo() call time directly — a completely separate system
+// from TF.js — so a rising trend here vs. a flat one tells us whether
+// MediaPipe itself is the slowdown source, independent of whatever
+// TF.js's tensor count is doing. Rolling average over a small window,
+// logged periodically so it doesn't flood the console.
+const _detectTimings = [];
+let _detectTimingCounter = 0;
+function logDetectTimingIfDue(ms) {
+  _detectTimings.push(ms);
+  if (_detectTimings.length > 30) _detectTimings.shift();
+  _detectTimingCounter++;
+  if (_detectTimingCounter % 60 !== 0) return;
+  const avg = _detectTimings.reduce((a, b) => a + b, 0) / _detectTimings.length;
+  console.debug(`[holistic timing] call #${_detectTimingCounter}: last=${ms.toFixed(1)}ms, rolling avg (last ${_detectTimings.length})=${avg.toFixed(1)}ms`);
+}
 let cachedResult = null; // last frame's { leftPts, rightPts, faceRaw, forehead, chin, anyHandPresent, featureVec }
 
 // Ghost-frame persistence — same tolerance pattern as capture.html,
@@ -338,7 +357,9 @@ export function processFrame(videoElement) {
   lastVideoTime = videoElement.currentTime;
   lastDetectAt  = now;
 
+  const detectStart = performance.now();
   const result = holisticLandmarker.detectForVideo(videoElement, now);
+  logDetectTimingIfDue(performance.now() - detectStart);
 
   const leftRaw  = firstOf(result.leftHandLandmarks);
   const rightRaw = firstOf(result.rightHandLandmarks);

@@ -363,6 +363,16 @@ function updatePhrasePromptText() {
  * motion sign does, so every step gets one for consistency.
  */
 function startPhraseStep() {
+  // FIX: cancel any countdown chain still ticking from a previous
+  // attempt before starting a new one. Without this, a stray old
+  // setTimeout chain keeps running independently — each one eventually
+  // reaches runMotionCountdown()'s terminal branch and redundantly
+  // toggles motionArmed/cooldown/the detection rate on top of whatever
+  // the CURRENT attempt is doing. One overlap is a minor glitch; several
+  // retries each leaving one behind compounds into exactly "gets
+  // laggier every time I try again" — multiple interleaved timer chains
+  // all mutating shared state out of sync with each other.
+  clearTimeout(motionCountdownTimer);
   resetMotionBuffer();
   handLostSinceArmedAt = null;
   if (motionBufEl) motionBufEl.style.width = '0%';
@@ -859,6 +869,9 @@ function handleTryItClick() {
 
 function startMotionRecording() {
   if (getDetectionType(getActiveSignId()) !== 'motion' || cooldown) return;
+  // FIX: same overlapping-timer-chain issue as startPhraseStep() above —
+  // see that comment for the full explanation.
+  clearTimeout(motionCountdownTimer);
   resetMotionBuffer();
   handLostSinceArmedAt = null;
   if (motionBufEl) motionBufEl.style.width = '0%';

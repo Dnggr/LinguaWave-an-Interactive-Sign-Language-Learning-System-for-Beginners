@@ -51,6 +51,26 @@ await new Promise((resolve, reject) => {
 const tf = window.tf;
 if (!tf) throw new Error('[classifier] window.tf is undefined after script load.');
 
+// NEW — diagnostic for the "gets laggier on retry, camera itself stays
+// smooth" symptom. Open the browser console and watch these lines: if
+// numTensors climbs steadily across predictions instead of returning to
+// roughly the same baseline after each one, TF.js is leaking tensors or
+// WebGL textures somewhere — a real, documented category of issue with
+// converted/custom Keras models (see this project's earlier Keras-3
+// DTypePolicy fix). If numTensors stays flat/bounded while the lag still
+// happens, that RULES OUT a tensor leak and points elsewhere (MediaPipe's
+// own internal state, or something else) — either way, this turns "not
+// sure why" into an actual measurement instead of another guess.
+// Throttled to ~once every 60 predictions so continuous static detection
+// (which predicts every single frame) doesn't flood the console.
+let _memCheckCounter = 0;
+function logTfMemoryIfDue(label) {
+  _memCheckCounter++;
+  if (_memCheckCounter % 60 !== 0) return;
+  const mem = tf.memory();
+  console.debug(`[tf.memory] after ${label} (call #${_memCheckCounter}): numTensors=${mem.numTensors}, numBytes=${(mem.numBytes / 1024 / 1024).toFixed(2)}MB`);
+}
+
 import { SIGN_DICTIONARY } from './dictionary.js';
 
 // ── Config ────────────────────────────────────────────────────────
@@ -337,6 +357,7 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
   });
 
   input.dispose();
+  logTfMemoryIfDue('classifyGesture (static)');
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
 
@@ -408,6 +429,7 @@ function runMotionInference(frameWindow) {
   });
 
   input.dispose();
+  logTfMemoryIfDue('runMotionInference (motion)');
 
   if (!rawLabel) {
     return { label: null, confidence: 0, matched: false, buffering: false };
