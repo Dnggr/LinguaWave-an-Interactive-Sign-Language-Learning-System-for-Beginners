@@ -216,9 +216,32 @@ let leftPendingJumpPts = null, leftPendingJumpCount  = 0;
 // extending the existing hold-last-good-frame gate below with these two
 // new signals reuses infrastructure that's already tested rather than
 // bolting on a second, independently-tuned smoothing system.
-const BONE_LENGTH_TOLERANCE  = 0.35; // +/- 35% deviation from calibrated baseline
+// CHANGED (align with js/tracking/mediapipe.js — WRIST-OCCLUSION FIX
+// v2): v1 of this fix (BONE_LENGTH_TOLERANCE=0.35, POSE_DISAGREEMENT_
+// MAX=0.12, either check alone could reject a hand) was too strict for
+// real signing. Ordinary partial wrist occlusion — which happens
+// constantly, any time hands cross or the wrist rotates slightly out of
+// clear view — easily produces MORE than 35% bone-length deviation or
+// MORE than 0.12 disagreement with the pose model's own (independently
+// noisy) wrist estimate, even when the rest of the hand is being
+// tracked perfectly fine. The result: the WHOLE hand (including
+// perfectly good finger data) was getting discarded far more often than
+// genuine hallucination actually happens, hands dropping to "not
+// present" mid-sign, corrupting motion detection.
+//
+// v2 fixes this two ways:
+//   1) Both tolerances are substantially looser — now only catching
+//      genuinely dramatic, unmistakable hallucination, not ordinary
+//      partial-occlusion imprecision.
+//   2) BOTH signals must now independently indicate a problem before a
+//      hand gets rejected (previously EITHER alone was enough). This
+//      requires corroborating evidence from two independent estimation
+//      systems before discarding real, useful hand data — a single
+//      noisy signal is no longer enough on its own to make a hand
+//      disappear.
+const BONE_LENGTH_TOLERANCE  = 0.65; // was 0.35 — only catch dramatic deviations now
 const BONE_LENGTH_EMA_ALPHA  = 0.05; // slow-moving average — calibrates over ~1-2s of good frames
-const POSE_DISAGREEMENT_MAX  = 0.12; // normalized-coord distance; generous since pose wrist estimates are coarser than the hand model's own
+const POSE_DISAGREEMENT_MAX  = 0.22; // was 0.12 — pose wrist estimates are meaningfully coarser than the hand model's own; expecting sub-0.12 agreement between two independent models was unrealistic
 const POSE_LEFT_WRIST_IDX    = 15;   // BlazePose 33-point topology (anatomical left/right, same convention Holistic uses for leftHandLandmarks/rightHandLandmarks)
 const POSE_RIGHT_WRIST_IDX   = 16;
 
@@ -497,20 +520,20 @@ export function processFrame(videoElement) {
     if (rightFiltered && !isHandNearFace(rightFiltered, forehead, chin)) rightFiltered = null;
   }
 
-  // NEW (wrist-occlusion hallucination fix): bone-length consistency +
-  // pose cross-check, same "is this trustworthy" gate as the face-
-  // proximity check just above, just two more signals feeding it. Both
-  // checks default to "plausible" when there's nothing to compare
-  // against yet (no baseline, no pose data), so neither one can ever be
-  // the reason a hand fails to be detected in the first place — they
-  // only reject a hand that's ALREADY been seen and now looks wrong.
-  if (leftFiltered) {
-    if (!isBoneLengthPlausible(leftFiltered, leftBoneLengthBaseline))   leftFiltered = null;
-    else if (!isWristNearPoseWrist(leftFiltered, poseLeftWrist))        leftFiltered = null;
+  // CHANGED (v2 — was too aggressive): used to reject a hand if EITHER
+  // check alone failed. Now requires BOTH the bone-length check AND the
+  // pose cross-check to independently indicate a problem before
+  // rejecting — a single noisy signal (which ordinary partial wrist
+  // occlusion produces constantly) is no longer enough on its own to
+  // make a whole hand disappear. See the block comment near
+  // BONE_LENGTH_TOLERANCE above for the full explanation.
+  if (leftFiltered && !isBoneLengthPlausible(leftFiltered, leftBoneLengthBaseline)
+                   && !isWristNearPoseWrist(leftFiltered, poseLeftWrist)) {
+    leftFiltered = null;
   }
-  if (rightFiltered) {
-    if (!isBoneLengthPlausible(rightFiltered, rightBoneLengthBaseline)) rightFiltered = null;
-    else if (!isWristNearPoseWrist(rightFiltered, poseRightWrist))      rightFiltered = null;
+  if (rightFiltered && !isBoneLengthPlausible(rightFiltered, rightBoneLengthBaseline)
+                     && !isWristNearPoseWrist(rightFiltered, poseRightWrist)) {
+    rightFiltered = null;
   }
 
   const leftJump = debounceJump(leftFiltered, lastGoodLeftPts, leftPendingJumpPts, leftPendingJumpCount);

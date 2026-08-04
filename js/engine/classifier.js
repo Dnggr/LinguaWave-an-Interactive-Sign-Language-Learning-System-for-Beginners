@@ -79,8 +79,34 @@ const STATIC_LABELS_PATH = '../asl_static_model/labels.json';
 const MOTION_MODEL_PATH  = '../asl_motion_model/model.json';
 const MOTION_LABELS_PATH = '../asl_motion_model/labels.json';
 
-const MATCH_THRESHOLD        = 75;   // minimum % confidence to count as "matched"
-const MOTION_THRESHOLD       = 70;   // slightly lower for motion signs
+// CHANGED — "random hand positions get confidently detected as real
+// signs" (e.g. an open hand near the ear reads as AUNT even when the
+// actual AUNT motion — shaking an A-handshape — was never performed).
+// Root cause: the model was only ever trained on POSITIVE examples of
+// real signs. It has no "this isn't a sign at all" output to send
+// probability mass toward, so softmax is FORCED to distribute 100% of
+// its confidence across the known sign classes no matter what it's
+// shown — even pure noise gets assigned to whichever known sign is
+// "closest" in the model's learned space, sometimes with deceptively
+// high confidence. Two mitigations below (raised threshold + margin
+// check) reduce false positives from the SOFTWARE side, but neither is
+// a full fix — the real fix is training-side: add a "background/not a
+// sign" class using genuine negative examples (random hand positions,
+// resting poses, transitions between signs) the same way the Colab
+// notebook's augmentation cell (Cell 6.5) already expands real
+// examples. Ask if you want that added — it's a bigger change (new
+// capture category + retrain) so it's not bundled into this pass.
+const MATCH_THRESHOLD         = 85;   // was 75 — minimum % confidence to count as "matched"
+const MOTION_THRESHOLD        = 80;   // was 70 — slightly lower than static still, but meaningfully higher than before
+// A confident, CORRECT classification usually has a clear winner over
+// the runner-up class. Noise/out-of-distribution input often produces
+// a muddled distribution instead — several classes within a few points
+// of each other — even when the top one happens to clear the absolute
+// threshold above. Requiring a minimum gap between 1st and 2nd place
+// catches that "the model wasn't actually sure" case specifically,
+// which a pure confidence floor can't distinguish from genuine
+// confidence.
+const RUNNERUP_MARGIN_MIN     = 20;   // percentage points the top guess must beat 2nd place by
 // CHANGED (today): 20 -> 40. capture.html used to assign a DIFFERENT frame
 // length per sign (15 for short taps like IN/OUT/WITH, up to 60 for full
 // sentences) — that's what made the Colab notebook reject exports the
@@ -347,12 +373,15 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
 
   let rawLabel   = null;
   let confidence = 0;
+  let runnerUpConfidence = 0;
 
   tf.tidy(() => {
     const output = staticModel.predict(input);
     const probs  = Array.from(output.dataSync());
-    const maxIdx = probs.indexOf(Math.max(...probs));
-    confidence   = Math.round(probs[maxIdx] * 100);
+    const sorted = [...probs].sort((a, b) => b - a);
+    const maxIdx = probs.indexOf(sorted[0]);
+    confidence   = Math.round(sorted[0] * 100);
+    runnerUpConfidence = Math.round((sorted[1] ?? 0) * 100);
     rawLabel     = staticLabels[String(maxIdx)] ?? null;
   });
 
@@ -364,10 +393,14 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
   const entry = SIGN_DICTIONARY[rawLabel];
   if (!entry || entry.disabled) return { label: null, confidence: 0, matched: false };
 
+  // NEW: both the absolute threshold AND the margin over the runner-up
+  // must pass — see the block comment near MATCH_THRESHOLD above.
+  const matched = confidence >= MATCH_THRESHOLD && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
+
   return {
     label:    rawLabel,
     confidence,
-    matched:  confidence >= MATCH_THRESHOLD,
+    matched,
   };
 }
 
@@ -419,12 +452,15 @@ function runMotionInference(frameWindow) {
 
   let rawLabel   = null;
   let confidence = 0;
+  let runnerUpConfidence = 0;
 
   tf.tidy(() => {
     const output = motionModel.predict(input);
     const probs  = Array.from(output.dataSync());
-    const maxIdx = probs.indexOf(Math.max(...probs));
-    confidence   = Math.round(probs[maxIdx] * 100);
+    const sorted = [...probs].sort((a, b) => b - a);
+    const maxIdx = probs.indexOf(sorted[0]);
+    confidence   = Math.round(sorted[0] * 100);
+    runnerUpConfidence = Math.round((sorted[1] ?? 0) * 100);
     rawLabel     = motionLabels[String(maxIdx)] ?? null;
   });
 
@@ -448,7 +484,10 @@ function runMotionInference(frameWindow) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  const passesThreshold = confidence >= MOTION_THRESHOLD;
+  // NEW: same margin-over-runnerup fix as classifyGesture — see the
+  // block comment near MATCH_THRESHOLD.
+  const passesThreshold = confidence >= MOTION_THRESHOLD
+    && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
 
   // CHANGED: this used to require the SAME label on two consecutive
   // windows before accepting a match ("confirming" state) — a holdover
