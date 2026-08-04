@@ -176,6 +176,55 @@ const JUMP_DISTANCE_THRESHOLD = 0.30;
 const JUMP_CONFIRM_FRAMES     = 2;
 
 let leftPendingJumpPts = null, leftPendingJumpCount  = 0;
+
+// CHANGED (wrist-occlusion hallucination fix): MediaPipe's hand model
+// ALWAYS outputs 21 landmarks, even when the wrist is occluded (common
+// in ASL contact signs — WORK, TIME, HELP, STOP all briefly cover one
+// wrist with the other hand). When occluded, it doesn't fail — it
+// guesses, based on learned priors, producing landmarks that jitter or
+// "teleport" in ways real hand motion doesn't. Two independent,
+// complementary checks catch this, added alongside the existing
+// face-proximity/jump-debounce gates below (same trust-gate pipeline,
+// not a separate subsystem):
+//
+//   a) BONE-LENGTH CONSISTENCY — a real hand's wrist-to-middle-MCP
+//      distance stays roughly constant for a given person at a given
+//      distance from the camera. A hallucinated wrist frequently
+//      produces a hand shape that doesn't match this. Baseline is
+//      calibrated per-hand via a slow-moving average over genuinely
+//      good frames, so it adapts to the person's actual hand size /
+//      distance from camera without being thrown off by any single
+//      bad frame.
+//
+//   b) POSE CROSS-CHECK — this was sitting unused: HolisticLandmarker
+//      computes body pose internally as part of the SAME detection
+//      call we already make every frame (that's what makes it
+//      "Holistic" instead of just "Hands") — we just weren't reading
+//      result.poseLandmarks. The pose model estimates wrist position
+//      from arm/shoulder context, a completely different estimation
+//      path than the hand model's own 21-point regression. When the
+//      two disagree by a lot, that's a strong, independent hallucination
+//      signal — much stronger than either check alone.
+//
+// NOT implemented (see chat explanation): per-landmark visibility/
+// presence scores — that's the Python-flavored classic MediaPipe Hands
+// API; the JS Tasks Vision HolisticLandmarker this project uses doesn't
+// reliably expose per-landmark confidence for hand points the same way,
+// so a check against it would be checking a number that isn't
+// meaningfully populated. Temporal smoothing (OneEuroFilter) is a good
+// idea but deliberately NOT added as a separate filtering subsystem —
+// extending the existing hold-last-good-frame gate below with these two
+// new signals reuses infrastructure that's already tested rather than
+// bolting on a second, independently-tuned smoothing system.
+const BONE_LENGTH_TOLERANCE  = 0.35; // +/- 35% deviation from calibrated baseline
+const BONE_LENGTH_EMA_ALPHA  = 0.05; // slow-moving average — calibrates over ~1-2s of good frames
+const POSE_DISAGREEMENT_MAX  = 0.12; // normalized-coord distance; generous since pose wrist estimates are coarser than the hand model's own
+const POSE_LEFT_WRIST_IDX    = 15;   // BlazePose 33-point topology (anatomical left/right, same convention Holistic uses for leftHandLandmarks/rightHandLandmarks)
+const POSE_RIGHT_WRIST_IDX   = 16;
+
+let leftBoneLengthBaseline  = null;
+let rightBoneLengthBaseline = null;
+
 let rightPendingJumpPts = null, rightPendingJumpCount = 0;
 
 // ── Public API ────────────────────────────────────────────────────
@@ -275,6 +324,53 @@ function isHandNearFace(handPts, forehead, chin) {
 }
 
 /**
+ * Wrist-to-middle-MCP distance (landmark 0 -> landmark 9) — a stable,
+ * central anatomical reference less affected by individual finger
+ * articulation than e.g. wrist-to-index-MCP.
+ */
+function boneLength(handPts) {
+  return dist3(handPts[0], handPts[9]);
+}
+
+/**
+ * CHANGED (wrist-occlusion fix, part A): rejects a hand whose current
+ * bone length deviates too far from its calibrated baseline. Returns
+ * true (plausible) whenever there's no baseline yet to compare against
+ * — the first several good frames for a hand are what CALIBRATE that
+ * baseline (see updateBoneLengthBaseline), so this never blocks a hand
+ * from ever being accepted in the first place.
+ */
+function isBoneLengthPlausible(handPts, baseline) {
+  if (baseline === null) return true;
+  const current = boneLength(handPts);
+  return Math.abs(current - baseline) / baseline <= BONE_LENGTH_TOLERANCE;
+}
+
+/**
+ * Slow-moving average, updated ONLY on frames that already passed every
+ * trust check (called after the fact, at the bottom of processFrame) —
+ * updating it on a hallucinated frame would let the hallucination
+ * corrupt the very baseline meant to catch it.
+ */
+function updateBoneLengthBaseline(baseline, handPts) {
+  const current = boneLength(handPts);
+  return baseline === null ? current : baseline + BONE_LENGTH_EMA_ALPHA * (current - baseline);
+}
+
+/**
+ * CHANGED (wrist-occlusion fix, part B): cross-checks the hand model's
+ * own wrist (landmark 0) against the POSE model's independent wrist
+ * estimate for the same side. Returns true (plausible) whenever pose
+ * data isn't available for that point — this is an ADDITIONAL signal on
+ * top of the bone-length check, not a replacement, so missing pose data
+ * should never be the reason a hand gets rejected.
+ */
+function isWristNearPoseWrist(handPts, poseWrist) {
+  if (!poseWrist) return true;
+  return dist2(handPts[0], poseWrist) <= POSE_DISAGREEMENT_MAX;
+}
+
+/**
  * CHANGED (multi-person fix, part B): guards against a hand
  * "teleporting" to a new position in a single frame (the signature of
  * Holistic's ROI re-locking onto a different person's hand).
@@ -364,6 +460,12 @@ export function processFrame(videoElement) {
   const leftRaw  = firstOf(result.leftHandLandmarks);
   const rightRaw = firstOf(result.rightHandLandmarks);
   const faceRaw  = firstOf(result.faceLandmarks);
+  // NEW (wrist-occlusion fix, part B): Holistic already computes this
+  // every frame as part of its own internal pipeline — we just weren't
+  // reading it before. See the block comment above debounceJump.
+  const poseRaw       = firstOf(result.poseLandmarks);
+  const poseLeftWrist  = poseRaw ? poseRaw[POSE_LEFT_WRIST_IDX]  : null;
+  const poseRightWrist = poseRaw ? poseRaw[POSE_RIGHT_WRIST_IDX] : null;
 
   // ── Face — same ghost-fill pattern as capture.html ────────────
   let forehead, chin;
@@ -394,6 +496,23 @@ export function processFrame(videoElement) {
     if (leftFiltered  && !isHandNearFace(leftFiltered, forehead, chin))  leftFiltered  = null;
     if (rightFiltered && !isHandNearFace(rightFiltered, forehead, chin)) rightFiltered = null;
   }
+
+  // NEW (wrist-occlusion hallucination fix): bone-length consistency +
+  // pose cross-check, same "is this trustworthy" gate as the face-
+  // proximity check just above, just two more signals feeding it. Both
+  // checks default to "plausible" when there's nothing to compare
+  // against yet (no baseline, no pose data), so neither one can ever be
+  // the reason a hand fails to be detected in the first place — they
+  // only reject a hand that's ALREADY been seen and now looks wrong.
+  if (leftFiltered) {
+    if (!isBoneLengthPlausible(leftFiltered, leftBoneLengthBaseline))   leftFiltered = null;
+    else if (!isWristNearPoseWrist(leftFiltered, poseLeftWrist))        leftFiltered = null;
+  }
+  if (rightFiltered) {
+    if (!isBoneLengthPlausible(rightFiltered, rightBoneLengthBaseline)) rightFiltered = null;
+    else if (!isWristNearPoseWrist(rightFiltered, poseRightWrist))      rightFiltered = null;
+  }
+
   const leftJump = debounceJump(leftFiltered, lastGoodLeftPts, leftPendingJumpPts, leftPendingJumpCount);
   leftFiltered        = leftJump.value;
   leftPendingJumpPts   = leftJump.pendingPts;
@@ -406,13 +525,23 @@ export function processFrame(videoElement) {
 
   // ── Left hand, ghost-filled ────────────────────────────────────
   let leftPts = leftFiltered;
-  if (leftPts) { lastGoodLeftPts = leftPts; leftGhostCounter = 0; }
+  if (leftPts) {
+    lastGoodLeftPts = leftPts;
+    leftGhostCounter = 0;
+    // NEW: only calibrate off a genuinely fresh, already-trusted
+    // detection — never off a ghost-filled (held-over) frame.
+    leftBoneLengthBaseline = updateBoneLengthBaseline(leftBoneLengthBaseline, leftPts);
+  }
   else if (lastGoodLeftPts && leftGhostCounter < GHOST_FRAMES) { leftPts = lastGoodLeftPts; leftGhostCounter++; }
   else { leftPts = null; lastGoodLeftPts = null; }
 
   // ── Right hand, ghost-filled ───────────────────────────────────
   let rightPts = rightFiltered;
-  if (rightPts) { lastGoodRightPts = rightPts; rightGhostCounter = 0; }
+  if (rightPts) {
+    lastGoodRightPts = rightPts;
+    rightGhostCounter = 0;
+    rightBoneLengthBaseline = updateBoneLengthBaseline(rightBoneLengthBaseline, rightPts);
+  }
   else if (lastGoodRightPts && rightGhostCounter < GHOST_FRAMES) { rightPts = lastGoodRightPts; rightGhostCounter++; }
   else { rightPts = null; lastGoodRightPts = null; }
 
