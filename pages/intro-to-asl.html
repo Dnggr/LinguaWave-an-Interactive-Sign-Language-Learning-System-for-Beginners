@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- NEW: sets data-theme before any CSS loads, so the page never
+       flashes the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('lw-theme');
+      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <!--
+    pages/intro-to-asl.html — Module 1: Introduction to ASL
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Standalone reading content (History of ASL, Deaf
+               Awareness, Deaf Culture, visual-communication basics,
+               learning tips). Deliberately NOT part of lesson.js's
+               camera-driven flow — there's nothing to detect here, no
+               webcam, no model. This is the "middle path" version of
+               the Module/Lesson-hierarchy request: real Module 1
+               content exists now, without a data-model migration for
+               the rest of the app's sign-practice categories.
+
+    CONNECTS : ← pages/learn.html  (basic level's "Module 1" banner
+                 card, above the alphabet grid)
+               → pages/learn.html  ("Continue to Alphabet" CTA)
+
+    CONTENT NOTE: written from established ASL linguistics (Stokoe's
+    five parameters, the well-documented history of the American
+    School for the Deaf) and widely-documented Deaf-culture etiquette
+    norms — not sourced from any single copyrighted text, all in
+    original wording.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction to ASL — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/learn.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../index.html');
+  });
+  </script>
+  <style>
+    /* Scoped to this page — a reading page needs a narrower measure and
+       more line-height than the app's card grids do. */
+    .lesson-article { max-width: 720px; margin: 0 auto; }
+    .lesson-article h2 {
+      margin-top: var(--space-8); margin-bottom: var(--space-3);
+      display: flex; align-items: center; gap: var(--space-3);
+    }
+    .lesson-article h2:first-child { margin-top: 0; }
+    .lesson-article__number {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: var(--radius-md);
+      background: var(--clr-accent); color: #fff;
+      font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700;
+      flex-shrink: 0;
+    }
+    .lesson-article h3 {
+      margin-top: var(--space-4); margin-bottom: var(--space-2);
+      font-size: var(--fs-base); color: var(--clr-text);
+    }
+    .lesson-article p, .lesson-article li { line-height: 1.7; color: var(--clr-text); }
+    .lesson-article ul { padding-left: 1.25rem; margin: var(--space-2) 0; }
+    .lesson-article li { margin-bottom: var(--space-2); }
+    .lesson-article .card { margin-bottom: var(--space-6); }
+    .etiquette-list li::marker { color: var(--clr-accent); }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html">Learn</a></li>
+      </ul>
+      <div class="navbar__user">
+        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
+                aria-label="Toggle light/dark theme">
+          <span class="theme-toggle__thumb"></span>
+        </button>
+        <span>👋 <span data-user-name>Learner</span></span>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container container--narrow">
+
+      <div class="text-center mb-8">
+        <p class="section__eyebrow">Module 1</p>
+        <h1>Introduction to ASL</h1>
+        <p class="text-muted mt-4">
+          Before you start practicing handshapes in front of the camera, it helps
+          to know what ASL actually is, who uses it, and how to communicate
+          respectfully with the community it belongs to.
+        </p>
+      </div>
+
+      <article class="lesson-article">
+
+        <div class="card">
+          <h2><span class="lesson-article__number">1</span> What is ASL?</h2>
+          <p>
+            American Sign Language is a complete, natural language — not a
+            hand-signed version of English. It has its own grammar, its own
+            word order, and its own way of building meaning that doesn't map
+            word-for-word onto spoken or written English. A sentence signed in
+            ASL and the same sentence written in English can look completely
+            different in structure, even when they mean exactly the same
+            thing.
+          </p>
+
+          <h3>A short history</h3>
+          <p>
+            Modern ASL traces back to 1817, when the American School for the
+            Deaf was founded in Hartford, Connecticut, by Thomas Hopkins
+            Gallaudet and Laurent Clerc — a Deaf educator who had signed in
+            French Sign Language (LSF) his whole life. At the school, LSF
+            blended with the various home sign systems Deaf students already
+            used, and ASL grew from that mix over the generations that
+            followed. It's genuinely its own language, with roots in both
+            French Sign Language and American Deaf communities — not a
+            simplified version of anything else.
+          </p>
+
+          <h3>Why it matters</h3>
+          <p>
+            For a long time, sign languages were dismissed as simple gesture
+            systems rather than real languages. That changed with the
+            linguistic research of William Stokoe in the 1960s, which showed
+            ASL has every structural property a spoken language has —
+            grammar, syntax, the ability to express anything a spoken language
+            can. Today it's recognized as a full language in its own right,
+            and it's the primary language for a large community of Deaf and
+            hard-of-hearing people across the U.S. and Canada.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2><span class="lesson-article__number">2</span> Deaf Awareness</h2>
+          <p>
+            The Deaf community is a linguistic and cultural group, not simply
+            "people who can't hear." Many Deaf people describe Deafness as an
+            identity and a culture they're part of, not a condition to be
+            fixed — worth keeping in mind as you learn a language that belongs
+            to that community.
+          </p>
+
+          <h3>Basic communication etiquette</h3>
+          <ul class="etiquette-list">
+            <li><strong>Get attention respectfully.</strong> A wave in someone's
+              line of sight, a light tap on the shoulder, or a gentle tap on
+              the table works — not shouting or grabbing.</li>
+            <li><strong>Keep eye contact during conversation.</strong> In a
+              visual language, looking away is like turning your back on
+              someone mid-sentence.</li>
+            <li><strong>Don't assume lipreading works.</strong> It's difficult
+              and unreliable even for people who are skilled at it — many
+              English sounds look identical on the lips.</li>
+            <li><strong>Keep your hands and face visible.</strong> Covering
+              your mouth or signing space makes you hard to understand, the
+              same way mumbling would.</li>
+            <li><strong>Be patient, not performative.</strong> If you're still
+              learning, it's fine to write things down or ask someone to
+              repeat something — that's normal, not rude.</li>
+          </ul>
+
+          <h3>Understanding Deaf culture</h3>
+          <p>
+            Deaf culture includes its own humor, storytelling traditions, art,
+            and history — much of it centered around Deaf schools and
+            organizations, which have long served as community hubs. One
+            useful distinction: a "medical" view treats deafness purely as
+            hearing loss to be corrected, while the cultural view many Deaf
+            people hold sees Deaf identity as something to be valued, not
+            something to fix. Both perspectives exist in the world; approaching
+            the community with curiosity and respect, rather than pity, goes a
+            long way.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2><span class="lesson-article__number">3</span> Benefits of Learning ASL</h2>
+          <ul>
+            <li><strong>Communication accessibility</strong> — you can talk
+              directly with Deaf and hard-of-hearing people without relying on
+              an interpreter or passing notes back and forth.</li>
+            <li><strong>Social inclusion</strong> — even a little ASL lowers
+              the barrier for a Deaf person to be included in a conversation,
+              rather than left to lip-read or wait for someone else to
+              translate.</li>
+            <li><strong>Career opportunities</strong> — interpreting, Deaf
+              education, healthcare, social work, and customer-facing roles
+              increasingly value ASL fluency as a real, in-demand skill.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2><span class="lesson-article__number">4</span> Introduction to Visual Communication</h2>
+          <p>
+            ASL linguists describe every sign as a combination of five
+            parameters: <strong>handshape</strong>, <strong>location</strong>,
+            <strong>movement</strong>, <strong>palm orientation</strong>, and
+            <strong>non-manual markers</strong> (everything happening above
+            the hands). Change any one of these and you can change the
+            meaning of the sign entirely — it's not just "wave your hands
+            around."
+          </p>
+
+          <h3>Facial expressions</h3>
+          <p>
+            In ASL, facial expression isn't just emotional flavor — it's
+            grammar. Raised eyebrows can turn a statement into a yes/no
+            question; furrowed brows often signal a "wh-" question (who,
+            what, where). The same handshape with a different expression can
+            carry a different grammatical meaning entirely.
+          </p>
+
+          <h3>Body language</h3>
+          <p>
+            Signers use body shift and lean to mark different characters or
+            perspectives when telling a story — leaning one way for "what I
+            said," the other way for "what they said." Space itself carries
+            meaning too: where you place a sign relative to your body can
+            establish who or what you're referring to later in the
+            conversation.
+          </p>
+
+          <h3>Hand movements</h3>
+          <p>
+            This is the part LinguaWave's camera is built to recognize —
+            handshape, location, and movement together. It's also why this
+            app tracks full motion sequences for many signs, not just a
+            single snapshot: the movement itself often carries part of the
+            sign's meaning, not just its starting handshape.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2><span class="lesson-article__number">5</span> ASL Learning Tips</h2>
+          <h3>Practice techniques</h3>
+          <ul>
+            <li>Practice in front of a mirror or camera — like this app — so
+              you can actually see what a native signer would see.</li>
+            <li>Fingerspell something every day, even just your own name or a
+              word you see around you.</li>
+            <li>Watch native Deaf signers when you can — video, in person, or
+              Deaf-led content online — to pick up natural rhythm and
+              non-manual markers that are hard to learn from text alone.</li>
+          </ul>
+          <h3>Learning strategies</h3>
+          <ul>
+            <li>Consistency beats cramming — a little practice most days sticks
+              far better than one long session a week.</li>
+            <li>Learn in categories, the way this app is organized (family,
+              places, numbers, and so on) — grouped vocabulary is easier to
+              retain than a random list.</li>
+            <li>Expect ASL grammar to feel unfamiliar at first. It's a
+              genuinely different language, not reordered English — give
+              yourself room to learn it as its own thing.</li>
+          </ul>
+        </div>
+
+      </article>
+
+      <div class="text-center mt-8">
+        <a href="learn.html?level=basic" class="btn btn--primary">Continue to the Alphabet →</a>
+      </div>
+
+    </div>
+  </section>
+
+</body>
+</html>

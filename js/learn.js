@@ -68,6 +68,40 @@ const CATEGORY_ICONS = {
   social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
 };
 
+// NEW — pure presentation grouping for the "Cisco-academy-style structure"
+// request. Doesn't touch data.js's CATEGORIES schema at all — categories
+// stay exactly what they were (flat level -> category -> signs); this is
+// only about how they're VISUALLY organized on the learn page. Any
+// category not listed here (a brand new one added later and forgotten
+// about here, or the sequence_demo proof-of-concept category) automatically
+// falls into a trailing "More" group in renderCategories() below, rather
+// than silently disappearing.
+const MODULE_GROUPS = {
+  medium: [
+    { title: 'Module 1 · Family & People', categoryIds: ['family'] },
+    { title: 'Module 2 · Places & Time', categoryIds: ['places', 'time'] },
+    { title: 'Module 3 · Everyday Life', categoryIds: ['temperature', 'food', 'clothes', 'health'] },
+    { title: 'Module 4 · Feelings & Requests', categoryIds: ['feelings', 'requests'] },
+    { title: 'Module 5 · Colors, Money & Amounts', categoryIds: ['colors', 'money', 'amounts'] },
+    { title: 'Module 6 · Animals', categoryIds: ['animals'] },
+  ],
+  intermediate: [
+    // Matches the teammate's Level 2 (Basic phrases) vs Level 3
+    // (Intermediate conversations) split, even though data.js keeps
+    // both under one flat 'intermediate' level under the hood.
+    { title: 'Module 1 · Everyday Phrases', categoryIds: [
+      'greetings_intro', 'basic_responses', 'family_phrases', 'daily_needs',
+      'asking_questions', 'polite_expressions', 'affection_feelings', 'describing_things',
+    ] },
+    { title: 'Module 2 · Conversations', categoryIds: [
+      'self_introduction', 'daily_activities', 'family_conversations',
+      'talking_about_feelings', 'asking_for_help', 'school_conversations',
+      'shopping_ordering', 'social_conversations', 'emergency_situations',
+      'everyday_dialogues',
+    ] },
+  ],
+};
+
 // Escapes text dropped into innerHTML (category titles/words are all
 // hardcoded in data.js, but this keeps the render helpers safe if
 // that ever changes).
@@ -97,7 +131,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const letters = window.LWData.getCategorySigns('basic', 'alphabet');
     const progress = window.LWProgress?.getCategoryProgress?.('basic', 'alphabet') ?? { signs: {}, assessment: null };
 
-    grid.innerHTML = letters.map(letter => {
+    // NEW — Module 1: Introduction to ASL. Pure reading content (History
+    // of ASL, Deaf Awareness, Deaf Culture, etc.) — no camera, no
+    // detection model, so it's a standalone static page rather than
+    // living inside lesson.js's camera-driven flow. Shown once, above
+    // the alphabet grid, as the natural "start here" entry point.
+    const introBanner = `
+      <a href="intro-to-asl.html" class="lesson-card category-card lesson-card--intro" style="grid-column: 1 / -1;">
+        <div class="category-card__icon">📖</div>
+        <span class="category-card__title">Module 1 · Introduction to ASL</span>
+        <span class="badge badge--basic">What is ASL, Deaf culture & etiquette, learning tips</span>
+      </a>
+    `;
+
+    grid.innerHTML = introBanner + letters.map(letter => {
       const done = !!progress.signs[letter];
       return `
         <a href="lesson.html?level=basic&sign=${encodeURIComponent(letter)}" class="lesson-card${done ? ' lesson-card--done' : ''}">
@@ -151,7 +198,12 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.classList.add('lesson-grid--categories');
     const categories = window.LWData.getCategoriesForLevel(level);
 
-    const cards = categories.map(cat => {
+    // CHANGED: build each category's card HTML keyed by id first (same
+    // card markup as before, unchanged), THEN decide how to arrange them
+    // — this is what makes the module grouping below possible without
+    // touching any of the actual card-building logic.
+    const cardById = {};
+    categories.forEach(cat => {
       const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
 
       if (!cat.comingSoon) {
@@ -161,13 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
           // Safety net only — every shipped category now has real
           // SIGNS content, so this stays a plain (non-clickable)
           // preview instead of linking into an empty lesson.
-          return `
+          cardById[cat.id] = `
             <div class="lesson-card category-card lesson-card--locked">
               <div class="category-card__icon">${icon}</div>
               <span class="category-card__title">${escapeHtml(cat.title)}</span>
               <span class="badge badge--${level}">Content coming soon</span>
             </div>
           `;
+          return;
         }
 
         // BUGFIX (this revision): categories were being locked behind
@@ -184,24 +237,53 @@ document.addEventListener('DOMContentLoaded', () => {
         // BUGFIX: this used to link straight into lesson.html with
         // &sign=${signs[0]}, skipping any chance to pick a word or
         // phrase. It now opens the word/phrase picker instead.
-        return `
+        cardById[cat.id] = `
           <button type="button" class="lesson-card category-card${passed ? ' lesson-card--done' : ''}" data-open-category="${escapeHtml(cat.id)}">
             <div class="category-card__icon">${icon}</div>
             <span class="category-card__title">${escapeHtml(cat.title)}</span>
             ${statusBadge}
           </button>
         `;
+        return;
       }
-      return `
+      cardById[cat.id] = `
         <div class="lesson-card category-card lesson-card--locked">
           <div class="category-card__icon">${icon}</div>
           <span class="category-card__title">${escapeHtml(cat.title)}</span>
           <span class="badge badge--locked">Coming Soon</span>
         </div>
       `;
+    });
+
+    // NEW: arrange the cards built above into module sections instead of
+    // one flat grid. Any category id not claimed by a group (new
+    // categories added later, or the sequence_demo proof-of-concept) ends
+    // up in a trailing "More" section automatically — nothing silently
+    // disappears just because MODULE_GROUPS wasn't updated for it.
+    const groups = MODULE_GROUPS[level] ?? [];
+    const claimedIds = new Set(groups.flatMap(g => g.categoryIds));
+    const leftoverIds = categories.map(c => c.id).filter(id => !claimedIds.has(id));
+
+    let sectionsHtml = groups.map(group => {
+      const cardsHtml = group.categoryIds.filter(id => cardById[id]).map(id => cardById[id]).join('');
+      if (!cardsHtml) return ''; // group has no matching categories in this data set — skip silently
+      return `
+        <h3 class="module-header">${escapeHtml(group.title)}</h3>
+        <div class="lesson-grid lesson-grid--categories module-section">${cardsHtml}</div>
+      `;
     }).join('');
 
-    grid.innerHTML = cards + renderLevelFinalCTA(level);
+    if (leftoverIds.length > 0) {
+      const leftoverHtml = leftoverIds.map(id => cardById[id]).join('');
+      const leftoverTitle = groups.length > 0 ? 'More' : null; // only label it if there WERE real groups above
+      sectionsHtml += `
+        ${leftoverTitle ? `<h3 class="module-header">${leftoverTitle}</h3>` : ''}
+        <div class="lesson-grid lesson-grid--categories module-section">${leftoverHtml}</div>
+      `;
+    }
+
+    grid.classList.remove('lesson-grid--categories'); // the outer grid is no longer itself the card grid — each module-section is
+    grid.innerHTML = sectionsHtml + renderLevelFinalCTA(level);
 
     // Wire up the category cards rendered above to open the picker.
     grid.querySelectorAll('[data-open-category]').forEach(btn => {
