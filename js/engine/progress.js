@@ -39,6 +39,8 @@
  *            reads/writes. Every other function is storage-agnostic.
  * ─────────────────────────────────────────────────────────────────
  */
+
+
 'use strict';
 
 (function () {
@@ -51,9 +53,36 @@
     catch (e) { console.warn('[progress.js] corrupt store, resetting', e); return {}; }
   }
 
-  function saveStore(store) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
-    catch (e) { console.warn('[progress.js] could not save progress:', e); }
+  function saveStoreLocal(store) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  }
+
+  // async function saveStore(store) {
+  //   localStorage.setItem(STORE_KEY, JSON.stringify(store)); 
+  //   try { 
+  //         const userObj = getCurrentUser();
+  //         const {uid} = userObj;
+  //         const userRef = doc(db, 'userProgress', uid);
+  //         await setDoc(userRef, store);
+  //       }
+  //   catch (e) { 
+  //     console.log(e);
+  //     console.warn('[progress.js] could not save progress:', e); 
+  //   }
+  // }
+  async function saveStore(store) {
+    saveStoreLocal(store); // write locally first, always — instant, safe from navigation interruption
+
+    try {
+      const { db, doc, setDoc, getCurrentUser } = window.LWAuth;
+      const user = getCurrentUser();
+      if (!user) return;
+
+      const userRef = doc(db, 'userProgress', user.uid);
+      await setDoc(userRef, store);
+    } catch (e) {
+      console.warn('[progress.js] could not save progress:', e);
+    }
   }
 
   function ensureLevel(store, level) {
@@ -66,6 +95,58 @@
     const lvl = ensureLevel(store, level);
     if (!lvl.categories[category]) lvl.categories[category] = { signs: {}, assessment: null };
     return lvl.categories[category];
+  }
+
+ /* ── HYDRATE: pull remote progress into local cache ───────────────
+   * Runs once when this script loads. Waits for Firebase to confirm
+   * who's logged in, then checks whether the cached store actually
+   * belongs to THIS user. If not (new device, different account, or
+   * empty cache), fetches the real progress from Firestore instead.
+   * ──────────────────────────────────────────────────────────────── */
+  let resolveProgressReady;
+  const progressReady = new Promise((resolve) => { resolveProgressReady = resolve; });
+
+ async function hydrateStore() {
+  await window.LWAuth?.whenAuthReady?.();
+  console.log('[progress.js] authReady resolved, starting hydration check');
+
+  const { db, doc, getDoc, getCurrentUser } = window.LWAuth;
+  const user = getCurrentUser();
+
+  if (!user) {
+    console.log('[progress.js] no user, skipping hydration');
+    resolveProgressReady();
+    return;
+  }
+
+  const cached = loadStore();
+  console.log('[progress.js] cached.uid:', cached.uid, 'vs user.uid:', user.uid);
+
+  if (cached.uid === user.uid) {
+    console.log('[progress.js] cache matches, skipping fetch');
+    resolveProgressReady();
+    return;
+  }
+
+  console.log('[progress.js] fetching from Firestore...');
+  try {
+    const userRef = doc(db, 'userProgress', user.uid);
+    const snapshot = await getDoc(userRef);
+    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, levels: {} };
+    remoteStore.uid = user.uid;
+    saveStoreLocal(remoteStore);
+    console.log('[progress.js] hydration complete, saved:', remoteStore);
+  } catch (e) {
+    console.warn('[progress.js] could not fetch progress:', e);
+  }
+
+  resolveProgressReady();
+}
+
+  hydrateStore(); // kick off as soon as this script loads
+
+  function whenProgressReady() {
+    return progressReady;
   }
 
   /* ── Writes ────────────────────────────────────────────────────── */
@@ -207,5 +288,6 @@
     getCategoryProgress, getLevelAssessment, getLevelStats,
     isCategoryUnlocked, isLevelUnlocked, isLevelFinalUnlocked,
     liveCategoriesFor, getAllLearnedSigns,
+    whenProgressReady, STORE_KEY,
   };
 })();
