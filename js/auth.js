@@ -67,15 +67,18 @@ const LW_SESSION_KEY = 'lw_session';
 let authReady = false;
 let hasFiredReady = false;
 
-onAuthStateChanged(auth, (firebaseUser) => {
+onAuthStateChanged(auth, async (firebaseUser) => {
   if (firebaseUser) {
-    const existing = getCurrentUser();
+    const userRef = doc(db, 'users', firebaseUser.uid);
+    const snapshot = await getDoc(userRef);
+    const profile = snapshot.exists() ? snapshot.data() : {};
+
     const user = {
       uid: firebaseUser.uid,
-      name: existing?.name || firebaseUser.email.split('@')[0] || 'Learner',
+      name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
       email: firebaseUser.email,
-      level: existing?.level || 'basic',
-      joined: existing?.joined || new Date().toISOString().slice(0, 10),
+      level: profile.level || 'basic',
+      joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
     };
     localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   } else {
@@ -198,6 +201,7 @@ async function register(name, email, password, level) {
 }*/
 async function logout(redirectPath) {
   await signOut(auth);
+  localStorage.removeItem(window.LWProgress?.STORE_KEY);
   localStorage.removeItem(LW_SESSION_KEY);
   window.location.href = redirectPath || '/index.html';
 }
@@ -229,11 +233,22 @@ function redirectIfLoggedIn(dashboardPath) {
   }
 }
 
+function whenAuthReady() {
+  return new Promise((resolve) => {
+    if (authReady) {
+      resolve();
+    } else {
+      window.addEventListener('lwauth-ready', () => resolve(), { once: true });
+    }
+  });
+}
+
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
  * ──────────────────────────────────────────────────────────────── */
 window.LWAuth = {
+  LW_SESSION_KEY,
   getCurrentUser,
   isLoggedIn,
   login,
@@ -241,7 +256,14 @@ window.LWAuth = {
   logout,
   requireAuth,
   redirectIfLoggedIn,
+  whenAuthReady,
+  doc, 
+  db, 
+  getDoc, 
+  setDoc, 
 };
+
+
 
 
 

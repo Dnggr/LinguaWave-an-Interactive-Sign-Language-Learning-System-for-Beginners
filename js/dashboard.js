@@ -82,7 +82,16 @@ function renderContinueButton() {
   btn.href = 'learn.html';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// document.addEventListener('DOMContentLoaded', () => {
+//   LEVELS.forEach(renderLevelCard);
+//   renderRecap();
+//   renderContinueButton();
+// });
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('[dashboard.js] waiting for progress...');
+  await window.LWProgress?.whenProgressReady?.();
+  console.log('[dashboard.js] progress ready, rendering now');
+
   LEVELS.forEach(renderLevelCard);
   renderRecap();
   renderContinueButton();
