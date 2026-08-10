@@ -283,7 +283,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     grid.classList.remove('lesson-grid--categories'); // the outer grid is no longer itself the card grid — each module-section is
-    grid.innerHTML = sectionsHtml + renderLevelFinalCTA(level);
+    // FIX: this card used to be appended directly to grid.innerHTML,
+    // unwrapped — same bug as the module sections above (it got
+    // auto-placed as a narrow grid cell squeezed next to the last
+    // section's last card instead of appearing on its own row).
+    const finalCtaHtml = renderLevelFinalCTA(level);
+    grid.innerHTML = sectionsHtml
+      + (finalCtaHtml ? `<div class="lesson-grid lesson-grid--categories module-section">${finalCtaHtml}</div>` : '');
 
     // Wire up the category cards rendered above to open the picker.
     grid.querySelectorAll('[data-open-category]').forEach(btn => {

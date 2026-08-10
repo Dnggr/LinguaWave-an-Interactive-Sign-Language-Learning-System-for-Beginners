@@ -96,9 +96,23 @@ button.category-card {
   font-size: var(--fs-sm); font-weight: 700; letter-spacing: .02em;
   color: var(--clr-text-muted); text-transform: uppercase;
   margin: var(--space-6) 0 var(--space-3);
+  /* FIX: #lesson-grid never stops being display:grid (only the
+     --categories MODIFIER class gets toggled off, not the base
+     .lesson-grid class) — without an explicit span, this header got
+     auto-placed as a single narrow grid CELL (~110px, from the
+     parent's auto-fill minmax(110px,1fr) columns) instead of a
+     full-width block sitting above the cards. That's exactly the
+     cramped, overlapping "sidebar" look in the bug report. */
+  grid-column: 1 / -1;
 }
 .module-header:first-child { margin-top: 0; }
-.module-section { margin-bottom: var(--space-2); }
+.module-section {
+  margin-bottom: var(--space-2);
+  /* FIX: same reasoning as .module-header above — this section (and
+     its OWN internal grid of cards) needs to occupy a full row of the
+     OUTER #lesson-grid, not get auto-placed as one of its cells. */
+  grid-column: 1 / -1;
+}
 
 /* Module 1: Introduction to ASL banner — a wide, distinct card (reading
    content, not a camera lesson) so it doesn't look like just another

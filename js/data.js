@@ -690,17 +690,32 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_COME', level: 'medium', category: 'places', signId: 'COME/GO', title: 'Come / Go', order: 6,
-    description: 'COME: point both index fingers up with palms facing you, and rotate them inward toward your body. GO: point both index fingers up and forward, then flick them away from your body.',
+    id: 'medium_places_COME', level: 'medium', category: 'places', signId: 'COME', title: 'Come', order: 6,
+    // CHANGED — split out of a combined 'COME/GO' entry, same fix as
+    // IN/OUT earlier: a single signId can only ever match ONE detected
+    // label, so a pair-entry could never actually be detected correctly.
+    // Both COME and GO are already separately captured/trained.
+    description: 'Point both index fingers up with palms facing you, and rotate them inward toward your body.',
     tips: [
-      'COME pulls in toward you; GO pushes away from you',
-      'Keep both index fingers extended the whole time',
-      'This entry covers a pair of opposite-direction signs',
+      'Palms face you, both index fingers extended',
+      'Motion pulls inward, toward your body',
+      'This is a MOTION sign',
     ],
     imageUrl: '../assets/images/medium/places/come.png', videoUrl: '../assets/videos/medium/places/come.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 7,
+    id: 'medium_places_GO', level: 'medium', category: 'places', signId: 'GO', title: 'Go', order: 7,
+    // CHANGED — the other half of the old combined 'COME/GO' entry.
+    description: 'Point both index fingers up and forward, then flick them away from your body.',
+    tips: [
+      'Palms face forward, both index fingers extended',
+      'Motion pushes outward, away from your body — the reverse of COME',
+      'This is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/places/go.png', videoUrl: '../assets/videos/medium/places/go.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 8,
     // CHANGED — signId was 'CAR/DRIVE', but the trained model only has
     // a literal "CAR" label (no separate "DRIVE" motion was recorded).
     // 'CAR/DRIVE' would never have matched classifyMotion()'s output —
@@ -715,7 +730,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN', title: 'In', order: 8,
+    id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN', title: 'In', order: 9,
     // CHANGED — split out of a single combined 'IN/OUT' entry. The
     // model was trained with IN and OUT as two separate, genuinely
     // different motions (matching what the old description already
@@ -732,7 +747,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/medium/places/in.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_OUT', level: 'medium', category: 'places', signId: 'OUT', title: 'Out', order: 9,
+    id: 'medium_places_OUT', level: 'medium', category: 'places', signId: 'OUT', title: 'Out', order: 10,
     // CHANGED — the other half of the old combined 'IN/OUT' entry, see
     // the note on medium_places_IN just above.
     description: 'Pull your bunched fingers up and out of the curved base hand, opening them as they exit.',
@@ -744,7 +759,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/out.png', videoUrl: '../assets/videos/medium/places/out.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 10,
+    id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 11,
     description: 'Make two fists (A-handshape) and bring them together side by side so the knuckles touch, palms facing each other.',
     tips: [
       'Both hands are closed fists',
@@ -1251,17 +1266,31 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/like.png', videoUrl: '../assets/videos/medium/feelings/like.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_GOOD', level: 'medium', category: 'feelings', signId: 'GOOD/BAD', title: 'Good / Bad', order: 7,
-    description: 'GOOD: touch your flat fingertips to your chin, then move your hand down to rest on the palm of your other hand. BAD: touch your fingertips to your chin, then flip your hand downward so the palm faces the floor.',
+    id: 'medium_feelings_GOOD', level: 'medium', category: 'feelings', signId: 'GOOD', title: 'Good', order: 7,
+    // CHANGED — split out of a combined 'GOOD/BAD' entry, same fix as
+    // IN/OUT and COME/GO above. Both GOOD and BAD are already
+    // separately captured/trained.
+    description: 'Touch your flat fingertips to your chin, then move your hand down to rest on the palm of your other hand.',
     tips: [
-      'Both signs start the same way — fingertips to the chin',
-      'GOOD moves down onto the other palm; BAD flips palm-down',
-      'This entry covers a common opposite pair',
+      'Fingertips start at the chin',
+      'Hand moves down to rest on your other open palm',
+      'This is a MOTION sign',
     ],
     imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/medium/feelings/good.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_LOVE', level: 'medium', category: 'feelings', signId: 'LOVE', title: 'Love', order: 8,
+    id: 'medium_feelings_BAD', level: 'medium', category: 'feelings', signId: 'BAD', title: 'Bad', order: 8,
+    // CHANGED — the other half of the old combined 'GOOD/BAD' entry.
+    description: 'Touch your fingertips to your chin, then flip your hand downward so the palm faces the floor.',
+    tips: [
+      'Both signs start the same way — fingertips to the chin',
+      'BAD flips the palm down, instead of resting it on your other hand like GOOD',
+      'This is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/feelings/bad.png', videoUrl: '../assets/videos/medium/feelings/bad.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_LOVE', level: 'medium', category: 'feelings', signId: 'LOVE', title: 'Love', order: 9,
     description: 'Cross both fists over your chest, one on top of the other, as if hugging yourself.',
     tips: [
       'Both hands are closed fists',
