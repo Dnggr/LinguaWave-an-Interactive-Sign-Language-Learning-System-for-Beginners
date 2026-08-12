@@ -81,7 +81,9 @@ const CATEGORIES = [
   },
   {
     id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false,
-    words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'TODAY/NOW', 'FINISH'],
+    // CHANGED: 'TODAY/NOW' -> 'NOW', 'TODAY' — kept in sync with the
+    // SIGNS entries' signId split below.
+    words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'NOW', 'TODAY', 'FINISH'],
   },
   {
     id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false,
@@ -807,51 +809,73 @@ const SIGNS = [
   // ── MEDIUM · TIME ──
   {
     id: 'medium_time_DAY', level: 'medium', category: 'time', signId: 'DAY', title: 'Day', order: 1,
-    description: 'Hold your non-dominant arm flat and horizontal in front of you. With your dominant hand\'s index finger pointing up, rest your elbow on the back of your other hand, then swing your arm down until your forearm rests along your other arm — like the sun arcing across the sky.',
+    // CHANGED — reformatted into labeled parts (non-dominant hand /
+    // dominant hand / movement) for clarity. Facts unchanged and were
+    // already correct: confirmed against lifeprint.com (Dr. Bill
+    // Vicars), who explicitly recommends an INDEX FINGER handshape here
+    // and specifically warns AGAINST a "D" handshape, calling that
+    // variant Signed English rather than ASL.
+    description: 'Non-dominant hand: hold your arm flat and horizontal in front of you, palm down. Dominant hand: point your index finger straight up (not a "D" handshape — that\'s Signed English, not ASL) and rest your elbow on the back of your non-dominant hand. Movement: swing your dominant arm down in one smooth arc until your forearm rests along your other arm, like the sun crossing the sky.',
     tips: [
-      'Non-dominant arm stays flat and still',
-      'Index finger stays extended throughout the arc',
-      'One smooth downward sweep',
+      'Index finger only — not a "D" handshape',
+      'Elbow stays anchored on the back of your other hand throughout',
+      'One smooth downward sweep, not a bounce',
     ],
     imageUrl: '../assets/images/medium/time/day.png', videoUrl: '../assets/videos/medium/time/day.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_NIGHT', level: 'medium', category: 'time', signId: 'NIGHT', title: 'Night', order: 2,
-    description: 'Hold your non-dominant arm flat and horizontal. Bring your dominant hand, bent downward at the wrist, down over the back of your other hand — like the sun dipping below the horizon.',
+    // CHANGED — reformatted, and corrected against lifeprint.com
+    // directly: ASLU describes this as a simpler placement than a big
+    // arc — the dominant WRIST rests on the back of the non-dominant
+    // hand, fingers pointing down. No sweeping arc motion is described
+    // on the source page; kept the "sun dipping down" mental image
+    // since it's a reasonable memory aid, but tightened the mechanics
+    // to match ASLU rather than imply a large arcing movement.
+    description: 'Non-dominant hand: hold your arm flat and horizontal in front of you, palm down. Dominant hand: bend your hand down at the wrist so your fingers curve downward. Movement: bring your dominant wrist to rest on the back of your non-dominant hand, fingers pointing down — like the sun dipping below the horizon.',
     tips: [
-      'Dominant hand is bent at the wrist, fingers pointing down',
-      'Ends with the back of the dominant hand resting on the other',
-      'Slow, deliberate downward motion',
+      'Dominant hand bends at the WRIST, fingers pointing down',
+      'The wrist (not the back of the hand) rests on your other hand',
+      'A settled placement, not a wide sweeping arc',
     ],
     imageUrl: '../assets/images/medium/time/night.png', videoUrl: '../assets/videos/medium/time/night.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_WEEK', level: 'medium', category: 'time', signId: 'WEEK', title: 'Week', order: 3,
-    description: 'Hold your non-dominant hand flat, palm up. Slide the pinky-side edge of your dominant ‘1’ hand across the palm and off the fingertips in one smooth motion.',
+    // CHANGED — reformatted into labeled parts. Facts unchanged and
+    // already correct, confirmed against lifeprint.com.
+    description: 'Non-dominant hand: hold it flat, palm facing up. Dominant hand: form a "1" handshape (index finger extended). Movement: slide the pinky-side edge of your dominant hand across the non-dominant palm and off the fingertips, in one smooth motion.',
     tips: [
-      'Dominant hand is a simple ‘1’ (index finger extended)',
-      'One continuous sliding motion',
+      'Dominant hand is a simple "1" — index finger extended',
+      'One continuous sliding motion, not a tap',
       'Ends past the fingertips of the base hand',
     ],
     imageUrl: '../assets/images/medium/time/week.png', videoUrl: '../assets/videos/medium/time/week.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_MONTH', level: 'medium', category: 'time', signId: 'MONTH', title: 'Month', order: 4,
-    description: 'Hold your non-dominant index finger pointing straight up. Bring your dominant index finger down along the length of it, from tip to base.',
+    // CHANGED — reformatted, content confirmed against lifeprint.com.
+    // Added one detail from the source worth knowing: a "palm down"
+    // version of the dominant hand exists and isn't strictly wrong, but
+    // ASLU specifically doesn't recommend it — capture with the
+    // dominant palm facing back/toward you instead.
+    description: 'Non-dominant hand: point your index finger straight up, palm facing to the side. Dominant hand: point your index finger too, palm facing back toward you (not palm-down). Movement: trace your dominant index finger down the length of your non-dominant finger, from tip to base.',
     tips: [
-      'Both hands use a ‘1’ handshape',
+      'Both hands use a "1" handshape',
+      'Dominant palm faces back toward you, not down',
       'Motion goes top to bottom, tracing the finger',
-      'Represents days moving down a calendar',
     ],
     imageUrl: '../assets/images/medium/time/month.png', videoUrl: '../assets/videos/medium/time/month.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_YEAR', level: 'medium', category: 'time', signId: 'YEAR', title: 'Year', order: 5,
-    description: 'Make two fists (S-handshape). Circle your dominant fist around your non-dominant fist and let it come to rest on top.',
+    // CHANGED — reformatted into labeled parts. Facts unchanged and
+    // already correct, confirmed against lifeprint.com.
+    description: 'Both hands: make closed fists ("S" handshape). Starting position: rest your dominant fist on top of your non-dominant fist. Movement: circle your dominant fist forward and all the way around the non-dominant one, landing back on top where it started — like a full orbit.',
     tips: [
-      'Full circular path before landing',
-      'Both hands stay closed fists',
-      'Ends with one fist resting on the other',
+      'Both hands stay closed fists the whole time',
+      'One complete circle, not a partial motion',
+      'Ends exactly where it started, on top',
     ],
     imageUrl: '../assets/images/medium/time/year.png', videoUrl: '../assets/videos/medium/time/year.mp4', detectionType: 'motion',
   },
@@ -876,22 +900,47 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/time/before.png', videoUrl: '../assets/videos/medium/time/before.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_time_TODAY', level: 'medium', category: 'time', signId: 'TODAY/NOW', title: 'Today / Now', order: 8,
-    description: 'Hold both hands with fingers slightly bent, palms facing up, in front of your body, then drop them down a short distance.',
+    id: 'medium_time_NOW', level: 'medium', category: 'time', signId: 'NOW', title: 'Now', order: 8,
+    // CHANGED — split out of a combined 'TODAY/NOW' entry, same fix as
+    // IN/OUT and the others: a single signId can only ever match ONE
+    // detected label. Also a real correction, not just a format change
+    // — the old entry said repeating the motion "emphasizes right now,"
+    // but per lifeprint.com, repeating it is specifically what turns
+    // NOW into TODAY, not an emphasis version of the same sign. NOW and
+    // TODAY use the same base motion — NOW does it once.
+    description: 'Both hands: hold them with fingers slightly bent, palms facing up, in front of your body. Movement: drop both hands down a short distance, once.',
     tips: [
       'Both hands move together',
-      'Short downward drop, not a big motion',
-      'Signed twice in a row it can emphasize ‘right now’',
+      'One short downward drop — NOT repeated (that\'s TODAY)',
+      'Same handshape as TODAY, just a single motion instead of two',
+    ],
+    imageUrl: '../assets/images/medium/time/now.png', videoUrl: '../assets/videos/medium/time/now.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_time_TODAY', level: 'medium', category: 'time', signId: 'TODAY', title: 'Today', order: 8.5,
+    // CHANGED — the other half of the old combined 'TODAY/NOW' entry.
+    // Per lifeprint.com: TODAY is NOW with the drop repeated (a small
+    // bounce) — that repetition is the entire difference between the
+    // two signs, not an optional emphasis.
+    description: 'Both hands: hold them with fingers slightly bent, palms facing up, in front of your body. Movement: drop both hands down a short distance, then bounce and drop again — the same motion as NOW, repeated once.',
+    tips: [
+      'Same handshape and drop as NOW',
+      'The repeat/bounce is what makes it TODAY instead of NOW',
+      'Keep both repeats short — this isn\'t a big motion either time',
     ],
     imageUrl: '../assets/images/medium/time/today.png', videoUrl: '../assets/videos/medium/time/today.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_FINISH', level: 'medium', category: 'time', signId: 'FINISH', title: 'Finish', order: 9,
-    description: 'Hold both hands up near your shoulders with fingers spread (5-handshape), palms facing your body, then quickly twist your wrists so your palms flip to face outward.',
+    // CHANGED — reformatted, confirmed against lifeprint.com. Left out
+    // an unverified detail from a non-ASLU source (a "mouth the word
+    // fish" facial cue) — not documented on the source page, so not
+    // included here.
+    description: 'Both hands: open with fingers spread, palms facing your body. Starting position: hold both hands up near shoulder height. Movement: twist both wrists quickly so your palms end up facing forward/outward.',
     tips: [
-      'Start with palms facing you',
-      'Quick wrist twist, not a slow turn',
-      'Both hands move together',
+      'Start with palms facing you, end facing forward',
+      'A quick twist, not a slow turn',
+      'Both hands move together, in sync',
     ],
     imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/medium/time/finish.mp4', detectionType: 'motion',
   },
