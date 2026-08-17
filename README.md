@@ -1,5 +1,9 @@
 # LinguaWave
 
+<!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST — it has
+     project conventions, prior decisions, and an open-threads/session
+     log so you don't re-derive context or contradict earlier calls. -->
+
 > An interactive, web-based ASL (American Sign Language) learning system for beginners.
 > Capstone Project 2026
 

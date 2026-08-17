@@ -197,6 +197,87 @@ export const SIGN_DICTIONARY = {
   },
 
   // ══════════════════════════════════════════════════════════
+  // BASIC LEVEL — NUMBERS (0–9)
+  // ══════════════════════════════════════════════════════════
+  // All held handshapes — no motion — so none of these set
+  // `detectionType`, same as most alphabet entries above; that
+  // leaves getDetectionType() to default them to 'static', which
+  // is correct: ASL numbers 0–9 are static, single-frame signs, not
+  // motion signs. (Note: this is specifically about 0–9. Some
+  // higher/compound ASL numbers — e.g. 10, which is signed with a
+  // twisting "thumbs up" shake — DO involve motion and would need
+  // `detectionType: 'motion'` plus training data in asl_motion_model
+  // instead. Not included here — scope was 0–9 only.)
+  //
+  // These run through the SAME asl_static_model as the alphabet.
+  // rawLabel from that model must come back as the exact strings
+  // '0'..'9' below for classifyGesture() in classifier.js to find a
+  // match — see AI_MEMORY.md → "Numbers category" for the retraining
+  // checklist (labels.json, model.json, weights .bin all need to be
+  // the newly retrained versions with these classes included).
+
+  '0': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Closed circle — fingertips and thumb touch, same handshape as letter O',
+    category: 'numbers', imageFile: '0.png', tbWeight: 0.50,
+    tiebreakers: { },
+  },
+  '1': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Index finger extended up, thumb resting across curled fingers (no circle, unlike D)',
+    category: 'numbers', imageFile: '1.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '2': {
+    fingerStates: [0, 1, 1, 0, 0],
+    description:  'Index and middle fingers extended up together, not spread (unlike V)',
+    category: 'numbers', imageFile: '2.png', tbWeight: 0.45,
+    tiebreakers: { },
+  },
+  '3': {
+    fingerStates: [1, 1, 1, 0, 0],
+    description:  'Thumb, index, and middle fingers extended; ring and pinky curled',
+    category: 'numbers', imageFile: '3.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '4': {
+    fingerStates: [0, 1, 1, 1, 1],
+    description:  'Four fingers extended up and spread, thumb folded across palm',
+    category: 'numbers', imageFile: '4.png', tbWeight: 0.28,
+    tiebreakers: { },
+  },
+  '5': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'All five fingers extended and spread, open hand',
+    category: 'numbers', imageFile: '5.png', tbWeight: 0.28,
+    tiebreakers: { },
+  },
+  '6': {
+    fingerStates: [1, 1, 1, 1, 0],
+    description:  'Thumb touches pinky tip; index, middle, ring extended up',
+    category: 'numbers', imageFile: '6.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '7': {
+    fingerStates: [1, 1, 1, 0, 1],
+    description:  'Thumb touches ring finger tip; index, middle, pinky extended up',
+    category: 'numbers', imageFile: '7.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '8': {
+    fingerStates: [1, 1, 0, 1, 1],
+    description:  'Thumb touches middle finger tip; index, ring, pinky extended up',
+    category: 'numbers', imageFile: '8.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '9': {
+    fingerStates: [1, 0, 1, 1, 1],
+    description:  'Thumb touches index finger tip forming a small circle; middle, ring, pinky extended up',
+    category: 'numbers', imageFile: '9.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+
+  // ══════════════════════════════════════════════════════════
   // MEDIUM LEVEL — WORDS (motion signs — need motion model)
   // ══════════════════════════════════════════════════════════
 

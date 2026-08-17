@@ -445,7 +445,15 @@ function updateLessonMeta() {
   const signDataForTitle = window.LWData?.getSign?.(level, sign) ?? null;
   const displayTitle = signDataForTitle?.title ?? sign;
   if (letter)  letter.textContent   = sign.length === 1 ? sign : '✋';
-  if (title)   title.textContent    = sign.length === 1 ? `Letter ${sign}` : displayTitle;
+  // CHANGED — used to be `sign.length === 1 ? 'Letter ${sign}' : displayTitle`,
+  // which assumed every single-character signId was a letter. That broke
+  // the moment the 'numbers' category (also single-character signIds,
+  // '0'..'9') was added — a number would render as "Letter 3". Branch on
+  // `category` instead of string length, and fall back to displayTitle
+  // (data.js's own SIGNS.title, e.g. "Number 3") for every other case —
+  // that's already correct and doesn't need a hardcoded prefix at all.
+  const singleCharPrefix = category === 'alphabet' ? 'Letter' : category === 'numbers' ? 'Number' : null;
+  if (title)   title.textContent    = singleCharPrefix ? `${singleCharPrefix} ${sign}` : displayTitle;
 
   const categoryMeta = window.LWData?.getCategory?.(level, category) ?? null;
   if (lessonSubtitleEl) {

@@ -5,7 +5,9 @@
  * PURPOSE  : Reads ?level= URL param (or the clicked tab), activates
  *            the matching tab, and renders the lesson grid for that
  *            level straight from LWData:
- *              level=basic        → LETTERS  (26-letter alphabet grid)
+ *              level=basic        → LETTERS/NUMBERS (flat grid, one
+ *                                    sub-tab per basic category —
+ *                                    Alphabet A-Z, Numbers 0-9)
  *              level=medium        → WORDS     (one card per category)
  *              level=intermediate  → PHRASES   (one card per category)
  *            Basic, Medium, and Intermediate are all unlocked — every
@@ -56,7 +58,7 @@
 // One icon per category id, purely decorative. Falls back to a
 // generic bookmark icon for anything not listed here.
 const CATEGORY_ICONS = {
-  alphabet: '🔤',
+  alphabet: '🔤', numbers: '🔢',
   family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
   clothes: '👕', health: '🩹', feelings: '😊', requests: '🙏', amounts: '📏',
   colors: '🎨', money: '💵', animals: '🐾',
@@ -123,36 +125,77 @@ document.addEventListener('DOMContentLoaded', () => {
     tabs.forEach(t => t.classList.toggle('level-tab--active', t.dataset.level === level));
   }
 
-  /** Basic level: the existing 26-letter alphabet grid, now with real
-   *  practiced state + a category-assessment CTA once every letter's
-   *  been viewed at least once. */
-  function renderAlphabet() {
+  // NEW — card-title prefix for each basic-level category's flat grid.
+  // 'alphabet' -> 'Letter A', 'numbers' -> 'Number 3'. Any future basic
+  // category not listed here just shows the raw signId as its title.
+  const BASIC_LABEL_PREFIX = { alphabet: 'Letter', numbers: 'Number' };
+
+  /** Basic level: a flat grid of single-character cards (was the
+   *  26-letter-only "alphabet grid"; RENAMED + generalized to take a
+   *  categoryId so the same function now also drives the 'numbers'
+   *  category, 0–9, added alongside it). Real practiced state + a
+   *  category-assessment CTA once every sign's been viewed at least
+   *  once — unchanged from before.
+   *
+   *  When basic has more than one live category, a small sub-tab
+   *  switcher (reusing the .level-tabs/.level-tab styles already used
+   *  for the top-level Basic/Medium/Intermediate tabs) is shown above
+   *  the grid so the learner can flip between Alphabet and Numbers
+   *  without leaving level=basic. */
+  function renderBasicCategory(categoryId) {
     grid.classList.remove('lesson-grid--categories');
-    const letters = window.LWData.getCategorySigns('basic', 'alphabet');
-    const progress = window.LWProgress?.getCategoryProgress?.('basic', 'alphabet') ?? { signs: {}, assessment: null };
+    const basicCats = window.LWData.getCategoriesForLevel('basic').filter(c => !c.comingSoon);
+    // Guard: if an unknown/comingSoon category id sneaks in via the URL,
+    // fall back to 'alphabet' rather than rendering an empty grid.
+    if (!basicCats.some(c => c.id === categoryId)) categoryId = 'alphabet';
+
+    const signs = window.LWData.getCategorySigns('basic', categoryId);
+    const progress = window.LWProgress?.getCategoryProgress?.('basic', categoryId) ?? { signs: {}, assessment: null };
+    const labelPrefix = BASIC_LABEL_PREFIX[categoryId] ?? '';
+
+    // Sub-tab switcher — only worth showing once there's more than one
+    // live basic category (today: Alphabet + Numbers).
+    const subTabsHtml = basicCats.length > 1 ? `
+      <div class="level-tabs" style="grid-column: 1 / -1; margin-bottom: var(--space-6);">
+        ${basicCats.map(c => `
+          <button type="button" class="level-tab${c.id === categoryId ? ' level-tab--active' : ''}" data-basic-category="${escapeHtml(c.id)}">
+            ${CATEGORY_ICONS[c.id] ?? '🔖'} ${escapeHtml(c.title)}
+          </button>
+        `).join('')}
+      </div>
+    ` : '';
 
     // NEW — Module 1: Introduction to ASL. Pure reading content (History
     // of ASL, Deaf Awareness, Deaf Culture, etc.) — no camera, no
     // detection model, so it's a standalone static page rather than
     // living inside lesson.js's camera-driven flow. Shown once, above
     // the alphabet grid, as the natural "start here" entry point.
-    const introBanner = `
+    // Only shown on the Alphabet tab so it doesn't repeat on Numbers.
+    const introBanner = categoryId === 'alphabet' ? `
       <a href="intro-to-asl.html" class="lesson-card category-card lesson-card--intro" style="grid-column: 1 / -1;">
         <div class="category-card__icon">📖</div>
         <span class="category-card__title">Module 1 · Introduction to ASL</span>
         <span class="badge badge--basic">What is ASL, Deaf culture & etiquette, learning tips</span>
       </a>
-    `;
+    ` : '';
 
-    grid.innerHTML = introBanner + letters.map(letter => {
-      const done = !!progress.signs[letter];
+    grid.innerHTML = subTabsHtml + introBanner + signs.map(signId => {
+      const done = !!progress.signs[signId];
       return `
-        <a href="lesson.html?level=basic&sign=${encodeURIComponent(letter)}" class="lesson-card${done ? ' lesson-card--done' : ''}">
-          <div class="lesson-card__letter">${letter}${done ? ' ✔' : ''}</div>
-          <span class="lesson-card__title">Letter ${letter}</span>
+        <a href="lesson.html?level=basic&category=${encodeURIComponent(categoryId)}&sign=${encodeURIComponent(signId)}" class="lesson-card${done ? ' lesson-card--done' : ''}">
+          <div class="lesson-card__letter">${escapeHtml(signId)}${done ? ' ✔' : ''}</div>
+          <span class="lesson-card__title">${labelPrefix ? `${labelPrefix} ${escapeHtml(signId)}` : escapeHtml(signId)}</span>
         </a>
       `;
-    }).join('') + renderCategoryAssessmentCTA('basic', 'alphabet', letters, progress);
+    }).join('') + renderCategoryAssessmentCTA('basic', categoryId, signs, progress);
+
+    grid.querySelectorAll('[data-basic-category]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const newCat = btn.dataset.basicCategory;
+        history.replaceState(null, '', `learn.html?level=basic&category=${encodeURIComponent(newCat)}`);
+        renderBasicCategory(newCat);
+      });
+    });
   }
 
   /** Category-assessment CTA tile, appended after a category's signs. */
@@ -373,7 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderLevel(level, categoryId) {
     if (level === 'basic') {
-      renderAlphabet();
+      // CHANGED — used to unconditionally call renderAlphabet() with no
+      // regard for categoryId, so a `?level=basic&category=numbers` deep
+      // link (e.g. from the sub-tab switcher, or a bookmark) silently
+      // always showed the alphabet. renderBasicCategory() defaults to
+      // 'alphabet' itself when categoryId is null, so this preserves the
+      // exact old behavior for plain `?level=basic` links.
+      renderBasicCategory(categoryId || 'alphabet');
     } else if (categoryId) {
       renderWordPicker(level, categoryId);
     } else {

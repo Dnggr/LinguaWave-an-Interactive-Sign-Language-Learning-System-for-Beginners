@@ -49,6 +49,21 @@ const CATEGORIES = [
   // ── level=basic — LETTERS (Level 1: Letters — ASL Alphabet A–Z) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false },
 
+  // NEW — Numbers 0–9. Same level as Alphabet (both are single, held
+  // handshapes with NO motion — see the SIGNS entries below, all
+  // `detectionType: 'static'`, and the matching SIGN_DICTIONARY
+  // entries in dictionary.js which are NOT given `detectionType:
+  // 'motion'`, so getDetectionType() defaults them to 'static' too).
+  // Wired through the SAME asl_static_model as the alphabet — it is
+  // NOT a separate model. For this to actually classify anything,
+  // asl_static_model/labels.json (and the matching model.json +
+  // weights .bin) must be RETRAINED to output '0'..'9' alongside the
+  // existing letters, and the label STRINGS in that retrained
+  // labels.json must be exactly '0','1',...,'9' to match the
+  // SIGN_DICTIONARY keys below — see AI_MEMORY.md → "Numbers category"
+  // for the full checklist.
+  { id: 'numbers', level: 'basic', title: 'Numbers', order: 2, comingSoon: false },
+
   // ── level=medium — WORDS (Level 1: 100 Basic ASL Signs, by category) ──
   {
     id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false,
@@ -476,6 +491,117 @@ const SIGNS = [
       'Keep the motion deliberate and at a steady pace',
     ],
     imageUrl: '../assets/images/basic/Z.png', videoUrl: '../assets/videos/basic/Z.mp4', detectionType: 'motion',
+  },
+
+  /* ── BASIC · NUMBERS (0–9) ────────────────────────────────────
+   * All held/static handshapes — none of these involve movement,
+   * so every entry below is `detectionType: 'static'` and runs
+   * through the SAME asl_static_model as the alphabet (no separate
+   * numbers model). `category: 'numbers'` is what makes these show
+   * up under the new "Numbers" category added to CATEGORIES above,
+   * separate from the 'alphabet' category.
+   * NOTE: image/video assets referenced below (basic/0.png … 9.mp4)
+   * don't exist yet — add them the same way the letter assets were
+   * added, at ../assets/images/basic/ and ../assets/videos/basic/. */
+  {
+    id: 'basic_0', level: 'basic', signId: '0', title: 'Number 0', order: 27, category: 'numbers',
+    description: 'Curve your fingers and thumb to touch at the tips, forming a closed circle — the same handshape as the letter O.',
+    tips: [
+      'All fingertips and thumb meet to form one closed circle',
+      'Keep the circle rounded, not flattened',
+      'Hold the hand steady with the circle facing forward',
+    ],
+    imageUrl: '../assets/images/basic/0.png', videoUrl: '../assets/videos/basic/0.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_1', level: 'basic', signId: '1', title: 'Number 1', order: 28, category: 'numbers',
+    description: 'Point your index finger straight up. The other three fingers stay curled into the palm, thumb resting across them (no circle, unlike the letter D).',
+    tips: [
+      'Only the index finger is extended, straight up',
+      'Middle, ring, and pinky curl into the palm',
+      'Thumb rests across the curled fingers, not touching the middle finger',
+    ],
+    imageUrl: '../assets/images/basic/1.png', videoUrl: '../assets/videos/basic/1.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_2', level: 'basic', signId: '2', title: 'Number 2', order: 29, category: 'numbers',
+    description: 'Extend your index and middle fingers straight up, held together (not spread apart into a V). Thumb holds down the ring and pinky.',
+    tips: [
+      'Index and middle fingers point up, touching each other',
+      'Keep them together — spreading them looks like the letter V instead',
+      'Ring and pinky stay curled down, held by the thumb',
+    ],
+    imageUrl: '../assets/images/basic/2.png', videoUrl: '../assets/videos/basic/2.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_3', level: 'basic', signId: '3', title: 'Number 3', order: 30, category: 'numbers',
+    description: 'Extend your thumb, index, and middle fingers, spread loosely apart. Ring and pinky curl into the palm.',
+    tips: [
+      'Thumb, index, and middle fingers all point outward/up',
+      'Ring and pinky fingers curl in tightly',
+      'This is a distinct shape from the letter W (which uses index/middle/ring instead of the thumb)',
+    ],
+    imageUrl: '../assets/images/basic/3.png', videoUrl: '../assets/videos/basic/3.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_4', level: 'basic', signId: '4', title: 'Number 4', order: 31, category: 'numbers',
+    description: 'Extend index, middle, ring, and pinky fingers straight up and slightly spread. Thumb folds flat across the palm.',
+    tips: [
+      'Four fingers (everything except the thumb) point straight up',
+      'Thumb tucks in across the palm, not sticking out',
+      'Keep fingers slightly spread, not pressed tightly together',
+    ],
+    imageUrl: '../assets/images/basic/4.png', videoUrl: '../assets/videos/basic/4.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_5', level: 'basic', signId: '5', title: 'Number 5', order: 32, category: 'numbers',
+    description: 'Open your whole hand — all five fingers extended straight and spread apart, palm facing forward.',
+    tips: [
+      'All five fingers, including the thumb, are extended',
+      'Spread the fingers naturally apart',
+      'Palm faces the person you\u2019re signing to',
+    ],
+    imageUrl: '../assets/images/basic/5.png', videoUrl: '../assets/videos/basic/5.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_6', level: 'basic', signId: '6', title: 'Number 6', order: 33, category: 'numbers',
+    description: 'Touch your thumb to the tip of your pinky finger. Index, middle, and ring fingers stay extended straight up.',
+    tips: [
+      'Thumb and pinky tip touch to form a small connection',
+      'Index, middle, and ring fingers stay straight and up',
+      'Keep the thumb-pinky touch light and clear, not a full fist',
+    ],
+    imageUrl: '../assets/images/basic/6.png', videoUrl: '../assets/videos/basic/6.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_7', level: 'basic', signId: '7', title: 'Number 7', order: 34, category: 'numbers',
+    description: 'Touch your thumb to the tip of your ring finger. Index, middle, and pinky fingers stay extended straight up.',
+    tips: [
+      'Thumb and ring finger tip touch',
+      'Index, middle, and pinky fingers stay straight and up',
+      'This follows the same thumb-to-finger pattern as 6, 8, and 9 — only which finger touches the thumb changes',
+    ],
+    imageUrl: '../assets/images/basic/7.png', videoUrl: '../assets/videos/basic/7.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_8', level: 'basic', signId: '8', title: 'Number 8', order: 35, category: 'numbers',
+    description: 'Touch your thumb to the tip of your middle finger. Index, ring, and pinky fingers stay extended straight up.',
+    tips: [
+      'Thumb and middle finger tip touch',
+      'Index, ring, and pinky fingers stay straight and up',
+      'Keep the untouched fingers clearly separated so the shape reads as 8, not 7 or 9',
+    ],
+    imageUrl: '../assets/images/basic/8.png', videoUrl: '../assets/videos/basic/8.mp4', detectionType: 'static',
+  },
+  {
+    id: 'basic_9', level: 'basic', signId: '9', title: 'Number 9', order: 36, category: 'numbers',
+    description: 'Touch your thumb to the tip of your index finger, forming a small circle. Middle, ring, and pinky fingers stay extended straight up.',
+    tips: [
+      'Thumb and index finger tip touch, forming a small circle near the top of the hand',
+      'Middle, ring, and pinky fingers stay straight and up',
+      'Similar circle to letter F, but F keeps its other fingers spread outward rather than straight up',
+    ],
+    imageUrl: '../assets/images/basic/9.png', videoUrl: '../assets/videos/basic/9.mp4', detectionType: 'static',
   },
 
   /* ── MEDIUM · FAMILY ──────────────────────────────────────────
