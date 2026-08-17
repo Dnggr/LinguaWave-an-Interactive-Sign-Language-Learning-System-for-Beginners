@@ -105,7 +105,8 @@ import { classifyGesture, classifyMotion, resetMotionBuffer,
          // frame for good, instead of silently hanging until the 15s
          // PROMPT_TIMEOUT. Both are part of the "hand dropped too soon /
          // % bar lied" fix — see the block comment near HAND_LOST_GRACE_MS.
-         getMotionBufferStatus, finalizeMotionWindow }  from '../js/engine/classifier.js';
+         getMotionBufferStatus, finalizeMotionWindow,
+         getAllowedLabelsForSign }                      from '../js/engine/classifier.js';
 
 // ── DOM references ─────────────────────────────────────────────────
 
@@ -333,6 +334,24 @@ function isPhrase(signId) {
 
 function getActiveSignId() {
   return (phraseSteps && phraseStepIdx < phraseSteps.length) ? phraseSteps[phraseStepIdx] : sign;
+}
+
+// NEW: category-scoped candidate set for the currently active sign
+// (see classifier.js's getAllowedLabelsForSign()). Cached and only
+// rebuilt when the active sign actually changes — this runs at
+// detection framerate, so rebuilding the Set every frame would be
+// wasted work. Fixes 6/W, 9/F, 0/O: without this, a correctly-signed
+// '6' could get classified as 'W' purely because they're visually
+// identical handshapes.
+let cachedAllowedLabels = null;
+let cachedAllowedLabelsFor = null;
+function getActiveAllowedLabels() {
+  const active = getActiveSignId();
+  if (active !== cachedAllowedLabelsFor) {
+    cachedAllowedLabels = getAllowedLabelsForSign(active);
+    cachedAllowedLabelsFor = active;
+  }
+  return cachedAllowedLabels;
 }
 
 // Whether THIS lesson's sign needs the motion-recording UI panel /
@@ -703,7 +722,7 @@ function startRenderLoop() {
         if (handLostSinceArmedAt === null) handLostSinceArmedAt = now;
 
         if (now - handLostSinceArmedAt > HAND_LOST_GRACE_MS) {
-          const forced = finalizeMotionWindow();
+          const forced = finalizeMotionWindow(getActiveAllowedLabels());
           motionArmed = false;
           handLostSinceArmedAt = null;
 
@@ -743,7 +762,7 @@ function startRenderLoop() {
       if (cooldown || !motionArmed) {
         result = { label: null, confidence: 0, matched: false, buffering: false };
       } else {
-        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
+        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels());
 
         if (!result.buffering) {
           // A window just finished (matched or rejected) — this is a
@@ -756,7 +775,7 @@ function startRenderLoop() {
       }
       updateMotionBuffer();
     } else {
-      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
+      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels());
     }
 
     updateConfidenceUI(result);

@@ -33,7 +33,8 @@ import { initMediaPipe, processFrame, isModelReady }        from '../js/tracking
 import { drawSkeleton, clearCanvas }                        from '../js/engine/renderer.js';
 import { getDetectionType }                                 from '../js/engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
-         loadModels, getMotionModelError }                  from '../js/engine/classifier.js';
+         loadModels, getMotionModelError,
+         getAllowedLabelsForSign }                          from '../js/engine/classifier.js';
 
 /* ── URL params / scope ─────────────────────────────────────────── */
 const params    = new URLSearchParams(window.location.search);
@@ -364,9 +365,16 @@ function startCameraLoop() {
 
     const currentSign = cameraSignQueue[cameraQIdx];
     const isMotion = getDetectionType(currentSign) === 'motion';
+    // NEW: scope candidates to currentSign's category (e.g. 'numbers')
+    // so a correctly-signed '6' can't lose to 'W' on the raw argmax —
+    // see classifier.js's getAllowedLabelsForSign(). Fixes a real
+    // scoring bug: without this, a correct '6' could get marked wrong
+    // here (line below: result.label === currentSign) purely because
+    // 6 and W are visually identical handshapes.
+    const allowedLabels = getAllowedLabelsForSign(currentSign);
     const result = isMotion
-      ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks)
-      : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks);
+      ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels)
+      : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels);
 
     if (!result.matched || !result.label) return;
 
