@@ -190,3 +190,27 @@ data was already wired up.
    `SIGNS` entries to match — everything else (classifier, learn.js,
    lesson.js, quiz.js) is data-driven off those two files and needs no
    further changes.
+
+   ### 2026-08-17 — Time category + SCHOOL wired to motion model
+**Requested:** asl_motion_model was retrained with new classes for the
+"time" category and SCHOOL; wire the app to actually use that data for
+motion detection instead of falling back to static.
+
+**Findings:**
+- `asl_motion_model/labels.json` already included DAY, FINISH, MONTH,
+  NIGHT, SCHOOL, TODAY, WEEK, and YEAR — but none had a
+  `SIGN_DICTIONARY` entry, so `getDetectionType()` defaulted them all
+  to `'static'` and they ran through the static model instead of the
+  motion model.
+- `WILL`, `BEFORE`, `NOW` are `time` signIds in `data.js` but still
+  aren't in `labels.json` — left unwired, same gap as `COME`/`GO`.
+
+**Changes made:**
+- `js/engine/dictionary.js` — new `SIGN_DICTIONARY` entries for DAY,
+  NIGHT, WEEK, MONTH, YEAR, TODAY, FINISH (`category: 'time'`) and
+  SCHOOL (`category: 'places'`), all `detectionType: 'motion'`.
+  Updated the PLACES block comment (SCHOOL no longer skipped).
+
+**Still open (needs retraining, not more code):**
+1. WILL, BEFORE, NOW need trained data in `asl_motion_model` before
+   they can be wired the same way.

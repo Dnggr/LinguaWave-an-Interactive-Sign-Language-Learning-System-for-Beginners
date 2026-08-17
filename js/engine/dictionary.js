@@ -369,15 +369,17 @@ export const SIGN_DICTIONARY = {
     description:  'Two flat hands touch, then twist and pull apart',
     category: 'family', imageFile: 'divorced.gif', detectionType: 'motion',
   },
+  'SCHOOL': {
+    fingerStates: [0, 1, 1, 1, 1],
+    description:  'Flat hand claps down twice onto the palm of the other flat hand',
+    category: 'places', imageFile: 'school.gif', detectionType: 'motion',
+  },
 
   // ══════════════════════════════════════════════════════════
   // PLACES — added once merged_motion.json (2026-08-01 batch)
   // finished training. 8 of data.js's 9 "places" SIGNS entries are
   // wired here; the other 4 signId issues found during that wire-up:
   //
-  //   • SCHOOL   — SKIPPED on purpose (no trained data yet, per
-  //     explicit instruction — data.js's entry is untouched, still
-  //     undetectable until it's actually recorded).
   //   • COME/GO  — SKIPPED — data.js has a lesson entry for this, but
   //     NEITHER "COME" nor "GO" nor "COME/GO" is in the trained model's
   //     label set at all. Same "browsable but undetectable" gap as
@@ -442,6 +444,55 @@ export const SIGN_DICTIONARY = {
     fingerStates: [1, 1, 1, 1, 1],
     description:  'Bunched fingers pull up and out of the base hand, opening as they exit',
     category: 'places', imageFile: 'out.gif', detectionType: 'motion',
+  },
+  // ══════════════════════════════════════════════════════════
+  // MEDIUM LEVEL — WORDS — TIME (motion signs)
+  // NEW — asl_motion_model/labels.json now trains DAY, NIGHT, WEEK,
+  // MONTH, YEAR, TODAY, and FINISH. data.js's "time" SIGNS entries
+  // already had detectionType: 'motion' set, but with no matching
+  // entry here, getDetectionType() was defaulting them all to
+  // 'static' — routing them through the wrong model entirely. Wiring
+  // them here is what actually switches them to asl_motion_model.
+  //
+  // WILL, BEFORE, NOW are also 'time' signIds in data.js but are NOT
+  // in labels.json yet — same "browsable but undetectable" gap as
+  // COME/GO in the PLACES block. Left unwired on purpose.
+  // ══════════════════════════════════════════════════════════
+
+  'DAY': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Index finger up, elbow rests on the other arm, sweeps down like the sun crossing the sky',
+    category: 'time', imageFile: 'day.gif', detectionType: 'motion',
+  },
+  'NIGHT': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Bent hand (fingers pointing down) settles wrist-first onto the back of the other hand, like the sun dipping down',
+    category: 'time', imageFile: 'night.gif', detectionType: 'motion',
+  },
+  'WEEK': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  '"1" hand slides across the upturned palm of the base hand and off the fingertips',
+    category: 'time', imageFile: 'week.gif', detectionType: 'motion',
+  },
+  'MONTH': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Dominant "1" finger traces down the length of the vertical non-dominant "1" finger',
+    category: 'time', imageFile: 'month.gif', detectionType: 'motion',
+  },
+  'YEAR': {
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Two "S" fists — dominant fist circles all the way around the stationary one and lands back on top',
+    category: 'time', imageFile: 'year.gif', detectionType: 'motion',
+  },
+  'TODAY': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Both hands, palms up, drop down twice in place — the repeated version of NOW',
+    category: 'time', imageFile: 'today.gif', detectionType: 'motion',
+  },
+  'FINISH': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Both open "5" hands near the shoulders twist quickly from palms-in to palms-out',
+    category: 'time', imageFile: 'finish.gif', detectionType: 'motion',
   },
 
 
