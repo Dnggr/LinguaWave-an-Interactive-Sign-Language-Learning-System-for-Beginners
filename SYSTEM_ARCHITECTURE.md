@@ -1,17 +1,23 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (PLANNING)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17, implementation not started — see the Rev 4 section below.
+> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure) implemented 2026-08-18 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
 
 ## Rev 4 — PLANNED: single continuous "Basic ASL" path (curriculum pivot, not yet implemented)
 
-**Status: planning only.** Nothing below is built yet. This section is the
-deep-planning output from the 2026-08-17 adviser consultation — it exists
-so any AI assistant (or Joshua, later) picks up the *agreed direction*
-instead of re-deriving it or contradicting it. See AI_MEMORY.md §0 for the
-short pointer version and the session log entry for how this was derived.
+**Status: Phase 1 implemented (2026-08-18); Phases 2–7 still planning
+only.** This section is the deep-planning output from the 2026-08-17
+adviser consultation — it exists so any AI assistant (or Joshua, later)
+picks up the *agreed direction* instead of re-deriving it or contradicting
+it. See AI_MEMORY.md §0 for the short pointer version and the session log
+entries (2026-08-17 planning, 2026-08-18 Phase 1) for how this was
+derived and implemented. `js/data.js` now has a real `UNITS` array, a
+`unit` field on every `CATEGORIES` entry, `UNIT0_CONTENT`, and the Unit 5
+`comingSoon` split described below — everything else in this section
+(trail-view UI, progress flattening, drill, quiz changes, capture/retrain)
+is still unbuilt.
 
 ### Why
 
@@ -218,17 +224,22 @@ practice rather than a strict gate.
    6/9/10 motion-type fix (pre-existing item, AI_MEMORY.md §4) — content
    and ML work, not app code.
 
-### Open questions for Joshua (not blocking the plan, but worth answering before Phase 1)
+### Open questions for Joshua — ANSWERED 2026-08-18
 
-- Keep `localStorage` progress as-is and accept a reset when the storage
-  key bumps, or write a small migration shim?
-- Unit 0's "what is ASL" content — static text (fastest to ship), or
+- ~~Keep `localStorage` progress as-is and accept a reset when the storage
+  key bumps, or write a small migration shim?~~ **Answered: accept a
+  reset** (simplest, pre-launch). Not yet applied — this is Phase 3's
+  storage-key-bump work, not Phase 1.
+- ~~Unit 0's "what is ASL" content — static text (fastest to ship), or
   reuse the YouTube reference-video panel already prototyped in
-  `capture.html`?
-- How many Unit 5 sub-categories should show before Unit 6 unlocks — all
+  `capture.html`?~~ **Answered: static text.** Implemented in Phase 1 as
+  `UNIT0_CONTENT` in `data.js` (4 sections). No screen renders it yet —
+  that's Phase 4.
+- ~~How many Unit 5 sub-categories should show before Unit 6 unlocks — all
   12, or just the ones with real detection today (family/places/time/
-  temperature), with the rest marked `comingSoon` the way `medium`/
-  `intermediate` categories already do?
+  temperature), with the rest marked `comingSoon`?~~ **Answered: only the
+  4 trained ones**, rest `comingSoon`. Implemented in Phase 1 — see
+  `PIVOT_CHECKLIST.md` Phase 1 for exactly which 8 categories flipped.
 
 ---
 

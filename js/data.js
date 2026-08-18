@@ -45,9 +45,75 @@
  * NOT wired to the detection engine until real SIGNS entries and a
  * trained model exist for those labels.
  * ──────────────────────────────────────────────────────────────── */
+
+/* ── UNITS — REV 4 PIVOT (Phase 1) ──────────────────────────────────
+ * NEW — top-level ordering layer added on top of CATEGORIES, per
+ * SYSTEM_ARCHITECTURE.md Rev 4 §"Data model / migration strategy".
+ * This does NOT replace `level`/`category` — every existing
+ * CATEGORIES entry keeps its `level` untouched (see the `unit` field
+ * added to each entry below) and every ?level=X URL still works.
+ * `UNITS` is what js/learn.js's future trail-view (Phase 4) walks in
+ * order; `level` stays a legacy internal partition key only.
+ *
+ * kind: 'info' (no camera/sign, just reading — Unit 0) |
+ *       'interactive' (a drill with no CATEGORIES entry of its own —
+ *          Unit 2, built in Phase 2 directly on the A–Z static model) |
+ *       'category-group' (one or more CATEGORIES entries tagged with
+ *          this unit's order, walked in `CATEGORIES[].order` order) |
+ *       'reference' (browse-only, not graded, not gating anything —
+ *          Unit 7+ Phrasebook; NOT one of the three kinds named in
+ *          Rev 4's data-model note, added here because the Phrasebook
+ *          needs a kind that is neither gradeable nor an info screen —
+ *          flag this for Joshua/adviser sign-off if it matters).
+ * ──────────────────────────────────────────────────────────────── */
+const UNITS = [
+  { id: 'welcome', order: 0, title: 'Welcome to ASL', kind: 'info' },
+  { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
+  { id: 'fingerspell_name', order: 2, title: 'Fingerspell Your Name', kind: 'interactive' },
+  { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' },
+  { id: 'everyday_essentials', order: 4, title: 'Everyday Essentials', kind: 'category-group' },
+  { id: 'common_things_people', order: 5, title: 'Common Things & People', kind: 'category-group' },
+  { id: 'basic_phrases', order: 6, title: 'Basic Phrases', kind: 'category-group' },
+  { id: 'phrasebook', order: 7, title: 'Phrasebook', kind: 'reference' },
+];
+
+/* ── UNIT 0 CONTENT — "Welcome to ASL" ──────────────────────────────
+ * NEW — Rev 4 Phase 1. Answered by Joshua: static text (fastest to
+ * ship), NOT the capture.html YouTube reference-video panel. No
+ * camera, no SIGN_DICTIONARY entry, no CATEGORIES entry — this is
+ * read by a dedicated Unit 0 "info" screen (not yet built — that
+ * screen itself is a Phase 4 UI task; this const is just the content).
+ * Optional 2–3 question comprehension check mentioned in Rev 4 is NOT
+ * included here yet — add a `check` field per section if/when that's
+ * built.
+ * ──────────────────────────────────────────────────────────────── */
+const UNIT0_CONTENT = [
+  {
+    id: 'what_is_asl',
+    title: 'What is ASL?',
+    body: 'American Sign Language (ASL) is a complete, natural language with its own grammar and structure — it is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.',
+  },
+  {
+    id: 'how_practice_works',
+    title: 'How practice works in LinguaWave',
+    body: 'Each lesson teaches a sign with an image, a written description, and a short demo video. When you are ready, you can open the optional Camera Check to practice in front of your webcam — LinguaWave will try to recognize your handshape live. This camera check is practice, not a pass/fail gate: your quiz score comes from the Multiple Choice and Identification rounds, not from the camera.',
+  },
+  {
+    id: 'deaf_culture_note_1',
+    title: "Deaf culture note: capitalizing \"Deaf\"",
+    body: 'You will often see "Deaf" capitalized. This marks Deaf as a cultural and linguistic identity — belonging to a community with its own language and traditions — rather than only describing a hearing level. Lowercase "deaf" is generally used when referring strictly to hearing status.',
+  },
+  {
+    id: 'deaf_culture_note_2',
+    title: 'Deaf culture note: getting someone\'s attention',
+    body: 'Waving in someone\'s line of sight, a light tap on the shoulder, or a gentle tap on a table to send a vibration are the polite ways to get a Deaf person\'s attention — calling out a name usually will not work the way it does in spoken conversation.',
+  },
+];
+
 const CATEGORIES = [
   // ── level=basic — LETTERS (Level 1: Letters — ASL Alphabet A–Z) ──
-  { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false },
+  // unit: 1 (Rev 4 Phase 1 — see Unit Map in SYSTEM_ARCHITECTURE.md)
+  { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
 
   // NEW — Numbers 0–9. Same level as Alphabet (both are single, held
   // handshapes with NO motion — see the SIGNS entries below, all
@@ -62,16 +128,24 @@ const CATEGORIES = [
   // labels.json must be exactly '0','1',...,'9' to match the
   // SIGN_DICTIONARY keys below — see AI_MEMORY.md → "Numbers category"
   // for the full checklist.
-  { id: 'numbers', level: 'basic', title: 'Numbers', order: 2, comingSoon: false },
+  // unit: 3 (Rev 4 Phase 1)
+  { id: 'numbers', level: 'basic', title: 'Numbers', order: 2, comingSoon: false, unit: 3 },
 
   // ── level=medium — WORDS (Level 1: 100 Basic ASL Signs, by category) ──
+  // family/places/time/temperature are unit: 5, and are the ONLY four
+  // Unit 5 sub-categories with real SIGN_DICTIONARY detection today —
+  // per Joshua's Phase 0 answer they stay comingSoon:false and are
+  // ordered first; every other Unit 5 category below is flipped to
+  // comingSoon:true (see AI_MEMORY.md gap note — they have data.js
+  // content but zero SIGN_DICTIONARY entries, so a camera check would
+  // silently never match).
   {
-    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false,
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 5,
     source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
     words: ['MOM', 'DAD', 'BOY', 'GIRL', 'MARRIAGE', 'BROTHER', 'SISTER', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'BABY', 'SINGLE', 'DIVORCED'],
   },
   {
-    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false,
+    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false, unit: 5,
     // CHANGED: 'CAR/DRIVE' -> 'CAR', 'IN/OUT' -> 'IN','OUT' — kept in
     // sync with the SIGNS entries' signId fixes below (see those entries
     // and dictionary.js's PLACES block comment for why).
@@ -90,131 +164,161 @@ const CATEGORIES = [
   // separate demo content, not meant to replace real curriculum.
   // order: 100 keeps this out of the way of your real category
   // numbering rather than needing to renumber anything.
+  // REV 4 Phase 1 — id/title kept as-is (renaming would touch
+  // lesson.js's phraseSteps + every ?category=sequence_demo link for
+  // zero functional gain right now). Framing softened from "(Demo)"
+  // toward "Basic Phrases", but CAR_SPELL/HOME_WORK_DEMO are still
+  // placeholder content — full rename to a clean "Basic Phrases"
+  // title happens in Phase 7 once real curated phrases (per
+  // SYSTEM_ARCHITECTURE.md Rev 4 §"New content needed", item 4)
+  // replace these two demo entries. unit: 6.
+  // TODO(Phase 7): swap words below for real phrases, then rename
+  // title to 'Basic Phrases' (drop the demo framing entirely).
   {
-    id: 'sequence_demo', level: 'medium', title: 'Sequence Practice (Demo)', order: 100, comingSoon: false,
+    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases (Demo content)', order: 100, comingSoon: false, unit: 6,
     words: ['CAR_SPELL', 'HOME_WORK_DEMO'],
   },
   {
-    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false,
+    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false, unit: 5,
     // CHANGED: 'TODAY/NOW' -> 'NOW', 'TODAY' — kept in sync with the
     // SIGNS entries' signId split below.
     words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'NOW', 'TODAY', 'FINISH'],
   },
   {
-    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false,
+    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false, unit: 5,
     words: ['HOT', 'COLD'],
   },
+  // CHANGED (Rev 4 Phase 1): comingSoon flipped false -> true. No
+  // SIGN_DICTIONARY entries exist for any of these words (confirmed by
+  // grep, see AI_MEMORY.md gap note) — a camera check would silently
+  // never match, so per Rev 4's "Suggested removals" reasoning these
+  // stay visible as content but not presented as a playable lesson
+  // yet. Flip back to false once real detection backs each one.
   {
-    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: false,
+    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true, unit: 5,
     words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'WATER', 'CANDY', 'COOKIE', 'HUNGRY'],
   },
   {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: false,
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true, unit: 5,
     words: ['SHIRT', 'PANTS', 'SOCKS', 'SHOES', 'COAT', 'UNDERWEAR'],
   },
   {
-    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: false,
+    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true, unit: 5,
     words: ['WASH', 'HURT', 'BATHROOM', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
   },
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: false,
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true, unit: 5,
     words: ['HAPPY', 'ANGRY', 'SAD', 'SORRY', 'CRY', 'LIKE', 'GOOD/BAD', 'LOVE'],
   },
+  // unit: 4 (Everyday Essentials) — NOT unit 5. HELLO/THANK YOU are
+  // trained; the rest of Unit 4's word list comes from dictionary.js's
+  // disabled:true placeholders, not from this category's `words`
+  // array — see SYSTEM_ARCHITECTURE.md Rev 4 Unit Map row 4.
+  // comingSoon left false (unchanged) since this category partially
+  // works today via HELLO/THANK YOU; only the Unit 5 all-or-nothing
+  // untrained categories above were flipped per Joshua's answer.
   {
-    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: false,
+    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: false, unit: 4,
     words: ['PLEASE', 'EXCUSE', 'THANK YOU', 'HELP', 'WHO', 'WHAT', 'WHEN', 'WHERE', 'WHY', 'HOW', 'STOP'],
   },
   {
-    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: false,
+    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true, unit: 5,
     words: ['BIG', 'TALL', 'FULL', 'MORE'],
   },
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: false,
+    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true, unit: 5,
     words: ['BLUE', 'GREEN', 'YELLOW', 'RED', 'BROWN', 'ORANGE', 'GOLD', 'SILVER'],
   },
   {
-    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: false,
+    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true, unit: 5,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: false,
+    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true, unit: 5,
     words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
   },
 
   // ── level=intermediate — PHRASES ────────────────────────────────
+  // ALL 18 categories below: unit: 7 (Phrasebook — read-only reference
+  // per Rev 4 "Suggested removals" #2; none have any SIGN_DICTIONARY
+  // entry, so none are graded or camera-checkable). comingSoon left
+  // as-is (false) — Rev 4 recommends demoting these to browse-only
+  // content, which is a Phase 4 UI/rendering decision, not a
+  // comingSoon-flag decision; flag not touched here to avoid
+  // conflating "not gradeable" with "hide the content."
   // Level 2 — Basic (Common Phrases), Modules 1–8
   {
-    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false,
+    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 7,
     words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
   },
   {
-    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false,
+    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 7,
     words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
   },
   {
-    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false,
+    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 7,
     words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
   },
   {
-    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false,
+    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 7,
     words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
   },
   {
-    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false,
+    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 7,
     words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
   },
   {
-    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false,
+    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 7,
     words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
   },
   {
-    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false,
+    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 7,
     words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
   },
   {
-    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false,
+    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 7,
     words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
   },
 
   // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
   {
-    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false,
+    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 7,
     words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
   },
   {
-    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false,
+    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 7,
     words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
   },
   {
-    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false,
+    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 7,
     words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
   },
   {
-    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false,
+    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 7,
     words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
   },
   {
-    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false,
+    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 7,
     words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
   },
   {
-    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false,
+    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 7,
     words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
   },
   {
-    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false,
+    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 7,
     words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
   },
   {
-    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false,
+    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 7,
     words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
   },
   {
-    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false,
+    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 7,
     words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
   },
   {
-    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false,
+    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 7,
     words: [
       'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
       'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
@@ -2842,8 +2946,28 @@ function getCategory(level, categoryId) {
   return CATEGORIES.find(c => c.level === level && c.id === categoryId) ?? null;
 }
 
+/**
+ * NEW — Rev 4 Phase 1. Returns all UNITS metadata sorted by `order`.
+ * Not consumed by any UI yet — js/learn.js's trail-view rewrite is
+ * Phase 4. Added now so Phase 4 doesn't need a data.js change too.
+ */
+function getUnits() {
+  return [...UNITS].sort((a, b) => a.order - b.order);
+}
+
+/**
+ * NEW — Rev 4 Phase 1. Returns every CATEGORIES entry tagged with the
+ * given unit order, sorted by their existing `order` field (unchanged
+ * meaning — display order within that unit, same as within a level).
+ * @param {number} unitOrder
+ */
+function getCategoriesForUnit(unitOrder) {
+  return CATEGORIES.filter(c => c.unit === unitOrder).sort((a, b) => a.order - b.order);
+}
+
 /* ── EXPORTS ─────────────────────────────────────────────────────── */
 window.LWData = {
-  SIGNS, QUESTIONS, CATEGORIES,
+  SIGNS, QUESTIONS, CATEGORIES, UNITS, UNIT0_CONTENT,
   getSign, getCategorySigns, getCategoriesForLevel, getCategory,
+  getUnits, getCategoriesForUnit,
 };

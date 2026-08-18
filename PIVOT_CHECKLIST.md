@@ -16,17 +16,18 @@
 - [x] Deep-planning session with adviser feedback translated into a concrete unit map (2026-08-17)
 - [x] `AI_MEMORY.md` §0 added — pointer for future AI sessions
 - [x] `SYSTEM_ARCHITECTURE.md` Rev 4 added — full plan (unit map, data model, assessment, progress, additions/removals)
-- [ ] **Open questions answered by Joshua before Phase 1 starts** (see Rev 4 §Open questions):
-  - [ ] `localStorage` progress: accept reset on storage-key bump, or write a migration shim?
-  - [ ] Unit 0 content: static text, or reuse the `capture.html` YouTube reference-video panel?
-  - [ ] Unit 5 sub-category order: show all 12, or only the trained ones (family/places/time/temperature) with the rest `comingSoon`?
+- [x] **Open questions answered by Joshua before Phase 1 starts** (see Rev 4 §Open questions) — answered 2026-08-18:
+  - [x] `localStorage` progress: **accept a reset** (simplest, pre-launch). Not yet applied to code — this decision belongs to Phase 3 (storage key bump), not Phase 1.
+  - [x] Unit 0 content: **static text** (fastest to ship) — implemented in Phase 1, see below.
+  - [x] Unit 5 sub-category order: **only the 4 trained ones** (family/places/time/temperature) show; the other 8 (food/clothes/health/feelings/amounts/colors/money/animals) are `comingSoon` — implemented in Phase 1, see below.
 
 ## Phase 1 — `data.js` restructure
-- [ ] Add top-level `UNITS` array (`{ id, order, title, kind }`)
-- [ ] Add `unit` field to every existing `CATEGORIES` entry, matching the Unit Map table in Rev 4
-- [ ] Add Unit 0 "Welcome to ASL" content (background + how camera practice works + 1–2 Deaf-culture notes)
-- [ ] Promote `sequence_demo` → real Basic Phrases category (keep the mechanism, replace the "(Demo)" framing once Phase 7's phrases exist — can stay as a TODO marker until then)
-- [ ] Reorder Unit 5 sub-categories per the answer to the Phase 0 open question above
+- [x] Add top-level `UNITS` array (`{ id, order, title, kind }`) — done 2026-08-18. Note: added a 4th `kind` value, `'reference'`, for Unit 7 (Phrasebook) beyond the three (`info`/`category-group`/`interactive`) named in Rev 4's data-model note — flagging for Joshua/adviser sign-off since Phrasebook is neither gradeable nor an info screen.
+- [x] Add `unit` field to every existing `CATEGORIES` entry, matching the Unit Map table in Rev 4 — done 2026-08-18, all 34 categories tagged (2 basic → units 1/3, 14 medium → units 4/5/6, 18 intermediate → unit 7; see note below on `requests`).
+  - Note: `requests` (medium) went to **unit 4** (Everyday Essentials), not unit 5, per the Unit Map table — Rev 4 groups it there since HELLO/THANK YOU-style essentials/courtesy content maps to Unit 4, not the Unit 5 thematic-vocab group.
+- [x] Add Unit 0 "Welcome to ASL" content (background + how camera practice works + 1–2 Deaf-culture notes) — done 2026-08-18 as a new `UNIT0_CONTENT` const (static text, 4 sections: what ASL is, how practice/Camera Check works, 2 Deaf-culture notes). No screen renders it yet — that's Phase 4.
+- [x] Promote `sequence_demo` → real Basic Phrases category (keep the mechanism, replace the "(Demo)" framing once Phase 7's phrases exist — can stay as a TODO marker until then) — done 2026-08-18: id/title kept mostly as-is (`'Basic Phrases (Demo content)'`), tagged `unit: 6`, added an explicit `TODO(Phase 7)` comment. Full rename to a clean "Basic Phrases" title is deferred to Phase 7 per the checklist's own wording, once `CAR_SPELL`/`HOME_WORK_DEMO` are replaced with real phrases.
+- [x] Reorder Unit 5 sub-categories per the answer to the Phase 0 open question above — done 2026-08-18: `family`/`places`/`time`/`temperature` stay `comingSoon: false`; `food`/`clothes`/`health`/`feelings`/`amounts`/`colors`/`money`/`animals` flipped to `comingSoon: true`. "Reorder" was implemented as a comingSoon split rather than changing the `order` integers — the trained four already have lower `order` values (1–4) than the untrained eight (5–13 minus `requests`), so they already render first; no `order` renumbering was needed. Flag this interpretation for Joshua if a literal array-position reorder was intended instead.
 
 ## Phase 2 — Fingerspell Your Name (interactive drill)
 - [ ] New lesson type/page (or extension of `lesson.js`) that reads the learner's name and builds a dynamic `sequence` array from its letters

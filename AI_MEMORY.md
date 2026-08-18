@@ -21,14 +21,15 @@
 
 ## 0. 🚧 ACTIVE PIVOT — Curriculum restructure (read this before touching `data.js`, `learn.js`, `progress.js`, or `auth.js`)
 
-**Status: planning complete (2026-08-17), implementation not started.** The
-capstone adviser reviewed the project and directed a restructure of how
-content is organized. The full plan lives in `SYSTEM_ARCHITECTURE.md` →
-**Rev 4** — read that section before making any change to lesson ordering,
-progress/unlock logic, or the signup flow. **`PIVOT_CHECKLIST.md`** (repo
-root, alongside this file) tracks execution phase-by-phase — check it
-before starting work to see what's already done, and update it in the
-same session you complete an item. Short version:
+**Status: Phase 1 (`data.js` restructure) complete (2026-08-18); Phases
+2–7 not started.** The capstone adviser reviewed the project and directed
+a restructure of how content is organized. The full plan lives in
+`SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
+any change to lesson ordering, progress/unlock logic, or the signup flow.
+**`PIVOT_CHECKLIST.md`** (repo root, alongside this file) tracks execution
+phase-by-phase — check it before starting work to see what's already
+done, and update it in the same session you complete an item. Short
+version:
 
 - **Old model (Rev 1–3, as currently built):** three separate,
   user-selectable "levels" (`basic`/`medium`/`intermediate`) chosen at
@@ -429,3 +430,89 @@ questions for Joshua).
 6. `quiz.js` — tighter teach→quiz loop, new sign-ordering question type.
 7. Capture + retrain: Essential Words placeholders, Numbers 6/9/10
    motion-type fix (this last one was already an open item pre-pivot).
+
+### 2026-08-18 — Pivot Phase 1: `data.js` restructure
+**Requested:** answered the three Phase 0 open questions (progress
+migration: accept reset; Unit 0 content: static text; Unit 5 order: only
+the 4 trained sub-categories, rest `comingSoon`), then do Phase 1 per
+`PIVOT_CHECKLIST.md`.
+
+**Changes made (all in `js/data.js`, nothing else touched — Phase 1 is
+explicitly scoped to this one file):**
+- New top-level `UNITS` array — `{ id, order, title, kind }`, 8 entries
+  (0=Welcome through 7=Phrasebook), placed above `CATEGORIES`. Added a
+  4th `kind` value, `'reference'` (for Unit 7/Phrasebook), beyond the
+  three (`'info'|'category-group'|'interactive'`) named in Rev 4's data
+  model note — flagging this for Joshua/adviser sign-off, since
+  Phrasebook is neither gradeable nor a plain info screen and didn't
+  fit any of the three cleanly.
+- New `UNIT0_CONTENT` array — 4 static-text sections (what ASL is, how
+  Camera Check practice works, 2 Deaf-culture notes). Per Joshua's
+  answer this is static text, not the `capture.html` video panel. No
+  screen renders this yet — building the actual Unit 0 "info" screen is
+  Phase 4 UI work, this only adds the content.
+- Every one of the 34 `CATEGORIES` entries got a new `unit` field
+  matching the Rev 4 Unit Map table: `alphabet`→1, `numbers`→3,
+  `requests`→4, `family`/`places`/`time`/`temperature`/`food`/`clothes`/
+  `health`/`feelings`/`amounts`/`colors`/`money`/`animals`→5,
+  `sequence_demo`→6, all 18 `intermediate` categories→7.
+- Unit 5's 8 untrained sub-categories (`food`, `clothes`, `health`,
+  `feelings`, `amounts`, `colors`, `money`, `animals`) flipped
+  `comingSoon: false → true` per Joshua's answer. `family`/`places`/
+  `time`/`temperature` (the 4 with real `SIGN_DICTIONARY` coverage)
+  stay `comingSoon: false`. Implemented as a comingSoon split, not an
+  `order`-integer reorder — the trained four already have lower `order`
+  values than the untrained eight, so display order was already correct
+  without renumbering. **Flag for Joshua:** if a literal array-position
+  reorder was intended instead of a comingSoon split, this needs
+  revisiting.
+- `sequence_demo` title softened from `'Sequence Practice (Demo)'` to
+  `'Basic Phrases (Demo content)'`, tagged `unit: 6`, and given an
+  explicit `TODO(Phase 7)` comment. **Did not** rename the `id` or fully
+  drop the demo framing — per the checklist's own wording this can stay
+  a TODO marker until Phase 7 swaps in real phrases; renaming the `id`
+  now would've meant also touching every place `'sequence_demo'` is
+  referenced (`lesson.js`'s phraseSteps, any `?category=sequence_demo`
+  link) for no functional gain yet.
+- Added two small helper functions, `getUnits()` and
+  `getCategoriesForUnit(unitOrder)`, and exported `UNITS`/`UNIT0_CONTENT`
+  plus the two new helpers via `window.LWData`. Not consumed by any UI
+  yet (that's Phase 4) — added now so Phase 4 doesn't need a `data.js`
+  change too.
+- Ran `node --check` on the resulting file — no syntax errors. Did not
+  run the app in a browser (no dev server / browser tool available in
+  this session) — **recommend Joshua load `learn.html` once after
+  pasting this in**, just to confirm nothing that reads `CATEGORIES`
+  chokes on the new `unit` field it wasn't expecting (everything that
+  reads `CATEGORIES` today uses `.level`/`.id`/`.order`/`.comingSoon`,
+  not `.unit`, so this should be additive-only, but wasn't executed to
+  confirm).
+
+**Bugs/risks noticed, not fixed (out of scope for Phase 1, or need your
+call):**
+1. The `requests` category (unit 4) still has `comingSoon: false` even
+   though most of its `words` list beyond `HELLO`/`THANK YOU` traces
+   back to `dictionary.js` placeholders with no real detection yet
+   (`disabled: true`). Left as `false` since it partially works today —
+   flagging in case you'd rather it match the Unit 5 categories'
+   treatment.
+2. Confirmed again (same as the pre-existing `AI_MEMORY.md` §4 gap
+   note): `food`/`clothes`/`health`/`feelings`/`colors`/`money`/
+   `animals`/`amounts` and all 18 `intermediate` categories have zero
+   `SIGN_DICTIONARY` entries. Not a Phase 1 fix — captured here only
+   because the `comingSoon` flip above is the first place that gap
+   became user-visible instead of just a silent camera-check failure.
+3. No validation exists anywhere that a `CATEGORIES` entry's `unit`
+   value actually matches an entry in `UNITS[].order` (typo risk for
+   future edits) — didn't add a runtime check since Phase 1 didn't ask
+   for one; worth a one-line assertion in Phase 4 when `learn.js`
+   starts actually consuming `UNITS`.
+
+**Still open (per checklist — next is Phase 2):**
+1. Phase 2 — Fingerspell Your Name interactive drill.
+2. Phase 3 — `progress.js` unlock-chain flattening, storage key bump to
+   `lw_progress_v3` (Joshua already answered: accept a reset, no
+   migration shim needed).
+3. Phase 4 — `learn.js` trail-view UI (this is also where `UNIT0_CONTENT`
+   actually gets rendered for the first time).
+4. Phases 5–7 unchanged from before this session.
