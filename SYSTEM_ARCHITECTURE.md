@@ -1,8 +1,236 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
+> **Rev. 4 (PLANNING)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17, implementation not started — see the Rev 4 section below.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
+
+## Rev 4 — PLANNED: single continuous "Basic ASL" path (curriculum pivot, not yet implemented)
+
+**Status: planning only.** Nothing below is built yet. This section is the
+deep-planning output from the 2026-08-17 adviser consultation — it exists
+so any AI assistant (or Joshua, later) picks up the *agreed direction*
+instead of re-deriving it or contradicting it. See AI_MEMORY.md §0 for the
+short pointer version and the session log entry for how this was derived.
+
+### Why
+
+The adviser's framing, translated into product terms: LinguaWave should
+not offer a "choose your level" fork at signup. Everything the app teaches
+is basic ASL — the progression comes from *combining* what was already
+taught, not from unlocking harder content. The adviser's own example: a
+typing tutor doesn't have a "beginner/intermediate/advanced" mode: it
+teaches `A`, `S`, `D`, `F` individually, then drills the combinations
+`ASDF`, `FDSA`, `AASS`. LinguaWave's letters→words→phrases structure
+already has this shape — the fix is presentation and ordering, not new
+detection technology. The adviser also pointed at lingvano.com as the
+reference for lesson pacing and quiz variety (see §Assessment below).
+
+### The Unit Map
+
+One linear path, replacing the three-level selector. `level`/`category`
+values in the codebase are unchanged (see §Data model below) — this table
+maps them onto the new presentation order.
+
+| Unit | Title | Maps from existing data | Detection status today |
+|---|---|---|---|
+| 0 | Welcome to ASL (background, how camera practice works, a couple of Deaf-culture basics) | new — no existing content | N/A, no camera, no `SIGN_DICTIONARY` needed |
+| 1 | The Alphabet (A–Z) | `level:basic, category:alphabet` — unchanged | ✅ fully trained (static model) |
+| 2 | Fingerspell Your Name | new — interactive drill, see §New content below | ✅ reuses the A–Z static model, zero new training data |
+| 3 | Numbers (0–9, working toward 10) | `level:basic, category:numbers` — unchanged | ⚠️ static 0–9 trained; `6`/`9` need `detectionType:'motion'` added (pre-existing open item, AI_MEMORY.md §4); `10` needs a `dictionary.js`+`data.js` entry (also pre-existing) |
+| 4 | Everyday Essentials (greetings & courtesy words) | `level:medium, category:requests` (partial) + the `disabled:true` placeholders in `dictionary.js` (`PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) | ⚠️ `HELLO`/`THANK YOU` trained today; the rest need capture + retraining — the placeholders already exist, this is a data-collection task, not an architecture task |
+| 5 | Common Things & People (thematic vocab) | `level:medium` — family, places, time, temperature, food, clothes, health, feelings, colors, money, animals, amounts | ✅ family/places/time/temperature trained; ❌ food/clothes/health/feelings/colors/money/animals/amounts have `data.js` content but **no `SIGN_DICTIONARY` entry at all** (see gap note below) — order the trained sub-categories first |
+| 6 | Basic Phrases | the `sequence_demo` chaining mechanism (real, working) + a small curated set of phrases built only from Unit 1–5 words | ✅ mechanism proven via `CAR_SPELL`/`HOME_WORK_DEMO`; needs real phrase content in place of the two demo placeholders |
+| 7+ | Phrasebook (reference reading, not graded) | the other 17 `level:intermediate` categories (~100 sentence-level entries) | ❌ 0 of these have any `SIGN_DICTIONARY` entry — see "Suggested removals" for why this becomes read-only content instead of a graded unit |
+
+**Gap note (found while building this table, not previously documented):**
+grep across `dictionary.js` confirms `food`, `clothes`, `health`,
+`feelings`, `colors`, `money`, `animals`, `amounts`, and all 18
+`intermediate` categories have zero matching `SIGN_DICTIONARY` entries.
+Their `data.js` content (descriptions, image/video paths) is real and
+fine to keep, but a learner's camera check on any of these signs today
+would just never match, silently, because the label was never trained —
+this predates the pivot and was only surfaced by cross-referencing the
+two files category-by-category for this plan.
+
+### New content needed
+
+1. **Unit 0 — Welcome to ASL.** A short "info" lesson type: no camera, no
+   sign — background on what ASL is, how the practice/assessment flow
+   works, and 1–2 lines of Deaf-culture etiquette (see "Suggested
+   additions" below). Optionally a 2–3 question comprehension check, not
+   an 80%-gated assessment.
+2. **Unit 2 — Fingerspell Your Name.** A new interactive drill: take the
+   learner's own name (already collected at signup) and build a live
+   sequence check against it using the *same* phrase-chaining/motion
+   pipeline `lesson.js` already uses for `sequence_demo` — just with a
+   dynamically-generated `sequence` array instead of a fixed one. This is
+   the literal "ASDF" moment from the adviser's analogy: combining
+   letters the learner just drilled individually into something personal
+   and real. Zero new training data required — it's 100% built on the
+   already-trained A–Z static model.
+3. **Unit 4 — Everyday Essentials.** Mostly a capture/retrain task (see
+   the placeholder list in the Unit Map table above), not new app code —
+   `dictionary.js` already has the entries stubbed out with
+   `disabled: true`.
+4. **Unit 6 — Basic Phrases.** Curate a short list (start with 5–8) of
+   phrases buildable entirely from words that are already trained by the
+   time a learner reaches Unit 6 — e.g. a name-introduction phrase reusing
+   the Unit 2 mechanism, `THANK YOU` + a fingerspelled word, etc. Swap
+   these in for `CAR_SPELL`/`HOME_WORK_DEMO` in the `sequence_demo`
+   category (see "Suggested removals" — this category stops being a demo).
+
+### Assessment format changes (lingvano.com reference)
+
+Lingvano's format, observed via public reviews/app-store listings: short
+video-based lessons that quiz almost immediately after teaching a sign
+(not after a whole chapter), a mix of quiz formats (match sign to
+picture/video, multiple choice, fingerspelling challenges, simple
+sentence-ordering), and a live camera "mirror" feature that's framed as
+practice rather than a strict gate.
+
+- **Rounds 1–2 already match this** (`quiz.js`'s Multiple Choice and
+  Identification rounds) — no change needed there.
+- **Tighten the teach→quiz loop.** Today a learner walks through every
+  sign in a category before any quiz happens. Add a lightweight,
+  non-blocking mini-check after each sign (or small cluster) inside
+  `lesson.html` itself, reusing the existing Practice Check UI, so
+  retention gets tested closer to when it was taught — matching
+  Lingvano's tight loop instead of the current "10 signs then one big
+  quiz" pattern.
+- **New question type for Unit 6:** a sign-ordering/fingerspelling
+  challenge — show the target phrase in English, learner produces the
+  signs in order via camera using the chaining engine, rather than only
+  picking from 4 pre-written options. This is closer to what actually
+  proves recall, the way Lingvano's fingerspelling rounds do.
+- **Camera Check stays optional/bonus everywhere**, including the new
+  Unit 6 ordering challenge — this already matches Lingvano's "mirror is
+  practice, not a gate" positioning and is Rev 3's existing, deliberate
+  design; no change to that reasoning, just extending the pattern to the
+  new question type.
+- Keep the 80% pass threshold and the existing MC + Identification rounds
+  as the only graded rounds, for the same webcam-accuracy reasons Rev 3
+  already documented.
+
+### Progress / unlock model changes
+
+- Replace the level-based hierarchy (`basic` unlocks its categories →
+  passing `basic`'s final unlocks `medium` → …) with **one flat ordered
+  chain** across every unit/category in the Unit Map above.
+  `js/engine/progress.js` keeps its role as the single source of truth
+  (still swappable for Firestore later, per Rev 3) — only its internal
+  unlock rule changes, from level→category nesting to a flat walk over
+  `UNITS`.
+- Unit 0 (intro) and the Unit 7+ Phrasebook don't gate anything and have
+  no 80% threshold — nothing gradeable lives behind them yet.
+- Storage key should bump `lw_progress_v2` → `lw_progress_v3` since the
+  shape changes from level-nested to a flat array. A migration shim is
+  optional (see "Open questions" below) — this is still pre-launch, a
+  reset may be acceptable.
+
+### Data model / migration strategy
+
+- Add a new top-level `UNITS` array to `data.js`:
+  `{ id, order, title, kind: 'info' | 'category-group' | 'interactive' }`.
+  It sits **above** `CATEGORIES`, it doesn't replace it.
+- Each existing `CATEGORIES` entry gets a new `unit` field (integer,
+  matching `UNITS[].order`) so `learn.js` can render one continuous trail
+  without touching every category's existing `id`/`level`.
+- **Recommendation: don't rename `level`.** Its values (`'basic'` /
+  `'medium'` / `'intermediate'`) stay exactly as they are in `data.js`,
+  `dictionary.js`, every `?level=X&sign=Y` / `?level=X&category=Y` URL,
+  and `getDetectionType()` / `getAllowedLabelsForSign()`. Renaming would
+  touch `learn.js`, `lesson.js`, `quiz.js`, `progress.js`, `dashboard.js`,
+  and every link in every HTML page, for zero pedagogical benefit — the
+  pivot is about ordering and presentation, not what the field is called
+  internally. `level` becomes a legacy internal partition key; `unit` /
+  `UNITS` is what actually drives the new UI and unlock order.
+- `js/learn.js` needs the biggest UI change: replace the three-tab
+  (`basic`/`medium`/`intermediate`) + card-grid + word-picker structure
+  with a single scrollable **trail view** that walks `UNITS` in order,
+  each category shown as a node (locked / current / done) — the
+  SoloLearn/Duolingo-style path the adviser referenced.
+- `index.html` / `js/auth.js`'s `register()` "choose your proficiency
+  level" step goes away — see "Suggested removals" below.
+
+### Suggested additions (mine, not adviser-requested — worth weighing)
+
+1. **Deaf-culture micro-notes.** One or two short reads sprinkled between
+   units — attention-getting etiquette, eye contact norms, the
+   capitalization convention for "Deaf" — using the same "info" lesson
+   type as Unit 0, so it costs almost nothing to build. This is the
+   difference between a sign-matching app and something that teaches a
+   learner to actually interact respectfully — directly serves "make the
+   user REALLY learn ASL."
+2. **Review / Trainer mode.** A lightweight drill that pulls random
+   already-passed signs back into camera practice, mirroring Lingvano's
+   Vocab Trainer. Reuses the existing detection pipeline entirely — the
+   only new logic is picking N random already-unlocked `signId`s. High
+   retention value for low build cost, and directly supports "really
+   learn" over "complete once and forget."
+3. **Optional placement/skip test.** A short per-unit assessment a
+   learner who already knows some ASL can take to unlock ahead, without
+   abandoning the enforced default order for true beginners.
+4. **Sign-variation callouts.** Where ASL has more than one accepted way
+   to sign something, surface a one-line "there's another common way to
+   sign this" note. Lingvano does this for "HOW" and it's called out
+   specifically in reviews as a trust-builder — cheap to add given
+   `dictionary.js` already half-tracks alternates via its disabled
+   entries.
+
+### Suggested removals / deprioritizations
+
+1. **The signup-time proficiency-level picker.** Directly contradicts the
+   single-path model — a total beginner and a returning learner both
+   start at Unit 0 now. Use the placement/skip test above instead, if
+   some learners genuinely need to skip ahead.
+2. **The 17 non-`greetings_intro` `intermediate` phrase categories**
+   (`basic_responses` through `everyday_dialogues`, ~100 sentence
+   entries). None have any `SIGN_DICTIONARY` entry — full-sentence motion
+   detection for ~100 unique sentences isn't realistic training scope for
+   a capstone. Recommend demoting these to a **read-only "Phrasebook"**
+   reference section (browse only, no quiz, no camera check) instead of
+   presenting them as a graded unit that can't actually be assessed by
+   camera and would need ~100 more MC questions to feel complete. The
+   content itself is good — just stop implying it's an interactive lesson
+   until real detection backs it.
+3. **`sequence_demo`'s "(Demo)" framing.** The chaining mechanism it
+   proves out is exactly what Unit 6 needs — it's not a demo anymore.
+   Rename the category once real phrase content replaces
+   `CAR_SPELL`/`HOME_WORK_DEMO`.
+
+### Implementation phases (priority order — confirm with Joshua before starting any of these)
+
+1. `data.js` — add `UNITS`, tag each `CATEGORIES` entry with `unit`, add
+   Unit 0 intro content, promote/rename `sequence_demo` into a real Basic
+   Phrases skeleton.
+2. Name-fingerspelling interactive drill — self-contained, no retraining
+   needed, good first coding task.
+3. `js/engine/progress.js` — flatten the unlock chain, bump the storage
+   key.
+4. `js/learn.js` — trail-view UI replacing the level tabs / card grid /
+   word picker.
+5. `js/auth.js` + `index.html` — remove the proficiency-level picker from
+   signup.
+6. `js/quiz.js` — tighten the teach→quiz loop, add the sign-ordering
+   question type for Unit 6.
+7. Capture + retrain: Essential Words placeholders (§Unit 4), Numbers
+   6/9/10 motion-type fix (pre-existing item, AI_MEMORY.md §4) — content
+   and ML work, not app code.
+
+### Open questions for Joshua (not blocking the plan, but worth answering before Phase 1)
+
+- Keep `localStorage` progress as-is and accept a reset when the storage
+  key bumps, or write a small migration shim?
+- Unit 0's "what is ASL" content — static text (fastest to ship), or
+  reuse the YouTube reference-video panel already prototyped in
+  `capture.html`?
+- How many Unit 5 sub-categories should show before Unit 6 unlocks — all
+  12, or just the ones with real detection today (family/places/time/
+  temperature), with the rest marked `comingSoon` the way `medium`/
+  `intermediate` categories already do?
+
+---
 
 ## Rev 3 — What changed (lesson · assessment · progress)
 

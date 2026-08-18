@@ -6,11 +6,67 @@
 > on this project, so you don't have to re-derive them from scratch or
 > contradict a decision that was already made deliberately.
 >
+> **Read in this order:** (1) this file, (2) `PIVOT_CHECKLIST.md` — what's
+> done vs. not on the in-progress curriculum pivot, (3)
+> `SYSTEM_ARCHITECTURE.md` — full system design, most relevantly the
+> **Rev 4** section the checklist tracks. Don't propose changes to lesson
+> ordering, `data.js`, `learn.js`, `progress.js`, or `auth.js` without
+> checking the pivot's status in those two files first.
+>
 > **After you make a change**, add a short entry to the "Session Log" at
 > the bottom — date, what changed, what's still open. Keep entries brief;
 > this is a changelog, not a transcript.
 
 ---
+
+## 0. 🚧 ACTIVE PIVOT — Curriculum restructure (read this before touching `data.js`, `learn.js`, `progress.js`, or `auth.js`)
+
+**Status: planning complete (2026-08-17), implementation not started.** The
+capstone adviser reviewed the project and directed a restructure of how
+content is organized. The full plan lives in `SYSTEM_ARCHITECTURE.md` →
+**Rev 4** — read that section before making any change to lesson ordering,
+progress/unlock logic, or the signup flow. **`PIVOT_CHECKLIST.md`** (repo
+root, alongside this file) tracks execution phase-by-phase — check it
+before starting work to see what's already done, and update it in the
+same session you complete an item. Short version:
+
+- **Old model (Rev 1–3, as currently built):** three separate,
+  user-selectable "levels" (`basic`/`medium`/`intermediate`) chosen at
+  signup, each its own track with its own final assessment.
+- **New model (adviser-directed):** LinguaWave is **all "Basic ASL"** —
+  there is no separate intermediate/advanced tier the learner picks.
+  Everything lives on **one linear path** that progressively combines what
+  was already taught — the way a typing tutor drills `A S D F`
+  individually before combining them into `ASDF`/`FDSA`. Concretely:
+  *background → letters → your own name fingerspelled → numbers →
+  everyday essential words → thematic vocab → phrases chained from
+  already-known words → (future: conversations).*
+- **Reference app:** the adviser pointed at lingvano.com's lesson/quiz
+  format as the model to imitate (tight teach→quiz loop, video
+  identification, multiple choice, fingerspelling challenges, an optional
+  live camera "mirror" check that is practice, not a pass/fail gate).
+  LinguaWave's Round 3 Camera Check already matches that pattern — see
+  Rev 4 §Assessment for what else needs to change.
+- **Internal field names are NOT changing.** `level`/`category` in
+  `data.js`, `dictionary.js`, and every `?level=X` URL param stay exactly
+  as they are — they become an internal grouping key, not a user-facing
+  "choose your level" concept. Don't rename them wholesale; see Rev 4's
+  "Data model / migration strategy" for why.
+- **A previously-undocumented gap surfaced while planning this:** `food`,
+  `clothes`, `health`, `feelings`, `colors`, `money`, `animals`, and
+  `amounts` all have full `data.js` `SIGNS` content but **zero matching
+  `SIGN_DICTIONARY` entries** — confirmed by grep across `dictionary.js`.
+  Only `family`, `places`, `time`, and `temperature` have real detection
+  behind them among the `medium`-level categories today. All 17
+  non-`greetings_intro` `intermediate` phrase categories (~100 sentences)
+  have the same gap. This isn't a bug to fix blindly — see Rev 4's
+  "Suggested removals" for the recommendation (demote to a read-only
+  Phrasebook rather than pretend they're gradeable).
+- **Before writing code against this:** confirm with Joshua which
+  implementation phase to start on — Rev 4 lists them in priority order.
+  Nothing in `data.js`/`learn.js`/`progress.js`/`auth.js` has changed yet;
+  this was a planning-only session.
+
 
 ## 1. What this project is
 
@@ -313,3 +369,63 @@ colliding number into `MOTION_SIGNS`.
    UI groupings) still have no `numbers` entry — numbers fall into the
    `➕ Custom Signs` catch-all there. Noticed in passing, not a
    detection bug, just a capture-tool UX gap.
+
+### 2026-08-17 — Adviser-directed curriculum pivot: deep planning session (no code changed)
+**Requested:** capstone adviser reviewed the project and directed a
+restructure — see the adviser's framing in the request: "everything should
+be basic ASL, but progressively upgrading," with a typing-tutor analogy
+(learn `A S D F` individually, then combinations `ASDF`/`FDSA`) and an
+explicit flow: background → letters → name fingerspelling → numbers →
+essential words → common words → basic phrases → etc. Asked to use
+lingvano.com's lesson/quiz format as a reference, make the system more
+interactive, do deep planning before writing code, and update this file +
+`SYSTEM_ARCHITECTURE.md` so future AI sessions have the context.
+
+**Findings (nothing here changes behavior, all read-only investigation):**
+- The three-level (`basic`/`medium`/`intermediate`) structure the app
+  already has maps cleanly onto the adviser's desired flow if reframed as
+  ONE ordered path instead of three user-selectable tracks — see Rev 4 in
+  `SYSTEM_ARCHITECTURE.md` for the full unit-by-unit mapping.
+- `HELLO` and `THANK YOU` in `dictionary.js` are already trained
+  (`SIGN_DICTIONARY`, no `disabled` flag). Fifteen more "essential word"
+  entries (`PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`,
+  `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) and
+  five phrase entries (`NICE TO MEET YOU`, `HOW ARE YOU`, `WHERE IS`,
+  `I AM LEARNING`, `WHAT IS YOUR NAME`) already exist as **placeholder
+  entries with `disabled: true`** — someone already scaffolded exactly the
+  "essential words" + "basic phrases" content the adviser is asking for;
+  it just needs capture + retraining, not new architecture.
+- Confirmed via grep: `food`, `clothes`, `health`, `feelings`, `colors`,
+  `money`, `animals`, `amounts` (all `medium`-level) and all but one
+  `intermediate`-level category (`greetings_intro` also has no
+  `SIGN_DICTIONARY` entries, correction — **none** of the 18
+  `intermediate` categories do) have `data.js` content but **no
+  `SIGN_DICTIONARY` entry at all** — not disabled placeholders, just
+  absent. These categories currently cannot be camera-checked; only their
+  MC/Identification quiz rounds would ever work. This was invisible until
+  now because nothing had cross-referenced `data.js` against
+  `dictionary.js` category-by-category before.
+- The phrase-chaining engine (`sequence` field, built into `lesson.js`
+  earlier this month) already proves the exact mechanism a "Basic
+  Phrases" unit needs — chain already-trained words instead of training
+  full-sentence motion — via its two demo entries `CAR_SPELL` and
+  `HOME_WORK_DEMO`. Nothing new needs to be invented for Unit 6 below,
+  just real content swapped in for the demo placeholders.
+
+**Changes made:** none to app code. Added AI_MEMORY.md §0 (this pivot's
+status/pointer) and SYSTEM_ARCHITECTURE.md's Rev 4 section (full plan:
+unit map, data-model changes, assessment changes, progress/unlock
+changes, suggested additions/removals, phased implementation order, open
+questions for Joshua).
+
+**Still open (needs Joshua's go-ahead on which phase to start, see Rev 4's
+"Implementation phases"):**
+1. `data.js` restructure — add `UNITS`, tag categories with `unit`,
+   Unit 0 intro content, promote `sequence_demo` to real content.
+2. Name-fingerspelling interactive drill (new, no retraining needed).
+3. `progress.js` unlock-chain flattening + storage key bump.
+4. `learn.js` trail-view UI rewrite.
+5. `auth.js`/`index.html` — remove the proficiency-level picker at signup.
+6. `quiz.js` — tighter teach→quiz loop, new sign-ordering question type.
+7. Capture + retrain: Essential Words placeholders, Numbers 6/9/10
+   motion-type fix (this last one was already an open item pre-pivot).
