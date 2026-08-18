@@ -1,23 +1,28 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure) implemented 2026-08-18 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
+> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), and Phase 3 (`progress.js` unlock-chain flattening) implemented 2026-08-18 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
 
-## Rev 4 — PLANNED: single continuous "Basic ASL" path (curriculum pivot, not yet implemented)
+## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
-**Status: Phase 1 implemented (2026-08-18); Phases 2–7 still planning
-only.** This section is the deep-planning output from the 2026-08-17
-adviser consultation — it exists so any AI assistant (or Joshua, later)
-picks up the *agreed direction* instead of re-deriving it or contradicting
-it. See AI_MEMORY.md §0 for the short pointer version and the session log
-entries (2026-08-17 planning, 2026-08-18 Phase 1) for how this was
-derived and implemented. `js/data.js` now has a real `UNITS` array, a
+**Status: Phases 1–3 implemented (all 2026-08-18); Phases 4–7 still
+planning only.** This section is the deep-planning output from the
+2026-08-17 adviser consultation — it exists so any AI assistant (or
+Joshua, later) picks up the *agreed direction* instead of re-deriving it
+or contradicting it. See AI_MEMORY.md §0 for the short pointer version and
+the session log entries (2026-08-17 planning, 2026-08-18 Phase 1, 2026-08-18
+Phase 2, 2026-08-18 Phase 3) for how this was derived and implemented. `js/data.js` now has a real `UNITS` array, a
 `unit` field on every `CATEGORIES` entry, `UNIT0_CONTENT`, and the Unit 5
-`comingSoon` split described below — everything else in this section
-(trail-view UI, progress flattening, drill, quiz changes, capture/retrain)
-is still unbuilt.
+`comingSoon` split described below. The Unit 2 Fingerspell Your Name drill
+is also implemented, as an extension of `js/lesson.js` (see §Implementation
+phases → Phase 2, and `PIVOT_CHECKLIST.md`) — reachable today via a direct
+URL (`pages/lesson.html?level=basic&category=fingerspell_name`) since it
+has no trail-UI nav entry yet. `js/engine/progress.js`'s unlock chain is
+now flat across `UNITS` too (see §Progress / unlock model changes below) —
+storage key is `lw_progress_v3`. Everything else in this section (trail-view
+UI, quiz changes, capture/retrain) is still unbuilt.
 
 ### Why
 
@@ -118,21 +123,40 @@ practice rather than a strict gate.
   as the only graded rounds, for the same webcam-accuracy reasons Rev 3
   already documented.
 
-### Progress / unlock model changes
+### Progress / unlock model changes — ✅ Done 2026-08-18 (Phase 3)
 
-- Replace the level-based hierarchy (`basic` unlocks its categories →
-  passing `basic`'s final unlocks `medium` → …) with **one flat ordered
-  chain** across every unit/category in the Unit Map above.
-  `js/engine/progress.js` keeps its role as the single source of truth
-  (still swappable for Firestore later, per Rev 3) — only its internal
-  unlock rule changes, from level→category nesting to a flat walk over
-  `UNITS`.
-- Unit 0 (intro) and the Unit 7+ Phrasebook don't gate anything and have
-  no 80% threshold — nothing gradeable lives behind them yet.
-- Storage key should bump `lw_progress_v2` → `lw_progress_v3` since the
-  shape changes from level-nested to a flat array. A migration shim is
-  optional (see "Open questions" below) — this is still pre-launch, a
-  reset may be acceptable.
+- ~~Replace the level-based hierarchy...~~ **Done.** `js/engine/progress.js`
+  keeps its role as the single source of truth (still swappable for
+  Firestore later, per Rev 3) — its internal unlock rule now walks **one
+  flat ordered chain** across every unit/category in the Unit Map above,
+  via a new `getOrderedLiveCategories()` (walks `getUnits()` → filters to
+  `kind === 'category-group'` → `getCategoriesForUnit(order)`).
+  `isCategoryUnlocked(level, categoryId)` walks that chain instead of the
+  old per-level `liveCategoriesFor(level)` walk. `level`/`category` params
+  on every public function are unchanged (see §Data model — internal
+  field names aren't renamed), so `js/learn.js`, `js/quiz.js`,
+  `js/dashboard.js`, and `js/lesson.js` all keep working without edits.
+  **Concrete behavior change worth knowing:** a category is no longer
+  automatically unlocked just for being first in its `level` — e.g. Unit
+  4's `requests` (level:`medium`) now stays locked until Unit 3's
+  `numbers` (level:`basic`) is passed, because the chain crosses level
+  boundaries. Verified with a standalone mock-data test harness (not
+  committed to the repo — throwaway, see AI_MEMORY.md's Phase 3 session
+  log for what it checked).
+- ~~Unit 0 (intro) and the Unit 7+ Phrasebook don't gate anything~~
+  **Confirmed.** They're excluded structurally — `getOrderedLiveCategories()`
+  only walks `kind === 'category-group'` units, and Unit 0 is `kind:'info'`,
+  Unit 7/Phrasebook is `kind:'reference'`. (Unit 2/Fingerspell Your Name,
+  `kind:'interactive'`, is also excluded, but only incidentally — it has
+  zero `CATEGORIES` entries to begin with, see Phase 2's session log.)
+- ~~Storage key should bump...~~ **Done.** `lw_progress_v2` → `lw_progress_v3`.
+  Per the answered Phase 0 question, **no migration shim was written** —
+  a returning learner's progress resets. The storage *shape* also changed
+  as part of this, from level-nested (`levels[level].categories[cat]`) to
+  a flat `categories[cat]` map (plus a separate flat `levelAssessments[level]`
+  map for the still-per-level level-final-assessment feature, which Phase 3
+  left otherwise untouched — see AI_MEMORY.md's Phase 3 session log for the
+  full before/after shape and the reasoning for keeping level-finals as-is).
 
 ### Data model / migration strategy
 
@@ -207,13 +231,25 @@ practice rather than a strict gate.
 
 ### Implementation phases (priority order — confirm with Joshua before starting any of these)
 
-1. `data.js` — add `UNITS`, tag each `CATEGORIES` entry with `unit`, add
+1. ~~`data.js` — add `UNITS`, tag each `CATEGORIES` entry with `unit`, add
    Unit 0 intro content, promote/rename `sequence_demo` into a real Basic
-   Phrases skeleton.
-2. Name-fingerspelling interactive drill — self-contained, no retraining
-   needed, good first coding task.
-3. `js/engine/progress.js` — flatten the unlock chain, bump the storage
-   key.
+   Phrases skeleton.~~ **✅ Done 2026-08-18** — see `PIVOT_CHECKLIST.md`
+   Phase 1 and AI_MEMORY.md's matching session log entry.
+2. ~~Name-fingerspelling interactive drill — self-contained, no retraining
+   needed, good first coding task.~~ **✅ Done 2026-08-18**, as an
+   extension of `js/lesson.js` (no new page/route) — see
+   `PIVOT_CHECKLIST.md` Phase 2 and AI_MEMORY.md's matching session log
+   entry for the full function-by-function breakdown. Not yet reachable
+   from the trail UI (that's Phase 4); reachable today via
+   `pages/lesson.html?level=basic&category=fingerspell_name`. Verified
+   by tracing the call graph, not by running it in a browser — flagging
+   that caveat here too, not just in the session log.
+3. ~~`js/engine/progress.js` — flatten the unlock chain, bump the storage
+   key.~~ **✅ Done 2026-08-18** — see `PIVOT_CHECKLIST.md` Phase 3 and
+   AI_MEMORY.md's matching session log entry. Verified with a mock-data
+   test harness (unlock-chain ordering, storage shape, Unit 0/7 exclusion,
+   cross-level gating) — not run against the real app in a browser, same
+   caveat as Phases 1–2.
 4. `js/learn.js` — trail-view UI replacing the level tabs / card grid /
    word picker.
 5. `js/auth.js` + `index.html` — remove the proficiency-level picker from
@@ -228,8 +264,8 @@ practice rather than a strict gate.
 
 - ~~Keep `localStorage` progress as-is and accept a reset when the storage
   key bumps, or write a small migration shim?~~ **Answered: accept a
-  reset** (simplest, pre-launch). Not yet applied — this is Phase 3's
-  storage-key-bump work, not Phase 1.
+  reset** (simplest, pre-launch). **Applied 2026-08-18 in Phase 3** —
+  storage key is now `lw_progress_v3`, no migration shim.
 - ~~Unit 0's "what is ASL" content — static text (fastest to ship), or
   reuse the YouTube reference-video panel already prototyped in
   `capture.html`?~~ **Answered: static text.** Implemented in Phase 1 as
@@ -274,9 +310,12 @@ tracked.
    unlocks once the previous one is passed; a level's final assessment
    unlocks once every category in it is passed; the next level unlocks
    once the current level's final assessment is passed). Storage is
-   `localStorage` today (`lw_progress_v2`) but every read/write goes
-   through this module, so swapping in Firestore later only touches
-   this one file.
+   `localStorage` (`lw_progress_v2` at the time of this revision — see
+   Rev 4 → Phase 3, which superseded this with a flat `lw_progress_v3`
+   shape and a cross-level unlock chain; the per-level unlock rule
+   described in this paragraph is Rev 3 history, not current behavior)
+   but every read/write goes through this module, so swapping in
+   Firestore later only touches this one file.
 
 4. **`js/learn.js` and `pages/dashboard.html` now read real progress**
    instead of hardcoded numbers/MOCK_PROGRESS — lock icons, "✔ Passed"
@@ -603,3 +642,4 @@ More lessons available? → Yes → back to learn.html
 *Last updated: Capstone 2025, Rev. 2 — Admin panel removed, auth/landing pages
 merged, dashboard now includes account details, auth running in bypass mode
 pending Firebase integration.*
+</file>

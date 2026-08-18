@@ -30,21 +30,22 @@
 - [x] Reorder Unit 5 sub-categories per the answer to the Phase 0 open question above — done 2026-08-18: `family`/`places`/`time`/`temperature` stay `comingSoon: false`; `food`/`clothes`/`health`/`feelings`/`amounts`/`colors`/`money`/`animals` flipped to `comingSoon: true`. "Reorder" was implemented as a comingSoon split rather than changing the `order` integers — the trained four already have lower `order` values (1–4) than the untrained eight (5–13 minus `requests`), so they already render first; no `order` renumbering was needed. Flag this interpretation for Joshua if a literal array-position reorder was intended instead.
 
 ## Phase 2 — Fingerspell Your Name (interactive drill)
-- [ ] New lesson type/page (or extension of `lesson.js`) that reads the learner's name and builds a dynamic `sequence` array from its letters
-- [ ] Reuse the existing phrase-chaining pipeline (`sequence`-based `finalizeMotionWindow`/detection flow) — confirm it accepts a runtime-built sequence, not just static `data.js` ones
-- [ ] Wire into the Unit 2 slot in the trail (depends on Phase 4's UI, but the drill logic itself doesn't have to wait)
+- [x] New lesson type/page (or extension of `lesson.js`) that reads the learner's name and builds a dynamic `sequence` array from its letters — done 2026-08-18, as an extension of `lesson.js` (not a new page/route). See Session Log for the full list of touched functions.
+- [x] Reuse the existing phrase-chaining pipeline (`sequence`-based `finalizeMotionWindow`/detection flow) — confirm it accepts a runtime-built sequence, not just static `data.js` ones — done 2026-08-18: confirmed TRUE by reading every consumer of `phraseSteps`/`phraseStepIdx` (`handleTryItClick`, `handlePracticeFrame`, `handleAssessmentFrame`, `startPhraseStep`, `updatePhrasePromptText`, `needsExplicitStart`, `getActiveAllowedLabels`) — none of them assume the array came from `data.js`, they only ever read whatever plain array `getPhraseSequence()` last returned. One injection point (`getPhraseSequence()`) was extended to return a runtime-built letter array for the name drill; zero other functions needed to change.
+- [ ] Wire into the Unit 2 slot in the trail (depends on Phase 4's UI, but the drill logic itself doesn't have to wait) — **intentionally still unchecked.** The drill itself is fully functional today via a direct URL: `pages/lesson.html?level=basic&category=fingerspell_name`. Did not add a temporary entry point in `learn.js` or `dashboard.html` — Phase 4 owns the trail UI and this checklist's own header says not to touch `learn.js` without checking phase status first; `learn.js` is still Phase 4, not started. Flag for Joshua: say the word and a temporary dashboard link is a 5-minute add if you want it testable without typing the URL by hand before Phase 4 lands.
 
 ## Phase 3 — `js/engine/progress.js` unlock-chain flattening
-- [ ] Replace level→category nesting with a flat walk over `UNITS`
-- [ ] Bump storage key `lw_progress_v2` → `lw_progress_v3`
-- [ ] Apply the Phase 0 decision on migration shim vs. reset
-- [ ] Confirm Unit 0 and the Phase 7 Phrasebook are excluded from the gating logic (no 80% threshold, nothing to unlock behind them)
+- [x] Replace level→category nesting with a flat walk over `UNITS` — done 2026-08-18. New `getOrderedLiveCategories()` walks `getUnits()` (filtered to `kind === 'category-group'`) → `getCategoriesForUnit(order)`, building one cross-level chain. `isCategoryUnlocked(level, categoryId)` now walks that chain instead of `liveCategoriesFor(level)`; `level` param kept for call-site compatibility only (see AI_MEMORY.md Session Log for the full behavioral diff — e.g. Unit 4's `requests` now gates on Unit 3 `numbers` passing, not on being "first in the medium level").
+- [x] Bump storage key `lw_progress_v2` → `lw_progress_v3` — done 2026-08-18.
+- [x] Apply the Phase 0 decision on migration shim vs. reset — done 2026-08-18: **no migration shim written**, per Joshua's answer. Old `lw_progress_v2` data is simply left under its old key and never read by the new code — a returning learner starts Phase 3's tracking from zero. Storage shape itself also changed (flat `{ categories, levelAssessments }` instead of nested `{ levels: { [level]: { categories, levelAssessment } } }`), which is *why* a shim wasn't cheap enough to be worth writing pre-launch.
+- [x] Confirm Unit 0 and the Phase 7 Phrasebook are excluded from the gating logic (no 80% threshold, nothing to unlock behind them) — confirmed 2026-08-18: `getOrderedLiveCategories()` only walks units with `kind === 'category-group'` — Unit 0 (`kind:'info'`) and Unit 7/Phrasebook (`kind:'reference'`) are structurally excluded, not special-cased. Unit 2 (Fingerspell Your Name, `kind:'interactive'`) is excluded too, but incidentally — it has zero `CATEGORIES` entries to begin with (see AI_MEMORY.md Phase 2 log), so the kind filter is redundant for it specifically. Verified with a standalone mock-data test harness (see AI_MEMORY.md Session Log) — chain correctly excluded a phrasebook-style unit-7 category and correctly cross-level-gated a unit-4 category behind a unit-3 one.
 
 ## Phase 4 — `js/learn.js` trail-view UI
 - [ ] Replace the three-tab (`basic`/`medium`/`intermediate`) switcher with a single scrollable trail over `UNITS`
 - [ ] Each category renders as a node: locked / current / done
 - [ ] Retire `renderBasicCategory()`/`renderCategories()`/`renderWordPicker()`'s three-way split in favor of one generic renderer walking `UNITS` (or confirm they can be reused as-is per-unit — check before rewriting from scratch)
 - [ ] `pages/dashboard.html` progress display updated to match the flat model (no more three level cards)
+- Note (2026-08-18, from Phase 3): `js/engine/progress.js` now exports `getOrderedLiveCategories()` — the same flat cross-unit chain the unlock logic uses — specifically so this phase doesn't have to re-derive the trail order from `UNITS`/`CATEGORIES` by hand. Not consumed by anything yet.
 
 ## Phase 5 — Remove signup-time level picker
 - [ ] `index.html` — remove "choose your proficiency level" step from the Sign Up form
@@ -55,6 +56,7 @@
 - [ ] Add non-blocking mini-check after each sign (or small cluster) inside `lesson.html`, reusing the existing Practice Check UI, instead of only checking at category end
 - [ ] Add sign-ordering/fingerspelling-challenge question type for Unit 6 (phrase-chaining via camera instead of only 4-option MC)
 - [ ] Confirm Camera Check + the new ordering challenge both stay optional/bonus, matching Rev 3's existing "practice, not a gate" reasoning
+- Note (2026-08-18, from Phase 3): `js/engine/progress.js`'s `recordLevelAssessment`/`getLevelAssessment`/`isLevelFinalUnlocked`/`LEVEL_ORDER` were all left **unchanged** in Phase 3 — level-final assessments are still a per-level concept today. Whether "level final" still makes sense once the trail is one continuous path is a call for this phase, not Phase 3 — flagging so it isn't assumed already decided.
 
 ## Phase 7 — Capture + retrain (content/ML work, not app code)
 - [ ] Capture + retrain Essential Words placeholders: `PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`

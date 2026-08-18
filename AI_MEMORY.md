@@ -21,8 +21,10 @@
 
 ## 0. 🚧 ACTIVE PIVOT — Curriculum restructure (read this before touching `data.js`, `learn.js`, `progress.js`, or `auth.js`)
 
-**Status: Phase 1 (`data.js` restructure) complete (2026-08-18); Phases
-2–7 not started.** The capstone adviser reviewed the project and directed
+**Status: Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your
+Name drill), and Phase 3 (`progress.js` unlock-chain flattening)
+complete (all 2026-08-18); Phases 4–7 not started.** The
+capstone adviser reviewed the project and directed
 a restructure of how content is organized. The full plan lives in
 `SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
 any change to lesson ordering, progress/unlock logic, or the signup flow.
@@ -508,11 +510,259 @@ call):**
    for one; worth a one-line assertion in Phase 4 when `learn.js`
    starts actually consuming `UNITS`.
 
-**Still open (per checklist — next is Phase 2):**
+**Still open (per checklist at the time — see the 2026-08-18 Phase 2
+entry below for what's since been done):**
 1. Phase 2 — Fingerspell Your Name interactive drill.
 2. Phase 3 — `progress.js` unlock-chain flattening, storage key bump to
    `lw_progress_v3` (Joshua already answered: accept a reset, no
    migration shim needed).
 3. Phase 4 — `learn.js` trail-view UI (this is also where `UNIT0_CONTENT`
    actually gets rendered for the first time).
+
+### 2026-08-18 — Pivot Phase 2: Fingerspell Your Name (interactive drill)
+**Requested:** do Phase 2 per `PIVOT_CHECKLIST.md`.
+
+**Changes made (all in `js/lesson.js`, nothing else touched — Phase 2's
+own checklist wording explicitly allows "extension of `lesson.js`" as
+the implementation shape, so that's what this is; no new page/route):**
+- New `isNameDrill` flag (`category === 'fingerspell_name'`), set once
+  at module load alongside the existing `level`/`category` consts.
+  `'fingerspell_name'` is deliberately **not** a `CATEGORIES`/`SIGNS`
+  entry in `data.js` — this drill's content is the learner's own name,
+  not authored curriculum, per Rev 4's "New content needed" #2.
+- New `getLearnerNameLetters()` — reads `window.LWAuth.getCurrentUser()
+  .name`, uppercases, strips everything outside `A`–`Z` (spaces,
+  punctuation, accents, digits all drop out — fingerspelling has no
+  handshape for a space), caps at `MAX_NAME_DRILL_LETTERS = 24`. A
+  multi-word name collapses into one continuous letter sequence (e.g.
+  "Mary Jane" → M-A-R-Y-J-A-N-E) — there's no "pause here" marker in
+  the phrase-chaining pipeline, and adding one was out of scope for
+  this phase. Flagging in case a word-boundary pause is wanted later.
+- `computeSignOrder()` — returns the single synthetic id `['MY_NAME']`
+  for the name drill, regardless of how many letters are in the name.
+  The letter-by-letter walk happens *inside* that one "sign" via the
+  phrase-chaining mechanism, the same way `sequence_demo`'s
+  `CAR_SPELL` is one sign that internally chains C→A→R. This keeps
+  every `signIdx`/`totalSigns`/Prev-Next assumption elsewhere in the
+  file completely unchanged — the whole rest of the page still thinks
+  it's showing "sign 1 of 1."
+- `getPhraseSequence()` — the actual checklist-item-2 confirmation.
+  Added one branch: if `isNameDrill && signId === 'MY_NAME'`, return
+  `getLearnerNameLetters()` instead of reading `data.js`. Read every
+  other consumer of the `phraseSteps`/`phraseStepIdx` state this
+  seeds — `handleTryItClick`, `handlePracticeFrame`,
+  `handleAssessmentFrame`, `startPhraseStep`, `updatePhrasePromptText`,
+  `needsExplicitStart`, `getActiveAllowedLabels` — and confirmed none
+  of them assume the array came from a `data.js` `SIGNS.sequence`
+  field; they only ever read whatever plain JS array was last
+  assigned. **Answer to the checklist's own question: yes, the
+  pipeline accepts a runtime-built sequence, verified by tracing every
+  call site** — this one function is the only place that needed a
+  code change to prove it.
+- `boot()` — added a friendly bail (reusing the existing `setStatus`
+  pattern the "category not trained yet" branch already uses) for the
+  edge case where a learner's profile name has zero `A`–`Z` characters
+  (blank name, or a name typed in a script fingerspelling can't
+  represent) — tells them to update their name instead of silently
+  showing a broken/inert camera panel.
+- `updateLessonMeta()` — several small `isNameDrill` branches:
+  custom counter ("N letters" instead of "Sign 1 of 1"), custom
+  title/letter badge ("Fingerspell: J O S H" / 🖊️ instead of the
+  generic single-signId title logic, which has no `data.js` entry to
+  read a friendly name from for `'MY_NAME'`), subtitle pulled from
+  `UNITS` instead of `CATEGORIES` (`'fingerspell_name'` only exists in
+  the former), back-link sent to `dashboard.html` instead of
+  `learn.html?category=fingerspell_name` (that link would 404 into
+  nothing meaningful until Phase 4's trail view exists), a custom
+  description in the "no `signData`" branch instead of the generic
+  "lesson content hasn't been written yet" message, and — the one
+  decision worth flagging on its own — **the graded "🎥 Start
+  Assessment" button is hidden entirely for this drill**, not wired to
+  `startAssessment()`. Reason: `handleAssessmentFrame()`'s phrase
+  branch is all-or-nothing — one wrong letter fails the *entire*
+  attempt immediately (see that function, the `phraseSteps` block) —
+  which is a bad fit for an 5–8 letter name drill, and Rev 4's
+  progress-model section doesn't call for an 80%-style gate on Unit 2
+  anyway. The "▶ Try it" practice button (already wired to the
+  existing `handleTryItClick()`/practice-mode path, zero changes
+  needed there) is forgiving instead — a missed letter retries just
+  that step, which is what this drill is actually for.
+- `setupNavButtons()` — Next button on the name drill reads "Back to
+  Dashboard →" and routes to `dashboard.html` instead of the normal
+  "Finish → Category Assessment" flow into `quiz.html`, since
+  `quiz.html`'s `buildScope()` would find no `CATEGORIES`/`SIGNS`
+  content for `'fingerspell_name'` and just show its empty-state
+  message — not broken, but not the right destination for a drill with
+  no graded assessment by design.
+- Ran `node --check` on the resulting file — no syntax errors. **Not
+  exercised in a real browser** (no dev server / browser tool available
+  in this session, same caveat as Phase 1's `data.js` session) —
+  recommend Joshua actually try the drill end-to-end once:
+  `pages/lesson.html?level=basic&category=fingerspell_name`, logged in
+  as a user with a name on the account. Everything above was verified
+  by reading the actual call graph, not by running it.
+
+**Bugs/things noticed, not fixed (out of scope for Phase 2, flagging
+for a separate small session):**
+1. `js/lesson.js`'s own Rev 3 header comment says the "Start
+   Assessment" button was renamed to "🎥 Practice Check (optional)" —
+   it wasn't. The literal code still sets
+   `startBtnEl.textContent = '🎥 Start Assessment'` on every ordinary
+   lesson page (alphabet, numbers, words, phrases). This predates this
+   session and affects every lesson, not just the new name drill —
+   didn't fix it here to keep this session's diff scoped to Phase 2,
+   but it's a real, visible one-line mismatch worth a quick fix.
+2. Confirmed (not new, but worth restating since this session read the
+   whole file closely): `js/lesson.js`'s assessment mode treats a
+   phrase (`phraseSteps`) as all-or-nothing — a single wrong step fails
+   the whole attempt with no partial credit and no per-step retry. This
+   is by design for `sequence_demo`'s existing two entries and works
+   fine for a 2–3 word phrase, but would get punishing fast for
+   anything longer (worth keeping in mind when Phase 7 curates real
+   Unit 6 phrases — keep them short, or this behavior may need a second
+   look then).
+3. `MAX_NAME_DRILL_LETTERS = 24` and "strip everything outside A–Z" are
+   both my judgment calls, not adviser-specified — flagging both in
+   case Joshua wants different limits or wants non-Latin names handled
+   some other way (there's no ASL fingerspelling alphabet for
+   non-Latin scripts, so *some* fallback behavior is unavoidable, but
+   the current one — silently drop unsupported characters — is a
+   choice, not the only option).
+
+**Still open (per checklist — next is Phase 3):**
+1. Phase 3 — `progress.js` unlock-chain flattening, storage key bump to
+   `lw_progress_v3` (Joshua already answered: accept a reset, no
+   migration shim needed).
+2. Phase 4 — `learn.js` trail-view UI (this is also where
+   `UNIT0_CONTENT` actually gets rendered for the first time, and where
+   the name drill gets a real nav entry point instead of a hand-typed
+   URL — see `PIVOT_CHECKLIST.md` Phase 2's last item).
+3. Phases 5–7 unchanged from before this session.
 4. Phases 5–7 unchanged from before this session.
+
+### 2026-08-18 — Pivot Phase 3: `progress.js` unlock-chain flattening
+**Requested:** do Phase 3 per `PIVOT_CHECKLIST.md` — flatten the
+level→category unlock nesting into one walk over `UNITS`, bump the
+storage key, apply the already-answered reset-not-shim decision, and
+confirm Unit 0 / the Phase 7 Phrasebook stay excluded from gating.
+
+**Findings (read before changing anything):**
+- Confirmed via grep across `js/lesson.js`, `js/quiz.js`,
+  `js/dashboard.js`, `js/learn.js` that every current `LWProgress` call
+  site uses the *same* function names/signatures the pre-Phase-3 file
+  exported (`recordSignPracticed(level, category, signId)`,
+  `recordCategoryAssessment(level, category, result)`,
+  `recordLevelAssessment(level, result)`, `getCategoryProgress(level,
+  category)`, `getLevelStats(level)`, `liveCategoriesFor(level)`,
+  `isCategoryUnlocked(level, categoryId)`, `isLevelFinalUnlocked(level)`,
+  `LEVEL_ORDER`, `PASS_THRESHOLD`, `STORE_KEY`). None of those four
+  files are in scope for this phase (`learn.js` is Phase 4, `quiz.js` is
+  Phase 6), so the constraint for this session was: change the
+  internals freely, but don't change any public name/signature they
+  depend on.
+- Confirmed via grep across `js/data.js`'s `CATEGORIES` array (279
+  entries) that category `id`s are unique **across the whole app**, not
+  just within a level — nothing collides between e.g. `medium` and
+  `intermediate`. This is what made a flat `categories: { [categoryId]:
+  ... }` storage map safe — the old `level` layer in storage was never
+  actually load-bearing, only the old *unlock rule* needed it.
+- Re-read Rev 4's "Progress / unlock model changes" section closely:
+  it asks to flatten the **unlock chain**, not to remove the level-final
+  assessment feature (`recordLevelAssessment`/`isLevelFinalUnlocked`).
+  That's a separate, still-per-level concept Rev 4 doesn't ask this
+  phase to touch — left it working exactly as before, just moved its
+  storage into its own small flat `levelAssessments` map instead of
+  being buried inside the old `levels` tree.
+
+**Changes made (all in `js/engine/progress.js`, nothing else touched —
+per the checklist header's rule and the point above about not needing
+to touch `learn.js`/`quiz.js`/`dashboard.js`):**
+- `STORE_KEY` bumped `'lw_progress_v2'` → `'lw_progress_v3'`.
+- New storage shape: `{ uid, categories: { [categoryId]: { signs,
+  assessment } }, levelAssessments: { [level]: {...} } }`, replacing the
+  old `{ uid, levels: { [level]: { categories: {...}, levelAssessment }
+  } }`. **No migration shim** — per Joshua's already-answered Phase 0
+  question, old `lw_progress_v2` data is simply left under its old key
+  and never read; a returning learner's tracked progress resets under
+  Phase 3. `hydrateStore()`'s Firestore-fetch fallback default was
+  updated to match the new shape.
+- New `getOrderedLiveCategories()` — the actual "flat walk over UNITS":
+  `window.LWData.getUnits()` → filter to `kind === 'category-group'` →
+  `getCategoriesForUnit(order)` for each, filtering out `comingSoon`
+  and content-less categories the same way the old `liveCategoriesFor()`
+  did. This is what structurally excludes Unit 0 (`kind:'info'`) and
+  Unit 7/Phrasebook (`kind:'reference'`) from gating — not a special
+  case, just a `kind` filter. Exported (unused by anything yet) so
+  Phase 4's `learn.js` trail view doesn't have to re-derive the same
+  ordering by hand.
+- `isCategoryUnlocked(level, categoryId)` now walks
+  `getOrderedLiveCategories()` instead of the old
+  `liveCategoriesFor(level)` — this is the actual behavior change: a
+  category can now be gated behind a category in a *different* level.
+  Concretely verified (see below): Unit 4's `requests` (level:`medium`)
+  now stays locked until Unit 3's `numbers` (level:`basic`) is passed,
+  where before it would've been auto-unlocked for being first in
+  `medium`. `level` param kept on the signature only for call-site
+  compatibility (`js/dashboard.js`'s `renderContinueButton()` calls it
+  as `isCategoryUnlocked(level, cat.id)`) — it's not used to scope the
+  chain anymore.
+- `recordSignPracticed`, `recordCategoryAssessment`, `getCategoryProgress`
+  now key off `categoryId` alone (flat `store.categories[...]`); `level`
+  params kept on every signature, accepted but unused, for the same
+  call-site-compatibility reason.
+- `recordLevelAssessment`/`getLevelAssessment` now read/write the new
+  flat `store.levelAssessments[level]` map instead of the old
+  `store.levels[level].levelAssessment` — behavior otherwise identical.
+- `getAllLearnedSigns()` now walks the flat `categories` map and looks
+  up each category's `level` from `window.LWData.CATEGORIES` so the
+  returned `{level, category, signId}` shape is unchanged for callers
+  (`js/dashboard.js`'s `renderRecap()` only reads `signId` today, but
+  the full shape was kept anyway rather than narrowing the contract).
+- `liveCategoriesFor(level)`, `isLevelUnlocked(level)`,
+  `isLevelFinalUnlocked(level)`, `getLevelStats(level)`, `LEVEL_ORDER`,
+  `PASS_THRESHOLD` — all **unchanged**, still per-level, since nothing
+  in this phase asked to touch them and `dashboard.js`/`quiz.js` still
+  depend on their current per-level behavior.
+- Verified with a standalone mock-data Node test harness (small mock of
+  `window.LWData`'s `UNITS`/`CATEGORIES`/`getCategorySigns` shaped like
+  the real ones, plus a fake `localStorage`) — **not committed to the
+  repo**, throwaway for this session only. It checked: the ordered
+  chain correctly excludes a mock unit-0 and unit-7 (phrasebook-style)
+  category and a `comingSoon` one; `isCategoryUnlocked` correctly
+  cross-level-gates a unit-4 category behind a unit-3 one passing;
+  `recordSignPracticed`/`getCategoryProgress`/`getLevelStats`/
+  `getAllLearnedSigns`/`recordLevelAssessment` all round-trip correctly
+  against the new flat shape; the raw persisted JSON has no leftover
+  `levels` key. Also ran plain `node --check` — no syntax errors. **Not
+  exercised against the real app in a browser** (no dev server/browser
+  tool available in this session, same caveat as Phases 1–2) —
+  recommend Joshua click through `learn.html` → pass a category
+  assessment → confirm the next one unlocks, once this is pasted in.
+
+**Bugs/risks noticed, not fixed (out of scope for Phase 3, flagging for
+later):**
+1. `hydrateStore()` destructures `window.LWAuth` (`const { db, doc,
+   getDoc, getCurrentUser } = window.LWAuth;`) with no guard for
+   `LWAuth` being undefined — if this script ever loads before
+   `auth.js` on some page, it throws uncaught (outside the function's
+   own try/catch, which only wraps the Firestore fetch below that
+   line). This is **pre-existing**, not introduced by Phase 3 — the
+   Rev 3 version had the identical pattern — only noticed now because
+   this session's test harness didn't mock `LWAuth` at first and hit
+   it directly. Every real page loads `auth.js` before
+   `js/engine/progress.js` per this file's own `CONNECTS` header, so
+   it's not believed to be a live bug today — just a latent one worth a
+   defensive guard sometime.
+2. Whether "level-final assessment" should still exist as a concept
+   once the trail is one continuous path (rather than three levels) is
+   an open design question this phase deliberately did NOT resolve —
+   Rev 4's plan doesn't ask Phase 3 to decide it, and `quiz.js` (Phase
+   6) is what actually surfaces level-finals to the learner. Flagging
+   so Phase 6 doesn't assume this was already settled one way or the
+   other.
+
+**Still open (per checklist — next is Phase 4):**
+1. Phase 4 — `learn.js` trail-view UI (can now use the new
+   `getOrderedLiveCategories()` export directly instead of re-deriving
+   the trail order from `UNITS`/`CATEGORIES` by hand).
+2. Phases 5–7 unchanged from before this session.
