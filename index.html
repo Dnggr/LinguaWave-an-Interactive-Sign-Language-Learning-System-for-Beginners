@@ -21,10 +21,21 @@
 
     CONNECTS : → pages/dashboard.html  (after login/register)
 
-    AUTH MODE: js/auth.js is currently in BYPASS mode — the Log In
-               and Sign Up buttons accept whatever is typed (or
-               nothing) and log you straight in. See js/auth.js for
-               the 4 functions to swap with real Firebase Auth calls.
+    AUTH MODE: js/auth.js's login()/register()/logout() already call
+               real Firebase Auth (createUserWithEmailAndPassword /
+               signInWithEmailAndPassword / signOut) plus a Firestore
+               profile write/read — NOT bypass mode. (CORRECTED
+               2026-08-19: this comment previously claimed bypass
+               mode, which was stale — the commented-out bypass
+               versions of those functions are still in js/auth.js as
+               dead reference code, but the live functions are real
+               Firebase calls today.)
+
+    REV 4 PHASE 5 (2026-08-19): removed the "Starting level" picker
+               from the Sign Up form below — see
+               SYSTEM_ARCHITECTURE.md Rev 4 → "Suggested removals" #1.
+               Every learner now starts at Unit 0 on the single trail;
+               there's no proficiency tier to choose at signup anymore.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -96,15 +107,9 @@
         <label for="reg-password">Password</label>
         <input type="password" id="reg-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" />
       </div>
-      <div class="form-group mt-4">
-        <label for="reg-level">Starting level</label>
-        <select id="reg-level" class="form-input">
-          <option value="basic">Beginner — I'm just starting</option>
-          <option value="medium">Intermediate — I know some signs</option>
-          <option value="intermediate">Advanced — I know the alphabet</option>
-        </select>
-        <small class="text-muted">You can change this later from your dashboard.</small>
-      </div>
+      <!-- REV 4 PHASE 5: "Starting level" select removed here — LinguaWave
+           is one continuous path now, not three user-selectable tiers.
+           See SYSTEM_ARCHITECTURE.md Rev 4 → "Suggested removals" #1. -->
       <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
       <p class="auth-switch text-muted">
         Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
@@ -145,13 +150,15 @@
       }
     }
 
+    // REV 4 PHASE 5: no more reg-level field to read — everyone starts
+    // at the same place (Unit 0), so LWAuth.register() no longer takes
+    // a level argument. See js/auth.js's register() for the matching change.
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
       const email    = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
-      const level    = document.getElementById('reg-level').value;
       try {
-        await LWAuth.register(name, email, password, level);
+        await LWAuth.register(name, email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
         //alert(error.message)

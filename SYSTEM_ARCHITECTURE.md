@@ -1,13 +1,13 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), and Phase 4 (`learn.js`/`dashboard.js` trail-view UI) implemented 2026-08-18/2026-08-19 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
+> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), and Phase 5 (signup-time level picker removed) implemented 2026-08-18/2026-08-19 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
-**Status: Phases 1–4 implemented (2026-08-18/2026-08-19); Phases 5–7 still
+**Status: Phases 1–5 implemented (2026-08-18/2026-08-19); Phases 6–7 still
 planning only.** This section is the deep-planning output from the
 2026-08-17 adviser consultation — it exists so any AI assistant (or
 Joshua, later) picks up the *agreed direction* instead of re-deriving it
@@ -26,7 +26,12 @@ that flat model as a single scrollable trail (locked/current/done nodes),
 and `pages/dashboard.html`/`js/dashboard.js` summarize it the same way
 (one aggregate card + one row per unit, replacing the old three
 basic/medium/intermediate cards) — see §Implementation phases → Phase 4.
-Quiz changes and capture/retrain (Phases 5–7) are still unbuilt.
+**Phase 5 (2026-08-19)** removed the signup-time proficiency picker —
+`index.html`'s Sign Up form no longer has a "Starting level" `<select>`,
+and `js/auth.js`'s `register()` no longer takes a `level` argument
+(every new account gets a fixed `level: 'basic'`) — see §Implementation
+phases → Phase 5. Quiz changes and capture/retrain (Phases 6–7) are
+still unbuilt.
 
 ### Why
 
@@ -197,7 +202,8 @@ practice rather than a strict gate.
   and AI_MEMORY.md §0 for why that's flagged as a reversal of a Rev 3
   decision, worth a second look).
 - `index.html` / `js/auth.js`'s `register()` "choose your proficiency
-  level" step goes away — see "Suggested removals" below.
+  level" step goes away — see "Suggested removals" below. **✅ Done
+  2026-08-19 (Phase 5).**
 
 ### Suggested additions (mine, not adviser-requested — worth weighing)
 
@@ -229,7 +235,10 @@ practice rather than a strict gate.
 1. **The signup-time proficiency-level picker.** Directly contradicts the
    single-path model — a total beginner and a returning learner both
    start at Unit 0 now. Use the placement/skip test above instead, if
-   some learners genuinely need to skip ahead.
+   some learners genuinely need to skip ahead. **✅ Implemented
+   2026-08-19 (Phase 5)** — `index.html`'s Sign Up form no longer has
+   the picker; `js/auth.js`'s `register()` no longer takes a `level`
+   argument. See §Implementation phases → Phase 5.
 2. **All 18 `intermediate` phrase categories** (`greetings_intro`
    through `everyday_dialogues`, ~100 sentence entries — corrected
    2026-08-19: earlier drafts of this doc said "the 17
@@ -283,8 +292,15 @@ practice rather than a strict gate.
    files against a minimal DOM shim (not a hand-written mock of their
    shape) — not run against the real app in a browser, same caveat as
    Phases 1–3.
-5. `js/auth.js` + `index.html` — remove the proficiency-level picker from
-   signup.
+5. ~~`js/auth.js` + `index.html` — remove the proficiency-level picker
+   from signup.~~ **✅ Done 2026-08-19** — see `PIVOT_CHECKLIST.md`
+   Phase 5 and AI_MEMORY.md's matching session log entry. Confirmed via
+   grep (see that log entry) that no unlock/trail/routing code ever
+   read the user's own `level` — only `pages/dashboard.html`'s cosmetic
+   "Current Level" field does, which now always shows "Basic" and is
+   flagged as an unresolved follow-up (repurpose or remove), not fixed
+   as part of this phase. Not exercised against live Firebase in a
+   browser — same caveat as every phase before it.
 6. `js/quiz.js` — tighten the teach→quiz loop, add the sign-ordering
    question type for Unit 6. Also where the level-final-assessment
    question (see §Progress / unlock model changes) needs an actual
@@ -461,8 +477,14 @@ linguawave/
 - **Auth behavior:** `LWAuth.redirectIfLoggedIn('pages/dashboard.html')` runs in
   `<head>` before the form renders — a returning logged-in user never sees this
   page at all.
-- **Bypass mode:** submitting either form logs you in immediately; no field is
-  validated against a backend yet. See §6.
+- **Not bypass mode** (corrected 2026-08-19 — this line was stale, same
+  issue as the one fixed in `index.html`'s own header comment during
+  Phase 5, see AI_MEMORY.md's Phase 5 session log): both forms call real
+  Firebase Auth + a Firestore profile write/read via `js/auth.js`'s
+  `login()`/`register()`. See §6.
+- **REV 4 PHASE 5 (2026-08-19):** the register form's "Starting level"
+  picker is gone — `register()` no longer takes a `level` argument, every
+  new account gets a fixed `level: 'basic'`.
 
 ---
 
@@ -470,9 +492,12 @@ linguawave/
 - **Shows, top to bottom:**
   1. **Welcome header** + "Continue Learning" button
   2. **Your Account** — name, email, current level, member-since date
-     (the "user details" section — `current level` is a vestige of the
-     old signup-time level picker; Rev 4 Phase 5, not yet done, is what
-     removes/repurposes it)
+     (the "user details" section — `current level` is now a vestige of
+     the *removed* signup-time level picker: Rev 4 Phase 5, done
+     2026-08-19, deleted the picker but deliberately left this display
+     field alone, so it now always reads "Basic" for every account.
+     Repurposing/removing it is an open follow-up, not yet done — see
+     AI_MEMORY.md §4 and PIVOT_CHECKLIST.md Phase 5's flag)
   3. **Overall Progress** — REV 4 PHASE 4 (2026-08-19): one aggregate
      progress card (whole flat unit chain combined) + one compact row
      per `UNITS` entry, replacing the old three basic/medium/intermediate

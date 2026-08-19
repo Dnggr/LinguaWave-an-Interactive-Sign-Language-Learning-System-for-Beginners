@@ -22,9 +22,10 @@
 ## 0. 🚧 ACTIVE PIVOT — Curriculum restructure (read this before touching `data.js`, `learn.js`, `progress.js`, or `auth.js`)
 
 **Status: Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your
-Name drill), Phase 3 (`progress.js` unlock-chain flattening), and
-Phase 4 (`learn.js`/`dashboard.js` trail-view UI) complete (all
-2026-08-18); Phases 5–7 not started.** The
+Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4
+(`learn.js`/`dashboard.js` trail-view UI, 2026-08-18/19), and Phase 5
+(signup-time level picker removed, 2026-08-19) complete; Phases 6–7
+not started.** The
 capstone adviser reviewed the project and directed
 a restructure of how content is organized. The full plan lives in
 `SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
@@ -68,9 +69,13 @@ version:
   Phrasebook rather than pretend they're gradeable).
 - **Before writing code against this:** confirm with Joshua which
   implementation phase to start on — Rev 4 lists them in priority order.
-  As of Phase 4, `learn.js`/`dashboard.js` now render the trail
-  described above; `data.js`/`progress.js`/`auth.js` are otherwise as
-  Phases 1–3 left them.
+  As of Phase 4, `learn.js`/`dashboard.js` render the trail described
+  above. **As of Phase 5 (2026-08-19), `index.html`'s Sign Up form no
+  longer has a "Starting level" picker, and `js/auth.js`'s `register()`
+  no longer takes a `level` param** — every new account is written with
+  a fixed `level: 'basic'`. `data.js`/`progress.js` are otherwise as
+  Phases 1–3 left them; `auth.js` only changed in the one function
+  Phase 5 scoped (see its Session Log entry below).
 - **Flagging for review (Phase 4):** rendering the trail's
   locked/current/done nodes required reintroducing real per-category
   locking in `learn.js` — this REVERSES a deliberate Rev 3 product
@@ -230,6 +235,14 @@ assessment, or progress actually works today.
   resolve (keep as a per-level concept, redesign as a trail-wide
   review, or retire) — Phase 4 didn't preempt it, just made the gap
   more visible.
+- **(Phase 5) `pages/dashboard.html`'s "Current Level" field
+  (`data-user-level`) now always reads "Basic."** Not broken — just
+  permanently uninformative, since `js/auth.js`'s `register()` hardcodes
+  `level: 'basic'` for every new account now that there's no signup
+  picker to source a real value from. Needs a product decision (repurpose
+  the field to show the learner's current Unit, or drop it) — flagged,
+  not fixed, see the Phase 5 session log below for why this was left for
+  a follow-up rather than folded into this phase.
 - **(Phase 4) Category locking is real again, and deep links now
   enforce it.** `learn.js?category=X` / `?unit=X` bounce to the trail
   root if `X` is locked or `comingSoon` — see `renderCategoryView()`'s
@@ -1017,11 +1030,114 @@ for later):**
    nicer touch than a silent redirect, but wasn't in this phase's
    scope and didn't feel worth adding without design input.
 
-**Still open (per checklist — next is Phase 5):**
-1. Phase 5 — `auth.js`/`index.html` signup flow (remove the
-   basic/medium/intermediate level picker at signup, since it's now
-   vestigial — `pages/dashboard.html`'s `data-user-level` field still
-   displays whatever the user picked there, untouched this phase).
+**Still open (per checklist — next was Phase 5, now Phase 6):**
+1. ~~Phase 5 — `auth.js`/`index.html` signup flow~~ **✅ Done
+   2026-08-19 — see the Phase 5 session log entry immediately below.**
 2. Phase 6 — `quiz.js` (also where the Level Final Assessment open
    question from item 2 above should get resolved for real).
 3. Phase 7 unchanged from before this session.
+
+### 2026-08-19 — Pivot Phase 5: remove signup-time level picker
+**Requested:** do Phase 5 per `PIVOT_CHECKLIST.md` — remove the
+"choose your proficiency level" step from Sign Up, drop the `level`
+param from `auth.js`'s `register()` (or default everyone to the same
+starting point), and confirm no page still assumes a user-chosen
+`level` exists at first login.
+
+**Findings (read before changing anything):**
+- `js/auth.js` is **not actually in bypass mode**, despite its own
+  header comment and `index.html`'s header comment both still claiming
+  it is. `login()`/`register()`/`logout()` already call real Firebase
+  Auth (`signInWithEmailAndPassword`/`createUserWithEmailAndPassword`/
+  `signOut`) plus a Firestore profile read/write — the bypass-mode
+  versions of all three functions are present but fully commented out.
+  This predates this session (not a Phase 5 regression) and isn't the
+  same stale-doc issue AI_MEMORY.md already tracks for `README.md` —
+  it's a second, previously-undocumented instance of the same kind of
+  problem, this time in code comments rather than a whole doc.
+  Corrected the one-line claim in `index.html`'s header comment since
+  Phase 5 was already editing that file; did **not** rewrite
+  `auth.js`'s own top-of-file docblock beyond the register() function
+  it was already touching, to keep this session's diff scoped.
+- Grepped every `.level` hit across `js/`, `pages/`, `index.html` to
+  answer the checklist's "confirm no page assumes a user-chosen level"
+  item directly (see PIVOT_CHECKLIST.md Phase 5 for the full result):
+  the **only** place a *user's own* `level` is ever read is
+  `js/main.js`'s `initUserDetails()`, which fills
+  `pages/dashboard.html`'s `data-user-level` ("Current Level") display
+  field — cosmetic only. Every other `.level` hit is `data.js`
+  `CATEGORIES`/`SIGNS`' own internal grouping field (same field name,
+  unrelated concept, explicitly meant to stay per Rev 4's data model
+  note) — confirmed none of the trail/unlock code
+  (`progress.js`/`learn.js`/`dashboard.js`) reads the user's profile
+  `level` for gating or routing. This means Phase 5 was safe to do as a
+  pure signup-form change with zero risk to the trail/unlock logic Phases
+  3–4 built.
+- `register()` had exactly one call site (`index.html`'s
+  `handleRegister()`) — confirmed via grep, so dropping the param
+  cleanly instead of just defaulting it was low-risk.
+
+**Changes made:**
+- `index.html` — removed the `#reg-level` `<select>` (Beginner/
+  Intermediate/Advanced) and its `form-group` from the register form;
+  `handleRegister()` no longer reads it or passes a 4th arg to
+  `LWAuth.register()`. Corrected the header comment's stale "BYPASS
+  MODE" claim (see Findings above) and added a REV 4 PHASE 5 note
+  pointing at `SYSTEM_ARCHITECTURE.md`.
+- `js/auth.js` — `register(name, email, password, level)` →
+  `register(name, email, password)`; the written user doc now hardcodes
+  `level: 'basic'` as a fixed constant instead of `level: level ||
+  'basic'`. Updated the commented-out bypass-mode reference version of
+  `register()` to match (same param drop), so a future bypass-mode
+  restore via that comment doesn't quietly reintroduce the picker.
+  `login()`, `logout()`, `onAuthStateChanged`, and every other export
+  are untouched.
+- Ran `node --check` on `js/auth.js` — no syntax errors. Verified
+  `index.html`'s edited `<form>` still balances and confirmed via grep
+  that no `reg-level`/`getElementById('reg-level')` reference survived
+  the edit anywhere in the file. **Not exercised in a real browser or
+  against live Firebase** (no dev server / browser tool, and Firebase's
+  own domains aren't reachable from this session's sandboxed network
+  either) — same caveat as every phase before this one. Recommend
+  Joshua actually submit the Sign Up form once end-to-end to confirm a
+  fresh account lands on the dashboard with `data-user-level` reading
+  "Basic" and no console errors.
+
+**Bugs/risks noticed, not fixed (out of scope for Phase 5, flagging
+for later):**
+1. **`pages/dashboard.html`'s "Current Level" field will now always
+   read "Basic"** for every new signup — not broken, just permanently
+   uninformative now that there's no picker feeding it a real value.
+   Deliberately left `pages/dashboard.html`/`js/main.js` untouched —
+   fixing this well (e.g. repurposing the field to show the learner's
+   current Unit) means pulling unit-progress data into
+   `initUserDetails()` or `dashboard.js`, which is a small UI feature
+   in its own right, not a signup-form edit. Needs a real decision from
+   Joshua (repurpose vs. remove) — see PIVOT_CHECKLIST.md Phase 5 for
+   the same flag.
+2. `js/main.js`'s `initLevelCards()` (toggles a `.level-card--locked`
+   class on `.level-card[data-level]` elements) is now confirmed **dead
+   code** — grepped every `pages/*.html` + `index.html` and found zero
+   `.level-card`/`data-level=` markup left anywhere; Phase 4 already
+   removed the last of it when it replaced `pages/dashboard.html`'s
+   three level cards with the aggregate/unit-row layout. Harmless
+   no-op today (`querySelectorAll` just finds nothing), not a Phase 5
+   regression, and not touched — flagging since this session's own grep
+   is what surfaced it, same as Phase 4 flagging its own bugs.
+3. `js/auth.js`'s own top-of-file docblock (separate from the
+   `index.html` one that was corrected) still describes bypass mode as
+   the current behavior — same stale-comment issue as Finding #1 above,
+   left as-is to keep this phase's diff to the `register()` function it
+   was already editing.
+
+**Still open (per checklist — next is Phase 6):**
+1. Phase 6 — `js/quiz.js`: tighten the teach→quiz loop, add the
+   sign-ordering/fingerspelling question type for Unit 6, and make the
+   real call on Level Final Assessments (keep/redesign/retire — see
+   PIVOT_CHECKLIST.md Phase 6 and SYSTEM_ARCHITECTURE.md's matching
+   note, flagged since Phase 3, made more visible by Phase 4).
+2. Phase 7 unchanged from before this session.
+3. The "Current Level" display field and `initLevelCards()` dead code
+   noted above — small, not blocking, worth a decision/cleanup
+   whenever convenient (could ride along with Phase 6 or be its own
+   tiny session).
