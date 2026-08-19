@@ -15,12 +15,16 @@
     ─────────────────────────────────────────────────────────────────
     PURPOSE  : Main hub after login. Now contains THREE things:
                  1. "Your Account" — user details (name/email/level)
-                 2. "Overall Progress" — the content/level overview
+                 2. "Overall Progress" — the trail/unit overview
+                    (REV 4 PHASE 4: one aggregate card + one row per
+                    window.LWData.getUnits() entry — replaced the old
+                    three basic/medium/intermediate cards, see
+                    SYSTEM_ARCHITECTURE.md Rev 4)
                  3. "Signs You've Learned" — recap of mastered signs
 
     CONNECTS : ← index.html (redirected here after login)
-               → pages/learn.html      (level cards open lesson list)
-               → pages/lesson.html     (Continue button)
+               → pages/learn.html      (unit rows open that unit's screen)
+               → pages/lesson.html     (Continue button + Unit 2's row)
                → pages/quiz.html       (retake an assessment)
                → pages/feedback.html   (survey after completing a level)
 
@@ -116,63 +120,40 @@
   </section>
 
   <!-- ── OVERALL PROGRESS (content) ────────────────────────────── -->
+  <!-- REV 4 PHASE 4: replaced the old basic/medium/intermediate
+       three-card grid (`.grid-3` of `[data-level-card]` cards, filled
+       in from window.LWProgress.getLevelStats(level)) with a flat,
+       unit-based summary — the level split no longer reflects how
+       content is organized (see SYSTEM_ARCHITECTURE.md Rev 4). Now
+       one aggregate card (the whole flat chain combined) plus one
+       compact row per window.LWData.getUnits() entry, both rendered
+       entirely by js/dashboard.js — nothing unit-specific is
+       hardcoded here, same reasoning as the recap grid below. -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8">Overall Progress</h2>
-      <div class="grid-3">
 
-        <!-- BASIC / MEDIUM / INTERMEDIATE — filled in by js/dashboard.js
-             from window.LWProgress.getLevelStats(level). Markup below is
-             just a loading-state placeholder. -->
-        <div class="card progress-card" data-level-card="basic">
-          <div class="progress-card__head">
-            <span class="badge badge--basic">Basic</span>
-            <span class="progress-card__pct" data-pct>–</span>
-          </div>
-          <p class="progress-card__label">A–Z Alphabet</p>
-          <div class="progress-bar mt-4">
-            <div class="progress-bar__fill" data-progress="0"></div>
-          </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
-          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
-          <a href="learn.html?level=basic" class="btn btn--secondary btn--full mt-4" data-cta>
-            View Lessons
-          </a>
+      <!-- Aggregate card — filled in by js/dashboard.js from
+           window.LWProgress.getOrderedLiveCategories(), the same flat
+           cross-unit chain js/learn.js's trail view walks. Markup
+           below is just a loading-state placeholder. -->
+      <div class="card progress-card mb-8">
+        <div class="progress-card__head">
+          <span class="badge badge--basic">Your ASL Path</span>
+          <span class="progress-card__pct" data-overall-pct>–</span>
         </div>
-
-        <div class="card progress-card" data-level-card="medium">
-          <div class="progress-card__head">
-            <span class="badge badge--medium">Medium</span>
-            <span class="progress-card__pct" data-pct>–</span>
-          </div>
-          <p class="progress-card__label">Basic Vocabulary</p>
-          <div class="progress-bar mt-4">
-            <div class="progress-bar__fill" data-progress="0"></div>
-          </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
-          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
-          <a href="learn.html?level=medium" class="btn btn--secondary btn--full mt-4" data-cta>
-            View Lessons
-          </a>
+        <p class="progress-card__label">All units combined</p>
+        <div class="progress-bar mt-4">
+          <div class="progress-bar__fill" data-overall-progress="0"></div>
         </div>
-
-        <div class="card progress-card" data-level-card="intermediate">
-          <div class="progress-card__head">
-            <span class="badge badge--intermediate">Intermediate</span>
-            <span class="progress-card__pct" data-pct>–</span>
-          </div>
-          <p class="progress-card__label">Full Sentences</p>
-          <div class="progress-bar mt-4">
-            <div class="progress-bar__fill" data-progress="0"></div>
-          </div>
-          <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-count>– / – signs completed</p>
-          <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-assessment-status></p>
-          <a href="learn.html?level=intermediate" class="btn btn--secondary btn--full mt-4" data-cta>
-            View Lessons
-          </a>
-        </div>
-
+        <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-overall-count>– / – signs practiced</p>
+        <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
       </div>
+
+      <!-- One row per unit — entirely data-driven from
+           window.LWData.getUnits(), rendered by js/dashboard.js. Each
+           row links into pages/learn.html at that unit. -->
+      <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>
 

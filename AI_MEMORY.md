@@ -22,8 +22,9 @@
 ## 0. 🚧 ACTIVE PIVOT — Curriculum restructure (read this before touching `data.js`, `learn.js`, `progress.js`, or `auth.js`)
 
 **Status: Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your
-Name drill), and Phase 3 (`progress.js` unlock-chain flattening)
-complete (all 2026-08-18); Phases 4–7 not started.** The
+Name drill), Phase 3 (`progress.js` unlock-chain flattening), and
+Phase 4 (`learn.js`/`dashboard.js` trail-view UI) complete (all
+2026-08-18); Phases 5–7 not started.** The
 capstone adviser reviewed the project and directed
 a restructure of how content is organized. The full plan lives in
 `SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
@@ -67,8 +68,18 @@ version:
   Phrasebook rather than pretend they're gradeable).
 - **Before writing code against this:** confirm with Joshua which
   implementation phase to start on — Rev 4 lists them in priority order.
-  Nothing in `data.js`/`learn.js`/`progress.js`/`auth.js` has changed yet;
-  this was a planning-only session.
+  As of Phase 4, `learn.js`/`dashboard.js` now render the trail
+  described above; `data.js`/`progress.js`/`auth.js` are otherwise as
+  Phases 1–3 left them.
+- **Flagging for review (Phase 4):** rendering the trail's
+  locked/current/done nodes required reintroducing real per-category
+  locking in `learn.js` — this REVERSES a deliberate Rev 3 product
+  decision ("categories should never be locked", see the BUGFIX comment
+  that used to be in the old `renderCategories()`). It's what Rev 4's
+  plan asks for, but it's a real, visible behavior change (no more
+  freely browsing ahead into medium/intermediate content) that's worth
+  a second look before this ships. See the Phase 4 session log below
+  for the full reasoning.
 
 
 ## 1. What this project is
@@ -118,10 +129,14 @@ assessment, or progress actually works today.
   `asl_static_model` (single-frame handshape) vs `asl_motion_model`
   (40-frame sequence, LSTM-ish). A sign's `detectionType` in
   `dictionary.js` decides which one lesson.js/classifier.js uses for it.
-- **`js/learn.js`** — renders the lesson picker grid. `level=basic` is
-  special-cased (flat single-character grid, not the card-per-category
-  grid that medium/intermediate use) — see §3 below, this mattered for
-  the Numbers rollout.
+- **`js/learn.js`** — renders `pages/learn.html`. As of Phase 4, this is
+  a single scrollable **trail** over `window.LWData.getUnits()`
+  (locked/current/done nodes), not a per-level screen — see §3 below
+  and the Phase 4 session log for the full view breakdown.
+- **`js/dashboard.js`** — as of Phase 4, renders one aggregate progress
+  card + one row per unit (via `window.LWProgress.getOrderedLiveCategories()`
+  and `window.LWData.getUnits()`), not three basic/medium/intermediate
+  cards.
 - Category field on a `SIGNS` entry **must be set explicitly** for
   anything beyond the original alphabet — the auto-backfill in
   `data.js` (`SIGNS.forEach(s => { if (!s.category) ... })`) only
@@ -148,23 +163,25 @@ assessment, or progress actually works today.
   bit LinguaWave once already — `js/lesson.js` used to render any
   `sign.length === 1` as `Letter ${sign}`, which broke the instant
   Numbers (also single-character signIds, `'0'`–`'9'`) were added. Fixed
-  by branching on `category` instead. If you add another basic-level
-  category with short signIds, extend the `singleCharPrefix` lookup in
-  `lesson.js` and `BASIC_LABEL_PREFIX` in `learn.js` rather than
+  by branching on `category` instead. If you add another flat-grid
+  category with short signIds, extend `singleCharPrefix` in
+  `lesson.js` AND, in `learn.js`, both `BASIC_LABEL_PREFIX` (label text)
+  and `FLAT_GRID_CATEGORIES` (which categories use the flat grid at
+  all — added Phase 4, since the flat-grid-vs-picker choice used to be
+  implicit in `level === 'basic'` and isn't anymore) rather than
   re-introducing a length check.
-- **`level=basic` UI is NOT auto-generic like medium/intermediate.**
-  `js/learn.js`'s `renderCategories()`/`renderWordPicker()`
-  (card-per-category + word-picker screen) is what medium/intermediate
-  use, and it's fully generic — a new category there needs zero code
-  changes. `level=basic` instead uses `renderBasicCategory()`, a flat
-  single-char grid with a small sub-tab switcher between basic
-  categories (Alphabet/Numbers today). This was a deliberate choice to
-  preserve the existing alphabet UX (compact single-letter tiles, the
-  Module 1 intro banner) rather than force it into the card-grid style.
-  If a THIRD basic-level category gets added, it'll show up in the
-  sub-tab switcher automatically (it loops over
-  `getCategoriesForLevel('basic')`) — no learn.js changes needed unless
-  it also wants a `BASIC_LABEL_PREFIX` entry.
+- **The trail (`learn.js`, as of Phase 4) is unit-scoped, not
+  level-scoped.** `renderUnitCategoryList()`/`renderCategoryCard()`
+  (the "pick a category" screen + card) are what any unit with more
+  than one category uses (today: Unit 5 Common Things & People, Unit 7
+  Phrasebook) — fully generic, a new category in one of those units
+  needs zero `learn.js` changes. A unit with exactly one category
+  (Alphabet, Numbers, Everyday Essentials, Basic Phrases) skips that
+  screen entirely — `renderUnitView()` opens the category directly. If
+  a unit's category count changes (e.g. Everyday Essentials grows past
+  one), this happens automatically — nothing to update by hand,
+  `renderUnitView()` branches on `getCategoriesForUnit(unit.order).length`
+  every time, not a hardcoded list.
 
 ## 4. Open threads / known gaps
 
@@ -192,6 +209,36 @@ assessment, or progress actually works today.
   with a `words` preview but no real `SIGNS` entries or trained model
   data yet (by design — see the comment block at the top of the
   `CATEGORIES` array in `data.js`).
+- **(Phase 4) `pages/intro-to-asl.html` and Unit 0's `UNIT0_CONTENT`
+  screen now overlap.** Both cover "intro to ASL" ground (history/Deaf
+  culture vs. a shorter welcome blurb). Phase 4 didn't merge or retire
+  either — Unit 0's screen links out to `intro-to-asl.html` ("Want
+  more? Read the full Introduction to ASL") rather than duplicate its
+  content. Worth a decision at some point: keep both (current state),
+  fold `intro-to-asl.html`'s content into `UNIT0_CONTENT`, or the
+  reverse. Not resolved unilaterally — flagging for Joshua.
+- **(Phase 4) Level Final Assessment CTAs have no UI entry point from
+  `learn.js` anymore.** The trail is cross-level (a unit can span or
+  sit between levels), so there was no honest per-level slot left to
+  put the old `renderLevelFinalCTA()` in — it was dropped rather than
+  forced into a screen it doesn't conceptually belong to.
+  `recordLevelAssessment`/`isLevelFinalUnlocked`/`quiz.html?final=1`
+  and `quiz.js`'s own "Next Level" CTA (shown after a category-final
+  pass) are all untouched and still work — level finals just aren't
+  reachable from the trail directly anymore. This is exactly the open
+  question Phase 3's session log already flagged for Phase 6 to
+  resolve (keep as a per-level concept, redesign as a trail-wide
+  review, or retire) — Phase 4 didn't preempt it, just made the gap
+  more visible.
+- **(Phase 4) Category locking is real again, and deep links now
+  enforce it.** `learn.js?category=X` / `?unit=X` bounce to the trail
+  root if `X` is locked or `comingSoon` — see `renderCategoryView()`'s
+  BUGFIX comment in `learn.js` for the two gaps this closed (one
+  pre-existing from before Phase 4, one new this phase). If a future
+  phase adds ANOTHER way to reach a category (e.g. a search box),
+  route it through `renderCategoryView()` rather than calling
+  `renderBasicCategoryGrid()`/`renderWordPicker()` directly, or it'll
+  bypass this check.
 
 ## 5. Model / label reference (keep this in sync when models change)
 
@@ -766,3 +813,215 @@ later):**
    `getOrderedLiveCategories()` export directly instead of re-deriving
    the trail order from `UNITS`/`CATEGORIES` by hand).
 2. Phases 5–7 unchanged from before this session.
+
+### 2026-08-19 — Pivot Phase 4: `learn.js`/`dashboard.js` trail-view UI
+**Requested:** do Phase 4 per `PIVOT_CHECKLIST.md` — replace the
+three-tab switcher with a single scrollable trail over `UNITS`, render
+each category as a locked/current/done node, retire
+`renderBasicCategory()`/`renderCategories()`/`renderWordPicker()`'s
+three-way level split in favor of one generic per-unit renderer (or
+confirm reuse), and update `dashboard.html`'s progress display to
+match the flat model.
+
+**Findings (read before changing anything):**
+- Confirmed via grep across `js/lesson.js`/`js/quiz.js`/
+  `pages/dashboard.html`/`pages/intro-to-asl.html` that those files
+  (all out of scope this phase — `lesson.js` isn't assigned to any
+  remaining phase, `quiz.js` is Phase 6) still build links into this
+  page as `learn.html?level=X` and `learn.html?level=X&category=Y` —
+  their own old scheme, never updated. Since there's no more per-level
+  screen for `?level=X` alone to land on, `boot()` now falls back to
+  rendering the trail and best-effort-scrolling to a representative
+  unit for that level instead of erroring or landing at a dead page.
+  `?level=X&category=Y` links still resolve correctly because category
+  ids are unique app-wide (same fact Phase 3 already relied on) —
+  `level` is read but not needed to look the category up.
+- Re-read the old `renderCategories()`'s "BUGFIX" comment (Rev 3):
+  "categories should never be locked... every category with content is
+  always open to browse/practice." Rev 4's checklist explicitly asks
+  for locked/current/done **nodes**, which only means something if
+  categories can actually be locked — so this phase reintroduces
+  per-category locking via `LWProgress.isCategoryUnlocked` (already
+  built cross-unit in Phase 3, just unused by any UI until now),
+  deliberately **reversing** that Rev 3 decision. Flagged prominently
+  in §0 above and in the code itself (`renderCategoryCard()`'s
+  comment) rather than made silently — this is a real, visible
+  behavior change worth a second look before it ships.
+- Checked whether Unit 7 (Phrasebook)'s 18 categories are uniformly
+  `comingSoon: false` with real `SIGNS` content today (confirmed via
+  grep) — Rev 4's own "Suggested removals" text says "17
+  non-`greetings_intro`" categories, which is slightly stale wording
+  from before a later correction in this same file (§0) clarified ALL
+  18 intermediate categories lack `SIGN_DICTIONARY` entries, not 17.
+  Phase 1's actual code treats all 18 uniformly (`unit: 7`) — went with
+  what's actually implemented over the slightly-inconsistent prose.
+- Checked `pages/intro-to-asl.html` (Rev 3 content: ASL history,
+  Stokoe's parameters, Deaf-culture etiquette, learning tips) against
+  the new `UNIT0_CONTENT` (Phase 1, four short sections) — they
+  overlap. Didn't merge or retire either; Unit 0's new screen links out
+  to `intro-to-asl.html` instead of duplicating it. Flagged in §4 above
+  for a real decision later.
+
+**Changes made:**
+- **`js/learn.js`** — full rewrite. Default view is now a single
+  vertical trail (`renderTrail()`) walking `window.LWData.getUnits()`;
+  each node's lock state comes from `getUnitState()`
+  (info/interactive/reference kinds are always "available" — never
+  gated; `category-group` kinds compute locked/current/done from
+  `isCategoryUnlocked`/`getCategoryProgress` on that unit's live
+  categories). Clicking a unit with exactly one category
+  (Alphabet/Numbers/Everyday Essentials/Basic Phrases) skips straight
+  to that category; a unit with more than one (Common Things & People,
+  Phrasebook) opens `renderUnitCategoryList()`, a unit-scoped version
+  of the old `renderCategories()`. `renderBasicCategoryGrid()`
+  (formerly `renderBasicCategory()`) dropped the old
+  Alphabet/Numbers sub-tab switcher — they're two separate trail units
+  now, not two views of one "basic" level. `renderWordPicker()` gained
+  an `isReference` mode (Phrasebook categories: no assessment CTA, no
+  lock, per Rev 4's "Suggested removals" #2) and now takes a resolved
+  category object instead of `(level, categoryId)`. Unit 0 renders
+  `UNIT0_CONTENT` for the first time (`renderUnitInfo()`) — it existed
+  in `data.js` since Phase 1 with nothing displaying it. Unit 2
+  (Fingerspell Your Name) has no `learn.js` screen at all — its trail
+  node is a plain `<a>` straight into
+  `lesson.html?level=basic&category=fingerspell_name`, the real nav
+  entry point `PIVOT_CHECKLIST.md` Phase 2's last item was waiting on.
+  Replaced the old in-grid "← Back to Categories" card with ONE
+  page-level back link (`#learn-back-link`, wired via `setBack()`) that
+  every screen uses, context-aware (goes back one level, not always to
+  the trail root — e.g. a category opened from Phrasebook's list goes
+  back to that list). Removed `MODULE_GROUPS`/`renderCategories()`
+  entirely — `UNITS` is itself the grouping/ordering layer now, no
+  second one needed.
+- **`js/learn.js` — real bugfix, found by this session's own test, not
+  carried over:** added a lock/comingSoon guard directly in
+  `renderCategoryView()` (the one function both the flat-grid and
+  word-picker paths route through). Without it, a hand-typed or
+  bookmarked `learn.html?category=X` completely bypassed both the new
+  per-category locking AND (pre-existing, not new) the `comingSoon`
+  check — neither the old nor the mid-session-draft code stopped a
+  direct URL from rendering locked/unshipped content, only the
+  picker-card UI omitted the click handler for it. Now any locked or
+  `comingSoon` category deep-link bounces to the trail root instead
+  (reference-mode/Phrasebook categories are exempt, by design — never
+  gated).
+- **`pages/learn.html`** — removed the `.level-tabs` markup (three
+  Basic/Medium/Intermediate buttons). Added `#learn-context` (a small
+  breadcrumb, shown/hidden per view) and `#learn-back-link` (the
+  unified back link above) next to the existing "← Back to Dashboard"
+  link, which is untouched. Renamed the page's intro copy to fit the
+  trail framing ("Your ASL Learning Path" / "One path from the
+  alphabet to full phrases...").
+- **`css/learn.css`** — removed `.level-tab*` rules, `.lesson-card--back`
+  (dead — no more in-grid back card), `.module-header`/`.module-section`
+  (dead — `MODULE_GROUPS` is gone). Added `.trail`/`.trail-node*` (a
+  single-column vertical list, not the existing auto-fill card grid —
+  Rev 4 asks for a "single scrollable trail," which reads more like a
+  path than a grid of tiles) and `.unit-info*` (prose block for Unit
+  0's screen, same `grid-column: 1 / -1` full-width technique the old
+  `.module-header` used). Kept `.lesson-card--intro` (Unit 0's link out
+  to `intro-to-asl.html` reuses it).
+- **`js/dashboard.js`** — full rewrite. `renderOverallProgress()`
+  replaces the old per-level `renderLevelCard()`: sums
+  practiced/total signs and passed/total categories across
+  `window.LWProgress.getOrderedLiveCategories()` into ONE aggregate
+  card. `renderUnitList()`/`renderUnitRow()` render one compact row per
+  `window.LWData.getUnits()` entry (same lock-state logic as
+  `learn.js`'s `getUnitState()`, kept as a small separate copy in this
+  file rather than introducing a shared module just for it — judged
+  lower-risk for a two-caller lookup).
+- **`js/dashboard.js` — real bugfix, found by this session's own
+  test, not carried over:** `renderContinueButton()` used to loop
+  `LEVELS` (`basic`→`medium`→`intermediate`) and, within a level, use
+  `liveCategoriesFor(level)` — sorted by each category's own in-level
+  `order` field, NOT by unit. Phase 1 never renumbered `order` when it
+  added `unit` (the `requests` category still has `order: 9` even
+  though it's `unit: 4`, ahead of Unit 5's `family`/`places`/etc, which
+  have `order: 1-4`), so that loop's `medium` pass visited `family`
+  (unit 5) BEFORE `requests` (unit 4) — backwards from the real trail.
+  Concretely verified with the test harness: on a fresh account with
+  only Alphabet+Numbers passed, the OLD logic's shape would have
+  pointed at `family`; the fixed version correctly points at
+  `requests`. Fixed by walking
+  `window.LWProgress.getOrderedLiveCategories()` directly instead of
+  re-deriving an ordering by hand — already in the right flat order,
+  doesn't need a level passed in at all.
+- **`pages/dashboard.html`** — replaced the `.grid-3` of three
+  `[data-level-card]` cards with one aggregate `progress-card` +
+  `<div id="unit-progress-list">` (filled entirely by `dashboard.js`,
+  nothing unit-specific hardcoded in the HTML).
+- **`css/dashboard.css`** — removed the `[data-level-card="..."]`
+  three-color-edge rules (only one `progress-card` exists now — one
+  generic accent-colored edge instead). Added `.unit-progress-list`/
+  `.unit-progress-row*`.
+- `js/lesson.js`, `js/quiz.js`, `js/data.js`, `js/engine/progress.js`,
+  `js/auth.js` — **untouched**, per the checklist header's rule and
+  because Phase 4 didn't need to touch any of them (confirmed every
+  `LWData`/`LWProgress` call `learn.js`/`dashboard.js` make this phase
+  uses an export that already existed going into this session).
+
+**Verified with a throwaway Node test harness (NOT committed to the
+repo — same caveat as Phases 1–3, no dev server/browser tool available
+this session):**
+- A minimal DOM shim (`FakeElement`/`makeDocument` — just enough
+  `innerHTML`/`classList`/`querySelectorAll`/`addEventListener` surface
+  to run `learn.js`'s and `dashboard.js`'s actual `DOMContentLoaded`
+  callbacks, not a general-purpose DOM) plus the REAL `js/data.js` and
+  `js/engine/progress.js` loaded via Node's `vm` module (so this tests
+  the actual shipped files, not a hand-written mock of their shape —
+  a step further than Phase 3's harness took).
+- `learn.js` (25 assertions): trail renders all 8 units; clicking a
+  single-category unit (Alphabet) skips straight to its grid; clicking
+  a multi-category unit (Common Things & People) — after seeding the
+  right prerequisites — shows the picker with `family` clickable and
+  `Places` visible-but-locked (chained behind `family` within the
+  unit); Phrasebook categories open in reference mode (no assessment
+  CTA); legacy `?level=X&category=Y` deep links resolve once unlocked
+  and bounce to the trail when locked; legacy `?level=X` alone falls
+  back to the trail; a `comingSoon` deep link (`?category=food`)
+  bounces to the trail; Unit 4 stays locked/non-clickable on a fresh
+  account and unlocks correctly; Unit 1 is open from zero progress and
+  Unit 3 is locked until Unit 1 passes, then unlocks.
+- `dashboard.js` (4 assertions): unit list renders without throwing on
+  a fresh account, later units show `unit-progress-row--locked`, Unit 0
+  and Unit 2 rows link correctly; the Continue-button bugfix above,
+  verified concretely (asserted the resulting `href` contains
+  `category=requests`, not `category=family`).
+- Also ran plain `node --check` on both rewritten files and a brace-
+  balance check on both rewritten CSS files — no syntax errors.
+- **Not exercised against the real app in a browser** — recommend
+  Joshua click through the full trail once this is pasted in:
+  dashboard → a unit row → a category → lesson → back through the
+  trail, and specifically try a stale bookmark/typed URL into a locked
+  category to confirm the new bounce-to-trail behavior feels right
+  rather than confusing (no toast/explanation is shown for WHY it
+  bounced — just silently lands on the trail, which shows the lock
+  reason via that unit's badge).
+
+**Bugs/risks noticed, not fixed (out of scope for Phase 4, flagging
+for later):**
+1. `hydrateStore()`'s unguarded `window.LWAuth` destructure — same
+   pre-existing issue Phase 3 already flagged, untouched again this
+   phase (this session's test harness mocks `LWAuth` for exactly this
+   reason, same as Phase 3's did).
+2. Level Final Assessment CTAs are now unreachable from `learn.js`'s
+   UI (see §4 above) — the underlying feature still works via
+   `quiz.js`'s own flow, just has one fewer entry point. This is the
+   open question Phase 3 flagged for Phase 6; Phase 4 made the gap
+   more visible but didn't resolve it.
+3. `pages/intro-to-asl.html` vs. Unit 0's `UNIT0_CONTENT` content
+   overlap (see §4 above) — not merged, just cross-linked.
+4. No in-app explanation for WHY a deep link bounced to the trail
+   (see the "Not exercised in a browser" note above) — a toast or a
+   brief inline message ("that lesson isn't unlocked yet") would be a
+   nicer touch than a silent redirect, but wasn't in this phase's
+   scope and didn't feel worth adding without design input.
+
+**Still open (per checklist — next is Phase 5):**
+1. Phase 5 — `auth.js`/`index.html` signup flow (remove the
+   basic/medium/intermediate level picker at signup, since it's now
+   vestigial — `pages/dashboard.html`'s `data-user-level` field still
+   displays whatever the user picked there, untouched this phase).
+2. Phase 6 — `quiz.js` (also where the Level Final Assessment open
+   question from item 2 above should get resolved for real).
+3. Phase 7 unchanged from before this session.

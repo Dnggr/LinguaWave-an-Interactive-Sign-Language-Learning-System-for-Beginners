@@ -1,28 +1,32 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), and Phase 3 (`progress.js` unlock-chain flattening) implemented 2026-08-18 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
+> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), and Phase 4 (`learn.js`/`dashboard.js` trail-view UI) implemented 2026-08-18/2026-08-19 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
-**Status: Phases 1–3 implemented (all 2026-08-18); Phases 4–7 still
+**Status: Phases 1–4 implemented (2026-08-18/2026-08-19); Phases 5–7 still
 planning only.** This section is the deep-planning output from the
 2026-08-17 adviser consultation — it exists so any AI assistant (or
 Joshua, later) picks up the *agreed direction* instead of re-deriving it
 or contradicting it. See AI_MEMORY.md §0 for the short pointer version and
 the session log entries (2026-08-17 planning, 2026-08-18 Phase 1, 2026-08-18
-Phase 2, 2026-08-18 Phase 3) for how this was derived and implemented. `js/data.js` now has a real `UNITS` array, a
+Phase 2, 2026-08-18 Phase 3, 2026-08-19 Phase 4) for how this was derived and implemented. `js/data.js` now has a real `UNITS` array, a
 `unit` field on every `CATEGORIES` entry, `UNIT0_CONTENT`, and the Unit 5
 `comingSoon` split described below. The Unit 2 Fingerspell Your Name drill
 is also implemented, as an extension of `js/lesson.js` (see §Implementation
-phases → Phase 2, and `PIVOT_CHECKLIST.md`) — reachable today via a direct
-URL (`pages/lesson.html?level=basic&category=fingerspell_name`) since it
-has no trail-UI nav entry yet. `js/engine/progress.js`'s unlock chain is
+phases → Phase 2, and `PIVOT_CHECKLIST.md`) — now reachable from a real nav
+entry point (a trail node in `pages/learn.html`) as well as the direct URL.
+`js/engine/progress.js`'s unlock chain is
 now flat across `UNITS` too (see §Progress / unlock model changes below) —
-storage key is `lw_progress_v3`. Everything else in this section (trail-view
-UI, quiz changes, capture/retrain) is still unbuilt.
+storage key is `lw_progress_v3`. `pages/learn.html`/`js/learn.js` render
+that flat model as a single scrollable trail (locked/current/done nodes),
+and `pages/dashboard.html`/`js/dashboard.js` summarize it the same way
+(one aggregate card + one row per unit, replacing the old three
+basic/medium/intermediate cards) — see §Implementation phases → Phase 4.
+Quiz changes and capture/retrain (Phases 5–7) are still unbuilt.
 
 ### Why
 
@@ -52,7 +56,7 @@ maps them onto the new presentation order.
 | 4 | Everyday Essentials (greetings & courtesy words) | `level:medium, category:requests` (partial) + the `disabled:true` placeholders in `dictionary.js` (`PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) | ⚠️ `HELLO`/`THANK YOU` trained today; the rest need capture + retraining — the placeholders already exist, this is a data-collection task, not an architecture task |
 | 5 | Common Things & People (thematic vocab) | `level:medium` — family, places, time, temperature, food, clothes, health, feelings, colors, money, animals, amounts | ✅ family/places/time/temperature trained; ❌ food/clothes/health/feelings/colors/money/animals/amounts have `data.js` content but **no `SIGN_DICTIONARY` entry at all** (see gap note below) — order the trained sub-categories first |
 | 6 | Basic Phrases | the `sequence_demo` chaining mechanism (real, working) + a small curated set of phrases built only from Unit 1–5 words | ✅ mechanism proven via `CAR_SPELL`/`HOME_WORK_DEMO`; needs real phrase content in place of the two demo placeholders |
-| 7+ | Phrasebook (reference reading, not graded) | the other 17 `level:intermediate` categories (~100 sentence-level entries) | ❌ 0 of these have any `SIGN_DICTIONARY` entry — see "Suggested removals" for why this becomes read-only content instead of a graded unit |
+| 7+ | Phrasebook (reference reading, not graded) | all 18 `level:intermediate` categories (~100 sentence-level entries, including `greetings_intro`) | ❌ 0 of these have any `SIGN_DICTIONARY` entry — see "Suggested removals" for why this becomes read-only content instead of a graded unit. **✅ Implemented 2026-08-19 (Phase 4)** — `learn.js` renders Unit 7 in `isReference` mode: browsable, no assessment CTA, never locked. |
 
 **Gap note (found while building this table, not previously documented):**
 grep across `dictionary.js` confirms `food`, `clothes`, `health`,
@@ -140,7 +144,14 @@ practice rather than a strict gate.
   automatically unlocked just for being first in its `level` — e.g. Unit
   4's `requests` (level:`medium`) now stays locked until Unit 3's
   `numbers` (level:`basic`) is passed, because the chain crosses level
-  boundaries. Verified with a standalone mock-data test harness (not
+  boundaries. `level`/`category` params on every public function stayed
+  unchanged specifically so `js/learn.js`, `js/quiz.js`,
+  `js/dashboard.js`, and `js/lesson.js` wouldn't need edits to keep
+  *calling* `progress.js` the same way — that held true through Phase 4
+  (`learn.js`/`dashboard.js` were rewritten for the trail UI, but every
+  `LWProgress` call they make uses a signature that already existed
+  going into Phase 4; `quiz.js`/`lesson.js` remain fully untouched).
+  Verified with a standalone mock-data test harness (not
   committed to the repo — throwaway, see AI_MEMORY.md's Phase 3 session
   log for what it checked).
 - ~~Unit 0 (intro) and the Unit 7+ Phrasebook don't gate anything~~
@@ -175,11 +186,16 @@ practice rather than a strict gate.
   pivot is about ordering and presentation, not what the field is called
   internally. `level` becomes a legacy internal partition key; `unit` /
   `UNITS` is what actually drives the new UI and unlock order.
-- `js/learn.js` needs the biggest UI change: replace the three-tab
+- `js/learn.js` needed the biggest UI change: replace the three-tab
   (`basic`/`medium`/`intermediate`) + card-grid + word-picker structure
   with a single scrollable **trail view** that walks `UNITS` in order,
   each category shown as a node (locked / current / done) — the
-  SoloLearn/Duolingo-style path the adviser referenced.
+  SoloLearn/Duolingo-style path the adviser referenced. **✅ Done
+  2026-08-19 (Phase 4)** — see §Implementation phases → Phase 4 and
+  `PIVOT_CHECKLIST.md`. Note this required reintroducing real
+  per-category locking (see §Suggested removals / Phase 4 notes there
+  and AI_MEMORY.md §0 for why that's flagged as a reversal of a Rev 3
+  decision, worth a second look).
 - `index.html` / `js/auth.js`'s `register()` "choose your proficiency
   level" step goes away — see "Suggested removals" below.
 
@@ -214,16 +230,21 @@ practice rather than a strict gate.
    single-path model — a total beginner and a returning learner both
    start at Unit 0 now. Use the placement/skip test above instead, if
    some learners genuinely need to skip ahead.
-2. **The 17 non-`greetings_intro` `intermediate` phrase categories**
-   (`basic_responses` through `everyday_dialogues`, ~100 sentence
-   entries). None have any `SIGN_DICTIONARY` entry — full-sentence motion
+2. **All 18 `intermediate` phrase categories** (`greetings_intro`
+   through `everyday_dialogues`, ~100 sentence entries — corrected
+   2026-08-19: earlier drafts of this doc said "the 17
+   non-`greetings_intro`" categories, but none of the 18 have a
+   `SIGN_DICTIONARY` entry, `greetings_intro` included; Phase 1's actual
+   implementation already tags all 18 uniformly as `unit: 7`). None have
+   any `SIGN_DICTIONARY` entry — full-sentence motion
    detection for ~100 unique sentences isn't realistic training scope for
    a capstone. Recommend demoting these to a **read-only "Phrasebook"**
    reference section (browse only, no quiz, no camera check) instead of
    presenting them as a graded unit that can't actually be assessed by
    camera and would need ~100 more MC questions to feel complete. The
    content itself is good — just stop implying it's an interactive lesson
-   until real detection backs it.
+   until real detection backs it. **✅ Implemented 2026-08-19 (Phase 4)**
+   — see the Unit Map row 7+ above.
 3. **`sequence_demo`'s "(Demo)" framing.** The chaining mechanism it
    proves out is exactly what Unit 6 needs — it's not a demo anymore.
    Rename the category once real phrase content replaces
@@ -239,8 +260,10 @@ practice rather than a strict gate.
    needed, good first coding task.~~ **✅ Done 2026-08-18**, as an
    extension of `js/lesson.js` (no new page/route) — see
    `PIVOT_CHECKLIST.md` Phase 2 and AI_MEMORY.md's matching session log
-   entry for the full function-by-function breakdown. Not yet reachable
-   from the trail UI (that's Phase 4); reachable today via
+   entry for the full function-by-function breakdown. **Now reachable
+   from the trail UI as of Phase 4** (2026-08-19) via a real nav entry
+   point (a trail node in `pages/learn.html` links straight into it);
+   also still reachable directly via
    `pages/lesson.html?level=basic&category=fingerspell_name`. Verified
    by tracing the call graph, not by running it in a browser — flagging
    that caveat here too, not just in the session log.
@@ -250,12 +273,23 @@ practice rather than a strict gate.
    test harness (unlock-chain ordering, storage shape, Unit 0/7 exclusion,
    cross-level gating) — not run against the real app in a browser, same
    caveat as Phases 1–2.
-4. `js/learn.js` — trail-view UI replacing the level tabs / card grid /
-   word picker.
+4. ~~`js/learn.js` — trail-view UI replacing the level tabs / card grid /
+   word picker.~~ **✅ Done 2026-08-19** — see `PIVOT_CHECKLIST.md`
+   Phase 4 and AI_MEMORY.md's matching session log entry.
+   `pages/dashboard.html`/`js/dashboard.js` updated to match (one
+   aggregate + per-unit rows, replacing the three level cards) as part
+   of the same phase. Verified with a Node test harness that runs the
+   actual shipped `learn.js`/`dashboard.js`/`data.js`/`progress.js`
+   files against a minimal DOM shim (not a hand-written mock of their
+   shape) — not run against the real app in a browser, same caveat as
+   Phases 1–3.
 5. `js/auth.js` + `index.html` — remove the proficiency-level picker from
    signup.
 6. `js/quiz.js` — tighten the teach→quiz loop, add the sign-ordering
-   question type for Unit 6.
+   question type for Unit 6. Also where the level-final-assessment
+   question (see §Progress / unlock model changes) needs an actual
+   decision — Phase 4 made the gap more visible (no more `learn.js` entry
+   point into it) without resolving it.
 7. Capture + retrain: Essential Words placeholders (§Unit 4), Numbers
    6/9/10 motion-type fix (pre-existing item, AI_MEMORY.md §4) — content
    and ML work, not app code.
@@ -269,8 +303,12 @@ practice rather than a strict gate.
 - ~~Unit 0's "what is ASL" content — static text (fastest to ship), or
   reuse the YouTube reference-video panel already prototyped in
   `capture.html`?~~ **Answered: static text.** Implemented in Phase 1 as
-  `UNIT0_CONTENT` in `data.js` (4 sections). No screen renders it yet —
-  that's Phase 4.
+  `UNIT0_CONTENT` in `data.js` (4 sections). **Now rendered as of Phase 4**
+  (2026-08-19) — `learn.js`'s Unit 0 trail node opens a dedicated info
+  screen showing it, which also links out to the pre-existing, more
+  detailed `pages/intro-to-asl.html` rather than duplicating its content
+  (the two now overlap somewhat — flagged in AI_MEMORY.md §4 as an open
+  follow-up, not resolved).
 - ~~How many Unit 5 sub-categories should show before Unit 6 unlocks — all
   12, or just the ones with real detection today (family/places/time/
   temperature), with the rest marked `comingSoon`?~~ **Answered: only the
@@ -432,10 +470,15 @@ linguawave/
 - **Shows, top to bottom:**
   1. **Welcome header** + "Continue Learning" button
   2. **Your Account** — name, email, current level, member-since date
-     (the "user details" section)
-  3. **Overall Progress** — the three level cards with % completion (the "content")
+     (the "user details" section — `current level` is a vestige of the
+     old signup-time level picker; Rev 4 Phase 5, not yet done, is what
+     removes/repurposes it)
+  3. **Overall Progress** — REV 4 PHASE 4 (2026-08-19): one aggregate
+     progress card (whole flat unit chain combined) + one compact row
+     per `UNITS` entry, replacing the old three basic/medium/intermediate
+     level cards (see the Rev 4 section above)
   4. **Signs You've Learned** — recap grid of mastered signs
-- **Routes to:** `learn.html` (View Lessons), `lesson.html` (Continue)
+- **Routes to:** `learn.html` (unit rows), `lesson.html` (Continue button + Unit 2's row)
 - **Auth behavior:** `LWAuth.requireAuth('../index.html')` runs in `<head>` —
   anyone without an active session is bounced back to the login page.
 - **Data source:** `getActiveUser()` in `main.js` (merges the real auth session
@@ -443,10 +486,20 @@ linguawave/
 
 ---
 
-### `pages/learn.html` — Lesson Selector
-- **Shows:** Level tabs, grid of lesson cards (locked / done / available)
-- **URL param:** `?level=basic|medium|intermediate`
-- **Routes to:** `lesson.html?level=X&sign=Y`
+### `pages/learn.html` — Trail / Lesson Selector
+- **Shows:** REV 4 PHASE 4 (2026-08-19): a single scrollable **trail** —
+  one node per `UNITS` entry, shown locked / current / done — replacing
+  the old level-tabs + per-level card grid. Clicking a node opens that
+  unit's screen: an info screen (Unit 0), a "pick a category" list (any
+  unit with more than one category), or straight into the
+  category's grid/picker (units with exactly one category). See the Rev
+  4 section above and `js/learn.js`'s own file header for the full view
+  breakdown.
+- **URL params:** own scheme is `?unit=<unitId>` / `?category=<categoryId>`;
+  the old `?level=basic|medium|intermediate[&category=Y]` shape is still
+  accepted on load for backward compatibility with `js/quiz.js`/`js/lesson.js`,
+  which still build links that way.
+- **Routes to:** `lesson.html?level=X&category=Y&sign=Z`, `quiz.html?level=X&category=Y`
 - **Auth-guarded** (see dashboard.html pattern above)
 - **Data source:** Static HTML → `js/data.js` → Firestore `lessons` collection (TODO)
 
@@ -642,4 +695,3 @@ More lessons available? → Yes → back to learn.html
 *Last updated: Capstone 2025, Rev. 2 — Admin panel removed, auth/landing pages
 merged, dashboard now includes account details, auth running in bypass mode
 pending Firebase integration.*
-</file>
