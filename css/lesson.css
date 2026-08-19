@@ -19,3 +19,28 @@
 .lesson-video { border-radius: var(--radius-lg); overflow: hidden; background: #000; }
 .lesson-video video { width: 100%; max-height: 400px; }
 .lesson-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+
+/* ── Quick Check (REV 4 PIVOT PHASE 6) ──────────────────────────────
+   Lightweight in-lesson recall mini-check — see #quick-check-card in
+   lesson.html and showQuickCheck() in lesson.js. Options intentionally
+   reuse quiz.css's .quiz-option visual language (same card/border/
+   hover treatment, --correct/--wrong states) so the "this is a quiz
+   question" pattern reads consistently across the app — but lesson.html
+   doesn't load quiz.css (that's quiz.html's stylesheet, a different
+   page), so the rules are restated here under their own .quick-check__
+   prefix rather than pulling in a whole second stylesheet for one
+   reused component. */
+.quick-check__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.quick-check__prompt { font-size: var(--fs-base); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-4); }
+.quick-check__options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.quick-check__options button {
+  padding: var(--space-3) var(--space-4); background: var(--clr-surface-2);
+  border: 2px solid var(--clr-border); border-radius: var(--radius-md);
+  color: var(--clr-text); font-size: var(--fs-sm); font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.quick-check__options button:hover:not(:disabled) { border-color: var(--clr-accent); background: var(--clr-accent-soft); }
+.quick-check__options button:disabled { cursor: default; opacity: .85; }
+.quick-check__options button.quick-check__option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
+.quick-check__options button.quick-check__option--wrong   { border-color: var(--clr-red);     background: var(--clr-red-soft); }
+@media (max-width: 480px) { .quick-check__options { grid-template-columns: 1fr; } }

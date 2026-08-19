@@ -1,19 +1,19 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (IN PROGRESS)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), and Phase 5 (signup-time level picker removed) implemented 2026-08-18/2026-08-19 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status.
+> **Rev. 4 (IN PROGRESS — Phase 7 remains, content/ML only)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are now complete; only Phase 7 (content capture + model retraining, not app code) remains.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
-**Status: Phases 1–5 implemented (2026-08-18/2026-08-19); Phases 6–7 still
-planning only.** This section is the deep-planning output from the
+**Status: Phases 1–6 implemented (2026-08-18 → 2026-08-20); Phase 7 (content
+capture/retrain, not app code) still planning only.** This section is the deep-planning output from the
 2026-08-17 adviser consultation — it exists so any AI assistant (or
 Joshua, later) picks up the *agreed direction* instead of re-deriving it
 or contradicting it. See AI_MEMORY.md §0 for the short pointer version and
 the session log entries (2026-08-17 planning, 2026-08-18 Phase 1, 2026-08-18
-Phase 2, 2026-08-18 Phase 3, 2026-08-19 Phase 4) for how this was derived and implemented. `js/data.js` now has a real `UNITS` array, a
+Phase 2, 2026-08-18 Phase 3, 2026-08-19 Phase 4, 2026-08-20 Phase 6) for how this was derived and implemented. `js/data.js` now has a real `UNITS` array, a
 `unit` field on every `CATEGORIES` entry, `UNIT0_CONTENT`, and the Unit 5
 `comingSoon` split described below. The Unit 2 Fingerspell Your Name drill
 is also implemented, as an extension of `js/lesson.js` (see §Implementation
@@ -30,8 +30,12 @@ basic/medium/intermediate cards) — see §Implementation phases → Phase 4.
 `index.html`'s Sign Up form no longer has a "Starting level" `<select>`,
 and `js/auth.js`'s `register()` no longer takes a `level` argument
 (every new account gets a fixed `level: 'basic'`) — see §Implementation
-phases → Phase 5. Quiz changes and capture/retrain (Phases 6–7) are
-still unbuilt.
+phases → Phase 5. **Phase 6 (2026-08-20)** tightened the teach→quiz loop
+(a new in-lesson "Quick Check"), added a sign-ordering/fingerspelling-
+challenge camera question type for Unit 6, and decided the Level Final
+Assessment question (CTA retired, mechanism kept) — see §Assessment
+format changes below and §Implementation phases → Phase 6. Only Phase 7
+(capture/retrain, content and ML work) remains unbuilt.
 
 ### Why
 
@@ -100,7 +104,7 @@ two files category-by-category for this plan.
    these in for `CAR_SPELL`/`HOME_WORK_DEMO` in the `sequence_demo`
    category (see "Suggested removals" — this category stops being a demo).
 
-### Assessment format changes (lingvano.com reference)
+### Assessment format changes (lingvano.com reference) — ✅ Done 2026-08-20 (Phase 6)
 
 Lingvano's format, observed via public reviews/app-store listings: short
 video-based lessons that quiz almost immediately after teaching a sign
@@ -117,20 +121,76 @@ practice rather than a strict gate.
   `lesson.html` itself, reusing the existing Practice Check UI, so
   retention gets tested closer to when it was taught — matching
   Lingvano's tight loop instead of the current "10 signs then one big
-  quiz" pattern.
+  quiz" pattern. **✅ Implemented 2026-08-20 (Phase 6)** — new "Quick
+  Check" card in `lesson.html`/`lesson.js`, a 4-option recall MC
+  question shown after every 3rd sign and always on a category's last
+  sign. "Reusing the existing Practice Check UI" turned out to have two
+  readings once actually implementing it — the camera panel's
+  *mechanism* (webcam + classifier) vs. its *interaction pattern*
+  (optional, skippable, immediate-feedback, never blocks Prev/Next).
+  Phase 6 went with the latter: a plain recall question doesn't need a
+  webcam and needs to work even before/without a camera, so it's a new
+  component styled to match, not a literal reuse of the camera panel's
+  DOM. Flagging this interpretation, same as earlier phases have
+  flagged theirs — see `lesson.js`'s Phase 6 header comment and
+  AI_MEMORY.md's Phase 6 session log.
 - **New question type for Unit 6:** a sign-ordering/fingerspelling
   challenge — show the target phrase in English, learner produces the
   signs in order via camera using the chaining engine, rather than only
   picking from 4 pre-written options. This is closer to what actually
-  proves recall, the way Lingvano's fingerspelling rounds do.
+  proves recall, the way Lingvano's fingerspelling rounds do. **✅
+  Implemented 2026-08-20 (Phase 6)** — `quiz.js`'s existing optional
+  camera round now detects phrase-type signs (any `SIGNS` entry with a
+  `sequence` array; today that's Unit 6/`sequence_demo`'s `CAR_SPELL`/
+  `HOME_WORK_DEMO`) step by step in order, reusing `lesson.js`'s
+  existing `phraseSteps`/`phraseStepIdx` chaining mechanism rather than
+  building a second one. Implemented generally (any phrase-type sign
+  anywhere gets this treatment, not a `category === 'sequence_demo'`
+  special case) since that's the more direct data-driven read of "for
+  Unit 6" — Unit 6 just happens to be the only category with phrase
+  content today.
 - **Camera Check stays optional/bonus everywhere**, including the new
   Unit 6 ordering challenge — this already matches Lingvano's "mirror is
   practice, not a gate" positioning and is Rev 3's existing, deliberate
   design; no change to that reasoning, just extending the pattern to the
-  new question type.
+  new question type. **✅ Confirmed 2026-08-20 (Phase 6)** — the phrase
+  branch only ever writes into `cameraRoundData`, the same object the
+  plain atomic-sign path already used; `computeGradedScore()` never
+  reads it, only `rounds` (MC + Identification). Structurally
+  incapable of affecting pass/fail.
 - Keep the 80% pass threshold and the existing MC + Identification rounds
   as the only graded rounds, for the same webcam-accuracy reasons Rev 3
-  already documented.
+  already documented. **Unchanged — confirmed still true 2026-08-20.**
+
+**Level Final Assessment — DECIDED 2026-08-20 (Phase 6).** Open since
+Phase 3, made more pressing by Phase 4 (see §Implementation phases and
+§Progress/unlock model changes below for the history). Decision:
+**retire the CTA into it, keep the mechanism.** `quiz.js`'s
+`buildActionButtons()` no longer offers "🏁 Take Level Final Assessment"
+after a category pass — that was the one remaining entry point into it
+anywhere in the app. Nothing in `progress.js` changed
+(`recordLevelAssessment`/`getLevelAssessment`/`isLevelFinalUnlocked`/
+`LEVEL_ORDER` are all exactly as Phase 3 left them) and
+`quiz.html?level=X&final=1` still runs a complete, working level-final
+assessment for anyone who already has it bookmarked — this only stops
+*offering* it as a next step. Reasoning: re-adding a trail entry point
+would mean resurfacing the three-level (`basic`/`medium`/`intermediate`)
+framing Rev 4 is deliberately dissolving — a category's `level` field
+and its position on the trail can now disagree (see the Unit Map above:
+Unit 4's `requests` is `level: 'medium'` but sits right after Unit 3's
+`level: 'basic'` `numbers`), so there's no honest place left to put "you
+finished Basic, now do the Basic-level final" that wouldn't contradict
+the trail it would sit next to. "Redesign as a trail-wide review" — the
+other option this section originally listed — is a real, reasonable
+alternative, but it's a new feature in its own right (what would it
+cover, when would it trigger, new rounds or reused ones?), not a small
+follow-on to what already exists, so it wasn't attempted here.
+**Flagging this decision explicitly**, same spirit as Phase 4's
+category-locking-reversal flag: this is a real product call made by an
+AI session during Phase 6, not something Joshua explicitly signed off
+on beforehand. See `quiz.js`'s block comment above `buildActionButtons()`
+and AI_MEMORY.md's Phase 6 session log for the same reasoning in more
+detail.
 
 ### Progress / unlock model changes — ✅ Done 2026-08-18 (Phase 3)
 
@@ -152,10 +212,15 @@ practice rather than a strict gate.
   boundaries. `level`/`category` params on every public function stayed
   unchanged specifically so `js/learn.js`, `js/quiz.js`,
   `js/dashboard.js`, and `js/lesson.js` wouldn't need edits to keep
-  *calling* `progress.js` the same way — that held true through Phase 4
+  *calling* `progress.js` the same way — that held true through Phase 5
   (`learn.js`/`dashboard.js` were rewritten for the trail UI, but every
   `LWProgress` call they make uses a signature that already existed
-  going into Phase 4; `quiz.js`/`lesson.js` remain fully untouched).
+  going into Phase 4; `quiz.js`/`lesson.js` remained fully untouched
+  through Phase 5). **As of Phase 6 (2026-08-20), `quiz.js`/`lesson.js`
+  are no longer untouched** — both gained new features, but neither
+  needed to change how they call `progress.js`; the signatures used are
+  the same ones that already existed. See §Assessment format changes
+  above for what Phase 6 actually did.
   Verified with a standalone mock-data test harness (not
   committed to the repo — throwaway, see AI_MEMORY.md's Phase 3 session
   log for what it checked).
@@ -301,14 +366,22 @@ practice rather than a strict gate.
    flagged as an unresolved follow-up (repurpose or remove), not fixed
    as part of this phase. Not exercised against live Firebase in a
    browser — same caveat as every phase before it.
-6. `js/quiz.js` — tighten the teach→quiz loop, add the sign-ordering
+6. ~~`js/quiz.js` — tighten the teach→quiz loop, add the sign-ordering
    question type for Unit 6. Also where the level-final-assessment
    question (see §Progress / unlock model changes) needs an actual
    decision — Phase 4 made the gap more visible (no more `learn.js` entry
-   point into it) without resolving it.
+   point into it) without resolving it.~~ **✅ Done 2026-08-20** — see
+   `PIVOT_CHECKLIST.md` Phase 6 and AI_MEMORY.md's matching session log
+   entry. Level Final Assessment decided (CTA retired, mechanism kept —
+   see §Assessment format changes above for full reasoning). Verified
+   with `node --check` on both changed files plus cross-checking every
+   new DOM id and every `window.LWData`/`window.LWProgress` call against
+   the real markup/exports — not run against the real app in a browser
+   (webcam-dependent flows especially can't be verified this way), same
+   caveat as every phase before it.
 7. Capture + retrain: Essential Words placeholders (§Unit 4), Numbers
    6/9/10 motion-type fix (pre-existing item, AI_MEMORY.md §4) — content
-   and ML work, not app code.
+   and ML work, not app code. **Not started — the only remaining phase.**
 
 ### Open questions for Joshua — ANSWERED 2026-08-18
 

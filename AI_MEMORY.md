@@ -23,9 +23,10 @@
 
 **Status: Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your
 Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4
-(`learn.js`/`dashboard.js` trail-view UI, 2026-08-18/19), and Phase 5
-(signup-time level picker removed, 2026-08-19) complete; Phases 6–7
-not started.** The
+(`learn.js`/`dashboard.js` trail-view UI, 2026-08-18/19), Phase 5
+(signup-time level picker removed, 2026-08-19), and Phase 6 (`quiz.js`
+assessment format changes, 2026-08-20) complete; Phase 7 (capture +
+retrain, content/ML work) not started.** The
 capstone adviser reviewed the project and directed
 a restructure of how content is organized. The full plan lives in
 `SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
@@ -51,7 +52,12 @@ version:
   identification, multiple choice, fingerspelling challenges, an optional
   live camera "mirror" check that is practice, not a pass/fail gate).
   LinguaWave's Round 3 Camera Check already matches that pattern — see
-  Rev 4 §Assessment for what else needs to change.
+  Rev 4 §Assessment for what else needs to change. **As of Phase 6
+  (2026-08-20), the teach→quiz loop is tighter** (a "Quick Check" recall
+  mini-question now shows in `lesson.js` after every ~3 signs, not just
+  at category end) **and the camera round supports fingerspelling/
+  ordering challenges** for phrase-type signs (Unit 6), not just atomic
+  signs — see that phase's Session Log entry for the full breakdown.
 - **Internal field names are NOT changing.** `level`/`category` in
   `data.js`, `dictionary.js`, and every `?level=X` URL param stay exactly
   as they are — they become an internal grouping key, not a user-facing
@@ -70,12 +76,13 @@ version:
 - **Before writing code against this:** confirm with Joshua which
   implementation phase to start on — Rev 4 lists them in priority order.
   As of Phase 4, `learn.js`/`dashboard.js` render the trail described
-  above. **As of Phase 5 (2026-08-19), `index.html`'s Sign Up form no
+  above. As of Phase 5 (2026-08-19), `index.html`'s Sign Up form no
   longer has a "Starting level" picker, and `js/auth.js`'s `register()`
-  no longer takes a `level` param** — every new account is written with
-  a fixed `level: 'basic'`. `data.js`/`progress.js` are otherwise as
-  Phases 1–3 left them; `auth.js` only changed in the one function
-  Phase 5 scoped (see its Session Log entry below).
+  no longer takes a `level` param — every new account is written with
+  a fixed `level: 'basic'`. **As of Phase 6 (2026-08-20), `quiz.js`/
+  `lesson.js` are no longer "fully untouched"** (see the Phase 4 flag
+  below, which is now historical) — see that phase's Session Log entry.
+  Only Phase 7 (content capture/retrain) remains.
 - **Flagging for review (Phase 4):** rendering the trail's
   locked/current/done nodes required reintroducing real per-category
   locking in `learn.js` — this REVERSES a deliberate Rev 3 product
@@ -85,6 +92,15 @@ version:
   freely browsing ahead into medium/intermediate content) that's worth
   a second look before this ships. See the Phase 4 session log below
   for the full reasoning.
+- **Flagging for review (Phase 6):** the Level Final Assessment open
+  question (flagged by Phase 3, made more pressing by Phase 4) is now
+  **decided, not just noted**: `quiz.js` no longer offers a CTA into it
+  anywhere, though the underlying mechanism is untouched and still
+  works via a direct `quiz.html?final=1` link. This is a real product
+  call made by an AI session, not something Joshua explicitly signed
+  off on — see that phase's session log and the block comment above
+  `buildActionButtons()` in `quiz.js` for full reasoning, and say the
+  word if you'd rather it came back.
 
 
 ## 1. What this project is
@@ -1141,3 +1157,141 @@ for later):**
    noted above — small, not blocking, worth a decision/cleanup
    whenever convenient (could ride along with Phase 6 or be its own
    tiny session).
+
+### 2026-08-20 — Pivot Phase 6: `js/quiz.js` assessment format changes
+**Requested:** do Phase 6 per `PIVOT_CHECKLIST.md` — (1) add a
+non-blocking mini-check after each sign/cluster inside `lesson.html`,
+reusing the existing Practice Check UI; (2) add a sign-ordering/
+fingerspelling-challenge question type for Unit 6 (phrase-chaining via
+camera instead of only 4-option MC); (3) confirm Camera Check + the
+new ordering challenge both stay optional/bonus; and make the real
+call on Level Final Assessments (open since Phase 3, more pressing
+since Phase 4).
+
+**Findings (read before changing anything):**
+- Re-read `lesson.js`'s BUGFIX-8-reverted comment carefully before
+  assuming what "Practice Check" meant: the camera Practice Check panel
+  (labeled "🎥 Start Assessment" in the DOM, "Practice Check" in Rev 3
+  comments — a known label mismatch, not fixed this phase either, out
+  of scope) already tests exactly ONE sign, the one on screen, and is
+  fully optional. That's a *different* thing from what the checklist
+  item is asking for: the checklist is contrasting against `quiz.js`'s
+  "10 signs then one big quiz" MC/Identification pattern, not the
+  camera check. Confirmed this reading against
+  `SYSTEM_ARCHITECTURE.md`'s Rev 4 wording before writing any code —
+  see that file's own updated note for the interpretation actually
+  used.
+- Confirmed Unit 6 (`category: 'sequence_demo'`) is the only category
+  today whose `SIGNS` entries have a `sequence` array (`CAR_SPELL`,
+  `HOME_WORK_DEMO`) — grepped `data.js` for every `sequence:` hit.
+  Confirmed `quiz.js`'s existing camera round would never have matched
+  either of these: `getDetectionType()`/`classifyGesture()` look the
+  signId up in `SIGN_DICTIONARY`, which has no entry for phrase-level
+  ids (only their components do) — this was a real, silent gap, not
+  hypothetical.
+- Confirmed via `progress.js` that `getOrderedLiveCategories()` was
+  already exported and that `dashboard.js`'s Phase 4 bugfix already
+  established the exact pattern needed for the "next category" fix
+  found while touching `buildActionButtons()` (see Bonus fix below) —
+  reused that pattern rather than inventing a new one.
+
+**Changes made:**
+- `pages/lesson.html` / `css/lesson.css` / `js/lesson.js` — new "Quick
+  Check" card. Shown by `showQuickCheck()` after every 3rd sign
+  (`QUICK_CHECK_CLUSTER_SIZE`) and always on a category's last sign
+  (`shouldShowQuickCheck()`); skipped for the name drill (no data.js
+  description to quiz on) and single-sign categories.
+  `buildQuickCheckQuestion()` builds a 4-option MC question the same
+  way `quiz.js`'s MC round does (description as prompt, 3 random
+  other signIds as distractors) — a small parallel reimplementation,
+  not a shared import, since `quiz.js`'s helpers are private closures
+  in a different page's module. Purely formative: no `LWProgress`
+  write anywhere, never blocks `Prev`/`Next` (both already work
+  regardless of whether the question was answered), has its own
+  "Skip" control. CSS restates `quiz.css`'s `.quiz-option` visual
+  language under a `.quick-check__` prefix rather than importing a
+  second stylesheet into `lesson.html` for one component.
+- `js/quiz.js` / `pages/quiz.html` — the optional camera round now
+  detects phrase-type signs (`getCameraPhraseSequence()`) step by step
+  in order (`cameraPhraseSteps`/`cameraPhraseStepIdx`), reusing
+  `lesson.js`'s `phraseSteps`/`phraseStepIdx` mechanism rather than
+  reinventing it: same per-step `classifyMotion`/`classifyGesture`
+  call against the CURRENT step's expected component, same
+  strict-fail-on-wrong-step behavior. Both success and failure still
+  only ever write into `cameraRoundData` — the same object the plain
+  atomic-sign path already used — so `computeGradedScore()` (which
+  only sums `rounds`, i.e. MC + Identification) is structurally
+  unaffected; added an explicit comment confirming this at the
+  checklist's request (item 3) rather than just asserting it.
+  `quiz.html`'s camera-gate card shows an extra note
+  (`#gate-ordering-note`) when the category has a phrase item in
+  scope, toggled by `showCameraGate()`.
+- `js/quiz.js` — **Level Final Assessment: decided.** Retired the CTA
+  (`buildActionButtons()` no longer offers "🏁 Take Level Final
+  Assessment" after a category pass), kept the mechanism (`isFinal`
+  branch, `finishAssessment()`'s `recordLevelAssessment()` call, and
+  every `progress.js` export for this are all untouched — a bookmarked
+  `quiz.html?final=1` link still works end to end). Full reasoning is
+  in the block comment above `buildActionButtons()` in `quiz.js` and
+  in `PIVOT_CHECKLIST.md`'s Phase 6 entry; short version: there's no
+  honest per-level slot left in the flat trail to put the old CTA in,
+  and a full "trail-wide review" redesign is a real new feature, not a
+  small follow-on. **Flagging this as a real product decision made by
+  this session**, same spirit as Phase 4's category-locking-reversal
+  flag — say the word if you'd rather it came back.
+- Bonus fix (not a checklist item, found while touching
+  `buildActionButtons()` for the item above): the "Next Category" CTA
+  on a category pass was computed from `liveCategoriesFor(level)` —
+  the exact same per-level-walk bug class Phase 4 already found and
+  fixed in `dashboard.js`'s `renderContinueButton()`, but `quiz.js` was
+  untouched at the time (`SYSTEM_ARCHITECTURE.md` explicitly noted
+  "quiz.js/lesson.js remain fully untouched" through Phase 4). Fixed
+  by walking `getOrderedLiveCategories()` instead, same fix Phase 4
+  already applied elsewhere. Concretely: finishing the last basic-level
+  category used to silently fall back to "Back to Lessons" instead of
+  correctly pointing at the next unit's first category, even though
+  that category was already unlocked.
+- Ran `node --check --input-type=module` on both `js/lesson.js` and
+  `js/quiz.js` — no syntax errors. Cross-checked every new DOM id
+  referenced from JS against the actual markup in `lesson.html`/
+  `quiz.html` (`grep` both ways) and every `window.LWData`/
+  `window.LWProgress` function call against their real exported
+  signatures in `data.js`/`progress.js`. **Not exercised in a real
+  browser** — no dev server / browser tool in this sandbox, same
+  caveat as every phase before this one (webcam-dependent flows
+  especially can't be verified this way). Recommend Joshua click
+  through a lesson with 4+ signs to see the Quick Check card fire, and
+  run Unit 6's category assessment's optional camera round (needs a
+  real camera + a person actually fingerspelling/signing) to confirm
+  the ordering-challenge step-through behaves as intended.
+
+**Bugs/risks noticed, not fixed (out of scope for Phase 6, flagging
+for later):**
+1. The "🎥 Start Assessment" button text vs. "Practice Check" label
+   mismatch noted in `lesson.js`'s own BUGFIX-8-reverted comment is
+   still there — cosmetic, predates this phase, not touched.
+2. The Quick Check's distractor pool (`window.LWData.SIGNS`) is
+   app-wide, not scoped to the current category/level — on a small
+   category this means distractors can come from a completely
+   different topic (e.g. a Numbers checkpoint could offer an Alphabet
+   letter as a wrong option). This mirrors `quiz.js`'s own MC round
+   distractor scope exactly (also app-wide, see `buildDistractors()`),
+   so it's consistent with existing behavior rather than a new
+   inconsistency — flagging in case a tighter, same-category-only pool
+   is preferred for both down the line.
+3. Items 1–3 from the Phase 5 session log above (Current Level field,
+   `initLevelCards()` dead code, `auth.js`'s stale bypass-mode
+   docblock) are all still open — none were in this phase's scope.
+
+**Still open (per checklist — Phase 6 was the last app-code phase):**
+1. Phase 7 — capture + retrain (content/ML work, not app code): the 16
+   Essential Words placeholders, 5 phrase placeholders, `SIGN_DICTIONARY`
+   fixes for `'6'`/`'9'`/`'10'`, and curating real Unit 6 phrases.
+   Unchanged from before this session.
+2. Everything listed under "Explicitly deferred / not in scope for
+   this pivot" at the bottom of `PIVOT_CHECKLIST.md` (Review/Trainer
+   mode, placement test, sign-variation callouts, the
+   `intro-to-asl.html`/Unit 0 content overlap) — all still genuinely
+   deferred, not silently dropped.
+3. The bugs/risks list above (this session's own, plus the carried-over
+   Phase 5 items).

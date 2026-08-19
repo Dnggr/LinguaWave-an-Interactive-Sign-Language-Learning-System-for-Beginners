@@ -140,6 +140,15 @@ const btnTryPracticeEl    = document.getElementById('btn-try-practice');
 const detectionLogListEl = document.getElementById('detection-log-list');
 const btnClearLogEl      = document.getElementById('btn-clear-log');
 
+// NEW — REV 4 PIVOT PHASE 6: "Quick Check" mini-quiz refs. See the
+// block comment in lesson.html above #quick-check-card and
+// showQuickCheck()/buildQuickCheckQuestion() below for the mechanism.
+const quickCheckCardEl     = document.getElementById('quick-check-card');
+const quickCheckPromptEl   = document.getElementById('quick-check-prompt');
+const quickCheckOptionsEl  = document.getElementById('quick-check-options');
+const quickCheckFeedbackEl = document.getElementById('quick-check-feedback');
+const btnQuickCheckSkipEl  = document.getElementById('btn-quick-check-skip');
+
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
@@ -243,6 +252,161 @@ const requestedSign = params.get('sign');
 const sign       = (requestedSign || signOrder[0] || '').toUpperCase();
 const signIdx    = Math.max(signOrder.indexOf(sign), 0);
 const totalSigns = signOrder.length;
+
+// ══════════════════════════════════════════════════════════════════
+// REV 4 PIVOT — Phase 6: "Quick Check" — lightweight in-lesson recall
+// ══════════════════════════════════════════════════════════════════
+// Per SYSTEM_ARCHITECTURE.md Rev 4 §Assessment format changes: "Add a
+// lightweight, non-blocking mini-check after each sign (or small
+// cluster) inside lesson.html itself... instead of the current '10
+// signs then one big quiz' pattern." This is a small multiple-choice
+// recall question ("which sign matches this description?") shown
+// after every QUICK_CHECK_CLUSTER_SIZE signs (and always on the last
+// sign of a category, even if that doesn't land on a clean multiple),
+// built the same way quiz.js's Multiple Choice round builds its own
+// questions (data.js description as the prompt, 3 random other
+// signIds as distractors) — see buildQuickCheckQuestion() below. Not
+// a shared import: quiz.js's buildMCRound()/buildDistractors() are
+// private closures in a different page's module, not exported, so
+// this is a small, deliberately parallel reimplementation rather than
+// a new shared-utility module for ~15 lines of logic.
+//
+// Deliberately NOT wired into window.LWProgress anywhere — no score is
+// kept, nothing is recorded, and it never blocks Prev/Next (see
+// setupNavButtons(), untouched). "Reusing the existing Practice Check
+// UI" (PIVOT_CHECKLIST.md Phase 6) is interpreted as reusing that
+// panel's non-blocking, always-skippable INTERACTION PATTERN — not the
+// camera mechanism, which this has nothing to do with. See
+// AI_MEMORY.md's Phase 6 session log for the full reasoning.
+const QUICK_CHECK_CLUSTER_SIZE = 3;
+
+/**
+ * True on a "checkpoint" sign: every QUICK_CHECK_CLUSTER_SIGN'th sign
+ * in the category, and always the last sign (so a category whose
+ * count isn't a clean multiple of the cluster size still gets a final
+ * check instead of silently skipping one at the end).
+ */
+function shouldShowQuickCheck() {
+  // The name drill is one synthetic "sign" that internally chains many
+  // letters (see computeSignOrder()) — there's no data.js description
+  // to build a recall question from, and clustering across a single
+  // pseudo-sign doesn't mean anything. Skip entirely.
+  if (isNameDrill) return false;
+  // Too small to cluster — every sign is effectively already the
+  // "last" sign, and a 1-question category doesn't need retention
+  // testing beyond the category assessment itself.
+  if (totalSigns <= 1) return false;
+  const isEndOfCluster = (signIdx + 1) % QUICK_CHECK_CLUSTER_SIZE === 0;
+  const isLastSign     = signIdx === totalSigns - 1;
+  return isEndOfCluster || isLastSign;
+}
+
+/** Fisher–Yates shuffle — local copy of the same pattern quiz.js uses
+ *  (see that file's shuffle()); kept local for the same reason
+ *  buildQuickCheckQuestion() below is local, not imported. */
+function shuffleArr(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Builds one MC recall question about a random sign from the cluster
+ * that just finished (the last QUICK_CHECK_CLUSTER_SIZE signs up to
+ * and including the current one), or null if there isn't enough
+ * content to build a fair 4-option question yet (e.g. very early in a
+ * freshly-added category with few SIGNS entries) — callers treat null
+ * as "don't show the card this time" rather than showing a broken
+ * question.
+ */
+function buildQuickCheckQuestion() {
+  const clusterStart = Math.max(0, signIdx - QUICK_CHECK_CLUSTER_SIZE + 1);
+  const clusterSigns = signOrder.slice(clusterStart, signIdx + 1);
+  const targetSign    = clusterSigns[Math.floor(Math.random() * clusterSigns.length)];
+  const targetData    = window.LWData?.getSign?.(level, targetSign);
+  if (!targetData?.description) return null;
+
+  const pool = Array.from(new Set((window.LWData?.SIGNS ?? []).map(s => s.signId)))
+    .filter(s => s !== targetSign);
+  const distractors = shuffleArr(pool).slice(0, 3);
+  if (distractors.length < 3) return null;
+
+  const desc = targetData.description.length > 130
+    ? targetData.description.slice(0, 129).trimEnd() + '…'
+    : targetData.description;
+
+  return {
+    signId: targetSign,
+    prompt: `Quick recall — which sign matches this description?\n"${desc}"`,
+    options: shuffleArr([targetSign, ...distractors]),
+  };
+}
+
+/**
+ * Shows (or hides) the Quick Check card for the sign currently on
+ * screen. Called once from updateLessonMeta() on every sign load —
+ * never mid-page, since navigating away/back is what re-triggers a
+ * fresh (possibly re-randomized) question.
+ */
+function showQuickCheck() {
+  if (!quickCheckCardEl) return;
+
+  if (!shouldShowQuickCheck()) {
+    quickCheckCardEl.style.display = 'none';
+    return;
+  }
+
+  const q = buildQuickCheckQuestion();
+  if (!q) {
+    quickCheckCardEl.style.display = 'none';
+    return;
+  }
+
+  quickCheckCardEl.style.display = '';
+  if (quickCheckPromptEl) quickCheckPromptEl.textContent = q.prompt;
+  if (quickCheckFeedbackEl) {
+    quickCheckFeedbackEl.style.display = 'none';
+    quickCheckFeedbackEl.textContent   = '';
+  }
+
+  if (quickCheckOptionsEl) {
+    quickCheckOptionsEl.innerHTML = q.options.map(opt =>
+      `<button type="button" data-option="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`
+    ).join('');
+    quickCheckOptionsEl.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        const correct = btn.dataset.option === q.signId;
+        quickCheckOptionsEl.querySelectorAll('button').forEach(b => {
+          b.disabled = true;
+          if (b.dataset.option === q.signId) b.classList.add('quick-check__option--correct');
+          else if (b === btn) b.classList.add('quick-check__option--wrong');
+        });
+        if (quickCheckFeedbackEl) {
+          quickCheckFeedbackEl.style.display = '';
+          quickCheckFeedbackEl.textContent = correct
+            ? '✅ Nice — that\u2019s right.'
+            : `❌ Not quite — it was "${q.signId}".`;
+          quickCheckFeedbackEl.className = `assessment-feedback assessment-feedback--${correct ? 'success' : 'error'}`;
+        }
+        // Purely formative — no LWProgress write, no persisted score.
+        // Prev/Next already work regardless of whether this was ever
+        // answered (see setupNavButtons(), untouched by this feature).
+      };
+    });
+  }
+}
+
+// Wired once — the Skip control just hides the card; nothing to
+// persist, since not answering is already a fully supported path
+// (Next works either way).
+if (btnQuickCheckSkipEl) {
+  btnQuickCheckSkipEl.onclick = () => {
+    if (quickCheckCardEl) quickCheckCardEl.style.display = 'none';
+  };
+}
 
 // BUG 8 (reverted): category assessments used to test every sign in
 // the category in one run. Per feedback, every lesson — letters,
@@ -735,6 +899,11 @@ function updateLessonMeta() {
   // never carry over.
   resetMotionUI();
   syncMotionUIForMode();
+
+  // NEW — REV 4 PIVOT PHASE 6: show (or hide) the Quick Check card for
+  // whichever sign just loaded. See showQuickCheck()/
+  // shouldShowQuickCheck() above.
+  showQuickCheck();
 }
 
 function escapeHtml(str) {

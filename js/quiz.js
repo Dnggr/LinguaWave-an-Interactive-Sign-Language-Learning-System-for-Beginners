@@ -2,13 +2,15 @@
  * js/quiz.js — Category & Level Assessment Engine
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Runs the GRADED assessment that now sits at the end of
- *            every category ("End-of-category assessment") and once
- *            more at the end of a level ("End-of-level assessment"),
- *            per the flowchart. Three interactive rounds:
+ *            every category ("End-of-category assessment"). Three
+ *            interactive rounds:
  *              1. Multiple Choice   — read a description, pick the sign
  *              2. Identification    — see the sign, pick its name
  *              3. Camera Check      — OPTIONAL live motion/gesture
- *                                      detection (MediaPipe). Never
+ *                                      detection (MediaPipe), including
+ *                                      a sign-ordering/fingerspelling
+ *                                      challenge for phrase-type signs
+ *                                      (REV 4 PHASE 6, see below). Never
  *                                      counted toward pass/fail —
  *                                      webcam accuracy has real limits,
  *                                      so this is bonus practice only.
@@ -22,8 +24,45 @@
  *
  * URL PARAMS:
  *   ?level=basic&category=alphabet   → category assessment
- *   ?level=basic&final=1             → level-final assessment (all
- *                                        live categories in the level)
+ *   ?level=basic&final=1             → level-final assessment. LEGACY
+ *                                        as of REV 4 PHASE 6 — the
+ *                                        route/scoring still work (see
+ *                                        buildScope()/finishAssessment()
+ *                                        below, both untouched), but
+ *                                        nothing links to it anymore.
+ *                                        See the block comment above
+ *                                        buildActionButtons() for why.
+ *
+ * ══════════════════════════════════════════════════════════════════
+ * REV 4 PIVOT — PHASE 6 (js/quiz.js assessment format changes)
+ * ══════════════════════════════════════════════════════════════════
+ * Per PIVOT_CHECKLIST.md Phase 6 / SYSTEM_ARCHITECTURE.md's matching
+ * section:
+ *  1. Lightweight non-blocking mini-checks after each sign/cluster —
+ *     implemented in js/lesson.js (this file is the GRADED assessment,
+ *     out of scope for that item) — see lesson.js's Phase 6 header.
+ *  2. NEW — sign-ordering/fingerspelling-challenge question type for
+ *     phrase-type signs (any SIGNS entry with a `sequence` array —
+ *     today that's Unit 6 / category:'sequence_demo', see data.js).
+ *     The existing optional camera round now detects each component
+ *     of the sequence in order (reusing the exact phraseSteps/
+ *     phraseStepIdx pattern js/lesson.js already uses for graded
+ *     per-sign phrase assessment — see getCameraPhraseSequence() and
+ *     the cameraPhraseSteps branch inside startCameraLoop()'s loop()
+ *     below) instead of a single atomic classifyMotion/classifyGesture
+ *     call, which would never have matched a phrase signId in the
+ *     first place (phrase ids like 'CAR_SPELL' have no
+ *     SIGN_DICTIONARY entry of their own — only their components do).
+ *  3. Confirmed optional/bonus: the ordering challenge lives INSIDE
+ *     the existing optional camera round and writes only into
+ *     `cameraRoundData` (same object the plain atomic-sign path
+ *     already used) — computeGradedScore() only ever sums the MC +
+ *     Identification `rounds`, never `cameraRoundData`, so this can't
+ *     affect pass/fail no matter what happens in it. See
+ *     finishAssessment() below.
+ *  4. Level Final Assessment — DECIDED (see the block comment above
+ *     buildActionButtons()): the CTA into it is retired, the
+ *     mechanism itself is not.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -291,6 +330,14 @@ function selectAnswer(btn, q) {
 }
 
 /* ── Camera round gate (optional) ────────────────────────────────── */
+// CONFIRMED — REV 4 PHASE 6, PIVOT_CHECKLIST.md Phase 6 item 3:
+// computeGradedScore() below only ever sums `rounds` (Multiple Choice
+// + Identification) — it never reads `cameraRoundData`. The new
+// sign-ordering/fingerspelling-challenge phrase branch in
+// startCameraLoop() only ever writes into `cameraRoundData`, the same
+// object the plain atomic-sign camera path already used. So the new
+// question type is structurally incapable of affecting pass/fail,
+// same as the existing Camera Check — both stay optional/bonus.
 function computeGradedScore() {
   let correct = 0, total = 0;
   rounds.forEach(r => {
@@ -308,6 +355,13 @@ function showCameraGate() {
     gateCardEl.style.display = '';
     if (gateScoreSoFarEl) {
       gateScoreSoFarEl.textContent = `${Math.round(computeGradedScore() * 100)}%`;
+    }
+    // NEW — REV 4 PHASE 6: surface the ordering-challenge note only
+    // when this category actually has a phrase-type sign in scope.
+    const orderingNoteEl = document.getElementById('gate-ordering-note');
+    if (orderingNoteEl) {
+      const hasPhraseItems = scope.signs.some(s => getCameraPhraseSequence(s) !== null);
+      orderingNoteEl.style.display = hasPhraseItems ? '' : 'none';
     }
   }
 }
@@ -327,11 +381,35 @@ window.skipCameraRound = function () {
 /* ── Camera round (optional, ungraded toward pass/fail) ──────────── */
 let cameraSignQueue = [], cameraQIdx = 0, cameraScore = 0;
 
+// NEW — REV 4 PHASE 6: sign-ordering/fingerspelling-challenge state.
+// Mirrors js/lesson.js's phraseSteps/phraseStepIdx (see that file's
+// block comment near phraseSteps for the original mechanism this was
+// ported from) — same idea, reused here for this optional bonus round
+// instead of a graded per-sign assessment.
+let cameraPhraseSteps   = null;
+let cameraPhraseStepIdx = 0;
+
+/**
+ * Returns a phrase's component signId sequence for the camera round's
+ * CURRENT queue item, or null if it's a plain atomic sign. Same
+ * lookup js/lesson.js's getPhraseSequence() does (data.js's
+ * SIGNS.sequence field) — not imported from there since lesson.js's
+ * version also special-cases the Unit 2 name drill, which is
+ * irrelevant here (the name drill has no CATEGORIES entry and is
+ * never reachable through quiz.js's buildScope()).
+ */
+function getCameraPhraseSequence(signId) {
+  const data = window.LWData?.getSign?.(level, signId);
+  return (data && Array.isArray(data.sequence) && data.sequence.length > 0) ? data.sequence : null;
+}
+
 async function runCameraRound() {
   cameraRoundData = { attempted: true, correct: 0, total: 0, skipped: false };
   cameraSignQueue = sample(scope.signs, Math.min(6, scope.signs.length));
   cameraQIdx = 0;
   cameraScore = 0;
+  cameraPhraseSteps   = null;
+  cameraPhraseStepIdx = 0;
 
   if (cameraStatusEl) { cameraStatusEl.style.display = 'flex'; cameraStatusEl.textContent = '⏳ Starting camera…'; }
 
@@ -364,6 +442,88 @@ function startCameraLoop() {
     if (!anyHandPresent || cameraCooldown || cameraQIdx >= cameraSignQueue.length) return;
 
     const currentSign = cameraSignQueue[cameraQIdx];
+
+    // NEW — REV 4 PHASE 6: sign-ordering/fingerspelling-challenge
+    // branch. currentSign is a phrase (e.g. Unit 6's 'CAR_SPELL') —
+    // check against the CURRENT STEP's expected component instead of
+    // a single atomic detection. Same per-step mechanics as
+    // js/lesson.js's handleAssessmentFrame() phrase branch (strict:
+    // any wrong step ends THIS item's attempt immediately), reused
+    // here for this optional bonus round — see that file for the
+    // pattern this was ported from.
+    if (cameraPhraseSteps) {
+      const expectedStep  = cameraPhraseSteps[cameraPhraseStepIdx];
+      const stepIsMotion   = getDetectionType(expectedStep) === 'motion';
+      const allowedLabels = getAllowedLabelsForSign(expectedStep);
+      const result = stepIsMotion
+        ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels)
+        : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels);
+
+      if (!result.matched || !result.label) return;
+      if (!stepIsMotion) {
+        debounceCount++;
+        if (debounceCount < 25) return;
+      }
+      debounceCount = 0;
+
+      if (result.label !== expectedStep) {
+        // Wrong step — ends this queue item's attempt (counts as one
+        // miss toward the bonus tally, same as a wrong atomic-sign
+        // guess would) but never blocks the quiz — moves straight on
+        // to the next item exactly like the plain path below does.
+        cameraCooldown = true;
+        clearTimeout(cameraPromptTimer);
+        resetMotionBuffer();
+        cameraPhraseSteps = null;
+        cameraRoundData.total++;
+        if (cameraFeedbackEl) {
+          cameraFeedbackEl.textContent = `❌ Detected "${result.label}" — expected "${expectedStep}" (step ${cameraPhraseStepIdx + 1}/${cameraPhraseSteps?.length ?? '?'})`;
+          cameraFeedbackEl.className   = 'assessment-feedback assessment-feedback--error';
+          cameraFeedbackEl.style.display = '';
+        }
+        if (cameraScoreEl) cameraScoreEl.textContent = `Bonus score: ${cameraScore} / ${cameraSignQueue.length}`;
+        setTimeout(() => { cameraQIdx++; nextCameraPrompt(); }, 2000);
+        return;
+      }
+
+      resetMotionBuffer();
+      if (cameraPhraseStepIdx < cameraPhraseSteps.length - 1) {
+        // Step correct, more steps to go — brief pause, then arm the
+        // next step (same short-pause spirit as lesson.js's
+        // PHRASE_STEP_DELAY).
+        cameraCooldown = true;
+        cameraPhraseStepIdx++;
+        const nextStep = cameraPhraseSteps[cameraPhraseStepIdx];
+        if (cameraPromptEl) {
+          cameraPromptEl.textContent = `Sign in order: ${cameraPhraseSteps.join(' → ')}  (step ${cameraPhraseStepIdx + 1}/${cameraPhraseSteps.length}: "${nextStep}")`;
+        }
+        if (cameraFeedbackEl) {
+          cameraFeedbackEl.textContent = `✅ Got it — next: "${nextStep}"`;
+          cameraFeedbackEl.className   = 'assessment-feedback assessment-feedback--success';
+          cameraFeedbackEl.style.display = '';
+        }
+        setTimeout(() => { cameraCooldown = false; }, 700);
+        return;
+      }
+
+      // Final step correct — whole phrase succeeded.
+      cameraCooldown = true;
+      clearTimeout(cameraPromptTimer);
+      cameraPhraseSteps = null;
+      cameraScore++;
+      cameraRoundData.total++;
+      cameraRoundData.correct++;
+      if (cameraFeedbackEl) {
+        cameraFeedbackEl.textContent = `✅ Correct order! (${result.confidence}%)`;
+        cameraFeedbackEl.className   = 'assessment-feedback assessment-feedback--success';
+        cameraFeedbackEl.style.display = '';
+      }
+      if (cameraScoreEl) cameraScoreEl.textContent = `Bonus score: ${cameraScore} / ${cameraSignQueue.length}`;
+      setTimeout(() => { cameraQIdx++; nextCameraPrompt(); }, 2000);
+      return;
+    }
+
+    // ── existing atomic-sign logic, unchanged below ──
     const isMotion = getDetectionType(currentSign) === 'motion';
     // NEW: scope candidates to currentSign's category (e.g. 'numbers')
     // so a correctly-signed '6' can't lose to 'W' on the raw argmax —
@@ -412,6 +572,11 @@ function nextCameraPrompt() {
   debounceCount = 0;
   cameraCooldown = true;
   resetMotionBuffer();
+  // NEW — REV 4 PHASE 6: reset/detect phrase state for THIS queue item
+  // before setting up its prompt, so a completed (or abandoned, on
+  // timeout) phrase from a previous item never bleeds into the next.
+  cameraPhraseSteps   = getCameraPhraseSequence(currentSign);
+  cameraPhraseStepIdx = 0;
   if (cameraFeedbackEl) cameraFeedbackEl.style.display = 'none';
   if (cameraScoreEl) cameraScoreEl.textContent = `Bonus score: ${cameraScore} / ${cameraSignQueue.length}`;
 
@@ -420,9 +585,14 @@ function nextCameraPrompt() {
 
   cameraGetReadyTimer = setTimeout(() => {
     cameraCooldown = false;
-    if (cameraPromptEl) cameraPromptEl.textContent = `Try signing: "${currentSign}"`;
+    if (cameraPromptEl) {
+      cameraPromptEl.textContent = cameraPhraseSteps
+        ? `Sign in order: ${cameraPhraseSteps.join(' → ')}  (step 1/${cameraPhraseSteps.length}: "${cameraPhraseSteps[0]}")`
+        : `Try signing: "${currentSign}"`;
+    }
     cameraPromptTimer = setTimeout(() => {
       cameraRoundData.total++;
+      cameraPhraseSteps = null;
       setTimeout(() => { cameraQIdx++; nextCameraPrompt(); }, 1500);
     }, 12000);
   }, 1200);
@@ -490,6 +660,55 @@ function renderResults(score, passed, breakdown) {
   if (resultsActionsEl) resultsActionsEl.innerHTML = buildActionButtons(passed);
 }
 
+// ══════════════════════════════════════════════════════════════════
+// REV 4 PHASE 6 — LEVEL FINAL ASSESSMENT: DECIDED
+// ══════════════════════════════════════════════════════════════════
+// This was flagged as an open question since Phase 3 ("whether 'level
+// final' still makes sense once the trail is one continuous path is a
+// call for [Phase 6], not Phase 3") and made more visible by Phase 4
+// ("learn.js's trail no longer has any UI entry point into a
+// level-final assessment... This phase needs to actually decide: keep
+// level-finals as-is (and maybe add a trail entry point back),
+// redesign as a trail-wide review, or retire the concept.")
+//
+// DECISION: retire the CTA, keep the mechanism. Concretely:
+//   - buildActionButtons() below no longer offers "🏁 Take Level Final
+//     Assessment" after a category pass (that was the one remaining
+//     entry point into it anywhere in the app).
+//   - Nothing else was touched: `isFinal`/buildScope()'s level-final
+//     branch above, finishAssessment()'s recordLevelAssessment() call,
+//     and every function progress.js exports for this
+//     (recordLevelAssessment/getLevelAssessment/isLevelFinalUnlocked/
+//     LEVEL_ORDER) are all still there and still work — a bookmarked
+//     `quiz.html?level=X&final=1` link still runs a real level-final
+//     assessment and records a real result. This is a "stop pointing
+//     people at it" change, not a "rip it out" change.
+//
+// REASONING: "keep as-is + add a trail entry point back" would mean
+// resurfacing the three-level (basic/medium/intermediate) framing in
+// learn.js's UI — exactly what Rev 4 is deliberately moving away from
+// (a category can belong to a "level" that has nothing to do with
+// where it sits on the trail; Unit 4's `requests` is level:'medium'
+// but comes right after Unit 3's basic-level `numbers`, see
+// SYSTEM_ARCHITECTURE.md's Unit Map). There's no honest place left to
+// put "you finished Basic, now do the Basic-level final" that wouldn't
+// contradict the trail it would sit next to. "Redesign as a
+// trail-wide review" is a real, reasonable alternative — but it's a
+// new feature (what would it cover, when would it trigger, does it
+// reuse quiz.js's rounds or need new ones) that's out of a reasonable
+// scope for this phase's diff, not a small follow-on to what's already
+// here. Retiring the CTA is the smallest change that resolves the
+// actual inconsistency (a dead-end feature with no way to reach it
+// honestly) without either silently keeping a confusing gap or
+// committing to a bigger redesign no one has actually asked for.
+//
+// FLAGGING (same spirit as Phase 4's category-locking reversal flag —
+// see AI_MEMORY.md §0): this is a real product decision made by this
+// session, not something Joshua explicitly confirmed. If level finals
+// should come back, the fastest revert is restoring the `finalUnlocked`
+// branch removed from the `passed` case below — nothing in
+// progress.js needs to change either way.
+// ══════════════════════════════════════════════════════════════════
 function buildActionButtons(passed) {
   if (isFinal) {
     if (passed) {
@@ -511,15 +730,34 @@ function buildActionButtons(passed) {
   }
 
   if (passed) {
-    const live = window.LWProgress.liveCategoriesFor(level);
-    const idx  = live.findIndex(c => c.id === categoryId);
-    const next = live[idx + 1];
-    const finalUnlocked = window.LWProgress.isLevelFinalUnlocked(level);
+    // BUGFIX — REV 4 PHASE 6: "next category" used to be computed from
+    // window.LWProgress.liveCategoriesFor(level) — the OLD per-level
+    // walk, sorted by each category's in-level `order`, not by true
+    // trail position. Phase 4 already found and fixed this exact class
+    // of bug in js/dashboard.js's renderContinueButton() (see that
+    // file's BUGFIX comment for the root cause: Phase 1 never
+    // renumbered `order` when it added `unit`, so in-level order and
+    // trail order can disagree) but quiz.js was untouched at the time —
+    // SYSTEM_ARCHITECTURE.md's Progress/unlock model changes section
+    // explicitly notes "quiz.js/lesson.js remain fully untouched"
+    // through Phase 4. Same bug, same fix: walk the flat cross-unit
+    // chain instead. Concretely, this used to mean finishing the LAST
+    // basic-level category (Numbers) would look for a next category
+    // only among OTHER basic-level categories, find none, and silently
+    // fall back to "Back to Lessons" instead of correctly pointing at
+    // Unit 4's first category — even though that next category was
+    // already unlocked and waiting.
+    const chain = window.LWProgress.getOrderedLiveCategories();
+    const idx   = chain.findIndex(c => c.id === categoryId);
+    const next  = chain[idx + 1];
+
     let cta = `<a href="learn.html?level=${level}" class="btn btn--secondary btn--lg">Back to Lessons</a>`;
-    if (finalUnlocked) {
-      cta = `<a href="quiz.html?level=${level}&final=1" class="btn btn--primary btn--lg">🏁 Take Level Final Assessment</a> ` + cta;
-    } else if (next) {
-      cta = `<a href="lesson.html?level=${level}&category=${next.id}" class="btn btn--primary btn--lg">Next Category: ${next.title} →</a> ` + cta;
+    // REMOVED — see the REV 4 PHASE 6 — LEVEL FINAL ASSESSMENT: DECIDED
+    // block comment above buildActionButtons(): this branch used to
+    // insert a "🏁 Take Level Final Assessment" CTA here whenever
+    // window.LWProgress.isLevelFinalUnlocked(level) was true.
+    if (next) {
+      cta = `<a href="lesson.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
     }
     return `${cta} <a href="dashboard.html" class="btn btn--ghost">Dashboard</a>`;
   }
