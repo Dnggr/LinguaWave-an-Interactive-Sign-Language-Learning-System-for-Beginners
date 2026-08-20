@@ -26,7 +26,13 @@ Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4
 (`learn.js`/`dashboard.js` trail-view UI, 2026-08-18/19), Phase 5
 (signup-time level picker removed, 2026-08-19), and Phase 6 (`quiz.js`
 assessment format changes, 2026-08-20) complete; Phase 7 (capture +
-retrain, content/ML work) not started.** The
+retrain, content/ML) partially done as of 2026-08-20 — the `6`/`9`/`10`
+→ `detectionType: 'motion'` routing fix and the 6 curated Unit 6
+phrases are both in (code-verified, see today's Session Log entry).
+Actual capture + retraining for the 16 Essential Words, the 5 phrase
+placeholders, and now also `HELLO`/`THANK YOU`/`HOT`/`COLD` (newly
+confirmed broken this session, see Session Log) is still open and
+needs a human + camera + Colab, not another AI session.** The
 capstone adviser reviewed the project and directed
 a restructure of how content is organized. The full plan lives in
 `SYSTEM_ARCHITECTURE.md` → **Rev 4** — read that section before making
@@ -1295,3 +1301,82 @@ for later):**
    deferred, not silently dropped.
 3. The bugs/risks list above (this session's own, plus the carried-over
    Phase 5 items).
+
+---
+
+### 2026-08-20 — Phase 7 (partial): number routing confirmed + curated Unit 6 phrases
+**Requested:** do Phase 7 of the curriculum pivot; fix bugs; give
+paste-ready files; update the three coordination docs.
+
+**Findings:**
+- `PIVOT_CHECKLIST.md` had all 5 Phase 7 items unchecked, but reading
+  `js/engine/dictionary.js` and `js/data.js` directly showed the
+  `6`/`9`/`10` → `detectionType: 'motion'` routing fix was **already
+  implemented in code** (dictionary.js even has its own "PHASE 7
+  (2026-08-20)" block comment explaining the fix). The checklist had
+  simply never been updated to match — checked those two items off
+  with a verification note rather than re-doing work that was already
+  done.
+- Of the remaining 3 items, 2 genuinely need a camera + Colab
+  (Essential Words, the 5 phrase placeholders) — out of scope for an
+  AI session. The 3rd (curate Unit 6 phrases) only needs *already*
+  trained words, so it was done this session: replaced the
+  `CAR_SPELL`/`HOME_WORK_DEMO` demo placeholders with 6 real phrases
+  built from words individually grepped against this repo's actual
+  `asl_motion_model/labels.json`.
+- **New, precisely confirmed this session (previous notes only
+  speculated):**
+  1. `HELLO`/`THANK YOU` in `dictionary.js` are not `disabled: true` —
+     the app treats them as usable — but grepping
+     `asl_motion_model/labels.json` directly confirms neither class
+     exists in the trained model. Any attempt at these two signs will
+     run the motion classifier and can never succeed.
+  2. `HOT`/`COLD` (Unit 5 `temperature`) are worse: **zero
+     `SIGN_DICTIONARY` entry at all** in `dictionary.js`, not even a
+     `disabled: true` placeholder like the 16 Essential Words have.
+     `getDetectionType()`'s `?? 'static'` fallback means a camera
+     attempt on either one silently runs the wrong classifier.
+     `SYSTEM_ARCHITECTURE.md`'s Unit Map row for Unit 5 claims
+     "family/places/time/temperature trained" — only 3 of the 4 are
+     actually true.
+- Confirmed (by reading `lesson.js`'s `getActiveSignId()` /
+  `getPhraseSequence()` / `needsExplicitStart()`) that a `sequence`-type
+  `SIGNS` entry's own top-level `detectionType` field is never read
+  during phrase detection — each step resolves its own detection type
+  from its own word (e.g. `'MOM'`, then `'HOME'`), not from the
+  phrase's `signId` (`'MOM_HOME'`). This was an open question in an
+  earlier draft of this session's work; now confirmed safe.
+
+**Changes made:**
+- `js/data.js` — `sequence_demo` category title changed
+  `'Basic Phrases (Demo content)'` → `'Basic Phrases'`; `words` list
+  and the two `SIGNS` entries (`CAR_SPELL`, `HOME_WORK_DEMO`) replaced
+  with 6 curated phrases (`MOM_HOME`, `DAD_WORK`, `TODAY_SCHOOL`,
+  `FINISH_WORK`, `SISTER_STORE`, `TODAY_GRANDMA_HOME`), each a
+  `sequence` of words confirmed present in `asl_motion_model/labels.json`.
+  Ran `node --check` on the result — no syntax errors.
+- No changes made to `dictionary.js` — the `6`/`9`/`10` fix was already
+  there; nothing to add. `HELLO`/`THANK YOU`/`HOT`/`COLD` were
+  deliberately left unchanged pending a product decision (see
+  `PIVOT_CHECKLIST.md`'s two new flagged items) rather than silently
+  disabling user-facing content without sign-off.
+- `PIVOT_CHECKLIST.md` — checked off all 3 completable Phase 7 items
+  with verification notes; added 2 new unchecked items for the
+  HELLO/THANK YOU and HOT/COLD findings above.
+- `SYSTEM_ARCHITECTURE.md` — updated the Rev 4 changelog line and the
+  Unit Map's Numbers row to reflect the confirmed-done routing fix;
+  corrected the Unit 5 row's "temperature trained" claim.
+
+**Still open:**
+1. Essential Words (16) + 5 phrase placeholders — capture + retrain,
+   unchanged.
+2. `6`/`9`/`10` are correctly routed but `asl_motion_model` still has
+   zero digit classes — needs capture + retrain same as item 1.
+3. Decide + implement: disable `HELLO`/`THANK YOU` in `dictionary.js`
+   until retrained, or scope a capture session for just those two.
+4. Add `disabled: true` placeholder `SIGN_DICTIONARY` entries for
+   `HOT`/`COLD` (matching the Essential Words pattern) — small, safe
+   AI-doable change, just wasn't made unprompted alongside a docs-only
+   correction.
+5. Image/video assets for the 6 new `sequence_demo` phrases don't
+   exist yet (same gap as the 0–9 numbers assets) — not a code issue.

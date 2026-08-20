@@ -115,19 +115,18 @@ const CATEGORIES = [
   // unit: 1 (Rev 4 Phase 1 — see Unit Map in SYSTEM_ARCHITECTURE.md)
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
 
-  // NEW — Numbers 0–9. Same level as Alphabet (both are single, held
-  // handshapes with NO motion — see the SIGNS entries below, all
-  // `detectionType: 'static'`, and the matching SIGN_DICTIONARY
-  // entries in dictionary.js which are NOT given `detectionType:
-  // 'motion'`, so getDetectionType() defaults them to 'static' too).
-  // Wired through the SAME asl_static_model as the alphabet — it is
-  // NOT a separate model. For this to actually classify anything,
-  // asl_static_model/labels.json (and the matching model.json +
-  // weights .bin) must be RETRAINED to output '0'..'9' alongside the
-  // existing letters, and the label STRINGS in that retrained
-  // labels.json must be exactly '0','1',...,'9' to match the
-  // SIGN_DICTIONARY keys below — see AI_MEMORY.md → "Numbers category"
-  // for the full checklist.
+  // Numbers 0–9 are single, held handshapes with NO motion — EXCEPT
+  // '6' and '9', which are statically identical to the letters W/F
+  // and need the motion model instead (see dictionary.js's NUMBERS
+  // block comment). Wired through the SAME asl_static_model as the
+  // alphabet for 0–5/7/8 — it is NOT a separate model. For those to
+  // actually classify anything, asl_static_model/labels.json (and
+  // the matching model.json + weights .bin) must be RETRAINED to
+  // output '0'..'9' alongside the existing letters, with label
+  // STRINGS exactly '0','1',...,'9' to match the SIGN_DICTIONARY
+  // keys — see AI_MEMORY.md → "Numbers category" for the checklist.
+  // '6'/'9'/'10' need the same treatment on asl_motion_model instead
+  // (PIVOT_CHECKLIST.md Phase 7 — capture/retrain still open).
   // unit: 3 (Rev 4 Phase 1)
   { id: 'numbers', level: 'basic', title: 'Numbers', order: 2, comingSoon: false, unit: 3 },
 
@@ -151,32 +150,32 @@ const CATEGORIES = [
     // and dictionary.js's PLACES block comment for why).
     words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR', 'IN', 'OUT', 'WITH'],
   },
-  // NEW — Tier 0 phrase-chaining proof of concept (lesson.js). Chains
-  // several already-working atomic detections (letters and/or trained
-  // word-signs) in sequence instead of needing a whole new
-  // continuous-recognition model — see the phraseSteps block comment
-  // in lesson.js for the full mechanism. Both entries below use ONLY
-  // vocabulary that's already trained end-to-end, so this actually
-  // works right now, not just architecturally. Wiring up your real
-  // Intermediate-category phrases works the same way — add a
-  // `sequence` array to a SIGNS entry — but is gated on THOSE
-  // component words being trained first; this category is deliberately
-  // separate demo content, not meant to replace real curriculum.
-  // order: 100 keeps this out of the way of your real category
-  // numbering rather than needing to renumber anything.
-  // REV 4 Phase 1 — id/title kept as-is (renaming would touch
-  // lesson.js's phraseSteps + every ?category=sequence_demo link for
-  // zero functional gain right now). Framing softened from "(Demo)"
-  // toward "Basic Phrases", but CAR_SPELL/HOME_WORK_DEMO are still
-  // placeholder content — full rename to a clean "Basic Phrases"
-  // title happens in Phase 7 once real curated phrases (per
-  // SYSTEM_ARCHITECTURE.md Rev 4 §"New content needed", item 4)
-  // replace these two demo entries. unit: 6.
-  // TODO(Phase 7): swap words below for real phrases, then rename
-  // title to 'Basic Phrases' (drop the demo framing entirely).
+  // Tier 0 phrase-chaining (lesson.js). Chains several already-working
+  // atomic detections (letters and/or trained word-signs) in sequence
+  // instead of needing a whole new continuous-recognition model — see
+  // the phraseSteps block comment in lesson.js for the full mechanism.
+  // PHASE 7 (2026-08-20): the six entries below replaced the old
+  // CAR_SPELL/HOME_WORK_DEMO demo placeholders — real curated phrases
+  // per SYSTEM_ARCHITECTURE.md Rev 4 §"New content needed", item 4.
+  // Every component word was individually grepped against this repo's
+  // asl_motion_model/labels.json (not just assumed from the absence of
+  // a `disabled` flag) — only family/places/time vocab confirmed
+  // present there was used. HELLO/THANK_YOU/HOT/COLD were deliberately
+  // left OUT even though dictionary.js's own entries don't mark them
+  // `disabled` — confirmed this session that asl_motion_model/labels.json
+  // has no HELLO/THANK_YOU class at all, and that HOT/COLD have ZERO
+  // dictionary.js SIGN_DICTIONARY entry (not even a disabled
+  // placeholder) — see PIVOT_CHECKLIST.md/AI_MEMORY.md Phase 7 entries.
+  // order: 100 keeps this out of the way of the real category
+  // numbering rather than needing to renumber anything (no collision —
+  // checked, no other CATEGORIES entry uses order: 100).
+  // id/title: title updated to drop the "(Demo content)" framing now
+  // that real content replaces it; id kept as 'sequence_demo' per the
+  // Phase 1 note (renaming touches lesson.js's phraseSteps + every
+  // ?category=sequence_demo link for zero functional gain).
   {
-    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases (Demo content)', order: 100, comingSoon: false, unit: 6,
-    words: ['CAR_SPELL', 'HOME_WORK_DEMO'],
+    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 6,
+    words: ['MOM_HOME', 'DAD_WORK', 'TODAY_SCHOOL', 'FINISH_WORK', 'SISTER_STORE', 'TODAY_GRANDMA_HOME'],
   },
   {
     id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false, unit: 5,
@@ -597,14 +596,14 @@ const SIGNS = [
     imageUrl: '../assets/images/basic/Z.png', videoUrl: '../assets/videos/basic/Z.mp4', detectionType: 'motion',
   },
 
-  /* ── BASIC · NUMBERS (0–9) ────────────────────────────────────
-   * All held/static handshapes — none of these involve movement,
-   * so every entry below is `detectionType: 'static'` and runs
-   * through the SAME asl_static_model as the alphabet (no separate
-   * numbers model). `category: 'numbers'` is what makes these show
-   * up under the new "Numbers" category added to CATEGORIES above,
-   * separate from the 'alphabet' category.
-   * NOTE: image/video assets referenced below (basic/0.png … 9.mp4)
+   /* ── BASIC · NUMBERS (0–10) ────────────────────────────────────
+   * 0–5, 7, 8 are held/static handshapes — `detectionType: 'static'`,
+   * running through the SAME asl_static_model as the alphabet.
+   * 6, 9, and 10 are the exception: 6/9 are tap-disambiguated from
+   * the letters W/F (a single static frame can't tell them apart),
+   * and 10 is a twisting thumbs-up shake — never a held pose. All
+   * three are `detectionType: 'motion'` (Phase 7, 2026-08-20).
+   * NOTE: image/video assets referenced below (basic/0.png … 10.mp4)
    * don't exist yet — add them the same way the letter assets were
    * added, at ../assets/images/basic/ and ../assets/videos/basic/. */
   {
@@ -669,13 +668,13 @@ const SIGNS = [
   },
   {
     id: 'basic_6', level: 'basic', signId: '6', title: 'Number 6', order: 33, category: 'numbers',
-    description: 'Touch your thumb to the tip of your pinky finger. Index, middle, and ring fingers stay extended straight up.',
+    description: 'Touch your thumb to the tip of your pinky finger. Index, middle, and ring fingers stay extended straight up. In real ASL this is tap-disambiguated from the letter W, so it\u2019s detected as a motion sign, not a held pose.',
     tips: [
       'Thumb and pinky tip touch to form a small connection',
       'Index, middle, and ring fingers stay straight and up',
       'Keep the thumb-pinky touch light and clear, not a full fist',
     ],
-    imageUrl: '../assets/images/basic/6.png', videoUrl: '../assets/videos/basic/6.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/6.png', videoUrl: '../assets/videos/basic/6.mp4', detectionType: 'motion',
   },
   {
     id: 'basic_7', level: 'basic', signId: '7', title: 'Number 7', order: 34, category: 'numbers',
@@ -699,13 +698,23 @@ const SIGNS = [
   },
   {
     id: 'basic_9', level: 'basic', signId: '9', title: 'Number 9', order: 36, category: 'numbers',
-    description: 'Touch your thumb to the tip of your index finger, forming a small circle. Middle, ring, and pinky fingers stay extended straight up.',
+    description: 'Touch your thumb to the tip of your index finger, forming a small circle. Middle, ring, and pinky fingers stay extended straight up. In real ASL this is tap-disambiguated from the letter F, so it\u2019s detected as a motion sign, not a held pose.',
     tips: [
       'Thumb and index finger tip touch, forming a small circle near the top of the hand',
       'Middle, ring, and pinky fingers stay straight and up',
       'Similar circle to letter F, but F keeps its other fingers spread outward rather than straight up',
     ],
-    imageUrl: '../assets/images/basic/9.png', videoUrl: '../assets/videos/basic/9.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/9.png', videoUrl: '../assets/videos/basic/9.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'basic_10', level: 'basic', signId: '10', title: 'Number 10', order: 37, category: 'numbers',
+    description: 'Make a closed fist with your thumb extended up (like a thumbs-up), then twist your wrist side to side. This is a genuine motion sign — there\u2019s no single frame that represents it.',
+    tips: [
+      'Start with a relaxed fist, thumb pointing up',
+      'The twist is a small, quick shake — not a big rotation',
+      'Unlike 0–9, this one can\u2019t be held still and still be correct',
+    ],
+    imageUrl: '../assets/images/basic/10.png', videoUrl: '../assets/videos/basic/10.mp4', detectionType: 'motion',
   },
 
   /* ── MEDIUM · FAMILY ──────────────────────────────────────────
@@ -1001,39 +1010,87 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · SEQUENCE_DEMO (Tier 0 phrase-chaining proof) ──
+  // ── MEDIUM · SEQUENCE_DEMO (Basic Phrases, curated Phase 7,
+  //    2026-08-20) — every component word below is confirmed present
+  //    in this repo's asl_motion_model/labels.json (grepped directly,
+  //    not assumed). Each entry's top-level `detectionType: 'motion'`
+  //    is NOT what actually drives detection for a phrase — confirmed
+  //    by reading lesson.js's getActiveSignId()/getPhraseSequence():
+  //    the camera step-through resolves detectionType PER STEP via
+  //    getDetectionType(stepSignId) (e.g. 'MOM', then 'HOME'), never
+  //    via this entry's own signId ('MOM_HOME'). The field is required
+  //    schema shape, functionally unused for `sequence`-type entries. ──
   {
-    id: 'medium_sequence_demo_CAR_SPELL', level: 'medium', category: 'sequence_demo', signId: 'CAR_SPELL',
-    title: 'Fingerspell: C-A-R', order: 1,
-    // `sequence` is what makes this a phrase-type sign — lesson.js
-    // walks through each entry in order as a separate, already-working
-    // atomic detection, instead of one single-gesture check. All 3
-    // letters are in the trained static alphabet already.
-    sequence: ['C', 'A', 'R'],
-    description: 'A real ASL fallback pattern: if you don\'t know (or forget) the dedicated sign for a word, you can fingerspell it letter by letter instead. This lesson chains the three letters C, A, R — sign each one clearly and hold it until it registers before moving to the next.',
+    id: 'medium_sequence_demo_mom_home', level: 'medium', category: 'sequence_demo', signId: 'MOM_HOME',
+    title: 'Mom Is Home', order: 1,
+    sequence: ['MOM', 'HOME'],
+    description: 'A short topic-comment phrase: MOM, then HOME. Chains two already-trained word-signs — sign each one clearly and hold until it registers before moving to the next.',
     tips: [
-      'Each letter is checked independently, in order',
-      'A brief pause between letters is fine — the countdown gives you time to reset your hand shape',
-      'This is a DEMO of the sequence-detection mechanism, not a full curriculum entry',
+      'Each word is checked independently, in order',
+      'A brief pause between signs is fine — the countdown gives you time to reset',
+      'Topic first (MOM), then comment (HOME) — standard basic ASL word order',
     ],
-    imageUrl: '../assets/images/medium/sequence_demo/car_spell.png', videoUrl: '../assets/videos/medium/sequence_demo/car_spell.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/medium/sequence_demo/mom_home.png', videoUrl: '../assets/videos/medium/sequence_demo/mom_home.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_sequence_demo_HOME_WORK', level: 'medium', category: 'sequence_demo', signId: 'HOME_WORK_DEMO',
-    title: 'Sequence Practice: HOME \u2192 WORK', order: 2,
-    // Proves the mechanism generalizes to WORD-level (not just letter-
-    // level) chaining, and to a MOTION-then-MOTION sequence. Labeled as
-    // a mechanics exercise, not a claim about real ASL sentence
-    // grammar — chaining two independent word-signs back to back isn't
-    // the same thing as a grammatically real ASL sentence.
-    sequence: ['HOME', 'WORK'],
-    description: 'A mechanics exercise for signing two words back to back in one go, using signs you already know: HOME, then WORK. (This chains two independent word-signs — it\'s a sequencing exercise, not a claim about correct ASL sentence grammar.)',
+    id: 'medium_sequence_demo_dad_work', level: 'medium', category: 'sequence_demo', signId: 'DAD_WORK',
+    title: 'Dad Is At Work', order: 2,
+    sequence: ['DAD', 'WORK'],
+    description: 'DAD, then WORK — same topic-comment pattern as "Mom Is Home", with a different family/place pair.',
     tips: [
-      'Sign HOME first, hold until it registers',
-      'Then sign WORK — you get a fresh 3-2-1 countdown for it',
-      'This is a DEMO of the sequence-detection mechanism, not a full curriculum entry',
+      'Sign DAD first, hold until it registers',
+      'Then sign WORK — you get a fresh countdown for it',
+      'Topic (DAD) before comment (WORK)',
     ],
-    imageUrl: '../assets/images/medium/sequence_demo/home_work.png', videoUrl: '../assets/videos/medium/sequence_demo/home_work.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence_demo/dad_work.png', videoUrl: '../assets/videos/medium/sequence_demo/dad_work.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_sequence_demo_today_school', level: 'medium', category: 'sequence_demo', signId: 'TODAY_SCHOOL',
+    title: 'School Today', order: 3,
+    sequence: ['TODAY', 'SCHOOL'],
+    description: 'TODAY, then SCHOOL — time-then-topic, the other standard basic ASL ordering (time markers generally come first in a sentence).',
+    tips: [
+      'Sign TODAY first, hold until it registers',
+      'Then sign SCHOOL',
+      'Time word (TODAY) leads, unlike the topic-first phrases above',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/today_school.png', videoUrl: '../assets/videos/medium/sequence_demo/today_school.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_sequence_demo_finish_work', level: 'medium', category: 'sequence_demo', signId: 'FINISH_WORK',
+    title: 'Done With Work', order: 4,
+    sequence: ['FINISH', 'WORK'],
+    description: 'FINISH, then WORK — FINISH doubling as a completion marker ("done ___") is common in basic ASL phrasing.',
+    tips: [
+      'Sign FINISH first, hold until it registers',
+      'Then sign WORK',
+      'This pairing reuses FINISH the same way a learner will see it again elsewhere in Unit 5 (Time)',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/finish_work.png', videoUrl: '../assets/videos/medium/sequence_demo/finish_work.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_sequence_demo_sister_store', level: 'medium', category: 'sequence_demo', signId: 'SISTER_STORE',
+    title: 'Sister Is At The Store', order: 5,
+    sequence: ['SISTER', 'STORE'],
+    description: 'SISTER, then STORE — another topic-comment pairing, mixing a Family word with a Places word.',
+    tips: [
+      'Sign SISTER first, hold until it registers',
+      'Then sign STORE',
+      'Topic (SISTER) before comment (STORE)',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/sister_store.png', videoUrl: '../assets/videos/medium/sequence_demo/sister_store.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_sequence_demo_today_grandma_home', level: 'medium', category: 'sequence_demo', signId: 'TODAY_GRANDMA_HOME',
+    title: 'Today, Grandma Is Home', order: 6,
+    sequence: ['TODAY', 'GRANDMA', 'HOME'],
+    description: 'A 3-step chain — TIME + TOPIC + COMMENT (TODAY, then GRANDMA, then HOME) — showing the mechanism scales past two words.',
+    tips: [
+      'Sign TODAY first, hold until it registers',
+      'Then GRANDMA, then HOME — each gets its own countdown',
+      'Longest chain in this set — good one to try last',
+    ],
+    imageUrl: '../assets/images/medium/sequence_demo/today_grandma_home.png', videoUrl: '../assets/videos/medium/sequence_demo/today_grandma_home.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · TIME ──

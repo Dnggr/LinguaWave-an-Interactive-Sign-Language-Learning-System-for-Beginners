@@ -196,25 +196,36 @@ export const SIGN_DICTIONARY = {
     tiebreakers: { },
   },
 
+   // ══════════════════════════════════════════════════════════
+  // BASIC LEVEL — NUMBERS (0–9, plus 10)
   // ══════════════════════════════════════════════════════════
-  // BASIC LEVEL — NUMBERS (0–9)
-  // ══════════════════════════════════════════════════════════
-  // All held handshapes — no motion — so none of these set
-  // `detectionType`, same as most alphabet entries above; that
-  // leaves getDetectionType() to default them to 'static', which
-  // is correct: ASL numbers 0–9 are static, single-frame signs, not
-  // motion signs. (Note: this is specifically about 0–9. Some
-  // higher/compound ASL numbers — e.g. 10, which is signed with a
-  // twisting "thumbs up" shake — DO involve motion and would need
-  // `detectionType: 'motion'` plus training data in asl_motion_model
-  // instead. Not included here — scope was 0–9 only.)
+  // Held handshapes 0–5, 7, 8 have no motion, so they're left to
+  // default to 'static' via getDetectionType(). '6', '9', and '10'
+  // are the exception — see AI_MEMORY.md Session Log, 2026-08-17
+  // "Number/letter handshape collisions": '6' and '9' are statically
+  // identical to the letters W and F respectively (per ASLU/Dr. Bill
+  // Vicars), disambiguated in real ASL by a small tap that a single
+  // static frame can't capture — they need the motion model, not the
+  // static one. '10' was never a static entry to begin with — it's a
+  // twisting "thumbs up" shake, never a held pose.
+  // PHASE 7 (2026-08-20): explicitly setting detectionType on all
+  // three below closes the "still open" item from that Session Log
+  // entry. This was a live routing bug — capture.html already treated
+  // '6'/'9' as motion signs, but the live app kept sending them
+  // through the static model because this file was never updated to
+  // match.
   //
-  // These run through the SAME asl_static_model as the alphabet.
-  // rawLabel from that model must come back as the exact strings
-  // '0'..'9' below for classifyGesture() in classifier.js to find a
-  // match — see AI_MEMORY.md → "Numbers category" for the retraining
+  // '0'..'5', '7', '8' run through the SAME asl_static_model as the
+  // alphabet. rawLabel from that model must come back as the exact
+  // strings '0'..'9' below for classifyGesture() to find a match —
+  // see AI_MEMORY.md → "Numbers category" for the retraining
   // checklist (labels.json, model.json, weights .bin all need to be
   // the newly retrained versions with these classes included).
+  // '6', '9', '10' need the equivalent retrain on asl_motion_model
+  // instead — asl_motion_model/labels.json has ZERO digit classes
+  // today, so all three are now correctly routed but still not
+  // detectable in production until real capture data exists for them
+  // (see PIVOT_CHECKLIST.md Phase 7 — still open, needs a camera).
 
   '0': {
     fingerStates: [1, 1, 1, 1, 1],
@@ -254,9 +265,9 @@ export const SIGN_DICTIONARY = {
   },
   '6': {
     fingerStates: [1, 1, 1, 1, 0],
-    description:  'Thumb touches pinky tip; index, middle, ring extended up',
+    description:  'Thumb touches pinky tip; index, middle, ring extended up. Tap-disambiguated from the letter W in real ASL — routed to the motion model, not the static one (see block comment above).',
     category: 'numbers', imageFile: '6.png', tbWeight: 0.30,
-    tiebreakers: { },
+    tiebreakers: { }, detectionType: 'motion',
   },
   '7': {
     fingerStates: [1, 1, 1, 0, 1],
@@ -272,9 +283,14 @@ export const SIGN_DICTIONARY = {
   },
   '9': {
     fingerStates: [1, 0, 1, 1, 1],
-    description:  'Thumb touches index finger tip forming a small circle; middle, ring, pinky extended up',
+    description:  'Thumb touches index finger tip forming a small circle; middle, ring, pinky extended up. Tap-disambiguated from the letter F in real ASL — routed to the motion model, not the static one (see block comment above).',
     category: 'numbers', imageFile: '9.png', tbWeight: 0.30,
-    tiebreakers: { },
+    tiebreakers: { }, detectionType: 'motion',
+  },
+  '10': {
+    fingerStates: [1, 0, 0, 0, 0],
+    description:  'Closed fist, thumb extended up, twisted side-to-side at the wrist — a genuine motion sign, never a held pose.',
+    category: 'numbers', imageFile: '10.png', detectionType: 'motion',
   },
 
   // ══════════════════════════════════════════════════════════
