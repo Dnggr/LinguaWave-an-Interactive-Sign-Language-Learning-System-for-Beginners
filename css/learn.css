@@ -1,27 +1,10 @@
-/* learn.css — Level & Lesson Selector styles | CONNECTS: pages/learn.html */
+/* learn.css — Trail & Lesson Selector styles | CONNECTS: pages/learn.html */
 
-/* ── Level tabs: segmented-control look, equal width, clear active state ── */
-.level-tabs {
-  display: flex; gap: var(--space-2); flex-wrap: wrap;
-  padding: var(--space-1);
-  background: var(--clr-surface); border: 1px solid var(--clr-border);
-  border-radius: var(--radius-lg);
-}
-.level-tab {
-  flex: 1 1 160px;
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: transparent; border: 1px solid transparent;
-  border-radius: var(--radius-md); cursor: pointer; color: var(--clr-text-muted);
-  font-size: var(--fs-sm); font-weight: 600; font-family: var(--font-body);
-  transition: all var(--dur-fast) var(--ease);
-}
-.level-tab:hover:not(.level-tab--active) { color: var(--clr-text); background: var(--clr-surface-2); }
-.level-tab--active {
-  border-color: var(--clr-border); color: var(--clr-text);
-  background: var(--clr-surface-2); box-shadow: var(--shadow-card);
-}
-.level-tab:disabled { opacity: .4; cursor: not-allowed; }
+/* REV 4 PHASE 4: removed the old `.level-tabs`/`.level-tab*` rules
+   (segmented-control tab switcher) — pages/learn.html no longer has
+   that markup, js/learn.js renders a single trail instead. See git
+   history / AI_MEMORY.md's Phase 4 session log if the old styling is
+   ever needed as a reference. */
 
 /* ── Lesson grid: alphabet tiles ───────────────────────────────────── */
 .lesson-grid {
@@ -84,42 +67,73 @@ button.category-card {
   font-size: var(--fs-xs); color: var(--clr-text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
 }
-.lesson-card--back { border-style: dashed; }
-.lesson-card--back .category-card__icon { font-size: var(--fs-xl); }
 
-/* ── Module grouping (NEW) ────────────────────────────────────────────
-   Pure presentation — groups existing category cards under module
-   headers via MODULE_GROUPS in learn.js. Each module gets its own
-   grid so cards still wrap/align independently per section instead of
-   one continuous flow, with the header sitting naturally above it. */
-.module-header {
-  font-size: var(--fs-sm); font-weight: 700; letter-spacing: .02em;
-  color: var(--clr-text-muted); text-transform: uppercase;
-  margin: var(--space-6) 0 var(--space-3);
-  /* FIX: #lesson-grid never stops being display:grid (only the
-     --categories MODIFIER class gets toggled off, not the base
-     .lesson-grid class) — without an explicit span, this header got
-     auto-placed as a single narrow grid CELL (~110px, from the
-     parent's auto-fill minmax(110px,1fr) columns) instead of a
-     full-width block sitting above the cards. That's exactly the
-     cramped, overlapping "sidebar" look in the bug report. */
-  grid-column: 1 / -1;
-}
-.module-header:first-child { margin-top: 0; }
-.module-section {
-  margin-bottom: var(--space-2);
-  /* FIX: same reasoning as .module-header above — this section (and
-     its OWN internal grid of cards) needs to occupy a full row of the
-     OUTER #lesson-grid, not get auto-placed as one of its cells. */
-  grid-column: 1 / -1;
-}
+/* REV 4 PHASE 4: removed `.lesson-card--back` (the in-grid "← Back to
+   Categories" tile) and `.module-header`/`.module-section` (pure
+   presentation for the old MODULE_GROUPS-driven grouping) — both are
+   dead now. js/learn.js uses ONE page-level back link
+   (#learn-back-link, styled via the existing .back-link rule in
+   style.css) for every screen instead of an in-grid card, and UNITS
+   in data.js is itself the grouping/ordering layer now, so there's no
+   second module layer left to render headers for. */
 
-/* Module 1: Introduction to ASL banner — a wide, distinct card (reading
+/* Introduction to ASL banner (used by Unit 0's info screen to link out
+   to pages/intro-to-asl.html) — a wide, distinct card (reading
    content, not a camera lesson) so it doesn't look like just another
-   alphabet tile. */
+   grid tile. */
 .lesson-card--intro {
   flex-direction: row; text-align: left; justify-content: flex-start;
   background: linear-gradient(135deg, var(--clr-surface), var(--clr-surface-2));
   border-color: var(--clr-accent);
 }
 .lesson-card--intro .category-card__icon { font-size: var(--fs-xl); }
+
+/* ── Trail (NEW, Phase 4) ──────────────────────────────────────────
+   The default learn.html view: one node per window.LWData.getUnits()
+   entry, walked top to bottom. Deliberately a single column (not the
+   auto-fill card grid the rest of this file uses) — Rev 4 explicitly
+   asks for a "single scrollable trail", which reads more like a path
+   than a grid of tiles. Reuses the existing .lesson-card--locked /
+   --current / --done modifier classes from above (those rules aren't
+   scoped under .lesson-card, so they apply to .trail-node fine) —
+   only the layout/base look is new. */
+.trail {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  max-width: 640px;
+}
+.trail-node {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  text-align: left; text-decoration: none; color: var(--clr-text);
+  transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+}
+.trail-node:hover:not(.lesson-card--locked) {
+  border-color: var(--clr-accent); transform: translateX(4px);
+  box-shadow: var(--shadow-card); text-decoration: none;
+}
+/* Reset button chrome — some trail nodes render as <button> (units
+   that open a sub-screen), others as <a> (Unit 2's direct link into
+   lesson.html) or plain <div> (locked/coming-soon units). Same
+   reasoning/pattern as button.category-card above. */
+button.trail-node { font: inherit; width: 100%; cursor: pointer; }
+.trail-node__num {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--clr-accent-soft); font-size: var(--fs-xl); line-height: 1;
+}
+.trail-node__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.trail-node__title { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 700; }
+
+/* ── Unit 0 info screen (NEW, Phase 4) ────────────────────────────
+   Prose content (window.LWData.UNIT0_CONTENT), not lesson cards — a
+   plain-text block dropped full-width into #lesson-grid, same
+   grid-column: 1 / -1 technique the old .module-header used to escape
+   the grid's auto-fill columns. */
+.unit-info { grid-column: 1 / -1; max-width: 640px; }
+.unit-info__section { margin-bottom: var(--space-6); }
+.unit-info__section h3 { font-family: var(--font-display); margin-bottom: var(--space-2); }
+.unit-info__section p { color: var(--clr-text-muted); line-height: 1.7; }
+.unit-info .lesson-card--intro,
+.unit-info .btn { margin-bottom: var(--space-6); }

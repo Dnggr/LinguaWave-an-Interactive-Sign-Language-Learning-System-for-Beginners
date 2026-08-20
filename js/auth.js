@@ -158,21 +158,39 @@ async function login(email, password) {
  *
  * BYPASS MODE: same as login — accepts any input, creates a session.
  * ──────────────────────────────────────────────────────────────── */
-/*function register(name, email, password, level) {
+/* REV 4 PHASE 5: dropped the `level` param here too — kept this
+ * reference version in sync with the live Firebase register() below
+ * so a future bypass-mode restore doesn't reintroduce the signup-time
+ * level picker by copying this stale code. Everyone gets the same
+ * fixed 'basic' value (see the live version's comment for why the
+ * field itself is kept). */
+/*function register(name, email, password) {
   const safeEmail = (email || '').trim() || 'guest@linguawave.app';
   
   const user = {
     uid: 'demo-uid',
     name: (name || '').trim() || safeEmail.split('@')[0] || 'Learner',
     email: safeEmail,
-    level: level || 'basic',
+    level: 'basic',
     joined: new Date().toISOString().slice(0, 10),
   };
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   return user;
 }*/
-async function register(name, email, password, level) {
+// REV 4 PHASE 5 (2026-08-19): dropped the `level` param — the Sign Up
+// form no longer has a proficiency picker (index.html), so there's
+// nothing meaningful to pass in here anymore. `level: 'basic'` is now
+// a fixed constant, not a user choice: every new account gets it, and
+// it's written mainly so nothing downstream that still reads
+// `user.level` (main.js's getActiveUser(), pages/dashboard.html's
+// `data-user-level` "Current Level" field) breaks or shows `undefined`.
+// That display field is now stale/vestigial since there's no more
+// tier to display — flagged in AI_MEMORY.md's Phase 5 session log for
+// a follow-up decision (repurpose to show current Unit, or remove the
+// field), not resolved here to keep this phase's diff to auth.js +
+// index.html as the checklist scopes it.
+async function register(name, email, password) {
   const result = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
 
@@ -180,7 +198,7 @@ async function register(name, email, password, level) {
     uid: firebaseUser.uid,
     name: (name || '').trim() || firebaseUser.email.split('@')[0] || 'Learner',
     email: firebaseUser.email,
-    level: level || 'basic',
+    level: 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
 
@@ -262,8 +280,3 @@ window.LWAuth = {
   getDoc, 
   setDoc, 
 };
-
-
-
-
-

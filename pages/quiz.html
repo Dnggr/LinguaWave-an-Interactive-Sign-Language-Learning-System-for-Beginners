@@ -109,6 +109,18 @@
           live camera round for bonus practice — webcam sign detection has real accuracy limits, so this round
           is never counted against you and never required.
         </p>
+        <!--
+          NEW — REV 4 PHASE 6: shown only when this category has at
+          least one phrase-type sign (a SIGNS entry with a `sequence`
+          array — today that's Unit 6 / category:'sequence_demo'), so
+          the camera round's new sign-ordering/fingerspelling-challenge
+          question type doesn't come as a surprise. Toggled by
+          js/quiz.js's showCameraGate(); hidden by default for every
+          other category. See PIVOT_CHECKLIST.md Phase 6 item 2.
+        -->
+        <p class="text-muted mt-2" id="gate-ordering-note" style="display:none; font-size: var(--fs-xs);">
+          This category includes a short phrase — for that item, the camera round will ask you to sign its letters/words in order instead of a single sign.
+        </p>
         <div class="flex-center gap-4 mt-8">
           <button class="btn btn--secondary btn--lg" onclick="startCameraRound()">🎥 Try Camera Check</button>
           <button class="btn btn--primary btn--lg" onclick="skipCameraRound()">Skip → See Results</button>

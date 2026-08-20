@@ -362,7 +362,19 @@ export function isMotionModelReady() {
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set from mediapipe.js
  * @returns {{ label: string|null, confidence: number (0–100), matched: boolean }}
  */
-export function classifyGesture(leftLm, rightLm, faceLandmarks) {
+// NEW: optional 4th arg, allowedLabels (Set<string>|null). When
+// provided, only these labels are eligible to win — everything else
+// is excluded BEFORE argmax, not filtered after. This is what makes
+// numbers-mode vs letters-mode collision-safe: 6/W, 9/F, and 0/O are
+// near-identical static handshapes, so the model's raw global argmax
+// will sometimes land on the wrong side of the pair even when the
+// user signed it correctly. There's no amount of training data that
+// fixes two genuinely identical handshapes — restricting the
+// candidate pool to the active lesson's category (via
+// SIGN_DICTIONARY[label].category) removes the cross-category
+// collision the same way context disambiguates it in real ASL. Pass
+// null (or omit) to keep the old unrestricted behavior.
+export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null) {
   if (!staticModel || !staticLabels) return { label: null, confidence: 0, matched: false };
   if (!leftLm && !rightLm) return { label: null, confidence: 0, matched: false };
 
@@ -378,11 +390,19 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
   tf.tidy(() => {
     const output = staticModel.predict(input);
     const probs  = Array.from(output.dataSync());
-    const sorted = [...probs].sort((a, b) => b - a);
-    const maxIdx = probs.indexOf(sorted[0]);
-    confidence   = Math.round(sorted[0] * 100);
-    runnerUpConfidence = Math.round((sorted[1] ?? 0) * 100);
-    rawLabel     = staticLabels[String(maxIdx)] ?? null;
+
+    // Restrict to labels valid in the current context BEFORE picking a
+    // winner — not filtered after — so a genuine '6' isn't discarded
+    // just because the raw softmax briefly favored 'W' this frame.
+    const candidateIdxs = probs
+      .map((_, i) => i)
+      .filter(i => !allowedLabels || allowedLabels.has(staticLabels[String(i)]));
+    candidateIdxs.sort((a, b) => probs[b] - probs[a]);
+
+    const maxIdx = candidateIdxs[0];
+    confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
+    runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
+    rawLabel     = maxIdx == null ? null : (staticLabels[String(maxIdx)] ?? null);
   });
 
   input.dispose();
@@ -402,6 +422,18 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks) {
     confidence,
     matched,
   };
+}
+
+// NEW: shared helper for callers (lesson.js, quiz.js) — builds the
+// allowedLabels Set for classifyGesture()/classifyMotion() from
+// whatever sign is currently active, using the category it's already
+// tagged with in SIGN_DICTIONARY ('alphabet' / 'numbers' / etc).
+// No new "mode" concept needed — this just reuses category metadata
+// that already exists on every dictionary entry.
+export function getAllowedLabelsForSign(signId) {
+  const cat = SIGN_DICTIONARY[signId]?.category;
+  if (!cat) return null;
+  return new Set(Object.keys(SIGN_DICTIONARY).filter(l => SIGN_DICTIONARY[l].category === cat));
 }
 
 // ── Motion Classify ───────────────────────────────────────────────
@@ -447,7 +479,12 @@ const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
  * and a forced/padded window (finalizeMotionWindow), so the "what counts
  * as a match" logic only lives in one place.
  */
-function runMotionInference(frameWindow) {
+// NEW: same restrict-before-argmax pattern as classifyGesture() — see
+// its comment for why. Not load-bearing today (6/9/10 don't currently
+// have any static-model letter counterparts to collide with, since
+// they only exist as motion classes), but here so a future motion-side
+// collision doesn't require re-deriving this fix from scratch.
+function runMotionInference(frameWindow, allowedLabels = null) {
   const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 130]
 
   let rawLabel   = null;
@@ -457,11 +494,16 @@ function runMotionInference(frameWindow) {
   tf.tidy(() => {
     const output = motionModel.predict(input);
     const probs  = Array.from(output.dataSync());
-    const sorted = [...probs].sort((a, b) => b - a);
-    const maxIdx = probs.indexOf(sorted[0]);
-    confidence   = Math.round(sorted[0] * 100);
-    runnerUpConfidence = Math.round((sorted[1] ?? 0) * 100);
-    rawLabel     = motionLabels[String(maxIdx)] ?? null;
+
+    const candidateIdxs = probs
+      .map((_, i) => i)
+      .filter(i => !allowedLabels || allowedLabels.has(motionLabels[String(i)]));
+    candidateIdxs.sort((a, b) => probs[b] - probs[a]);
+
+    const maxIdx = candidateIdxs[0];
+    confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
+    runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
+    rawLabel     = maxIdx == null ? null : (motionLabels[String(maxIdx)] ?? null);
   });
 
   input.dispose();
@@ -575,7 +617,7 @@ function resampleSequence(frames, targetLength) {
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set
  * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean }}
  */
-export function classifyMotion(leftLm, rightLm, faceLandmarks) {
+export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null) {
   if (!motionModel || !motionLabels) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
@@ -607,7 +649,7 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
   if (!resampled) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
-  return runMotionInference(resampled);
+  return runMotionInference(resampled, allowedLabels);
 }
 
 /**
@@ -625,7 +667,7 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks) {
  *
  * @returns {{label,confidence,matched,buffering}|null}
  */
-export function finalizeMotionWindow() {
+export function finalizeMotionWindow(allowedLabels = null) {
   if (!motionModel || !motionLabels) return null;
   if (motionBuffer.length < MOTION_MIN_FRAMES_TO_FINALIZE) {
     motionBuffer = [];
@@ -637,7 +679,7 @@ export function finalizeMotionWindow() {
   motionBuffer = [];
   motionRecordStartAt = null;
   if (!resampled) return null;
-  return runMotionInference(resampled);
+  return runMotionInference(resampled, allowedLabels);
 }
 
 /**

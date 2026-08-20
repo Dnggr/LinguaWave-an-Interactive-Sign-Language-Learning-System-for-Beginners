@@ -2,13 +2,26 @@
  * js/engine/progress.js — Progress Tracking Engine
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Single source of truth for what a learner has practiced,
- *            passed, and unlocked. Replaces the old flat "lw_progress"
- *            blob (score-per-sign only) with a structure that mirrors
- *            the real flow: sign practice → category assessment →
- *            level assessment, matching the flowchart's
- *            "End-of-lesson assessment" / "Score ≥ 80%?" / "More
- *            lessons available?" nodes — just resolved per category
- *            and per level instead of per single sign.
+ *            passed, and unlocked.
+ *
+ *            REV 4 — PHASE 3 (this revision): the old level→category
+ *            nesting is gone. Category progress is now stored FLAT,
+ *            keyed only by categoryId (category ids are unique across
+ *            the whole app — confirmed via data.js's CATEGORIES — so
+ *            the level layer was never load-bearing for storage, only
+ *            for the old per-level unlock chain). The unlock chain
+ *            itself is now ONE walk across every live category in
+ *            `UNITS` order (via js/data.js's getUnits()/
+ *            getCategoriesForUnit()), replacing the old per-level
+ *            "first category, or previous category in this level
+ *            passed" rule. Level-final assessments (recordLevelAssessment
+ *            / isLevelFinalUnlocked / LEVEL_ORDER) are UNCHANGED and
+ *            still per-level — Rev 4 doesn't touch that concept (that's
+ *            a Phase 6 quiz.js decision, not in scope here); they now
+ *            live in their own flat `levelAssessments` map instead of
+ *            nested inside the old `levels` tree.
+ *            See SYSTEM_ARCHITECTURE.md Rev 4 → "Progress / unlock
+ *            model changes" and PIVOT_CHECKLIST.md Phase 3.
  *
  * CONNECTS : Loaded as a plain <script> (not a module) on every page
  *            that needs it, AFTER js/data.js:
@@ -17,21 +30,32 @@
  *            Read by: js/lesson.js (records practice), js/quiz.js
  *            (records assessment results, computes lock state),
  *            js/learn.js (lock icons / CTA), js/dashboard.js (stats).
+ *            PUBLIC API SHAPE IS UNCHANGED from pre-Phase-3 — every
+ *            function name/signature below is identical to before,
+ *            so js/learn.js, js/quiz.js, js/dashboard.js, and
+ *            js/lesson.js all keep working with zero edits (Phase 4/5/6
+ *            haven't touched those files yet — see AI_MEMORY.md /
+ *            PIVOT_CHECKLIST.md header rule about not touching them
+ *            out of turn). Only the internals changed.
  *
- * STORAGE  : localStorage key 'lw_progress_v2'. Shape:
+ * STORAGE  : localStorage key 'lw_progress_v3' (bumped from
+ *            'lw_progress_v2' — shape changed from level-nested to
+ *            flat, see PIVOT_CHECKLIST.md Phase 0's answered question:
+ *            "accept a reset, no migration shim" — pre-launch, so old
+ *            v2 data is simply abandoned under its old key, not read
+ *            or converted by this file). Shape:
  *   {
- *     levels: {
- *       [level]: {
- *         categories: {
- *           [categoryId]: {
- *             signs: { [signId]: { practicedAt } },
- *             assessment: { attempts, bestScore, lastScore, passed,
- *                            breakdown, lastAt } | null
- *           }
- *         },
- *         levelAssessment: { attempts, bestScore, lastScore, passed,
- *                             breakdown, lastAt } | null
+ *     uid: string,
+ *     categories: {
+ *       [categoryId]: {
+ *         signs: { [signId]: { practicedAt } },
+ *         assessment: { attempts, bestScore, lastScore, passed,
+ *                        breakdown, lastAt } | null
  *       }
+ *     },
+ *     levelAssessments: {
+ *       [level]: { attempts, bestScore, lastScore, passed,
+ *                  breakdown, lastAt } | null
  *     }
  *   }
  *
@@ -44,7 +68,7 @@
 'use strict';
 
 (function () {
-  const STORE_KEY     = 'lw_progress_v2';
+  const STORE_KEY     = 'lw_progress_v3';
   const LEVEL_ORDER    = ['basic', 'medium', 'intermediate'];
   const PASS_THRESHOLD = 0.80;
 
@@ -57,19 +81,6 @@
     localStorage.setItem(STORE_KEY, JSON.stringify(store));
   }
 
-  // async function saveStore(store) {
-  //   localStorage.setItem(STORE_KEY, JSON.stringify(store)); 
-  //   try { 
-  //         const userObj = getCurrentUser();
-  //         const {uid} = userObj;
-  //         const userRef = doc(db, 'userProgress', uid);
-  //         await setDoc(userRef, store);
-  //       }
-  //   catch (e) { 
-  //     console.log(e);
-  //     console.warn('[progress.js] could not save progress:', e); 
-  //   }
-  // }
   async function saveStore(store) {
     saveStoreLocal(store); // write locally first, always — instant, safe from navigation interruption
 
@@ -85,16 +96,18 @@
     }
   }
 
-  function ensureLevel(store, level) {
-    if (!store.levels) store.levels = {};
-    if (!store.levels[level]) store.levels[level] = { categories: {}, levelAssessment: null };
-    return store.levels[level];
+  // REV 4 PHASE 3 — CHANGED: flat by categoryId, no more level layer.
+  function ensureCategory(store, categoryId) {
+    if (!store.categories) store.categories = {};
+    if (!store.categories[categoryId]) store.categories[categoryId] = { signs: {}, assessment: null };
+    return store.categories[categoryId];
   }
 
-  function ensureCategory(store, level, category) {
-    const lvl = ensureLevel(store, level);
-    if (!lvl.categories[category]) lvl.categories[category] = { signs: {}, assessment: null };
-    return lvl.categories[category];
+  // NEW — level-final assessments still get their own small flat map;
+  // this concept is untouched by the Phase 3 flattening (see file header).
+  function ensureLevelAssessments(store) {
+    if (!store.levelAssessments) store.levelAssessments = {};
+    return store.levelAssessments;
   }
 
  /* ── HYDRATE: pull remote progress into local cache ───────────────
@@ -106,7 +119,7 @@
   let resolveProgressReady;
   const progressReady = new Promise((resolve) => { resolveProgressReady = resolve; });
 
- async function hydrateStore() {
+async function hydrateStore() {
   await window.LWAuth?.whenAuthReady?.();
   console.log('[progress.js] authReady resolved, starting hydration check');
 
@@ -132,7 +145,9 @@
   try {
     const userRef = doc(db, 'userProgress', user.uid);
     const snapshot = await getDoc(userRef);
-    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, levels: {} };
+    // REV 4 PHASE 3 — CHANGED: flat default shape (categories/levelAssessments)
+    // instead of the old { levels: {} }.
+    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, categories: {}, levelAssessments: {} };
     remoteStore.uid = user.uid;
     saveStoreLocal(remoteStore);
     console.log('[progress.js] hydration complete, saved:', remoteStore);
@@ -153,8 +168,13 @@
 
   /** Mark a sign as practiced (viewed / attempted in lesson.html). */
   function recordSignPracticed(level, category, signId) {
+    // NOTE: `level` is accepted (unused internally) purely so every
+    // existing call site — js/lesson.js's recordSignPracticed(level,
+    // category, sign) — keeps working unchanged. Category ids are
+    // unique app-wide (confirmed via data.js CATEGORIES), so storage
+    // itself no longer needs the level layer. See file header.
     const store = loadStore();
-    const cat   = ensureCategory(store, level, category);
+    const cat   = ensureCategory(store, category);
     cat.signs[signId] = { ...(cat.signs[signId] || {}), practicedAt: new Date().toISOString() };
     saveStore(store);
   }
@@ -165,7 +185,7 @@
    */
   function recordCategoryAssessment(level, category, result) {
     const store = loadStore();
-    const cat   = ensureCategory(store, level, category);
+    const cat   = ensureCategory(store, category);
     const prev  = cat.assessment;
     cat.assessment = {
       attempts:  (prev?.attempts ?? 0) + 1,
@@ -179,12 +199,18 @@
     return cat.assessment;
   }
 
-  /** Record the result of a level-final assessment. */
+  /**
+   * Record the result of a level-final assessment.
+   * UNCHANGED by Phase 3 — level-final assessments are still a
+   * per-level concept (see file header); only their storage location
+   * moved from `levels[level].levelAssessment` to a flat
+   * `levelAssessments[level]` map.
+   */
   function recordLevelAssessment(level, result) {
     const store = loadStore();
-    const lvl   = ensureLevel(store, level);
-    const prev  = lvl.levelAssessment;
-    lvl.levelAssessment = {
+    const map   = ensureLevelAssessments(store);
+    const prev  = map[level];
+    map[level] = {
       attempts:  (prev?.attempts ?? 0) + 1,
       bestScore: Math.max(prev?.bestScore ?? 0, result.score),
       lastScore: result.score,
@@ -193,19 +219,23 @@
       lastAt:    new Date().toISOString(),
     };
     saveStore(store);
-    return lvl.levelAssessment;
+    return map[level];
   }
 
   /* ── Reads ─────────────────────────────────────────────────────── */
 
+  // REV 4 PHASE 3 — CHANGED: `level` param kept for call-site
+  // compatibility (js/dashboard.js, js/quiz.js, js/learn.js all call
+  // this as getCategoryProgress(level, categoryId)) but is no longer
+  // used to look the record up — see ensureCategory() note above.
   function getCategoryProgress(level, category) {
     const store = loadStore();
-    return store.levels?.[level]?.categories?.[category] ?? { signs: {}, assessment: null };
+    return store.categories?.[category] ?? { signs: {}, assessment: null };
   }
 
   function getLevelAssessment(level) {
     const store = loadStore();
-    return store.levels?.[level]?.levelAssessment ?? null;
+    return store.levelAssessments?.[level] ?? null;
   }
 
   /** Categories in a level that actually have playable sign content. */
@@ -215,14 +245,64 @@
   }
 
   /**
-   * A category is unlocked if it's the first live category in its level,
-   * or the previous live category's assessment has been passed.
+   * NEW — REV 4 PHASE 3. Every live (has content, not comingSoon)
+   * category in the WHOLE app, in one flat sequence, ordered by
+   * UNITS[].order first and each category's own `order` within its
+   * unit second. This is "the flat walk over UNITS" the checklist
+   * asks for — it's what isCategoryUnlocked() below walks instead of
+   * the old per-level LEVEL_ORDER + liveCategoriesFor(level) chain.
+   *
+   * Only walks units of kind 'category-group' — this is *how* Unit 0
+   * (Welcome, kind:'info') and the Unit 7 Phrasebook (kind:'reference')
+   * stay excluded from gating, per PIVOT_CHECKLIST.md Phase 3's last
+   * item: neither has (or should ever get) an 80% threshold or
+   * anything unlocking behind it. Unit 2 (Fingerspell Your Name,
+   * kind:'interactive') is excluded the same way, but for a different
+   * reason worth noting: it isn't a CATEGORIES entry at all (see
+   * AI_MEMORY.md's Phase 2 session log — the name drill is
+   * deliberately not authored data.js content), so
+   * getCategoriesForUnit(2) already returns empty and the kind filter
+   * below is redundant for it specifically — kept anyway since it's
+   * the correct general rule, not a unit-2-specific special case.
+   */
+  function getOrderedLiveCategories() {
+    const units = window.LWData?.getUnits?.() ?? [];
+    const out = [];
+    units
+      .filter(u => u.kind === 'category-group')
+      .forEach(u => {
+        const cats = window.LWData?.getCategoriesForUnit?.(u.order) ?? [];
+        cats.forEach(c => {
+          if (!c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0) {
+            out.push(c);
+          }
+        });
+      });
+    return out;
+  }
+
+  /**
+   * A category is unlocked if it's the first live category in the
+   * FLAT cross-unit chain, or the previous live category in that same
+   * chain has been passed.
+   *
+   * REV 4 PHASE 3 — CHANGED: this used to only look within `level`'s
+   * own live categories (liveCategoriesFor(level)); it now walks
+   * getOrderedLiveCategories() — every unit's categories, in UNITS
+   * order — so e.g. the first category of Unit 4 now unlocks based on
+   * whether the LAST category of Unit 3 (Numbers) passed, not by
+   * being "first in its level" (which it isn't — Unit 4 reuses
+   * level:'medium', see the Unit Map table in SYSTEM_ARCHITECTURE.md).
+   * `level` is kept as a parameter purely for call-site compatibility
+   * (js/dashboard.js calls isCategoryUnlocked(level, cat.id)) — it's
+   * not used to scope the chain anymore.
    */
   function isCategoryUnlocked(level, categoryId) {
-    const live = liveCategoriesFor(level);
-    const idx  = live.findIndex(c => c.id === categoryId);
+    const chain = getOrderedLiveCategories();
+    const idx   = chain.findIndex(c => c.id === categoryId);
     if (idx <= 0) return true;
-    const prevProg = getCategoryProgress(level, live[idx - 1].id);
+    const prevCat  = chain[idx - 1];
+    const prevProg = getCategoryProgress(prevCat.level, prevCat.id);
     return !!prevProg.assessment?.passed;
   }
 
@@ -230,8 +310,10 @@
    * Levels themselves are never locked — a learner can jump straight
    * into Medium or Intermediate if that's what they want to practice.
    * Progress/assessments are still tracked per level regardless; this
-   * only ever gated ACCESS, which product decided against. Categories
-   * within a level are still sequential (see isCategoryUnlocked).
+   * only ever gated ACCESS, which product decided against. UNCHANGED
+   * by Phase 3 — category-level gating is now cross-level (see
+   * isCategoryUnlocked above), but this level-access toggle is a
+   * separate, still-per-level concept that Rev 4 didn't ask to change.
    */
   function isLevelUnlocked(_level) {
     return true;
@@ -272,12 +354,18 @@
 
   /** Flat list of every practiced sign, for the dashboard recap grid. */
   function getAllLearnedSigns() {
+    // REV 4 PHASE 3 — CHANGED: walks the new flat `categories` map
+    // instead of `levels[level].categories`. `level` in the returned
+    // objects is looked up from data.js so the return shape
+    // ({level, category, signId}) stays identical for callers —
+    // js/dashboard.js's renderRecap() only reads `signId` today, but
+    // nothing else needed to change on its end either way.
     const store = loadStore();
     const out = [];
-    Object.entries(store.levels || {}).forEach(([level, lvl]) => {
-      Object.entries(lvl.categories || {}).forEach(([category, catData]) => {
-        Object.keys(catData.signs || {}).forEach(signId => out.push({ level, category, signId }));
-      });
+    Object.entries(store.categories || {}).forEach(([categoryId, catData]) => {
+      const catMeta = (window.LWData?.CATEGORIES ?? []).find(c => c.id === categoryId);
+      const level   = catMeta?.level ?? null;
+      Object.keys(catData.signs || {}).forEach(signId => out.push({ level, category: categoryId, signId }));
     });
     return out;
   }
@@ -288,6 +376,7 @@
     getCategoryProgress, getLevelAssessment, getLevelStats,
     isCategoryUnlocked, isLevelUnlocked, isLevelFinalUnlocked,
     liveCategoriesFor, getAllLearnedSigns,
+    getOrderedLiveCategories, // NEW — exposed pre-emptively for Phase 4's learn.js trail view; not consumed anywhere yet.
     whenProgressReady, STORE_KEY,
   };
 })();

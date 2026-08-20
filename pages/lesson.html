@@ -162,6 +162,44 @@
             </div>
           </div>
 
+          <!--
+            ══════════════════════════════════════════════════════════
+            QUICK CHECK — REV 4 PIVOT PHASE 6
+            ══════════════════════════════════════════════════════════
+            PURPOSE: a lightweight, non-blocking recall question shown
+            after a small cluster of signs (see shouldShowQuickCheck()
+            in lesson.js), per SYSTEM_ARCHITECTURE.md Rev 4 §Assessment
+            format changes ("tighten the teach→quiz loop... instead of
+            the current '10 signs then one big quiz' pattern").
+
+            "Reusing the existing Practice Check UI" (PIVOT_CHECKLIST.md
+            Phase 6, item 1) is interpreted here as reusing that panel's
+            INTERACTION PATTERN — an optional, skippable prompt card
+            that gives immediate feedback and never blocks Prev/Next —
+            not the camera mechanism itself, since a plain recall
+            question doesn't need a webcam and needs to work even if
+            the camera failed to load. See AI_MEMORY.md's Phase 6
+            session log for why this interpretation was chosen over a
+            literal reuse of #assessment-prompt-box.
+
+            Hidden by default; shown/populated by lesson.js's
+            showQuickCheck() only on a checkpoint sign. Purely
+            formative — no LWProgress write, no effect on the graded
+            category assessment in quiz.js.
+          -->
+          <div class="quick-check card mt-8" id="quick-check-card" style="display:none;">
+            <div class="quick-check__head">
+              <span class="section__eyebrow" style="margin-bottom:0;">⚡ Quick Check</span>
+              <button class="detection-log__clear" id="btn-quick-check-skip" type="button">Skip</button>
+            </div>
+            <p class="quick-check__prompt" id="quick-check-prompt" style="white-space: pre-line;"></p>
+            <div class="quick-check__options" id="quick-check-options"></div>
+            <div class="assessment-feedback mt-3" id="quick-check-feedback" style="display:none;"></div>
+            <p class="text-muted mt-3" style="font-size: var(--fs-xs);">
+              Just for practice — this doesn't affect your score. Your graded check happens in the category assessment.
+            </p>
+          </div><!-- /quick-check-card -->
+
           <!-- PREV / NEXT navigation -->
           <div class="lesson-nav mt-8">
             <button class="btn btn--ghost" id="btn-prev">← Previous</button>
