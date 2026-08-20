@@ -1,7 +1,7 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`. **Verified in a real browser for the first time on 2026-08-20 (review session)**, via user-provided screenshots of the dashboard→lesson journey — confirmed the sidebar renders correctly, and found/fixed 4 bugs by tracing the screenshots through the code (a false-positive "correct" match in plain practice mode, a stale image hint on the name drill, duplicated text in the dashboard's recap chips, and a pre-existing "Start Assessment"/"Practice Check" button-text mismatch) — see the "Review session" addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section for the full list, including items flagged but not fixed.
+> **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`. **Verified in a real browser for the first time on 2026-08-20 (review session)**, via user-provided screenshots of the dashboard→lesson journey — confirmed the sidebar renders correctly, and found/fixed 4 bugs by tracing the screenshots through the code (a false-positive "correct" match in plain practice mode, a stale image hint on the name drill, duplicated text in the dashboard's recap chips, and a pre-existing "Start Assessment"/"Practice Check" button-text mismatch) — see the "Review session" addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section for the full list, including items flagged but not fixed. **All 5 of that review session's remaining flagged items (including the one left as "needs a decision") were cleared 2026-08-21** — see the second addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section.
 > **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
@@ -156,6 +156,48 @@ terminology inconsistency, unblocked direct-URL access to locked
 categories, and the camera panel's two warning boxes firing
 immediately on first open) are tracked as unchecked items in
 `PIVOT_CHECKLIST.md` rather than repeated here.
+
+### Addendum (2026-08-21) — the 4 surfaced-but-not-implemented items
+### above, plus the 1 flagged "needs a decision" item, all cleared
+
+Requested directly ("do this" over the full list, including the
+decision-pending `updateConfidenceUI()` item). `js/auth.js` again
+explicitly excluded and not opened. Five fixes, all in `js/lesson.js`,
+`js/dashboard.js` + `pages/dashboard.html`, and `js/learn.js`:
+
+1. **`updateConfidenceUI()` now IS correctness-aware, same in both
+   modes.** The decision: tint green only when `result.matched &&
+   result.label === getActiveSignId()` — reusing the exact
+   mode-agnostic resolver `handlePracticeFrame`/`handleAssessmentFrame`
+   already relied on for the same question, which is what made this a
+   real decision rather than a guess (see the full reasoning in
+   `lesson.js`'s replaced comment block above the function).
+2. **Locked categories now blocked via direct URL.** `boot()` checks
+   `isCategoryUnlocked(level, category)` before anything else; if
+   locked, toasts and redirects to `learn.html?category=X` (which
+   already re-checks the same lock and falls back to the trail).
+3. **Dashboard welcome banner is real again.** New
+   `renderWelcomeBanner()` walks the same flat chain
+   `renderContinueButton()` uses and shows one of 4 states depending on
+   where the learner actually is.
+4. **"viewed" → "practiced"** in `learn.js`'s two badge strings, to
+   match the term already used everywhere else this number appears.
+5. **Camera panel no longer shows two false warnings on first load.**
+   Root cause: `lastFaceSeenAt`/`lastHandSeenAt` are stamped at
+   module-load time, before `bootDetectionEngine()`'s own async
+   model/camera loading — by the time the render loop's first real
+   frame ran, both were already past their hold thresholds. Fixed with
+   the exact same reset pattern `startAssessment()` already used for
+   the same staleness bug at a different call site.
+
+`node --check` clean on all 3 edited files. **Still not exercised in a
+real browser** — same standing gap as every session that's touched
+this camera path; see `AI_MEMORY.md`'s matching 2026-08-21 session log
+entry for the specific recommended click-throughs (fix #1's
+green/yellow behavior mid-assessment, fix #5's actual on-load feel).
+Full reasoning, verification detail, and the "why now" for the
+decision in #1 are in `AI_MEMORY.md`'s 2026-08-21 Session Log entry and
+`PIVOT_CHECKLIST.md`'s matching section — not repeated here.
 
 ---
 

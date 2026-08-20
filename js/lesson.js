@@ -863,6 +863,40 @@ function renderCourseSidebar() {
 // when lesson.js (type="module") loads after the event already fired.
 
 async function boot() {
+  // FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "Locked
+  // categories aren't blocked via direct URL" item, previously flagged
+  // as "never explicitly decided" rather than fixed). Decided: block
+  // it. Before this, `isCategoryUnlocked()` was only ever consulted by
+  // learn.js (sidebar lock icons, and its own renderCategoryView()
+  // deep-link guard) and by this page's own course-sidebar renderer
+  // (row-level lock icons) — never as a gate on THIS page's own boot,
+  // so typing e.g. `lesson.html?level=basic&category=numbers` before
+  // passing Unit 1 loaded the full lesson (content + live camera)
+  // anyway, with only the sidebar row showing a 🔒 no one necessarily
+  // scrolls to see.
+  //   Safe to call unconditionally, with no name-drill/reference
+  // special-casing needed: isCategoryUnlocked() (progress.js) returns
+  // `true` for any categoryId that isn't in the flat live-category
+  // chain at all (its own `idx <= 0` fallback) — that already covers
+  // 'fingerspell_name' (Unit 2, not a CATEGORIES entry), Phrasebook's
+  // reference categories, and any comingSoon id, exactly the same way
+  // learn.js's existing calls rely on it without special-casing them.
+  //   Still client-side-only (no backend to truly enforce this either
+  // way, same caveat the checklist item itself raised) — this closes
+  // the UI-level gap, not a security boundary.
+  if (!(window.LWProgress?.isCategoryUnlocked?.(level, category) ?? true)) {
+    window.LinguaWave?.showToast?.(
+      "That lesson isn't unlocked yet — finish the one before it first.",
+      'error'
+    );
+    // learn.html?category=X already re-checks the same lock (see its
+    // renderCategoryView()) and falls back to the trail itself if it's
+    // still locked by the time it loads — so this redirect can't ever
+    // land somewhere that silently re-opens the same locked content.
+    window.location.replace(`learn.html?category=${encodeURIComponent(category)}`);
+    return;
+  }
+
   // NEW — Rev4 Phase 2: totalSigns is always 1 for the name drill (see
   // computeSignOrder()), so the empty-category bail below never fires
   // for it — but a learner with no letters in their profile name (blank
@@ -1242,6 +1276,26 @@ async function bootDetectionEngine() {
     console.error('[lesson.js] Classifier failed to load — camera still running:', err);
     setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
+
+  // FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "camera
+  // panel shows two orange warning boxes on first load" item): the
+  // SAME staleness bug BUG 11 FIX already fixed for startAssessment()
+  // was never fixed here, at the OTHER place these two timestamps get
+  // read from a stale starting point. `lastFaceSeenAt`/`lastHandSeenAt`
+  // are stamped at module-load time (see their `let` declarations,
+  // module scope), which happens well BEFORE this function's own
+  // `await initMediaPipe()` / `await startCamera()` / `await
+  // loadModels()` calls above — those routinely take a second or more
+  // for a first-time model fetch. By the time startRenderLoop() below
+  // runs its very first frame, `now - lastFaceSeenAt` and `now -
+  // lastHandSeenAt` are already bigger than FACE_WARN_HOLD_MS/
+  // HAND_STATUS_HOLD_MS, so both the face-warn box and the "No hand
+  // detected" pill fire on frame one — before the learner has had any
+  // chance to get in frame — reading as "already broken" rather than
+  // neutral first-run state. Same fix as BUG 11: stamp both to "now"
+  // right before the loop that actually reads them starts.
+  lastFaceSeenAt = Date.now();
+  lastHandSeenAt = Date.now();
 
   startRenderLoop();
 }
@@ -1965,33 +2019,45 @@ function endAssessment() {
 
 // ── UI helpers ─────────────────────────────────────────────────────
 
-// FLAGGING (2026-08-20, review session, not fixed here): this readout's
-// green/muted color and the confidence bar's green/yellow fill are both
-// still driven by raw `result.matched` (see below), NOT by whether the
-// detected label matches the sign THIS lesson is teaching — the same
-// gap handlePracticeFrame's non-phrase branch had, just fixed above.
-// Net effect: the "Detected Sign" panel can still render "K" in green
-// while parked on the Letter A page, one line above feedback text that
-// now correctly says it's wrong. Left unfixed because this function is
-// shared by both practice AND assessment mode (called unconditionally
-// from the render loop), so "correct for the active lesson" isn't a
-// single well-defined concept here the way it is inside
-// handlePracticeFrame/handleAssessmentFrame — assessment mode already
-// has its own separate, correct pass/fail feedback path, so tying this
-// shared low-level readout to lesson-correctness too needs a real
-// decision about how the two should interact, not a one-line copy of
-// the fix above. Recommend deciding whether this panel should become
-// "correct-for-this-lesson" aware (and if so, whether assessment mode
-// should keep it neutral) before changing it.
+// DECIDED (2026-08-21, this session — was the flagged "Detected Sign
+// readout's color still doesn't check correctness" item, previously
+// left unfixed pending a decision). The concern in the old flagging
+// comment (below this one used to say "not a single well-defined
+// concept here the way it is inside handlePracticeFrame/
+// handleAssessmentFrame") turned out to already have an answer sitting
+// one function above: getActiveSignId() is the exact "what sign is
+// expected RIGHT NOW" resolver both handlePracticeFrame's phrase
+// branch (`expectedStep`) and handleAssessmentFrame's phrase branch
+// already call for precisely this purpose — it's mode-agnostic by
+// construction (falls back to the plain `sign` when no phrase is
+// active) and is already being read every single frame just above
+// this function, in startRenderLoop(), to pick the detection type. So
+// "correct for the active lesson" IS a single well-defined concept
+// here after all — this just wasn't using the resolver that already
+// existed.
+//   The decision made: tint this readout the SAME way in both practice
+// and assessment mode (no mode branch) — `matched && isCorrectSign`,
+// not bare `matched`. Rationale: assessment mode already shows its own
+// separate ❌ "Detected X — expected Y" feedback text when a confident
+// wrong guess comes in (handleAssessmentFrame); having the readout
+// directly above still glow green for that same wrong guess was
+// confusing regardless of mode, not a practice-only problem — so there
+// was no real case for keeping this panel "neutral" in assessment.
+// matched-but-wrong now shows the same yellow/muted treatment
+// (informational, not a fail state) that a matched-but-wrong result
+// already got in yellow before this fix — this only changes when GREEN
+// specifically is allowed to show, not the whole state machine.
 function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
   if (result.label) {
+    const isCorrectSign = result.label === getActiveSignId();
+    const showAsSuccess = result.matched && isCorrectSign;
     confidenceEl.classList.remove('confidence-bar-fill--pulse');
     detectedEl.textContent        = result.label;
-    detectedEl.style.color        = result.matched ? 'var(--clr-success)' : 'var(--clr-text-muted)';
+    detectedEl.style.color        = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
-    confidenceEl.style.background = result.matched ? 'var(--clr-success)' : 'var(--clr-yellow)';
+    confidenceEl.style.background = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-yellow)';
     confTextEl.textContent        = `${result.confidence}%`;
   } else if (motionArmed) {
     // NEW: classifyMotion() only returns a label once its ~1.3s frame

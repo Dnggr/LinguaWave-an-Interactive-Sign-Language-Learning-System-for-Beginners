@@ -121,43 +121,58 @@
   found this session, but fixed now since it sits on the exact page
   being reviewed and was already marked "safe, just needs a session."
 
-**New suggestions (not fixed, no code changed — flagging for a
-decision, same spirit as every other flagged item in this file):**
-- [ ] `js/lesson.js` `updateConfidenceUI()` — the "Detected Sign"
-  readout's green/muted color and the confidence bar's fill are still
-  driven by raw `result.matched`, not compared against the active
-  lesson's sign — so it can still render a wrong sign in green, one
-  line above feedback text that (after this session's fix above)
-  correctly says it's wrong. Shared by both practice and assessment
-  mode, so needs a real decision about how the two should interact
-  before changing — see the flagging comment now above the function.
-- [ ] `pages/dashboard.html` — the welcome banner hardcodes "You're
+**New suggestions from the 2026-08-20 review session — ALL 5 now done,
+2026-08-21 (this session), at the user's explicit "do this" go-ahead
+(including the one item above that had been left as "needs a decision
+first" — see AI_MEMORY.md's 2026-08-21 session log for the decision
+made and full reasoning on each):**
+- [x] `js/lesson.js` `updateConfidenceUI()` — the "Detected Sign"
+  readout's green/muted color and the confidence bar's fill are no
+  longer driven by raw `result.matched` alone — **done 2026-08-21**:
+  now also requires `result.label === getActiveSignId()` (the same
+  mode-agnostic "what's expected right now" resolver
+  `handlePracticeFrame`/`handleAssessmentFrame`'s phrase branches
+  already used) before showing green, in BOTH practice and assessment
+  mode — no mode branch needed, since `getActiveSignId()` already
+  covers both. A matched-but-wrong guess still shows yellow/muted, same
+  as before.
+- [x] `pages/dashboard.html` — the welcome banner hardcoded "You're
   making great progress on the ASL Alphabet" regardless of which unit
-  the learner is actually on. Same class of bug as Phase 5's
-  `data-user-level` field ("always says Basic") — cosmetic, not a
-  crash, but will read as wrong/stale for anyone past Unit 1. Fixing
-  well means computing the learner's current unit (same
-  `getOrderedLiveCategories()` walk `renderContinueButton()` already
-  does) and mapping it to a friendly phrase — more than a one-line
-  text swap, so left as a decision rather than done unprompted.
-- [ ] Terminology: `learn.js`'s per-category badge says "X/26 viewed"
-  while the dashboard's aggregate card says "X/91 signs practiced" —
-  same underlying concept (`getCategoryProgress().signs`), different
-  word. Low priority, but worth picking one term.
-- [ ] Direct URL access to a locked category's `pages/lesson.html`
+  the learner is actually on — **done 2026-08-21**: new
+  `renderWelcomeBanner()` in `js/dashboard.js` walks the same
+  `getOrderedLiveCategories()` chain `renderContinueButton()` already
+  uses to find the learner's real current category, maps its unit to a
+  friendly phrase, with separate copy for "nothing trained yet,"
+  "current unit, not started," "current unit, in progress," and
+  "everything trained is passed." `data-user-level`'s own "always says
+  Basic" issue (flagged back in Phase 5) is a different field and is
+  still open — not touched by this fix.
+- [x] Terminology: `learn.js`'s per-category badge said "X/26 viewed"
+  while the dashboard's aggregate card said "X/91 signs practiced" —
+  **done 2026-08-21**: both `learn.js` badge strings now say
+  "practiced," matching the term already used by the underlying
+  `practicedCount` variable, `LWProgress.recordSignPracticed()`, and
+  the dashboard's own aggregate card.
+- [x] Direct URL access to a locked category's `pages/lesson.html`
   (e.g. typing `?level=basic&category=numbers` before Unit 1 is
-  passed) isn't blocked — `lesson.js` only uses
-  `isCategoryUnlocked()` for sidebar lock icons, not as a page-level
-  gate. Likely fine to leave as-is for a client-side-only app (there's
-  no server to truly enforce this either way), but noting it was never
-  explicitly decided.
-- [ ] First-open UX: the camera panel shows two orange warning boxes
-  ("No hand detected" / "Face not detected — step back so your whole
-  head is visible") immediately on page load, before the learner has
-  done anything. Reads as "something's already broken" rather than
-  neutral first-run guidance. Possible fix: suppress both warnings for
-  the first few seconds after camera start, or soften the copy/color
-  for that initial window specifically.
+  passed) wasn't blocked — **done 2026-08-21**: `boot()` now checks
+  `isCategoryUnlocked(level, category)` before doing anything else; if
+  locked, toasts and redirects to `learn.html?category=X` (which
+  already re-checks the same lock itself). Still client-side-only, per
+  this item's own original note — no backend to truly enforce it
+  either way, this only closes the UI-level gap.
+- [x] First-open UX: the camera panel showed two orange/neutral warning
+  states ("No hand detected" pill / "Face not detected — step back so
+  your whole head is visible" box) immediately on page load, before
+  the learner had done anything — **done 2026-08-21**: root-caused to
+  `lastFaceSeenAt`/`lastHandSeenAt` being stamped at module-load time,
+  before `bootDetectionEngine()`'s own model/camera loading (which
+  routinely takes a second-plus) — by the time the render loop's first
+  frame ran, both were already stale past their hold thresholds. Fixed
+  by stamping both to `Date.now()` immediately before
+  `startRenderLoop()` is called, the exact same fix pattern
+  `startAssessment()` already had (its own "BUG 11 FIX" comment) for
+  the same staleness problem at a different call site.
 
 ---
 

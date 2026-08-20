@@ -1668,3 +1668,131 @@ feels right and doesn't spam.
    `PIVOT_CHECKLIST.md`.
 4. Real-browser click-through of this session's 4 fixes (see
    Verification above).
+
+---
+
+### 2026-08-21 — Cleared all 4 flagged review-session items + the
+### previously-decision-pending `updateConfidenceUI()` item; 5 fixes total
+
+**Requested:** the user explicitly said "do this" over the 4 items the
+2026-08-20 review session had listed as "found but not fixed," PLUS
+the `updateConfidenceUI()` color item that same session had left
+flagged as "needs a decision first." Read as the missing go-ahead on
+all 5 (matches this repo's own pattern — see e.g. the review session's
+"Start Assessment" button fix, made on a similarly-worded go-ahead).
+Also asked to "visualize the code" (see the inline structural diagram
+this session rendered — 3 files, 5 fixes) and to exclude `js/auth.js`
+entirely (not opened, same as every session since it was first
+excluded).
+
+**Fixes made — all 5, code applied directly, no partial items:**
+
+1. **`js/lesson.js` `updateConfidenceUI()` — Detected Sign readout now
+   color-checks correctness.** This was the one flagged item with a
+   real open question ("needs a decision") rather than just "not
+   attempted yet." Resolved by noticing `getActiveSignId()` — already
+   used by both `handlePracticeFrame`'s and `handleAssessmentFrame`'s
+   phrase branches as the mode-agnostic "what's expected right now"
+   resolver — already answers exactly the question the old flagging
+   comment said wasn't well-defined. Decision made: tint the readout
+   the SAME way in both practice and assessment mode (`result.matched
+   && result.label === getActiveSignId()` gates green; anything else
+   falls back to the existing yellow/muted "confident but not
+   matching" treatment, unchanged). No separate assessment-mode
+   behavior was added — see the full reasoning in the replaced comment
+   block directly above the function in `lesson.js`.
+2. **`js/lesson.js` `boot()` — locked categories now blocked via direct
+   URL.** Previously `isCategoryUnlocked()` was only ever consulted for
+   sidebar lock icons (this page's own course sidebar, and `learn.js`'s
+   trail/category cards) — never as a gate on `lesson.html` itself.
+   Added one check near the top of `boot()`: if the requested
+   `?level=&category=` isn't unlocked, toast + `location.replace()` to
+   `learn.html?category=X` (which already re-checks the same lock in
+   its own `renderCategoryView()` and falls back to the trail if still
+   locked — confirmed by reading that function, not assumed). Verified
+   safe to call unconditionally (no name-drill/reference special-
+   casing needed): `isCategoryUnlocked()`'s own `idx <= 0` fallback
+   already returns `true` for any id not in the flat live-category
+   chain, which covers `fingerspell_name` and Phrasebook categories the
+   same way `learn.js`'s existing calls already rely on without special
+   casing them. Still explicitly client-side-only — no backend to
+   truly enforce this either way, same caveat the checklist item itself
+   raised when flagging it.
+3. **`js/dashboard.js` — welcome banner no longer hardcodes "ASL
+   Alphabet."** New `renderWelcomeBanner()`, walking the same flat
+   `getOrderedLiveCategories()` chain `renderContinueButton()` already
+   uses to find the learner's current in-progress category, then
+   mapping its parent unit's title into one of 4 states: nothing
+   trained yet (generic opener), a real current category not yet
+   practiced at all ("Let's get started with X!"), a real current
+   category partway through (the original "great progress on X"
+   phrasing, now with a real X), or every trained category passed
+   ("nice work" close-out). `pages/dashboard.html`'s hardcoded sentence
+   fragment is now wrapped in `<span data-welcome-banner>` (kept as the
+   pre-JS fallback text, same pattern the aggregate-count field already
+   used).
+4. **`js/learn.js` — "viewed" → "practiced" terminology.** Both of
+   `renderCategoryAssessmentCTA()`'s badge strings ("Ready ·
+   N/M viewed" and the locked-state "N/M viewed") now say "practiced,"
+   matching the term already used everywhere else that reads this same
+   number — the `practicedCount` variable one line above it in the
+   same function, `LWProgress.recordSignPracticed()`'s own name, and
+   `dashboard.js`'s aggregate "N / M signs practiced" card. Not really
+   a judgment call once traced — "viewed" was the one outlier, not a
+   50/50 pick between two equally-used terms.
+5. **`js/lesson.js` `bootDetectionEngine()` — no more two false
+   warnings on first camera load.** Root cause: `lastFaceSeenAt`/
+   `lastHandSeenAt` (the two timestamps `startRenderLoop()`'s hold-time
+   check reads, per BUG 11 FIX) are stamped at MODULE-LOAD time, before
+   `bootDetectionEngine()`'s own `await initMediaPipe()` / `await
+   startCamera()` / `await loadModels()` calls — which routinely take a
+   second or more on a first-time model fetch. By the time the render
+   loop's first real frame ran, both timestamps were already older than
+   their hold thresholds (`FACE_WARN_HOLD_MS`/`HAND_STATUS_HOLD_MS`),
+   so the face-warn box and the "No hand detected" pill both fired
+   immediately — before the learner had any chance to get in frame.
+   This is the exact same staleness bug `startAssessment()` already had
+   its own fix for (see the existing "BUG 11 FIX" comment there,
+   `lastFaceSeenAt = Date.now(); lastHandSeenAt = Date.now();`) — just
+   never applied at the OTHER place these two timestamps get read from
+   a stale starting point. Applied the identical fix immediately before
+   `startRenderLoop()` is called.
+
+**Verification:** `node --check` on all 3 edited files (`js/lesson.js`
+via a temp `.mjs` copy, same as every prior session — it's an ES
+module; `js/dashboard.js` and `js/learn.js` directly — neither uses
+`import`/`export`, confirmed by grep before checking, so no `.mjs`
+rename needed for those two) — all clean, no syntax errors. Every new
+reference cross-checked against the real markup/exports by `grep`,
+same discipline as every phase before this one: `data-welcome-banner`
+exists in both `pages/dashboard.html` and the new `dashboard.js` query;
+`window.LinguaWave.showToast` is exported from `js/main.js` (confirmed
+`main.js` loads and executes before `lesson.js` in `pages/lesson.html`'s
+script order, so it's available by the time `boot()` runs);
+`isCategoryUnlocked` is exported from `progress.js`; `getUnits`/
+`getCategorySigns`/`getCategoriesForUnit` are exported from `data.js`.
+
+**Not exercised in a real browser** — same standing limitation as
+every session before this one that touched `lesson.js`'s camera path
+specifically. Fix #5 (warm-up warning) is the one most worth an actual
+click-through: the fix is a 2-line timestamp reset with a clear,
+traceable root cause, but "does the camera panel actually look clean
+on first load now" is still only reasoned about, not seen. Fix #1's
+new green/yellow behavior during an actual assessment run (does a
+correct answer on a later phrase step still read as clearly correct)
+is the other one worth a look, since assessment mode's own use of this
+readout had no prior precedent to lean on.
+
+**Excluded from this session, as requested:** `js/auth.js` — not
+opened, not touched, not reviewed. Same standing exclusion as the
+2026-08-20 review session.
+
+**Still open:**
+1. Everything already listed as still-open in every prior session log
+   entry above that wasn't one of this session's 5 items.
+2. Real-browser verification of this session's 5 fixes (see above) —
+   the single biggest recommendation coming out of this session, same
+   as every camera-touching session before it.
+3. Phase 7's actual capture + retraining work (16 Essential Words, 5
+   phrase placeholders, `HELLO`/`THANK YOU`/`HOT`/`COLD`) — unchanged,
+   still needs a human + camera + Colab.

@@ -19,6 +19,11 @@
  * SYSTEM_ARCHITECTURE.md Rev 4's "Progress / unlock model changes"
  * section. See PIVOT_CHECKLIST.md Phase 4's last item.
  *
+ * REV 4 addendum (2026-08-21, this session): added renderWelcomeBanner()
+ * — see its own doc comment below for the full "why" and the 4 states
+ * it handles. Fixes the hardcoded "...ASL Alphabet" welcome string
+ * flagged in PIVOT_CHECKLIST.md's review-session addendum.
+ *
  * BUGFIX (found while doing the above, not carried over from an
  * earlier phase): the OLD renderContinueButton() looped `LEVELS` in a
  * fixed basic→medium→intermediate order, and *within* a level used
@@ -86,6 +91,65 @@ function renderOverallProgress() {
       ? 'No lessons trained yet.'
       : `${passedCategories} / ${chain.length} category assessments passed`;
   }
+}
+
+/** FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "welcome
+ *  banner hardcodes '...ASL Alphabet'" item, previously flagged as
+ *  "more than a one-line text swap, left as a decision"). Decided:
+ *  walk the exact same flat chain renderContinueButton() below already
+ *  uses to find the learner's current in-progress category, then map
+ *  its parent UNIT's title to a friendly phrase — reusing the walk
+ *  rather than re-deriving it, same discipline as every other Phase 4+
+ *  function in this file. Three states, since a plain "you're making
+ *  great progress on {unit}" doesn't honestly cover either end of the
+ *  chain:
+ *    - nothing trained at all (chain.length === 0) — generic opener,
+ *      no unit name to reference.
+ *    - a real current category exists, but it's brand new (learner
+ *      hasn't practiced a single sign in it yet) — "Let's get
+ *      started with X!" reads truer than "great progress" for someone
+ *      who hasn't opened a sign.
+ *    - a real current category, already partway through — the
+ *      original "great progress on X" phrasing, now with the correct
+ *      X instead of a hardcoded one.
+ *    - every trained category passed (no unlocked-but-unpassed
+ *      category left in the chain) — the old string would have kept
+ *      saying "ASL Alphabet" forever here too; this one says so.
+ */
+function renderWelcomeBanner() {
+  const el = document.querySelector('[data-welcome-banner]');
+  if (!el || !window.LWProgress || !window.LWData) return;
+
+  const chain = window.LWProgress.getOrderedLiveCategories();
+  if (chain.length === 0) {
+    el.textContent = "Let's get you started on your ASL journey!";
+    return;
+  }
+
+  let currentCat = null;
+  for (const cat of chain) {
+    const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
+    if (!prog.assessment?.passed && window.LWProgress.isCategoryUnlocked(cat.level, cat.id)) {
+      currentCat = cat;
+      break;
+    }
+  }
+
+  if (!currentCat) {
+    el.textContent = "You've completed every unit that's trained so far — nice work!";
+    return;
+  }
+
+  const unit = window.LWData.getUnits().find(u => u.order === currentCat.unit);
+  const unitTitle = unit?.title ?? currentCat.title;
+
+  const signs = window.LWData.getCategorySigns(currentCat.level, currentCat.id);
+  const prog  = window.LWProgress.getCategoryProgress(currentCat.level, currentCat.id);
+  const hasPracticedAny = signs.some(s => !!prog.signs[s]);
+
+  el.textContent = hasPracticedAny
+    ? `You're making great progress on ${unitTitle}.`
+    : `Let's get started with ${unitTitle}!`;
 }
 
 /** One compact row per unit — the "no more three level cards"
@@ -200,6 +264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('[dashboard.js] progress ready, rendering now');
 
   renderOverallProgress();
+  renderWelcomeBanner();
   renderUnitList();
   renderRecap();
   renderContinueButton();

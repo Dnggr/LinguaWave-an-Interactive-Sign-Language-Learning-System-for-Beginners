@@ -79,7 +79,13 @@
         <div>
           <p class="section__eyebrow">Welcome back</p>
           <h1>Your Dashboard</h1>
-          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! You're making great progress on the ASL Alphabet.</p>
+          <!-- FIX (2026-08-21): was a hardcoded "...ASL Alphabet" string
+               regardless of actual progress (PIVOT_CHECKLIST.md flagged
+               item). js/dashboard.js's renderWelcomeBanner() now fills
+               data-welcome-banner from the same flat chain
+               renderContinueButton() already walks. Static text below
+               is just the pre-JS fallback. -->
+          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! <span data-welcome-banner>You're making great progress on the ASL Alphabet.</span></p>
         </div>
         <!-- Continue button — jumps to last incomplete lesson -->
         <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
