@@ -1523,3 +1523,148 @@ dev server in this sandbox):**
    minus the two dictionary.js items now fixed (see "Changes made").
 2. The "bugs/risks noticed, not fixed" list immediately above.
 3. Full parity for Unit 0 / Unit 7 inside the merged page (see #2 above).
+
+---
+
+### 2026-08-20 (review session) — Real-browser verification of Rev 5 + 4 bugs found/fixed by walking the dashboard→lesson journey with actual screenshots
+
+**Requested:** review the app the way Rev 5 kept flagging it never had been —
+in an actual running browser — by walking the dashboard→lessons journey as
+a learner would, using 6 screenshots the user provided (dashboard, the
+Fingerspell Your Name lesson, the Letter A lesson, the Alphabet grid, the
+Unit 0 Welcome screen); criticize what's there; fix what's safely
+fixable; put the rest in this checklist; exclude `auth.js` (teammate
+owns it). Also asked to "visualize the code" — see the inline diagram
+this session rendered (dashboard → Unit 1 → Letter A lesson → 3 bug
+markers), not reproduced here since it's a visual artifact, not file
+content.
+
+**Context:** this is genuinely the first time any of Rev 4/5's work has
+been checked against a real, running browser — every phase before this
+one explicitly flagged "not exercised in a real browser" as its biggest
+open risk. The screenshots confirmed the Rev 5 course-player sidebar
+*is* live and rendering correctly (locked/current/done states, mini
+progress bars, the collapsed/expanded unit sections all matched what
+the code should produce) — that's a real, load-bearing confirmation,
+even though most of this entry is about what wasn't right.
+
+**Bugs found by tracing the screenshots through the actual code (not
+guessed):**
+
+1. **FIXED — `handlePracticeFrame()`'s plain single-sign branch never
+   compared the detected label to the sign being taught.** The Letter A
+   screenshot showed `DETECTED SIGN: K 93%` in green while parked on
+   the Letter A lesson. Traced to `classifier.js`: `result.matched`
+   only means "confidently classified as *some* sign in the active
+   category" — `getAllowedLabelsForSign()` deliberately scopes
+   candidates to the whole category (all 26 letters), by design, for
+   the 6/W-9/F-0/O disambiguation fix. `handleAssessmentFrame()`
+   already compares `result.label === currentSign` and phrase-mode
+   practice already compares `result.label !== expectedStep` — this
+   was the one inconsistent path. Fixed in `js/lesson.js`: added an
+   `isCorrectSign` check before showing the "✅ Nice!" success message;
+   a wrong-but-confident sign now shows `Detected "X" — this lesson is
+   "Y"` instead, throttled via the same `enterCooldown()` idiom the
+   rest of this file already uses (800ms) instead of re-firing every
+   render-loop frame. Kept forgiving/non-blocking, matching Rev 3's
+   "practice, not a gate" stance — this only stops falsely claiming
+   success, it doesn't fail or lock anything.
+   - **Flagging, not fixed (related, out of scope this session):**
+     `updateConfidenceUI()`'s green/muted color and the confidence
+     bar's fill color are still driven by raw `result.matched`, not by
+     the same target-sign comparison — so the "Detected Sign" readout
+     one line above the (now correct) feedback text can still render a
+     wrong sign in green. Left alone because that function is shared
+     unconditionally by both practice AND assessment mode from the
+     render loop, so "correct for the active lesson" isn't a single
+     well-defined concept there the way it is inside the two frame
+     handlers — see the flagging comment now above the function in
+     `lesson.js`.
+2. **FIXED — Fingerspell Your Name lesson showed a stale, wrong image
+   hint.** Screenshot showed "Add image to assets/images/basic/A.png"
+   on a lesson that fingerspells a whole name, not one letter. Traced
+   to `updateLessonMeta()`: `lessonImgHintEl.textContent` is only ever
+   set inside the `if (signData)` branch, which the name drill
+   deliberately never enters (`signData` is null for it — see
+   `signDataForTitle`). The placeholder box's hint text was just
+   whatever `pages/lesson.html`'s static default HTML last held (the
+   Letter A default). Fixed by setting an appropriate hint directly in
+   the `isNameDrill` branch.
+   - **Correction note:** the first attempt at this fix accidentally
+     merged the name-drill branch's closing lines with the next
+     `else` branch's opening lines (dropped the `} else {` separator
+     mid-edit), which would have thrown a `SyntaxError: Identifier
+     'placeholder' has already been declared` — caught and fixed
+     before finishing, then verified clean with `node --check` via a
+     temp `.mjs` copy. Noting this here as a caution for anyone
+     reviewing this diff by eye rather than just diffing: the final
+     `js/lesson.js` is syntax-clean, but the intermediate state during
+     this session was briefly broken.
+3. **FIXED — Dashboard "Signs You've Learned" showed every sign
+   twice.** Screenshot showed "A A", "Y Y", "Z Z" chips. Traced to
+   `renderRecap()` in `js/dashboard.js`: rendered `signId` once inside
+   `.recap-card__img`'s pill AND again in a sibling `<span>`. The pill
+   was already redesigned into a self-contained chip for exactly this
+   text (see `css/dashboard.css`'s own BUG FIX comment above
+   `.recap-card__img`, which explains the redesign from a fixed
+   56×56px square to a flexible pill specifically to fit multi-word
+   entries like "I AM FINE") — the `<span>` was a leftover from before
+   that redesign that never got removed. Fixed by deleting the
+   redundant `<span>`.
+4. **FIXED — pre-existing, already-flagged "Start Assessment" button
+   text mismatch.** Not something this session discovered — `lesson.js`
+   already had a comment (its own Rev 3 header) saying the button was
+   supposed to read "🎥 Practice Check (optional)" and a separate NOTE
+   admitting the rename never landed, calling it "worth a 1-line fix in
+   its own small session." Since this session's own request explicitly
+   included "fix bugs" while reviewing this exact page, treated that as
+   the go-ahead. Turned out to be 4 sites, not 1 line: the HTML default
+   (`pages/lesson.html`), and 3 separate `startBtnEl.textContent` resets
+   in `js/lesson.js` (`updateLessonMeta()`, the post-camera-round
+   overlay path, `window.retryLesson()`). All 4 now say "🎥 Practice
+   Check (optional)"; also updated the page's top header comment and
+   the camera-tips list item that both referenced the old button text
+   by name, and rewrote the now-resolved flagging comment in
+   `lesson.js` to say so instead of still flagging it.
+
+**Suggestions/observations added to `PIVOT_CHECKLIST.md` (not code
+changes — see that file for the actual list):** the dashboard's welcome
+banner hardcodes "You're making great progress on the ASL Alphabet"
+regardless of which unit the learner is actually on (same "always says
+Basic" class of bug already flagged and deliberately deferred for
+`data-user-level` in Phase 5); `learn.html`'s per-category "X/26
+viewed" badge vs. the dashboard's "X/91 signs practiced" wording is an
+inconsistent term for the same underlying concept; direct URL access to
+a locked category's `lesson.html` isn't blocked (client-side-only app,
+so likely not worth enforcing, but noting it was never explicitly
+decided either way); the onboarding first-open experience shows two
+orange warning boxes ("No hand detected" / "Face not detected — step
+back") before the learner has done anything, which may read as
+"something's already broken" rather than neutral guidance.
+
+**Excluded from this session, as requested:** `js/auth.js` — not
+opened, not touched, not reviewed.
+
+**Verification:** `node --check` on `js/lesson.js` and `js/dashboard.js`
+directly (both ES modules, checked via temp `.mjs` copies — `node
+--check` needs the right extension to parse `import`/`export`
+correctly). Every edited DOM id (`btn-start-assessment`,
+`lesson-img-placeholder-hint`, `recap-grid`) cross-checked against the
+real markup by `grep`, same discipline as every phase before this one.
+**Still not exercised in a real browser** — the actual visual result of
+fix #1's new "Detected "X" — this lesson is "Y"" feedback message
+(string length vs. the feedback box's width, whether the 800ms
+throttle feels right in practice) and fix #2's hint copy have not been
+seen rendered. Recommend a real click-through on the Letter A page
+specifically (hold a wrong letter steady in view) to confirm fix #1
+feels right and doesn't spam.
+
+**Still open:**
+1. Everything already listed as still-open in every prior session log
+   entry above — none of it was touched this session.
+2. `updateConfidenceUI()`'s color-vs-correctness gap (see bug #1's
+   flagging note above).
+3. The four suggestions/observations listed above, now tracked in
+   `PIVOT_CHECKLIST.md`.
+4. Real-browser click-through of this session's 4 fixes (see
+   Verification above).

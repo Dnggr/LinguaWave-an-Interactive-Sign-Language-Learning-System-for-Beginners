@@ -15,8 +15,9 @@
     ─────────────────────────────────────────────────────────────────
     PURPOSE  : Shows the learning content for one ASL sign AND provides
                a live camera panel for real-time gesture practice.
-               After reviewing the sign, the user clicks "Start Assessment"
-               to enter scored assessment mode.
+               After reviewing the sign, the user can click "Practice
+               Check (optional)" for live camera feedback — this is
+               ungraded; the real scored assessment is quiz.html.
 
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
@@ -368,7 +369,7 @@
             <!-- Start button — triggers get-ready, then (for motion
                  signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
-              🎥 Start Assessment
+              🎥 Practice Check (optional)
             </button>
 
             <!-- Assessment prompt (shown during assessment only) -->
@@ -391,7 +392,7 @@
             <p class="camera-tips__title">📸 Camera Tips</p>
             <ul class="camera-tips__list">
               <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
-              <li>Motion signs: click "Start Assessment" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
+              <li>Motion signs: click "Practice Check" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
               <li>Make sure your hand is well-lit and fully visible</li>
               <li>Keep your hand centred in the frame</li>
             </ul>

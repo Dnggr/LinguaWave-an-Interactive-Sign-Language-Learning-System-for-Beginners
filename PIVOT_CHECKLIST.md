@@ -90,6 +90,77 @@
 
 ---
 
+## Review session (2026-08-20) — bugs found/fixed + new suggestions
+> Not part of this pivot either — a real-browser verification pass
+> (using actual screenshots) of Rev 5's course-player sidebar, done by
+> walking the dashboard→lesson journey as a learner would. Full trace
+> for each item is in `AI_MEMORY.md`'s matching Session Log entry.
+> `js/auth.js` was excluded from this session at the user's request
+> (teammate owns it) — not reviewed, not touched.
+
+**Bugs found and fixed this session:**
+- [x] `js/lesson.js` `handlePracticeFrame()` — plain single-sign
+  practice showed a false "✅ Nice!" success message (and green
+  Detected Sign color) for ANY confidently-classified sign in the
+  lesson's category, never actually compared to the sign being taught.
+  Fixed: now compares `result.label` against the active `sign`, same
+  as assessment mode and phrase-mode practice already do.
+- [x] `js/lesson.js` `updateLessonMeta()` — Fingerspell Your Name
+  lesson showed a stale "Add image to assets/images/basic/A.png" hint
+  (the Letter A default, never overwritten since this drill's
+  `signData` is null by design). Fixed: sets an appropriate hint for
+  the name drill directly.
+- [x] `js/dashboard.js` `renderRecap()` — "Signs You've Learned" chips
+  showed each sign twice ("A A", "Y Y", "Z Z"). Fixed: removed the
+  redundant `<span>` left over from before `.recap-card__img` was
+  redesigned into a self-contained pill.
+- [x] `pages/lesson.html` + `js/lesson.js` (4 sites) — the
+  "🎥 Start Assessment" button text never matched this file's own Rev 3
+  header comment (which always said it should read "🎥 Practice Check
+  (optional)") — a pre-existing, already-flagged mismatch, not newly
+  found this session, but fixed now since it sits on the exact page
+  being reviewed and was already marked "safe, just needs a session."
+
+**New suggestions (not fixed, no code changed — flagging for a
+decision, same spirit as every other flagged item in this file):**
+- [ ] `js/lesson.js` `updateConfidenceUI()` — the "Detected Sign"
+  readout's green/muted color and the confidence bar's fill are still
+  driven by raw `result.matched`, not compared against the active
+  lesson's sign — so it can still render a wrong sign in green, one
+  line above feedback text that (after this session's fix above)
+  correctly says it's wrong. Shared by both practice and assessment
+  mode, so needs a real decision about how the two should interact
+  before changing — see the flagging comment now above the function.
+- [ ] `pages/dashboard.html` — the welcome banner hardcodes "You're
+  making great progress on the ASL Alphabet" regardless of which unit
+  the learner is actually on. Same class of bug as Phase 5's
+  `data-user-level` field ("always says Basic") — cosmetic, not a
+  crash, but will read as wrong/stale for anyone past Unit 1. Fixing
+  well means computing the learner's current unit (same
+  `getOrderedLiveCategories()` walk `renderContinueButton()` already
+  does) and mapping it to a friendly phrase — more than a one-line
+  text swap, so left as a decision rather than done unprompted.
+- [ ] Terminology: `learn.js`'s per-category badge says "X/26 viewed"
+  while the dashboard's aggregate card says "X/91 signs practiced" —
+  same underlying concept (`getCategoryProgress().signs`), different
+  word. Low priority, but worth picking one term.
+- [ ] Direct URL access to a locked category's `pages/lesson.html`
+  (e.g. typing `?level=basic&category=numbers` before Unit 1 is
+  passed) isn't blocked — `lesson.js` only uses
+  `isCategoryUnlocked()` for sidebar lock icons, not as a page-level
+  gate. Likely fine to leave as-is for a client-side-only app (there's
+  no server to truly enforce this either way), but noting it was never
+  explicitly decided.
+- [ ] First-open UX: the camera panel shows two orange warning boxes
+  ("No hand detected" / "Face not detected — step back so your whole
+  head is visible") immediately on page load, before the learner has
+  done anything. Reads as "something's already broken" rather than
+  neutral first-run guidance. Possible fix: suppress both warnings for
+  the first few seconds after camera start, or soften the copy/color
+  for that initial window specifically.
+
+---
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.

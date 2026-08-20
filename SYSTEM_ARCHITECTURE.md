@@ -1,7 +1,7 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`.
+> **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`. **Verified in a real browser for the first time on 2026-08-20 (review session)**, via user-provided screenshots of the dashboard→lesson journey — confirmed the sidebar renders correctly, and found/fixed 4 bugs by tracing the screenshots through the code (a false-positive "correct" match in plain practice mode, a stale image hint on the name drill, duplicated text in the dashboard's recap chips, and a pre-existing "Start Assessment"/"Practice Check" button-text mismatch) — see the "Review session" addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section for the full list, including items flagged but not fixed.
 > **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
@@ -111,6 +111,51 @@ branch for multi-category units) has the least prior precedent to
 lean on. Recommend clicking through a multi-category unit (Common
 Things & People) specifically to check that branch, and resizing the
 window across the new 1200px breakpoint to confirm the stack behaves.
+
+### Addendum (2026-08-20, review session) — first real-browser check + 4 bug fixes
+
+The "not exercised in a real browser" gap above was partially closed:
+the user provided 6 actual screenshots (dashboard, the Fingerspell
+Your Name lesson, the Letter A lesson, the Alphabet grid, the Unit 0
+Welcome screen) from a live local server. The sidebar itself checked
+out — locked/current/done states and per-unit progress in the
+screenshots matched what the code should produce. Tracing the
+screenshots against the actual code surfaced 4 real bugs, all fixed
+this session (full before/after in `AI_MEMORY.md`'s matching Session
+Log entry and `PIVOT_CHECKLIST.md`'s "Review session" section):
+
+1. `js/lesson.js` `handlePracticeFrame()` — plain single-sign practice
+   showed a false "✅ Nice!" success message for any confidently
+   classified sign in the category, never compared against the sign
+   the lesson teaches. Now compares `result.label` to the active
+   `sign`, matching the pattern assessment mode and phrase-mode
+   practice already used.
+2. `js/lesson.js` `updateLessonMeta()` — the name drill showed a
+   stale "Add image to assets/images/basic/A.png" hint, since its
+   `signData` is null by design and the branch that sets that hint
+   was never reached. Now sets drill-appropriate copy.
+3. `js/dashboard.js` `renderRecap()` — the dashboard's recap chips
+   rendered each sign's text twice ("A A", "Y Y", "Z Z") via a
+   redundant `<span>` left over from before `.recap-card__img` became
+   a self-contained pill. Removed.
+4. The pre-existing (already flagged in code comments, not newly
+   found) "🎥 Start Assessment" vs. intended "🎥 Practice Check
+   (optional)" button-text mismatch, across 4 sites in
+   `pages/lesson.html` and `js/lesson.js`. Now consistent.
+
+One related item was flagged but deliberately NOT fixed:
+`updateConfidenceUI()`'s Detected Sign color/confidence-bar fill are
+still driven by raw `result.matched`, not the same target-sign
+comparison fix #1 added — see the flagging comment above that function
+in `lesson.js` for why (it's shared unconditionally by both practice
+and assessment mode, so needs its own decision). `js/auth.js` was
+explicitly out of scope this session (teammate-owned) and was not
+opened. New suggestions surfaced but not implemented (a hardcoded
+"ASL Alphabet" welcome-banner string, a "viewed" vs. "practiced"
+terminology inconsistency, unblocked direct-URL access to locked
+categories, and the camera panel's two warning boxes firing
+immediately on first open) are tracked as unchecked items in
+`PIVOT_CHECKLIST.md` rather than repeated here.
 
 ---
 

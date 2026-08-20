@@ -158,10 +158,18 @@ function renderRecap() {
   }
   if (empty) empty.style.display = 'none';
 
+  // BUG FIX (2026-08-20, review session): this used to render signId
+  // twice per card — once inside .recap-card__img's pill and again in
+  // a sibling <span> — showing as "A A" / "Y Y" / "Z Z" etc. The pill
+  // was redesigned (see css/dashboard.css's own BUG FIX comment above
+  // .recap-card__img) specifically to be a self-contained chip that
+  // already shows the full sign text, including multi-word entries
+  // like "I AM FINE" — the extra <span> was a leftover from before
+  // that redesign. Removed rather than kept-but-hidden, since nothing
+  // else in css/dashboard.css targets a bare <span> inside .recap-card.
   grid.innerHTML = learned.slice(-24).reverse().map(({ signId }) => `
     <div class="recap-card">
       <div class="recap-card__img" aria-label="ASL sign for ${signId}">${signId}</div>
-      <span>${signId}</span>
     </div>
   `).join('');
 }

@@ -1060,6 +1060,16 @@ function updateLessonMeta() {
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+    // BUG FIX (2026-08-20, review session): lessonImgHintEl is only
+    // ever updated inside the `if (signData)` branch above, which this
+    // drill never enters (signData is deliberately null for it — see
+    // signDataForTitle). Without this, the placeholder box kept
+    // whatever hint pages/lesson.html's static markup last had
+    // ("Add image to assets/images/basic/A.png" — the Letter A
+    // default), which is meaningless for a multi-letter name drill.
+    if (lessonImgHintEl) {
+      lessonImgHintEl.textContent = 'No single reference image — this drill combines the letters from your own name.';
+    }
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) referenceEl.style.display = 'none';
   } else {
@@ -1074,18 +1084,19 @@ function updateLessonMeta() {
   }
 
   // REV 3: this is now an optional, ungraded practice check — the
-  // real assessment lives in quiz.html (category / level).
-  // CHANGED: "Practice Check" renamed to "Assessment" — Start Recording
-  // used to be a separate button/action; now clicking this one button
-  // both starts the assessment flow AND (for motion signs) triggers the
-  // 3-2-1 countdown + recording automatically, see showNextPrompt().
-  // NOTE (found while doing Phase 2, not fixed — out of scope): this
-  // button's actual .textContent ('🎥 Start Assessment') doesn't match
-  // this file's own Rev 3 header comment, which says it was renamed to
-  // "🎥 Practice Check (optional)". That rename never actually landed
-  // here. Doesn't affect the name drill either way (see below), but
-  // flagging since it's a real, visible mismatch on every other lesson
-  // page — worth a 1-line fix in its own small session.
+  // real assessment lives in quiz.html (category / level). Start
+  // Recording used to be a separate button/action; now clicking this
+  // one button both starts the practice-check flow AND (for motion
+  // signs) triggers the 3-2-1 countdown + recording automatically,
+  // see showNextPrompt().
+  // FIXED (2026-08-20, review session): the button's .textContent
+  // ('🎥 Start Assessment') used to not match this file's own Rev 3
+  // header comment, which always said it was renamed to "🎥 Practice
+  // Check (optional)" — that rename never actually landed in the 4
+  // places the text is set (here, pages/lesson.html's default markup,
+  // and the two post-camera-round resets below). All 4 now say
+  // "🎥 Practice Check (optional)" — see AI_MEMORY.md Session Log for
+  // the full before/after and why this was flagged as safe to just fix.
   //
   // NEW — Rev4 Phase 2: hide this button entirely for the name drill
   // instead of wiring it to startAssessment(). handleAssessmentFrame()
@@ -1100,7 +1111,7 @@ function updateLessonMeta() {
   if (isNameDrill) {
     if (startBtnEl) startBtnEl.style.display = 'none';
   } else {
-    if (startBtnEl) startBtnEl.textContent = '🎥 Start Assessment';
+    if (startBtnEl) startBtnEl.textContent = '🎥 Practice Check (optional)';
     // BUG 5 FIX: use .onclick assignment (idempotent) instead of
     // addEventListener, which stacks duplicate listeners if called twice.
     if (startBtnEl) startBtnEl.onclick = startAssessment;
@@ -1629,7 +1640,28 @@ function handlePracticeFrame(result) {
   // ── existing non-phrase logic, unchanged below ──
   const isMotion = getDetectionType(sign) === 'motion';
 
+  // BUG FIX (2026-08-20, review session): result.matched only means
+  // "the classifier is confident about SOME sign in this category" —
+  // it was never compared against `sign`, the sign THIS lesson page
+  // is teaching. Without this check, confidently signing the wrong
+  // letter (e.g. K while on the Letter A page) showed a false
+  // "✅ Nice! Detected: K" success message.
+  const isCorrectSign = result.label === sign;
+
   if (result.matched && !cooldown) {
+    if (!isCorrectSign) {
+      // Forgiving, same spirit as the phrase-mode retry message above:
+      // practice is optional and ungated (Rev 3), so this is
+      // informational, not a fail state — just don't claim success.
+      // enterCooldown() throttles this to roughly once per 800ms
+      // instead of re-firing every render-loop frame the wrong sign
+      // stays in view.
+      showFeedback(`Detected "${result.label}" — this lesson is "${sign}"`, 'error');
+      enterCooldown(800);
+      debounceCount = 0;
+      lastDetected  = null;
+      return;
+    }
     if (isMotion) {
       showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
@@ -1927,12 +1959,30 @@ function endAssessment() {
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    startBtnEl.textContent   = '🎥 Start Assessment';
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
   }
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────
 
+// FLAGGING (2026-08-20, review session, not fixed here): this readout's
+// green/muted color and the confidence bar's green/yellow fill are both
+// still driven by raw `result.matched` (see below), NOT by whether the
+// detected label matches the sign THIS lesson is teaching — the same
+// gap handlePracticeFrame's non-phrase branch had, just fixed above.
+// Net effect: the "Detected Sign" panel can still render "K" in green
+// while parked on the Letter A page, one line above feedback text that
+// now correctly says it's wrong. Left unfixed because this function is
+// shared by both practice AND assessment mode (called unconditionally
+// from the render loop), so "correct for the active lesson" isn't a
+// single well-defined concept here the way it is inside
+// handlePracticeFrame/handleAssessmentFrame — assessment mode already
+// has its own separate, correct pass/fail feedback path, so tying this
+// shared low-level readout to lesson-correctness too needs a real
+// decision about how the two should interact, not a one-line copy of
+// the fix above. Recommend deciding whether this panel should become
+// "correct-for-this-lesson" aware (and if so, whether assessment mode
+// should keep it neutral) before changing it.
 function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
@@ -2040,7 +2090,7 @@ window.closeOverlay = function() {
 window.retryLesson = function() {
   closeOverlay();
   if (startBtnEl) {
-    startBtnEl.textContent   = '🎥 Start Assessment';
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
     startBtnEl.style.display = '';
   }
   if (promptBoxEl) promptBoxEl.style.display = 'none';
