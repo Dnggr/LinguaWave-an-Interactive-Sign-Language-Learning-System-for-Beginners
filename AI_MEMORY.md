@@ -1796,3 +1796,74 @@ opened, not touched, not reviewed. Same standing exclusion as the
 3. Phase 7's actual capture + retraining work (16 Essential Words, 5
    phrase placeholders, `HELLO`/`THANK YOU`/`HOT`/`COLD`) — unchanged,
    still needs a human + camera + Colab.
+
+---
+
+### 2026-08-21 — Dashboard UX review from a learner perspective (no code)
+
+**Requested:** Treat the app as a new ASL learner, start at Dashboard → Learn → Lesson,
+critique the experience, make the dashboard more like a structured learning platform
+such as Cisco Academy/Lingvano-style course experiences, and document the findings.
+The user explicitly said **do not code** and **exclude `js/auth.js`** because a teammate
+owns auth.
+
+**Pre-change checks completed:** Read the active project memory first, then
+`PIVOT_CHECKLIST.md`, then `SYSTEM_ARCHITECTURE.md` Rev 4 before making any
+recommendations. Rev 4/5 state was respected. No changes were proposed to
+`data.js`, `learn.js`, `progress.js`, or `auth.js`.
+
+**Screenshots reviewed:**
+- Dashboard (`pages/dashboard.html`)
+- Learn trail (`pages/learn.html`)
+- Alphabet category view
+- Unit 0 Welcome
+- Letter M lesson / course-player sidebar
+
+**Main finding:** the dashboard is functional but currently feels more like a
+progress/status report than the learner's home page. The full learning trail is
+already present in `learn.html`, while the dashboard currently repeats the trail
+with an aggregate progress card + one row per unit. The next learning action is
+not visually dominant enough.
+
+**Highest-priority recommendation:** make the dashboard learner-first:
+1. A dominant "Continue Learning" card at the top.
+2. Show exact current Unit + lesson/sign.
+3. Keep practice progress and assessment mastery as separate metrics.
+4. Keep the learning-path summary compact.
+5. Add a future-facing Review entry point without building a new review algorithm here.
+6. Replace/remove `Current Level: Basic`, because Rev 4 is a single continuous path.
+
+**Important metric finding:** `js/dashboard.js` currently computes the overall percentage
+from practiced signs (`practicedSigns / totalSigns`). This is valid as a practice
+completion metric, but visually it can be interpreted as overall ASL mastery. The
+dashboard should label it explicitly as practice progress and keep category assessment
+passes separate.
+
+**Screenshot observations / possible bugs:**
+- Dashboard is vertically long and can place the main learning action above the current
+  viewport.
+- Dashboard unit rows are useful but not strong enough as "what do I do next?" guidance.
+- "Signs You've Learned" is retrospective and currently has no review action.
+- The account card still exposes "Current Level: Basic"; this was already known as a
+  Rev 4 open follow-up.
+- Current Letter M lesson screenshot still shows the reference-image placeholder
+  (`Add image to ../assets/images/basic/M.png`); verify whether the image asset exists.
+- Current Letter M screenshot still shows initial camera warnings (`No hand detected`
+  and `Face not detected`) even though the code comments/memory say a first-load
+  timestamp race was fixed; this needs another real-browser verification.
+- Letter M shows detected `C` at 74% in the screenshot. The yellow state communicates
+  that it is not a correct M, but the wording/visual distinction should remain explicit.
+
+**Architecture direction:** Dashboard should consume existing
+`LWProgress` + `LWData` APIs. Preferred implementation scope for the future redesign:
+`pages/dashboard.html`, `js/dashboard.js`, `css/dashboard.css`.
+Do not introduce a second progress/unlock/order algorithm.
+
+**No code was changed in this session.**
+
+**Still open after this session:**
+- Dashboard redesign implementation.
+- Real-browser verification of the latest lesson camera/warning behavior.
+- Asset verification for the Letter M lesson image.
+- Phase 7 capture/retraining work remains unchanged.
+- Auth remains explicitly excluded.

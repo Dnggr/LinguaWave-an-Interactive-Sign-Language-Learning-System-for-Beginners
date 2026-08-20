@@ -2,6 +2,14 @@
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
 > **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`. **Verified in a real browser for the first time on 2026-08-20 (review session)**, via user-provided screenshots of the dashboard→lesson journey — confirmed the sidebar renders correctly, and found/fixed 4 bugs by tracing the screenshots through the code (a false-positive "correct" match in plain practice mode, a stale image hint on the name drill, duplicated text in the dashboard's recap chips, and a pre-existing "Start Assessment"/"Practice Check" button-text mismatch) — see the "Review session" addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section for the full list, including items flagged but not fixed. **All 5 of that review session's remaining flagged items (including the one left as "needs a decision") were cleared 2026-08-21** — see the second addendum at the end of the Rev 5 section below and `PIVOT_CHECKLIST.md`'s matching section.
+> **Dashboard UX Review (2026-08-21)** — a learner-perspective UX
+> review of `pages/dashboard.html` (Dashboard → Learn → Lesson,
+> screenshot-based), producing a redesign direction + checklist for a
+> future dashboard-only implementation session. **No code was
+> changed** — this is a product/UX recommendation layered on top of
+> the existing Rev 4/5 architecture, not a revision of it. See the
+> "Dashboard UX Review Addendum" section below and
+> `PIVOT_CHECKLIST.md`'s matching checklist for the full findings.
 > **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
@@ -198,6 +206,203 @@ green/yellow behavior mid-assessment, fix #5's actual on-load feel).
 Full reasoning, verification detail, and the "why now" for the
 decision in #1 are in `AI_MEMORY.md`'s 2026-08-21 Session Log entry and
 `PIVOT_CHECKLIST.md`'s matching section — not repeated here.
+
+---
+
+## Dashboard UX Review Addendum — 2026-08-21
+
+### Scope
+
+This addendum documents a learner-perspective review of the current dashboard after
+Rev 4/Rev 5. It is a **UX/product direction**, not a curriculum or progress-model
+revision.
+
+User constraint for this session:
+- `js/auth.js` is out of scope.
+- No code changes were made.
+- The existing Rev 4/5 curriculum/progress architecture remains authoritative.
+
+### Current dashboard role
+
+The current dashboard consists of:
+1. account information,
+2. one aggregate progress card,
+3. one row per unit,
+4. a "Signs You've Learned" recap.
+
+This is structurally valid, and `js/dashboard.js` correctly consumes the existing
+flat Rev 4 chain through `LWProgress.getOrderedLiveCategories()` and the unit data
+from `LWData`.
+
+However, the current experience is too report-oriented for a learner's home page.
+`learn.html` is already the full learning-path browser, and `lesson.html` is the
+course player. Therefore the dashboard should not become a third copy of the same
+path.
+
+### Recommended product separation
+
+```text
+Dashboard
+  = "What should I do next?"
+  = next action + compact progress summary + review/recent activity
+
+Learn
+  = "Where can I go?"
+  = full learning-path navigation
+
+Lesson
+  = "Teach and practice this."
+  = course-player content + quick checks + optional camera practice
+
+Quiz
+  = "Can I demonstrate recall?"
+  = graded category assessment
+```
+
+### Dashboard design priority
+
+The first viewport should prioritize the learner's next action.
+
+Recommended order:
+
+```text
+Welcome / learner context
+        ↓
+Continue Learning card
+        ↓
+Practice Progress + Assessment Progress
+        ↓
+Compact Learning Path summary
+        ↓
+Recent Practiced Signs / Review
+```
+
+The existing aggregate progress card may remain, but the dashboard should not lead
+with a large aggregate percentage while the next lesson is visually secondary.
+
+### Metric semantics
+
+Current code calculates the headline percentage from practiced signs.
+
+That metric should be treated explicitly as:
+
+`Practice Progress`
+
+not as:
+
+`Mastery`
+
+Assessment pass information must remain a separate signal.
+
+Recommended learner-facing summary:
+
+```text
+9% Practice Progress
+8 Signs Practiced
+0 / 8 Category Assessments Passed
+```
+
+A future mastery score may be added only when a documented mastery rule exists.
+
+### Current position
+
+The dashboard should expose a clear "You are here" state using the **existing**
+flat chain and current-category logic. It should not build a second unlock or
+ordering algorithm.
+
+Future implementation should continue using:
+- `LWProgress.getOrderedLiveCategories()`
+- `LWProgress.getCategoryProgress()`
+- `LWProgress.isCategoryUnlocked()`
+- `LWData.getUnits()`
+- `LWData.getCategorySigns()`
+
+### Current Level field
+
+Rev 4 intentionally removed user-selectable proficiency levels. The dashboard's
+`Current Level: Basic` field is therefore product-obsolete and was already identified
+as an open follow-up.
+
+Recommended future replacement:
+
+`Current Unit`
+
+Example:
+
+`Unit 1 · The Alphabet`
+
+This should be solved in dashboard scope without restoring a signup-level picker and
+without modifying auth ownership.
+
+### Review entry point
+
+The existing "Signs You've Learned" recap is useful as history, but it is not yet
+a learning/repetition feature.
+
+The dashboard should reserve a visible Review/Trainer entry point, but a new spaced
+repetition algorithm is intentionally **not** part of this dashboard task. A future
+Review mode should reuse the existing detected-sign infrastructure.
+
+### Dashboard implementation boundary
+
+Preferred future changes:
+- `pages/dashboard.html`
+- `js/dashboard.js`
+- `css/dashboard.css`
+
+Explicitly avoid:
+- `js/auth.js`
+- `js/data.js`
+- `js/learn.js`
+- `js/engine/progress.js`
+
+unless a concrete blocker is found and documented before expanding scope.
+
+### Review findings from current screenshots
+
+1. Dashboard is visually dominated by progress reporting rather than an obvious
+   next action.
+2. Unit rows are useful as a summary but duplicate some of `learn.html`'s role.
+3. The current percentage can be mistaken for mastery because it is not clearly
+   labeled as practice progress.
+4. Current Unit/current lesson is not visually prominent.
+5. `Current Level: Basic` conflicts with the single-path product model.
+6. There is no explicit review action from the dashboard.
+7. The long page can push the most useful learner action below the fold.
+8. The Letter M lesson screenshot still shows a missing-image placeholder for
+   `../assets/images/basic/M.png`; verify asset availability.
+9. The Letter M lesson screenshot still shows initial camera warnings. The codebase
+   says the first-load timestamp race was fixed, so this must be real-browser verified
+   rather than assumed resolved.
+10. Detected `C` while teaching `M` is correctly not green in the screenshot, but the
+    UI should make the "wrong sign" result unmistakable.
+
+### Relationship to Rev 4 / Rev 5
+
+This review does **not** change:
+- unit ordering,
+- category unlocking,
+- assessment policy,
+- camera-as-optional-practice policy,
+- Phrasebook/reference status,
+- model routing,
+- auth behavior.
+
+It is a presentation-level recommendation for the existing architecture.
+
+### Verification requirement
+
+After a future dashboard implementation, perform real-browser verification:
+- fresh learner state,
+- partial progress state,
+- passed-category state,
+- near-end state,
+- narrow viewport,
+- keyboard navigation,
+- direct return to the dashboard after a lesson.
+
+Also re-check the Letter M image and first-load camera warning observations from the
+provided screenshots.
 
 ---
 

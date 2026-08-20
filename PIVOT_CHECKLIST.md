@@ -182,3 +182,561 @@ made and full reasoning on each):**
 - [ ] Optional placement/skip test — suggested addition, same as above.
 - [ ] Sign-variation callouts (e.g. "HOW" has two accepted forms) — suggested addition, low priority.
 - [ ] `pages/intro-to-asl.html` vs. Unit 0's `UNIT0_CONTENT` screen content overlap — surfaced in Phase 4 (see AI_MEMORY.md §4), not resolved. Needs a real decision (merge one into the other, or keep both cross-linked as Phase 4 left them) but isn't blocking anything.
+
+
+---
+
+## Dashboard UX Review Checklist — 2026-08-21
+> Not part of the Rev 4 curriculum pivot, and no code was changed — a
+> learner-perspective UX review of `pages/dashboard.html` (walked
+> Dashboard → Learn → Lesson using screenshots), producing this
+> checklist as the plan for a future dashboard-only implementation
+> session. `js/auth.js` excluded, same as every session since it was
+> first excluded. See `AI_MEMORY.md`'s matching 2026-08-21 Session Log
+> entry and `SYSTEM_ARCHITECTURE.md`'s matching Dashboard UX Review
+> Addendum for the narrative version of the same findings.
+
+> Purpose: learner-first dashboard review and implementation plan.
+> Scope: dashboard only.
+> Excluded by user request: `js/auth.js`.
+>
+> Important: This checklist does **not** authorize changes to `data.js`,
+> `learn.js`, `progress.js`, or `auth.js`. The current Rev 4/5 state was
+> checked first. The dashboard should consume the existing trail/progress APIs
+> rather than changing the curriculum model.
+
+---
+
+### 0. Current-state verdict
+
+#### Overall judgment
+
+The dashboard is functional, but it currently behaves more like a **progress report**
+than a **learning home page**.
+
+A learner should answer these questions within about 5 seconds:
+
+1. Where am I?
+2. What should I do next?
+3. How much have I completed?
+4. What should I review?
+5. What have I already mastered?
+
+The current dashboard answers #3 and #5 reasonably well, partially answers #1,
+and is weak on #2 and #4.
+
+#### Main UX direction
+
+Make the dashboard the learner's **home/base**, while `learn.html` remains the
+full learning-path browser and `lesson.html` remains the course player.
+
+Do not make the dashboard another copy of the trail.
+
+---
+
+### 1. Priority 0 — Make "Continue Learning" the primary action
+
+- [ ] Make the top of the dashboard visually centered around a **Continue Learning** card.
+- [ ] Show the exact current destination:
+  - Unit number + Unit title
+  - Category
+  - Current sign / lesson
+  - Example: `Unit 1 · The Alphabet → Letter M`
+- [ ] Show progress inside that destination, not only the global 9%.
+- [ ] Show one clear primary CTA: `Continue`.
+- [ ] Show a secondary CTA only when useful: `Review` / `Open Path`.
+- [ ] The first viewport should expose the next learning action without scrolling.
+- [ ] Preserve the existing `renderContinueButton()` logic as the source of truth
+      for the destination.
+- [ ] Do **not** create a second progress/unlock algorithm in the dashboard.
+
+#### Acceptance criteria
+
+A learner who returns to the dashboard can immediately continue from their
+real next lesson without opening `learn.html` first.
+
+---
+
+### 2. Priority 0 — Replace the dashboard's current "report" feeling
+
+Current problem:
+
+The screenshot shows `Overall Progress` first, followed by a long stack of unit
+rows. This is useful information, but it feels like an admin/status page instead
+of a learning home.
+
+- [ ] Move the learner's next action above the aggregate progress card.
+- [ ] Keep overall progress, but make it secondary to the next action.
+- [ ] Keep the unit list as a compact learning-path summary, not the main feature.
+- [ ] Avoid showing the same information at equal visual weight three different ways.
+
+#### Rule
+
+Dashboard = **What should I do now?**
+
+Learn = **Where can I go?**
+
+Lesson = **Teach and practice this thing.**
+
+---
+
+### 3. Priority 0 — Fix the meaning of the 9% progress number
+
+Current implementation calculates the overall percentage from **signs practiced**
+rather than assessment mastery.
+
+That is valid as a "practice completion" metric, but the current presentation
+can be read as "I am 9% proficient in ASL."
+
+- [ ] Rename the metric explicitly to `Practice Progress` or `Signs Practiced`.
+- [ ] Keep `9%` as practice completion if desired.
+- [ ] Do not call it mastery.
+- [ ] Keep `X / Y category assessments passed` separate.
+- [ ] Consider a second metric for mastery:
+      `Assessments Passed` / `Categories Passed`.
+- [ ] Do not combine practice completion and assessment mastery into one number.
+
+#### Recommended dashboard summary
+
+`9% Practice Progress`
+
+`0 / 8 Assessments Passed`
+
+This makes the difference between **exposure/practice** and **mastery** obvious.
+
+---
+
+### 4. Priority 1 — Turn unit rows into a real learning-path summary
+
+Current screenshot:
+
+Unit rows are visually consistent, but they are mostly just labels such as
+`0/1 categories passed`, `Locked`, or `Browse only`.
+
+- [ ] Show a compact progress indicator for each graded unit when useful.
+- [ ] Show `practiced / total signs` for the current unit.
+- [ ] Show `assessment passed` separately from practice.
+- [ ] Make the current unit visually dominant.
+- [ ] Keep locked units subdued.
+- [ ] Keep Unit 7 clearly labeled as reference/read-only.
+- [ ] Avoid adding a full second trail UI here; `learn.html` already owns that.
+
+#### Example information hierarchy
+
+`Unit 1 · The Alphabet`
+`8 / 26 signs practiced`
+`0 / 1 assessment passed`
+
+This is more useful to the learner than only `0/1 categories passed`.
+
+---
+
+### 5. Priority 1 — Add a "You are here" state
+
+- [ ] Add one unmistakable current-learning label:
+      `You are here`
+- [ ] Connect it to the same category discovered by the existing
+      `renderContinueButton()` / flat progress chain.
+- [ ] Show the current Unit and lesson/sign.
+- [ ] Do not derive a second "current lesson" algorithm.
+
+#### Why
+
+The dashboard currently makes the learner infer their position from a list of
+unit states. A learning product should state the current position directly.
+
+---
+
+### 6. Priority 1 — Add a review/repetition entry point
+
+Current issue:
+
+The dashboard has `Signs You've Learned`, but this is mostly a recap display.
+It does not tell the learner what to review.
+
+- [ ] Add a future-ready `Review` section.
+- [ ] MVP can be a simple link/button to a review/trainer route once available.
+- [ ] Do not implement a new spaced-repetition algorithm in this dashboard task.
+- [ ] Do not change `progress.js` for this checklist item.
+- [ ] When Review/Trainer mode is implemented later, expose it from the dashboard.
+
+#### Suggested copy
+
+`Review recent signs`
+
+`Refresh the signs you already learned so they stick.`
+
+---
+
+### 7. Priority 1 — Improve "Signs You've Learned"
+
+Current implementation already fixed the duplicate chips.
+
+- [x] Keep the existing duplicate-sign fix.
+- [ ] Add a small count:
+      `8 signs practiced`
+- [ ] Prefer a "recently practiced" interpretation instead of implying mastery.
+- [ ] Consider a `View all` link if the list grows.
+- [ ] Keep the visual chips lightweight.
+- [ ] Do not turn this section into another lesson browser.
+
+#### Important terminology
+
+Use:
+- `Practiced`
+- `Assessed`
+- `Passed`
+- `Review`
+
+Avoid using:
+- `Mastered` unless an explicit mastery rule exists.
+
+---
+
+### 8. Priority 1 — Fix the "Current Level: Basic" product inconsistency
+
+This is already documented as an open Rev 4 follow-up.
+
+- [ ] Replace `Current Level` with `Current Unit`, OR
+- [ ] Remove the field entirely.
+- [ ] Prefer `Current Unit` because the application is now a single continuous path.
+- [ ] Do not modify `auth.js` to solve this.
+- [ ] Do not reintroduce user-selectable levels.
+
+#### Recommended replacement
+
+`Current Unit`
+
+`Unit 1 · The Alphabet`
+
+This aligns the account card with the actual Rev 4 product model.
+
+---
+
+### 9. Priority 1 — Improve first-viewport layout
+
+The provided screenshot is already scrolled into `Overall Progress`, which means
+the learner's dashboard content is long enough that key information can disappear
+below the first viewport.
+
+- [ ] Put the primary learning action in the first viewport.
+- [ ] Reduce vertical duplication between sections.
+- [ ] Keep the account card compact.
+- [ ] Keep the overall-progress card compact.
+- [ ] Avoid making every unit row look like a large standalone card.
+- [ ] Keep the page readable at desktop and narrow desktop widths.
+
+#### Visual target
+
+Top of page should feel like:
+
+`Welcome`
+↓
+`Continue Learning`
+↓
+`Practice Progress + Assessment Progress`
+↓
+`Learning Path summary`
+↓
+`Recent/Practiced Signs`
+
+Not:
+
+`Account`
+↓
+`Overall Progress`
+↓
+`Every Unit`
+↓
+`Signs`
+
+---
+
+### 10. Priority 1 — Reduce dashboard duplication
+
+The same concepts currently appear across:
+
+- Dashboard
+- Learn trail
+- Lesson sidebar
+
+This is acceptable only if each surface has a different job.
+
+- [ ] Dashboard: summary + next action.
+- [ ] Learn: full path navigation.
+- [ ] Lesson: course player + current lesson navigation.
+- [ ] Keep wording consistent across all three.
+- [ ] Do not introduce new dashboard-specific versions of unit ordering.
+
+---
+
+### 11. Priority 2 — Add learning statistics that actually motivate
+
+Optional, but recommended for a Cisco/learning-platform-style feel:
+
+- [ ] `Practice Progress`
+- [ ] `Assessments Passed`
+- [ ] `Signs Practiced`
+- [ ] `Current Unit`
+- [ ] Later: `Current streak`
+- [ ] Later: `Review due`
+- [ ] Later: `Best assessment score`
+
+Do not build all of these at once.
+
+Recommended MVP: only add the first four.
+
+---
+
+### 12. Priority 2 — Add clearer status vocabulary
+
+Use a small controlled vocabulary across dashboard + learn + lesson:
+
+- `Not started`
+- `In progress`
+- `Practiced`
+- `Assessment passed`
+- `Locked`
+- `Reference`
+
+- [ ] Audit dashboard wording against this vocabulary.
+- [ ] Keep `Browse only, no quiz yet` for Unit 7 if desired.
+- [ ] Avoid mixing `viewed`, `practiced`, and `learned` when the metric is actually practice.
+
+---
+
+### 13. Priority 2 — Dashboard accessibility and feedback
+
+- [ ] Current/locked/done state must not rely only on border color.
+- [ ] Keep text state labels.
+- [ ] Ensure CTA labels describe the action.
+- [ ] Ensure interactive unit rows have visible focus states.
+- [ ] Ensure keyboard navigation reaches `Continue` first.
+- [ ] Ensure progress percentages remain understandable without color.
+
+---
+
+### 14. Priority 2 — Responsive behavior
+
+- [ ] Test desktop.
+- [ ] Test ~1200px.
+- [ ] Test ~900px.
+- [ ] Test mobile/narrow width.
+- [ ] Ensure account metadata wraps cleanly.
+- [ ] Ensure Continue CTA remains obvious when the header wraps.
+- [ ] Ensure unit rows remain readable and clickable.
+- [ ] Ensure recap chips do not dominate the page.
+
+---
+
+### 15. Priority 2 — Error/loading states
+
+The current JS waits for `LWProgress` readiness.
+
+- [ ] Provide a visible lightweight loading state if progress takes noticeable time.
+- [ ] Do not leave a blank unit list with no explanation.
+- [ ] Show a safe fallback if progress data is unavailable.
+- [ ] Do not make auth handling part of this task.
+
+---
+
+### 16. Current bugs / problems observed during the 2026-08-21 learner review
+
+These are observations, not claims that every one is a confirmed code defect.
+
+- [ ] **Dashboard is too report-like.**
+      The screenshot gives priority to the 9% aggregate card and full unit list,
+      while the learner's next action is not the dominant element.
+- [ ] **Practice percentage is easy to misread as mastery.**
+      The code explicitly counts practiced signs, while the page visually presents
+      it as a general progress percentage.
+- [ ] **Current location is not prominent.**
+      The learner must infer where to continue from the unit list / Continue button.
+- [ ] **Current Unit is missing from the account summary.**
+      `Current Level: Basic` is now conceptually obsolete under Rev 4.
+- [ ] **Dashboard repeats the learning path.**
+      This is useful as a compact summary, but it should not become a second copy
+      of `learn.html`.
+- [ ] **No review action is visible.**
+      "Signs You've Learned" is retrospective; it does not tell the learner what
+      to review next.
+- [ ] **Long page / below-the-fold risk.**
+      The provided screenshot starts around `Overall Progress`, so the top-level
+      learner action can disappear from view depending on scroll position.
+- [ ] **Lesson screenshot: missing M image asset/hint.**
+      The current screenshot still shows `Add image to ../assets/images/basic/M.png`
+      in the lesson's reference-image area. Verify whether the asset actually exists
+      before treating this as intentional placeholder UI.
+- [ ] **Lesson screenshot: camera warning state needs real-browser verification.**
+      The screenshot shows `No hand detected` and `Face not detected` immediately on
+      load. The codebase memory says this first-load warning race was fixed, but the
+      current screenshot still shows the warning. This needs another real-browser check.
+- [ ] **Lesson screenshot: detected C while teaching M is visually confusing.**
+      The confidence is yellow rather than green, which is directionally correct,
+      but the UI should make "wrong sign" unmistakable.
+- [ ] **Alphabet page status is understandable but not very instructional.**
+      `8/26 practiced` and `Category Assessment` communicate status, but there is no
+      obvious "what to do next" beyond selecting a tile.
+
+---
+
+### 17. Recommended learning-site structure
+
+Use the current Cisco/Lingvano-style course-player direction as inspiration:
+
+`Dashboard`
+→ `Continue Learning`
+→ `Lesson / Course Player`
+→ `Quick Check`
+→ `Optional Camera Practice`
+→ `Category Assessment`
+→ `Next Unit`
+
+And separately:
+
+`Dashboard`
+→ `Learning Path`
+→ `Learn`
+→ choose/review an unlocked unit
+
+And later:
+
+`Dashboard`
+→ `Review`
+→ previously practiced signs
+
+#### Product principle
+
+The user should never have to ask:
+
+> "Okay... what am I supposed to click now?"
+
+---
+
+### 18. Suggested dashboard wireframe
+
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ Welcome back, Learner                                         │
+│ Unit 1 · The Alphabet                                         │
+│                                                               │
+│ ┌────────────── CONTINUE LEARNING ──────────────────────────┐ │
+│ │ Letter M                                                   │ │
+│ │ Learn → Practice → Quick Check                             │ │
+│ │ ████████████░░░░░░ 8 / 26 practiced                       │ │
+│ │                                                           │ │
+│ │                              [ Continue ]                  │ │
+│ └───────────────────────────────────────────────────────────┘ │
+│                                                               │
+│ ┌────────────── PROGRESS SNAPSHOT ──────────────────────────┐ │
+│ │  9% Practice     0/8 Assessments     8 Signs Practiced     │ │
+│ └───────────────────────────────────────────────────────────┘ │
+│                                                               │
+│ Learning Path                                                 │
+│  ✓ Unit 0  Welcome                                           │
+│  → Unit 1  The Alphabet       8/26                            │
+│  ○ Unit 2  Fingerspell Name   Available                       │
+│  🔒 Unit 3  Numbers                                          │
+│  ...                                                         │
+│                                                               │
+│ Recent Signs                      Review                       │
+│ [A] [B] [I] [J] [K] [L] ...       [ Review ]                 │
+└───────────────────────────────────────────────────────────────┘
+```
+
+This is intentionally **not code**. It is the target behavior/layout for the next
+implementation session.
+
+---
+
+### 19. Code/data flow to preserve
+
+```text
+pages/dashboard.html
+        │
+        ▼
+   js/dashboard.js
+        │
+        ├──────────────► window.LWProgress
+        │                 ├─ getOrderedLiveCategories()
+        │                 ├─ getCategoryProgress()
+        │                 ├─ isCategoryUnlocked()
+        │                 └─ getAllLearnedSigns()
+        │
+        └──────────────► window.LWData
+                          ├─ getUnits()
+                          ├─ getCategorySigns()
+                          └─ getCategoriesForUnit()
+
+        │
+        ▼
+    dashboard DOM
+        │
+        └──────────────► css/dashboard.css
+```
+
+#### Do not do this
+
+```text
+dashboard
+   └─► new unlock algorithm
+   └─► new category ordering
+   └─► direct changes to progress model
+```
+
+The dashboard must consume the existing Rev 4/5 architecture.
+
+---
+
+### 20. Allowed implementation scope for the next dashboard session
+
+#### Preferred files
+
+- [ ] `pages/dashboard.html`
+- [ ] `js/dashboard.js`
+- [ ] `css/dashboard.css`
+
+#### Explicitly excluded
+
+- [ ] `js/auth.js` — teammate owns this.
+- [ ] `js/data.js` — no curriculum change is needed for dashboard UX.
+- [ ] `js/learn.js` — learn/trail architecture is already complete.
+- [ ] `js/engine/progress.js` — dashboard should consume existing progress APIs.
+
+Only expand this scope if a real blocker is discovered and documented first.
+
+---
+
+### 21. Definition of done
+
+The dashboard redesign is complete when:
+
+- [ ] A learner sees the next action immediately.
+- [ ] The current Unit and current lesson/sign are obvious.
+- [ ] Practice progress and assessment mastery are visually distinct.
+- [ ] The dashboard is a summary, not a duplicate of the Learn trail.
+- [ ] `Current Level: Basic` is gone/replaced.
+- [ ] A review path is visible or deliberately deferred.
+- [ ] The first viewport works without scrolling.
+- [ ] Desktop + narrow desktop layouts are tested.
+- [ ] Existing Rev 4/Rev 5 progress APIs are reused.
+- [ ] `auth.js` is untouched.
+- [ ] No curriculum/data/progress model is changed just to improve the dashboard.
+- [ ] Real-browser verification is performed after implementation.
+
+---
+
+### 22. Session status
+
+**This session did not implement the dashboard redesign.**
+
+The task was treated as a UX/code-review + checklist session because the user explicitly
+said **"don't code"**.
+
+The result of this session is:
+- learner-perspective critique,
+- screenshot-based bug/UX review,
+- code-flow visualization,
+- dashboard redesign direction,
+- this ready-to-paste checklist,
+- memory/architecture update text in companion files.
