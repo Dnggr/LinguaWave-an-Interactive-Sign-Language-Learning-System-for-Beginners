@@ -1,9 +1,118 @@
 # LinguaWave — System Architecture & Developer Handoff
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST. -->
 > Capstone Project 2025 · ASL Interactive Learning System for Beginners
-> **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and (newly confirmed broken) `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s 2026-08-20 Session Log for detail.
+> **Rev. 5** — `pages/lesson.html` turned into a persistent "course player": a collapsible course-outline sidebar (all `UNITS`, locked/current/done, per-unit progress) merged directly into the lesson page, replacing the `learn.html` → `lesson.html` click-through for browsing already-unlocked content. A UI/UX change, not curriculum content — see the Rev 5 section below. `learn.html` itself is unchanged (still the entry point for picking a unit). Also fixed 2 flagged Phase 7 bugs in `dictionary.js` (`HELLO`/`THANK YOU` now `disabled:true`; `HOT`/`COLD` now have placeholder entries) — see `PIVOT_CHECKLIST.md`.
+> **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
+
+## Rev 5 — Course Player merge: `learn.html` trail browsing folded into `lesson.html`
+
+**Status: done, 2026-08-20 (a session after Rev 4 Phase 7).** Requested
+directly by the user, shown a reference screenshot (a Cisco Networking
+Academy course page: persistent left sidebar course outline with
+per-module progress bars and collapsible modules, main pane showing
+lesson content inline with prev/next). Confirmed via a follow-up
+question that "full merge" was wanted — one page, sidebar + inline
+content + prev/next — over two lighter options (visual-only restyle
+of the existing trail, or a sidebar bolted onto `learn.html` alone
+while keeping the click-through to a separate `lesson.html`).
+
+### What changed
+
+`pages/lesson.html` (already the page with all the camera/MediaPipe/
+classifier lifecycle code, and already the page every other screen
+deep-links into via a stable `?level=&category=&sign=` URL) gained a
+new persistent sidebar column: `<aside id="course-sidebar">`, wrapped
+together with the existing (UNCHANGED) `.lesson-layout` two-column
+grid inside a new `.course-layout` flex container. `js/lesson.js`
+gained a `renderCourseSidebar()` function, called once at the end of
+`updateLessonMeta()` (the one function every `boot()` path already
+calls, including both early-return branches), that walks
+`window.LWData.getUnits()` and renders one row/section per unit:
+
+- `kind: 'info'` (Unit 0) and `kind: 'interactive'` (Unit 2, the name
+  drill) render as flat single rows.
+- `kind: 'category-group'` / `'reference'` units render as a
+  collapsible section with a mini progress bar. Only the unit the
+  learner is currently inside starts expanded; others start collapsed
+  (click the header to toggle). Units with exactly one live category
+  list its signs directly; units with more than one (Common Things &
+  People, Phrasebook) show each category as its own sub-row, with only
+  the *current* category expanded down to individual signs — clicking
+  any other category jumps straight to its first not-yet-done sign.
+- Locked/current/done state is computed with the exact same
+  `window.LWData`/`window.LWProgress` calls `js/learn.js`'s trail and
+  `js/dashboard.js`'s unit rows already use (`isCategoryUnlocked`,
+  `getCategoryProgress`, `getCategorySigns`, `getCategoriesForUnit`) —
+  so this sidebar can't silently disagree with either of those screens
+  about what's locked. It never writes progress — purely a read/nav
+  surface.
+
+Every row is a plain `<a href="lesson.html?...">` — a real, full page
+navigation, identical in kind to the Prev/Next buttons and the old
+"Back to lessons" link that were already on this page. This was a
+deliberate scope choice: a true single-page app (swapping content
+without a full reload) would need the camera/MediaPipe boot-and-
+teardown lifecycle re-architected to survive an in-place sign change
+instead of a fresh page load, which is a much larger and riskier
+change to make without a real browser to test camera-dependent flows
+in (this sandbox's standing limitation, flagged by every phase before
+this one too). Because every sidebar link is a normal navigation,
+`shutdown()`'s existing `window.addEventListener('beforeunload', ...)`
+keeps working with zero new code, and the camera/classifier code path
+itself was not touched at all.
+
+### What deliberately did NOT change
+
+- **`pages/learn.html` / `js/learn.js` — untouched.** It's still the
+  dashboard's entry point for *picking* a unit (its Phase 4 trail-map
+  UI). The new sidebar is for moving through what's already unlocked
+  once you're inside a lesson — which is what the reference screenshot
+  was actually showing (mid-course, not a landing/catalog page).
+- Unit 0 (Welcome) and Unit 7 (Phrasebook) still render their actual
+  content on `learn.html` only — the sidebar links out to
+  `learn.html?unit=welcome` / `learn.html?unit=phrasebook` rather than
+  duplicating `UNIT0_CONTENT`'s static text or the ~100-item Phrasebook
+  browse list inside `lesson.js`. Flagged as a follow-on if full
+  parity is wanted.
+- No new interaction pattern (e.g. a hamburger toggle) was added for
+  small screens — the sidebar just stacks above the content/camera
+  panels under 1200px width (a new `.course-layout` breakpoint,
+  reusing the same "stack the columns" pattern `.lesson-layout` already
+  used for its own 1024px breakpoint).
+
+### Bug fixes bundled into the same session
+
+Two Phase 7 items `PIVOT_CHECKLIST.md` had explicitly flagged as
+"small, safe AI-doable, just not made unprompted" were made this
+session (the "fix bugs" part of the request was read as the missing
+go-ahead): `HELLO`/`THANK YOU` in `dictionary.js` now carry
+`disabled: true` (confirmed last session to be absent from
+`asl_motion_model/labels.json` — they now fail the same clean way the
+16 Essential Words already do, instead of running a doomed classifier
+match every attempt); `HOT`/`COLD` now have real `disabled: true`
+placeholder entries (previously had none at all, which meant
+`getDetectionType()`'s `?? 'static'` fallback silently ran the *wrong*
+classifier). Neither is trained yet — capture + retraining for all
+four is still open, same as the 16 Essential Words and 5 phrase
+placeholders.
+
+### Verification + risk notes
+
+`node --check` on both edited JS files (no syntax errors); every new
+DOM id and `window.LWData`/`window.LWProgress` call cross-checked
+against the real markup/exports by `grep`, same discipline as Rev 4's
+own phases. **Not exercised in a real browser** — same standing
+limitation as every phase before this one, worth calling out
+specifically here because the new code (collapse/expand toggling,
+sticky positioning at various widths, the nested-category expand
+branch for multi-category units) has the least prior precedent to
+lean on. Recommend clicking through a multi-category unit (Common
+Things & People) specifically to check that branch, and resizing the
+window across the new 1200px breakpoint to confirm the stack behaves.
+
+---
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
@@ -62,8 +171,8 @@ maps them onto the new presentation order.
 | 1 | The Alphabet (A–Z) | `level:basic, category:alphabet` — unchanged | ✅ fully trained (static model) |
 | 2 | Fingerspell Your Name | new — interactive drill, see §New content below | ✅ reuses the A–Z static model, zero new training data |
 | 3 | Numbers (0–9, working toward 10) | `level:basic, category:numbers` — unchanged | ⚠️ static 0–9 trained; `6`/`9`/`10` → `detectionType:'motion'` routing fix confirmed done 2026-08-20 (`dictionary.js` + `data.js` both checked directly). Still not actually detectable, though — `asl_motion_model/labels.json` has zero digit classes today, so this needs real capture + retraining regardless of the routing fix |
-| 4 | Everyday Essentials (greetings & courtesy words) | `level:medium, category:requests` (partial) + the `disabled:true` placeholders in `dictionary.js` (`PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) | ❌ **Correction, 2026-08-20:** `HELLO`/`THANK YOU` are enabled (not `disabled`) in `dictionary.js` but are **not actually trained** — confirmed by reading `asl_motion_model/labels.json` directly, neither class exists in the model, so any attempt at these two can never succeed today despite looking "live" in the UI. The rest are honestly `disabled: true` placeholders needing capture + retraining |
-| 5 | Common Things & People (thematic vocab) | `level:medium` — family, places, time, temperature, food, clothes, health, feelings, colors, money, animals, amounts | ⚠️ **Correction, 2026-08-20:** family/places/time are trained and confirmed working; `temperature` (`HOT`/`COLD`) is NOT — it has **zero `SIGN_DICTIONARY` entry at all** in `dictionary.js` (not even a `disabled` placeholder), so `getDetectionType()` silently falls back to `'static'` and a camera attempt on either word can never succeed. ❌ food/clothes/health/feelings/colors/money/animals/amounts have `data.js` content but no `SIGN_DICTIONARY` entry at all (see gap note below) |
+| 4 | Everyday Essentials (greetings & courtesy words) | `level:medium, category:requests` (partial) + the `disabled:true` placeholders in `dictionary.js` (`PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) | ❌ **Fixed 2026-08-20 (Rev 5):** `HELLO`/`THANK YOU` now carry `disabled: true` in `dictionary.js`, same as the rest of this row — previously enabled-but-untrained (confirmed absent from `asl_motion_model/labels.json`), so any attempt could never succeed despite looking "live" in the UI. All 18 in this row still need real capture + retraining. |
+| 5 | Common Things & People (thematic vocab) | `level:medium` — family, places, time, temperature, food, clothes, health, feelings, colors, money, animals, amounts | ⚠️ family/places/time are trained and confirmed working. **Fixed 2026-08-20 (Rev 5):** `temperature` (`HOT`/`COLD`) now has real `disabled: true` placeholder entries in `dictionary.js` (previously had none at all, so `getDetectionType()` silently fell back to `'static'` and ran the wrong classifier) — still needs capture + retraining like everything else in this row. ❌ food/clothes/health/feelings/colors/money/animals/amounts have `data.js` content but no `SIGN_DICTIONARY` entry at all (see gap note below) |
 | 6 | Basic Phrases | the `sequence_demo` chaining mechanism (real, working) + a curated set of 6 phrases built only from Unit 1–5 words | ✅ **Done 2026-08-20** — `CAR_SPELL`/`HOME_WORK_DEMO` demo placeholders replaced with 6 real curated phrases (`MOM_HOME`, `DAD_WORK`, `TODAY_SCHOOL`, `FINISH_WORK`, `SISTER_STORE`, `TODAY_GRANDMA_HOME`), each built from words confirmed present in `asl_motion_model/labels.json` |
 | 7+ | Phrasebook (reference reading, not graded) | all 18 `level:intermediate` categories (~100 sentence-level entries, including `greetings_intro`) | ❌ 0 of these have any `SIGN_DICTIONARY` entry — see "Suggested removals" for why this becomes read-only content instead of a graded unit. **✅ Implemented 2026-08-19 (Phase 4)** — `learn.js` renders Unit 7 in `isReference` mode: browsable, no assessment CTA, never locked. |
 

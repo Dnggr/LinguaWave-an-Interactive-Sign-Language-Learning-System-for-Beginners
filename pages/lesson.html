@@ -97,8 +97,21 @@
   <div class="mode-bar mode-bar--practice" id="mode-bar">📖 Practice Mode</div>
 
   <!-- ── MAIN LESSON + CAMERA LAYOUT ──────────────────────────── -->
+  <!-- NEW — "course player" merge (this session): lesson.html is now
+       the single merged page a learner stays on for the whole
+       teach->practice loop instead of bouncing back to learn.html
+       between signs. #course-sidebar is populated by
+       js/lesson.js's renderCourseSidebar() — see css/lesson.css's
+       matching comment block for the full reasoning. The old
+       "← Back to lessons" link in the strip above still works
+       unchanged (kept as a fast escape hatch back to the trail/unit
+       picker view, which still exists on learn.html for choosing
+       WHERE to start — this page is for moving through what's already
+       unlocked). -->
   <section class="section section--sm">
     <div class="container container--wide">
+      <div class="course-layout">
+        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline"></aside>
       <div class="lesson-layout">
 
         <!-- ══════════════════════════════════════════════════════
@@ -387,6 +400,7 @@
         </div><!-- /camera-panel -->
 
       </div><!-- /lesson-layout -->
+      </div><!-- /course-layout -->
     </div>
   </section>
 

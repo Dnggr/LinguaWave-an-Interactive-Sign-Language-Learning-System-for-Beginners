@@ -1302,6 +1302,20 @@ for later):**
 3. The bugs/risks list above (this session's own, plus the carried-over
    Phase 5 items).
 
+**Separately from the pivot phases above:** on 2026-08-20 (a later
+session than Phase 7), `pages/lesson.html` was turned into a
+persistent "course player" — a collapsible course-outline sidebar
+(all `UNITS`, locked/current/done, per-unit progress) merged directly
+into the lesson page, at the user's explicit request (chosen over two
+lighter options: restyle-only, or leave `learn.html` as a separate
+page). This is a UI/UX change, not a curriculum-content change, so
+it's NOT tracked as a `PIVOT_CHECKLIST.md` phase — it's documented in
+`SYSTEM_ARCHITECTURE.md` → **Rev 5** instead. `learn.html` itself is
+UNCHANGED (still the dashboard's entry point for picking a unit) —
+only `lesson.html`/`lesson.js`/`lesson.css` were touched. See that
+session's own log entry below for the full breakdown, and Rev 5 for
+the architecture.
+
 ---
 
 ### 2026-08-20 — Phase 7 (partial): number routing confirmed + curated Unit 6 phrases
@@ -1380,3 +1394,132 @@ paste-ready files; update the three coordination docs.
    correction.
 5. Image/video assets for the 6 new `sequence_demo` phrases don't
    exist yet (same gap as the 0–9 numbers assets) — not a code issue.
+
+---
+
+### 2026-08-20 (later session) — Course-player merge (lesson.html + learn.html) + 2 flagged Phase 7 bug fixes
+**Requested:** fix bugs; restyle the app toward a screenshot of a
+Cisco Networking Academy course page (persistent sidebar course
+outline + inline content); confirmed via a follow-up question that
+this meant a full merge (one page, not a restyle of the existing
+trail); provide paste-ready files; update the three coordination docs.
+
+**Scope decision (flagged, same spirit as Phase 4/6's own flagged
+calls):** "full merge" was implemented by extending `pages/lesson.html`
+itself into the merged "course player" (adding a sidebar column),
+NOT by building a third page or rewriting `learn.html`. Reasoning:
+`lesson.html` already owns all the camera/MediaPipe/classifier
+lifecycle code (~1800 lines in `lesson.js`) and every other page
+already deep-links into it with a stable `?level=&category=&sign=`
+URL shape — extending it in place reuses all of that untouched and
+keeps every existing link (`quiz.js`, `dashboard.js`, `learn.js`,
+`intro-to-asl.html`) working with zero changes. `learn.html` was
+deliberately left AS-IS: it's still the dashboard's entry point for
+picking a unit/category (its own trail-map UI, from Phase 4); the new
+sidebar is for moving through what's already unlocked once you're
+inside a lesson, which is what the reference screenshot was actually
+showing (mid-course, not a landing page). Building a true single-page
+app that swaps content without a full navigation was deliberately
+NOT attempted — it would require re-architecting the camera/mediapipe
+boot-and-teardown lifecycle (currently tied to a fresh page load per
+sign) under real time pressure with no browser to test in (same
+sandbox limitation every phase before this one has flagged). Every
+sidebar row is a plain `<a href="lesson.html?...">` — a real
+navigation, so `shutdown()`'s existing `beforeunload` listener keeps
+working with zero new wiring, and the camera code itself was not
+touched at all. See `SYSTEM_ARCHITECTURE.md` → **Rev 5** for the full
+architecture writeup — this is a UI/UX initiative, not a curriculum-
+content change, so it's documented there rather than as a new
+`PIVOT_CHECKLIST.md` phase.
+
+**Changes made:**
+- `css/lesson.css` — new `.course-sidebar`/`.course-layout` block
+  (~70 lines): sticky 260px sidebar, collapsible per-unit sections,
+  mini progress bars (reuses the color tokens already in `style.css`,
+  no new tokens added), stacks above content under 1200px.
+- `pages/lesson.html` — wrapped the existing `.lesson-layout` (content
+  panel + camera panel, UNCHANGED) in a new `.course-layout` flex
+  container alongside a new `<aside id="course-sidebar">`. No existing
+  element was removed, renamed, or had its id changed.
+- `js/lesson.js` — added `UNIT_ICONS`/`CATEGORY_ICONS` (copied
+  verbatim from `js/learn.js`'s own maps, same "small duplication is
+  fine" precedent that file already documents for `js/dashboard.js`),
+  `currentUnitOrder()`, `sidebarSignRow()`, `sidebarCategoryBlock()`,
+  and `renderCourseSidebar()` — called once from the end of
+  `updateLessonMeta()` (not from `boot()` directly) specifically
+  because `updateLessonMeta()` is the one function all three of
+  `boot()`'s paths already call, including both early-return branches
+  (empty name-drill, `comingSoon` category) — so the sidebar still
+  renders even when the camera/content half of the page bails out
+  early. Locked/current/done state is computed with the *exact same*
+  `window.LWData`/`window.LWProgress` calls `js/learn.js`'s trail and
+  `js/dashboard.js`'s unit rows already use (`getUnits`,
+  `getCategoriesForUnit`, `isCategoryUnlocked`, `getCategoryProgress`,
+  `getCategorySigns`) — copied call-for-call, not re-derived, so this
+  can't silently disagree with either of those screens. Read-only:
+  never calls any `LWProgress` record function. One deliberate metric
+  difference from `dashboard.js`'s unit rows, flagged in the code
+  comment: the sidebar's per-unit % is practiced-signs/total-signs
+  (finer-grained, matches `renderOverallProgress()`'s formula), not
+  `dashboard.js`'s categories-passed count — say the word if a literal
+  match to the dashboard number is wanted instead.
+- `js/engine/dictionary.js` — the two flagged-but-not-yet-made Phase 7
+  fixes from the last session: `HELLO`/`THANK YOU` now carry
+  `disabled:true` (confirmed absent from `asl_motion_model/labels.json`
+  last session; now behave like the 16 Essential Words instead of
+  silently running a doomed classifier match on every attempt); `HOT`/
+  `COLD` now have real `disabled:true` placeholder entries (previously
+  had ZERO `SIGN_DICTIONARY` entry, which meant `getDetectionType()`'s
+  `?? 'static'` fallback silently ran the wrong classifier). Both were
+  explicitly named as "small, safe AI-doable" in `PIVOT_CHECKLIST.md`
+  — the "fix bugs" part of this session's request was read as the
+  green light that was missing before. Capture + retraining for all
+  four is still open — this only makes their failure mode clean
+  (no match) instead of silently wrong.
+
+**Verification (same caveat as every phase before this — no browser/
+dev server in this sandbox):**
+- `node --check` on `js/engine/dictionary.js` directly, and on
+  `js/lesson.js` via a temp `.mjs` copy (the file is loaded as
+  `type="module"`, which `node --check` needs the right extension to
+  parse correctly) — no syntax errors.
+- Every new DOM id (`#course-sidebar`) cross-checked against
+  `pages/lesson.html`'s real markup; every new
+  `window.LWData`/`window.LWProgress` call cross-checked against the
+  real exported function names in `data.js`/`progress.js` (`grep`
+  both ways, same discipline as Phase 6).
+- **Not exercised in a real browser** — the sidebar's own collapse/
+  expand click handling, the sticky positioning at different viewport
+  widths, and whether the new `.course-layout` flex wrapper interacts
+  correctly with the camera panel's existing `position: sticky` all
+  need a real click-through to confirm. Recommend loading a lesson
+  with a multi-category unit in scope (Common Things & People) to
+  check the nested category/sign expand behavior specifically — that
+  branch has the most new logic and the least existing precedent to
+  fall back on.
+
+**Bugs/risks noticed, not fixed (out of scope this session):**
+1. Every item already listed under Phase 6's "Bugs/risks noticed, not
+   fixed" and "Still open" above — none were touched this session.
+2. The sidebar's Unit 0 (Welcome) and Unit 7 (Phrasebook) rows link
+   out to `learn.html?unit=welcome` / `learn.html?unit=phrasebook`
+   rather than rendering inline — those two views (static info text,
+   and a large browse-only reference list) still live entirely on
+   `learn.html` and were not ported into the sidebar/content-pane
+   pattern. Flagging in case full parity for those two is wanted
+   later; skipped this session to keep the change additive and low-
+   risk rather than also porting `UNIT0_CONTENT` rendering and the
+   Phrasebook's ~100-item browse list into `lesson.js`.
+3. On very small screens, the sidebar (stacked above content under
+   1200px per the new CSS) has no collapse-to-a-toggle-button behavior
+   — it's always visible, just stacked, which could push the actual
+   lesson content quite far down the page on a long unit list.
+   Flagging as a follow-on polish item, not attempted here to avoid
+   inventing a second interaction pattern (hamburger toggle) without
+   being able to check it against a real narrow viewport.
+
+**Still open:**
+1. Everything already listed as still-open in the Phase 7 entry above,
+   minus the two dictionary.js items now fixed (see "Changes made").
+2. The "bugs/risks noticed, not fixed" list immediately above.
+3. Full parity for Unit 0 / Unit 7 inside the merged page (see #2 above).

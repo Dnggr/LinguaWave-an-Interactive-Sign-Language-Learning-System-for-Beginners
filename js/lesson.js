@@ -641,6 +641,224 @@ let lastHandSeenAt = Date.now();
 let lastHandCount  = 0;
 
 // ── Page boot ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// COURSE SIDEBAR — "course player" merge (NEW, this session)
+// ══════════════════════════════════════════════════════════════════
+// Persistent left-hand course outline (all UNITS, collapsible, with
+// per-unit progress) rendered directly into this page's
+// #course-sidebar, so lesson.html + the old learn.html trail read as
+// one continuous screen instead of a click-through hop between two
+// pages. This was an explicit product decision made this session (the
+// user chose "full merge" over two lighter options — restyle-only or
+// leave learn.html as its own page) — flagging it the same way
+// earlier pivot phases flag their own product calls, since it goes
+// beyond what SYSTEM_ARCHITECTURE.md Rev 4 §Assessment/Progress
+// originally specified for this page. See AI_MEMORY.md's session log
+// entry for the full reasoning and what was deliberately left as-is
+// (learn.html itself is UNCHANGED — it's still the entry point for
+// picking a unit from the dashboard/Continue Learning button; this
+// sidebar is for moving through what's already unlocked once you're
+// inside a lesson).
+//
+// Every row is a plain <a href="lesson.html?..."> — full page
+// navigation, exactly like the existing Prev/Next buttons and the
+// old "Back to lessons" link. No SPA state, no change to the camera
+// lifecycle below: shutdown() already runs on `beforeunload`
+// regardless of which link the learner clicks, so this needed zero
+// new cleanup wiring.
+//
+// Read-only: never calls any window.LWProgress record*() function.
+// Locked/current/done here is computed with the exact same
+// window.LWData / window.LWProgress calls js/learn.js's trail and
+// js/dashboard.js's unit rows already use (getUnits, getCategoriesForUnit,
+// isCategoryUnlocked, getCategoryProgress, getCategorySigns) — copied
+// call-for-call rather than re-derived, specifically so this can't
+// silently disagree with either of those screens about what's locked.
+//
+// One deliberate difference from dashboard.js's per-unit percentage:
+// dashboard.js's unit rows show "X/Y categories passed" (assessment-
+// gated). This sidebar instead shows practiced-signs / total-signs
+// within the unit (same finer-grained formula renderOverallProgress()
+// uses for the single dashboard-wide percentage) — a smoother number
+// that updates sign-by-sign instead of jumping only when a whole
+// category's assessment is passed. Flagging this as its own metric,
+// not a copy of dashboard's unit-row percentage, in case a literal
+// match to that number is wanted instead.
+
+const UNIT_ICONS = {
+  welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
+  everyday_essentials: '🙏', common_things_people: '🗂️',
+  basic_phrases: '💬', phrasebook: '📖',
+};
+// Copied verbatim from js/learn.js's own CATEGORY_ICONS (small,
+// header-comment-documented duplication there already — same call
+// here for the same reason: two tiny copies were judged simpler and
+// lower-risk than a shared module just for an icon lookup).
+const CATEGORY_ICONS = {
+  alphabet: '🔤', numbers: '🔢',
+  family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
+  clothes: '👕', health: '🩹', feelings: '😊', requests: '🙏', amounts: '📏',
+  colors: '🎨', money: '💵', animals: '🐾', sequence_demo: '💬',
+  greetings_intro: '👋', basic_responses: '💬', family_phrases: '👨‍👩‍👧',
+  daily_needs: '🥤', asking_questions: '❓', polite_expressions: '🙌',
+  affection_feelings: '❤️', describing_things: '🖍️', self_introduction: '🧑',
+  daily_activities: '📅', family_conversations: '🗣️', talking_about_feelings: '💭',
+  asking_for_help: '🆘', school_conversations: '🏫', shopping_ordering: '🛍️',
+  social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
+};
+
+// Which unit (by `order`) this page is currently inside, so the
+// sidebar can auto-expand it. Mirrors updateLessonMeta()'s own
+// categoryMeta lookup below (isNameDrill -> Unit 2's fixed order,
+// else the current sign's own CATEGORIES.unit field).
+function currentUnitOrder() {
+  if (isNameDrill) return 2;
+  return window.LWData?.getCategory?.(level, category)?.unit ?? null;
+}
+
+function sidebarSignRow(cat, signId, progress) {
+  const signData = window.LWData?.getSign?.(cat.level, signId);
+  const label = signData?.title ?? signId;
+  const done = !!progress.signs[signId];
+  const isCurrent = !isNameDrill && cat.id === category && signId === sign;
+  const href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}`;
+  const stateClass = isCurrent ? ' course-sidebar__sign--current' : (done ? ' course-sidebar__sign--done' : '');
+  const icon = isCurrent ? '▶' : (done ? '✔' : '○');
+  return `<a class="course-sidebar__sign${stateClass}" href="${href}">` +
+    `<span class="course-sidebar__sign-icon">${icon}</span>` +
+    `<span class="course-sidebar__sign-label">${escapeHtml(label)}</span>` +
+  `</a>`;
+}
+
+// One category's slice of the sidebar. `opts.multiCategory` is true
+// for units with more than one live category (today: Common Things &
+// People, Phrasebook) — those get their own collapsible sub-row,
+// expanded only when it's the category the learner is actually inside
+// (clicking any OTHER category jumps straight to its first
+// not-yet-done sign, same "continue where you left off" target
+// dashboard.js's renderContinueButton() already computes). Units with
+// exactly one live category (the common case) skip the category row
+// entirely and list its signs directly — matches js/learn.js's own
+// "units with exactly one category skip the picker screen" rule.
+function sidebarCategoryBlock(cat, opts) {
+  const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+  if (signs.length === 0) return '';
+  const progress = window.LWProgress?.getCategoryProgress?.(cat.level, cat.id) ?? { signs: {}, assessment: null };
+
+  if (!opts.multiCategory) {
+    return signs.map(s => sidebarSignRow(cat, s, progress)).join('');
+  }
+
+  const doneCount = signs.filter(s => !!progress.signs[s]).length;
+  const isCurrentCat = !isNameDrill && cat.id === category;
+  const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
+  const targetSign = signs.find(s => !progress.signs[s]) || signs[0];
+  const catHref = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(targetSign)}`;
+  const rows = isCurrentCat ? signs.map(s => sidebarSignRow(cat, s, progress)).join('') : '';
+
+  return `<div class="course-sidebar__cat${isCurrentCat ? ' course-sidebar__cat--open' : ''}">` +
+    `<a class="course-sidebar__cat-head" href="${catHref}">` +
+      `<span class="course-sidebar__cat-icon">${icon}</span>` +
+      `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
+      `<span class="course-sidebar__cat-count">${doneCount}/${signs.length}</span>` +
+    `</a>` +
+    (isCurrentCat ? `<div class="course-sidebar__signs">${rows}</div>` : '') +
+  `</div>`;
+}
+
+function renderCourseSidebar() {
+  const el = document.getElementById('course-sidebar');
+  if (!el || !window.LWData) return;
+  const units = window.LWData.getUnits();
+  const curUnitOrder = currentUnitOrder();
+
+  el.innerHTML = units.map(unit => {
+    const icon = UNIT_ICONS[unit.id] ?? '🔖';
+    const isCurrentUnit = unit.order === curUnitOrder;
+
+    // Unit 0 (info) and Unit 7 phrasebook browsing both still live on
+    // learn.html (their own screens, untouched this session) — the
+    // sidebar just links out to them rather than duplicating that UI.
+    if (unit.kind === 'info') {
+      return `<a class="course-sidebar__unit course-sidebar__unit--flat" href="learn.html?unit=welcome">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+      `</a>`;
+    }
+    if (unit.kind === 'interactive') {
+      const href = 'lesson.html?level=basic&category=fingerspell_name';
+      return `<a class="course-sidebar__unit course-sidebar__unit--flat${isCurrentUnit ? ' course-sidebar__unit--current' : ''}" href="${href}">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+      `</a>`;
+    }
+
+    // kind: 'category-group' or 'reference' (Phrasebook)
+    const allCats  = window.LWData.getCategoriesForUnit(unit.order);
+    const liveCats = allCats.filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+
+    if (liveCats.length === 0) {
+      return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
+        `<span class="course-sidebar__unit-icon">🔒</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">Soon</span>` +
+      `</div>`;
+    }
+
+    const isReference = unit.kind === 'reference';
+    const unlocked = isReference || (window.LWProgress?.isCategoryUnlocked?.(liveCats[0].level, liveCats[0].id) ?? true);
+    if (!unlocked) {
+      return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
+        `<span class="course-sidebar__unit-icon">🔒</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">0%</span>` +
+      `</div>`;
+    }
+
+    let totalSigns = 0, doneSigns = 0;
+    liveCats.forEach(c => {
+      const s = window.LWData.getCategorySigns(c.level, c.id);
+      const p = window.LWProgress?.getCategoryProgress?.(c.level, c.id) ?? { signs: {} };
+      totalSigns += s.length;
+      doneSigns  += s.filter(id => !!p.signs[id]).length;
+    });
+    const pct = totalSigns > 0 ? Math.round((doneSigns / totalSigns) * 100) : 0;
+    const open = isCurrentUnit; // only the unit the learner is inside starts expanded
+    const body = liveCats.map(c => sidebarCategoryBlock(c, { multiCategory: liveCats.length > 1 })).join('');
+
+    return `<div class="course-sidebar__unit${open ? ' course-sidebar__unit--open' : ''}${isCurrentUnit ? ' course-sidebar__unit--current' : ''}">` +
+      `<button type="button" class="course-sidebar__unit-head" data-toggle-unit="${unit.order}">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">${pct}%</span>` +
+        `<span class="course-sidebar__chevron" aria-hidden="true">${open ? '▾' : '▸'}</span>` +
+      `</button>` +
+      `<div class="course-sidebar__unit-bar"><div class="course-sidebar__unit-bar-fill" style="width:${pct}%"></div></div>` +
+      `<div class="course-sidebar__unit-body"${open ? '' : ' style="display:none;"'}>${body}</div>` +
+    `</div>`;
+  }).join('');
+
+  // Delegated per-unit collapse/expand — rebound every render since
+  // innerHTML above is rebuilt from scratch each time updateLessonMeta()
+  // runs (e.g. Prev/Next never actually reloads the WHOLE page's JS —
+  // wait, it does: navUrl() uses window.location, a real navigation —
+  // so in practice this only ever runs once per page load, same as
+  // everything else in boot(). Kept as a fresh query+bind rather than
+  // a cached reference purely for readability, not because it's
+  // called more than once today.
+  el.querySelectorAll('[data-toggle-unit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap    = btn.closest('.course-sidebar__unit');
+      const body    = wrap?.querySelector('.course-sidebar__unit-body');
+      const chevron = wrap?.querySelector('.course-sidebar__chevron');
+      if (!wrap || !body) return;
+      const nowOpen = wrap.classList.toggle('course-sidebar__unit--open');
+      body.style.display = nowOpen ? '' : 'none';
+      if (chevron) chevron.textContent = nowOpen ? '▾' : '▸';
+    });
+  });
+}
+
 // BUG 3 FIX (preserved): check readyState so we don't miss DOMContentLoaded
 // when lesson.js (type="module") loads after the event already fired.
 
@@ -904,6 +1122,14 @@ function updateLessonMeta() {
   // whichever sign just loaded. See showQuickCheck()/
   // shouldShowQuickCheck() above.
   showQuickCheck();
+
+  // NEW — course-player merge (this session): render the persistent
+  // sidebar. Placed here (not inside boot() directly) because
+  // updateLessonMeta() is the one function all three boot() paths
+  // already call — including the two early-return branches (empty
+  // name-drill, comingSoon category) — so the sidebar still renders
+  // even when the camera/content half of the page bails out early.
+  renderCourseSidebar();
 }
 
 function escapeHtml(str) {

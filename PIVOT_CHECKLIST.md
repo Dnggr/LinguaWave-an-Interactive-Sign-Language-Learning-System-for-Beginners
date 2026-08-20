@@ -77,8 +77,16 @@
   - Deliberately did NOT use `HELLO`/`THANK_YOU`/`HOT`/`COLD` in any Unit 6 phrase as a result of the above.
 - [ ] Capture + retrain Essential Words placeholders: `PLEASE`, `SORRY`, `YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY` — **not started; needs an actual camera capture session + Colab retrain, outside what an AI session can do in chat.**
 - [ ] Capture + retrain the 5 phrase placeholders: `NICE TO MEET YOU`, `HOW ARE YOU`, `WHERE IS`, `I AM LEARNING`, `WHAT IS YOUR NAME` — **not started, same reason.**
-- [ ] **NEW (2026-08-20):** either mark `HELLO`/`THANK YOU` `disabled: true` in `dictionary.js` until real capture/retraining backs them, or explicitly scope a capture session for those two specifically — right now they're silently broken, not just "not yet built." Small code change (add `disabled: true`) is safe for an AI session to make on request; deciding whether to hide them from the UI vs. leave them visible-but-broken is a product call, so left unchanged pending a decision.
-- [ ] **NEW (2026-08-20):** add real (even if `disabled: true`) `SIGN_DICTIONARY` placeholder entries for `HOT`/`COLD` so they at least match the Essential Words pattern, and correct `SYSTEM_ARCHITECTURE.md`'s Unit 5 row to stop claiming `temperature` is trained until they are. Then capture + retrain both, same as the other placeholders above.
+- [x] **NEW (2026-08-20):** either mark `HELLO`/`THANK YOU` `disabled: true` in `dictionary.js` until real capture/retraining backs them, or explicitly scope a capture session for those two specifically — right now they're silently broken, not just "not yet built." Small code change (add `disabled: true`) is safe for an AI session to make on request; deciding whether to hide them from the UI vs. leave them visible-but-broken is a product call, so left unchanged pending a decision. — **Done 2026-08-20 (later session):** took the "small code change" option — both now carry `disabled: true` in `dictionary.js`, matching the 16 Essential Words' pattern. The "hide from UI vs. leave visible-but-broken" product call was NOT made (still visible in the lesson picker, same as the Essential Words already are) — this only fixed the classifier's failure mode from "silently wrong" to "cleanly no-match."
+- [x] **NEW (2026-08-20):** add real (even if `disabled: true`) `SIGN_DICTIONARY` placeholder entries for `HOT`/`COLD` so they at least match the Essential Words pattern, and correct `SYSTEM_ARCHITECTURE.md`'s Unit 5 row to stop claiming `temperature` is trained until they are. Then capture + retrain both, same as the other placeholders above. — **Placeholder entries + doc correction done 2026-08-20 (later session)** — both added to `dictionary.js` with `disabled: true`, `SYSTEM_ARCHITECTURE.md`'s Unit 5 row updated. Capture + retrain still open (needs camera + Colab, same as every other item in this phase).
+
+> **Not part of this pivot, but touched the same files:** a 2026-08-20
+> (later) session merged `pages/learn.html`'s trail browsing directly
+> into `pages/lesson.html` (a persistent course-outline sidebar), at
+> the user's request — a UI/UX change, not curriculum content, so it's
+> tracked in `SYSTEM_ARCHITECTURE.md` → **Rev 5** and `AI_MEMORY.md`'s
+> matching session log entry instead of as a phase here. `learn.html`
+> itself was NOT changed by that session.
 
 ---
 
