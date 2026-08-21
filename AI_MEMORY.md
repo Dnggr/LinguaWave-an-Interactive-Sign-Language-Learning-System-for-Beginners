@@ -98,6 +98,18 @@ version:
   freely browsing ahead into medium/intermediate content) that's worth
   a second look before this ships. See the Phase 4 session log below
   for the full reasoning.
+- **⚠️ TEMPORARY (2026-08-21): `js/engine/progress.js`'s
+  `isCategoryUnlocked()` currently ALWAYS returns `true`**, regardless
+  of assessment history, because a `DEBUG_UNLOCK_ALL` constant near the
+  top of that file's IIFE is set to `true`. This was added at Joshua's
+  explicit request to make debugging easier while locking is worked
+  on — it does NOT resolve the Phase 4 "flagging for review" item
+  directly above; it just makes the current (still-undecided) locking
+  behavior invisible for now. **Search for `DEBUG_UNLOCK_ALL` and flip
+  it back to `false` before evaluating Phase 4's locking decision for
+  real, and before any deploy.** See that day's Session Log entry
+  ("Priority 1 §8 ... + a user-directed, out-of-checklist debug-unlock
+  change") for the full reasoning and verification.
 - **Flagging for review (Phase 6):** the Level Final Assessment open
   question (flagged by Phase 3, made more pressing by Phase 4) is now
   **decided, not just noted**: `quiz.js` no longer offers a CTA into it
@@ -1984,3 +1996,429 @@ Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
 Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started.
 Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
 Auth remains explicitly excluded.
+
+
+2026-08-21 (same day, third follow-up) — Dashboard implementation: Priority 0 #3, plus a doc-hygiene fix
+
+Requested: implement "priority 0 #3" from PIVOT_CHECKLIST.md's Dashboard UX Review Checklist ("fix the meaning of the 9% progress number"); separately, fix AI_MEMORY.md, PIVOT_CHECKLIST.md, and SYSTEM_ARCHITECTURE.md themselves, since a prior AI session had left them out of sync; a visualization of the change; js/auth.js excluded, same as every dashboard session.
+
+Pre-change checks completed, per this file's own header rule: read this file, then PIVOT_CHECKLIST.md (found §3 = the requested "Priority 0 #3," its 6 unchecked sub-items, and the "recommended dashboard summary" example), then SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Metric semantics" section for the same item's authority. No changes proposed or made to data.js, learn.js, progress.js, or auth.js.
+
+Doc bug found and fixed (this is the "other AI didn't fix it" issue): a prior session had pasted two literal, unapplied patch instructions ("HOW TO APPLY THIS FILE... PATCH 1... PATCH 2...") verbatim at the very end of SYSTEM_ARCHITECTURE.md instead of actually applying them to the file. Applied both in place — PATCH 1 expanded the top changelog blockquote to record the Priority 0 #2 session (it previously only mentioned #1); PATCH 2 renamed "### Implementation status (2026-08-21, code session)" to "### Implementation status — Priority 0 #1 ..." and inserted the missing "### Implementation status — Priority 0 #2 ..." section right after it. The stray raw patch text at the end of the file was deleted. Also appended a new "### Implementation status — Priority 0 #3 ..." section for this session's own change, so the addendum now has all three Priority 0 write-ups, in order, with no leftover instructions-as-content.
+
+What changed (the actual Priority 0 #3 fix):
+pages/dashboard.html — aggregate-card badge text "Your ASL Path" → "Practice Progress" (new data-overall-metric-label attribute, plain text, not read by JS); .progress-card__label text "All units combined" → "Signs practiced across all units — not a mastery score"; updated that section's own comment and the file's top purpose comment.
+js/dashboard.js — no logic changed; renderOverallProgress() is byte-for-byte identical. Updated its doc comment and the file's top comment block to point at the HTML as the source of the relabel.
+css/dashboard.css — not touched; the existing .progress-card--secondary .badge rule already applies muted styling to any badge inside the demoted card, so the new "Practice Progress" text needed no new CSS.
+
+Why this was markup-only: the checklist's substantive asks (a separate mastery signal; not combining practice completion and assessment mastery into one number) were already true of the underlying code — data-overall-count and data-overall-status have rendered on two separate lines since Phase 4/the Priority 0 #1 session. Only the % itself lacked an explicit label saying what it measures. That's now fixed via the badge + supporting label text.
+
+Verification: node --check on js/dashboard.js — clean. Every data-overall-* attribute cross-checked between the HTML and JS via grep — all four (pct/progress/count/status) match; the new data-overall-metric-label hook confirmed unread by any JS, matching the existing data-continue-card precedent. HTML tag balance checked programmatically — balanced (one apparent <p> mismatch on first pass was a comment mentioning a tag, not real markup — reworded to avoid tripping the same check again).
+
+Not exercised in a real browser — same standing limitation as every prior UI-touching session. In particular, unverified: whether "Practice Progress" reads clearly as a label at a glance, and how the longer supporting-label line wraps on narrow viewports.
+
+Still open:
+1. Real-browser verification of this session's change (see above) — same biggest recommendation as every prior dashboard session.
+2. Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started. This closes out all of Priority 0.
+3. Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
+4. Auth remains explicitly excluded.
+
+
+### 2026-08-21 — Dashboard UX Review: Priority 1 implemented
+
+**Requested:** Turn the dashboard's unit rows into a real learning-path
+summary, while excluding `js/auth.js` because a teammate owns it. The required
+pre-change order was followed: `AI_MEMORY.md` → `PIVOT_CHECKLIST.md` →
+`SYSTEM_ARCHITECTURE.md` Rev 4.
+
+**Status before change:** Dashboard Priority 0 was complete. Priority 1 was
+still unchecked in `PIVOT_CHECKLIST.md` §4. Rev 4/5 says the dashboard is a
+compact summary and `learn.html` remains the full trail. The documented
+dashboard implementation boundary is `pages/dashboard.html`,
+`js/dashboard.js`, and `css/dashboard.css`.
+
+**Changes made:**
+- `js/dashboard.js`: unit rows for graded `category-group` units now aggregate
+  practiced/total signs and passed/total assessments from the existing
+  `LWData`/`LWProgress` APIs; rows include a compact practice bar. The current
+  unit is detected using the already-existing `getCurrentDestination()` result
+  and marked `You are here`. Unit 0/2/7 keep descriptive non-graded states.
+- `pages/dashboard.html`: updated the unit-list documentation to describe the
+  Priority 1 summary without creating a second trail UI.
+- `css/dashboard.css`: added the current/reference badges, practice bar layout,
+  subdued locked state, current/done emphasis, and narrow viewport behavior.
+
+**Important design choice:** No new ordering/unlock/current-destination
+algorithm was introduced. The same flat Rev 4 chain remains the source of truth.
+No changes were made to `data.js`, `learn.js`, `progress.js`, or `auth.js`.
+
+**Suggestions / bugs / errors seen:**
+- Existing separate issue: dashboard `Current Level: Basic` remains product-
+  obsolete under the single-path model. Left untouched because it is not part
+  of Priority 1 and changing it needs its own decision.
+- Unit 2 has no assessment-progress metric because it is an `interactive` unit
+  and is structurally outside the graded progress chain. No fabricated metric
+  was added.
+- No new static correctness bug was found in the Priority 1 implementation.
+- Real-browser verification remains outstanding for the dashboard states,
+  responsive layout, keyboard navigation, and theme contrast.
+
+**Session result:** Priority 1 is implemented in dashboard scope. Checklist and
+architecture were updated in the same session so the next AI can see exactly
+what landed and what remains open.
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §5 ("You are here") + a critical §4 regression found and fixed
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §5, "Priority 1 — Add a 'You
+are here' state." User supplied the §4 session's own patch/summary files
+(`PRIORITY1_dashboard.patch`, `PRIORITY1_READY_TO_PASTE.md`) and asked to
+apply that work, exclude `js/auth.js`, provide a code visualization, log
+suggestions/bugs, and update `AI_MEMORY.md`/`PIVOT_CHECKLIST.md`/
+`SYSTEM_ARCHITECTURE.md`. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review
+Addendum.
+
+**Critical bug found before starting §5 (this is the headline finding of
+this session):** the §4 patch supplied by the user's prior AI session
+deleted `renderRecap()`, `renderContinueButton()`, and `renderContinueCard()`
+from `js/dashboard.js` — while `DOMContentLoaded` still called all three —
+and separately deleted every `.recap-*`/`.account-*` rule from
+`css/dashboard.css` with no replacement for either. Net effect on a real
+page load: a `ReferenceError` on the first missing call aborted every
+render after it, so the Priority 0 #1 "Continue Learning" hero card (the
+dashboard's stated #1 priority) never rendered, the recap grid never
+rendered, and the account card's href/label never got set — while
+`node --check` stayed clean (it only parses, it doesn't prove a called name
+is declared) and grep/tag-balance checks had nothing to flag, since HTML
+markup and `data-*` hooks were untouched. This is why the §4 session's own
+"Verification performed: static source review... clean" didn't catch it —
+none of those checks execute the script. Restored all three JS functions and
+all CSS rules verbatim from the pre-§4 state (recoverable directly from the
+patch's own `-` lines). This was a restore, not a rewrite.
+
+**§5 implementation (the actually-requested work):** `renderUnitRow()` now
+computes a `currentSignLabel` from `destination.cat` / `destination.nextSign`
+— the same fields `renderContinueCard()` already reads for the hero card's
+own "{category} → {sign}" line — and `unitRowHtml()` renders it as a
+`Next: {category} → {sign}` line under the current unit's "You are here"
+badge. No second "current lesson" walk was added; `getCurrentDestination()`
+is untouched. New CSS: `.unit-progress-row__current-detail`
+(`css/dashboard.css`), accent-colored, distinct from the muted
+`.unit-progress-row__status`/`__metric` text.
+
+**Files touched:** `js/dashboard.js`, `css/dashboard.css`,
+`pages/dashboard.html` (doc comments only — a note on the regression, plus
+what §5 added; no structural/markup change was needed since §5's output is
+rendered entirely inside the existing `#unit-progress-list` container).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` — not
+opened, per explicit user instruction (auth) and the standing dashboard
+implementation boundary (the other three).
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Additionally,
+and unlike the §4 session, actually cross-checked every `render*()` **call**
+against a `function render*` **declaration** via grep/`comm` (not just
+attribute names) — all resolve now; the one non-match (`renderLevelCard`) is
+a stale mention inside a REV 4 comment describing already-removed code, not
+a real call. `data-continue-*` attributes cross-checked HTML↔JS — all match
+(`data-continue-card` remains the one pre-existing, harmless exception,
+unread by any JS). HTML tag balance and CSS brace balance checked
+programmatically post-edit — both balanced. **Still not exercised in a real
+browser** — same standing limitation as every dashboard session so far;
+this is the biggest reason a runtime bug like this one reached this point
+undetected for a full session.
+
+**Suggestion for future dashboard sessions:** grep-based "verification"
+here systematically misses missing-declaration bugs because it checks that
+referenced *names* exist somewhere in the file, not that a *matching
+declaration* exists for every *call*. A quick script comparing
+`function NAME` declarations against `NAME(` call sites (as done this
+session) is cheap and would have caught this immediately — worth making a
+standing step, not a one-off, until real-browser/headless verification is
+available.
+
+**Still open:**
+1. Real-browser verification — now more important than ever, given what a
+   session of purely-static "clean" checks missed.
+2. Priority 1 §6–§10 and all of Priority 2 — not started.
+3. Everything already listed as still-open in every prior session log entry
+   (Phase 7 capture/retraining, the Letter M image asset check,
+   `Current Level: Basic`, etc.) — unchanged by this session.
+4. Auth remains explicitly excluded.
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §6 ("Add a review/
+repetition entry point")
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §6. Same standing constraints
+as every prior dashboard session: exclude `js/auth.js`, give suggestions/
+bugs, a code visualization, and update this file / `PIVOT_CHECKLIST.md` /
+`SYSTEM_ARCHITECTURE.md`. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review
+Addendum. §6's own checklist text and the Addendum's "Review entry point"
+section both say this is explicitly **not** a spaced-repetition trainer —
+"do not implement a new spaced-repetition algorithm," "do not change
+`progress.js` for this checklist item."
+
+**Implementation:** Added a new "Review recent signs" section to
+`pages/dashboard.html`, placed after "Signs You've Learned" (matching the
+Addendum's recommended order: hero → progress → path → recap/review). A new
+`js/dashboard.js` function, `renderReviewEntry()`, fills its action slot by
+calling the ALREADY-exported `window.LWProgress.getAllLearnedSigns()` — the
+exact same call `renderRecap()` already makes, so no new store read and no
+`progress.js` change. Since `getAllLearnedSigns()` has no timestamp,
+`renderReviewEntry()` relies on the same insertion-order assumption
+`renderRecap()`'s own `.slice(-24).reverse()` already relies on: the LAST
+entry in the array is the most recently practiced sign. The MVP action
+(PIVOT_CHECKLIST.md §6: "MVP can be a simple link/button to a review/trainer
+route once available") reopens that sign via the existing
+`lesson.html?level=&category=&sign=` route — there's no dedicated Review/
+Trainer page yet, so this reuses the same lesson/camera-practice
+infrastructure the Addendum specifically calls out, rather than inventing a
+new page. Empty/unresolved state (nothing practiced yet, or the practiced
+sign's category can't be resolved to a `level`) renders a non-interactive
+placeholder instead of a link — the same `href ? <a> : <div>` pattern
+`unitRowHtml()` already uses for locked units.
+
+**Files touched:** `js/dashboard.js` (new `renderReviewEntry()` + one new
+call in `DOMContentLoaded`), `pages/dashboard.html` (new section + updated
+file-header comment), `css/dashboard.css` (new `.review-card` rules).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` — not
+opened, per explicit user instruction (auth) and the standing dashboard
+implementation boundary (the other three). No curriculum/progress/unlock
+logic changed.
+
+**Verification:** `node --check` — clean. Given the §4 regression earlier
+this same day, explicitly re-ran the declaration-vs-call-site diff (`grep
+'^function'` vs. every `NAME(` call site) that session flagged as the
+process fix — every call in `js/dashboard.js` resolves; the only two
+non-matches are `renderLevelCard` and a stray `render()` substring, both
+pre-existing mentions inside comments, not real calls (same as every prior
+session's finding). `data-review-*` attributes cross-checked HTML↔JS — both
+match. HTML tag balance / CSS brace balance checked programmatically — both
+balanced. Beyond that, built a small Node + `vm` harness that loads the
+actual shipped `js/dashboard.js` against a minimal `document`/`window`
+mock and calls `renderReviewEntry()` directly across 6 scenarios: no signs
+practiced, one sign practiced, multiple signs (confirms the LAST entry is
+picked, not the first), a sign with an unresolvable `level` (confirms the
+disabled placeholder renders instead of a broken link), a sign whose title
+lookup fails (confirms fallback to the raw sign ID), and a sign ID with
+characters needing HTML-escaping/URL-encoding (confirms both `escapeHtml()`
+and `encodeURIComponent()` are applied correctly). All 6 passed. **Still not
+exercised in a real browser** — same standing gap as every dashboard session
+to date; the Node+`vm` harness proves the function's logic, not the real
+DOM/CSS rendering.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard code during this
+   session's review.
+2. `getAllLearnedSigns()` returning `level: null` for an unresolvable
+   category (see its own comment in `js/engine/progress.js`) is a real,
+   pre-existing edge case — `renderReviewEntry()` handles it defensively
+   (falls back to the empty state) rather than assuming it can't happen.
+3. Worth flagging for whoever builds the real Review/Trainer route later:
+   "most recently practiced" (this session's MVP) and genuine spaced-
+   repetition ("what's due for review") are different features. This session
+   intentionally ships only the former, per §6's explicit instruction not to
+   build the latter.
+4. Real-browser verification remains the single biggest standing risk across
+   every dashboard session, this one included.
+
+**Still open:**
+1. Real-browser verification of this session's change, and everything still
+   open from every prior session log entry above.
+2. Priority 1 §7–§10 and all of Priority 2 — not started.
+3. Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §7 ("Improve 'Signs
+You've Learned'")
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §7. Same standing
+constraints as every prior dashboard session this same day: exclude
+`js/auth.js`, provide suggestions/bugs found, a code visualization, and
+update this file / `PIVOT_CHECKLIST.md` / `SYSTEM_ARCHITECTURE.md`.
+Pre-change order followed: this file → `PIVOT_CHECKLIST.md` →
+`SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review Addendum. §7's own
+checklist text (5 unchecked sub-items, 1 already-done) and its
+"Important terminology" block (`Practiced`/`Assessed`/`Passed`/`Review`
+preferred; `Mastered` avoided unless an explicit mastery rule exists)
+both read before writing any code.
+
+**Implementation:** `renderRecap()` in `js/dashboard.js` gained three
+things, all still reading the SAME `window.LWProgress.getAllLearnedSigns()`
+call as before — no `progress.js` change, no new store read:
+1. A `"{N} signs practiced"` count written into a new
+   `[data-recap-count]` element next to the heading.
+2. A new subtitle under the heading ("Recently practiced signs — not a
+   mastery list"), mirroring the exact phrasing pattern the Overall
+   Progress card already uses for its own "not a mastery score" label —
+   reused rather than inventing new copy conventions.
+3. A `View all {N}` / `Show fewer` toggle
+   (`[data-recap-foot]`/`[data-recap-toggle]`, new `handleRecapToggle()`,
+   bound once in `DOMContentLoaded`) that expands the SAME chip grid in
+   place instead of navigating anywhere — no "all practiced signs" page
+   exists anywhere in this app, and the checklist's own "do not turn
+   this section into another lesson browser" rule ruled out inventing
+   one. Only shown once there are more than `RECAP_COLLAPSED_LIMIT`
+   (24, now a named constant — same value the prior hardcoded
+   `.slice(-24)` used) practiced signs.
+
+**Deliberately left unchanged:** the `<h2>Signs You've Learned</h2>`
+heading text itself. Every other doc/session log in this repo
+(including the checklist item's own title) refers to the section by
+that exact name, and §7's sub-items ask to change the *framing* around
+mastery (via the new subtitle), not the heading — flag for Joshua if a
+literal heading rename was actually intended instead. Chip
+markup/styling is also unchanged (checklist: "keep the visual chips
+lightweight") — no title/category lookup was added per chip.
+
+**Files touched:** `js/dashboard.js` (`renderRecap()` extended, new
+`RECAP_COLLAPSED_LIMIT` constant, new `recapExpanded` module state, new
+`handleRecapToggle()`, one new `addEventListener` call in
+`DOMContentLoaded`; also updated a doc comment in `renderReviewEntry()`
+that quoted the old `.slice(-24).reverse()` literal, since that exact
+call no longer exists), `pages/dashboard.html` (new `.recap-head`
+wrapper + count span + subtitle + `.recap-foot`/toggle button; updated
+the file's top purpose comment), `css/dashboard.css` (new
+`.recap-head`/`.recap-head__count`/`.recap-head__subtitle`/`.recap-foot`
+rules — the toggle button itself reuses the existing
+`.btn`/`.btn--ghost`/`.btn--sm` classes as-is, no new button styling).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` —
+not opened, per explicit user instruction (auth) and the standing
+dashboard implementation boundary (the other three).
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Re-ran
+the declaration-vs-call-site diff that caught the §4 session's
+regression earlier this same day — all 12 functions in the file now
+resolve, including the new `handleRecapToggle` (referenced by name in
+the new `addEventListener` call, not invoked directly, so this check
+was specifically written to also catch that indirect-reference case,
+not just direct `name(...)` calls). `data-recap-*` attributes
+cross-checked HTML↔JS — all three (`data-recap-count`,
+`data-recap-foot`, `data-recap-toggle`) match. HTML tag balance / CSS
+brace balance checked programmatically — both balanced. **Still not
+exercised in a real browser** — same standing gap as every dashboard
+session to date, flagged again given how much the §4 regression earlier
+this same day demonstrated static checks alone can miss.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard code during
+   this session's review.
+2. `css/dashboard.css`'s `.recap-card--locked` rule is dead CSS —
+   defined but never referenced by any JS in the current codebase
+   (confirmed via grep). Harmless as-is; flagging for a future cleanup
+   pass rather than removing it unprompted, since some other in-flight
+   session's plan might still intend to use it.
+3. Real-browser verification remains the single biggest standing risk
+   across every dashboard session, this one included — especially given
+   how much a purely-static "clean" session demonstrably missed earlier
+   in this same day's §4 regression.
+
+**Still open:**
+1. Real-browser verification of this session's change, and everything
+   still open from every prior session log entry above.
+2. Priority 1 §8–§10 and all of Priority 2 — not started.
+3. Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §8 ("Current Level:
+Basic" fix) + a user-directed, out-of-checklist debug-unlock change
+
+**Requested:** Two things in one session. (1) Implement
+`PIVOT_CHECKLIST.md`'s §8 — same standing constraints as every prior
+dashboard session this same day: exclude `js/auth.js`, provide
+suggestions/bugs found, a code visualization, and update this file /
+`PIVOT_CHECKLIST.md` / `SYSTEM_ARCHITECTURE.md`. (2) An explicit,
+separate user instruction, NOT part of the Dashboard UX Review
+checklist: temporarily stop enforcing Phase 4's per-category locking
+so the user can reach/debug categories out of order, with the clear
+intent to re-lock later. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX
+Review Addendum, including its "Current Level field" section (§341
+above) and §0's Phase 4 "Flagging for review" note, which is exactly
+the open question item (2) resolves for now.
+
+**Implementation — §8:** `renderCurrentUnit()`, new in `js/dashboard.js`,
+reads the SAME `destination` object `getCurrentDestination()` already
+computes once in `DOMContentLoaded` (no second "what unit is the
+learner on" walk) and writes `Unit {order} · {title}` — matching the
+checklist's own "Recommended replacement" example verbatim — into the
+account card. `pages/dashboard.html`'s field was renamed, not
+duplicated: `[data-user-level]` (filled generically, on every page, by
+`js/main.js`'s `initUserDetails()` as `capitalize(user.level)`, a fixed
+`'basic'` constant since Phase 5) → `[data-user-unit]`, now filled only
+by the new function. Confirmed via grep that `[data-user-level]`
+appeared nowhere else in the app before the rename, so nothing else
+reads or depends on the old attribute, and leaving both in place would
+have raced two scripts writing two different strings into one element.
+
+**Implementation — debug unlock (out-of-checklist, user-directed):** a
+single `DEBUG_UNLOCK_ALL` constant added in `js/engine/progress.js`,
+set to `true`. `isCategoryUnlocked()` short-circuits to `true`
+unconditionally when it's set, before its real chain-walk logic runs —
+that logic (`getOrderedLiveCategories()`, `getCategoryProgress()`, the
+assessment-pass rule) is completely untouched below the short-circuit,
+so turning real locking back on is a one-line flip, not a revert of
+any actual logic. This affects every caller of `isCategoryUnlocked()`
+uniformly (`js/learn.js`'s trail + direct-link guard, and
+`js/dashboard.js`'s own unit rows / "You are here" / Continue-Learning
+destination, all already reading the same shared function) — no new
+locking bypass was written per-caller.
+
+**This is explicitly NOT the same thing as reversing Phase 4's locking
+decision.** That decision (AI_MEMORY.md §0, "Flagging for review
+(Phase 4)") is still open and still Joshua's call to make permanently;
+this is a temporary, loudly-commented debug switch requested for this
+session's own workflow, not a proposal to ship with locking off. Left
+`true` as requested — flip it back to `false` in
+`js/engine/progress.js` whenever real locking should return.
+
+**Files touched:** `js/dashboard.js` (new `renderCurrentUnit()`, one
+new call in `DOMContentLoaded`), `pages/dashboard.html` (relabeled
+account-card field + attribute rename, new comment explaining why),
+`js/engine/progress.js` (new `DEBUG_UNLOCK_ALL` constant + a 3-line
+short-circuit at the top of `isCategoryUnlocked()`). `js/auth.js`,
+`js/data.js`, `js/learn.js`, `js/main.js` — not opened.
+
+**Verification:** `node --check` on both changed `.js` files — clean.
+Declaration-vs-call-site diff on `js/dashboard.js` — all 13 functions
+resolve, including the new `renderCurrentUnit`. HTML tag balance on
+`pages/dashboard.html` checked with a real parser (Python's
+`html.parser`, not a regex — a plain open/close regex false-positived
+on angle brackets inside inline `<script>` content, which a real
+parser correctly ignores) — balanced, zero errors. Built two small
+Node + `vm` harnesses: one calls `renderCurrentUnit()` directly across
+5 scenarios (empty chain, all-live-categories-passed, normal case,
+a category with no matching `UNITS` entry, and `destination === null`)
+— all 5 produced the expected text with no throw. The other loads the
+real `js/engine/progress.js` twice — once with `DEBUG_UNLOCK_ALL` left
+`true`, once with it patched to `false` the same way a human editing
+that one line would — against a mock `window.LWData` with a
+two-category chain where the second category is normally locked;
+confirms `true` unlocks it and `false` restores the real locked result.
+**Still not exercised in a real browser** — same standing gap as every
+dashboard session to date.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard or progress
+   code during this session's review.
+2. `DEBUG_UNLOCK_ALL` is a real, if temporary, product-behavior change
+   — every learner's account currently has every category reachable
+   regardless of assessment history while this stays `true`. Low risk
+   pre-launch/local debugging, but flagging clearly so it isn't
+   accidentally shipped: search the repo for `DEBUG_UNLOCK_ALL` before
+   any deploy.
+3. Same standing dead-CSS note as the prior session
+   (`.recap-card--locked`) — still unreferenced, still not touched.
+4. Real-browser verification remains the single biggest standing risk
+   across every dashboard/progress session to date, this one included.
+
+**Still open:**
+1. Real-browser verification of this session's changes, and everything
+   still open from every prior session log entry above.
+2. Priority 1 §9–§10 and all of Priority 2 — not started.
+3. `DEBUG_UNLOCK_ALL` needs to be flipped back to `false` once
+   debugging is done — see the flag's own doc comment in
+   `js/engine/progress.js`.
+4. Auth remains explicitly excluded.

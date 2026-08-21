@@ -72,6 +72,34 @@
   const LEVEL_ORDER    = ['basic', 'medium', 'intermediate'];
   const PASS_THRESHOLD = 0.80;
 
+  /**
+   * ⚠️ TEMPORARY DEBUG SWITCH — added 2026-08-21, per explicit user
+   * request, NOT part of PIVOT_CHECKLIST.md's Dashboard UX Review scope.
+   *
+   * Phase 4 (2026-08-18/19) reintroduced real per-category locking via
+   * isCategoryUnlocked() below — a deliberate REVERSAL of the old Rev 3
+   * "categories are never locked" stance (see AI_MEMORY.md §0's
+   * "Flagging for review (Phase 4)" and this function's own doc comment).
+   * That flag is still open: Joshua hasn't signed off on the reversal
+   * itself, and locking makes it hard to reach/debug categories out of
+   * order without grinding through the chain for real.
+   *
+   * Setting this to `true` makes isCategoryUnlocked() return `true`
+   * unconditionally, for every category, everywhere it's called
+   * (js/learn.js trail + direct-link guard, js/dashboard.js unit rows
+   * and "You are here"/Continue-Learning destination). Nothing about
+   * the underlying chain/order/pass logic changes — getOrderedLive
+   * Categories(), getCategoryProgress(), and the assessment-pass rule
+   * are all untouched, so flipping this back is a ONE-LINE, fully
+   * reversible change (isCategoryUnlocked()'s real logic is still
+   * right below, just short-circuited).
+   *
+   * MUST be set back to `false` before this ships / before real locking
+   * is evaluated again — flagged in AI_MEMORY.md's Session Log and
+   * PIVOT_CHECKLIST.md so this isn't forgotten in a later session.
+   */
+  const DEBUG_UNLOCK_ALL = true;
+
   function loadStore() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch (e) { console.warn('[progress.js] corrupt store, resetting', e); return {}; }
@@ -298,6 +326,10 @@ async function hydrateStore() {
    * not used to scope the chain anymore.
    */
   function isCategoryUnlocked(level, categoryId) {
+    // DEBUG_UNLOCK_ALL short-circuit — see its doc comment above. Real
+    // logic (unchanged) still runs below when this is `false`.
+    if (DEBUG_UNLOCK_ALL) return true;
+
     const chain = getOrderedLiveCategories();
     const idx   = chain.findIndex(c => c.id === categoryId);
     if (idx <= 0) return true;
