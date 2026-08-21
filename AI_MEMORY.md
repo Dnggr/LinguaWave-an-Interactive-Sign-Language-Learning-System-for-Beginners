@@ -2054,3 +2054,81 @@ No changes were made to `data.js`, `learn.js`, `progress.js`, or `auth.js`.
 **Session result:** Priority 1 is implemented in dashboard scope. Checklist and
 architecture were updated in the same session so the next AI can see exactly
 what landed and what remains open.
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §5 ("You are here") + a critical §4 regression found and fixed
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §5, "Priority 1 — Add a 'You
+are here' state." User supplied the §4 session's own patch/summary files
+(`PRIORITY1_dashboard.patch`, `PRIORITY1_READY_TO_PASTE.md`) and asked to
+apply that work, exclude `js/auth.js`, provide a code visualization, log
+suggestions/bugs, and update `AI_MEMORY.md`/`PIVOT_CHECKLIST.md`/
+`SYSTEM_ARCHITECTURE.md`. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review
+Addendum.
+
+**Critical bug found before starting §5 (this is the headline finding of
+this session):** the §4 patch supplied by the user's prior AI session
+deleted `renderRecap()`, `renderContinueButton()`, and `renderContinueCard()`
+from `js/dashboard.js` — while `DOMContentLoaded` still called all three —
+and separately deleted every `.recap-*`/`.account-*` rule from
+`css/dashboard.css` with no replacement for either. Net effect on a real
+page load: a `ReferenceError` on the first missing call aborted every
+render after it, so the Priority 0 #1 "Continue Learning" hero card (the
+dashboard's stated #1 priority) never rendered, the recap grid never
+rendered, and the account card's href/label never got set — while
+`node --check` stayed clean (it only parses, it doesn't prove a called name
+is declared) and grep/tag-balance checks had nothing to flag, since HTML
+markup and `data-*` hooks were untouched. This is why the §4 session's own
+"Verification performed: static source review... clean" didn't catch it —
+none of those checks execute the script. Restored all three JS functions and
+all CSS rules verbatim from the pre-§4 state (recoverable directly from the
+patch's own `-` lines). This was a restore, not a rewrite.
+
+**§5 implementation (the actually-requested work):** `renderUnitRow()` now
+computes a `currentSignLabel` from `destination.cat` / `destination.nextSign`
+— the same fields `renderContinueCard()` already reads for the hero card's
+own "{category} → {sign}" line — and `unitRowHtml()` renders it as a
+`Next: {category} → {sign}` line under the current unit's "You are here"
+badge. No second "current lesson" walk was added; `getCurrentDestination()`
+is untouched. New CSS: `.unit-progress-row__current-detail`
+(`css/dashboard.css`), accent-colored, distinct from the muted
+`.unit-progress-row__status`/`__metric` text.
+
+**Files touched:** `js/dashboard.js`, `css/dashboard.css`,
+`pages/dashboard.html` (doc comments only — a note on the regression, plus
+what §5 added; no structural/markup change was needed since §5's output is
+rendered entirely inside the existing `#unit-progress-list` container).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` — not
+opened, per explicit user instruction (auth) and the standing dashboard
+implementation boundary (the other three).
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Additionally,
+and unlike the §4 session, actually cross-checked every `render*()` **call**
+against a `function render*` **declaration** via grep/`comm` (not just
+attribute names) — all resolve now; the one non-match (`renderLevelCard`) is
+a stale mention inside a REV 4 comment describing already-removed code, not
+a real call. `data-continue-*` attributes cross-checked HTML↔JS — all match
+(`data-continue-card` remains the one pre-existing, harmless exception,
+unread by any JS). HTML tag balance and CSS brace balance checked
+programmatically post-edit — both balanced. **Still not exercised in a real
+browser** — same standing limitation as every dashboard session so far;
+this is the biggest reason a runtime bug like this one reached this point
+undetected for a full session.
+
+**Suggestion for future dashboard sessions:** grep-based "verification"
+here systematically misses missing-declaration bugs because it checks that
+referenced *names* exist somewhere in the file, not that a *matching
+declaration* exists for every *call*. A quick script comparing
+`function NAME` declarations against `NAME(` call sites (as done this
+session) is cheap and would have caught this immediately — worth making a
+standing step, not a one-off, until real-browser/headless verification is
+available.
+
+**Still open:**
+1. Real-browser verification — now more important than ever, given what a
+   session of purely-static "clean" checks missed.
+2. Priority 1 §6–§10 and all of Priority 2 — not started.
+3. Everything already listed as still-open in every prior session log entry
+   (Phase 7 capture/retraining, the Letter M image asset check,
+   `Current Level: Basic`, etc.) — unchanged by this session.
+4. Auth remains explicitly excluded.

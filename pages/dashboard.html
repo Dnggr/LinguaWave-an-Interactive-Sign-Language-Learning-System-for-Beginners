@@ -37,9 +37,23 @@
                     "Continue Learning → Progress → Path → Recap" flow.
                     No content/logic in this card changed.
                  4. "Signs You've Learned" — recap of mastered signs.
-                     Priority 1 (2026-08-21) turns the unit rows beneath Overall
+                     Priority 1 §4 (2026-08-21) turns the unit rows beneath Overall
                      Progress into a compact learning-path summary: graded units
                      show practice totals, assessment totals, and current-unit state.
+                     Priority 1 §5 (2026-08-21, this session) adds a "Next:
+                     {category} → {sign}" line under that unit's "You are here"
+                     badge — see js/dashboard.js's renderUnitRow().
+
+                 ⚠️ SESSION NOTE (this session): the §4 patch that added item 3
+                 above also silently deleted renderRecap()/renderContinueButton()/
+                 renderContinueCard() from js/dashboard.js (still called, just
+                 undefined) AND the .recap-*/.account-* rules from
+                 css/dashboard.css, with no replacement for either. That broke
+                 items 1, 3, and 4 above outright on a real page load (hero card
+                 never rendered, account card and recap grid rendered unstyled).
+                 No markup here needed to change to fix it — both were pure
+                 JS/CSS regressions, now restored. See AI_MEMORY.md's session
+                 log for the full writeup.
 
     CONNECTS : ← index.html (redirected here after login)
                → pages/learn.html      (unit rows + hero card's

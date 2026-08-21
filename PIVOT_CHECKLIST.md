@@ -239,6 +239,59 @@ the full trail owner.
 `        ├─ locked → subdued/non-clickable`
 `        └─ reference/info/interactive → descriptive non-graded state`
 
+### 27. Implementation session — Dashboard Priority 1 §5 + critical §4 regression fix (2026-08-21)
+
+**Requested:** Implement `### 5. Priority 1 — Add a "You are here" state`.
+Same constraints as §26: exclude `js/auth.js`, provide suggestions/bugs,
+session notes, a code visualization, and doc updates.
+
+**Critical finding (headline of this session):** §26's own patch deleted
+`renderRecap()`, `renderContinueButton()`, and `renderContinueCard()` from
+`js/dashboard.js` while `DOMContentLoaded` still called all three, AND
+deleted every `.recap-*`/`.account-*` rule from `css/dashboard.css` with no
+replacement. Net result on a real page load: a `ReferenceError` aborted
+rendering right after `renderUnitList()`, so the Priority 0 #1 hero card —
+the checklist's own top-priority item — never rendered, the recap grid
+never rendered, and the account card was unstyled. §26's "Verification
+performed: static source review... clean" did not catch this, because
+`node --check` only parses (it doesn't prove a called name is declared) and
+the grep/tag-balance checks used had nothing to flag — HTML markup was
+never touched, only JS function bodies and CSS rules were silently dropped.
+Restored both files to their pre-§26 state for these three functions/rules,
+verbatim — recoverable directly from §26's own patch (`-` lines are the
+original code). This is a restore, not a rewrite.
+
+**What changed for §5 itself:**
+- `js/dashboard.js` — `renderUnitRow()` computes a `currentSignLabel` from
+  `destination.cat`/`destination.nextSign` (same fields `renderContinueCard()`
+  already reads); `unitRowHtml()` renders it as `Next: {category} → {sign}`
+  under the current unit's `You are here` badge.
+- `css/dashboard.css` — new `.unit-progress-row__current-detail` rule
+  (accent-colored, distinct from the existing muted status/metric text).
+- `pages/dashboard.html` — doc-comment-only: notes both the §5 addition and
+  the regression found/fixed. No markup changed; §5's output renders inside
+  the existing `#unit-progress-list` container.
+
+**Verification:** `node --check` — clean. Went further than §26's own
+verification by actually diffing `function NAME` declarations against
+`NAME(` call sites (not just grepping that a name appears somewhere) — every
+call now resolves; the one non-match (`renderLevelCard`) is a stale mention
+inside a comment describing already-removed Phase-4-era code, not a real
+call. `data-continue-*` attributes cross-checked HTML↔JS — all match.
+HTML tag balance / CSS brace balance checked programmatically. **Still not
+exercised in a real browser.**
+
+**Suggestions / process note:** name-appears-somewhere grep checks (as used
+in §26) don't catch missing-declaration bugs. A declaration-vs-call-site
+diff (used this session) is a cheap static check that would have caught
+this immediately — worth making a standing step for every future
+`js/dashboard.js` session until real-browser verification exists.
+
+**Result:** §5 is implemented. The §4 regression is fixed — the dashboard's
+hero card, recap grid, and account card should render again. Every Priority
+0 and Priority 1 §4/§5 checklist item is now checked; §6–§10 and all of
+Priority 2 remain open.
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.
@@ -480,14 +533,24 @@ instead of pretending there is assessment progress to report.
 
 ---
 
-### 5. Priority 1 — Add a "You are here" state
+### 5. Priority 1 — Add a "You are here" state — ✅ Done 2026-08-21 (code session)
 
-- [ ] Add one unmistakable current-learning label:
+- [x] Add one unmistakable current-learning label:
       `You are here`
-- [ ] Connect it to the same category discovered by the existing
+      — done 2026-05-21 (§4) / confirmed still in place this session:
+      `.unit-progress-row__current-badge` on the current unit's row.
+- [x] Connect it to the same category discovered by the existing
       `renderContinueButton()` / flat progress chain.
-- [ ] Show the current Unit and lesson/sign.
-- [ ] Do not derive a second "current lesson" algorithm.
+      — done: both read the same `getCurrentDestination()` result computed
+      once in the `DOMContentLoaded` handler and passed in as `destination`.
+- [x] Show the current Unit and lesson/sign.
+      — done 2026-08-21 (this session): the row already named the Unit
+      (`Unit N · {title}`, from §4); added a `Next: {category} → {sign}`
+      line sourced from `destination.cat`/`destination.nextSign` — the
+      lesson/sign half that was still missing.
+- [x] Do not derive a second "current lesson" algorithm.
+      — done: `renderUnitRow()` reads `destination.cat`/`destination.nextSign`
+      directly; no new lookup was written.
 
 #### Why
 

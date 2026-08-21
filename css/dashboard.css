@@ -287,6 +287,15 @@ a.unit-progress-row:hover {
   font-size: var(--fs-xs);
   color: var(--clr-text-muted);
 }
+/* PRIORITY 1 §5 (this session) — "Next: {category} → {sign}" line,
+   shown only on the row carrying .unit-progress-row__current-badge.
+   Accent-colored (not muted) so the specific lesson/sign reads as the
+   answer to "what do I do next," not a secondary status caption. */
+.unit-progress-row__current-detail {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--clr-accent);
+}
 .unit-progress-row__progress {
   display: grid;
   grid-template-columns: minmax(110px, 1fr) auto;
@@ -322,4 +331,133 @@ a.unit-progress-row:hover {
   .unit-progress-row__assessment {
     white-space: normal;
   }
+}
+
+/* ── RESTORED (this session) ──────────────────────────────────────
+   The §4 Priority 1 patch deleted everything below this point (recap
+   grid + account card) while rewriting the unit-progress-row block
+   above — with no replacement rule for either selector family. Since
+   pages/dashboard.html's #recap-grid and .account-card markup was
+   never touched, both sections rendered completely unstyled (raw
+   divs/spans) on any real page load. Restored unchanged from before
+   that session — see this session's AI_MEMORY.md entry. */
+
+/* Recap grid — chips, not squares */
+.recap-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/*
+  BUG FIX: this used to be a fixed 56x56px square trying to fit
+  whatever sign title was practiced — fine for a single letter, but
+  multi-word entries like "I AM FINE" or "MY SISTER" wrapped inside a
+  box sized for one character and visually overlapped/collided.
+  Rebuilt as an auto-width pill: short signs (single letters) stay
+  compact, phrases grow to fit, and anything genuinely too long
+  truncates cleanly with an ellipsis + native tooltip instead of
+  wrapping garbage.
+*/
+.recap-card {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.recap-card__img {
+  min-width: 40px;
+  height: 40px;
+  max-width: 160px;
+  padding: 0 var(--space-3);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--clr-text);
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.recap-card:hover .recap-card__img {
+  border-color: var(--clr-accent);
+  color: var(--clr-accent);
+}
+.recap-card--locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px dashed var(--clr-border);
+  border-radius: var(--radius-pill);
+  color: var(--clr-text-muted);
+}
+
+/* ── YOUR ACCOUNT (user details card) ───────────────────────────── */
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.account-avatar {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-dim));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--clr-text-invert);
+  box-shadow: var(--shadow-card);
+}
+.account-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.account-details__name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.account-details__email {
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+.account-meta {
+  display: flex;
+  gap: var(--space-6);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.account-meta__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.account-meta__label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-text-muted);
+}
+.account-meta__value {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text);
 }

@@ -646,6 +646,53 @@ real browser pass has not yet been run for this Priority 1 change.
 
 ---
 
+### Implementation status — Dashboard Priority 1 §5 + critical regression fix (2026-08-21)
+
+Priority 1 §5 ("Add a 'You are here' state") is now implemented. This
+section also documents a critical regression introduced by the Priority 1
+(§4) implementation above and fixed in this same session.
+
+**Regression found and fixed:** the §4 implementation deleted
+`renderRecap()`, `renderContinueButton()`, and `renderContinueCard()` from
+`js/dashboard.js` while its own `DOMContentLoaded` handler still called all
+three, and deleted every `.recap-*`/`.account-*` rule from
+`css/dashboard.css` with no replacement. On a real page load this threw a
+`ReferenceError` on the first missing call, aborting every subsequent
+render in that handler — so the Priority 0 #1 "Continue Learning" hero card
+never rendered, "Signs You've Learned" never rendered, and "Your Account"
+was unstyled. The §4 write-up's "Verification performed" (static review +
+`node --check` + grep/tag-balance) reported clean because none of those
+checks execute the script or diff call sites against declarations. Fixed by
+restoring the three functions and all CSS rules to their pre-§4 state,
+unchanged.
+
+**§5 behavior added:** the current unit's row (already marked `You are
+here` by §4) now also shows the specific destination within that unit —
+`Next: {category title} → {sign title}` — sourced from the same
+`destination.cat`/`destination.nextSign` fields the Continue Learning hero
+card already reads. No second "current lesson" algorithm was introduced.
+
+**Scope respected:** `pages/dashboard.html`, `js/dashboard.js`,
+`css/dashboard.css` only (HTML change is doc-comments only — no markup
+added). `js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js`
+were not opened.
+
+**Verification:** `node --check` — clean. This session additionally diffed
+every `function NAME` declaration against every `NAME(` call site in
+`js/dashboard.js` (the check that would have caught the §4 regression on
+day one) — all calls now resolve. `data-continue-*` attributes cross-checked
+HTML↔JS. HTML tag balance / CSS brace balance checked programmatically.
+**Not exercised in a real browser** — same standing gap as every dashboard
+session; flagged here again specifically because a purely-static session
+just demonstrated how much a runtime bug can hide from it.
+
+**Known remaining items:** Priority 1 §6–§10 and all of Priority 2 are
+still open. `Current Level: Basic` remains stale under the single-path
+model (separate, still-undecided item). Real-browser verification remains
+the single biggest open risk across every dashboard session to date.
+
+---
+
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)
 
 **Status: Phases 1–6 implemented (2026-08-18 → 2026-08-20); Phase 7 (content
