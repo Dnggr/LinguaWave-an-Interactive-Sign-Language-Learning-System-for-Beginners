@@ -691,6 +691,90 @@ still open. `Current Level: Basic` remains stale under the single-path
 model (separate, still-undecided item). Real-browser verification remains
 the single biggest open risk across every dashboard session to date.
 
+### Implementation status — Dashboard Priority 1 §6 (2026-08-21)
+
+Priority 1 §6 ("Add a review/repetition entry point," this Addendum's own
+"Review entry point" section above) is now implemented.
+
+**What it is:** A new "Review recent signs" section on the dashboard, below
+"Signs You've Learned." Per this Addendum's explicit guidance, it is **not**
+a spaced-repetition trainer — no new algorithm, and `js/engine/progress.js`
+was not modified. `js/dashboard.js`'s new `renderReviewEntry()` reads the
+already-exported `window.LWProgress.getAllLearnedSigns()` (the same call
+`renderRecap()` already makes) and treats the last entry as the most
+recently practiced sign — an insertion-order assumption `renderRecap()`
+already relies on. Since no dedicated Review/Trainer route exists yet, the
+MVP action reopens that sign via the existing `lesson.html?level=&category=
+&sign=` route, matching this Addendum's own "reuse the existing detected-
+sign infrastructure" guidance rather than inventing a new page. When a real
+Review/Trainer route ships later, only `renderReviewEntry()`'s href source
+should need to change — the section markup and its `[data-review-actions]`
+hook are meant to stay stable across that change.
+
+**Scope respected:** `pages/dashboard.html`, `js/dashboard.js`,
+`css/dashboard.css` only. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` were not opened.
+
+**Verification:** `node --check` — clean. Re-ran the declaration-vs-call-
+site diff that caught the §5 session's regression (see above) — all calls
+in `js/dashboard.js` resolve. `data-review-*` attributes cross-checked
+HTML↔JS. HTML tag balance / CSS brace balance checked programmatically.
+Additionally, a Node + `vm` harness loaded the real, shipped
+`js/dashboard.js` against a minimal DOM mock and exercised
+`renderReviewEntry()` across 6 scenarios — no signs practiced, one sign,
+multiple signs (confirms the most-recent one is picked), an unresolvable
+`level`, a failed title lookup, and a sign ID needing HTML/URL escaping —
+all produced correct output. **Still not exercised in a real browser** —
+same standing gap as every dashboard session to date.
+
+**Known remaining items:** Priority 1 §7–§10 and all of Priority 2 are
+still open. `Current Level: Basic` remains stale (separate item). Real-
+browser verification remains the single biggest open risk.
+
+### Implementation status — Dashboard Priority 1 §7 (2026-08-21)
+
+Priority 1 §7 ("Improve 'Signs You've Learned'," `PIVOT_CHECKLIST.md`'s own
+section of the same name) is now implemented.
+
+**What it is:** Three additions to the existing "Signs You've Learned"
+recap, per that checklist item's sub-list and its "Important terminology"
+guidance (prefer `Practiced`/`Assessed`/`Passed`/`Review`; avoid `Mastered`
+unless an explicit mastery rule exists):
+1. A `"{N} signs practiced"` count next to the heading.
+2. A subtitle framing the grid as recently-practiced rather than mastered,
+   reusing the same phrasing pattern already established by the Overall
+   Progress card's "not a mastery score" label (Priority 0 §3, above).
+3. A `View all` toggle, shown only once there are more practiced signs
+   than the grid's cap, that expands the SAME chip grid in place — not a
+   link to a new page. No dedicated "all practiced signs" page exists
+   anywhere in this app, and inventing one would have conflicted with this
+   checklist item's own "do not turn this section into another lesson
+   browser" instruction.
+
+**Scope respected:** `pages/dashboard.html`, `js/dashboard.js`,
+`css/dashboard.css` only. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` were not opened.
+
+**Deliberately unchanged:** the `<h2>Signs You've Learned</h2>` heading
+text and the chip markup/styling itself — the checklist item asks to
+change the *framing* around the existing recap (the new subtitle handles
+that), not the heading, and explicitly asks to keep the chips lightweight.
+
+**Verification:** `node --check` — clean. Re-ran the declaration-vs-call-
+site diff that caught the §4 session's regression (see above) — all
+functions in `js/dashboard.js` resolve, including the new
+`handleRecapToggle` (checked as an indirect reference via
+`addEventListener`, not just a direct call, since that's how it's
+actually used). `data-recap-*` attributes cross-checked HTML↔JS. HTML tag
+balance / CSS brace balance checked programmatically. **Still not
+exercised in a real browser** — same standing gap as every dashboard
+session to date.
+
+**Known remaining items:** Priority 1 §8–§10 and all of Priority 2 are
+still open. `Current Level: Basic` remains stale (separate item, §8).
+Real-browser verification remains the single biggest open risk across
+every dashboard session so far.
+
 ---
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)

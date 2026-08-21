@@ -292,6 +292,60 @@ hero card, recap grid, and account card should render again. Every Priority
 0 and Priority 1 §4/§5 checklist item is now checked; §6–§10 and all of
 Priority 2 remain open.
 
+### 28. Implementation session — Dashboard Priority 1 §6 (2026-08-21)
+
+**Requested:** Implement `### 6. Priority 1 — Add a review/repetition entry
+point`. Same constraints as §26/§27: exclude `js/auth.js`, provide
+suggestions/bugs, session notes, a code visualization, and doc updates.
+
+**What changed:**
+- `js/dashboard.js` — new `renderReviewEntry()`, called once from
+  `DOMContentLoaded` alongside the other render calls. Reads
+  `window.LWProgress.getAllLearnedSigns()` (already-exported, same call
+  `renderRecap()` makes — no `progress.js` change), takes the last entry as
+  "most recently practiced," and either renders a link to
+  `lesson.html?level=&category=&sign=` for that sign or a disabled-looking
+  placeholder if nothing's been practiced yet / the entry's `level` didn't
+  resolve.
+- `pages/dashboard.html` — new "Review recent signs" section after "Signs
+  You've Learned," with a `[data-review-actions]` hook filled entirely by
+  JS. File-header comment updated to list this as item 5.
+- `css/dashboard.css` — new `.review-card` rules (flex row, wraps on narrow
+  viewports, a muted style for the disabled placeholder state).
+
+**Important design choice:** No spaced-repetition algorithm was written —
+§6 explicitly rules that out. No dedicated Review/Trainer page exists yet,
+so the MVP link points at the existing `lesson.html` route for the most
+recently practiced sign instead — this is meant to be swapped for a real
+Review/Trainer route later by changing `renderReviewEntry()` alone. No
+changes were made to `data.js`, `learn.js`, `progress.js`, or `auth.js`.
+
+**Suggestions / bugs / risks found during the session:**
+1. No new correctness bug was found in the existing dashboard code.
+2. `getAllLearnedSigns()` can return an entry with `level: null` when its
+   category can't be resolved (pre-existing behavior, documented in
+   `progress.js`'s own comment) — `renderReviewEntry()` treats that as "no
+   review available" rather than assuming it can't happen.
+3. Flagging for whoever builds a real Review/Trainer route later: "most
+   recently practiced" (this session) and true spaced repetition ("what's
+   due for review") are different features — only the former was in scope
+   here, by explicit instruction.
+4. Real-browser verification is still required — same standing gap as every
+   dashboard session.
+
+**Verification:** `node --check` — clean. Re-ran the declaration-vs-call-
+site diff that caught the §4 regression — all calls resolve, no new
+missing-declaration bugs. `data-review-*` attributes cross-checked HTML↔JS.
+HTML tag balance / CSS brace balance checked programmatically. Additionally
+built a Node + `vm` harness loading the real `js/dashboard.js` against a
+minimal DOM mock and ran `renderReviewEntry()` through 6 scenarios (empty
+state, one sign, multiple signs — confirms most-recent selection, null
+`level`, failed title lookup, and a sign ID needing HTML/URL escaping) — all
+6 produced the expected output. **Still not exercised in a real browser.**
+
+**Result:** §6 is implemented in dashboard scope only. Priority 1 §4, §5,
+and §6 are now all checked; §7–§10 and all of Priority 2 remain open.
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.
@@ -559,18 +613,32 @@ unit states. A learning product should state the current position directly.
 
 ---
 
-### 6. Priority 1 — Add a review/repetition entry point
+### 6. Priority 1 — Add a review/repetition entry point — ✅ Done 2026-08-21 (code session)
 
 Current issue:
 
 The dashboard has `Signs You've Learned`, but this is mostly a recap display.
 It does not tell the learner what to review.
 
-- [ ] Add a future-ready `Review` section.
-- [ ] MVP can be a simple link/button to a review/trainer route once available.
-- [ ] Do not implement a new spaced-repetition algorithm in this dashboard task.
-- [ ] Do not change `progress.js` for this checklist item.
-- [ ] When Review/Trainer mode is implemented later, expose it from the dashboard.
+- [x] Add a future-ready `Review` section.
+      — done: new "Review recent signs" section in `pages/dashboard.html`,
+      after "Signs You've Learned".
+- [x] MVP can be a simple link/button to a review/trainer route once available.
+      — done: no dedicated route exists yet, so the MVP links straight to
+      `lesson.html?level=&category=&sign=` for the learner's most recently
+      practiced sign (reuses the existing lesson/camera-practice route
+      instead of inventing a new page).
+- [x] Do not implement a new spaced-repetition algorithm in this dashboard task.
+      — confirmed: `renderReviewEntry()` only reads the ALREADY-exported
+      `getAllLearnedSigns()` and picks the last entry (insertion-order
+      recency, same assumption `renderRecap()` already makes). No due-date/
+      interval/priority logic was written.
+- [x] Do not change `progress.js` for this checklist item.
+      — confirmed: `js/engine/progress.js` was not opened this session.
+- [x] When Review/Trainer mode is implemented later, expose it from the dashboard.
+      — the section + `[data-review-actions]` hook are built to stay stable;
+      only `renderReviewEntry()`'s href source needs to change later — see
+      the doc comment above it in `js/dashboard.js`.
 
 #### Suggested copy
 
@@ -580,17 +648,45 @@ It does not tell the learner what to review.
 
 ---
 
-### 7. Priority 1 — Improve "Signs You've Learned"
+### 7. Priority 1 — Improve "Signs You've Learned" — ✅ Done 2026-08-21 (code session)
 
 Current implementation already fixed the duplicate chips.
 
 - [x] Keep the existing duplicate-sign fix.
-- [ ] Add a small count:
+      — confirmed still in place this session; not touched.
+- [x] Add a small count:
       `8 signs practiced`
-- [ ] Prefer a "recently practiced" interpretation instead of implying mastery.
-- [ ] Consider a `View all` link if the list grows.
-- [ ] Keep the visual chips lightweight.
-- [ ] Do not turn this section into another lesson browser.
+      — done: `[data-recap-count]` next to the heading, filled by
+      `renderRecap()` as `"{N} sign{s} practiced"`.
+- [x] Prefer a "recently practiced" interpretation instead of implying mastery.
+      — done via a new subtitle under the heading ("Recently practiced
+      signs — not a mastery list"), mirroring the Overall Progress
+      card's existing "not a mastery score" phrasing. The `<h2>` text
+      itself ("Signs You've Learned") was deliberately left as-is — see
+      note below.
+- [x] Consider a `View all` link if the list grows.
+      — implemented as an in-place expand toggle
+      (`[data-recap-foot]`/`[data-recap-toggle]`, new
+      `handleRecapToggle()`), not a link to a new page — no "all
+      practiced signs" page exists anywhere in this app, and a link
+      would have meant either inventing one (out of scope) or reusing
+      `learn.html` (which is categories/units, not a flat sign list and
+      would contradict the next bullet). Shown only when there are more
+      than `RECAP_COLLAPSED_LIMIT` (24, same value the prior hardcoded
+      `.slice(-24)` used) practiced signs.
+- [x] Keep the visual chips lightweight.
+      — confirmed: chip markup/CSS unchanged, no title/category lookup
+      added per chip.
+- [x] Do not turn this section into another lesson browser.
+      — confirmed: `View all` expands the SAME chip grid in place: no
+      navigation, no new route, no per-chip links added.
+
+**Note on the heading text:** the checklist item is titled "Improve
+'Signs You've Learned'" and every other doc/session log in this repo
+(including this file) refers to the section by that exact name — the
+item's own sub-items ask to change the *framing* around mastery, not
+the heading itself, so `<h2>Signs You've Learned</h2>` is unchanged.
+Flag for Joshua if a literal heading rename was actually intended.
 
 #### Important terminology
 

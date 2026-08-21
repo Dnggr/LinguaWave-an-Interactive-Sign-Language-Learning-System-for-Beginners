@@ -2132,3 +2132,178 @@ available.
    (Phase 7 capture/retraining, the Letter M image asset check,
    `Current Level: Basic`, etc.) — unchanged by this session.
 4. Auth remains explicitly excluded.
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §6 ("Add a review/
+repetition entry point")
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §6. Same standing constraints
+as every prior dashboard session: exclude `js/auth.js`, give suggestions/
+bugs, a code visualization, and update this file / `PIVOT_CHECKLIST.md` /
+`SYSTEM_ARCHITECTURE.md`. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review
+Addendum. §6's own checklist text and the Addendum's "Review entry point"
+section both say this is explicitly **not** a spaced-repetition trainer —
+"do not implement a new spaced-repetition algorithm," "do not change
+`progress.js` for this checklist item."
+
+**Implementation:** Added a new "Review recent signs" section to
+`pages/dashboard.html`, placed after "Signs You've Learned" (matching the
+Addendum's recommended order: hero → progress → path → recap/review). A new
+`js/dashboard.js` function, `renderReviewEntry()`, fills its action slot by
+calling the ALREADY-exported `window.LWProgress.getAllLearnedSigns()` — the
+exact same call `renderRecap()` already makes, so no new store read and no
+`progress.js` change. Since `getAllLearnedSigns()` has no timestamp,
+`renderReviewEntry()` relies on the same insertion-order assumption
+`renderRecap()`'s own `.slice(-24).reverse()` already relies on: the LAST
+entry in the array is the most recently practiced sign. The MVP action
+(PIVOT_CHECKLIST.md §6: "MVP can be a simple link/button to a review/trainer
+route once available") reopens that sign via the existing
+`lesson.html?level=&category=&sign=` route — there's no dedicated Review/
+Trainer page yet, so this reuses the same lesson/camera-practice
+infrastructure the Addendum specifically calls out, rather than inventing a
+new page. Empty/unresolved state (nothing practiced yet, or the practiced
+sign's category can't be resolved to a `level`) renders a non-interactive
+placeholder instead of a link — the same `href ? <a> : <div>` pattern
+`unitRowHtml()` already uses for locked units.
+
+**Files touched:** `js/dashboard.js` (new `renderReviewEntry()` + one new
+call in `DOMContentLoaded`), `pages/dashboard.html` (new section + updated
+file-header comment), `css/dashboard.css` (new `.review-card` rules).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` — not
+opened, per explicit user instruction (auth) and the standing dashboard
+implementation boundary (the other three). No curriculum/progress/unlock
+logic changed.
+
+**Verification:** `node --check` — clean. Given the §4 regression earlier
+this same day, explicitly re-ran the declaration-vs-call-site diff (`grep
+'^function'` vs. every `NAME(` call site) that session flagged as the
+process fix — every call in `js/dashboard.js` resolves; the only two
+non-matches are `renderLevelCard` and a stray `render()` substring, both
+pre-existing mentions inside comments, not real calls (same as every prior
+session's finding). `data-review-*` attributes cross-checked HTML↔JS — both
+match. HTML tag balance / CSS brace balance checked programmatically — both
+balanced. Beyond that, built a small Node + `vm` harness that loads the
+actual shipped `js/dashboard.js` against a minimal `document`/`window`
+mock and calls `renderReviewEntry()` directly across 6 scenarios: no signs
+practiced, one sign practiced, multiple signs (confirms the LAST entry is
+picked, not the first), a sign with an unresolvable `level` (confirms the
+disabled placeholder renders instead of a broken link), a sign whose title
+lookup fails (confirms fallback to the raw sign ID), and a sign ID with
+characters needing HTML-escaping/URL-encoding (confirms both `escapeHtml()`
+and `encodeURIComponent()` are applied correctly). All 6 passed. **Still not
+exercised in a real browser** — same standing gap as every dashboard session
+to date; the Node+`vm` harness proves the function's logic, not the real
+DOM/CSS rendering.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard code during this
+   session's review.
+2. `getAllLearnedSigns()` returning `level: null` for an unresolvable
+   category (see its own comment in `js/engine/progress.js`) is a real,
+   pre-existing edge case — `renderReviewEntry()` handles it defensively
+   (falls back to the empty state) rather than assuming it can't happen.
+3. Worth flagging for whoever builds the real Review/Trainer route later:
+   "most recently practiced" (this session's MVP) and genuine spaced-
+   repetition ("what's due for review") are different features. This session
+   intentionally ships only the former, per §6's explicit instruction not to
+   build the latter.
+4. Real-browser verification remains the single biggest standing risk across
+   every dashboard session, this one included.
+
+**Still open:**
+1. Real-browser verification of this session's change, and everything still
+   open from every prior session log entry above.
+2. Priority 1 §7–§10 and all of Priority 2 — not started.
+3. Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §7 ("Improve 'Signs
+You've Learned'")
+
+**Requested:** Implement `PIVOT_CHECKLIST.md`'s §7. Same standing
+constraints as every prior dashboard session this same day: exclude
+`js/auth.js`, provide suggestions/bugs found, a code visualization, and
+update this file / `PIVOT_CHECKLIST.md` / `SYSTEM_ARCHITECTURE.md`.
+Pre-change order followed: this file → `PIVOT_CHECKLIST.md` →
+`SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX Review Addendum. §7's own
+checklist text (5 unchecked sub-items, 1 already-done) and its
+"Important terminology" block (`Practiced`/`Assessed`/`Passed`/`Review`
+preferred; `Mastered` avoided unless an explicit mastery rule exists)
+both read before writing any code.
+
+**Implementation:** `renderRecap()` in `js/dashboard.js` gained three
+things, all still reading the SAME `window.LWProgress.getAllLearnedSigns()`
+call as before — no `progress.js` change, no new store read:
+1. A `"{N} signs practiced"` count written into a new
+   `[data-recap-count]` element next to the heading.
+2. A new subtitle under the heading ("Recently practiced signs — not a
+   mastery list"), mirroring the exact phrasing pattern the Overall
+   Progress card already uses for its own "not a mastery score" label —
+   reused rather than inventing new copy conventions.
+3. A `View all {N}` / `Show fewer` toggle
+   (`[data-recap-foot]`/`[data-recap-toggle]`, new `handleRecapToggle()`,
+   bound once in `DOMContentLoaded`) that expands the SAME chip grid in
+   place instead of navigating anywhere — no "all practiced signs" page
+   exists anywhere in this app, and the checklist's own "do not turn
+   this section into another lesson browser" rule ruled out inventing
+   one. Only shown once there are more than `RECAP_COLLAPSED_LIMIT`
+   (24, now a named constant — same value the prior hardcoded
+   `.slice(-24)` used) practiced signs.
+
+**Deliberately left unchanged:** the `<h2>Signs You've Learned</h2>`
+heading text itself. Every other doc/session log in this repo
+(including the checklist item's own title) refers to the section by
+that exact name, and §7's sub-items ask to change the *framing* around
+mastery (via the new subtitle), not the heading — flag for Joshua if a
+literal heading rename was actually intended instead. Chip
+markup/styling is also unchanged (checklist: "keep the visual chips
+lightweight") — no title/category lookup was added per chip.
+
+**Files touched:** `js/dashboard.js` (`renderRecap()` extended, new
+`RECAP_COLLAPSED_LIMIT` constant, new `recapExpanded` module state, new
+`handleRecapToggle()`, one new `addEventListener` call in
+`DOMContentLoaded`; also updated a doc comment in `renderReviewEntry()`
+that quoted the old `.slice(-24).reverse()` literal, since that exact
+call no longer exists), `pages/dashboard.html` (new `.recap-head`
+wrapper + count span + subtitle + `.recap-foot`/toggle button; updated
+the file's top purpose comment), `css/dashboard.css` (new
+`.recap-head`/`.recap-head__count`/`.recap-head__subtitle`/`.recap-foot`
+rules — the toggle button itself reuses the existing
+`.btn`/`.btn--ghost`/`.btn--sm` classes as-is, no new button styling).
+`js/auth.js`, `js/data.js`, `js/learn.js`, `js/engine/progress.js` —
+not opened, per explicit user instruction (auth) and the standing
+dashboard implementation boundary (the other three).
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Re-ran
+the declaration-vs-call-site diff that caught the §4 session's
+regression earlier this same day — all 12 functions in the file now
+resolve, including the new `handleRecapToggle` (referenced by name in
+the new `addEventListener` call, not invoked directly, so this check
+was specifically written to also catch that indirect-reference case,
+not just direct `name(...)` calls). `data-recap-*` attributes
+cross-checked HTML↔JS — all three (`data-recap-count`,
+`data-recap-foot`, `data-recap-toggle`) match. HTML tag balance / CSS
+brace balance checked programmatically — both balanced. **Still not
+exercised in a real browser** — same standing gap as every dashboard
+session to date, flagged again given how much the §4 regression earlier
+this same day demonstrated static checks alone can miss.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard code during
+   this session's review.
+2. `css/dashboard.css`'s `.recap-card--locked` rule is dead CSS —
+   defined but never referenced by any JS in the current codebase
+   (confirmed via grep). Harmless as-is; flagging for a future cleanup
+   pass rather than removing it unprompted, since some other in-flight
+   session's plan might still intend to use it.
+3. Real-browser verification remains the single biggest standing risk
+   across every dashboard session, this one included — especially given
+   how much a purely-static "clean" session demonstrably missed earlier
+   in this same day's §4 regression.
+
+**Still open:**
+1. Real-browser verification of this session's change, and everything
+   still open from every prior session log entry above.
+2. Priority 1 §8–§10 and all of Priority 2 — not started.
+3. Auth remains explicitly excluded.

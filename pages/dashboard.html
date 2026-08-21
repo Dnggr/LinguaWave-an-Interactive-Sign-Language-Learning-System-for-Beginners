@@ -36,13 +36,30 @@
                     matching the addendum's recommended
                     "Continue Learning → Progress → Path → Recap" flow.
                     No content/logic in this card changed.
-                 4. "Signs You've Learned" — recap of mastered signs.
+                 4. "Signs You've Learned" — recap of recently practiced signs
+                     (deliberately NOT called "mastered" — see Priority 1 §7 below).
                      Priority 1 §4 (2026-08-21) turns the unit rows beneath Overall
                      Progress into a compact learning-path summary: graded units
                      show practice totals, assessment totals, and current-unit state.
                      Priority 1 §5 (2026-08-21, this session) adds a "Next:
                      {category} → {sign}" line under that unit's "You are here"
                      badge — see js/dashboard.js's renderUnitRow().
+                     Priority 1 §7 (2026-08-21, this session) adds a "N signs
+                     practiced" count + a "recently practiced, not mastery"
+                     subtitle next to the heading, and a "View all" toggle for
+                     when there are more than 24 practiced signs — see this
+                     section's own comment below and js/dashboard.js's
+                     renderRecap().
+                 5. "Review recent signs" — Priority 1 §6 (2026-08-21, this
+                     session). A future-ready review/repetition entry point,
+                     NOT a spaced-repetition trainer (no new algorithm, no
+                     js/engine/progress.js change — see js/dashboard.js's
+                     renderReviewEntry()). The MVP action reopens the
+                     learner's most recently practiced sign via the existing
+                     lesson.html/camera-practice route. When a dedicated
+                     Review/Trainer route exists later, only
+                     renderReviewEntry() needs to change — this section's
+                     markup and [data-review-actions] hook stay put.
 
                  ⚠️ SESSION NOTE (this session): the §4 patch that added item 3
                  above also silently deleted renderRecap()/renderContinueButton()/
@@ -304,12 +321,76 @@
   <!--
     Flowchart node: "Show previous signs (recap)"
     Populated by js/dashboard.js from window.LWProgress.getAllLearnedSigns().
-  -->
+
+    PRIORITY 1 §7 (2026-08-21, this session) — PIVOT_CHECKLIST.md's
+    "Improve 'Signs You've Learned'". Per that item's own terminology
+    guidance (use "Practiced"/"Review", avoid "Mastered" unless an
+    explicit mastery rule exists), three things were added, all
+    data-driven by js/dashboard.js's renderRecap() — nothing below is
+    hardcoded except loading-state placeholders:
+      1. [data-recap-count] — "N signs practiced" next to the heading.
+      2. The subtitle under the heading — frames the grid as recently
+         practiced, not a mastery/completion list (mirrors the exact
+         phrasing pattern already used on the Overall Progress card's
+         "not a mastery score" label).
+      3. [data-recap-foot] / [data-recap-toggle] — a "View all N" /
+         "Show fewer" toggle, shown only once there are more practiced
+         signs than the grid's default 24-chip cap. Expands the SAME
+         chip grid in place (renderRecap() re-renders on click) —
+         deliberately not a link to a new page or lesson list, per the
+         checklist's own "do not turn this section into another lesson
+         browser" instruction.
+    The h2 text itself ("Signs You've Learned") was deliberately left
+    unchanged — every other doc/session log in this repo refers to the
+    section by that exact name, and the checklist item never asked for
+    a rename, only for the *framing* around it to stop implying
+    mastery. -->
   <section class="section section--sm">
     <div class="container">
-      <h2 class="mb-8">Signs You've Learned</h2>
+      <div class="recap-head">
+        <h2>Signs You've Learned</h2>
+        <span class="recap-head__count" data-recap-count></span>
+      </div>
+      <p class="text-muted recap-head__subtitle">Recently practiced signs — not a mastery list.</p>
       <div class="recap-grid" id="recap-grid">
         <p class="text-muted" id="recap-empty">Nothing practiced yet — open a lesson to get started!</p>
+      </div>
+      <div class="recap-foot" data-recap-foot style="display:none;">
+        <button type="button" class="btn btn--ghost btn--sm" data-recap-toggle>View all</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── REVIEW ENTRY POINT ────────────────────────────────────────
+       PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 1
+       item #6 ("Add a review/repetition entry point," 2026-08-21 code
+       session). Per that item and SYSTEM_ARCHITECTURE.md's Dashboard
+       UX Review Addendum → "Review entry point": deliberately NOT a
+       spaced-repetition trainer. No new algorithm was written and
+       js/engine/progress.js was not modified — see js/dashboard.js's
+       renderReviewEntry() header comment.
+
+       The MVP action reuses the existing lesson/camera-practice
+       infrastructure: it reopens the learner's most recently
+       practiced sign. There is no dedicated Review/Trainer page yet
+       ("MVP can be a simple link/button to a review/trainer route
+       once available" — PIVOT_CHECKLIST.md §6), so [data-review-link]
+       points at lesson.html today. When that dedicated route exists,
+       swap the href source in renderReviewEntry() only — this
+       section's markup and the [data-review-actions] hook are meant
+       to stay stable across that change.
+
+       [data-review-actions] is filled entirely by JS. The empty state
+       (nothing practiced yet) is also rendered by JS, not hardcoded
+       here, so it can never contradict the recap grid above it. -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8">Review recent signs</h2>
+      <div class="card review-card">
+        <p class="review-card__body">Refresh the signs you already learned so they stick.</p>
+        <div class="review-card__actions" data-review-actions>
+          <span class="btn btn--ghost" aria-disabled="true">Loading…</span>
+        </div>
       </div>
     </div>
   </section>

@@ -342,6 +342,32 @@ a.unit-progress-row:hover {
    divs/spans) on any real page load. Restored unchanged from before
    that session — see this session's AI_MEMORY.md entry. */
 
+/* ── Recap header (Priority 1 §7, 2026-08-21 code session) ─────────
+   "N signs practiced" count next to the heading + a "recently
+   practiced, not mastery" subtitle. Mirrors the existing
+   .progress-card__head / .progress-card__label pattern above
+   (flex head row + muted label line beneath) for visual consistency
+   with the Overall Progress card rather than inventing a new layout
+   idiom just for this section. */
+.recap-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.recap-head h2 { margin-bottom: 0; }
+.recap-head__count {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.recap-head__subtitle {
+  font-size: var(--fs-sm);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
 /* Recap grid — chips, not squares */
 .recap-grid {
   display: flex;
@@ -400,6 +426,48 @@ a.unit-progress-row:hover {
   border: 1px dashed var(--clr-border);
   border-radius: var(--radius-pill);
   color: var(--clr-text-muted);
+}
+
+/* "View all" toggle (Priority 1 §7). Reuses .btn/.btn--ghost/.btn--sm
+   as-is — no new button styling needed, just spacing above it. Hidden
+   by default in the HTML; js/dashboard.js's renderRecap() only shows
+   it once there are more than RECAP_COLLAPSED_LIMIT practiced signs. */
+.recap-foot {
+  margin-top: var(--space-4);
+}
+
+/* ── REVIEW entry point (Priority 1 §6, 2026-08-21 code session) ───
+   Deliberately a single lightweight card, not a second recap grid or
+   a new trainer UI — see js/dashboard.js's renderReviewEntry() for
+   why. [data-review-actions] content (the link, or the disabled-style
+   placeholder) is filled entirely by JS. */
+.review-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.review-card__body {
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  max-width: 48ch;
+}
+.review-card__actions {
+  flex-shrink: 0;
+}
+/* Same "no href, no fake button" empty state unitRowHtml() uses for
+   locked units, rendered here as a non-interactive <span> instead of
+   a <button disabled> so it never gets tab-focus while doing nothing. */
+.review-card__actions [aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 640px) {
+  .review-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ── YOUR ACCOUNT (user details card) ───────────────────────────── */

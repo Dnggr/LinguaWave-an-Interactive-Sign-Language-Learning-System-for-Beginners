@@ -107,6 +107,39 @@
  * renders it as a `Next: {category} → {sign}` line beneath the "You are
  * here" badge, only for the one row that has it.
  *
+ * DASHBOARD UX REVIEW — PRIORITY 1, §6 (2026-08-21, this session):
+ * "Add a review/repetition entry point." Per PIVOT_CHECKLIST.md §6 and
+ * SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Review
+ * entry point," this is explicitly NOT a spaced-repetition trainer —
+ * no new algorithm was written, and js/engine/progress.js was not
+ * modified (renderReviewEntry() below only calls the ALREADY-exported
+ * window.LWProgress.getAllLearnedSigns() — the exact same call
+ * renderRecap() already makes). The MVP action reuses the existing
+ * lesson/camera-practice route by reopening the learner's most
+ * recently practiced sign, matching the addendum's own guidance to
+ * "reuse the existing detected-sign infrastructure." When a dedicated
+ * Review/Trainer route ships later, renderReviewEntry() is the only
+ * function that should need to change — see its own doc comment.
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 1, §7 (2026-08-21, this session):
+ * "Improve 'Signs You've Learned'." renderRecap() now also writes a
+ * "N signs practiced" count into [data-recap-count], and supports
+ * revealing more than the RECAP_COLLAPSED_LIMIT (24, same value the
+ * old hardcoded `.slice(-24)` used) chips via a "View all" toggle
+ * ([data-recap-foot]/[data-recap-toggle], new handleRecapToggle()) that
+ * re-renders the SAME grid rather than navigating anywhere — per the
+ * checklist's own "do not turn this section into another lesson
+ * browser" instruction. The "recently practiced, not mastery" framing
+ * the checklist also asked for is a markup/copy change only (a new
+ * subtitle line in pages/dashboard.html) — no change needed here, since
+ * this function never used the word "mastered"/"learned" in its output
+ * to begin with. See PIVOT_CHECKLIST.md §7 for the full sub-item list
+ * and SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum for why
+ * duplicate-sign chips and a spaced-repetition algorithm are explicitly
+ * OUT of scope for this item (the former was already fixed in an
+ * earlier session — see the BUG FIX comment above renderRecap(); the
+ * latter is §6's job, not §7's).
+ *
  * BUGFIX (carried over, unrelated to any session above): the OLD
  * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
  * intermediate order, and *within* a level used `liveCategoriesFor(level)`
@@ -416,9 +449,9 @@ function renderUnitList(destination) {
 }
 
 /**
- * RESTORED (this session — see the CRITICAL BUGFIX note in the file
- * header). Content below is unchanged from before the §4 session that
- * accidentally deleted it.
+ * RESTORED (2026-08-21 earlier session — see the CRITICAL BUGFIX note
+ * in the file header). The chip-rendering logic itself is unchanged
+ * from before the §4 session that accidentally deleted it.
  *
  * BUG FIX (2026-08-20, review session): this used to render signId
  * twice per card — once inside .recap-card__img's pill and again in
@@ -429,24 +462,124 @@ function renderUnitList(destination) {
  * like "I AM FINE" — the extra <span> was a leftover from before
  * that redesign. Removed rather than kept-but-hidden, since nothing
  * else in css/dashboard.css targets a bare <span> inside .recap-card.
+ *
+ * PRIORITY 1 §7 (2026-08-21, this session) — PIVOT_CHECKLIST.md's
+ * "Improve 'Signs You've Learned'". Three additions, all still reading
+ * the SAME window.LWProgress.getAllLearnedSigns() call as before — no
+ * progress.js change, no new store read:
+ *   1. [data-recap-count] gets "N signs practiced".
+ *   2. The chip grid now supports showing more than RECAP_COLLAPSED_LIMIT
+ *      (still 24, same cap the old hardcoded `.slice(-24)` used) via the
+ *      recapExpanded toggle below, instead of silently truncating with
+ *      no way to see the rest.
+ *   3. [data-recap-foot]/[data-recap-toggle] are shown only when there
+ *      ARE more than RECAP_COLLAPSED_LIMIT signs to reveal.
+ * Deliberately NOT done here, per the checklist's own instructions:
+ *   - no navigation to a new "all signs" page (checklist: "do not turn
+ *     this section into another lesson browser") — "View all" expands
+ *     the SAME grid in place instead;
+ *   - no title/category lookup added to each chip — still just the
+ *     raw signId, same as before (checklist: "keep the visual chips
+ *     lightweight").
  */
+const RECAP_COLLAPSED_LIMIT = 24; // unchanged value, now a named constant instead of a magic number in .slice(-24)
+
+// Toggle state for the §7 "View all" control. Module-level (not a
+// closure-local) because the click handler and renderRecap() both need
+// to read/flip it, and renderRecap() is the one function that already
+// owns re-rendering the grid — simplest to have the toggle just flip
+// this and call the same render function again, rather than duplicating
+// the chip-building markup in a second place.
+let recapExpanded = false;
+
 function renderRecap() {
-  const grid  = document.getElementById('recap-grid');
-  const empty = document.getElementById('recap-empty');
+  const grid     = document.getElementById('recap-grid');
+  const empty    = document.getElementById('recap-empty');
+  const countEl  = document.querySelector('[data-recap-count]');
+  const footEl   = document.querySelector('[data-recap-foot]');
+  const toggleEl = document.querySelector('[data-recap-toggle]');
   if (!grid || !window.LWProgress) return;
 
   const learned = window.LWProgress.getAllLearnedSigns();
+
   if (learned.length === 0) {
     if (empty) empty.style.display = '';
+    if (countEl) countEl.textContent = '';
+    if (footEl) footEl.style.display = 'none';
     return;
   }
   if (empty) empty.style.display = 'none';
 
-  grid.innerHTML = learned.slice(-24).reverse().map(({ signId }) => `
+  if (countEl) {
+    countEl.textContent = `${learned.length} sign${learned.length === 1 ? '' : 's'} practiced`;
+  }
+
+  // Most-recently-practiced first — same insertion-order assumption
+  // the old `.slice(-24).reverse()` already relied on (see
+  // renderReviewEntry()'s doc comment for why that assumption holds).
+  const ordered = learned.slice().reverse();
+  const visible = recapExpanded ? ordered : ordered.slice(0, RECAP_COLLAPSED_LIMIT);
+
+  grid.innerHTML = visible.map(({ signId }) => `
     <div class="recap-card">
       <div class="recap-card__img" aria-label="ASL sign for ${signId}">${signId}</div>
     </div>
   `).join('');
+
+  const canToggle = ordered.length > RECAP_COLLAPSED_LIMIT;
+  if (footEl && toggleEl) {
+    footEl.style.display = canToggle ? '' : 'none';
+    if (canToggle) {
+      toggleEl.textContent = recapExpanded ? 'Show fewer' : `View all ${ordered.length}`;
+    }
+  }
+}
+
+/** Click handler for [data-recap-toggle] — flips recapExpanded and
+ *  re-renders the SAME grid (see renderRecap()'s §7 doc comment for
+ *  why this expands in place rather than navigating anywhere). Bound
+ *  once in DOMContentLoaded, not inside renderRecap() itself, so it
+ *  doesn't get re-attached (and double-fire) on every re-render. */
+function handleRecapToggle() {
+  recapExpanded = !recapExpanded;
+  renderRecap();
+}
+
+/**
+ * NEW (Priority 1 §6, 2026-08-21) — fills the "Review recent signs"
+ * card's action slot. See the file header's §6 note for why this is
+ * deliberately NOT a spaced-repetition trainer.
+ *
+ * window.LWProgress.getAllLearnedSigns() has no timestamp field, but
+ * (same assumption renderRecap()'s own most-recent-first ordering
+ * already relies on) it returns signs in the order they were recorded — JS
+ * preserves object-key insertion order — so the LAST entry is the
+ * most recently practiced sign. Reads only that one existing,
+ * already-exported function; no new progress.js code, no new
+ * algorithm, no second store read/parse.
+ *
+ * Mirrors the `href ? <a> : <div>` pattern unitRowHtml() already uses
+ * for locked units: when there's nothing to review yet (or the
+ * practiced sign's category/level couldn't be resolved — see
+ * getAllLearnedSigns()'s own comment on why `level` can be null),
+ * render a non-interactive placeholder instead of a button pointing
+ * at a broken link.
+ */
+function renderReviewEntry() {
+  const actionsEl = document.querySelector('[data-review-actions]');
+  if (!actionsEl || !window.LWProgress) return;
+
+  const learned = window.LWProgress.getAllLearnedSigns();
+  const last = learned[learned.length - 1];
+
+  if (!last || !last.level) {
+    actionsEl.innerHTML = '<span class="btn btn--ghost" aria-disabled="true">Practice a sign to unlock Review</span>';
+    return;
+  }
+
+  const signTitle = window.LWData?.getSign?.(last.level, last.signId)?.title ?? last.signId;
+  const href = `lesson.html?level=${encodeURIComponent(last.level)}&category=${encodeURIComponent(last.category)}&sign=${encodeURIComponent(last.signId)}`;
+  actionsEl.innerHTML = `<a class="btn btn--secondary" href="${href}" data-review-link>↺ Review "${escapeHtml(signTitle)}"</a>`;
 }
 
 /** RESTORED (this session, unchanged) — "Continue Learning" button —
@@ -568,6 +701,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderWelcomeBanner(destination);
   renderUnitList(destination);
   renderRecap();
+  renderReviewEntry();
   renderContinueButton(destination);
   renderContinueCard(destination);
+
+  // PRIORITY 1 §7 (2026-08-21) — bound once here, not inside renderRecap()
+  // itself, so re-renders (e.g. from the toggle click) never re-attach
+  // (and double-fire) the same listener. No-op if the button doesn't
+  // exist for some reason (e.g. a future markup change) — same optional
+  // chaining pattern the rest of this handler already uses.
+  document.querySelector('[data-recap-toggle]')?.addEventListener('click', handleRecapToggle);
 });
