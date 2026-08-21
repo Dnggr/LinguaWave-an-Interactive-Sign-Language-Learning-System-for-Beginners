@@ -346,6 +346,85 @@ state, one sign, multiple signs — confirms most-recent selection, null
 **Result:** §6 is implemented in dashboard scope only. Priority 1 §4, §5,
 and §6 are now all checked; §7–§10 and all of Priority 2 remain open.
 
+### 29. Implementation session — Dashboard Priority 1 §8 + a separate,
+user-directed debug-unlock change (2026-08-21)
+
+**Requested:** Two things. (1) Implement `### 8. Priority 1 — Fix the
+"Current Level: Basic" product inconsistency` — same constraints as
+§26–§28: exclude `js/auth.js`, provide suggestions/bugs, session notes,
+a code visualization, and doc updates. (2) A separate, explicit,
+out-of-checklist request: stop enforcing Phase 4's per-category locking
+for now (to make debugging/QA easier), with the clear intent to turn it
+back on later — NOT a request to resolve Phase 4's still-open "flagging
+for review" locking decision permanently.
+
+**What changed — §8:**
+- `js/dashboard.js` — new `renderCurrentUnit()`, called once from
+  `DOMContentLoaded` with the same shared `destination` object every
+  other "where's the learner" render already uses. Writes
+  `Unit {order} · {title}` (falls back to the bare category title if a
+  category has no matching `UNITS` entry), matching this item's own
+  "Recommended replacement" example.
+- `pages/dashboard.html` — the account card's `Current Level` field /
+  `[data-user-level]` (previously filled generically by `js/main.js`'s
+  `initUserDetails()` as `capitalize(user.level)` — a fixed `'basic'`
+  constant for every account since Phase 5) was renamed to
+  `Current Unit` / `[data-user-unit]`, now filled only by the new
+  function. Confirmed via grep the old attribute appeared nowhere else
+  in the app before the rename.
+
+**What changed — debug unlock (separate item, not part of §8):**
+- `js/engine/progress.js` — new `DEBUG_UNLOCK_ALL` constant (currently
+  `true`), short-circuiting `isCategoryUnlocked()` to always return
+  `true` before its real chain-walk logic runs. That logic
+  (`getOrderedLiveCategories()`, `getCategoryProgress()`, the
+  assessment-pass rule) is untouched below the short-circuit — this is
+  a one-line, fully reversible toggle, not a rewrite of the unlock
+  model. Affects every caller uniformly (`js/learn.js`'s trail +
+  direct-link guard, `js/dashboard.js`'s own unit rows) since they all
+  already go through this one shared function — no separate bypass was
+  added per caller.
+- **⚠️ This does not resolve the open Phase 4 locking decision** (see
+  `AI_MEMORY.md` §0's "Flagging for review (Phase 4)," still
+  unresolved) — it just makes the current behavior invisible while
+  `DEBUG_UNLOCK_ALL` stays `true`. Flip it back to `false` in
+  `js/engine/progress.js` when real locking should return; see that
+  constant's own doc comment.
+
+**Files touched:** `js/dashboard.js`, `pages/dashboard.html`,
+`js/engine/progress.js`. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/main.js` — not opened.
+
+**Suggestions / bugs / risks found during the session:**
+1. No new correctness bug was found in the existing dashboard or
+   progress code.
+2. `DEBUG_UNLOCK_ALL = true` is a real (if temporary and explicitly
+   requested) product-behavior change — every category is reachable
+   regardless of assessment history while it's on. Search the repo for
+   `DEBUG_UNLOCK_ALL` before any deploy.
+3. Same standing dead-CSS note as §28 (`.recap-card--locked`) — still
+   unreferenced, still untouched.
+4. Real-browser verification is still required — same standing gap as
+   every dashboard/progress session.
+
+**Verification:** `node --check` on both changed `.js` files — clean.
+Declaration-vs-call-site diff on `js/dashboard.js` — all 13 functions
+resolve. HTML tag balance on `pages/dashboard.html` checked with a real
+HTML parser (not a regex, which false-positived on `<`/`>` inside an
+inline `<script>` block) — balanced. Two Node + `vm` harnesses built:
+one exercises `renderCurrentUnit()` across 5 scenarios (empty chain,
+all-passed, normal case, category-with-no-unit-match edge case, null
+destination) — all correct; the other loads the real
+`js/engine/progress.js` with `DEBUG_UNLOCK_ALL` both `true` and (patched
+to) `false` against a mock two-category chain — confirms `true` unlocks
+a normally-locked category and `false` restores the real locked result.
+**Still not exercised in a real browser.**
+
+**Result:** Priority 1 §8 is implemented in dashboard scope. The
+debug-unlock change is separate, temporary, and clearly flagged in
+`AI_MEMORY.md` §0 for the next session to see immediately. Priority 1
+§9–§10 and all of Priority 2 remain open.
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.
@@ -701,15 +780,24 @@ Avoid using:
 
 ---
 
-### 8. Priority 1 — Fix the "Current Level: Basic" product inconsistency
+### 8. Priority 1 — Fix the "Current Level: Basic" product inconsistency — ✅ Done 2026-08-21 (code session)
 
 This is already documented as an open Rev 4 follow-up.
 
-- [ ] Replace `Current Level` with `Current Unit`, OR
-- [ ] Remove the field entirely.
-- [ ] Prefer `Current Unit` because the application is now a single continuous path.
-- [ ] Do not modify `auth.js` to solve this.
-- [ ] Do not reintroduce user-selectable levels.
+- [x] Replace `Current Level` with `Current Unit`, OR
+- [ ] ~~Remove the field entirely.~~ — not chosen; see below.
+- [x] Prefer `Current Unit` because the application is now a single continuous path.
+      — done: `pages/dashboard.html`'s account card now reads
+      "Current Unit" / `[data-user-unit]`, filled by `js/dashboard.js`'s
+      new `renderCurrentUnit()` from the same `destination` object the
+      Continue Learning hero card and unit list already use.
+- [x] Do not modify `auth.js` to solve this.
+      — confirmed: `js/auth.js` not opened this session. `user.level`
+      still exists in the session object untouched, for anything else
+      (e.g. Firestore) that reads it later.
+- [x] Do not reintroduce user-selectable levels.
+      — confirmed: no signup/level-picker code touched; this is a
+      display-only change reading existing progress data.
 
 #### Recommended replacement
 

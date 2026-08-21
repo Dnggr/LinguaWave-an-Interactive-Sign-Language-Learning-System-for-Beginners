@@ -98,6 +98,18 @@ version:
   freely browsing ahead into medium/intermediate content) that's worth
   a second look before this ships. See the Phase 4 session log below
   for the full reasoning.
+- **⚠️ TEMPORARY (2026-08-21): `js/engine/progress.js`'s
+  `isCategoryUnlocked()` currently ALWAYS returns `true`**, regardless
+  of assessment history, because a `DEBUG_UNLOCK_ALL` constant near the
+  top of that file's IIFE is set to `true`. This was added at Joshua's
+  explicit request to make debugging easier while locking is worked
+  on — it does NOT resolve the Phase 4 "flagging for review" item
+  directly above; it just makes the current (still-undecided) locking
+  behavior invisible for now. **Search for `DEBUG_UNLOCK_ALL` and flip
+  it back to `false` before evaluating Phase 4's locking decision for
+  real, and before any deploy.** See that day's Session Log entry
+  ("Priority 1 §8 ... + a user-directed, out-of-checklist debug-unlock
+  change") for the full reasoning and verification.
 - **Flagging for review (Phase 6):** the Level Final Assessment open
   question (flagged by Phase 3, made more pressing by Phase 4) is now
   **decided, not just noted**: `quiz.js` no longer offers a CTA into it
@@ -2307,3 +2319,106 @@ this same day demonstrated static checks alone can miss.
    still open from every prior session log entry above.
 2. Priority 1 §8–§10 and all of Priority 2 — not started.
 3. Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §8 ("Current Level:
+Basic" fix) + a user-directed, out-of-checklist debug-unlock change
+
+**Requested:** Two things in one session. (1) Implement
+`PIVOT_CHECKLIST.md`'s §8 — same standing constraints as every prior
+dashboard session this same day: exclude `js/auth.js`, provide
+suggestions/bugs found, a code visualization, and update this file /
+`PIVOT_CHECKLIST.md` / `SYSTEM_ARCHITECTURE.md`. (2) An explicit,
+separate user instruction, NOT part of the Dashboard UX Review
+checklist: temporarily stop enforcing Phase 4's per-category locking
+so the user can reach/debug categories out of order, with the clear
+intent to re-lock later. Pre-change order followed: this file →
+`PIVOT_CHECKLIST.md` → `SYSTEM_ARCHITECTURE.md` Rev 4 / Dashboard UX
+Review Addendum, including its "Current Level field" section (§341
+above) and §0's Phase 4 "Flagging for review" note, which is exactly
+the open question item (2) resolves for now.
+
+**Implementation — §8:** `renderCurrentUnit()`, new in `js/dashboard.js`,
+reads the SAME `destination` object `getCurrentDestination()` already
+computes once in `DOMContentLoaded` (no second "what unit is the
+learner on" walk) and writes `Unit {order} · {title}` — matching the
+checklist's own "Recommended replacement" example verbatim — into the
+account card. `pages/dashboard.html`'s field was renamed, not
+duplicated: `[data-user-level]` (filled generically, on every page, by
+`js/main.js`'s `initUserDetails()` as `capitalize(user.level)`, a fixed
+`'basic'` constant since Phase 5) → `[data-user-unit]`, now filled only
+by the new function. Confirmed via grep that `[data-user-level]`
+appeared nowhere else in the app before the rename, so nothing else
+reads or depends on the old attribute, and leaving both in place would
+have raced two scripts writing two different strings into one element.
+
+**Implementation — debug unlock (out-of-checklist, user-directed):** a
+single `DEBUG_UNLOCK_ALL` constant added in `js/engine/progress.js`,
+set to `true`. `isCategoryUnlocked()` short-circuits to `true`
+unconditionally when it's set, before its real chain-walk logic runs —
+that logic (`getOrderedLiveCategories()`, `getCategoryProgress()`, the
+assessment-pass rule) is completely untouched below the short-circuit,
+so turning real locking back on is a one-line flip, not a revert of
+any actual logic. This affects every caller of `isCategoryUnlocked()`
+uniformly (`js/learn.js`'s trail + direct-link guard, and
+`js/dashboard.js`'s own unit rows / "You are here" / Continue-Learning
+destination, all already reading the same shared function) — no new
+locking bypass was written per-caller.
+
+**This is explicitly NOT the same thing as reversing Phase 4's locking
+decision.** That decision (AI_MEMORY.md §0, "Flagging for review
+(Phase 4)") is still open and still Joshua's call to make permanently;
+this is a temporary, loudly-commented debug switch requested for this
+session's own workflow, not a proposal to ship with locking off. Left
+`true` as requested — flip it back to `false` in
+`js/engine/progress.js` whenever real locking should return.
+
+**Files touched:** `js/dashboard.js` (new `renderCurrentUnit()`, one
+new call in `DOMContentLoaded`), `pages/dashboard.html` (relabeled
+account-card field + attribute rename, new comment explaining why),
+`js/engine/progress.js` (new `DEBUG_UNLOCK_ALL` constant + a 3-line
+short-circuit at the top of `isCategoryUnlocked()`). `js/auth.js`,
+`js/data.js`, `js/learn.js`, `js/main.js` — not opened.
+
+**Verification:** `node --check` on both changed `.js` files — clean.
+Declaration-vs-call-site diff on `js/dashboard.js` — all 13 functions
+resolve, including the new `renderCurrentUnit`. HTML tag balance on
+`pages/dashboard.html` checked with a real parser (Python's
+`html.parser`, not a regex — a plain open/close regex false-positived
+on angle brackets inside inline `<script>` content, which a real
+parser correctly ignores) — balanced, zero errors. Built two small
+Node + `vm` harnesses: one calls `renderCurrentUnit()` directly across
+5 scenarios (empty chain, all-live-categories-passed, normal case,
+a category with no matching `UNITS` entry, and `destination === null`)
+— all 5 produced the expected text with no throw. The other loads the
+real `js/engine/progress.js` twice — once with `DEBUG_UNLOCK_ALL` left
+`true`, once with it patched to `false` the same way a human editing
+that one line would — against a mock `window.LWData` with a
+two-category chain where the second category is normally locked;
+confirms `true` unlocks it and `false` restores the real locked result.
+**Still not exercised in a real browser** — same standing gap as every
+dashboard session to date.
+
+**Suggestions / bugs / risks found:**
+1. No new correctness bug found in the existing dashboard or progress
+   code during this session's review.
+2. `DEBUG_UNLOCK_ALL` is a real, if temporary, product-behavior change
+   — every learner's account currently has every category reachable
+   regardless of assessment history while this stays `true`. Low risk
+   pre-launch/local debugging, but flagging clearly so it isn't
+   accidentally shipped: search the repo for `DEBUG_UNLOCK_ALL` before
+   any deploy.
+3. Same standing dead-CSS note as the prior session
+   (`.recap-card--locked`) — still unreferenced, still not touched.
+4. Real-browser verification remains the single biggest standing risk
+   across every dashboard/progress session to date, this one included.
+
+**Still open:**
+1. Real-browser verification of this session's changes, and everything
+   still open from every prior session log entry above.
+2. Priority 1 §9–§10 and all of Priority 2 — not started.
+3. `DEBUG_UNLOCK_ALL` needs to be flipped back to `false` once
+   debugging is done — see the flag's own doc comment in
+   `js/engine/progress.js`.
+4. Auth remains explicitly excluded.

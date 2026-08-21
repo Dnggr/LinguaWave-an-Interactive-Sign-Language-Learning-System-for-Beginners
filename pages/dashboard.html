@@ -304,9 +304,19 @@
           <span class="account-details__email" data-user-email>—</span>
         </div>
         <div class="account-meta">
+          <!--
+            PRIORITY 1 §8 (2026-08-21): was "Current Level" / [data-user-level]
+            (filled by js/main.js's initUserDetails() as capitalize(user.level),
+            which is a fixed 'basic' constant for every account since Phase 5 —
+            see js/auth.js's register()). Rev 4 has no user-selectable levels,
+            so that field was product-obsolete. Renamed to "Current Unit" /
+            [data-user-unit], now filled by js/dashboard.js's renderCurrentUnit()
+            from the SAME destination object the hero card above uses. See
+            PIVOT_CHECKLIST.md §8 / SYSTEM_ARCHITECTURE.md's "Current Level field".
+          -->
           <div class="account-meta__item">
-            <span class="account-meta__label">Current Level</span>
-            <span class="account-meta__value" data-user-level>Basic</span>
+            <span class="account-meta__label">Current Unit</span>
+            <span class="account-meta__value" data-user-unit>–</span>
           </div>
           <div class="account-meta__item">
             <span class="account-meta__label">Member Since</span>

@@ -775,6 +775,55 @@ still open. `Current Level: Basic` remains stale (separate item, §8).
 Real-browser verification remains the single biggest open risk across
 every dashboard session so far.
 
+### Implementation status — Dashboard Priority 1 §8 (2026-08-21)
+
+Priority 1 §8 ("Fix the 'Current Level: Basic' product inconsistency,"
+this document's own "Current Level field" section above and
+`PIVOT_CHECKLIST.md` §8) is now implemented, using the recommended
+replacement exactly as specified above: `Current Unit` / `Unit 1 · The
+Alphabet`.
+
+**What it is:** `js/dashboard.js` gained `renderCurrentUnit()`, which
+reads the same `destination` object `getCurrentDestination()` already
+computes once per page load (the same object the Continue Learning hero
+card and unit list consume) and writes it into the account card's
+`[data-user-unit]` field. `pages/dashboard.html`'s field was renamed
+from `Current Level` / `[data-user-level]` to `Current Unit` /
+`[data-user-unit]` — a rename, not an addition, since the old attribute
+was previously filled app-wide (though only actually present on this
+one page) by `js/main.js`'s generic `initUserDetails()` with a value
+(`capitalize(user.level)`) that's been a fixed `'basic'` constant for
+every account since Phase 5.
+
+**Scope respected:** `pages/dashboard.html`, `js/dashboard.js` only
+(no `css/dashboard.css` change was needed). `js/auth.js`, `js/data.js`,
+`js/learn.js`, `js/main.js`, `js/engine/progress.js` (for this specific
+item) were not opened.
+
+**Verification:** `node --check` — clean. Declaration-vs-call-site diff
+— all functions in `js/dashboard.js` resolve. HTML tag balance checked
+with a real parser. A Node + `vm` harness called `renderCurrentUnit()`
+directly across 5 states (empty chain, all-live-categories-passed,
+normal case, a category with no matching `UNITS` entry, and a null
+`destination`) — all produced the expected text. **Still not exercised
+in a real browser** — same standing gap as every dashboard session.
+
+**Separate, out-of-scope-for-this-item change made the same session:**
+at explicit user request (not part of this checklist), `js/engine/
+progress.js` gained a `DEBUG_UNLOCK_ALL` constant (currently `true`)
+that short-circuits `isCategoryUnlocked()` to always return `true`,
+leaving the real chain-walk logic (unchanged) dead code below it until
+the flag is flipped back. This does **not** resolve this document's
+"Current position" / Phase 4 locking status — it is a temporary
+debugging aid, clearly flagged in `AI_MEMORY.md` §0 and
+`PIVOT_CHECKLIST.md` §29, and should be flipped back to `false` before
+the underlying locking decision is evaluated for real or before any
+deploy.
+
+**Known remaining items:** Priority 1 §9–§10 and all of Priority 2 are
+still open. Real-browser verification remains the single biggest open
+risk across every dashboard session so far.
+
 ---
 
 ## Rev 4 — IN PROGRESS: single continuous "Basic ASL" path (curriculum pivot)

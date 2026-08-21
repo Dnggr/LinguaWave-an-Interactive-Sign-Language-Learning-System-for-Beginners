@@ -140,6 +140,31 @@
  * earlier session — see the BUG FIX comment above renderRecap(); the
  * latter is §6's job, not §7's).
  *
+ * DASHBOARD UX REVIEW — PRIORITY 1, §8 (2026-08-21, this session):
+ * "Fix the 'Current Level: Basic' product inconsistency" (PIVOT_CHECKLIST.md
+ * §8, SYSTEM_ARCHITECTURE.md's "Current Level field" section). `user.level`
+ * is a fixed `'basic'` constant written by every account since Phase 5
+ * (see js/auth.js's register() — untouched here), so displaying it as
+ * "Current Level: Basic" implied a selectable tier that no longer exists.
+ * New renderCurrentUnit() reads the SAME shared `destination` object
+ * getCurrentDestination() already computes once in DOMContentLoaded below
+ * — no second "what unit is the learner on" algorithm — and writes
+ * `Unit {order} · {title}` into the account card, matching the checklist's
+ * own "Recommended replacement" example exactly.
+ *
+ * pages/dashboard.html's account card markup changed from
+ * `[data-user-level]` (previously filled generically, on every page, by
+ * js/main.js's initUserDetails() as `capitalize(user.level)`) to
+ * `[data-user-unit]`, filled only here. This was a deliberate RENAME, not
+ * an additional attribute layered on top of the old one: `data-user-level`
+ * doesn't appear on any other page (confirmed via grep across pages/*.html),
+ * so nothing else reads or depends on it, and leaving both attributes in
+ * place would have raced two different scripts writing two different
+ * strings into the same visible element depending on DOMContentLoaded
+ * listener order. js/main.js and js/auth.js are both untouched —
+ * `user.level` still exists in the session object for anything else that
+ * reads it later (e.g. Firestore).
+ *
  * BUGFIX (carried over, unrelated to any session above): the OLD
  * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
  * intermediate order, and *within* a level used `liveCategoriesFor(level)`
@@ -262,6 +287,42 @@ function getCurrentDestination() {
   // Every live category in the chain is already passed (or the chain
   // itself is empty — e.g. pre-launch with everything still comingSoon).
   return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null };
+}
+
+/**
+ * NEW — PIVOT_CHECKLIST.md Priority 1 §8 (2026-08-21, this session).
+ * "Fix the 'Current Level: Basic' product inconsistency." Fills the
+ * "Your Account" card's [data-user-unit] field (renamed from
+ * [data-user-level] — see this file's header comment for why) with the
+ * learner's actual current Unit instead of the stale, always-'basic'
+ * `user.level`. Reads the SAME `destination` object every other "where
+ * is the learner" render below already consumes — no new lookup.
+ *
+ * Mirrors renderContinueCard()'s three states so the account card never
+ * contradicts the hero card immediately above it on the page:
+ *   - chain.length === 0 → nothing trained yet, no unit to name.
+ *   - destination.cat === null → every live category already passed.
+ *   - otherwise → `Unit {order} · {title}` (falls back to the bare
+ *     category title on the rare case a category has no matching UNITS
+ *     entry), exactly matching the checklist's own "Recommended
+ *     replacement" example.
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
+ */
+function renderCurrentUnit(destination) {
+  const el = document.querySelector('[data-user-unit]');
+  if (!el || !destination) return;
+
+  if (destination.chain.length === 0) {
+    el.textContent = 'Not started yet';
+    return;
+  }
+  if (!destination.cat) {
+    el.textContent = 'All units complete';
+    return;
+  }
+  const { cat, unit } = destination;
+  el.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
 }
 
 /**
@@ -698,6 +759,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const destination = getCurrentDestination();
 
   renderOverallProgress();
+  renderCurrentUnit(destination);
   renderWelcomeBanner(destination);
   renderUnitList(destination);
   renderRecap();
