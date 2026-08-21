@@ -21,14 +21,14 @@
                     (Priority 0 #1, 2026-08-21). See js/dashboard.js's
                     renderContinueCard() / getCurrentDestination().
                  2. "Overall Progress" — the aggregate card + trail/unit
-                    overview, now DEMOTED to a secondary, compact
-                    summary directly below the hero card (Priority 0
-                    #2, 2026-08-21 — see the section's own comment
-                    below and SYSTEM_ARCHITECTURE.md's "Dashboard UX
-                    Review Addendum" → "Implementation status (Priority
-                    0 #2)"). Still shows the raw practice-% number
-                    unchanged — RELABELING what that number means is
-                    Priority 0 item #3, still open, not done here.
+                    overview, DEMOTED to a secondary, compact summary
+                    directly below the hero card (Priority 0 #2,
+                    2026-08-21) AND explicitly labeled "Practice
+                    Progress" rather than a bare "%" (Priority 0 #3,
+                    2026-08-21, same day) — see the section's own
+                    comment below and SYSTEM_ARCHITECTURE.md's
+                    "Dashboard UX Review Addendum" → "Implementation
+                    status — Priority 0 #2" / "— Priority 0 #3".
                  3. "Your Account" — user details (name/email/level).
                     Moved below Overall Progress this session (was
                     above it) so the learner's next action is
@@ -36,7 +36,41 @@
                     matching the addendum's recommended
                     "Continue Learning → Progress → Path → Recap" flow.
                     No content/logic in this card changed.
-                 4. "Signs You've Learned" — recap of mastered signs.
+                 4. "Signs You've Learned" — recap of recently practiced signs
+                     (deliberately NOT called "mastered" — see Priority 1 §7 below).
+                     Priority 1 §4 (2026-08-21) turns the unit rows beneath Overall
+                     Progress into a compact learning-path summary: graded units
+                     show practice totals, assessment totals, and current-unit state.
+                     Priority 1 §5 (2026-08-21, this session) adds a "Next:
+                     {category} → {sign}" line under that unit's "You are here"
+                     badge — see js/dashboard.js's renderUnitRow().
+                     Priority 1 §7 (2026-08-21, this session) adds a "N signs
+                     practiced" count + a "recently practiced, not mastery"
+                     subtitle next to the heading, and a "View all" toggle for
+                     when there are more than 24 practiced signs — see this
+                     section's own comment below and js/dashboard.js's
+                     renderRecap().
+                 5. "Review recent signs" — Priority 1 §6 (2026-08-21, this
+                     session). A future-ready review/repetition entry point,
+                     NOT a spaced-repetition trainer (no new algorithm, no
+                     js/engine/progress.js change — see js/dashboard.js's
+                     renderReviewEntry()). The MVP action reopens the
+                     learner's most recently practiced sign via the existing
+                     lesson.html/camera-practice route. When a dedicated
+                     Review/Trainer route exists later, only
+                     renderReviewEntry() needs to change — this section's
+                     markup and [data-review-actions] hook stay put.
+
+                 ⚠️ SESSION NOTE (this session): the §4 patch that added item 3
+                 above also silently deleted renderRecap()/renderContinueButton()/
+                 renderContinueCard() from js/dashboard.js (still called, just
+                 undefined) AND the .recap-*/.account-* rules from
+                 css/dashboard.css, with no replacement for either. That broke
+                 items 1, 3, and 4 above outright on a real page load (hero card
+                 never rendered, account card and recap grid rendered unstyled).
+                 No markup here needed to change to fix it — both were pure
+                 JS/CSS regressions, now restored. See AI_MEMORY.md's session
+                 log for the full writeup.
 
     CONNECTS : ← index.html (redirected here after login)
                → pages/learn.html      (unit rows + hero card's
@@ -196,12 +230,23 @@
        (Phase 4) and needed no change for the "not the main feature"
        requirement.
 
-       NOT changed this session: the underlying metric. It's still
-       computed from signs practiced and still just shows a bare "%" —
-       relabeling it explicitly as "Practice Progress" (vs. mastery),
-       per PIVOT_CHECKLIST.md Priority 0 item #3, is a separate,
-       still-open item. Do not assume it's done because this section
-       was touched. -->
+       LABELED (Priority 0 #3, 2026-08-21, later same day, code
+       session): the badge that used to read "Your ASL Path" now reads
+       "Practice Progress" — data-overall-metric-label, plain text, not
+       consumed by JS — and the supporting `.progress-card__label`
+       paragraph now says "Signs practiced across all units — not a
+       mastery score" (was "All units combined"). This is a text-only
+       change: `[data-overall-pct]`,
+       `[data-overall-progress]`, `[data-overall-count]`, and
+       `[data-overall-status]` are untouched, so js/dashboard.js's
+       renderOverallProgress() needed no change — the `X / Y category
+       assessments passed` line it already renders into
+       `[data-overall-status]` is the "separate mastery signal" the
+       checklist item asks for; it already existed and already sits on
+       its own line below the practice count, so nothing there was
+       combined into the % or needed to move. See
+       SYSTEM_ARCHITECTURE.md's "Implementation status — Priority 0 #3"
+       and PIVOT_CHECKLIST.md §3 for the full writeup. -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8 dash-heading--secondary">Overall Progress</h2>
@@ -212,10 +257,10 @@
            below is just a loading-state placeholder. -->
       <div class="card progress-card progress-card--secondary mb-8">
         <div class="progress-card__head">
-          <span class="badge badge--basic">Your ASL Path</span>
+          <span class="badge badge--basic" data-overall-metric-label>Practice Progress</span>
           <span class="progress-card__pct" data-overall-pct>–</span>
         </div>
-        <p class="progress-card__label">All units combined</p>
+        <p class="progress-card__label">Signs practiced across all units — not a mastery score</p>
         <div class="progress-bar mt-4">
           <div class="progress-bar__fill" data-overall-progress="0"></div>
         </div>
@@ -223,10 +268,15 @@
         <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
       </div>
 
-      <!-- One row per unit — entirely data-driven from
-           window.LWData.getUnits(), rendered by js/dashboard.js. Each
-           row links into pages/learn.html at that unit. Already a
-           compact summary (Phase 4) — untouched by Priority 0 #2. -->
+      <!--
+        DASHBOARD UX REVIEW — PRIORITY 1 (2026-08-21)
+        Each row is still a compact summary, not a second trail. Graded units
+        now show practiced/total signs, a compact practice bar, and
+        assessment-passed/total separately. The current unit gets a visible
+        "You are here" marker. Locked units stay subdued. Unit 7 is explicitly
+        reference/read-only; Unit 0 and Unit 2 retain descriptive non-graded
+        states because Rev 4 excludes them from the grading chain.
+      -->
       <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>
@@ -254,9 +304,19 @@
           <span class="account-details__email" data-user-email>—</span>
         </div>
         <div class="account-meta">
+          <!--
+            PRIORITY 1 §8 (2026-08-21): was "Current Level" / [data-user-level]
+            (filled by js/main.js's initUserDetails() as capitalize(user.level),
+            which is a fixed 'basic' constant for every account since Phase 5 —
+            see js/auth.js's register()). Rev 4 has no user-selectable levels,
+            so that field was product-obsolete. Renamed to "Current Unit" /
+            [data-user-unit], now filled by js/dashboard.js's renderCurrentUnit()
+            from the SAME destination object the hero card above uses. See
+            PIVOT_CHECKLIST.md §8 / SYSTEM_ARCHITECTURE.md's "Current Level field".
+          -->
           <div class="account-meta__item">
-            <span class="account-meta__label">Current Level</span>
-            <span class="account-meta__value" data-user-level>Basic</span>
+            <span class="account-meta__label">Current Unit</span>
+            <span class="account-meta__value" data-user-unit>–</span>
           </div>
           <div class="account-meta__item">
             <span class="account-meta__label">Member Since</span>
@@ -271,12 +331,76 @@
   <!--
     Flowchart node: "Show previous signs (recap)"
     Populated by js/dashboard.js from window.LWProgress.getAllLearnedSigns().
-  -->
+
+    PRIORITY 1 §7 (2026-08-21, this session) — PIVOT_CHECKLIST.md's
+    "Improve 'Signs You've Learned'". Per that item's own terminology
+    guidance (use "Practiced"/"Review", avoid "Mastered" unless an
+    explicit mastery rule exists), three things were added, all
+    data-driven by js/dashboard.js's renderRecap() — nothing below is
+    hardcoded except loading-state placeholders:
+      1. [data-recap-count] — "N signs practiced" next to the heading.
+      2. The subtitle under the heading — frames the grid as recently
+         practiced, not a mastery/completion list (mirrors the exact
+         phrasing pattern already used on the Overall Progress card's
+         "not a mastery score" label).
+      3. [data-recap-foot] / [data-recap-toggle] — a "View all N" /
+         "Show fewer" toggle, shown only once there are more practiced
+         signs than the grid's default 24-chip cap. Expands the SAME
+         chip grid in place (renderRecap() re-renders on click) —
+         deliberately not a link to a new page or lesson list, per the
+         checklist's own "do not turn this section into another lesson
+         browser" instruction.
+    The h2 text itself ("Signs You've Learned") was deliberately left
+    unchanged — every other doc/session log in this repo refers to the
+    section by that exact name, and the checklist item never asked for
+    a rename, only for the *framing* around it to stop implying
+    mastery. -->
   <section class="section section--sm">
     <div class="container">
-      <h2 class="mb-8">Signs You've Learned</h2>
+      <div class="recap-head">
+        <h2>Signs You've Learned</h2>
+        <span class="recap-head__count" data-recap-count></span>
+      </div>
+      <p class="text-muted recap-head__subtitle">Recently practiced signs — not a mastery list.</p>
       <div class="recap-grid" id="recap-grid">
         <p class="text-muted" id="recap-empty">Nothing practiced yet — open a lesson to get started!</p>
+      </div>
+      <div class="recap-foot" data-recap-foot style="display:none;">
+        <button type="button" class="btn btn--ghost btn--sm" data-recap-toggle>View all</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── REVIEW ENTRY POINT ────────────────────────────────────────
+       PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 1
+       item #6 ("Add a review/repetition entry point," 2026-08-21 code
+       session). Per that item and SYSTEM_ARCHITECTURE.md's Dashboard
+       UX Review Addendum → "Review entry point": deliberately NOT a
+       spaced-repetition trainer. No new algorithm was written and
+       js/engine/progress.js was not modified — see js/dashboard.js's
+       renderReviewEntry() header comment.
+
+       The MVP action reuses the existing lesson/camera-practice
+       infrastructure: it reopens the learner's most recently
+       practiced sign. There is no dedicated Review/Trainer page yet
+       ("MVP can be a simple link/button to a review/trainer route
+       once available" — PIVOT_CHECKLIST.md §6), so [data-review-link]
+       points at lesson.html today. When that dedicated route exists,
+       swap the href source in renderReviewEntry() only — this
+       section's markup and the [data-review-actions] hook are meant
+       to stay stable across that change.
+
+       [data-review-actions] is filled entirely by JS. The empty state
+       (nothing practiced yet) is also rendered by JS, not hardcoded
+       here, so it can never contradict the recap grid above it. -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8">Review recent signs</h2>
+      <div class="card review-card">
+        <p class="review-card__body">Refresh the signs you already learned so they stick.</p>
+        <div class="review-card__actions" data-review-actions>
+          <span class="btn btn--ghost" aria-disabled="true">Loading…</span>
+        </div>
       </div>
     </div>
   </section>

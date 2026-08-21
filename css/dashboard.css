@@ -200,40 +200,44 @@
   border: 1px solid var(--clr-border);
 }
 
-/* ── Unit progress list (Phase 4) ─────────────────────────────────
-   Replaces the old three basic/medium/intermediate progress-card grid
-   — one compact row per window.LWData.getUnits() entry, rendered by
-   js/dashboard.js. Deliberately NOT full progress-cards (no bar/CTA
-   each — that's the aggregate card above); just a scannable status
-   list so the whole trail fits on the dashboard without repeating
-   pages/learn.html's own card-based trail view. Already satisfied
-   Priority 0 #2's "keep the unit list as a compact summary, not the
-   main feature" item as-is — untouched by that pass. */
+/* ── Unit progress list — compact learning-path summary (Priority 1) ──
+   Still secondary to the Continue Learning card. This is a summary of the
+   existing flat trail, NOT a second trail/navigation surface. */
 .unit-progress-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 .unit-progress-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4);
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--clr-text);
-  transition: border-color var(--dur-fast) var(--ease);
 }
-a.unit-progress-row:hover { border-color: var(--clr-accent); text-decoration: none; }
-.unit-progress-row--locked  { opacity: .55; }
-.unit-progress-row--current { border-color: var(--clr-accent); }
-.unit-progress-row--done    { border-color: var(--clr-success); }
+a.unit-progress-row:hover {
+  border-color: var(--clr-accent);
+  background: var(--clr-surface-2);
+  text-decoration: none;
+}
+.unit-progress-row--locked { opacity: .52; }
+.unit-progress-row--current {
+  border-color: var(--clr-accent);
+  background: var(--clr-accent-soft);
+  box-shadow: 0 0 0 1px var(--clr-accent-soft);
+}
+.unit-progress-row--done {
+  border-color: var(--clr-success);
+  background: var(--clr-success-soft);
+}
 .unit-progress-row__icon {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,19 +246,126 @@ a.unit-progress-row:hover { border-color: var(--clr-accent); text-decoration: no
   font-size: var(--fs-lg);
 }
 .unit-progress-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  gap: var(--space-2);
+}
+.unit-progress-row__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 .unit-progress-row__title {
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--clr-text);
+}
+.unit-progress-row__current-badge,
+.unit-progress-row__reference-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.unit-progress-row__current-badge {
+  background: var(--clr-accent);
+  color: var(--clr-text-invert);
+}
+.unit-progress-row__reference-badge {
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
 }
 .unit-progress-row__status {
   font-size: var(--fs-xs);
   color: var(--clr-text-muted);
+}
+/* PRIORITY 1 §5 (this session) — "Next: {category} → {sign}" line,
+   shown only on the row carrying .unit-progress-row__current-badge.
+   Accent-colored (not muted) so the specific lesson/sign reads as the
+   answer to "what do I do next," not a secondary status caption. */
+.unit-progress-row__current-detail {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--clr-accent);
+}
+.unit-progress-row__progress {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.unit-progress-row__progress .progress-bar {
+  width: 100%;
+  height: 5px;
+}
+.unit-progress-row__metric,
+.unit-progress-row__assessment {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.unit-progress-row__assessment { align-self: flex-start; }
+.unit-progress-row--done .unit-progress-row__assessment { color: var(--clr-success); }
+.unit-progress-row--current .unit-progress-row__assessment {
+  color: var(--clr-text);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .unit-progress-row {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+  .unit-progress-row__progress {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .unit-progress-row__metric,
+  .unit-progress-row__assessment {
+    white-space: normal;
+  }
+}
+
+/* ── RESTORED (this session) ──────────────────────────────────────
+   The §4 Priority 1 patch deleted everything below this point (recap
+   grid + account card) while rewriting the unit-progress-row block
+   above — with no replacement rule for either selector family. Since
+   pages/dashboard.html's #recap-grid and .account-card markup was
+   never touched, both sections rendered completely unstyled (raw
+   divs/spans) on any real page load. Restored unchanged from before
+   that session — see this session's AI_MEMORY.md entry. */
+
+/* ── Recap header (Priority 1 §7, 2026-08-21 code session) ─────────
+   "N signs practiced" count next to the heading + a "recently
+   practiced, not mastery" subtitle. Mirrors the existing
+   .progress-card__head / .progress-card__label pattern above
+   (flex head row + muted label line beneath) for visual consistency
+   with the Overall Progress card rather than inventing a new layout
+   idiom just for this section. */
+.recap-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.recap-head h2 { margin-bottom: 0; }
+.recap-head__count {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.recap-head__subtitle {
+  font-size: var(--fs-sm);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-4);
 }
 
 /* Recap grid — chips, not squares */
@@ -315,6 +426,48 @@ a.unit-progress-row:hover { border-color: var(--clr-accent); text-decoration: no
   border: 1px dashed var(--clr-border);
   border-radius: var(--radius-pill);
   color: var(--clr-text-muted);
+}
+
+/* "View all" toggle (Priority 1 §7). Reuses .btn/.btn--ghost/.btn--sm
+   as-is — no new button styling needed, just spacing above it. Hidden
+   by default in the HTML; js/dashboard.js's renderRecap() only shows
+   it once there are more than RECAP_COLLAPSED_LIMIT practiced signs. */
+.recap-foot {
+  margin-top: var(--space-4);
+}
+
+/* ── REVIEW entry point (Priority 1 §6, 2026-08-21 code session) ───
+   Deliberately a single lightweight card, not a second recap grid or
+   a new trainer UI — see js/dashboard.js's renderReviewEntry() for
+   why. [data-review-actions] content (the link, or the disabled-style
+   placeholder) is filled entirely by JS. */
+.review-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.review-card__body {
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  max-width: 48ch;
+}
+.review-card__actions {
+  flex-shrink: 0;
+}
+/* Same "no href, no fake button" empty state unitRowHtml() uses for
+   locked units, rendered here as a non-interactive <span> instead of
+   a <button disabled> so it never gets tab-focus while doing nothing. */
+.review-card__actions [aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 640px) {
+  .review-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ── YOUR ACCOUNT (user details card) ───────────────────────────── */
