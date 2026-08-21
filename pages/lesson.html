@@ -15,8 +15,9 @@
     ─────────────────────────────────────────────────────────────────
     PURPOSE  : Shows the learning content for one ASL sign AND provides
                a live camera panel for real-time gesture practice.
-               After reviewing the sign, the user clicks "Start Assessment"
-               to enter scored assessment mode.
+               After reviewing the sign, the user can click "Practice
+               Check (optional)" for live camera feedback — this is
+               ungraded; the real scored assessment is quiz.html.
 
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
@@ -97,8 +98,21 @@
   <div class="mode-bar mode-bar--practice" id="mode-bar">📖 Practice Mode</div>
 
   <!-- ── MAIN LESSON + CAMERA LAYOUT ──────────────────────────── -->
+  <!-- NEW — "course player" merge (this session): lesson.html is now
+       the single merged page a learner stays on for the whole
+       teach->practice loop instead of bouncing back to learn.html
+       between signs. #course-sidebar is populated by
+       js/lesson.js's renderCourseSidebar() — see css/lesson.css's
+       matching comment block for the full reasoning. The old
+       "← Back to lessons" link in the strip above still works
+       unchanged (kept as a fast escape hatch back to the trail/unit
+       picker view, which still exists on learn.html for choosing
+       WHERE to start — this page is for moving through what's already
+       unlocked). -->
   <section class="section section--sm">
     <div class="container container--wide">
+      <div class="course-layout">
+        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline"></aside>
       <div class="lesson-layout">
 
         <!-- ══════════════════════════════════════════════════════
@@ -161,6 +175,44 @@
               </video>
             </div>
           </div>
+
+          <!--
+            ══════════════════════════════════════════════════════════
+            QUICK CHECK — REV 4 PIVOT PHASE 6
+            ══════════════════════════════════════════════════════════
+            PURPOSE: a lightweight, non-blocking recall question shown
+            after a small cluster of signs (see shouldShowQuickCheck()
+            in lesson.js), per SYSTEM_ARCHITECTURE.md Rev 4 §Assessment
+            format changes ("tighten the teach→quiz loop... instead of
+            the current '10 signs then one big quiz' pattern").
+
+            "Reusing the existing Practice Check UI" (PIVOT_CHECKLIST.md
+            Phase 6, item 1) is interpreted here as reusing that panel's
+            INTERACTION PATTERN — an optional, skippable prompt card
+            that gives immediate feedback and never blocks Prev/Next —
+            not the camera mechanism itself, since a plain recall
+            question doesn't need a webcam and needs to work even if
+            the camera failed to load. See AI_MEMORY.md's Phase 6
+            session log for why this interpretation was chosen over a
+            literal reuse of #assessment-prompt-box.
+
+            Hidden by default; shown/populated by lesson.js's
+            showQuickCheck() only on a checkpoint sign. Purely
+            formative — no LWProgress write, no effect on the graded
+            category assessment in quiz.js.
+          -->
+          <div class="quick-check card mt-8" id="quick-check-card" style="display:none;">
+            <div class="quick-check__head">
+              <span class="section__eyebrow" style="margin-bottom:0;">⚡ Quick Check</span>
+              <button class="detection-log__clear" id="btn-quick-check-skip" type="button">Skip</button>
+            </div>
+            <p class="quick-check__prompt" id="quick-check-prompt" style="white-space: pre-line;"></p>
+            <div class="quick-check__options" id="quick-check-options"></div>
+            <div class="assessment-feedback mt-3" id="quick-check-feedback" style="display:none;"></div>
+            <p class="text-muted mt-3" style="font-size: var(--fs-xs);">
+              Just for practice — this doesn't affect your score. Your graded check happens in the category assessment.
+            </p>
+          </div><!-- /quick-check-card -->
 
           <!-- PREV / NEXT navigation -->
           <div class="lesson-nav mt-8">
@@ -317,7 +369,7 @@
             <!-- Start button — triggers get-ready, then (for motion
                  signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
-              🎥 Start Assessment
+              🎥 Practice Check (optional)
             </button>
 
             <!-- Assessment prompt (shown during assessment only) -->
@@ -340,7 +392,7 @@
             <p class="camera-tips__title">📸 Camera Tips</p>
             <ul class="camera-tips__list">
               <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
-              <li>Motion signs: click "Start Assessment" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
+              <li>Motion signs: click "Practice Check" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
               <li>Make sure your hand is well-lit and fully visible</li>
               <li>Keep your hand centred in the frame</li>
             </ul>
@@ -349,6 +401,7 @@
         </div><!-- /camera-panel -->
 
       </div><!-- /lesson-layout -->
+      </div><!-- /course-layout -->
     </div>
   </section>
 

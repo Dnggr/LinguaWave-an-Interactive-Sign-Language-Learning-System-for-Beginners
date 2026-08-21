@@ -11,21 +11,37 @@
     })();
   </script>
   <!--
-    pages/learn.html — Level & Lesson Selector
+    pages/learn.html — Trail / Lesson Selector
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Shows all lessons within a given level as a grid of
-               cards.  Completed lessons show a green ✔, locked ones
-               show a 🔒.  Clicking an unlocked card opens lesson.html.
+    PURPOSE  : REV 4 — PHASE 4 (this revision): shows the single
+               continuous "Basic ASL" trail — one node per
+               window.LWData.getUnits() entry, locked/current/done —
+               instead of the old three-tab (basic/medium/intermediate)
+               level switcher + per-level card grid. Clicking an
+               unlocked node opens that unit's screen (an info screen,
+               a "pick a category" list, or straight into the category
+               grid/picker), which then link into lesson.html on a
+               specific sign. See js/learn.js's own header comment for
+               the full breakdown of every view this page can show.
 
-    CONNECTS : ← dashboard.html  (via level card "View Lessons" link)
-               → pages/lesson.html  (on lesson card click)
+    CONNECTS : ← dashboard.html      (via "Continue Learning" + unit rows)
+               ← pages/intro-to-asl.html (Unit 0's screen links back out here)
+               → pages/lesson.html   (on a sign card click)
+               → pages/quiz.html     (via a category's assessment CTA)
 
-    URL PARAM: ?level=basic | medium | intermediate
-               JS reads this to filter visible lessons.
+    URL PARAMS: this page's OWN navigation uses ?unit=<unitId> and
+               ?category=<categoryId> (see js/learn.js's file header
+               for the full scheme). The OLD
+               ?level=basic|medium|intermediate[&category=Y] shape is
+               STILL accepted on load for backward compatibility —
+               js/lesson.js and js/quiz.js (both out of scope this
+               phase) still build links in that shape and were not
+               changed to match.
 
     TODO     : Fetch real lesson metadata (title, locked state, image)
-               from Firestore collection "lessons" filtered by level.
-               Replace static lesson card list below with dynamic render.
+               from Firestore collection "lessons".  Replace static
+               SIGNS/CATEGORIES data with a dynamic render — UNCHANGED
+               TODO carried over from before this revision.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -64,39 +80,45 @@
     </div>
   </nav>
 
-  <!-- ── LEVEL TABS ────────────────────────────────────────────── -->
+  <!-- ── TRAIL HEADER ──────────────────────────────────────────── -->
+  <!-- REV 4 PHASE 4: the old three-button "level-tabs" switcher lived
+       here (basic/medium/intermediate — see git history / AI_MEMORY.md
+       if you need the old markup back). It's gone: js/learn.js now
+       renders one continuous trail below instead of separate
+       per-level screens, so there's nothing left to switch between at
+       this level.
+
+       #learn-context and #learn-back-link are NEW — js/learn.js
+       shows/updates them per view: both stay hidden on the trail
+       root, and once you're inside a unit or category, #learn-context
+       becomes a small breadcrumb (e.g. the unit/category title) and
+       #learn-back-link becomes a real, context-aware "back" link
+       (back to the trail, or back to the unit's category list if you
+       drilled in from one — see js/learn.js's setBack() for exactly
+       which). This replaces the old in-grid "← Back to Categories"
+       card that renderWordPicker() used to render as its own tile —
+       one consistent back affordance for every screen instead of a
+       different one depending which screen you're on. -->
   <section class="section section--sm">
     <div class="container">
       <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
-      <h1 class="mt-4">Select a Lesson</h1>
+      <h1 class="mt-4">Your ASL Learning Path</h1>
       <p class="mt-2 text-muted">
-        Choose your level below, then pick a category to start.
+        One path from the alphabet to full phrases — work through it in order, or jump into anything you've already unlocked.
       </p>
-
-      <!-- Level tab switcher — all three levels are unlocked; only a
-           future "advanced" tier would stay gated. js/learn.js reads
-           ?level= and re-renders the grid below on tab click. -->
-      <div class="level-tabs mt-8">
-        <button class="level-tab level-tab--active" data-level="basic">
-          <span class="badge badge--basic">Basic</span> Letters
-        </button>
-        <button class="level-tab" data-level="medium">
-          <span class="badge badge--medium">Medium</span> Words
-        </button>
-        <button class="level-tab" data-level="intermediate">
-          <span class="badge badge--intermediate">Intermediate</span> Phrases
-        </button>
-      </div>
+      <p class="mt-2 text-muted" id="learn-context" style="display:none;"></p>
+      <a href="#" class="back-link mt-2" id="learn-back-link" style="display:none;">← Back to Trail</a>
     </div>
   </section>
 
-  <!-- ── CATEGORY / LESSON GRID ────────────────────────────────── -->
-  <!-- js/learn.js renders this from window.LWData.CATEGORIES + SIGNS
-       for whichever level tab is active. Basic renders the 26-letter
-       alphabet grid directly (unchanged behaviour); Medium and
-       Intermediate render one card per category — functional
-       categories (comingSoon: false) link into the camera lesson,
-       everything else shows a "Coming Soon" preview of its words. -->
+  <!-- ── TRAIL / UNIT / CATEGORY GRID ──────────────────────────── -->
+  <!-- js/learn.js renders EVERY view (trail, Unit 0 info, a unit's
+       category list, a category's grid/picker) into this same
+       container, toggling the `trail` / `lesson-grid--categories`
+       modifier classes per view. See js/learn.js's file header for
+       the full state breakdown — this container used to only ever
+       hold one level's worth of lesson/category cards; now it holds
+       whatever the current trail position is. -->
   <section class="section section--sm">
     <div class="container">
       <div class="lesson-grid" id="lesson-grid"></div>

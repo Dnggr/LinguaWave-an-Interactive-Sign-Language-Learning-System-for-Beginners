@@ -196,6 +196,103 @@ export const SIGN_DICTIONARY = {
     tiebreakers: { },
   },
 
+   // ══════════════════════════════════════════════════════════
+  // BASIC LEVEL — NUMBERS (0–9, plus 10)
+  // ══════════════════════════════════════════════════════════
+  // Held handshapes 0–5, 7, 8 have no motion, so they're left to
+  // default to 'static' via getDetectionType(). '6', '9', and '10'
+  // are the exception — see AI_MEMORY.md Session Log, 2026-08-17
+  // "Number/letter handshape collisions": '6' and '9' are statically
+  // identical to the letters W and F respectively (per ASLU/Dr. Bill
+  // Vicars), disambiguated in real ASL by a small tap that a single
+  // static frame can't capture — they need the motion model, not the
+  // static one. '10' was never a static entry to begin with — it's a
+  // twisting "thumbs up" shake, never a held pose.
+  // PHASE 7 (2026-08-20): explicitly setting detectionType on all
+  // three below closes the "still open" item from that Session Log
+  // entry. This was a live routing bug — capture.html already treated
+  // '6'/'9' as motion signs, but the live app kept sending them
+  // through the static model because this file was never updated to
+  // match.
+  //
+  // '0'..'5', '7', '8' run through the SAME asl_static_model as the
+  // alphabet. rawLabel from that model must come back as the exact
+  // strings '0'..'9' below for classifyGesture() to find a match —
+  // see AI_MEMORY.md → "Numbers category" for the retraining
+  // checklist (labels.json, model.json, weights .bin all need to be
+  // the newly retrained versions with these classes included).
+  // '6', '9', '10' need the equivalent retrain on asl_motion_model
+  // instead — asl_motion_model/labels.json has ZERO digit classes
+  // today, so all three are now correctly routed but still not
+  // detectable in production until real capture data exists for them
+  // (see PIVOT_CHECKLIST.md Phase 7 — still open, needs a camera).
+
+  '0': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Closed circle — fingertips and thumb touch, same handshape as letter O',
+    category: 'numbers', imageFile: '0.png', tbWeight: 0.50,
+    tiebreakers: { },
+  },
+  '1': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Index finger extended up, thumb resting across curled fingers (no circle, unlike D)',
+    category: 'numbers', imageFile: '1.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '2': {
+    fingerStates: [0, 1, 1, 0, 0],
+    description:  'Index and middle fingers extended up together, not spread (unlike V)',
+    category: 'numbers', imageFile: '2.png', tbWeight: 0.45,
+    tiebreakers: { },
+  },
+  '3': {
+    fingerStates: [1, 1, 1, 0, 0],
+    description:  'Thumb, index, and middle fingers extended; ring and pinky curled',
+    category: 'numbers', imageFile: '3.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '4': {
+    fingerStates: [0, 1, 1, 1, 1],
+    description:  'Four fingers extended up and spread, thumb folded across palm',
+    category: 'numbers', imageFile: '4.png', tbWeight: 0.28,
+    tiebreakers: { },
+  },
+  '5': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'All five fingers extended and spread, open hand',
+    category: 'numbers', imageFile: '5.png', tbWeight: 0.28,
+    tiebreakers: { },
+  },
+  '6': {
+    fingerStates: [1, 1, 1, 1, 0],
+    description:  'Thumb touches pinky tip; index, middle, ring extended up. Tap-disambiguated from the letter W in real ASL — routed to the motion model, not the static one (see block comment above).',
+    category: 'numbers', imageFile: '6.png', tbWeight: 0.30,
+    tiebreakers: { }, detectionType: 'motion',
+  },
+  '7': {
+    fingerStates: [1, 1, 1, 0, 1],
+    description:  'Thumb touches ring finger tip; index, middle, pinky extended up',
+    category: 'numbers', imageFile: '7.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '8': {
+    fingerStates: [1, 1, 0, 1, 1],
+    description:  'Thumb touches middle finger tip; index, ring, pinky extended up',
+    category: 'numbers', imageFile: '8.png', tbWeight: 0.30,
+    tiebreakers: { },
+  },
+  '9': {
+    fingerStates: [1, 0, 1, 1, 1],
+    description:  'Thumb touches index finger tip forming a small circle; middle, ring, pinky extended up. Tap-disambiguated from the letter F in real ASL — routed to the motion model, not the static one (see block comment above).',
+    category: 'numbers', imageFile: '9.png', tbWeight: 0.30,
+    tiebreakers: { }, detectionType: 'motion',
+  },
+  '10': {
+    fingerStates: [1, 0, 0, 0, 0],
+    description:  'Closed fist, thumb extended up, twisted side-to-side at the wrist — a genuine motion sign, never a held pose.',
+    category: 'numbers', imageFile: '10.png', detectionType: 'motion',
+  },
+
   // ══════════════════════════════════════════════════════════
   // MEDIUM LEVEL — WORDS (motion signs — need motion model)
   // ══════════════════════════════════════════════════════════
@@ -288,15 +385,17 @@ export const SIGN_DICTIONARY = {
     description:  'Two flat hands touch, then twist and pull apart',
     category: 'family', imageFile: 'divorced.gif', detectionType: 'motion',
   },
+  'SCHOOL': {
+    fingerStates: [0, 1, 1, 1, 1],
+    description:  'Flat hand claps down twice onto the palm of the other flat hand',
+    category: 'places', imageFile: 'school.gif', detectionType: 'motion',
+  },
 
   // ══════════════════════════════════════════════════════════
   // PLACES — added once merged_motion.json (2026-08-01 batch)
   // finished training. 8 of data.js's 9 "places" SIGNS entries are
   // wired here; the other 4 signId issues found during that wire-up:
   //
-  //   • SCHOOL   — SKIPPED on purpose (no trained data yet, per
-  //     explicit instruction — data.js's entry is untouched, still
-  //     undetectable until it's actually recorded).
   //   • COME/GO  — SKIPPED — data.js has a lesson entry for this, but
   //     NEITHER "COME" nor "GO" nor "COME/GO" is in the trained model's
   //     label set at all. Same "browsable but undetectable" gap as
@@ -362,10 +461,75 @@ export const SIGN_DICTIONARY = {
     description:  'Bunched fingers pull up and out of the base hand, opening as they exit',
     category: 'places', imageFile: 'out.gif', detectionType: 'motion',
   },
+  // ══════════════════════════════════════════════════════════
+  // MEDIUM LEVEL — WORDS — TIME (motion signs)
+  // NEW — asl_motion_model/labels.json now trains DAY, NIGHT, WEEK,
+  // MONTH, YEAR, TODAY, and FINISH. data.js's "time" SIGNS entries
+  // already had detectionType: 'motion' set, but with no matching
+  // entry here, getDetectionType() was defaulting them all to
+  // 'static' — routing them through the wrong model entirely. Wiring
+  // them here is what actually switches them to asl_motion_model.
+  //
+  // WILL, BEFORE, NOW are also 'time' signIds in data.js but are NOT
+  // in labels.json yet — same "browsable but undetectable" gap as
+  // COME/GO in the PLACES block. Left unwired on purpose.
+  // ══════════════════════════════════════════════════════════
+
+  'DAY': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Index finger up, elbow rests on the other arm, sweeps down like the sun crossing the sky',
+    category: 'time', imageFile: 'day.gif', detectionType: 'motion',
+  },
+  'NIGHT': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Bent hand (fingers pointing down) settles wrist-first onto the back of the other hand, like the sun dipping down',
+    category: 'time', imageFile: 'night.gif', detectionType: 'motion',
+  },
+  'WEEK': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  '"1" hand slides across the upturned palm of the base hand and off the fingertips',
+    category: 'time', imageFile: 'week.gif', detectionType: 'motion',
+  },
+  'MONTH': {
+    fingerStates: [0, 1, 0, 0, 0],
+    description:  'Dominant "1" finger traces down the length of the vertical non-dominant "1" finger',
+    category: 'time', imageFile: 'month.gif', detectionType: 'motion',
+  },
+  'YEAR': {
+    fingerStates: [0, 0, 0, 0, 0],
+    description:  'Two "S" fists — dominant fist circles all the way around the stationary one and lands back on top',
+    category: 'time', imageFile: 'year.gif', detectionType: 'motion',
+  },
+  'TODAY': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Both hands, palms up, drop down twice in place — the repeated version of NOW',
+    category: 'time', imageFile: 'today.gif', detectionType: 'motion',
+  },
+  'FINISH': {
+    fingerStates: [1, 1, 1, 1, 1],
+    description:  'Both open "5" hands near the shoulders twist quickly from palms-in to palms-out',
+    category: 'time', imageFile: 'finish.gif', detectionType: 'motion',
+  },
 
 
-  'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion' },
-  'THANK YOU':{ fingerStates:[1,1,1,1,1], category:'word', imageFile:'thank-you.gif',detectionType:'motion' },
+  // FIX (this session, PIVOT_CHECKLIST.md Phase 7 flagged item):
+  // both confirmed absent from asl_motion_model/labels.json — neither
+  // was previously marked disabled, so the classifier ran a doomed
+  // match on every attempt. Now consistent with the 16 Essential
+  // Words below (same pattern: real entry, disabled until retrained).
+  'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion', disabled:true },
+  'THANK YOU':{ fingerStates:[1,1,1,1,1], category:'word', imageFile:'thank-you.gif',detectionType:'motion', disabled:true },
+
+  // FIX (this session, PIVOT_CHECKLIST.md Phase 7 flagged item):
+  // HOT/COLD (Unit 5, temperature) previously had NO SIGN_DICTIONARY
+  // entry at all — worse than the Essential Words above, since
+  // getDetectionType()'s `?? 'static'` fallback meant a camera
+  // attempt silently ran the wrong (static-alphabet) classifier
+  // instead of cleanly no-matching. Added as disabled placeholders,
+  // same shape as the Essential Words, so both fail the same clean
+  // way until real capture + retraining happens.
+  'HOT':  { fingerStates:[1,1,1,1,1], category:'temperature', imageFile:'hot.gif',  detectionType:'motion', disabled:true },
+  'COLD': { fingerStates:[1,1,1,1,1], category:'temperature', imageFile:'cold.gif', detectionType:'motion', disabled:true },
   'YES':      { fingerStates:[0,0,0,0,0], category:'word', imageFile:'yes.gif',      detectionType:'motion', disabled:true },
   'NO':       { fingerStates:[0,1,1,0,0], category:'word', imageFile:'no.gif',       detectionType:'motion', disabled:true },
   'PLEASE':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'please.gif',   detectionType:'motion', disabled:true },
