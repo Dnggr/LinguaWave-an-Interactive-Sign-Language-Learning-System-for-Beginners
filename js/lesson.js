@@ -641,10 +641,262 @@ let lastHandSeenAt = Date.now();
 let lastHandCount  = 0;
 
 // ── Page boot ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// COURSE SIDEBAR — "course player" merge (NEW, this session)
+// ══════════════════════════════════════════════════════════════════
+// Persistent left-hand course outline (all UNITS, collapsible, with
+// per-unit progress) rendered directly into this page's
+// #course-sidebar, so lesson.html + the old learn.html trail read as
+// one continuous screen instead of a click-through hop between two
+// pages. This was an explicit product decision made this session (the
+// user chose "full merge" over two lighter options — restyle-only or
+// leave learn.html as its own page) — flagging it the same way
+// earlier pivot phases flag their own product calls, since it goes
+// beyond what SYSTEM_ARCHITECTURE.md Rev 4 §Assessment/Progress
+// originally specified for this page. See AI_MEMORY.md's session log
+// entry for the full reasoning and what was deliberately left as-is
+// (learn.html itself is UNCHANGED — it's still the entry point for
+// picking a unit from the dashboard/Continue Learning button; this
+// sidebar is for moving through what's already unlocked once you're
+// inside a lesson).
+//
+// Every row is a plain <a href="lesson.html?..."> — full page
+// navigation, exactly like the existing Prev/Next buttons and the
+// old "Back to lessons" link. No SPA state, no change to the camera
+// lifecycle below: shutdown() already runs on `beforeunload`
+// regardless of which link the learner clicks, so this needed zero
+// new cleanup wiring.
+//
+// Read-only: never calls any window.LWProgress record*() function.
+// Locked/current/done here is computed with the exact same
+// window.LWData / window.LWProgress calls js/learn.js's trail and
+// js/dashboard.js's unit rows already use (getUnits, getCategoriesForUnit,
+// isCategoryUnlocked, getCategoryProgress, getCategorySigns) — copied
+// call-for-call rather than re-derived, specifically so this can't
+// silently disagree with either of those screens about what's locked.
+//
+// One deliberate difference from dashboard.js's per-unit percentage:
+// dashboard.js's unit rows show "X/Y categories passed" (assessment-
+// gated). This sidebar instead shows practiced-signs / total-signs
+// within the unit (same finer-grained formula renderOverallProgress()
+// uses for the single dashboard-wide percentage) — a smoother number
+// that updates sign-by-sign instead of jumping only when a whole
+// category's assessment is passed. Flagging this as its own metric,
+// not a copy of dashboard's unit-row percentage, in case a literal
+// match to that number is wanted instead.
+
+const UNIT_ICONS = {
+  welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
+  everyday_essentials: '🙏', common_things_people: '🗂️',
+  basic_phrases: '💬', phrasebook: '📖',
+};
+// Copied verbatim from js/learn.js's own CATEGORY_ICONS (small,
+// header-comment-documented duplication there already — same call
+// here for the same reason: two tiny copies were judged simpler and
+// lower-risk than a shared module just for an icon lookup).
+const CATEGORY_ICONS = {
+  alphabet: '🔤', numbers: '🔢',
+  family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
+  clothes: '👕', health: '🩹', feelings: '😊', requests: '🙏', amounts: '📏',
+  colors: '🎨', money: '💵', animals: '🐾', sequence_demo: '💬',
+  greetings_intro: '👋', basic_responses: '💬', family_phrases: '👨‍👩‍👧',
+  daily_needs: '🥤', asking_questions: '❓', polite_expressions: '🙌',
+  affection_feelings: '❤️', describing_things: '🖍️', self_introduction: '🧑',
+  daily_activities: '📅', family_conversations: '🗣️', talking_about_feelings: '💭',
+  asking_for_help: '🆘', school_conversations: '🏫', shopping_ordering: '🛍️',
+  social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
+};
+
+// Which unit (by `order`) this page is currently inside, so the
+// sidebar can auto-expand it. Mirrors updateLessonMeta()'s own
+// categoryMeta lookup below (isNameDrill -> Unit 2's fixed order,
+// else the current sign's own CATEGORIES.unit field).
+function currentUnitOrder() {
+  if (isNameDrill) return 2;
+  return window.LWData?.getCategory?.(level, category)?.unit ?? null;
+}
+
+function sidebarSignRow(cat, signId, progress) {
+  const signData = window.LWData?.getSign?.(cat.level, signId);
+  const label = signData?.title ?? signId;
+  const done = !!progress.signs[signId];
+  const isCurrent = !isNameDrill && cat.id === category && signId === sign;
+  const href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}`;
+  const stateClass = isCurrent ? ' course-sidebar__sign--current' : (done ? ' course-sidebar__sign--done' : '');
+  const icon = isCurrent ? '▶' : (done ? '✔' : '○');
+  return `<a class="course-sidebar__sign${stateClass}" href="${href}">` +
+    `<span class="course-sidebar__sign-icon">${icon}</span>` +
+    `<span class="course-sidebar__sign-label">${escapeHtml(label)}</span>` +
+  `</a>`;
+}
+
+// One category's slice of the sidebar. `opts.multiCategory` is true
+// for units with more than one live category (today: Common Things &
+// People, Phrasebook) — those get their own collapsible sub-row,
+// expanded only when it's the category the learner is actually inside
+// (clicking any OTHER category jumps straight to its first
+// not-yet-done sign, same "continue where you left off" target
+// dashboard.js's renderContinueButton() already computes). Units with
+// exactly one live category (the common case) skip the category row
+// entirely and list its signs directly — matches js/learn.js's own
+// "units with exactly one category skip the picker screen" rule.
+function sidebarCategoryBlock(cat, opts) {
+  const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+  if (signs.length === 0) return '';
+  const progress = window.LWProgress?.getCategoryProgress?.(cat.level, cat.id) ?? { signs: {}, assessment: null };
+
+  if (!opts.multiCategory) {
+    return signs.map(s => sidebarSignRow(cat, s, progress)).join('');
+  }
+
+  const doneCount = signs.filter(s => !!progress.signs[s]).length;
+  const isCurrentCat = !isNameDrill && cat.id === category;
+  const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
+  const targetSign = signs.find(s => !progress.signs[s]) || signs[0];
+  const catHref = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(targetSign)}`;
+  const rows = isCurrentCat ? signs.map(s => sidebarSignRow(cat, s, progress)).join('') : '';
+
+  return `<div class="course-sidebar__cat${isCurrentCat ? ' course-sidebar__cat--open' : ''}">` +
+    `<a class="course-sidebar__cat-head" href="${catHref}">` +
+      `<span class="course-sidebar__cat-icon">${icon}</span>` +
+      `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
+      `<span class="course-sidebar__cat-count">${doneCount}/${signs.length}</span>` +
+    `</a>` +
+    (isCurrentCat ? `<div class="course-sidebar__signs">${rows}</div>` : '') +
+  `</div>`;
+}
+
+function renderCourseSidebar() {
+  const el = document.getElementById('course-sidebar');
+  if (!el || !window.LWData) return;
+  const units = window.LWData.getUnits();
+  const curUnitOrder = currentUnitOrder();
+
+  el.innerHTML = units.map(unit => {
+    const icon = UNIT_ICONS[unit.id] ?? '🔖';
+    const isCurrentUnit = unit.order === curUnitOrder;
+
+    // Unit 0 (info) and Unit 7 phrasebook browsing both still live on
+    // learn.html (their own screens, untouched this session) — the
+    // sidebar just links out to them rather than duplicating that UI.
+    if (unit.kind === 'info') {
+      return `<a class="course-sidebar__unit course-sidebar__unit--flat" href="learn.html?unit=welcome">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+      `</a>`;
+    }
+    if (unit.kind === 'interactive') {
+      const href = 'lesson.html?level=basic&category=fingerspell_name';
+      return `<a class="course-sidebar__unit course-sidebar__unit--flat${isCurrentUnit ? ' course-sidebar__unit--current' : ''}" href="${href}">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+      `</a>`;
+    }
+
+    // kind: 'category-group' or 'reference' (Phrasebook)
+    const allCats  = window.LWData.getCategoriesForUnit(unit.order);
+    const liveCats = allCats.filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+
+    if (liveCats.length === 0) {
+      return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
+        `<span class="course-sidebar__unit-icon">🔒</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">Soon</span>` +
+      `</div>`;
+    }
+
+    const isReference = unit.kind === 'reference';
+    const unlocked = isReference || (window.LWProgress?.isCategoryUnlocked?.(liveCats[0].level, liveCats[0].id) ?? true);
+    if (!unlocked) {
+      return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
+        `<span class="course-sidebar__unit-icon">🔒</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">0%</span>` +
+      `</div>`;
+    }
+
+    let totalSigns = 0, doneSigns = 0;
+    liveCats.forEach(c => {
+      const s = window.LWData.getCategorySigns(c.level, c.id);
+      const p = window.LWProgress?.getCategoryProgress?.(c.level, c.id) ?? { signs: {} };
+      totalSigns += s.length;
+      doneSigns  += s.filter(id => !!p.signs[id]).length;
+    });
+    const pct = totalSigns > 0 ? Math.round((doneSigns / totalSigns) * 100) : 0;
+    const open = isCurrentUnit; // only the unit the learner is inside starts expanded
+    const body = liveCats.map(c => sidebarCategoryBlock(c, { multiCategory: liveCats.length > 1 })).join('');
+
+    return `<div class="course-sidebar__unit${open ? ' course-sidebar__unit--open' : ''}${isCurrentUnit ? ' course-sidebar__unit--current' : ''}">` +
+      `<button type="button" class="course-sidebar__unit-head" data-toggle-unit="${unit.order}">` +
+        `<span class="course-sidebar__unit-icon">${icon}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+        `<span class="course-sidebar__unit-pct">${pct}%</span>` +
+        `<span class="course-sidebar__chevron" aria-hidden="true">${open ? '▾' : '▸'}</span>` +
+      `</button>` +
+      `<div class="course-sidebar__unit-bar"><div class="course-sidebar__unit-bar-fill" style="width:${pct}%"></div></div>` +
+      `<div class="course-sidebar__unit-body"${open ? '' : ' style="display:none;"'}>${body}</div>` +
+    `</div>`;
+  }).join('');
+
+  // Delegated per-unit collapse/expand — rebound every render since
+  // innerHTML above is rebuilt from scratch each time updateLessonMeta()
+  // runs (e.g. Prev/Next never actually reloads the WHOLE page's JS —
+  // wait, it does: navUrl() uses window.location, a real navigation —
+  // so in practice this only ever runs once per page load, same as
+  // everything else in boot(). Kept as a fresh query+bind rather than
+  // a cached reference purely for readability, not because it's
+  // called more than once today.
+  el.querySelectorAll('[data-toggle-unit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap    = btn.closest('.course-sidebar__unit');
+      const body    = wrap?.querySelector('.course-sidebar__unit-body');
+      const chevron = wrap?.querySelector('.course-sidebar__chevron');
+      if (!wrap || !body) return;
+      const nowOpen = wrap.classList.toggle('course-sidebar__unit--open');
+      body.style.display = nowOpen ? '' : 'none';
+      if (chevron) chevron.textContent = nowOpen ? '▾' : '▸';
+    });
+  });
+}
+
 // BUG 3 FIX (preserved): check readyState so we don't miss DOMContentLoaded
 // when lesson.js (type="module") loads after the event already fired.
 
 async function boot() {
+  // FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "Locked
+  // categories aren't blocked via direct URL" item, previously flagged
+  // as "never explicitly decided" rather than fixed). Decided: block
+  // it. Before this, `isCategoryUnlocked()` was only ever consulted by
+  // learn.js (sidebar lock icons, and its own renderCategoryView()
+  // deep-link guard) and by this page's own course-sidebar renderer
+  // (row-level lock icons) — never as a gate on THIS page's own boot,
+  // so typing e.g. `lesson.html?level=basic&category=numbers` before
+  // passing Unit 1 loaded the full lesson (content + live camera)
+  // anyway, with only the sidebar row showing a 🔒 no one necessarily
+  // scrolls to see.
+  //   Safe to call unconditionally, with no name-drill/reference
+  // special-casing needed: isCategoryUnlocked() (progress.js) returns
+  // `true` for any categoryId that isn't in the flat live-category
+  // chain at all (its own `idx <= 0` fallback) — that already covers
+  // 'fingerspell_name' (Unit 2, not a CATEGORIES entry), Phrasebook's
+  // reference categories, and any comingSoon id, exactly the same way
+  // learn.js's existing calls rely on it without special-casing them.
+  //   Still client-side-only (no backend to truly enforce this either
+  // way, same caveat the checklist item itself raised) — this closes
+  // the UI-level gap, not a security boundary.
+  if (!(window.LWProgress?.isCategoryUnlocked?.(level, category) ?? true)) {
+    window.LinguaWave?.showToast?.(
+      "That lesson isn't unlocked yet — finish the one before it first.",
+      'error'
+    );
+    // learn.html?category=X already re-checks the same lock (see its
+    // renderCategoryView()) and falls back to the trail itself if it's
+    // still locked by the time it loads — so this redirect can't ever
+    // land somewhere that silently re-opens the same locked content.
+    window.location.replace(`learn.html?category=${encodeURIComponent(category)}`);
+    return;
+  }
+
   // NEW — Rev4 Phase 2: totalSigns is always 1 for the name drill (see
   // computeSignOrder()), so the empty-category bail below never fires
   // for it — but a learner with no letters in their profile name (blank
@@ -842,6 +1094,16 @@ function updateLessonMeta() {
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+    // BUG FIX (2026-08-20, review session): lessonImgHintEl is only
+    // ever updated inside the `if (signData)` branch above, which this
+    // drill never enters (signData is deliberately null for it — see
+    // signDataForTitle). Without this, the placeholder box kept
+    // whatever hint pages/lesson.html's static markup last had
+    // ("Add image to assets/images/basic/A.png" — the Letter A
+    // default), which is meaningless for a multi-letter name drill.
+    if (lessonImgHintEl) {
+      lessonImgHintEl.textContent = 'No single reference image — this drill combines the letters from your own name.';
+    }
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) referenceEl.style.display = 'none';
   } else {
@@ -856,18 +1118,19 @@ function updateLessonMeta() {
   }
 
   // REV 3: this is now an optional, ungraded practice check — the
-  // real assessment lives in quiz.html (category / level).
-  // CHANGED: "Practice Check" renamed to "Assessment" — Start Recording
-  // used to be a separate button/action; now clicking this one button
-  // both starts the assessment flow AND (for motion signs) triggers the
-  // 3-2-1 countdown + recording automatically, see showNextPrompt().
-  // NOTE (found while doing Phase 2, not fixed — out of scope): this
-  // button's actual .textContent ('🎥 Start Assessment') doesn't match
-  // this file's own Rev 3 header comment, which says it was renamed to
-  // "🎥 Practice Check (optional)". That rename never actually landed
-  // here. Doesn't affect the name drill either way (see below), but
-  // flagging since it's a real, visible mismatch on every other lesson
-  // page — worth a 1-line fix in its own small session.
+  // real assessment lives in quiz.html (category / level). Start
+  // Recording used to be a separate button/action; now clicking this
+  // one button both starts the practice-check flow AND (for motion
+  // signs) triggers the 3-2-1 countdown + recording automatically,
+  // see showNextPrompt().
+  // FIXED (2026-08-20, review session): the button's .textContent
+  // ('🎥 Start Assessment') used to not match this file's own Rev 3
+  // header comment, which always said it was renamed to "🎥 Practice
+  // Check (optional)" — that rename never actually landed in the 4
+  // places the text is set (here, pages/lesson.html's default markup,
+  // and the two post-camera-round resets below). All 4 now say
+  // "🎥 Practice Check (optional)" — see AI_MEMORY.md Session Log for
+  // the full before/after and why this was flagged as safe to just fix.
   //
   // NEW — Rev4 Phase 2: hide this button entirely for the name drill
   // instead of wiring it to startAssessment(). handleAssessmentFrame()
@@ -882,7 +1145,7 @@ function updateLessonMeta() {
   if (isNameDrill) {
     if (startBtnEl) startBtnEl.style.display = 'none';
   } else {
-    if (startBtnEl) startBtnEl.textContent = '🎥 Start Assessment';
+    if (startBtnEl) startBtnEl.textContent = '🎥 Practice Check (optional)';
     // BUG 5 FIX: use .onclick assignment (idempotent) instead of
     // addEventListener, which stacks duplicate listeners if called twice.
     if (startBtnEl) startBtnEl.onclick = startAssessment;
@@ -904,6 +1167,14 @@ function updateLessonMeta() {
   // whichever sign just loaded. See showQuickCheck()/
   // shouldShowQuickCheck() above.
   showQuickCheck();
+
+  // NEW — course-player merge (this session): render the persistent
+  // sidebar. Placed here (not inside boot() directly) because
+  // updateLessonMeta() is the one function all three boot() paths
+  // already call — including the two early-return branches (empty
+  // name-drill, comingSoon category) — so the sidebar still renders
+  // even when the camera/content half of the page bails out early.
+  renderCourseSidebar();
 }
 
 function escapeHtml(str) {
@@ -1005,6 +1276,26 @@ async function bootDetectionEngine() {
     console.error('[lesson.js] Classifier failed to load — camera still running:', err);
     setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
+
+  // FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "camera
+  // panel shows two orange warning boxes on first load" item): the
+  // SAME staleness bug BUG 11 FIX already fixed for startAssessment()
+  // was never fixed here, at the OTHER place these two timestamps get
+  // read from a stale starting point. `lastFaceSeenAt`/`lastHandSeenAt`
+  // are stamped at module-load time (see their `let` declarations,
+  // module scope), which happens well BEFORE this function's own
+  // `await initMediaPipe()` / `await startCamera()` / `await
+  // loadModels()` calls above — those routinely take a second or more
+  // for a first-time model fetch. By the time startRenderLoop() below
+  // runs its very first frame, `now - lastFaceSeenAt` and `now -
+  // lastHandSeenAt` are already bigger than FACE_WARN_HOLD_MS/
+  // HAND_STATUS_HOLD_MS, so both the face-warn box and the "No hand
+  // detected" pill fire on frame one — before the learner has had any
+  // chance to get in frame — reading as "already broken" rather than
+  // neutral first-run state. Same fix as BUG 11: stamp both to "now"
+  // right before the loop that actually reads them starts.
+  lastFaceSeenAt = Date.now();
+  lastHandSeenAt = Date.now();
 
   startRenderLoop();
 }
@@ -1403,7 +1694,28 @@ function handlePracticeFrame(result) {
   // ── existing non-phrase logic, unchanged below ──
   const isMotion = getDetectionType(sign) === 'motion';
 
+  // BUG FIX (2026-08-20, review session): result.matched only means
+  // "the classifier is confident about SOME sign in this category" —
+  // it was never compared against `sign`, the sign THIS lesson page
+  // is teaching. Without this check, confidently signing the wrong
+  // letter (e.g. K while on the Letter A page) showed a false
+  // "✅ Nice! Detected: K" success message.
+  const isCorrectSign = result.label === sign;
+
   if (result.matched && !cooldown) {
+    if (!isCorrectSign) {
+      // Forgiving, same spirit as the phrase-mode retry message above:
+      // practice is optional and ungated (Rev 3), so this is
+      // informational, not a fail state — just don't claim success.
+      // enterCooldown() throttles this to roughly once per 800ms
+      // instead of re-firing every render-loop frame the wrong sign
+      // stays in view.
+      showFeedback(`Detected "${result.label}" — this lesson is "${sign}"`, 'error');
+      enterCooldown(800);
+      debounceCount = 0;
+      lastDetected  = null;
+      return;
+    }
     if (isMotion) {
       showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
@@ -1701,21 +2013,51 @@ function endAssessment() {
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    startBtnEl.textContent   = '🎥 Start Assessment';
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
   }
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────
 
+// DECIDED (2026-08-21, this session — was the flagged "Detected Sign
+// readout's color still doesn't check correctness" item, previously
+// left unfixed pending a decision). The concern in the old flagging
+// comment (below this one used to say "not a single well-defined
+// concept here the way it is inside handlePracticeFrame/
+// handleAssessmentFrame") turned out to already have an answer sitting
+// one function above: getActiveSignId() is the exact "what sign is
+// expected RIGHT NOW" resolver both handlePracticeFrame's phrase
+// branch (`expectedStep`) and handleAssessmentFrame's phrase branch
+// already call for precisely this purpose — it's mode-agnostic by
+// construction (falls back to the plain `sign` when no phrase is
+// active) and is already being read every single frame just above
+// this function, in startRenderLoop(), to pick the detection type. So
+// "correct for the active lesson" IS a single well-defined concept
+// here after all — this just wasn't using the resolver that already
+// existed.
+//   The decision made: tint this readout the SAME way in both practice
+// and assessment mode (no mode branch) — `matched && isCorrectSign`,
+// not bare `matched`. Rationale: assessment mode already shows its own
+// separate ❌ "Detected X — expected Y" feedback text when a confident
+// wrong guess comes in (handleAssessmentFrame); having the readout
+// directly above still glow green for that same wrong guess was
+// confusing regardless of mode, not a practice-only problem — so there
+// was no real case for keeping this panel "neutral" in assessment.
+// matched-but-wrong now shows the same yellow/muted treatment
+// (informational, not a fail state) that a matched-but-wrong result
+// already got in yellow before this fix — this only changes when GREEN
+// specifically is allowed to show, not the whole state machine.
 function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
   if (result.label) {
+    const isCorrectSign = result.label === getActiveSignId();
+    const showAsSuccess = result.matched && isCorrectSign;
     confidenceEl.classList.remove('confidence-bar-fill--pulse');
     detectedEl.textContent        = result.label;
-    detectedEl.style.color        = result.matched ? 'var(--clr-success)' : 'var(--clr-text-muted)';
+    detectedEl.style.color        = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
-    confidenceEl.style.background = result.matched ? 'var(--clr-success)' : 'var(--clr-yellow)';
+    confidenceEl.style.background = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-yellow)';
     confTextEl.textContent        = `${result.confidence}%`;
   } else if (motionArmed) {
     // NEW: classifyMotion() only returns a label once its ~1.3s frame
@@ -1814,7 +2156,7 @@ window.closeOverlay = function() {
 window.retryLesson = function() {
   closeOverlay();
   if (startBtnEl) {
-    startBtnEl.textContent   = '🎥 Start Assessment';
+    startBtnEl.textContent   = '🎥 Practice Check (optional)';
     startBtnEl.style.display = '';
   }
   if (promptBoxEl) promptBoxEl.style.display = 'none';

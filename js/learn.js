@@ -177,12 +177,24 @@ document.addEventListener('DOMContentLoaded', () => {
         </a>
       `;
     }
+    // TERMINOLOGY FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's
+    // "'X/26 viewed' vs 'X/91 signs practiced'" item): both badges here
+    // read the exact same underlying number as `practicedCount` above
+    // (LWProgress's getCategoryProgress().signs — written by
+    // recordSignPracticed(), see js/lesson.js's updateLessonMeta()) as
+    // js/dashboard.js's aggregate card, which already calls it "signs
+    // practiced". "practiced" was the term already used everywhere
+    // else that touches this number — the variable name on the very
+    // next line down (`practicedCount`), the LWProgress function name,
+    // even this same file's own JSDoc two lines up — "viewed" in the
+    // rendered string was the one outlier. Picked "practiced" to match
+    // the majority, not a new third term.
     if (allPracticed) {
       return `
         <a href="quiz.html?level=${encodeURIComponent(level)}&category=${encodeURIComponent(categoryId)}" class="lesson-card category-card">
           <div class="category-card__icon">📝</div>
           <span class="category-card__title">Take Category Assessment</span>
-          <span class="badge badge--${level}">Ready · ${practicedCount}/${signs.length} viewed</span>
+          <span class="badge badge--${level}">Ready · ${practicedCount}/${signs.length} practiced</span>
         </a>
       `;
     }
@@ -190,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="lesson-card category-card lesson-card--locked">
         <div class="category-card__icon">📝</div>
         <span class="category-card__title">Category Assessment</span>
-        <span class="badge badge--locked">${practicedCount}/${signs.length} viewed</span>
+        <span class="badge badge--locked">${practicedCount}/${signs.length} practiced</span>
       </div>
     `;
   }

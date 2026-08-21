@@ -13,23 +13,43 @@
   <!--
     pages/dashboard.html — User Dashboard
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Main hub after login. Now contains THREE things:
-                 1. "Your Account" — user details (name/email/level)
-                 2. "Overall Progress" — the trail/unit overview
-                    (REV 4 PHASE 4: one aggregate card + one row per
-                    window.LWData.getUnits() entry — replaced the old
-                    three basic/medium/intermediate cards, see
-                    SYSTEM_ARCHITECTURE.md Rev 4)
-                 3. "Signs You've Learned" — recap of mastered signs
+    PURPOSE  : Main hub after login. Contains FOUR things, in this
+                 order (REV 4 PIVOT_CHECKLIST.md "Dashboard UX Review
+                 Checklist" → Priority 0 items #1 and #2, 2026-08-21
+                 code sessions):
+                 1. "Continue Learning" hero card — the primary action
+                    (Priority 0 #1, 2026-08-21). See js/dashboard.js's
+                    renderContinueCard() / getCurrentDestination().
+                 2. "Overall Progress" — the aggregate card + trail/unit
+                    overview, now DEMOTED to a secondary, compact
+                    summary directly below the hero card (Priority 0
+                    #2, 2026-08-21 — see the section's own comment
+                    below and SYSTEM_ARCHITECTURE.md's "Dashboard UX
+                    Review Addendum" → "Implementation status (Priority
+                    0 #2)"). Still shows the raw practice-% number
+                    unchanged — RELABELING what that number means is
+                    Priority 0 item #3, still open, not done here.
+                 3. "Your Account" — user details (name/email/level).
+                    Moved below Overall Progress this session (was
+                    above it) so the learner's next action is
+                    immediately followed by their progress summary,
+                    matching the addendum's recommended
+                    "Continue Learning → Progress → Path → Recap" flow.
+                    No content/logic in this card changed.
+                 4. "Signs You've Learned" — recap of mastered signs.
 
     CONNECTS : ← index.html (redirected here after login)
-               → pages/learn.html      (unit rows open that unit's screen)
-               → pages/lesson.html     (Continue button + Unit 2's row)
+               → pages/learn.html      (unit rows + hero card's
+                                         "Open Path" open that unit)
+               → pages/lesson.html     (hero card's Continue/Start
+                                         button + Unit 2's row)
                → pages/quiz.html       (retake an assessment)
                → pages/feedback.html   (survey after completing a level)
 
     AUTH     : requireAuth() at the top kicks anyone who isn't logged
                in back to index.html. See js/auth.js.
+               ⚠️ js/auth.js is explicitly out of scope for this and
+               every dashboard session — not opened, not touched.
 
     TODO     : Pull real progress data from Firestore using the
                logged-in user's UID. Replace MOCK_PROGRESS entirely.
@@ -73,25 +93,153 @@
   </nav>
 
   <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
+  <!-- Kept intentionally compact/greeting-only now that the concrete
+       "what do I do next" destination lives in the Continue Learning
+       hero card directly below.
+
+       FIX (Priority 0 #2, 2026-08-21): the banner text used to restate
+       the exact same destination the hero card shows one section down
+       ("You're making great progress on {unit}") — that's the checklist's
+       own "same information at equal visual weight three different ways"
+       problem (banner + hero card title + hero card eyebrow all naming
+       the same unit). js/dashboard.js's renderWelcomeBanner() now fills
+       data-welcome-banner with a short, generic nudge instead — the hero
+       card is the single canonical place that names the destination.
+       Static text here is just the pre-JS fallback, kept in the same
+       generic register. -->
   <section class="section section--sm">
     <div class="container">
       <div class="dash-header">
         <div>
           <p class="section__eyebrow">Welcome back</p>
           <h1>Your Dashboard</h1>
-          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! You're making great progress on the ASL Alphabet.</p>
+          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! <span data-welcome-banner>Ready to pick up where you left off?</span></p>
         </div>
-        <!-- Continue button — jumps to last incomplete lesson -->
-        <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
-        <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">
-          ▶ Continue Learning
-        </a>
       </div>
+    </div>
+  </section>
+
+  <!-- ── CONTINUE LEARNING (hero) ─────────────────────────────────
+       PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0
+       item #1 ("Make 'Continue Learning' the primary action",
+       2026-08-21). Sits directly under the header so the learner's
+       next action is visible in the first viewport without scrolling,
+       ahead of every other section on the page.
+
+       Entirely data-driven by js/dashboard.js's renderContinueCard(),
+       fed by the SAME getCurrentDestination() helper that also feeds
+       renderWelcomeBanner() and renderContinueButton() — one shared
+       chain-walk, not a new unlock/progress algorithm. Markup below is
+       just the loading-state / pre-JS fallback. -->
+  <section class="section section--sm">
+    <div class="container">
+      <div class="card continue-card" data-continue-card>
+        <div class="continue-card__main">
+          <span class="continue-card__icon" data-continue-icon aria-hidden="true">🎯</span>
+          <div class="continue-card__text">
+            <p class="continue-card__eyebrow" data-continue-eyebrow>Loading your path…</p>
+            <p class="continue-card__title" data-continue-title>—</p>
+            <!-- Progress WITHIN this destination (e.g. "3/8 signs
+                 practiced in Family") — deliberately separate from the
+                 global aggregate % on the "Overall Progress" card
+                 further down the page. Fixing what the GLOBAL % means
+                 is Priority 0 item #3, still out of scope. -->
+            <div class="continue-card__progress" data-continue-progress-wrap style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-bar__fill" data-continue-progress-fill style="width:0%"></div>
+              </div>
+              <span class="continue-card__progress-label" data-continue-progress-label></span>
+            </div>
+          </div>
+        </div>
+        <div class="continue-card__actions">
+          <!-- Primary CTA — href AND label are both set by JS
+               (renderContinueButton() sets href, renderContinueCard()
+               sets the label so it reads "Start Lesson" vs "Continue"
+               vs "Review Your Path" depending on state). -->
+          <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">▶ Continue Learning</a>
+          <!-- Secondary CTA — shown only when there's a specific unit
+               worth opening (checklist: "secondary CTA only when
+               useful"); hidden by JS otherwise. -->
+          <a href="learn.html" data-continue-secondary class="btn btn--ghost" style="display:none;">Open Path</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OVERALL PROGRESS (content) ────────────────────────────── -->
+  <!-- REV 4 PHASE 4: one aggregate card (the whole flat chain
+       combined) plus one compact row per window.LWData.getUnits()
+       entry, both rendered entirely by js/dashboard.js — nothing
+       unit-specific is hardcoded here, same reasoning as the recap
+       grid below.
+
+       MOVED + DEMOTED (Priority 0 #2, 2026-08-21): this section used
+       to sit below "Your Account" and matched the hero card's own
+       visual weight almost 1:1 (colored top edge, badge pill, largest
+       number on the page) — exactly the "report" feeling the checklist
+       item is named after. Two changes this session, both purely
+       presentational:
+         1. Moved directly under the Continue Learning hero card (was
+            already technically "above" it structurally as a side
+            effect of Priority 0 #1's placement — see AI_MEMORY.md —
+            but "Your Account" still sat between the two related
+            sections; moving it out puts the primary action and its
+            progress summary back-to-back, matching
+            SYSTEM_ARCHITECTURE.md's "Dashboard design priority" order).
+         2. Added `progress-card--secondary` / `dash-heading--secondary`
+            (see css/dashboard.css) — smaller heading, muted badge,
+            thinner top edge, smaller percentage figure — so it reads
+            as a summary in support of the hero card above, not a
+            second, equally-weighted headline.
+       The unit list below it was already a compact row-based summary
+       (Phase 4) and needed no change for the "not the main feature"
+       requirement.
+
+       NOT changed this session: the underlying metric. It's still
+       computed from signs practiced and still just shows a bare "%" —
+       relabeling it explicitly as "Practice Progress" (vs. mastery),
+       per PIVOT_CHECKLIST.md Priority 0 item #3, is a separate,
+       still-open item. Do not assume it's done because this section
+       was touched. -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="mb-8 dash-heading--secondary">Overall Progress</h2>
+
+      <!-- Aggregate card — filled in by js/dashboard.js from
+           window.LWProgress.getOrderedLiveCategories(), the same flat
+           cross-unit chain js/learn.js's trail view walks. Markup
+           below is just a loading-state placeholder. -->
+      <div class="card progress-card progress-card--secondary mb-8">
+        <div class="progress-card__head">
+          <span class="badge badge--basic">Your ASL Path</span>
+          <span class="progress-card__pct" data-overall-pct>–</span>
+        </div>
+        <p class="progress-card__label">All units combined</p>
+        <div class="progress-bar mt-4">
+          <div class="progress-bar__fill" data-overall-progress="0"></div>
+        </div>
+        <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-overall-count>– / – signs practiced</p>
+        <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
+      </div>
+
+      <!-- One row per unit — entirely data-driven from
+           window.LWData.getUnits(), rendered by js/dashboard.js. Each
+           row links into pages/learn.html at that unit. Already a
+           compact summary (Phase 4) — untouched by Priority 0 #2. -->
+      <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>
 
   <!-- ── YOUR ACCOUNT (user details) ───────────────────────────── -->
   <!--
+    MOVED (Priority 0 #2, 2026-08-21): used to sit directly above
+    "Overall Progress"; now sits below it, so the Continue Learning
+    hero card and its progress summary read back-to-back. No markup,
+    hooks, or logic changed — content and data-* attributes are
+    byte-for-byte identical to before, only its position in the page
+    moved.
+
     TODO: once Firestore is live, also surface editable fields here
           (e.g. "Change starting level", "Update name") writing back
           to users/{uid}.
@@ -116,44 +264,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- ── OVERALL PROGRESS (content) ────────────────────────────── -->
-  <!-- REV 4 PHASE 4: replaced the old basic/medium/intermediate
-       three-card grid (`.grid-3` of `[data-level-card]` cards, filled
-       in from window.LWProgress.getLevelStats(level)) with a flat,
-       unit-based summary — the level split no longer reflects how
-       content is organized (see SYSTEM_ARCHITECTURE.md Rev 4). Now
-       one aggregate card (the whole flat chain combined) plus one
-       compact row per window.LWData.getUnits() entry, both rendered
-       entirely by js/dashboard.js — nothing unit-specific is
-       hardcoded here, same reasoning as the recap grid below. -->
-  <section class="section section--sm">
-    <div class="container">
-      <h2 class="mb-8">Overall Progress</h2>
-
-      <!-- Aggregate card — filled in by js/dashboard.js from
-           window.LWProgress.getOrderedLiveCategories(), the same flat
-           cross-unit chain js/learn.js's trail view walks. Markup
-           below is just a loading-state placeholder. -->
-      <div class="card progress-card mb-8">
-        <div class="progress-card__head">
-          <span class="badge badge--basic">Your ASL Path</span>
-          <span class="progress-card__pct" data-overall-pct>–</span>
-        </div>
-        <p class="progress-card__label">All units combined</p>
-        <div class="progress-bar mt-4">
-          <div class="progress-bar__fill" data-overall-progress="0"></div>
-        </div>
-        <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-overall-count>– / – signs practiced</p>
-        <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
-      </div>
-
-      <!-- One row per unit — entirely data-driven from
-           window.LWData.getUnits(), rendered by js/dashboard.js. Each
-           row links into pages/learn.html at that unit. -->
-      <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>
 

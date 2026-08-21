@@ -1,4 +1,79 @@
 /* lesson.css — Lesson Viewer styles | CONNECTS: pages/lesson.html */
+
+/* ── COURSE SIDEBAR (NEW — "course player" merge, this session) ─────
+   Persistent left-hand course outline: every UNIT, collapsible, with
+   per-unit progress — merges js/learn.js's trail browsing directly
+   into this page so Learn + Lesson read as one continuous screen
+   instead of a learn.html -> lesson.html click-through. Populated by
+   js/lesson.js's renderCourseSidebar() from the exact same
+   window.LWData / window.LWProgress calls js/learn.js's trail and
+   js/dashboard.js's unit rows already use, so locked/current/done
+   here can't drift out of sync with either of those screens.
+   Every row is a plain <a href> — real full-page navigation, same as
+   every other link already on this page — so the camera/detection
+   code below is completely untouched: shutdown() already runs on
+   `beforeunload` regardless of which link sends the learner away. */
+.course-layout { display: flex; gap: var(--space-8); align-items: flex-start; }
+.course-sidebar {
+  width: 260px; flex-shrink: 0;
+  position: sticky; top: calc(60px + var(--space-4));
+  max-height: calc(100vh - 80px); overflow-y: auto;
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg); padding: var(--space-2);
+}
+@media (max-width: 1200px) {
+  .course-layout { flex-direction: column; }
+  .course-sidebar { width: 100%; position: static; max-height: none; }
+}
+
+.course-sidebar__unit { border-radius: var(--radius-md); margin-bottom: var(--space-1); }
+.course-sidebar__unit--flat {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3); text-decoration: none; color: var(--clr-text);
+  font-size: var(--fs-sm); font-weight: 600;
+}
+.course-sidebar__unit--flat:hover { background: var(--clr-surface-2); }
+.course-sidebar__unit--current.course-sidebar__unit--flat { background: var(--clr-accent-soft); color: var(--clr-accent); }
+.course-sidebar__unit--locked { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); opacity: .55; font-size: var(--fs-sm); }
+.course-sidebar__unit-icon { font-size: var(--fs-base); flex-shrink: 0; }
+.course-sidebar__unit-title { flex: 1; font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text); }
+.course-sidebar__unit-pct { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.course-sidebar__unit-head {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  padding: var(--space-3); background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: var(--font-body); border-radius: var(--radius-md);
+}
+.course-sidebar__unit-head:hover { background: var(--clr-surface-2); }
+.course-sidebar__unit--current .course-sidebar__unit-title { color: var(--clr-accent); }
+.course-sidebar__chevron { color: var(--clr-text-muted); font-size: var(--fs-xs); flex-shrink: 0; }
+.course-sidebar__unit-bar { height: 3px; background: var(--clr-surface-2); border-radius: var(--radius-pill); margin: 0 var(--space-3) var(--space-2); overflow: hidden; }
+.course-sidebar__unit-bar-fill { height: 100%; background: var(--clr-accent); border-radius: var(--radius-pill); transition: width var(--dur-slow) var(--ease); }
+.course-sidebar__unit-body { padding-bottom: var(--space-2); }
+
+.course-sidebar__cat { margin: 0 var(--space-1); }
+.course-sidebar__cat-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); text-decoration: none;
+  border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--clr-text);
+}
+.course-sidebar__cat-head:hover { background: var(--clr-surface-2); }
+.course-sidebar__cat--open .course-sidebar__cat-head { color: var(--clr-accent); font-weight: 600; }
+.course-sidebar__cat-title { flex: 1; }
+.course-sidebar__cat-count { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+
+.course-sidebar__signs { padding-left: var(--space-6); display: flex; flex-direction: column; }
+.course-sidebar__sign {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); text-decoration: none;
+  border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--clr-text-muted);
+}
+.course-sidebar__sign:hover { background: var(--clr-surface-2); color: var(--clr-text); }
+.course-sidebar__sign-icon { font-size: var(--fs-xs); flex-shrink: 0; width: 14px; }
+.course-sidebar__sign--done { color: var(--clr-text); }
+.course-sidebar__sign--done .course-sidebar__sign-icon { color: var(--clr-success); }
+.course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600; }
+.course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent); }
+
 .lesson-strip { background: var(--clr-surface); border-bottom: 1px solid var(--clr-border); }
 .lesson-strip__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding-block: var(--space-3); flex-wrap: wrap; }
 .lesson-strip__progress { display: flex; align-items: center; gap: var(--space-4); }

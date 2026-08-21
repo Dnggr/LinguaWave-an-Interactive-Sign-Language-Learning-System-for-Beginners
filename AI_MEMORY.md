@@ -1302,6 +1302,20 @@ for later):**
 3. The bugs/risks list above (this session's own, plus the carried-over
    Phase 5 items).
 
+**Separately from the pivot phases above:** on 2026-08-20 (a later
+session than Phase 7), `pages/lesson.html` was turned into a
+persistent "course player" — a collapsible course-outline sidebar
+(all `UNITS`, locked/current/done, per-unit progress) merged directly
+into the lesson page, at the user's explicit request (chosen over two
+lighter options: restyle-only, or leave `learn.html` as a separate
+page). This is a UI/UX change, not a curriculum-content change, so
+it's NOT tracked as a `PIVOT_CHECKLIST.md` phase — it's documented in
+`SYSTEM_ARCHITECTURE.md` → **Rev 5** instead. `learn.html` itself is
+UNCHANGED (still the dashboard's entry point for picking a unit) —
+only `lesson.html`/`lesson.js`/`lesson.css` were touched. See that
+session's own log entry below for the full breakdown, and Rev 5 for
+the architecture.
+
 ---
 
 ### 2026-08-20 — Phase 7 (partial): number routing confirmed + curated Unit 6 phrases
@@ -1380,3 +1394,593 @@ paste-ready files; update the three coordination docs.
    correction.
 5. Image/video assets for the 6 new `sequence_demo` phrases don't
    exist yet (same gap as the 0–9 numbers assets) — not a code issue.
+
+---
+
+### 2026-08-20 (later session) — Course-player merge (lesson.html + learn.html) + 2 flagged Phase 7 bug fixes
+**Requested:** fix bugs; restyle the app toward a screenshot of a
+Cisco Networking Academy course page (persistent sidebar course
+outline + inline content); confirmed via a follow-up question that
+this meant a full merge (one page, not a restyle of the existing
+trail); provide paste-ready files; update the three coordination docs.
+
+**Scope decision (flagged, same spirit as Phase 4/6's own flagged
+calls):** "full merge" was implemented by extending `pages/lesson.html`
+itself into the merged "course player" (adding a sidebar column),
+NOT by building a third page or rewriting `learn.html`. Reasoning:
+`lesson.html` already owns all the camera/MediaPipe/classifier
+lifecycle code (~1800 lines in `lesson.js`) and every other page
+already deep-links into it with a stable `?level=&category=&sign=`
+URL shape — extending it in place reuses all of that untouched and
+keeps every existing link (`quiz.js`, `dashboard.js`, `learn.js`,
+`intro-to-asl.html`) working with zero changes. `learn.html` was
+deliberately left AS-IS: it's still the dashboard's entry point for
+picking a unit/category (its own trail-map UI, from Phase 4); the new
+sidebar is for moving through what's already unlocked once you're
+inside a lesson, which is what the reference screenshot was actually
+showing (mid-course, not a landing page). Building a true single-page
+app that swaps content without a full navigation was deliberately
+NOT attempted — it would require re-architecting the camera/mediapipe
+boot-and-teardown lifecycle (currently tied to a fresh page load per
+sign) under real time pressure with no browser to test in (same
+sandbox limitation every phase before this one has flagged). Every
+sidebar row is a plain `<a href="lesson.html?...">` — a real
+navigation, so `shutdown()`'s existing `beforeunload` listener keeps
+working with zero new wiring, and the camera code itself was not
+touched at all. See `SYSTEM_ARCHITECTURE.md` → **Rev 5** for the full
+architecture writeup — this is a UI/UX initiative, not a curriculum-
+content change, so it's documented there rather than as a new
+`PIVOT_CHECKLIST.md` phase.
+
+**Changes made:**
+- `css/lesson.css` — new `.course-sidebar`/`.course-layout` block
+  (~70 lines): sticky 260px sidebar, collapsible per-unit sections,
+  mini progress bars (reuses the color tokens already in `style.css`,
+  no new tokens added), stacks above content under 1200px.
+- `pages/lesson.html` — wrapped the existing `.lesson-layout` (content
+  panel + camera panel, UNCHANGED) in a new `.course-layout` flex
+  container alongside a new `<aside id="course-sidebar">`. No existing
+  element was removed, renamed, or had its id changed.
+- `js/lesson.js` — added `UNIT_ICONS`/`CATEGORY_ICONS` (copied
+  verbatim from `js/learn.js`'s own maps, same "small duplication is
+  fine" precedent that file already documents for `js/dashboard.js`),
+  `currentUnitOrder()`, `sidebarSignRow()`, `sidebarCategoryBlock()`,
+  and `renderCourseSidebar()` — called once from the end of
+  `updateLessonMeta()` (not from `boot()` directly) specifically
+  because `updateLessonMeta()` is the one function all three of
+  `boot()`'s paths already call, including both early-return branches
+  (empty name-drill, `comingSoon` category) — so the sidebar still
+  renders even when the camera/content half of the page bails out
+  early. Locked/current/done state is computed with the *exact same*
+  `window.LWData`/`window.LWProgress` calls `js/learn.js`'s trail and
+  `js/dashboard.js`'s unit rows already use (`getUnits`,
+  `getCategoriesForUnit`, `isCategoryUnlocked`, `getCategoryProgress`,
+  `getCategorySigns`) — copied call-for-call, not re-derived, so this
+  can't silently disagree with either of those screens. Read-only:
+  never calls any `LWProgress` record function. One deliberate metric
+  difference from `dashboard.js`'s unit rows, flagged in the code
+  comment: the sidebar's per-unit % is practiced-signs/total-signs
+  (finer-grained, matches `renderOverallProgress()`'s formula), not
+  `dashboard.js`'s categories-passed count — say the word if a literal
+  match to the dashboard number is wanted instead.
+- `js/engine/dictionary.js` — the two flagged-but-not-yet-made Phase 7
+  fixes from the last session: `HELLO`/`THANK YOU` now carry
+  `disabled:true` (confirmed absent from `asl_motion_model/labels.json`
+  last session; now behave like the 16 Essential Words instead of
+  silently running a doomed classifier match on every attempt); `HOT`/
+  `COLD` now have real `disabled:true` placeholder entries (previously
+  had ZERO `SIGN_DICTIONARY` entry, which meant `getDetectionType()`'s
+  `?? 'static'` fallback silently ran the wrong classifier). Both were
+  explicitly named as "small, safe AI-doable" in `PIVOT_CHECKLIST.md`
+  — the "fix bugs" part of this session's request was read as the
+  green light that was missing before. Capture + retraining for all
+  four is still open — this only makes their failure mode clean
+  (no match) instead of silently wrong.
+
+**Verification (same caveat as every phase before this — no browser/
+dev server in this sandbox):**
+- `node --check` on `js/engine/dictionary.js` directly, and on
+  `js/lesson.js` via a temp `.mjs` copy (the file is loaded as
+  `type="module"`, which `node --check` needs the right extension to
+  parse correctly) — no syntax errors.
+- Every new DOM id (`#course-sidebar`) cross-checked against
+  `pages/lesson.html`'s real markup; every new
+  `window.LWData`/`window.LWProgress` call cross-checked against the
+  real exported function names in `data.js`/`progress.js` (`grep`
+  both ways, same discipline as Phase 6).
+- **Not exercised in a real browser** — the sidebar's own collapse/
+  expand click handling, the sticky positioning at different viewport
+  widths, and whether the new `.course-layout` flex wrapper interacts
+  correctly with the camera panel's existing `position: sticky` all
+  need a real click-through to confirm. Recommend loading a lesson
+  with a multi-category unit in scope (Common Things & People) to
+  check the nested category/sign expand behavior specifically — that
+  branch has the most new logic and the least existing precedent to
+  fall back on.
+
+**Bugs/risks noticed, not fixed (out of scope this session):**
+1. Every item already listed under Phase 6's "Bugs/risks noticed, not
+   fixed" and "Still open" above — none were touched this session.
+2. The sidebar's Unit 0 (Welcome) and Unit 7 (Phrasebook) rows link
+   out to `learn.html?unit=welcome` / `learn.html?unit=phrasebook`
+   rather than rendering inline — those two views (static info text,
+   and a large browse-only reference list) still live entirely on
+   `learn.html` and were not ported into the sidebar/content-pane
+   pattern. Flagging in case full parity for those two is wanted
+   later; skipped this session to keep the change additive and low-
+   risk rather than also porting `UNIT0_CONTENT` rendering and the
+   Phrasebook's ~100-item browse list into `lesson.js`.
+3. On very small screens, the sidebar (stacked above content under
+   1200px per the new CSS) has no collapse-to-a-toggle-button behavior
+   — it's always visible, just stacked, which could push the actual
+   lesson content quite far down the page on a long unit list.
+   Flagging as a follow-on polish item, not attempted here to avoid
+   inventing a second interaction pattern (hamburger toggle) without
+   being able to check it against a real narrow viewport.
+
+**Still open:**
+1. Everything already listed as still-open in the Phase 7 entry above,
+   minus the two dictionary.js items now fixed (see "Changes made").
+2. The "bugs/risks noticed, not fixed" list immediately above.
+3. Full parity for Unit 0 / Unit 7 inside the merged page (see #2 above).
+
+---
+
+### 2026-08-20 (review session) — Real-browser verification of Rev 5 + 4 bugs found/fixed by walking the dashboard→lesson journey with actual screenshots
+
+**Requested:** review the app the way Rev 5 kept flagging it never had been —
+in an actual running browser — by walking the dashboard→lessons journey as
+a learner would, using 6 screenshots the user provided (dashboard, the
+Fingerspell Your Name lesson, the Letter A lesson, the Alphabet grid, the
+Unit 0 Welcome screen); criticize what's there; fix what's safely
+fixable; put the rest in this checklist; exclude `auth.js` (teammate
+owns it). Also asked to "visualize the code" — see the inline diagram
+this session rendered (dashboard → Unit 1 → Letter A lesson → 3 bug
+markers), not reproduced here since it's a visual artifact, not file
+content.
+
+**Context:** this is genuinely the first time any of Rev 4/5's work has
+been checked against a real, running browser — every phase before this
+one explicitly flagged "not exercised in a real browser" as its biggest
+open risk. The screenshots confirmed the Rev 5 course-player sidebar
+*is* live and rendering correctly (locked/current/done states, mini
+progress bars, the collapsed/expanded unit sections all matched what
+the code should produce) — that's a real, load-bearing confirmation,
+even though most of this entry is about what wasn't right.
+
+**Bugs found by tracing the screenshots through the actual code (not
+guessed):**
+
+1. **FIXED — `handlePracticeFrame()`'s plain single-sign branch never
+   compared the detected label to the sign being taught.** The Letter A
+   screenshot showed `DETECTED SIGN: K 93%` in green while parked on
+   the Letter A lesson. Traced to `classifier.js`: `result.matched`
+   only means "confidently classified as *some* sign in the active
+   category" — `getAllowedLabelsForSign()` deliberately scopes
+   candidates to the whole category (all 26 letters), by design, for
+   the 6/W-9/F-0/O disambiguation fix. `handleAssessmentFrame()`
+   already compares `result.label === currentSign` and phrase-mode
+   practice already compares `result.label !== expectedStep` — this
+   was the one inconsistent path. Fixed in `js/lesson.js`: added an
+   `isCorrectSign` check before showing the "✅ Nice!" success message;
+   a wrong-but-confident sign now shows `Detected "X" — this lesson is
+   "Y"` instead, throttled via the same `enterCooldown()` idiom the
+   rest of this file already uses (800ms) instead of re-firing every
+   render-loop frame. Kept forgiving/non-blocking, matching Rev 3's
+   "practice, not a gate" stance — this only stops falsely claiming
+   success, it doesn't fail or lock anything.
+   - **Flagging, not fixed (related, out of scope this session):**
+     `updateConfidenceUI()`'s green/muted color and the confidence
+     bar's fill color are still driven by raw `result.matched`, not by
+     the same target-sign comparison — so the "Detected Sign" readout
+     one line above the (now correct) feedback text can still render a
+     wrong sign in green. Left alone because that function is shared
+     unconditionally by both practice AND assessment mode from the
+     render loop, so "correct for the active lesson" isn't a single
+     well-defined concept there the way it is inside the two frame
+     handlers — see the flagging comment now above the function in
+     `lesson.js`.
+2. **FIXED — Fingerspell Your Name lesson showed a stale, wrong image
+   hint.** Screenshot showed "Add image to assets/images/basic/A.png"
+   on a lesson that fingerspells a whole name, not one letter. Traced
+   to `updateLessonMeta()`: `lessonImgHintEl.textContent` is only ever
+   set inside the `if (signData)` branch, which the name drill
+   deliberately never enters (`signData` is null for it — see
+   `signDataForTitle`). The placeholder box's hint text was just
+   whatever `pages/lesson.html`'s static default HTML last held (the
+   Letter A default). Fixed by setting an appropriate hint directly in
+   the `isNameDrill` branch.
+   - **Correction note:** the first attempt at this fix accidentally
+     merged the name-drill branch's closing lines with the next
+     `else` branch's opening lines (dropped the `} else {` separator
+     mid-edit), which would have thrown a `SyntaxError: Identifier
+     'placeholder' has already been declared` — caught and fixed
+     before finishing, then verified clean with `node --check` via a
+     temp `.mjs` copy. Noting this here as a caution for anyone
+     reviewing this diff by eye rather than just diffing: the final
+     `js/lesson.js` is syntax-clean, but the intermediate state during
+     this session was briefly broken.
+3. **FIXED — Dashboard "Signs You've Learned" showed every sign
+   twice.** Screenshot showed "A A", "Y Y", "Z Z" chips. Traced to
+   `renderRecap()` in `js/dashboard.js`: rendered `signId` once inside
+   `.recap-card__img`'s pill AND again in a sibling `<span>`. The pill
+   was already redesigned into a self-contained chip for exactly this
+   text (see `css/dashboard.css`'s own BUG FIX comment above
+   `.recap-card__img`, which explains the redesign from a fixed
+   56×56px square to a flexible pill specifically to fit multi-word
+   entries like "I AM FINE") — the `<span>` was a leftover from before
+   that redesign that never got removed. Fixed by deleting the
+   redundant `<span>`.
+4. **FIXED — pre-existing, already-flagged "Start Assessment" button
+   text mismatch.** Not something this session discovered — `lesson.js`
+   already had a comment (its own Rev 3 header) saying the button was
+   supposed to read "🎥 Practice Check (optional)" and a separate NOTE
+   admitting the rename never landed, calling it "worth a 1-line fix in
+   its own small session." Since this session's own request explicitly
+   included "fix bugs" while reviewing this exact page, treated that as
+   the go-ahead. Turned out to be 4 sites, not 1 line: the HTML default
+   (`pages/lesson.html`), and 3 separate `startBtnEl.textContent` resets
+   in `js/lesson.js` (`updateLessonMeta()`, the post-camera-round
+   overlay path, `window.retryLesson()`). All 4 now say "🎥 Practice
+   Check (optional)"; also updated the page's top header comment and
+   the camera-tips list item that both referenced the old button text
+   by name, and rewrote the now-resolved flagging comment in
+   `lesson.js` to say so instead of still flagging it.
+
+**Suggestions/observations added to `PIVOT_CHECKLIST.md` (not code
+changes — see that file for the actual list):** the dashboard's welcome
+banner hardcodes "You're making great progress on the ASL Alphabet"
+regardless of which unit the learner is actually on (same "always says
+Basic" class of bug already flagged and deliberately deferred for
+`data-user-level` in Phase 5); `learn.html`'s per-category "X/26
+viewed" badge vs. the dashboard's "X/91 signs practiced" wording is an
+inconsistent term for the same underlying concept; direct URL access to
+a locked category's `lesson.html` isn't blocked (client-side-only app,
+so likely not worth enforcing, but noting it was never explicitly
+decided either way); the onboarding first-open experience shows two
+orange warning boxes ("No hand detected" / "Face not detected — step
+back") before the learner has done anything, which may read as
+"something's already broken" rather than neutral guidance.
+
+**Excluded from this session, as requested:** `js/auth.js` — not
+opened, not touched, not reviewed.
+
+**Verification:** `node --check` on `js/lesson.js` and `js/dashboard.js`
+directly (both ES modules, checked via temp `.mjs` copies — `node
+--check` needs the right extension to parse `import`/`export`
+correctly). Every edited DOM id (`btn-start-assessment`,
+`lesson-img-placeholder-hint`, `recap-grid`) cross-checked against the
+real markup by `grep`, same discipline as every phase before this one.
+**Still not exercised in a real browser** — the actual visual result of
+fix #1's new "Detected "X" — this lesson is "Y"" feedback message
+(string length vs. the feedback box's width, whether the 800ms
+throttle feels right in practice) and fix #2's hint copy have not been
+seen rendered. Recommend a real click-through on the Letter A page
+specifically (hold a wrong letter steady in view) to confirm fix #1
+feels right and doesn't spam.
+
+**Still open:**
+1. Everything already listed as still-open in every prior session log
+   entry above — none of it was touched this session.
+2. `updateConfidenceUI()`'s color-vs-correctness gap (see bug #1's
+   flagging note above).
+3. The four suggestions/observations listed above, now tracked in
+   `PIVOT_CHECKLIST.md`.
+4. Real-browser click-through of this session's 4 fixes (see
+   Verification above).
+
+---
+
+### 2026-08-21 — Cleared all 4 flagged review-session items + the
+### previously-decision-pending `updateConfidenceUI()` item; 5 fixes total
+
+**Requested:** the user explicitly said "do this" over the 4 items the
+2026-08-20 review session had listed as "found but not fixed," PLUS
+the `updateConfidenceUI()` color item that same session had left
+flagged as "needs a decision first." Read as the missing go-ahead on
+all 5 (matches this repo's own pattern — see e.g. the review session's
+"Start Assessment" button fix, made on a similarly-worded go-ahead).
+Also asked to "visualize the code" (see the inline structural diagram
+this session rendered — 3 files, 5 fixes) and to exclude `js/auth.js`
+entirely (not opened, same as every session since it was first
+excluded).
+
+**Fixes made — all 5, code applied directly, no partial items:**
+
+1. **`js/lesson.js` `updateConfidenceUI()` — Detected Sign readout now
+   color-checks correctness.** This was the one flagged item with a
+   real open question ("needs a decision") rather than just "not
+   attempted yet." Resolved by noticing `getActiveSignId()` — already
+   used by both `handlePracticeFrame`'s and `handleAssessmentFrame`'s
+   phrase branches as the mode-agnostic "what's expected right now"
+   resolver — already answers exactly the question the old flagging
+   comment said wasn't well-defined. Decision made: tint the readout
+   the SAME way in both practice and assessment mode (`result.matched
+   && result.label === getActiveSignId()` gates green; anything else
+   falls back to the existing yellow/muted "confident but not
+   matching" treatment, unchanged). No separate assessment-mode
+   behavior was added — see the full reasoning in the replaced comment
+   block directly above the function in `lesson.js`.
+2. **`js/lesson.js` `boot()` — locked categories now blocked via direct
+   URL.** Previously `isCategoryUnlocked()` was only ever consulted for
+   sidebar lock icons (this page's own course sidebar, and `learn.js`'s
+   trail/category cards) — never as a gate on `lesson.html` itself.
+   Added one check near the top of `boot()`: if the requested
+   `?level=&category=` isn't unlocked, toast + `location.replace()` to
+   `learn.html?category=X` (which already re-checks the same lock in
+   its own `renderCategoryView()` and falls back to the trail if still
+   locked — confirmed by reading that function, not assumed). Verified
+   safe to call unconditionally (no name-drill/reference special-
+   casing needed): `isCategoryUnlocked()`'s own `idx <= 0` fallback
+   already returns `true` for any id not in the flat live-category
+   chain, which covers `fingerspell_name` and Phrasebook categories the
+   same way `learn.js`'s existing calls already rely on without special
+   casing them. Still explicitly client-side-only — no backend to
+   truly enforce this either way, same caveat the checklist item itself
+   raised when flagging it.
+3. **`js/dashboard.js` — welcome banner no longer hardcodes "ASL
+   Alphabet."** New `renderWelcomeBanner()`, walking the same flat
+   `getOrderedLiveCategories()` chain `renderContinueButton()` already
+   uses to find the learner's current in-progress category, then
+   mapping its parent unit's title into one of 4 states: nothing
+   trained yet (generic opener), a real current category not yet
+   practiced at all ("Let's get started with X!"), a real current
+   category partway through (the original "great progress on X"
+   phrasing, now with a real X), or every trained category passed
+   ("nice work" close-out). `pages/dashboard.html`'s hardcoded sentence
+   fragment is now wrapped in `<span data-welcome-banner>` (kept as the
+   pre-JS fallback text, same pattern the aggregate-count field already
+   used).
+4. **`js/learn.js` — "viewed" → "practiced" terminology.** Both of
+   `renderCategoryAssessmentCTA()`'s badge strings ("Ready ·
+   N/M viewed" and the locked-state "N/M viewed") now say "practiced,"
+   matching the term already used everywhere else that reads this same
+   number — the `practicedCount` variable one line above it in the
+   same function, `LWProgress.recordSignPracticed()`'s own name, and
+   `dashboard.js`'s aggregate "N / M signs practiced" card. Not really
+   a judgment call once traced — "viewed" was the one outlier, not a
+   50/50 pick between two equally-used terms.
+5. **`js/lesson.js` `bootDetectionEngine()` — no more two false
+   warnings on first camera load.** Root cause: `lastFaceSeenAt`/
+   `lastHandSeenAt` (the two timestamps `startRenderLoop()`'s hold-time
+   check reads, per BUG 11 FIX) are stamped at MODULE-LOAD time, before
+   `bootDetectionEngine()`'s own `await initMediaPipe()` / `await
+   startCamera()` / `await loadModels()` calls — which routinely take a
+   second or more on a first-time model fetch. By the time the render
+   loop's first real frame ran, both timestamps were already older than
+   their hold thresholds (`FACE_WARN_HOLD_MS`/`HAND_STATUS_HOLD_MS`),
+   so the face-warn box and the "No hand detected" pill both fired
+   immediately — before the learner had any chance to get in frame.
+   This is the exact same staleness bug `startAssessment()` already had
+   its own fix for (see the existing "BUG 11 FIX" comment there,
+   `lastFaceSeenAt = Date.now(); lastHandSeenAt = Date.now();`) — just
+   never applied at the OTHER place these two timestamps get read from
+   a stale starting point. Applied the identical fix immediately before
+   `startRenderLoop()` is called.
+
+**Verification:** `node --check` on all 3 edited files (`js/lesson.js`
+via a temp `.mjs` copy, same as every prior session — it's an ES
+module; `js/dashboard.js` and `js/learn.js` directly — neither uses
+`import`/`export`, confirmed by grep before checking, so no `.mjs`
+rename needed for those two) — all clean, no syntax errors. Every new
+reference cross-checked against the real markup/exports by `grep`,
+same discipline as every phase before this one: `data-welcome-banner`
+exists in both `pages/dashboard.html` and the new `dashboard.js` query;
+`window.LinguaWave.showToast` is exported from `js/main.js` (confirmed
+`main.js` loads and executes before `lesson.js` in `pages/lesson.html`'s
+script order, so it's available by the time `boot()` runs);
+`isCategoryUnlocked` is exported from `progress.js`; `getUnits`/
+`getCategorySigns`/`getCategoriesForUnit` are exported from `data.js`.
+
+**Not exercised in a real browser** — same standing limitation as
+every session before this one that touched `lesson.js`'s camera path
+specifically. Fix #5 (warm-up warning) is the one most worth an actual
+click-through: the fix is a 2-line timestamp reset with a clear,
+traceable root cause, but "does the camera panel actually look clean
+on first load now" is still only reasoned about, not seen. Fix #1's
+new green/yellow behavior during an actual assessment run (does a
+correct answer on a later phrase step still read as clearly correct)
+is the other one worth a look, since assessment mode's own use of this
+readout had no prior precedent to lean on.
+
+**Excluded from this session, as requested:** `js/auth.js` — not
+opened, not touched, not reviewed. Same standing exclusion as the
+2026-08-20 review session.
+
+**Still open:**
+1. Everything already listed as still-open in every prior session log
+   entry above that wasn't one of this session's 5 items.
+2. Real-browser verification of this session's 5 fixes (see above) —
+   the single biggest recommendation coming out of this session, same
+   as every camera-touching session before it.
+3. Phase 7's actual capture + retraining work (16 Essential Words, 5
+   phrase placeholders, `HELLO`/`THANK YOU`/`HOT`/`COLD`) — unchanged,
+   still needs a human + camera + Colab.
+
+---
+
+### 2026-08-21 — Dashboard UX review from a learner perspective (no code)
+
+**Requested:** Treat the app as a new ASL learner, start at Dashboard → Learn → Lesson,
+critique the experience, make the dashboard more like a structured learning platform
+such as Cisco Academy/Lingvano-style course experiences, and document the findings.
+The user explicitly said **do not code** and **exclude `js/auth.js`** because a teammate
+owns auth.
+
+**Pre-change checks completed:** Read the active project memory first, then
+`PIVOT_CHECKLIST.md`, then `SYSTEM_ARCHITECTURE.md` Rev 4 before making any
+recommendations. Rev 4/5 state was respected. No changes were proposed to
+`data.js`, `learn.js`, `progress.js`, or `auth.js`.
+
+**Screenshots reviewed:**
+- Dashboard (`pages/dashboard.html`)
+- Learn trail (`pages/learn.html`)
+- Alphabet category view
+- Unit 0 Welcome
+- Letter M lesson / course-player sidebar
+
+**Main finding:** the dashboard is functional but currently feels more like a
+progress/status report than the learner's home page. The full learning trail is
+already present in `learn.html`, while the dashboard currently repeats the trail
+with an aggregate progress card + one row per unit. The next learning action is
+not visually dominant enough.
+
+**Highest-priority recommendation:** make the dashboard learner-first:
+1. A dominant "Continue Learning" card at the top.
+2. Show exact current Unit + lesson/sign.
+3. Keep practice progress and assessment mastery as separate metrics.
+4. Keep the learning-path summary compact.
+5. Add a future-facing Review entry point without building a new review algorithm here.
+6. Replace/remove `Current Level: Basic`, because Rev 4 is a single continuous path.
+
+**Important metric finding:** `js/dashboard.js` currently computes the overall percentage
+from practiced signs (`practicedSigns / totalSigns`). This is valid as a practice
+completion metric, but visually it can be interpreted as overall ASL mastery. The
+dashboard should label it explicitly as practice progress and keep category assessment
+passes separate.
+
+**Screenshot observations / possible bugs:**
+- Dashboard is vertically long and can place the main learning action above the current
+  viewport.
+- Dashboard unit rows are useful but not strong enough as "what do I do next?" guidance.
+- "Signs You've Learned" is retrospective and currently has no review action.
+- The account card still exposes "Current Level: Basic"; this was already known as a
+  Rev 4 open follow-up.
+- Current Letter M lesson screenshot still shows the reference-image placeholder
+  (`Add image to ../assets/images/basic/M.png`); verify whether the image asset exists.
+- Current Letter M screenshot still shows initial camera warnings (`No hand detected`
+  and `Face not detected`) even though the code comments/memory say a first-load
+  timestamp race was fixed; this needs another real-browser verification.
+- Letter M shows detected `C` at 74% in the screenshot. The yellow state communicates
+  that it is not a correct M, but the wording/visual distinction should remain explicit.
+
+**Architecture direction:** Dashboard should consume existing
+`LWProgress` + `LWData` APIs. Preferred implementation scope for the future redesign:
+`pages/dashboard.html`, `js/dashboard.js`, `css/dashboard.css`.
+Do not introduce a second progress/unlock/order algorithm.
+
+**No code was changed in this session.**
+
+**Still open after this session:**
+- Dashboard redesign implementation.
+- Real-browser verification of the latest lesson camera/warning behavior.
+- Asset verification for the Letter M lesson image.
+- Phase 7 capture/retraining work remains unchanged.
+- Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Dashboard implementation: Priority 0 #1 only
+
+**Requested:** Implement "priority 0 #1" from `PIVOT_CHECKLIST.md`'s Dashboard
+UX Review Checklist (the session directly above this one) — i.e. *only* item
+#1, "Make 'Continue Learning' the primary action." Also requested: a code
+visualization, and exclude `js/auth.js` (teammate owns it — same exclusion as
+every dashboard session so far).
+
+**Pre-change checks completed**, per this file's own header rule: read this
+file, then `PIVOT_CHECKLIST.md` (found the exact "Priority 0 #1" section — §1
+of its Dashboard UX Review Checklist), then confirmed against
+`SYSTEM_ARCHITECTURE.md`'s Dashboard UX Review Addendum that #1 was still open
+and its implementation boundary (`dashboard.html`/`dashboard.js`/`dashboard.css`
+only). No changes proposed or made to `data.js`, `learn.js`, `progress.js`, or
+`auth.js`.
+
+**What changed:**
+1. **`pages/dashboard.html`** — added a new `.continue-card` hero section
+   directly below the page header (before "Your Account" / "Overall
+   Progress"), with `data-continue-icon` / `-eyebrow` / `-title` /
+   `-progress-wrap` / `-progress-fill` / `-progress-label` /
+   `-secondary` hooks. The old inline CTA button that lived in `.dash-header`
+   moved into this card (same `data-continue-learning` hook, so nothing
+   downstream that already targeted that attribute needed to change).
+2. **`js/dashboard.js`** — added `getCurrentDestination()`: a single shared
+   helper that walks `LWProgress.getOrderedLiveCategories()` once to find the
+   learner's current unlocked-but-unpassed category (or `cat: null` if
+   everything's passed, or an empty chain if nothing's live yet), plus derived
+   fields (`unit`, `signs`, `practicedCount`, `nextSign`). Added
+   `renderContinueCard()`, which fills the new hero markup from that object
+   with three states (fresh chain / real destination / all caught up) and sets
+   the primary button's **label** (`Start Lesson` / `Continue` /
+   `Review Your Path`) without touching its `href`. `renderWelcomeBanner()`
+   and `renderContinueButton()` were changed to accept the shared destination
+   as a parameter instead of each independently re-walking the chain — their
+   own output/behavior is unchanged, only where the chain-walk lives moved.
+3. **`css/dashboard.css`** — added `.continue-card` + child rules (accented
+   border by default, gradient wash, 56px icon chip, inline mini progress bar,
+   action button row) plus a `max-width: 640px` stacked layout for it.
+
+**Bug/smell found and fixed in the same pass (not pre-existing — this is a
+refactor made while implementing, not a separately-discovered regression):**
+before this session, `renderWelcomeBanner()` and `renderContinueButton()` each
+had their own copy of "loop the flat chain, find the first
+unlocked-but-unpassed category." Two copies of that walk already existed;
+adding the new hero card as a third independent copy would have left three
+places that could silently drift out of sync if the unlock rule ever changed.
+Consolidated into `getCurrentDestination()`, computed once in the
+`DOMContentLoaded` handler and passed to all three render functions. Verified
+the two existing functions' outputs are unchanged by tracing both through the
+new shared helper by hand (`renderContinueButton()`'s href string, and each of
+`renderWelcomeBanner()`'s three message branches).
+
+**Explicitly out of scope, not done:** Priority 0 items #2 ("replace the
+report feeling") and #3 ("fix the meaning of the 9% number") — only #1 was
+requested. No relabeling of the aggregate progress card, no changes to how
+`renderOverallProgress()` computes or presents its percentage. `js/auth.js` —
+not opened, not touched, same standing exclusion as every session before this
+one.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean (confirmed via
+grep first that this file has no `import`/`export`, so no `.mjs` rename was
+needed for the check, same discipline as prior sessions). Every new
+`data-continue-*` attribute cross-checked between the HTML and JS with `grep`
+— all match. HTML `<section>`/`<div>` tag-balance and CSS brace-balance
+checked programmatically — both balanced.
+
+**Not exercised in a real browser** — same standing limitation as every prior
+UI-touching session. In particular, unverified: whether the hero card actually
+clears the fold on real viewport heights (the acceptance criterion this
+checklist item is graded on); the three hero-card states against real
+`localStorage` progress data shaped like a fresh account / a partially-
+practiced category / a fully-passed chain; the new narrow-viewport stack
+layout; light vs. dark theme rendering of the new gradient background.
+
+**Still open:**
+1. Real-browser verification of this session's change (see above) — the
+   single biggest recommendation coming out of this session.
+2. Priority 0 items #2 and #3 — not started.
+3. Every Priority 1 / Priority 2 item in `PIVOT_CHECKLIST.md`'s Dashboard UX
+   Review Checklist — not started.
+4. Everything already listed as still-open in every prior session log entry
+   above (Phase 7 capture/retraining, earlier real-browser-verification asks,
+   the Letter M image asset check, etc.) — unchanged by this session.
+5. Auth remains explicitly excluded.
+
+
+2026-08-21 (same day, second follow-up) — Dashboard implementation: Priority 0 #2
+
+Requested: Implement "priority 0 #2" from PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — "Replace the dashboard's current 'report' feeling." Also requested: a visualization of the change, and (same standing exclusion as every dashboard session) js/auth.js explicitly out of scope.
+
+Pre-change checks completed, per this file's own header rule: read this file, then PIVOT_CHECKLIST.md (found §2 = the requested "Priority 0 #2", plus its 4 unchecked sub-items and the explicit "not part of this implementation" note the prior Priority 0 #1 session left behind), then confirmed against SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Dashboard design priority" and "Metric semantics" sections for what #2 does and does not cover. Confirmed Priority 0 #3 (relabeling the % as "Practice Progress," not mastery) is a separate, still-open item and stayed out of it — every data-overall-* element's rendered text is unchanged. No changes proposed or made to data.js, learn.js, progress.js, or auth.js.
+
+What changed:
+
+pages/dashboard.html — reordered sections: "Overall Progress" now sits directly under the Continue Learning hero card (was previously below "Your Account"); "Your Account" moved down to sit between "Overall Progress" and "Signs You've Learned" instead. Matches SYSTEM_ARCHITECTURE.md's documented "Dashboard design priority" order (Welcome → Continue Learning → Progress → Path → Recap). No hooks, attributes, or content inside either section changed — pure reordering. Also simplified the header's data-welcome-banner fallback text and added progress-card--secondary / dash-heading--secondary classes to the "Overall Progress" card and heading.
+js/dashboard.js — renderWelcomeBanner()'s two destination-specific branches (practicedCount > 0 / === 0) no longer interpolate the unit title; both now return a short, generic line instead. The other two branches (empty chain / all-passed) were already generic and are unchanged. getCurrentDestination(), renderContinueCard(), renderContinueButton(), renderOverallProgress(), renderUnitList(), renderUnitRow(), renderRecap() — all byte-for-byte unchanged in logic; only doc comments updated to record this session.
+css/dashboard.css — new .dash-heading--secondary (shrinks the "Overall Progress" <h2> to a small uppercase label) and .progress-card--secondary (neutral 2px top edge instead of the accent 3px one, smaller % figure, muted badge). Both scoped narrowly — nothing else on the page uses either class.
+
+Bug/smell found (pre-existing, not introduced this session): re-reading SYSTEM_ARCHITECTURE.md's own "Implementation status" note for Priority 0 #1 confirmed the hero card being "above" the aggregate card was previously only true in the narrow sense of raw DOM order — "Your Account" still sat between the two logically-related sections (destination → its progress summary), and the aggregate card still matched the hero card's own visual weight almost 1:1 (colored top edge + large % + colored badge). Both are exactly what this session's checklist item names; not a new bug, just confirming the prior session's own "NOT part of this implementation" note was accurate.
+
+Explicitly out of scope, not done: Priority 0 item #3 (relabel the global % as "Practice Progress," not mastery) — renderOverallProgress()'s output text and the markup around data-overall-pct/data-overall-count/ data-overall-status are untouched, same numbers, same wording as before. Every Priority 1/2 item. js/auth.js — not opened, not touched.
+
+Verification: node --check on js/dashboard.js — clean. Every data-continue-* / data-overall-* / data-welcome-banner attribute cross-checked between the new HTML and JS via grep — all match (one harmless pre-existing exception: data-continue-card on the hero wrapper has never been read by JS, in this file or the original — not a regression). HTML <div>/<section> tag-balance and CSS brace-balance checked programmatically — both balanced.
+
+Not exercised in a real browser — same standing limitation as every prior UI-touching session. In particular, unverified: how the reordered sections and the demoted card actually look/scroll on a real viewport; the muted badge's contrast in light vs. dark theme; whether moving "Your Account" lower reads oddly to a real learner scanning top-to-bottom.
+
+Still open:
+
+Real-browser verification of this session's change (see above) — same biggest recommendation as every prior dashboard session.
+Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
+Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started.
+Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
+Auth remains explicitly excluded.

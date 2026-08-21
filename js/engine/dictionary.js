@@ -512,8 +512,24 @@ export const SIGN_DICTIONARY = {
   },
 
 
-  'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion' },
-  'THANK YOU':{ fingerStates:[1,1,1,1,1], category:'word', imageFile:'thank-you.gif',detectionType:'motion' },
+  // FIX (this session, PIVOT_CHECKLIST.md Phase 7 flagged item):
+  // both confirmed absent from asl_motion_model/labels.json — neither
+  // was previously marked disabled, so the classifier ran a doomed
+  // match on every attempt. Now consistent with the 16 Essential
+  // Words below (same pattern: real entry, disabled until retrained).
+  'HELLO':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hello.gif',    detectionType:'motion', disabled:true },
+  'THANK YOU':{ fingerStates:[1,1,1,1,1], category:'word', imageFile:'thank-you.gif',detectionType:'motion', disabled:true },
+
+  // FIX (this session, PIVOT_CHECKLIST.md Phase 7 flagged item):
+  // HOT/COLD (Unit 5, temperature) previously had NO SIGN_DICTIONARY
+  // entry at all — worse than the Essential Words above, since
+  // getDetectionType()'s `?? 'static'` fallback meant a camera
+  // attempt silently ran the wrong (static-alphabet) classifier
+  // instead of cleanly no-matching. Added as disabled placeholders,
+  // same shape as the Essential Words, so both fail the same clean
+  // way until real capture + retraining happens.
+  'HOT':  { fingerStates:[1,1,1,1,1], category:'temperature', imageFile:'hot.gif',  detectionType:'motion', disabled:true },
+  'COLD': { fingerStates:[1,1,1,1,1], category:'temperature', imageFile:'cold.gif', detectionType:'motion', disabled:true },
   'YES':      { fingerStates:[0,0,0,0,0], category:'word', imageFile:'yes.gif',      detectionType:'motion', disabled:true },
   'NO':       { fingerStates:[0,1,1,0,0], category:'word', imageFile:'no.gif',       detectionType:'motion', disabled:true },
   'PLEASE':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'please.gif',   detectionType:'motion', disabled:true },
