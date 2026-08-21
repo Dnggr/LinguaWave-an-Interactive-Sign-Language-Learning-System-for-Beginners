@@ -68,19 +68,26 @@ let authReady = false;
 let hasFiredReady = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
-  if (firebaseUser) {
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    const snapshot = await getDoc(userRef);
-    const profile = snapshot.exists() ? snapshot.data() : {};
+    console.log(performance.now());
+    if (firebaseUser) {
+    const existing = getCurrentUser();
 
-    const user = {
-      uid: firebaseUser.uid,
-      name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
-      email: firebaseUser.email,
-      level: profile.level || 'basic',
-      joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
-    };
-    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+    if (existing && existing.uid === firebaseUser.uid) {
+      // Already cached — skip the Firestore fetch entirely
+    } else {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const snapshot = await getDoc(userRef);
+      const profile = snapshot.exists() ? snapshot.data() : {};
+
+      const user = {
+        uid: firebaseUser.uid,
+        name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
+        email: firebaseUser.email,
+        level: profile.level || 'basic',
+        joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
+      };
+      localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+    }
   } else {
     localStorage.removeItem(LW_SESSION_KEY);
   }
