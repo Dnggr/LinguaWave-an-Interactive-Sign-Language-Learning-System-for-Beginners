@@ -19,31 +19,40 @@
  * SYSTEM_ARCHITECTURE.md Rev 4's "Progress / unlock model changes"
  * section. See PIVOT_CHECKLIST.md Phase 4's last item.
  *
- * REV 4 addendum (2026-08-21): added renderWelcomeBanner() — fixes
- * the hardcoded "...ASL Alphabet" welcome string flagged in
- * PIVOT_CHECKLIST.md's review-session addendum.
- *
  * DASHBOARD UX REVIEW — PRIORITY 0 #1 (2026-08-21, code session):
  * added the "Continue Learning" hero card (renderContinueCard()) per
  * PIVOT_CHECKLIST.md's "Dashboard UX Review Checklist" → Priority 0
- * item #1 ("Make 'Continue Learning' the primary action") and
- * SYSTEM_ARCHITECTURE.md's "Dashboard UX Review Addendum". Only that
- * one checklist item was implemented this session — see this file's
- * own doc comment above getCurrentDestination() and the "Implementation
- * status" note added to SYSTEM_ARCHITECTURE.md for exactly what did
- * and didn't change.
+ * item #1 ("Make 'Continue Learning' the primary action").
  *
  * Factored the "find the learner's current unlocked-but-unpassed
  * category" walk out of renderWelcomeBanner() and renderContinueButton()
  * (previously two separate, nearly-identical copies of the same walk)
  * into one shared getCurrentDestination() helper, now also consumed by
- * renderContinueCard(). Behavior of the two existing functions is
- * UNCHANGED — same chain, same unlocked/passed check — this is a
- * de-duplication, not a logic change. This keeps the checklist's own
- * "do not create a second progress/unlock algorithm" rule true for the
- * dashboard's OWN code, too, not just the app-wide progress engine.
+ * renderContinueCard(). This keeps the checklist's own "do not create a
+ * second progress/unlock algorithm" rule true for the dashboard's OWN
+ * code, too, not just the app-wide progress engine.
  *
- * BUGFIX (carried over, unrelated to this session): the OLD
+ * DASHBOARD UX REVIEW — PRIORITY 0 #2 (2026-08-21, same day, code
+ * session): "Replace the dashboard's current 'report' feeling." Three
+ * of the four checklist sub-items were pure HTML/CSS (moving/demoting
+ * the aggregate section — see pages/dashboard.html and
+ * css/dashboard.css). The one JS-level change is here:
+ * renderWelcomeBanner() used to restate the exact unit/category name
+ * the new hero card (Priority 0 #1) already shows one section below it
+ * — two places naming the same destination at effectively equal
+ * visual weight, which is precisely the checklist's own "avoid showing
+ * the same information...three different ways" rule. Simplified below
+ * to a short, generic nudge with no destination-specific text; the
+ * hero card is now the single canonical place that names where the
+ * learner is. `getCurrentDestination()`'s shape and every other
+ * function's behavior are UNCHANGED by this — only
+ * renderWelcomeBanner()'s own output text changed.
+ *
+ * NOT part of Priority 0 #2: renderOverallProgress() itself. Its
+ * output (a bare "%") is intentionally untouched — relabeling what
+ * that number means (vs. mastery) is Priority 0 item #3, still open.
+ *
+ * BUGFIX (carried over, unrelated to either session above): the OLD
  * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
  * intermediate order, and *within* a level used `liveCategoriesFor(level)`
  * — sorted by that category's own in-level `order` field, NOT by unit.
@@ -62,7 +71,7 @@
 // nodes, kept in sync manually (two small copies were judged simpler
 // and lower-risk than introducing a shared module/global just for an
 // icon lookup — see the Phase 4 session log for the reasoning). Also
-// reused by the new Continue Learning hero card below.
+// reused by the Continue Learning hero card below.
 const UNIT_ICONS = {
   welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
   everyday_essentials: '🙏', common_things_people: '🗂️',
@@ -75,15 +84,16 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/** Aggregate card at the top of "Overall Progress" — the whole flat
- *  chain combined into one percentage, replacing what used to be
- *  three separate per-level percentages.
+/** Aggregate card in "Overall Progress" — the whole flat chain
+ *  combined into one percentage, replacing what used to be three
+ *  separate per-level percentages.
  *
  *  NOTE (2026-08-21): this is the "practice progress" number
  *  PIVOT_CHECKLIST.md's Priority 0 item #3 wants explicitly relabeled
- *  (not "mastery"). NOT changed this session — item #3 is out of scope
- *  for the Priority 0 #1 work below. Flagging here so it isn't assumed
- *  done. */
+ *  (not "mastery"). NOT changed by either the Priority 0 #1 or #2
+ *  sessions — item #3 is a separate, still-open item. Flagging here so
+ *  it isn't assumed done just because #2 touched this card's CSS
+ *  class / position (see pages/dashboard.html and css/dashboard.css). */
 function renderOverallProgress() {
   if (!window.LWProgress || !window.LWData) return;
   const chain = window.LWProgress.getOrderedLiveCategories();
@@ -115,7 +125,7 @@ function renderOverallProgress() {
 }
 
 /**
- * NEW (2026-08-21, code session) — PIVOT_CHECKLIST.md Priority 0 #1.
+ * PIVOT_CHECKLIST.md Priority 0 #1 (2026-08-21).
  *
  * Finds the learner's current destination: the first category in the
  * flat cross-unit chain that's unlocked but not yet passed, plus
@@ -129,6 +139,9 @@ function renderOverallProgress() {
  * unlock/ordering rule was introduced; `getOrderedLiveCategories()` /
  * `getCategoryProgress()` / `isCategoryUnlocked()` are the same
  * window.LWProgress calls both prior functions already made.
+ *
+ * UNCHANGED by the Priority 0 #2 session — only renderWelcomeBanner()'s
+ * own output text changed, not what this helper returns.
  *
  * @returns {null | {
  *   chain: object[],
@@ -159,24 +172,26 @@ function getCurrentDestination() {
   return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null };
 }
 
-/** FIX (2026-08-21): was PIVOT_CHECKLIST.md's "welcome banner
- *  hardcodes '...ASL Alphabet'" item. Walks the shared destination
- *  (now via getCurrentDestination(), passed in) to find the learner's
- *  current in-progress category, then maps its parent UNIT's title to
- *  a friendly phrase. Three states, since a plain "you're making great
- *  progress on {unit}" doesn't honestly cover either end of the chain:
- *    - nothing trained at all (chain.length === 0) — generic opener,
- *      no unit name to reference.
- *    - a real current category exists, but it's brand new (learner
- *      hasn't practiced a single sign in it yet) — "Let's get
- *      started with X!" reads truer than "great progress."
- *    - a real current category, already partway through — the
- *      original "great progress on X" phrasing.
- *    - every trained category passed — says so, instead of repeating
- *      the last unit's name forever.
- *
- *  Behavior is UNCHANGED from before this session — only the source of
- *  the chain walk moved (now shared with renderContinueCard() below).
+/**
+ * CHANGED (Priority 0 #2, 2026-08-21, same day as Priority 0 #1).
+ * Previously restated the exact unit/category name here too
+ * ("You're making great progress on {unit}"), which duplicated the
+ * Continue Learning hero card immediately below at effectively equal
+ * visual weight — the checklist's own "avoid showing the same
+ * information...three different ways" rule. The hero card
+ * (renderContinueCard()) is now the single canonical place that names
+ * the destination; this banner stays a short, generic nudge instead of
+ * a second copy of the same sentence. Still three states, since a flat
+ * "Ready to pick up where you left off?" doesn't honestly cover either
+ * end of the chain:
+ *   - nothing trained at all (chain.length === 0) — generic opener,
+ *     no unit name to reference. (Unchanged from before this session —
+ *     this branch never named a specific unit to begin with.)
+ *   - a real current category exists — one short, non-specific line,
+ *     varied only by whether anything's been practiced yet.
+ *   - every trained category passed — says so, instead of repeating
+ *     the last unit's name forever. (Unchanged from before this
+ *     session — also never unit-specific.)
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -194,10 +209,9 @@ function renderWelcomeBanner(destination) {
     return;
   }
 
-  const unitTitle = destination.unit?.title ?? destination.cat.title;
   el.textContent = destination.practicedCount > 0
-    ? `You're making great progress on ${unitTitle}.`
-    : `Let's get started with ${unitTitle}!`;
+    ? 'Ready to pick up where you left off?'
+    : 'Your next lesson is ready when you are.';
 }
 
 /** One compact row per unit — the "no more three level cards"
@@ -205,7 +219,9 @@ function renderWelcomeBanner(destination) {
  *  trail nodes (no full lesson-card treatment, no separate CSS
  *  component reused from there) since this is a secondary summary,
  *  not the primary navigation surface — that's still the trail on
- *  pages/learn.html itself. */
+ *  pages/learn.html itself. Already satisfied Priority 0 #2's "keep
+ *  the unit list as a compact summary, not the main feature" item
+ *  as-is; no change needed here for that session. */
 function renderUnitRow(unit) {
   const icon = UNIT_ICONS[unit.id] ?? '🔖';
 
@@ -287,10 +303,11 @@ function renderRecap() {
 }
 
 /** "Continue Learning" button — points at the first category that's
- *  unlocked but not yet passed. Behavior is UNCHANGED from before this
- *  session (same href construction); it now just reads the shared
- *  `destination` object instead of re-walking the chain itself. See
- *  the BUGFIX note in the file header for why this doesn't loop LEVELS.
+ *  unlocked but not yet passed. Behavior is UNCHANGED by either
+ *  Priority 0 session (same href construction); it just reads the
+ *  shared `destination` object instead of re-walking the chain itself.
+ *  See the BUGFIX note in the file header for why this doesn't loop
+ *  LEVELS.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -308,9 +325,8 @@ function renderContinueButton(destination) {
 }
 
 /**
- * NEW (2026-08-21, code session) — PIVOT_CHECKLIST.md Dashboard UX
- * Review Checklist → Priority 0 item #1 ("Make 'Continue Learning'
- * the primary action").
+ * PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 item #1
+ * ("Make 'Continue Learning' the primary action", 2026-08-21).
  *
  * Fills in the hero card: exact destination (Unit + category + next
  * sign), progress WITHIN that destination (not the global aggregate
@@ -324,6 +340,8 @@ function renderContinueButton(destination) {
  * Does NOT set the primary button's `href` — renderContinueButton()
  * above already owns that, so the two functions don't race to set the
  * same attribute from two different code paths.
+ *
+ * UNCHANGED by the Priority 0 #2 session.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */

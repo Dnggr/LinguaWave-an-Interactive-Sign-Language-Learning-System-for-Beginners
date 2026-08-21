@@ -302,27 +302,30 @@ boundary" (§20) / `SYSTEM_ARCHITECTURE.md`'s matching section.
 
 ---
 
-### 2. Priority 0 — Replace the dashboard's current "report" feeling
+2. Priority 0 — Replace the dashboard's current "report" feeling — ✅ Done 2026-08-21 (code session)
 
-Current problem:
+Current problem (as observed in the review session):
 
-The screenshot shows `Overall Progress` first, followed by a long stack of unit
-rows. This is useful information, but it feels like an admin/status page instead
-of a learning home.
+The screenshot showed Overall Progress first, followed by a long stack of unit rows. This was useful information, but it felt like an admin/status page instead of a learning home.
 
-- [ ] Move the learner's next action above the aggregate progress card.
-- [ ] Keep overall progress, but make it secondary to the next action.
-- [ ] Keep the unit list as a compact learning-path summary, not the main feature.
-- [ ] Avoid showing the same information at equal visual weight three different ways.
+ Move the learner's next action above the aggregate progress card. — confirmed done: the Continue Learning hero card (Priority 0 #1) was already structurally above "Overall Progress" as a side effect of that session's own placement (see AI_MEMORY.md's Priority 0 #1 log and SYSTEM_ARCHITECTURE.md's matching "Implementation status" note, which flagged this explicitly as NOT fully addressing #2). This session closed the remaining gap: "Your Account" used to sit between the two, so it was moved below "Overall Progress" instead — the hero card and its progress summary now sit back-to-back, matching SYSTEM_ARCHITECTURE.md's "Dashboard design priority" order.
+ Keep overall progress, but make it secondary to the next action. — done via new .progress-card--secondary / .dash-heading--secondary classes in css/dashboard.css: neutral 2px top edge (was accent 3px), smaller % figure (--fs-lg vs --fs-2xl), muted badge (was accent-colored). No markup structure changed, no data-overall-* element's rendered TEXT changed — purely a visual weight reduction. See pages/dashboard.html's "Overall Progress" section comment.
+ Keep the unit list as a compact learning-path summary, not the main feature. — confirmed already true (Phase 4's row-based .unit-progress-row list, not full cards); no change needed or made this session.
+ Avoid showing the same information at equal visual weight three different ways. — done: js/dashboard.js's renderWelcomeBanner() used to restate the exact unit/category name the hero card (Priority 0 #1) already shows one section below it — two places naming the same destination at effectively equal weight. Simplified the banner to a short, generic, non-destination-specific line (see that function's own doc comment). The unit list's own "current" highlight (a border-color state on one row) was judged low-key enough not to count as a third equal-weight repetition — left as-is.
+Rule
 
-#### Rule
+Dashboard = What should I do now?
 
-Dashboard = **What should I do now?**
+Learn = Where can I go?
 
-Learn = **Where can I go?**
+Lesson = Teach and practice this thing.
 
-Lesson = **Teach and practice this thing.**
+Files touched this session
+pages/dashboard.html — reordered "Overall Progress" above "Your Account"; simplified header banner fallback text; added progress-card--secondary / dash-heading--secondary classes.
+js/dashboard.js — renderWelcomeBanner()'s two destination-specific branches simplified to generic text; every other function unchanged.
+css/dashboard.css — new .progress-card--secondary and .dash-heading--secondary rules.
 
+Explicitly not touched: js/auth.js (excluded by user request, same as every prior dashboard session), js/data.js, js/learn.js, js/engine/progress.js — per this checklist's own §20 "Allowed implementation scope" / SYSTEM_ARCHITECTURE.md's matching section. Priority 0 item #3 (the %'s meaning) — explicitly separate, not started.
 ---
 
 ### 3. Priority 0 — Fix the meaning of the 9% progress number
@@ -855,3 +858,36 @@ session that touched UI:**
    (Phase 7 capture/retraining, real-browser checks from earlier sessions,
    etc.) — unchanged by this session.
 5. `auth.js` remains explicitly excluded, per user instruction.
+
+
+---
+
+### 24. Implementation session 
+24. Implementation session — Priority 0 #2 (2026-08-21, same day, code session)
+
+This session DID write code — a follow-up to §23 above, explicitly scoped to only Priority 0 item #2 ("Replace the dashboard's current 'report' feeling," §2). Priority 0 item #3 and everything Priority 1/2 are still open — see §2's own bullets for exactly what was and wasn't covered.
+
+Pre-change checks completed, per AI_MEMORY.md's own header rule: read that file first, then this checklist (found §2 = the requested "Priority 0 #2"), then confirmed against SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum for the same section's authority. No changes were made to data.js, learn.js, progress.js, or auth.js — auth.js was excluded per explicit user instruction this session too, same as every dashboard session before it.
+
+Files changed: pages/dashboard.html, js/dashboard.js, css/dashboard.css — see §2's "Files touched this session" for specifics. Exactly the three files this checklist's own §20 ("Allowed implementation scope") names.
+
+Verification performed:
+
+node --check on js/dashboard.js — clean, no syntax errors.
+Every data-continue-* / data-overall-* / data-welcome-banner attribute cross-checked between pages/dashboard.html and js/dashboard.js's querySelector calls via grep — all match (one pre-existing, non-regressed exception: data-continue-card on the hero wrapper was never read by JS before this session either).
+HTML tag balance (<div>/<section> open vs. close count) and CSS brace balance checked programmatically — both balanced.
+
+NOT verified — same standing limitation as every prior dashboard/lesson session that touched UI:
+
+Not exercised in a real browser. In particular:
+Whether the reordered sections and the demoted "Overall Progress" card actually read as "secondary" to a real learner scanning the page, vs. just reasoned about via CSS property changes.
+Light/dark theme rendering of the new muted badge and neutral top-edge colors.
+Whether moving "Your Account" below "Overall Progress" reads oddly on a real return-visit flow.
+
+Still open after this session:
+
+Real-browser verification of this session's change (see above) — the single biggest recommendation coming out of this session, consistent with every UI-touching session before it.
+Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
+Every Priority 1 / Priority 2 item in this checklist (§4–§15) — not started.
+Everything already listed as still-open in every prior session log entry (Phase 7 capture/retraining, real-browser checks from earlier sessions, etc.) — unchanged by this session.
+auth.js remains explicitly excluded, per user instruction.

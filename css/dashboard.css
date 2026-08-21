@@ -10,7 +10,7 @@
   flex-wrap: wrap;
 }
 
-/* ── Continue Learning hero card (NEW, 2026-08-21 code session) ─────
+/* ── Continue Learning hero card (2026-08-21 code session) ───────────
    PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 #1
    ("Make 'Continue Learning' the primary action"). Deliberately the
    most visually weighted card on the page — accented border by
@@ -18,7 +18,9 @@
    gradient wash, and a bigger icon — since the checklist's own rule
    is that this card should read as "this is what you do next," not
    another status tile competing with the aggregate progress card
-   below it. See js/dashboard.js's renderContinueCard(). */
+   below it. See js/dashboard.js's renderContinueCard(). Untouched by
+   the Priority 0 #2 pass below — #2 demotes the OTHER card instead of
+   further inflating this one. */
 .continue-card {
   display: flex;
   align-items: center;
@@ -99,6 +101,23 @@
   .continue-card__progress .progress-bar { width: 100%; flex: 1 1 100%; }
 }
 
+/* ── Overall Progress heading: demoted (Priority 0 #2, 2026-08-21) ───
+   Applied only to the "Overall Progress" <h2> in pages/dashboard.html
+   — every other dashboard heading (Your Account, Signs You've
+   Learned) is unchanged. Shrinks it from the default bold display-font
+   h2 down to a small uppercase label, so it reads as a section of
+   supporting detail under the Continue Learning hero card rather than
+   a second headline competing with it. Purely typographic — no
+   underlying markup/heading level changed (still an <h2>, so document
+   outline / accessibility tree is unaffected). */
+.dash-heading--secondary {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--clr-text-muted);
+}
+
 /* ── Progress card: colored top edge (CSS-only) ─────────────────────
    REV 4 PHASE 4: there's only one progress-card now (the aggregate
    "Your ASL Path" card) — the old per-tier `[data-level-card]`
@@ -143,13 +162,53 @@
   background: linear-gradient(90deg, var(--clr-accent-dim), var(--clr-accent));
 }
 
+/* ── Progress card: secondary/demoted variant (Priority 0 #2,
+   2026-08-21) ────────────────────────────────────────────────────────
+   PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 item
+   #2 ("Replace the dashboard's current 'report' feeling" /
+   "Keep overall progress, but make it secondary to the next action").
+
+   Before this pass, this card matched the Continue Learning hero
+   card's visual weight almost 1:1 — same accent-colored top edge,
+   same big display-font number, plus a colored badge pill. That's
+   exactly the "equal visual weight" problem the checklist names.
+   Toned down here: thinner NEUTRAL top edge (not accent-colored — the
+   hero card above already owns that treatment), a smaller percentage
+   figure, and a muted/neutral badge instead of an accent-colored one.
+
+   Deliberately does NOT touch:
+     - `data-overall-pct` / `data-overall-count` / `data-overall-status`
+       text content — js/dashboard.js's renderOverallProgress() output
+       is byte-for-byte unchanged. Relabeling what the number MEANS
+       (vs. mastery) is Priority 0 item #3, a separate, still-open
+       item — this class only changes presentation.
+     - `.progress-bar__fill`'s gradient (kept, it's a small enough
+       detail that it doesn't compete with the hero card).
+     - Card padding/spacing (kept `.card`'s default — resizing text and
+       neutralizing color already achieves the demotion without
+       touching layout other rules may depend on). */
+.progress-card--secondary::before {
+  background: var(--clr-border);
+  height: 2px;
+}
+.progress-card--secondary .progress-card__pct {
+  font-size: var(--fs-lg);
+}
+.progress-card--secondary .badge {
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+  border: 1px solid var(--clr-border);
+}
+
 /* ── Unit progress list (Phase 4) ─────────────────────────────────
    Replaces the old three basic/medium/intermediate progress-card grid
    — one compact row per window.LWData.getUnits() entry, rendered by
    js/dashboard.js. Deliberately NOT full progress-cards (no bar/CTA
    each — that's the aggregate card above); just a scannable status
    list so the whole trail fits on the dashboard without repeating
-   pages/learn.html's own card-based trail view. */
+   pages/learn.html's own card-based trail view. Already satisfied
+   Priority 0 #2's "keep the unit list as a compact summary, not the
+   main feature" item as-is — untouched by that pass. */
 .unit-progress-list {
   display: flex;
   flex-direction: column;

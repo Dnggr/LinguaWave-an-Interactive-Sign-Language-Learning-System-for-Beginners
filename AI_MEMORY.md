@@ -1955,3 +1955,32 @@ layout; light vs. dark theme rendering of the new gradient background.
    above (Phase 7 capture/retraining, earlier real-browser-verification asks,
    the Letter M image asset check, etc.) — unchanged by this session.
 5. Auth remains explicitly excluded.
+
+
+2026-08-21 (same day, second follow-up) — Dashboard implementation: Priority 0 #2
+
+Requested: Implement "priority 0 #2" from PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — "Replace the dashboard's current 'report' feeling." Also requested: a visualization of the change, and (same standing exclusion as every dashboard session) js/auth.js explicitly out of scope.
+
+Pre-change checks completed, per this file's own header rule: read this file, then PIVOT_CHECKLIST.md (found §2 = the requested "Priority 0 #2", plus its 4 unchecked sub-items and the explicit "not part of this implementation" note the prior Priority 0 #1 session left behind), then confirmed against SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Dashboard design priority" and "Metric semantics" sections for what #2 does and does not cover. Confirmed Priority 0 #3 (relabeling the % as "Practice Progress," not mastery) is a separate, still-open item and stayed out of it — every data-overall-* element's rendered text is unchanged. No changes proposed or made to data.js, learn.js, progress.js, or auth.js.
+
+What changed:
+
+pages/dashboard.html — reordered sections: "Overall Progress" now sits directly under the Continue Learning hero card (was previously below "Your Account"); "Your Account" moved down to sit between "Overall Progress" and "Signs You've Learned" instead. Matches SYSTEM_ARCHITECTURE.md's documented "Dashboard design priority" order (Welcome → Continue Learning → Progress → Path → Recap). No hooks, attributes, or content inside either section changed — pure reordering. Also simplified the header's data-welcome-banner fallback text and added progress-card--secondary / dash-heading--secondary classes to the "Overall Progress" card and heading.
+js/dashboard.js — renderWelcomeBanner()'s two destination-specific branches (practicedCount > 0 / === 0) no longer interpolate the unit title; both now return a short, generic line instead. The other two branches (empty chain / all-passed) were already generic and are unchanged. getCurrentDestination(), renderContinueCard(), renderContinueButton(), renderOverallProgress(), renderUnitList(), renderUnitRow(), renderRecap() — all byte-for-byte unchanged in logic; only doc comments updated to record this session.
+css/dashboard.css — new .dash-heading--secondary (shrinks the "Overall Progress" <h2> to a small uppercase label) and .progress-card--secondary (neutral 2px top edge instead of the accent 3px one, smaller % figure, muted badge). Both scoped narrowly — nothing else on the page uses either class.
+
+Bug/smell found (pre-existing, not introduced this session): re-reading SYSTEM_ARCHITECTURE.md's own "Implementation status" note for Priority 0 #1 confirmed the hero card being "above" the aggregate card was previously only true in the narrow sense of raw DOM order — "Your Account" still sat between the two logically-related sections (destination → its progress summary), and the aggregate card still matched the hero card's own visual weight almost 1:1 (colored top edge + large % + colored badge). Both are exactly what this session's checklist item names; not a new bug, just confirming the prior session's own "NOT part of this implementation" note was accurate.
+
+Explicitly out of scope, not done: Priority 0 item #3 (relabel the global % as "Practice Progress," not mastery) — renderOverallProgress()'s output text and the markup around data-overall-pct/data-overall-count/ data-overall-status are untouched, same numbers, same wording as before. Every Priority 1/2 item. js/auth.js — not opened, not touched.
+
+Verification: node --check on js/dashboard.js — clean. Every data-continue-* / data-overall-* / data-welcome-banner attribute cross-checked between the new HTML and JS via grep — all match (one harmless pre-existing exception: data-continue-card on the hero wrapper has never been read by JS, in this file or the original — not a regression). HTML <div>/<section> tag-balance and CSS brace-balance checked programmatically — both balanced.
+
+Not exercised in a real browser — same standing limitation as every prior UI-touching session. In particular, unverified: how the reordered sections and the demoted card actually look/scroll on a real viewport; the muted badge's contrast in light vs. dark theme; whether moving "Your Account" lower reads oddly to a real learner scanning top-to-bottom.
+
+Still open:
+
+Real-browser verification of this session's change (see above) — same biggest recommendation as every prior dashboard session.
+Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
+Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started.
+Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
+Auth remains explicitly excluded.
