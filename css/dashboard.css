@@ -200,40 +200,44 @@
   border: 1px solid var(--clr-border);
 }
 
-/* ── Unit progress list (Phase 4) ─────────────────────────────────
-   Replaces the old three basic/medium/intermediate progress-card grid
-   — one compact row per window.LWData.getUnits() entry, rendered by
-   js/dashboard.js. Deliberately NOT full progress-cards (no bar/CTA
-   each — that's the aggregate card above); just a scannable status
-   list so the whole trail fits on the dashboard without repeating
-   pages/learn.html's own card-based trail view. Already satisfied
-   Priority 0 #2's "keep the unit list as a compact summary, not the
-   main feature" item as-is — untouched by that pass. */
+/* ── Unit progress list — compact learning-path summary (Priority 1) ──
+   Still secondary to the Continue Learning card. This is a summary of the
+   existing flat trail, NOT a second trail/navigation surface. */
 .unit-progress-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 .unit-progress-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4);
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--clr-text);
-  transition: border-color var(--dur-fast) var(--ease);
 }
-a.unit-progress-row:hover { border-color: var(--clr-accent); text-decoration: none; }
-.unit-progress-row--locked  { opacity: .55; }
-.unit-progress-row--current { border-color: var(--clr-accent); }
-.unit-progress-row--done    { border-color: var(--clr-success); }
+a.unit-progress-row:hover {
+  border-color: var(--clr-accent);
+  background: var(--clr-surface-2);
+  text-decoration: none;
+}
+.unit-progress-row--locked { opacity: .52; }
+.unit-progress-row--current {
+  border-color: var(--clr-accent);
+  background: var(--clr-accent-soft);
+  box-shadow: 0 0 0 1px var(--clr-accent-soft);
+}
+.unit-progress-row--done {
+  border-color: var(--clr-success);
+  background: var(--clr-success-soft);
+}
 .unit-progress-row__icon {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,137 +246,80 @@ a.unit-progress-row:hover { border-color: var(--clr-accent); text-decoration: no
   font-size: var(--fs-lg);
 }
 .unit-progress-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  gap: var(--space-2);
+}
+.unit-progress-row__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 .unit-progress-row__title {
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--clr-text);
+}
+.unit-progress-row__current-badge,
+.unit-progress-row__reference-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.unit-progress-row__current-badge {
+  background: var(--clr-accent);
+  color: var(--clr-text-invert);
+}
+.unit-progress-row__reference-badge {
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
 }
 .unit-progress-row__status {
   font-size: var(--fs-xs);
   color: var(--clr-text-muted);
 }
-
-/* Recap grid — chips, not squares */
-.recap-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/*
-  BUG FIX: this used to be a fixed 56x56px square trying to fit
-  whatever sign title was practiced — fine for a single letter, but
-  multi-word entries like "I AM FINE" or "MY SISTER" wrapped inside a
-  box sized for one character and visually overlapped/collided.
-  Rebuilt as an auto-width pill: short signs (single letters) stay
-  compact, phrases grow to fit, and anything genuinely too long
-  truncates cleanly with an ellipsis + native tooltip instead of
-  wrapping garbage.
-*/
-.recap-card {
-  display: flex;
+.unit-progress-row__progress {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto;
   align-items: center;
-  gap: 0;
+  gap: var(--space-3);
 }
-.recap-card__img {
-  min-width: 40px;
-  height: 40px;
-  max-width: 160px;
-  padding: 0 var(--space-3);
-  background: var(--clr-surface);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-pill);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--clr-text);
-  letter-spacing: .02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+.unit-progress-row__progress .progress-bar {
+  width: 100%;
+  height: 5px;
 }
-.recap-card:hover .recap-card__img {
-  border-color: var(--clr-accent);
-  color: var(--clr-accent);
-}
-.recap-card--locked {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  height: 40px;
-  padding: 0 var(--space-3);
-  background: transparent;
-  border: 1px dashed var(--clr-border);
-  border-radius: var(--radius-pill);
-  color: var(--clr-text-muted);
-}
-
-/* ── YOUR ACCOUNT (user details card) ───────────────────────────── */
-.account-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-}
-.account-avatar {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-dim));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  color: var(--clr-text-invert);
-  box-shadow: var(--shadow-card);
-}
-.account-details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.account-details__name {
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--clr-text);
-}
-.account-details__email {
-  font-size: var(--fs-sm);
-  color: var(--clr-text-muted);
-}
-.account-meta {
-  display: flex;
-  gap: var(--space-6);
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-.account-meta__item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.account-meta__label {
+.unit-progress-row__metric,
+.unit-progress-row__assessment {
   font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: .06em;
   color: var(--clr-text-muted);
+  white-space: nowrap;
 }
-.account-meta__value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
+.unit-progress-row__assessment { align-self: flex-start; }
+.unit-progress-row--done .unit-progress-row__assessment { color: var(--clr-success); }
+.unit-progress-row--current .unit-progress-row__assessment {
   color: var(--clr-text);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .unit-progress-row {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+  .unit-progress-row__progress {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .unit-progress-row__metric,
+  .unit-progress-row__assessment {
+    white-space: normal;
+  }
 }

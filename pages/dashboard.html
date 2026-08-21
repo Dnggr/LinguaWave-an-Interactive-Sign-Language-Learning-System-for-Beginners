@@ -21,14 +21,14 @@
                     (Priority 0 #1, 2026-08-21). See js/dashboard.js's
                     renderContinueCard() / getCurrentDestination().
                  2. "Overall Progress" — the aggregate card + trail/unit
-                    overview, now DEMOTED to a secondary, compact
-                    summary directly below the hero card (Priority 0
-                    #2, 2026-08-21 — see the section's own comment
-                    below and SYSTEM_ARCHITECTURE.md's "Dashboard UX
-                    Review Addendum" → "Implementation status (Priority
-                    0 #2)"). Still shows the raw practice-% number
-                    unchanged — RELABELING what that number means is
-                    Priority 0 item #3, still open, not done here.
+                    overview, DEMOTED to a secondary, compact summary
+                    directly below the hero card (Priority 0 #2,
+                    2026-08-21) AND explicitly labeled "Practice
+                    Progress" rather than a bare "%" (Priority 0 #3,
+                    2026-08-21, same day) — see the section's own
+                    comment below and SYSTEM_ARCHITECTURE.md's
+                    "Dashboard UX Review Addendum" → "Implementation
+                    status — Priority 0 #2" / "— Priority 0 #3".
                  3. "Your Account" — user details (name/email/level).
                     Moved below Overall Progress this session (was
                     above it) so the learner's next action is
@@ -37,6 +37,9 @@
                     "Continue Learning → Progress → Path → Recap" flow.
                     No content/logic in this card changed.
                  4. "Signs You've Learned" — recap of mastered signs.
+                     Priority 1 (2026-08-21) turns the unit rows beneath Overall
+                     Progress into a compact learning-path summary: graded units
+                     show practice totals, assessment totals, and current-unit state.
 
     CONNECTS : ← index.html (redirected here after login)
                → pages/learn.html      (unit rows + hero card's
@@ -196,12 +199,23 @@
        (Phase 4) and needed no change for the "not the main feature"
        requirement.
 
-       NOT changed this session: the underlying metric. It's still
-       computed from signs practiced and still just shows a bare "%" —
-       relabeling it explicitly as "Practice Progress" (vs. mastery),
-       per PIVOT_CHECKLIST.md Priority 0 item #3, is a separate,
-       still-open item. Do not assume it's done because this section
-       was touched. -->
+       LABELED (Priority 0 #3, 2026-08-21, later same day, code
+       session): the badge that used to read "Your ASL Path" now reads
+       "Practice Progress" — data-overall-metric-label, plain text, not
+       consumed by JS — and the supporting `.progress-card__label`
+       paragraph now says "Signs practiced across all units — not a
+       mastery score" (was "All units combined"). This is a text-only
+       change: `[data-overall-pct]`,
+       `[data-overall-progress]`, `[data-overall-count]`, and
+       `[data-overall-status]` are untouched, so js/dashboard.js's
+       renderOverallProgress() needed no change — the `X / Y category
+       assessments passed` line it already renders into
+       `[data-overall-status]` is the "separate mastery signal" the
+       checklist item asks for; it already existed and already sits on
+       its own line below the practice count, so nothing there was
+       combined into the % or needed to move. See
+       SYSTEM_ARCHITECTURE.md's "Implementation status — Priority 0 #3"
+       and PIVOT_CHECKLIST.md §3 for the full writeup. -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8 dash-heading--secondary">Overall Progress</h2>
@@ -212,10 +226,10 @@
            below is just a loading-state placeholder. -->
       <div class="card progress-card progress-card--secondary mb-8">
         <div class="progress-card__head">
-          <span class="badge badge--basic">Your ASL Path</span>
+          <span class="badge badge--basic" data-overall-metric-label>Practice Progress</span>
           <span class="progress-card__pct" data-overall-pct>–</span>
         </div>
-        <p class="progress-card__label">All units combined</p>
+        <p class="progress-card__label">Signs practiced across all units — not a mastery score</p>
         <div class="progress-bar mt-4">
           <div class="progress-bar__fill" data-overall-progress="0"></div>
         </div>
@@ -223,10 +237,15 @@
         <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
       </div>
 
-      <!-- One row per unit — entirely data-driven from
-           window.LWData.getUnits(), rendered by js/dashboard.js. Each
-           row links into pages/learn.html at that unit. Already a
-           compact summary (Phase 4) — untouched by Priority 0 #2. -->
+      <!--
+        DASHBOARD UX REVIEW — PRIORITY 1 (2026-08-21)
+        Each row is still a compact summary, not a second trail. Graded units
+        now show practiced/total signs, a compact practice bar, and
+        assessment-passed/total separately. The current unit gets a visible
+        "You are here" marker. Locked units stay subdued. Unit 7 is explicitly
+        reference/read-only; Unit 0 and Unit 2 retain descriptive non-graded
+        states because Rev 4 excludes them from the grading chain.
+      -->
       <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>

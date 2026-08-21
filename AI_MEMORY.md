@@ -1984,3 +1984,73 @@ Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
 Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started.
 Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
 Auth remains explicitly excluded.
+
+
+2026-08-21 (same day, third follow-up) — Dashboard implementation: Priority 0 #3, plus a doc-hygiene fix
+
+Requested: implement "priority 0 #3" from PIVOT_CHECKLIST.md's Dashboard UX Review Checklist ("fix the meaning of the 9% progress number"); separately, fix AI_MEMORY.md, PIVOT_CHECKLIST.md, and SYSTEM_ARCHITECTURE.md themselves, since a prior AI session had left them out of sync; a visualization of the change; js/auth.js excluded, same as every dashboard session.
+
+Pre-change checks completed, per this file's own header rule: read this file, then PIVOT_CHECKLIST.md (found §3 = the requested "Priority 0 #3," its 6 unchecked sub-items, and the "recommended dashboard summary" example), then SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Metric semantics" section for the same item's authority. No changes proposed or made to data.js, learn.js, progress.js, or auth.js.
+
+Doc bug found and fixed (this is the "other AI didn't fix it" issue): a prior session had pasted two literal, unapplied patch instructions ("HOW TO APPLY THIS FILE... PATCH 1... PATCH 2...") verbatim at the very end of SYSTEM_ARCHITECTURE.md instead of actually applying them to the file. Applied both in place — PATCH 1 expanded the top changelog blockquote to record the Priority 0 #2 session (it previously only mentioned #1); PATCH 2 renamed "### Implementation status (2026-08-21, code session)" to "### Implementation status — Priority 0 #1 ..." and inserted the missing "### Implementation status — Priority 0 #2 ..." section right after it. The stray raw patch text at the end of the file was deleted. Also appended a new "### Implementation status — Priority 0 #3 ..." section for this session's own change, so the addendum now has all three Priority 0 write-ups, in order, with no leftover instructions-as-content.
+
+What changed (the actual Priority 0 #3 fix):
+pages/dashboard.html — aggregate-card badge text "Your ASL Path" → "Practice Progress" (new data-overall-metric-label attribute, plain text, not read by JS); .progress-card__label text "All units combined" → "Signs practiced across all units — not a mastery score"; updated that section's own comment and the file's top purpose comment.
+js/dashboard.js — no logic changed; renderOverallProgress() is byte-for-byte identical. Updated its doc comment and the file's top comment block to point at the HTML as the source of the relabel.
+css/dashboard.css — not touched; the existing .progress-card--secondary .badge rule already applies muted styling to any badge inside the demoted card, so the new "Practice Progress" text needed no new CSS.
+
+Why this was markup-only: the checklist's substantive asks (a separate mastery signal; not combining practice completion and assessment mastery into one number) were already true of the underlying code — data-overall-count and data-overall-status have rendered on two separate lines since Phase 4/the Priority 0 #1 session. Only the % itself lacked an explicit label saying what it measures. That's now fixed via the badge + supporting label text.
+
+Verification: node --check on js/dashboard.js — clean. Every data-overall-* attribute cross-checked between the HTML and JS via grep — all four (pct/progress/count/status) match; the new data-overall-metric-label hook confirmed unread by any JS, matching the existing data-continue-card precedent. HTML tag balance checked programmatically — balanced (one apparent <p> mismatch on first pass was a comment mentioning a tag, not real markup — reworded to avoid tripping the same check again).
+
+Not exercised in a real browser — same standing limitation as every prior UI-touching session. In particular, unverified: whether "Practice Progress" reads clearly as a label at a glance, and how the longer supporting-label line wraps on narrow viewports.
+
+Still open:
+1. Real-browser verification of this session's change (see above) — same biggest recommendation as every prior dashboard session.
+2. Every Priority 1 / Priority 2 item in PIVOT_CHECKLIST.md's Dashboard UX Review Checklist — not started. This closes out all of Priority 0.
+3. Everything already listed as still-open in every prior session log entry above (Phase 7 capture/retraining, earlier real-browser-verification asks, the Letter M image asset check, etc.) — unchanged by this session.
+4. Auth remains explicitly excluded.
+
+
+### 2026-08-21 — Dashboard UX Review: Priority 1 implemented
+
+**Requested:** Turn the dashboard's unit rows into a real learning-path
+summary, while excluding `js/auth.js` because a teammate owns it. The required
+pre-change order was followed: `AI_MEMORY.md` → `PIVOT_CHECKLIST.md` →
+`SYSTEM_ARCHITECTURE.md` Rev 4.
+
+**Status before change:** Dashboard Priority 0 was complete. Priority 1 was
+still unchecked in `PIVOT_CHECKLIST.md` §4. Rev 4/5 says the dashboard is a
+compact summary and `learn.html` remains the full trail. The documented
+dashboard implementation boundary is `pages/dashboard.html`,
+`js/dashboard.js`, and `css/dashboard.css`.
+
+**Changes made:**
+- `js/dashboard.js`: unit rows for graded `category-group` units now aggregate
+  practiced/total signs and passed/total assessments from the existing
+  `LWData`/`LWProgress` APIs; rows include a compact practice bar. The current
+  unit is detected using the already-existing `getCurrentDestination()` result
+  and marked `You are here`. Unit 0/2/7 keep descriptive non-graded states.
+- `pages/dashboard.html`: updated the unit-list documentation to describe the
+  Priority 1 summary without creating a second trail UI.
+- `css/dashboard.css`: added the current/reference badges, practice bar layout,
+  subdued locked state, current/done emphasis, and narrow viewport behavior.
+
+**Important design choice:** No new ordering/unlock/current-destination
+algorithm was introduced. The same flat Rev 4 chain remains the source of truth.
+No changes were made to `data.js`, `learn.js`, `progress.js`, or `auth.js`.
+
+**Suggestions / bugs / errors seen:**
+- Existing separate issue: dashboard `Current Level: Basic` remains product-
+  obsolete under the single-path model. Left untouched because it is not part
+  of Priority 1 and changing it needs its own decision.
+- Unit 2 has no assessment-progress metric because it is an `interactive` unit
+  and is structurally outside the graded progress chain. No fabricated metric
+  was added.
+- No new static correctness bug was found in the Priority 1 implementation.
+- Real-browser verification remains outstanding for the dashboard states,
+  responsive layout, keyboard navigation, and theme contrast.
+
+**Session result:** Priority 1 is implemented in dashboard scope. Checklist and
+architecture were updated in the same session so the next AI can see exactly
+what landed and what remains open.

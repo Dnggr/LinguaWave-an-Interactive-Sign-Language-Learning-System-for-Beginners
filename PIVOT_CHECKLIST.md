@@ -176,6 +176,69 @@ made and full reasoning on each):**
 
 ---
 
+### 26. Implementation session — Dashboard Priority 1 (2026-08-21)
+
+**Requested:** Implement `### 4. Priority 1 — Turn unit rows into a real learning-path summary`.
+User explicitly excluded `js/auth.js` because a teammate owns it, and asked for
+suggestions/bugs, session notes, a code visualization, and updates to the
+memory/checklist/architecture files.
+
+**Pre-change checks completed:** Read `AI_MEMORY.md` first, then
+`PIVOT_CHECKLIST.md`, then `SYSTEM_ARCHITECTURE.md` Rev 4. Priority 1 was still
+fully unchecked, while Priority 0 was complete. Rev 4 / the Dashboard UX
+Review Addendum explicitly limits this work to `pages/dashboard.html`,
+`js/dashboard.js`, and `css/dashboard.css`. No changes were made to
+`js/auth.js`, `js/data.js`, `js/learn.js`, or `js/engine/progress.js`.
+
+**What changed:**
+- `js/dashboard.js`
+  - Extended `renderUnitRow()` to aggregate the existing per-category
+    `getCategorySigns()`, `getCategoryProgress()`, and assessment data for
+    each live graded unit.
+  - Added `practiced / total signs`, a compact practice bar, and
+    `assessments passed / total` as separate signals.
+  - Passed the existing shared `getCurrentDestination()` result into
+    `renderUnitList()` so the current unit is marked `You are here` without
+    creating a second current/unlock algorithm.
+  - Kept Unit 0/2/7 descriptive because Rev 4 excludes them from the graded
+    chain.
+- `pages/dashboard.html`
+  - Documented the Priority 1 behavior next to the existing unit-list markup;
+    no new trail markup or auth markup was introduced.
+- `css/dashboard.css`
+  - Added compact row metrics, current/reference badges, subdued locked state,
+    current-unit emphasis, and a narrow-screen layout.
+
+**Suggestions / bugs / risks found during the session:**
+1. No new correctness bug was found in the Priority 1 data path during static
+   review. The unit totals are derived from existing Rev 4 APIs instead of
+   duplicating curriculum logic.
+2. `data-user-level` / "Current Level: Basic" is still stale product language
+   under the single-path model. It is an existing separate checklist item and
+   was intentionally not changed in this Priority 1 session.
+3. Unit 2 does not have graded progress metrics today because the Rev 4
+   progress engine excludes its `interactive` unit kind. I intentionally did
+   not fabricate a completion percentage.
+4. Real-browser verification is still required for fresh/partial/passed states,
+   near-end state, narrow viewport, keyboard navigation, and light/dark themes.
+   This session was verified statically, not in a browser.
+
+**Result:** Priority 1 is now implemented in dashboard scope only. The dashboard
+unit list reads as a compact learning-path summary while `learn.html` remains
+the full trail owner.
+
+**Ready-to-verify visualization:**
+`LWProgress.getOrderedLiveCategories()`
+`        ↓`
+`getCurrentDestination()`
+`        ↓`
+`renderUnitList(destination)`
+`        ↓`
+`Unit row → live categories → practice count + assessment count`
+`        ├─ current → "You are here" + accent emphasis`
+`        ├─ locked → subdued/non-clickable`
+`        └─ reference/info/interactive → descriptive non-graded state`
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.
@@ -328,7 +391,7 @@ css/dashboard.css — new .progress-card--secondary and .dash-heading--secondary
 Explicitly not touched: js/auth.js (excluded by user request, same as every prior dashboard session), js/data.js, js/learn.js, js/engine/progress.js — per this checklist's own §20 "Allowed implementation scope" / SYSTEM_ARCHITECTURE.md's matching section. Priority 0 item #3 (the %'s meaning) — explicitly separate, not started.
 ---
 
-### 3. Priority 0 — Fix the meaning of the 9% progress number
+### 3. Priority 0 — Fix the meaning of the 9% progress number — ✅ Done 2026-08-21 (code session)
 
 Current implementation calculates the overall percentage from **signs practiced**
 rather than assessment mastery.
@@ -336,13 +399,27 @@ rather than assessment mastery.
 That is valid as a "practice completion" metric, but the current presentation
 can be read as "I am 9% proficient in ASL."
 
-- [ ] Rename the metric explicitly to `Practice Progress` or `Signs Practiced`.
-- [ ] Keep `9%` as practice completion if desired.
-- [ ] Do not call it mastery.
-- [ ] Keep `X / Y category assessments passed` separate.
-- [ ] Consider a second metric for mastery:
-      `Assessments Passed` / `Categories Passed`.
-- [ ] Do not combine practice completion and assessment mastery into one number.
+- [x] Rename the metric explicitly to `Practice Progress` or `Signs Practiced`.
+      — done: the badge above the % in `pages/dashboard.html` now reads
+      "Practice Progress" (was "Your ASL Path").
+- [x] Keep `9%` as practice completion if desired. — kept; `js/dashboard.js`'s
+      `renderOverallProgress()` is byte-for-byte unchanged, still writes a
+      bare `N%` into `[data-overall-pct]`.
+- [x] Do not call it mastery. — the supporting label under the % was reworded
+      from "All units combined" to "Signs practiced across all units — not a
+      mastery score."
+- [x] Keep `X / Y category assessments passed` separate. — already true
+      before this session (own line, `[data-overall-status]`); confirmed
+      unchanged, not merged into the % line.
+- [x] Consider a second metric for mastery:
+      `Assessments Passed` / `Categories Passed`. — already satisfied by the
+      existing `[data-overall-status]` line; no new metric needed or added.
+- [x] Do not combine practice completion and assessment mastery into one
+      number. — confirmed: two separate elements, two separate lines, as
+      before.
+
+See `SYSTEM_ARCHITECTURE.md`'s "Implementation status — Priority 0 #3" and
+§25 below for the full writeup.
 
 #### Recommended dashboard summary
 
@@ -361,13 +438,29 @@ Current screenshot:
 Unit rows are visually consistent, but they are mostly just labels such as
 `0/1 categories passed`, `Locked`, or `Browse only`.
 
-- [ ] Show a compact progress indicator for each graded unit when useful.
-- [ ] Show `practiced / total signs` for the current unit.
-- [ ] Show `assessment passed` separately from practice.
-- [ ] Make the current unit visually dominant.
-- [ ] Keep locked units subdued.
-- [ ] Keep Unit 7 clearly labeled as reference/read-only.
-- [ ] Avoid adding a full second trail UI here; `learn.html` already owns that.
+- [x] Show a compact progress indicator for each graded unit when useful.
+      — done 2026-08-21: graded unit rows now include a compact practice bar
+      derived from the existing per-sign progress.
+- [x] Show `practiced / total signs` for the current unit.
+      — done 2026-08-21: the same metric is shown for every live graded unit,
+      with the current unit additionally marked `You are here`.
+- [x] Show `assessment passed` separately from practice.
+      — done 2026-08-21: each graded row renders `X / Y assessments passed`
+      as a separate line from the practice count.
+- [x] Make the current unit visually dominant.
+      — done 2026-08-21: the unit containing the existing
+      `getCurrentDestination()` result gets an accent-tinted row and a
+      `You are here` badge. The dashboard still keeps the Continue Learning
+      hero as the primary action.
+- [x] Keep locked units subdued.
+      — done 2026-08-21: locked rows remain non-clickable and use reduced
+      opacity; no alternate navigation path was introduced.
+- [x] Keep Unit 7 clearly labeled as reference/read-only.
+      — done 2026-08-21: Unit 7 rows say `Reference · browse only, no assessment`
+      and carry a visible `Reference` badge.
+- [x] Avoid adding a full second trail UI here; `learn.html` already owns that.
+      — done 2026-08-21: the dashboard still renders one compact row per Unit;
+      only aggregated practice/assessment summaries were added.
 
 #### Example information hierarchy
 
@@ -376,6 +469,14 @@ Unit rows are visually consistent, but they are mostly just labels such as
 `0 / 1 assessment passed`
 
 This is more useful to the learner than only `0/1 categories passed`.
+
+#### Implementation note
+
+The dashboard does not invent metrics for Unit 0 (info), Unit 2 (interactive),
+or Unit 7 (reference), because Rev 4 excludes those from the graded
+`getOrderedLiveCategories()` chain. Their rows retain descriptive states
+instead of pretending there is assessment progress to report.
+
 
 ---
 
@@ -891,3 +992,32 @@ Priority 0 item #3 ("fix the meaning of the 9% number") — not started.
 Every Priority 1 / Priority 2 item in this checklist (§4–§15) — not started.
 Everything already listed as still-open in every prior session log entry (Phase 7 capture/retraining, real-browser checks from earlier sessions, etc.) — unchanged by this session.
 auth.js remains explicitly excluded, per user instruction.
+
+---
+
+### 25. Implementation session — Priority 0 #3 (2026-08-21, later same day, code session)
+
+This session DID write code — a follow-up to §24 above, explicitly scoped to only Priority 0 item #3 ("Fix the meaning of the 9% progress number," §3). This closes out **every** Priority 0 item on this checklist; everything Priority 1/2 is still open.
+
+Pre-change checks completed, per AI_MEMORY.md's own header rule: read that file first, then this checklist (found §3 = the requested "Priority 0 #3," plus its 6 unchecked sub-items and the "recommended dashboard summary" example), then confirmed against SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Metric semantics" section for the same item's authority. Also found — and fixed, as a separate favor requested this session — that a prior session had left two literal, unapplied "PATCH 1"/"PATCH 2" instruction blocks pasted verbatim at the end of SYSTEM_ARCHITECTURE.md instead of actually being applied to the file; both patches (the top changelog blockquote, and the Priority 0 #2 implementation-status section) are now applied in place, and the stray raw text removed — see that file directly, no separate log needed there since it's a housekeeping fix, not a product change. No changes were made to data.js, learn.js, progress.js, or auth.js — auth.js was excluded per explicit user instruction this session too, same as every dashboard session before it.
+
+Files changed: pages/dashboard.html (the actual fix) plus doc-comment-only updates in js/dashboard.js (no logic changed). css/dashboard.css was not touched — the existing `.progress-card--secondary .badge` rule already neutralizes any badge inside the demoted card, so the new "Practice Progress" badge picks up correct (muted) styling with no new CSS needed.
+
+What changed, concretely:
+- `pages/dashboard.html`: aggregate-card badge text "Your ASL Path" → "Practice Progress" (new `data-overall-metric-label` hook, plain text, not read by JS); `.progress-card__label` text "All units combined" → "Signs practiced across all units — not a mastery score"; updated the section's own explanatory comment and the file's top purpose comment to record this as done.
+- `js/dashboard.js`: `renderOverallProgress()`'s logic is unchanged — updated its doc comment and the file's top comment block only, to point future sessions at where the actual relabel lives (the HTML, not this function).
+
+Verification performed:
+- `node --check` on `js/dashboard.js` — clean, no syntax errors.
+- Every `data-overall-*` attribute cross-checked between `pages/dashboard.html` and `js/dashboard.js`'s `querySelector` calls via `grep` — all four (`pct`/`progress`/`count`/`status`) still match; the new `data-overall-metric-label` attribute is confirmed unread by any JS (by design — it's a plain-text hook, same precedent as the pre-existing `data-continue-card`).
+- HTML tag balance (`<div>`/`<section>`/`<p>`/`<span>`/`<h2>` open vs. close counts) checked programmatically — balanced (one apparent `<p>` mismatch on the first pass turned out to be a literal `<p ...>` mention inside an HTML comment, not real markup — reworded that comment to avoid tripping the same check for a future session).
+
+NOT verified — same standing limitation as every prior dashboard/lesson session that touched UI:
+- Not exercised in a real browser. In particular: whether "Practice Progress" reads clearly as a label at a glance (vs. looking like a category name), and how the longer `.progress-card__label` line wraps on narrow viewports.
+- Light/dark theme rendering of the (unchanged) muted badge styling with the new text.
+
+Still open after this session:
+- Real-browser verification of this session's change (see above) — the single biggest recommendation coming out of this session, consistent with every UI-touching session before it.
+- Every Priority 1 / Priority 2 item in this checklist (§4–§15) — not started.
+- Everything already listed as still-open in every prior session log entry (Phase 7 capture/retraining, real-browser checks from earlier sessions, the Letter M image asset check, etc.) — unchanged by this session.
+- `auth.js` remains explicitly excluded, per user instruction.

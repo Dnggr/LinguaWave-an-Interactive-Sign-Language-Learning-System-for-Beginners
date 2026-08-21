@@ -49,8 +49,32 @@
  * renderWelcomeBanner()'s own output text changed.
  *
  * NOT part of Priority 0 #2: renderOverallProgress() itself. Its
- * output (a bare "%") is intentionally untouched — relabeling what
- * that number means (vs. mastery) is Priority 0 item #3, still open.
+ * output (a bare "%") was intentionally untouched that session —
+ * relabeling what that number means (vs. mastery) was left as
+ * Priority 0 item #3.
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 0 #3 (2026-08-21, later same day,
+ * code session): "Fix the meaning of the 9% progress number." Turned
+ * out to be a markup-only fix — see pages/dashboard.html's Overall
+ * Progress section (the badge that read "Your ASL Path" now reads
+ * "Practice Progress"; the label under the % was reworded to say
+ * "not a mastery score"). renderOverallProgress() below is BYTE-FOR-
+ * BYTE UNCHANGED: it already wrote the practice count and the
+ * `X / Y category assessments passed` line to two separate elements
+ * ([data-overall-count] / [data-overall-status]), which is exactly
+ * the "keep practice completion and assessment mastery as two
+ * numbers, not one" rule PIVOT_CHECKLIST.md's Priority 0 #3 asks for
+ * — that separation already existed, it just wasn't labeled. Nothing
+ * here needed to move or combine.
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 1 (2026-08-21, code session):
+ * renderUnitRow()/renderUnitList() now turn each unit row into a compact
+ * learning-path summary. Graded units expose practiced/total signs,
+ * assessment passed/total, and a practice bar; the unit containing the
+ * shared getCurrentDestination() is marked "You are here". Locked units
+ * remain subdued. Unit 7 stays explicitly reference-only, and Unit 0/2
+ * keep descriptive non-graded states because they are excluded from the
+ * flat grading chain by Rev 4.
  *
  * BUGFIX (carried over, unrelated to either session above): the OLD
  * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
@@ -89,11 +113,15 @@ function escapeHtml(str) {
  *  separate per-level percentages.
  *
  *  NOTE (2026-08-21): this is the "practice progress" number
- *  PIVOT_CHECKLIST.md's Priority 0 item #3 wants explicitly relabeled
- *  (not "mastery"). NOT changed by either the Priority 0 #1 or #2
- *  sessions — item #3 is a separate, still-open item. Flagging here so
- *  it isn't assumed done just because #2 touched this card's CSS
- *  class / position (see pages/dashboard.html and css/dashboard.css). */
+ *  PIVOT_CHECKLIST.md's Priority 0 item #3 asked to have explicitly
+ *  relabeled (not "mastery"). That relabel is DONE, but entirely in
+ *  pages/dashboard.html's markup (a badge's text + a supporting <p>'s
+ *  text) — this function's own output was not part of the fix and is
+ *  unchanged: it still writes a bare "N%" into [data-overall-pct], the
+ *  practice count into [data-overall-count], and the separate
+ *  "X / Y category assessments passed" mastery signal into
+ *  [data-overall-status]. Don't re-derive a "relabel" here — the label
+ *  lives in the HTML next to [data-overall-pct], not in this string. */
 function renderOverallProgress() {
   if (!window.LWProgress || !window.LWData) return;
   const chain = window.LWProgress.getOrderedLiveCategories();
@@ -222,22 +250,37 @@ function renderWelcomeBanner(destination) {
  *  pages/learn.html itself. Already satisfied Priority 0 #2's "keep
  *  the unit list as a compact summary, not the main feature" item
  *  as-is; no change needed here for that session. */
-function renderUnitRow(unit) {
+/**
+ * DASHBOARD UX REVIEW — PRIORITY 1 (2026-08-21)
+ *
+ * Turns the unit list from a status-only report into a compact learning-path
+ * summary. The dashboard still does NOT re-create the Learn trail: it only
+ * aggregates the existing unit/category progress APIs into one row per unit.
+ */
+function renderUnitRow(unit, destination) {
   const icon = UNIT_ICONS[unit.id] ?? '🔖';
+  const isCurrentUnit = !!destination?.unit && destination.unit.order === unit.order;
 
   if (unit.kind === 'info') {
-    return unitRowHtml(icon, unit, 'Welcome & how practice works', 'learn.html?unit=welcome');
-  }
-  if (unit.kind === 'interactive') {
-    return unitRowHtml(icon, unit, 'Practice drill · always open', 'lesson.html?level=basic&category=fingerspell_name');
-  }
-  if (unit.kind === 'reference') {
-    return unitRowHtml(icon, unit, 'Browse only, no quiz yet', 'learn.html?unit=phrasebook');
+    return unitRowHtml(icon, unit, 'Welcome · no assessment', 'learn.html?unit=welcome',
+      isCurrentUnit ? 'current' : null, { current: isCurrentUnit });
   }
 
-  // kind: 'category-group'
+  if (unit.kind === 'interactive') {
+    return unitRowHtml(icon, unit, 'Interactive drill · always open',
+      'lesson.html?level=basic&category=fingerspell_name',
+      isCurrentUnit ? 'current' : null, { current: isCurrentUnit });
+  }
+
+  if (unit.kind === 'reference') {
+    return unitRowHtml(icon, unit, 'Reference · browse only, no assessment',
+      'learn.html?unit=phrasebook', null, { reference: true });
+  }
+
   const allCats  = window.LWData.getCategoriesForUnit(unit.order);
-  const liveCats = allCats.filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+  const liveCats = allCats.filter(
+    c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0
+  );
 
   if (liveCats.length === 0) {
     return unitRowHtml(icon, unit, 'Coming soon', null, 'locked');
@@ -245,167 +288,82 @@ function renderUnitRow(unit) {
 
   const unlocked = window.LWProgress.isCategoryUnlocked(liveCats[0].level, liveCats[0].id);
   if (!unlocked) {
-    return unitRowHtml(icon, unit, 'Locked — finish the previous unit first', null, 'locked');
+    return unitRowHtml(icon, unit, 'Locked · finish the previous unit first', null, 'locked');
   }
 
-  const passedCount = liveCats.filter(c => !!window.LWProgress.getCategoryProgress(c.level, c.id).assessment?.passed).length;
-  const done = passedCount === liveCats.length;
+  let totalSigns = 0;
+  let practicedSigns = 0;
+  let passedCount = 0;
+
+  liveCats.forEach(cat => {
+    const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+    const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
+    totalSigns += signs.length;
+    practicedSigns += signs.filter(sign => !!prog.signs?.[sign]).length;
+    if (prog.assessment?.passed) passedCount++;
+  });
+
+  const assessmentTotal = liveCats.length;
+  const practicePct = totalSigns > 0
+    ? Math.round((practicedSigns / totalSigns) * 100)
+    : 0;
+  const done = passedCount === assessmentTotal;
+  const state = done ? 'done' : (isCurrentUnit ? 'current' : null);
   const href = `learn.html?unit=${encodeURIComponent(unit.id)}`;
-  return unitRowHtml(icon, unit, `${passedCount}/${liveCats.length} categories passed`, href, done ? 'done' : 'current');
+
+  return unitRowHtml(icon, unit, '', href, state, {
+    current: isCurrentUnit,
+    practicePct,
+    practicedSigns,
+    totalSigns,
+    passedCount,
+    assessmentTotal
+  });
 }
 
-function unitRowHtml(icon, unit, statusText, href, state) {
+function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
   const stateClass = state ? ` unit-progress-row--${state}` : '';
+  const currentBadge = metrics.current
+    ? '<span class="unit-progress-row__current-badge">You are here</span>'
+    : '';
+  const referenceBadge = metrics.reference
+    ? '<span class="unit-progress-row__reference-badge">Reference</span>'
+    : '';
+
+  const practiceMarkup = Number.isFinite(metrics.practicePct)
+    ? `
+        <div class="unit-progress-row__progress" aria-label="${metrics.practicePct}% practice progress">
+          <div class="progress-bar" aria-hidden="true">
+            <div class="progress-bar__fill" style="width:${metrics.practicePct}%"></div>
+          </div>
+          <span class="unit-progress-row__metric">${metrics.practicedSigns}/${metrics.totalSigns} signs practiced</span>
+        </div>
+        <span class="unit-progress-row__assessment">
+          ${metrics.passedCount}/${metrics.assessmentTotal} assessment${metrics.assessmentTotal === 1 ? '' : 's'} passed
+        </span>
+      `
+    : `<span class="unit-progress-row__status">${escapeHtml(statusText)}</span>`;
+
   const inner = `
-    <span class="unit-progress-row__icon">${icon}</span>
+    <span class="unit-progress-row__icon" aria-hidden="true">${icon}</span>
     <span class="unit-progress-row__body">
-      <span class="unit-progress-row__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</span>
-      <span class="unit-progress-row__status">${escapeHtml(statusText)}</span>
+      <span class="unit-progress-row__head">
+        <span class="unit-progress-row__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</span>
+        ${currentBadge}${referenceBadge}
+      </span>
+      ${practiceMarkup}
     </span>
   `;
+
   return href
     ? `<a class="unit-progress-row${stateClass}" href="${href}">${inner}</a>`
     : `<div class="unit-progress-row${stateClass}">${inner}</div>`;
 }
 
-function renderUnitList() {
+function renderUnitList(destination) {
   const container = document.getElementById('unit-progress-list');
   if (!container || !window.LWData || !window.LWProgress) return;
-  container.innerHTML = window.LWData.getUnits().map(renderUnitRow).join('');
-}
-
-function renderRecap() {
-  const grid  = document.getElementById('recap-grid');
-  const empty = document.getElementById('recap-empty');
-  if (!grid || !window.LWProgress) return;
-
-  const learned = window.LWProgress.getAllLearnedSigns();
-  if (learned.length === 0) {
-    if (empty) empty.style.display = '';
-    return;
-  }
-  if (empty) empty.style.display = 'none';
-
-  // BUG FIX (2026-08-20, review session): this used to render signId
-  // twice per card — once inside .recap-card__img's pill and again in
-  // a sibling <span> — showing as "A A" / "Y Y" / "Z Z" etc. The pill
-  // was redesigned (see css/dashboard.css's own BUG FIX comment above
-  // .recap-card__img) specifically to be a self-contained chip that
-  // already shows the full sign text, including multi-word entries
-  // like "I AM FINE" — the extra <span> was a leftover from before
-  // that redesign. Removed rather than kept-but-hidden, since nothing
-  // else in css/dashboard.css targets a bare <span> inside .recap-card.
-  grid.innerHTML = learned.slice(-24).reverse().map(({ signId }) => `
-    <div class="recap-card">
-      <div class="recap-card__img" aria-label="ASL sign for ${signId}">${signId}</div>
-    </div>
-  `).join('');
-}
-
-/** "Continue Learning" button — points at the first category that's
- *  unlocked but not yet passed. Behavior is UNCHANGED by either
- *  Priority 0 session (same href construction); it just reads the
- *  shared `destination` object instead of re-walking the chain itself.
- *  See the BUGFIX note in the file header for why this doesn't loop
- *  LEVELS.
- *
- * @param {ReturnType<typeof getCurrentDestination>} destination
- */
-function renderContinueButton(destination) {
-  const btn = document.querySelector('[data-continue-learning]');
-  if (!btn || !destination) return;
-
-  if (!destination.cat) {
-    btn.href = 'learn.html';
-    return;
-  }
-
-  const { cat, nextSign } = destination;
-  btn.href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
-}
-
-/**
- * PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 item #1
- * ("Make 'Continue Learning' the primary action", 2026-08-21).
- *
- * Fills in the hero card: exact destination (Unit + category + next
- * sign), progress WITHIN that destination (not the global aggregate
- * % — that's the separate "Overall Progress" card lower on the page;
- * relabeling that one is Priority 0 item #3, out of scope here), a
- * primary CTA whose LABEL changes with state (Start Lesson / Continue
- * / Review Your Path), and a secondary "Open Path" CTA shown only when
- * there's a specific unit worth linking to (checklist: "secondary CTA
- * only when useful").
- *
- * Does NOT set the primary button's `href` — renderContinueButton()
- * above already owns that, so the two functions don't race to set the
- * same attribute from two different code paths.
- *
- * UNCHANGED by the Priority 0 #2 session.
- *
- * @param {ReturnType<typeof getCurrentDestination>} destination
- */
-function renderContinueCard(destination) {
-  const iconEl      = document.querySelector('[data-continue-icon]');
-  const eyebrowEl   = document.querySelector('[data-continue-eyebrow]');
-  const titleEl     = document.querySelector('[data-continue-title]');
-  const progWrapEl  = document.querySelector('[data-continue-progress-wrap]');
-  const progFillEl  = document.querySelector('[data-continue-progress-fill]');
-  const progLabelEl = document.querySelector('[data-continue-progress-label]');
-  const primaryBtn  = document.querySelector('[data-continue-learning]');
-  const secondaryBtn = document.querySelector('[data-continue-secondary]');
-  if (!destination) return;
-
-  // State: nothing live in the chain at all (defensive — e.g. a
-  // fresh Rev 4 install pre-Phase-7 where a whole unit is still
-  // comingSoon end-to-end). Shouldn't happen post-launch but costs
-  // nothing to handle explicitly rather than showing a blank card.
-  if (destination.chain.length === 0) {
-    if (iconEl) iconEl.textContent = '👋';
-    if (eyebrowEl) eyebrowEl.textContent = 'Get started';
-    if (titleEl) titleEl.textContent = "Let's get you started on your ASL journey!";
-    if (progWrapEl) progWrapEl.style.display = 'none';
-    if (primaryBtn) primaryBtn.textContent = '▶ Start Learning';
-    if (secondaryBtn) secondaryBtn.style.display = 'none';
-    return;
-  }
-
-  // State: every live category in the chain is already passed.
-  if (!destination.cat) {
-    if (iconEl) iconEl.textContent = '🏆';
-    if (eyebrowEl) eyebrowEl.textContent = 'All caught up';
-    if (titleEl) titleEl.textContent = "You've completed every unit that's trained so far!";
-    if (progWrapEl) progWrapEl.style.display = 'none';
-    if (primaryBtn) primaryBtn.textContent = '↺ Review Your Path';
-    if (secondaryBtn) secondaryBtn.style.display = 'none';
-    return;
-  }
-
-  // State: a real next destination exists.
-  const { cat, unit, signs, practicedCount, nextSign } = destination;
-  const icon = UNIT_ICONS[unit?.id] ?? '🔖';
-  const signTitle = window.LWData.getSign?.(cat.level, nextSign)?.title ?? nextSign;
-
-  if (iconEl) iconEl.textContent = icon;
-  if (eyebrowEl) eyebrowEl.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
-  if (titleEl) titleEl.textContent = `${cat.title} → ${signTitle}`;
-
-  if (progWrapEl && progFillEl && progLabelEl && signs.length > 0) {
-    const pct = Math.round((practicedCount / signs.length) * 100);
-    progWrapEl.style.display = '';
-    progFillEl.style.width = `${pct}%`;
-    progLabelEl.textContent = `${practicedCount}/${signs.length} signs practiced in ${cat.title}`;
-  } else if (progWrapEl) {
-    progWrapEl.style.display = 'none';
-  }
-
-  if (primaryBtn) primaryBtn.textContent = practicedCount > 0 ? '▶ Continue' : '▶ Start Lesson';
-
-  if (secondaryBtn) {
-    secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
-    secondaryBtn.textContent = 'Open Path';
-    secondaryBtn.style.display = '';
-  }
+  container.innerHTML = window.LWData.getUnits().map(unit => renderUnitRow(unit, destination)).join('');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -420,7 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderOverallProgress();
   renderWelcomeBanner(destination);
-  renderUnitList();
+  renderUnitList(destination);
   renderRecap();
   renderContinueButton(destination);
   renderContinueCard(destination);
