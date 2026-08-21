@@ -1867,3 +1867,91 @@ Do not introduce a second progress/unlock/order algorithm.
 - Asset verification for the Letter M lesson image.
 - Phase 7 capture/retraining work remains unchanged.
 - Auth remains explicitly excluded.
+
+---
+
+### 2026-08-21 (same day, follow-up) — Dashboard implementation: Priority 0 #1 only
+
+**Requested:** Implement "priority 0 #1" from `PIVOT_CHECKLIST.md`'s Dashboard
+UX Review Checklist (the session directly above this one) — i.e. *only* item
+#1, "Make 'Continue Learning' the primary action." Also requested: a code
+visualization, and exclude `js/auth.js` (teammate owns it — same exclusion as
+every dashboard session so far).
+
+**Pre-change checks completed**, per this file's own header rule: read this
+file, then `PIVOT_CHECKLIST.md` (found the exact "Priority 0 #1" section — §1
+of its Dashboard UX Review Checklist), then confirmed against
+`SYSTEM_ARCHITECTURE.md`'s Dashboard UX Review Addendum that #1 was still open
+and its implementation boundary (`dashboard.html`/`dashboard.js`/`dashboard.css`
+only). No changes proposed or made to `data.js`, `learn.js`, `progress.js`, or
+`auth.js`.
+
+**What changed:**
+1. **`pages/dashboard.html`** — added a new `.continue-card` hero section
+   directly below the page header (before "Your Account" / "Overall
+   Progress"), with `data-continue-icon` / `-eyebrow` / `-title` /
+   `-progress-wrap` / `-progress-fill` / `-progress-label` /
+   `-secondary` hooks. The old inline CTA button that lived in `.dash-header`
+   moved into this card (same `data-continue-learning` hook, so nothing
+   downstream that already targeted that attribute needed to change).
+2. **`js/dashboard.js`** — added `getCurrentDestination()`: a single shared
+   helper that walks `LWProgress.getOrderedLiveCategories()` once to find the
+   learner's current unlocked-but-unpassed category (or `cat: null` if
+   everything's passed, or an empty chain if nothing's live yet), plus derived
+   fields (`unit`, `signs`, `practicedCount`, `nextSign`). Added
+   `renderContinueCard()`, which fills the new hero markup from that object
+   with three states (fresh chain / real destination / all caught up) and sets
+   the primary button's **label** (`Start Lesson` / `Continue` /
+   `Review Your Path`) without touching its `href`. `renderWelcomeBanner()`
+   and `renderContinueButton()` were changed to accept the shared destination
+   as a parameter instead of each independently re-walking the chain — their
+   own output/behavior is unchanged, only where the chain-walk lives moved.
+3. **`css/dashboard.css`** — added `.continue-card` + child rules (accented
+   border by default, gradient wash, 56px icon chip, inline mini progress bar,
+   action button row) plus a `max-width: 640px` stacked layout for it.
+
+**Bug/smell found and fixed in the same pass (not pre-existing — this is a
+refactor made while implementing, not a separately-discovered regression):**
+before this session, `renderWelcomeBanner()` and `renderContinueButton()` each
+had their own copy of "loop the flat chain, find the first
+unlocked-but-unpassed category." Two copies of that walk already existed;
+adding the new hero card as a third independent copy would have left three
+places that could silently drift out of sync if the unlock rule ever changed.
+Consolidated into `getCurrentDestination()`, computed once in the
+`DOMContentLoaded` handler and passed to all three render functions. Verified
+the two existing functions' outputs are unchanged by tracing both through the
+new shared helper by hand (`renderContinueButton()`'s href string, and each of
+`renderWelcomeBanner()`'s three message branches).
+
+**Explicitly out of scope, not done:** Priority 0 items #2 ("replace the
+report feeling") and #3 ("fix the meaning of the 9% number") — only #1 was
+requested. No relabeling of the aggregate progress card, no changes to how
+`renderOverallProgress()` computes or presents its percentage. `js/auth.js` —
+not opened, not touched, same standing exclusion as every session before this
+one.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean (confirmed via
+grep first that this file has no `import`/`export`, so no `.mjs` rename was
+needed for the check, same discipline as prior sessions). Every new
+`data-continue-*` attribute cross-checked between the HTML and JS with `grep`
+— all match. HTML `<section>`/`<div>` tag-balance and CSS brace-balance
+checked programmatically — both balanced.
+
+**Not exercised in a real browser** — same standing limitation as every prior
+UI-touching session. In particular, unverified: whether the hero card actually
+clears the fold on real viewport heights (the acceptance criterion this
+checklist item is graded on); the three hero-card states against real
+`localStorage` progress data shaped like a fresh account / a partially-
+practiced category / a fully-passed chain; the new narrow-viewport stack
+layout; light vs. dark theme rendering of the new gradient background.
+
+**Still open:**
+1. Real-browser verification of this session's change (see above) — the
+   single biggest recommendation coming out of this session.
+2. Priority 0 items #2 and #3 — not started.
+3. Every Priority 1 / Priority 2 item in `PIVOT_CHECKLIST.md`'s Dashboard UX
+   Review Checklist — not started.
+4. Everything already listed as still-open in every prior session log entry
+   above (Phase 7 capture/retraining, earlier real-browser-verification asks,
+   the Letter M image asset check, etc.) — unchanged by this session.
+5. Auth remains explicitly excluded.

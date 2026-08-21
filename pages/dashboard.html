@@ -13,18 +13,27 @@
   <!--
     pages/dashboard.html — User Dashboard
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Main hub after login. Now contains THREE things:
-                 1. "Your Account" — user details (name/email/level)
-                 2. "Overall Progress" — the trail/unit overview
+    PURPOSE  : Main hub after login. Contains FOUR things:
+                 1. "Continue Learning" hero card — the primary action
+                    (REV 4 — PIVOT_CHECKLIST.md "Dashboard UX Review
+                    Checklist" → Priority 0 item #1, implemented
+                    2026-08-21 code session. See js/dashboard.js's
+                    renderContinueCard() / getCurrentDestination() and
+                    SYSTEM_ARCHITECTURE.md's "Dashboard UX Review
+                    Addendum" → "Implementation status".)
+                 2. "Your Account" — user details (name/email/level)
+                 3. "Overall Progress" — the trail/unit overview
                     (REV 4 PHASE 4: one aggregate card + one row per
                     window.LWData.getUnits() entry — replaced the old
                     three basic/medium/intermediate cards, see
                     SYSTEM_ARCHITECTURE.md Rev 4)
-                 3. "Signs You've Learned" — recap of mastered signs
+                 4. "Signs You've Learned" — recap of mastered signs
 
     CONNECTS : ← index.html (redirected here after login)
-               → pages/learn.html      (unit rows open that unit's screen)
-               → pages/lesson.html     (Continue button + Unit 2's row)
+               → pages/learn.html      (unit rows + hero card's
+                                         "Open Path" open that unit)
+               → pages/lesson.html     (hero card's Continue/Start
+                                         button + Unit 2's row)
                → pages/quiz.html       (retake an assessment)
                → pages/feedback.html   (survey after completing a level)
 
@@ -73,6 +82,13 @@
   </nav>
 
   <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
+  <!-- Kept intentionally compact/greeting-only now that the concrete
+       "what do I do next" destination lives in the Continue Learning
+       hero card directly below — see PIVOT_CHECKLIST.md Priority 0 #1
+       ("Do not create a second progress/unlock algorithm" and the
+       sibling Priority 0 #2 note about not showing the same info at
+       equal visual weight more than once; the CTA button that used to
+       live here moved into the hero card). -->
   <section class="section section--sm">
     <div class="container">
       <div class="dash-header">
@@ -81,17 +97,63 @@
           <h1>Your Dashboard</h1>
           <!-- FIX (2026-08-21): was a hardcoded "...ASL Alphabet" string
                regardless of actual progress (PIVOT_CHECKLIST.md flagged
-               item). js/dashboard.js's renderWelcomeBanner() now fills
-               data-welcome-banner from the same flat chain
-               renderContinueButton() already walks. Static text below
-               is just the pre-JS fallback. -->
+               item). js/dashboard.js's renderWelcomeBanner() fills
+               data-welcome-banner from the same shared destination
+               getCurrentDestination() computes for the hero card below.
+               Static text here is just the pre-JS fallback. -->
           <p class="mt-4">Keep going, <span data-user-name>Learner</span>! <span data-welcome-banner>You're making great progress on the ASL Alphabet.</span></p>
         </div>
-        <!-- Continue button — jumps to last incomplete lesson -->
-        <!-- TODO: derive href from Firestore (last incomplete lesson ID) -->
-        <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">
-          ▶ Continue Learning
-        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CONTINUE LEARNING (hero) ─────────────────────────────────
+       NEW (2026-08-21, code session) — PIVOT_CHECKLIST.md Dashboard UX
+       Review Checklist → Priority 0 item #1 ("Make 'Continue Learning'
+       the primary action"). Sits directly under the header so the
+       learner's next action is visible in the first viewport without
+       scrolling, ahead of "Your Account" and the aggregate progress
+       card below.
+
+       Entirely data-driven by js/dashboard.js's renderContinueCard(),
+       fed by the SAME getCurrentDestination() helper that also feeds
+       renderWelcomeBanner() and renderContinueButton() — one shared
+       chain-walk, not a new unlock/progress algorithm (per this
+       checklist item's own explicit rule and
+       SYSTEM_ARCHITECTURE.md's "Dashboard implementation boundary").
+       Markup below is just the loading-state / pre-JS fallback. -->
+  <section class="section section--sm">
+    <div class="container">
+      <div class="card continue-card" data-continue-card>
+        <div class="continue-card__main">
+          <span class="continue-card__icon" data-continue-icon aria-hidden="true">🎯</span>
+          <div class="continue-card__text">
+            <p class="continue-card__eyebrow" data-continue-eyebrow>Loading your path…</p>
+            <p class="continue-card__title" data-continue-title>—</p>
+            <!-- Progress WITHIN this destination (e.g. "3/8 signs
+                 practiced in Family") — deliberately separate from the
+                 global aggregate % on the "Overall Progress" card
+                 further down the page. Fixing what the GLOBAL % means
+                 is Priority 0 item #3, out of scope for this item. -->
+            <div class="continue-card__progress" data-continue-progress-wrap style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-bar__fill" data-continue-progress-fill style="width:0%"></div>
+              </div>
+              <span class="continue-card__progress-label" data-continue-progress-label></span>
+            </div>
+          </div>
+        </div>
+        <div class="continue-card__actions">
+          <!-- Primary CTA — href AND label are both set by JS
+               (renderContinueButton() sets href, renderContinueCard()
+               sets the label so it reads "Start Lesson" vs "Continue"
+               vs "Review Your Path" depending on state). -->
+          <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">▶ Continue Learning</a>
+          <!-- Secondary CTA — shown only when there's a specific unit
+               worth opening (checklist: "secondary CTA only when
+               useful"); hidden by JS otherwise. -->
+          <a href="learn.html" data-continue-secondary class="btn btn--ghost" style="display:none;">Open Path</a>
+        </div>
       </div>
     </div>
   </section>
@@ -134,7 +196,12 @@
        one aggregate card (the whole flat chain combined) plus one
        compact row per window.LWData.getUnits() entry, both rendered
        entirely by js/dashboard.js — nothing unit-specific is
-       hardcoded here, same reasoning as the recap grid below. -->
+       hardcoded here, same reasoning as the recap grid below.
+
+       NOTE (2026-08-21): this card's "practice progress" meaning vs.
+       "mastery" is Priority 0 item #3 in PIVOT_CHECKLIST.md — NOT
+       changed in this session (scope was item #1 only). Flagging so
+       the next session doesn't assume it was already handled. -->
   <section class="section section--sm">
     <div class="container">
       <h2 class="mb-8">Overall Progress</h2>

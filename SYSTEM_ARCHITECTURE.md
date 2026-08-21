@@ -6,10 +6,19 @@
 > review of `pages/dashboard.html` (Dashboard → Learn → Lesson,
 > screenshot-based), producing a redesign direction + checklist for a
 > future dashboard-only implementation session. **No code was
-> changed** — this is a product/UX recommendation layered on top of
-> the existing Rev 4/5 architecture, not a revision of it. See the
-> "Dashboard UX Review Addendum" section below and
-> `PIVOT_CHECKLIST.md`'s matching checklist for the full findings.
+> changed** in the review session itself — this is a product/UX
+> recommendation layered on top of the existing Rev 4/5 architecture,
+> not a revision of it. See the "Dashboard UX Review Addendum" section
+> below and `PIVOT_CHECKLIST.md`'s matching checklist for the full
+> findings.
+> **Dashboard implementation — Priority 0 #1 (2026-08-21, later same
+> day, code session)** — the review's Priority 0 item #1 ("Make
+> 'Continue Learning' the primary action") was implemented:
+> `pages/dashboard.html`, `js/dashboard.js`, `css/dashboard.css` only,
+> per the addendum's own implementation boundary. Priority 0 items #2
+> and #3, and every Priority 1/2 item, remain open. See the
+> "Implementation status" subsection at the end of the addendum below
+> and `PIVOT_CHECKLIST.md` §1/§23 for the full breakdown.
 > **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
@@ -403,6 +412,66 @@ After a future dashboard implementation, perform real-browser verification:
 
 Also re-check the Letter M image and first-load camera warning observations from the
 provided screenshots.
+
+### Implementation status (2026-08-21, code session)
+
+**Priority 0 item #1 only** ("Make 'Continue Learning' the primary action") has
+been implemented, in a follow-up session to the review above. This section
+records what changed against the plan documented in this addendum — it does
+not replace the addendum, which is still the reference for everything not yet
+built (items #2/#3 and all of Priority 1/2).
+
+**What was built:**
+- A new hero "Continue Learning" card in `pages/dashboard.html`, placed
+  directly below the (now trimmed) page header — before "Your Account" and the
+  aggregate progress card — matching this addendum's "Dashboard design
+  priority" recommended order (`Welcome → Continue Learning card → …`).
+- The card shows the exact destination (`Unit N · {unit title}` +
+  `{category title} → {sign title}`), progress scoped to that one category
+  (not the global aggregate %), and a primary CTA whose label changes by state
+  (`Start Lesson` / `Continue` / `Review Your Path`), plus a secondary
+  `Open Path` CTA shown only when there's a specific unit to link to.
+- Implemented per this addendum's own "Dashboard implementation boundary" —
+  only `pages/dashboard.html`, `js/dashboard.js`, `css/dashboard.css` were
+  touched; `js/auth.js`, `js/data.js`, `js/learn.js`, and
+  `js/engine/progress.js` were not opened.
+- Consumes only the APIs this addendum's "Current position" section already
+  names (`LWProgress.getOrderedLiveCategories()`, `getCategoryProgress()`,
+  `isCategoryUnlocked()`, `LWData.getUnits()`, `getCategorySigns()`, plus
+  `LWData.getSign()` for the destination's sign title) — no new unlock or
+  ordering algorithm was added, in the dashboard or anywhere else.
+
+**Refactor made along the way (not requested, judged worth doing to honor the
+"no second algorithm" rule for the dashboard's own code, not just the app-wide
+progress engine):** the "find the learner's current unlocked-but-unpassed
+category" walk was previously duplicated between `renderWelcomeBanner()` and
+`renderContinueButton()`. Adding a third consumer for the new hero card would
+have made it three independent copies. Factored into one shared
+`getCurrentDestination()` helper in `js/dashboard.js`, computed once per page
+load and passed into all three render functions. Output of the two existing
+functions is unchanged — this is de-duplication, not a behavior change.
+
+**Explicitly NOT part of this implementation:**
+- Priority 0 #2 ("replace the report feeling" — reordering/de-emphasizing the
+  aggregate card relative to the hero card) — the hero card was placed above
+  the aggregate card as a side effect of #1's own "first viewport" requirement,
+  but the aggregate card's own visual weight/labeling was not otherwise changed.
+- Priority 0 #3 (relabel the global % as "Practice Progress," not mastery) —
+  `renderOverallProgress()` and its markup are untouched.
+- Every Priority 1/2 item (review entry point, `Current Level: Basic`,
+  first-viewport layout beyond the hero card's own placement, accessibility
+  pass, responsive pass beyond the hero card's own breakpoint, error/loading
+  states, learning statistics, status vocabulary).
+
+**Verification:** `node --check` on `js/dashboard.js` (no `import`/`export`,
+confirmed by grep, so no module rename needed); every new `data-continue-*`
+attribute cross-checked between the HTML and JS via `grep`; HTML tag balance
+and CSS brace balance checked programmatically. **Not exercised in a real
+browser** — this addendum's own "Verification requirement" list above
+(fresh/partial/passed/near-end states, narrow viewport, keyboard nav, direct
+return to dashboard) still applies in full and has not been run against this
+change. See `PIVOT_CHECKLIST.md` §1 and §23 for the itemized checklist status
+and session log.
 
 ---
 

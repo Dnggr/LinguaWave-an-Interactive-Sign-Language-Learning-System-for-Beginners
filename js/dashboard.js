@@ -3,43 +3,57 @@
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Replaces the hardcoded numbers in pages/dashboard.html
  *            with real values from window.LWProgress: overall percent
- *            complete, signs practiced, per-unit status, and the
+ *            complete, signs practiced, per-unit status, the
+ *            "Continue Learning" hero destination, and the
  *            "Signs You've Learned" recap grid.
  * CONNECTS : pages/dashboard.html (after js/data.js + js/engine/progress.js)
  * TODO     : Once Firestore is live, LWProgress itself swaps its
  *            storage backend — this file doesn't need to change.
  *
- * REV 4 — PHASE 4 (this revision): `LEVELS` + `renderLevelCard(level)`
- * + the hardcoded `[data-level-card]` markup in dashboard.html are
- * gone. Progress is now rendered from
- * window.LWProgress.getOrderedLiveCategories() (the same flat
- * cross-unit chain js/learn.js's trail view walks) and
+ * REV 4 — PHASE 4: `LEVELS` + `renderLevelCard(level)` + the hardcoded
+ * `[data-level-card]` markup in dashboard.html are gone. Progress is
+ * rendered from window.LWProgress.getOrderedLiveCategories() (the
+ * same flat cross-unit chain js/learn.js's trail view walks) and
  * window.LWData.getUnits() — one aggregate card plus one row per
  * unit, both fully data-driven (no unit hardcoded here), matching
  * SYSTEM_ARCHITECTURE.md Rev 4's "Progress / unlock model changes"
  * section. See PIVOT_CHECKLIST.md Phase 4's last item.
  *
- * REV 4 addendum (2026-08-21, this session): added renderWelcomeBanner()
- * — see its own doc comment below for the full "why" and the 4 states
- * it handles. Fixes the hardcoded "...ASL Alphabet" welcome string
- * flagged in PIVOT_CHECKLIST.md's review-session addendum.
+ * REV 4 addendum (2026-08-21): added renderWelcomeBanner() — fixes
+ * the hardcoded "...ASL Alphabet" welcome string flagged in
+ * PIVOT_CHECKLIST.md's review-session addendum.
  *
- * BUGFIX (found while doing the above, not carried over from an
- * earlier phase): the OLD renderContinueButton() looped `LEVELS` in a
- * fixed basic→medium→intermediate order, and *within* a level used
- * `liveCategoriesFor(level)` — sorted by that category's own in-level
- * `order` field, NOT by unit. Phase 1 didn't renumber `order` when it
- * introduced `unit` (see AI_MEMORY.md's Phase 1 session log — the
- * `requests` category still has order:9 even though it's unit:4,
- * ahead of unit:5's `family`/`places`/etc, which have order:1-4). So
- * that loop's in-level order visited `family` (order 1, unit 5)
- * BEFORE `requests` (order 9, unit 4) — backwards from the real
- * trail, where Unit 4 (Everyday Essentials) comes before Unit 5
- * (Common Things & People). On a fresh account this meant "Continue
- * Learning" could point at a category that isn't even unlocked yet
- * while skipping over one that genuinely is. Fixed below by walking
- * window.LWProgress.getOrderedLiveCategories() directly — it's
- * already in the correct flat order and doesn't take a level at all.
+ * DASHBOARD UX REVIEW — PRIORITY 0 #1 (2026-08-21, code session):
+ * added the "Continue Learning" hero card (renderContinueCard()) per
+ * PIVOT_CHECKLIST.md's "Dashboard UX Review Checklist" → Priority 0
+ * item #1 ("Make 'Continue Learning' the primary action") and
+ * SYSTEM_ARCHITECTURE.md's "Dashboard UX Review Addendum". Only that
+ * one checklist item was implemented this session — see this file's
+ * own doc comment above getCurrentDestination() and the "Implementation
+ * status" note added to SYSTEM_ARCHITECTURE.md for exactly what did
+ * and didn't change.
+ *
+ * Factored the "find the learner's current unlocked-but-unpassed
+ * category" walk out of renderWelcomeBanner() and renderContinueButton()
+ * (previously two separate, nearly-identical copies of the same walk)
+ * into one shared getCurrentDestination() helper, now also consumed by
+ * renderContinueCard(). Behavior of the two existing functions is
+ * UNCHANGED — same chain, same unlocked/passed check — this is a
+ * de-duplication, not a logic change. This keeps the checklist's own
+ * "do not create a second progress/unlock algorithm" rule true for the
+ * dashboard's OWN code, too, not just the app-wide progress engine.
+ *
+ * BUGFIX (carried over, unrelated to this session): the OLD
+ * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
+ * intermediate order, and *within* a level used `liveCategoriesFor(level)`
+ * — sorted by that category's own in-level `order` field, NOT by unit.
+ * Phase 1 didn't renumber `order` when it introduced `unit` (see
+ * AI_MEMORY.md's Phase 1 session log — the `requests` category still
+ * has order:9 even though it's unit:4, ahead of unit:5's `family`/
+ * `places`/etc, which have order:1-4). Fixed by walking
+ * window.LWProgress.getOrderedLiveCategories() directly — already in
+ * the correct flat order and doesn't take a level at all. Still true
+ * of getCurrentDestination() below, since it's the same walk.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -47,7 +61,8 @@
 // One icon per UNITS entry — same map js/learn.js uses for its trail
 // nodes, kept in sync manually (two small copies were judged simpler
 // and lower-risk than introducing a shared module/global just for an
-// icon lookup — see the Phase 4 session log for the reasoning).
+// icon lookup — see the Phase 4 session log for the reasoning). Also
+// reused by the new Continue Learning hero card below.
 const UNIT_ICONS = {
   welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
   everyday_essentials: '🙏', common_things_people: '🗂️',
@@ -62,7 +77,13 @@ function escapeHtml(str) {
 
 /** Aggregate card at the top of "Overall Progress" — the whole flat
  *  chain combined into one percentage, replacing what used to be
- *  three separate per-level percentages. */
+ *  three separate per-level percentages.
+ *
+ *  NOTE (2026-08-21): this is the "practice progress" number
+ *  PIVOT_CHECKLIST.md's Priority 0 item #3 wants explicitly relabeled
+ *  (not "mastery"). NOT changed this session — item #3 is out of scope
+ *  for the Priority 0 #1 work below. Flagging here so it isn't assumed
+ *  done. */
 function renderOverallProgress() {
   if (!window.LWProgress || !window.LWData) return;
   const chain = window.LWProgress.getOrderedLiveCategories();
@@ -93,61 +114,88 @@ function renderOverallProgress() {
   }
 }
 
-/** FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "welcome
- *  banner hardcodes '...ASL Alphabet'" item, previously flagged as
- *  "more than a one-line text swap, left as a decision"). Decided:
- *  walk the exact same flat chain renderContinueButton() below already
- *  uses to find the learner's current in-progress category, then map
- *  its parent UNIT's title to a friendly phrase — reusing the walk
- *  rather than re-deriving it, same discipline as every other Phase 4+
- *  function in this file. Three states, since a plain "you're making
- *  great progress on {unit}" doesn't honestly cover either end of the
- *  chain:
+/**
+ * NEW (2026-08-21, code session) — PIVOT_CHECKLIST.md Priority 0 #1.
+ *
+ * Finds the learner's current destination: the first category in the
+ * flat cross-unit chain that's unlocked but not yet passed, plus
+ * everything the UI needs to describe it (unit, live signs, practiced
+ * count, next unpracticed sign).
+ *
+ * This is the SAME walk that used to be duplicated between
+ * renderWelcomeBanner() and renderContinueButton() — factored out here
+ * so there's exactly one place that answers "where is the learner /
+ * what's next," consumed by three render functions below. No new
+ * unlock/ordering rule was introduced; `getOrderedLiveCategories()` /
+ * `getCategoryProgress()` / `isCategoryUnlocked()` are the same
+ * window.LWProgress calls both prior functions already made.
+ *
+ * @returns {null | {
+ *   chain: object[],
+ *   cat: object|null,        // null means every live category is passed (or chain is empty)
+ *   unit: object|null,
+ *   signs: string[],
+ *   prog: object|null,
+ *   practicedCount: number,
+ *   nextSign: string|null,
+ * }}
+ */
+function getCurrentDestination() {
+  if (!window.LWProgress || !window.LWData) return null;
+  const chain = window.LWProgress.getOrderedLiveCategories();
+
+  for (const cat of chain) {
+    const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
+    if (!prog.assessment?.passed && window.LWProgress.isCategoryUnlocked(cat.level, cat.id)) {
+      const unit = window.LWData.getUnits().find(u => u.order === cat.unit) ?? null;
+      const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+      const practicedCount = signs.filter(s => !!prog.signs[s]).length;
+      const nextSign = signs.find(s => !prog.signs[s]) || signs[0] || null;
+      return { chain, cat, unit, signs, prog, practicedCount, nextSign };
+    }
+  }
+  // Every live category in the chain is already passed (or the chain
+  // itself is empty — e.g. pre-launch with everything still comingSoon).
+  return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null };
+}
+
+/** FIX (2026-08-21): was PIVOT_CHECKLIST.md's "welcome banner
+ *  hardcodes '...ASL Alphabet'" item. Walks the shared destination
+ *  (now via getCurrentDestination(), passed in) to find the learner's
+ *  current in-progress category, then maps its parent UNIT's title to
+ *  a friendly phrase. Three states, since a plain "you're making great
+ *  progress on {unit}" doesn't honestly cover either end of the chain:
  *    - nothing trained at all (chain.length === 0) — generic opener,
  *      no unit name to reference.
  *    - a real current category exists, but it's brand new (learner
  *      hasn't practiced a single sign in it yet) — "Let's get
- *      started with X!" reads truer than "great progress" for someone
- *      who hasn't opened a sign.
+ *      started with X!" reads truer than "great progress."
  *    - a real current category, already partway through — the
- *      original "great progress on X" phrasing, now with the correct
- *      X instead of a hardcoded one.
- *    - every trained category passed (no unlocked-but-unpassed
- *      category left in the chain) — the old string would have kept
- *      saying "ASL Alphabet" forever here too; this one says so.
+ *      original "great progress on X" phrasing.
+ *    - every trained category passed — says so, instead of repeating
+ *      the last unit's name forever.
+ *
+ *  Behavior is UNCHANGED from before this session — only the source of
+ *  the chain walk moved (now shared with renderContinueCard() below).
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
  */
-function renderWelcomeBanner() {
+function renderWelcomeBanner(destination) {
   const el = document.querySelector('[data-welcome-banner]');
-  if (!el || !window.LWProgress || !window.LWData) return;
+  if (!el || !destination) return;
 
-  const chain = window.LWProgress.getOrderedLiveCategories();
-  if (chain.length === 0) {
+  if (destination.chain.length === 0) {
     el.textContent = "Let's get you started on your ASL journey!";
     return;
   }
 
-  let currentCat = null;
-  for (const cat of chain) {
-    const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
-    if (!prog.assessment?.passed && window.LWProgress.isCategoryUnlocked(cat.level, cat.id)) {
-      currentCat = cat;
-      break;
-    }
-  }
-
-  if (!currentCat) {
+  if (!destination.cat) {
     el.textContent = "You've completed every unit that's trained so far — nice work!";
     return;
   }
 
-  const unit = window.LWData.getUnits().find(u => u.order === currentCat.unit);
-  const unitTitle = unit?.title ?? currentCat.title;
-
-  const signs = window.LWData.getCategorySigns(currentCat.level, currentCat.id);
-  const prog  = window.LWProgress.getCategoryProgress(currentCat.level, currentCat.id);
-  const hasPracticedAny = signs.some(s => !!prog.signs[s]);
-
-  el.textContent = hasPracticedAny
+  const unitTitle = destination.unit?.title ?? destination.cat.title;
+  el.textContent = destination.practicedCount > 0
     ? `You're making great progress on ${unitTitle}.`
     : `Let's get started with ${unitTitle}!`;
 }
@@ -238,24 +286,108 @@ function renderRecap() {
   `).join('');
 }
 
-/** "Continue Learning" button — walks the flat chain and points at the
- *  first category that's unlocked but not yet passed. See the BUGFIX
- *  note in the file header for why this no longer loops LEVELS. */
-function renderContinueButton() {
+/** "Continue Learning" button — points at the first category that's
+ *  unlocked but not yet passed. Behavior is UNCHANGED from before this
+ *  session (same href construction); it now just reads the shared
+ *  `destination` object instead of re-walking the chain itself. See
+ *  the BUGFIX note in the file header for why this doesn't loop LEVELS.
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
+ */
+function renderContinueButton(destination) {
   const btn = document.querySelector('[data-continue-learning]');
-  if (!btn || !window.LWProgress) return;
+  if (!btn || !destination) return;
 
-  const chain = window.LWProgress.getOrderedLiveCategories();
-  for (const cat of chain) {
-    const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
-    if (!prog.assessment?.passed && window.LWProgress.isCategoryUnlocked(cat.level, cat.id)) {
-      const signs = window.LWData.getCategorySigns(cat.level, cat.id);
-      const nextSign = signs.find(s => !prog.signs[s]) || signs[0];
-      btn.href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
-      return;
-    }
+  if (!destination.cat) {
+    btn.href = 'learn.html';
+    return;
   }
-  btn.href = 'learn.html';
+
+  const { cat, nextSign } = destination;
+  btn.href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
+}
+
+/**
+ * NEW (2026-08-21, code session) — PIVOT_CHECKLIST.md Dashboard UX
+ * Review Checklist → Priority 0 item #1 ("Make 'Continue Learning'
+ * the primary action").
+ *
+ * Fills in the hero card: exact destination (Unit + category + next
+ * sign), progress WITHIN that destination (not the global aggregate
+ * % — that's the separate "Overall Progress" card lower on the page;
+ * relabeling that one is Priority 0 item #3, out of scope here), a
+ * primary CTA whose LABEL changes with state (Start Lesson / Continue
+ * / Review Your Path), and a secondary "Open Path" CTA shown only when
+ * there's a specific unit worth linking to (checklist: "secondary CTA
+ * only when useful").
+ *
+ * Does NOT set the primary button's `href` — renderContinueButton()
+ * above already owns that, so the two functions don't race to set the
+ * same attribute from two different code paths.
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
+ */
+function renderContinueCard(destination) {
+  const iconEl      = document.querySelector('[data-continue-icon]');
+  const eyebrowEl   = document.querySelector('[data-continue-eyebrow]');
+  const titleEl     = document.querySelector('[data-continue-title]');
+  const progWrapEl  = document.querySelector('[data-continue-progress-wrap]');
+  const progFillEl  = document.querySelector('[data-continue-progress-fill]');
+  const progLabelEl = document.querySelector('[data-continue-progress-label]');
+  const primaryBtn  = document.querySelector('[data-continue-learning]');
+  const secondaryBtn = document.querySelector('[data-continue-secondary]');
+  if (!destination) return;
+
+  // State: nothing live in the chain at all (defensive — e.g. a
+  // fresh Rev 4 install pre-Phase-7 where a whole unit is still
+  // comingSoon end-to-end). Shouldn't happen post-launch but costs
+  // nothing to handle explicitly rather than showing a blank card.
+  if (destination.chain.length === 0) {
+    if (iconEl) iconEl.textContent = '👋';
+    if (eyebrowEl) eyebrowEl.textContent = 'Get started';
+    if (titleEl) titleEl.textContent = "Let's get you started on your ASL journey!";
+    if (progWrapEl) progWrapEl.style.display = 'none';
+    if (primaryBtn) primaryBtn.textContent = '▶ Start Learning';
+    if (secondaryBtn) secondaryBtn.style.display = 'none';
+    return;
+  }
+
+  // State: every live category in the chain is already passed.
+  if (!destination.cat) {
+    if (iconEl) iconEl.textContent = '🏆';
+    if (eyebrowEl) eyebrowEl.textContent = 'All caught up';
+    if (titleEl) titleEl.textContent = "You've completed every unit that's trained so far!";
+    if (progWrapEl) progWrapEl.style.display = 'none';
+    if (primaryBtn) primaryBtn.textContent = '↺ Review Your Path';
+    if (secondaryBtn) secondaryBtn.style.display = 'none';
+    return;
+  }
+
+  // State: a real next destination exists.
+  const { cat, unit, signs, practicedCount, nextSign } = destination;
+  const icon = UNIT_ICONS[unit?.id] ?? '🔖';
+  const signTitle = window.LWData.getSign?.(cat.level, nextSign)?.title ?? nextSign;
+
+  if (iconEl) iconEl.textContent = icon;
+  if (eyebrowEl) eyebrowEl.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
+  if (titleEl) titleEl.textContent = `${cat.title} → ${signTitle}`;
+
+  if (progWrapEl && progFillEl && progLabelEl && signs.length > 0) {
+    const pct = Math.round((practicedCount / signs.length) * 100);
+    progWrapEl.style.display = '';
+    progFillEl.style.width = `${pct}%`;
+    progLabelEl.textContent = `${practicedCount}/${signs.length} signs practiced in ${cat.title}`;
+  } else if (progWrapEl) {
+    progWrapEl.style.display = 'none';
+  }
+
+  if (primaryBtn) primaryBtn.textContent = practicedCount > 0 ? '▶ Continue' : '▶ Start Lesson';
+
+  if (secondaryBtn) {
+    secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
+    secondaryBtn.textContent = 'Open Path';
+    secondaryBtn.style.display = '';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -263,9 +395,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   await window.LWProgress?.whenProgressReady?.();
   console.log('[dashboard.js] progress ready, rendering now');
 
+  // Computed once, consumed by all three "where's the learner" renders
+  // below — see getCurrentDestination()'s doc comment for why this
+  // replaced two separate copies of the same walk.
+  const destination = getCurrentDestination();
+
   renderOverallProgress();
-  renderWelcomeBanner();
+  renderWelcomeBanner(destination);
   renderUnitList();
   renderRecap();
-  renderContinueButton();
+  renderContinueButton(destination);
+  renderContinueCard(destination);
 });

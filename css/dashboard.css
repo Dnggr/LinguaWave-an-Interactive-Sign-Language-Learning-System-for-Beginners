@@ -10,6 +10,95 @@
   flex-wrap: wrap;
 }
 
+/* ── Continue Learning hero card (NEW, 2026-08-21 code session) ─────
+   PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 #1
+   ("Make 'Continue Learning' the primary action"). Deliberately the
+   most visually weighted card on the page — accented border by
+   default (not just on :hover like the generic `.card`), a soft
+   gradient wash, and a bigger icon — since the checklist's own rule
+   is that this card should read as "this is what you do next," not
+   another status tile competing with the aggregate progress card
+   below it. See js/dashboard.js's renderContinueCard(). */
+.continue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  border-color: var(--clr-accent);
+  background: linear-gradient(135deg, var(--clr-accent-soft), transparent 60%);
+}
+.continue-card__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.continue-card__icon {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-2xl);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+}
+.continue-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.continue-card__eyebrow {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+}
+.continue-card__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-text);
+  /* Long "{category} → {sign}" strings (e.g. long phrase titles)
+     shouldn't force the actions column off-screen on narrow desktop
+     widths — wrap instead of overflowing. */
+  overflow-wrap: anywhere;
+}
+.continue-card__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.continue-card__progress .progress-bar {
+  width: 140px;
+  flex: 0 0 auto;
+}
+.continue-card__progress-label {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.continue-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .continue-card { flex-direction: column; align-items: stretch; }
+  .continue-card__actions { flex-direction: column; align-items: stretch; }
+  .continue-card__actions .btn { width: 100%; }
+  .continue-card__progress { flex-wrap: wrap; }
+  .continue-card__progress .progress-bar { width: 100%; flex: 1 1 100%; }
+}
+
 /* ── Progress card: colored top edge (CSS-only) ─────────────────────
    REV 4 PHASE 4: there's only one progress-card now (the aggregate
    "Your ASL Path" card) — the old per-tier `[data-level-card]`
@@ -54,7 +143,7 @@
   background: linear-gradient(90deg, var(--clr-accent-dim), var(--clr-accent));
 }
 
-/* ── Unit progress list (NEW, Phase 4) ───────────────────────────────
+/* ── Unit progress list (Phase 4) ─────────────────────────────────
    Replaces the old three basic/medium/intermediate progress-card grid
    — one compact row per window.LWData.getUnits() entry, rendered by
    js/dashboard.js. Deliberately NOT full progress-cards (no bar/CTA

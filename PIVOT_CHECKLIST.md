@@ -234,26 +234,71 @@ Do not make the dashboard another copy of the trail.
 
 ---
 
-### 1. Priority 0 — Make "Continue Learning" the primary action
+### 1. Priority 0 — Make "Continue Learning" the primary action — ✅ Done 2026-08-21 (code session)
 
-- [ ] Make the top of the dashboard visually centered around a **Continue Learning** card.
-- [ ] Show the exact current destination:
+- [x] Make the top of the dashboard visually centered around a **Continue Learning** card.
+      — done: new `.continue-card` hero, `pages/dashboard.html`, placed directly below the
+      page header and above "Your Account" / "Overall Progress".
+- [x] Show the exact current destination:
   - Unit number + Unit title
   - Category
   - Current sign / lesson
   - Example: `Unit 1 · The Alphabet → Letter M`
-- [ ] Show progress inside that destination, not only the global 9%.
-- [ ] Show one clear primary CTA: `Continue`.
-- [ ] Show a secondary CTA only when useful: `Review` / `Open Path`.
-- [ ] The first viewport should expose the next learning action without scrolling.
-- [ ] Preserve the existing `renderContinueButton()` logic as the source of truth
+  — done, as `Unit {order} · {unit.title}` (eyebrow) + `{category.title} → {sign.title}`
+  (main line). Slightly more explicit than the checklist's own shorthand example (which
+  omits the category name) since Unit 4/5 have more than one live category and "Unit 5 ·
+  Common Things & People" alone doesn't say which category — see `js/dashboard.js`'s
+  `renderContinueCard()`.
+- [x] Show progress inside that destination, not only the global 9%.
+      — done: `N/M signs practiced in {category}` + a small progress bar scoped to the
+      current category, separate from the aggregate card's global %. **Note:** the global
+      %'s own mislabeling (Priority 0 #3) was NOT touched this session.
+- [x] Show one clear primary CTA: `Continue`.
+      — done, label now changes with state: `Start Lesson` (nothing practiced yet) /
+      `Continue` (in progress) / `Review Your Path` (everything passed).
+- [x] Show a secondary CTA only when useful: `Review` / `Open Path`.
+      — done as `Open Path` → `learn.html?unit={id}`; hidden entirely in the "nothing to
+      continue" and "all caught up" states (no real "Learn" scope but the ✓ default in those
+      states). A `Review` CTA specifically was NOT added — that's Priority 1 item #6
+      (review/repetition entry point), which doesn't exist as a feature yet; only `Open Path`
+      was in scope/buildable for item #1.
+- [x] The first viewport should expose the next learning action without scrolling.
+      — addressed by placement (hero card is the second section on the page, right after a
+      trimmed-down header) but **not verified in a real browser** — see Verification below.
+- [x] Preserve the existing `renderContinueButton()` logic as the source of truth
       for the destination.
-- [ ] Do **not** create a second progress/unlock algorithm in the dashboard.
+      — done, and tightened: the chain-walk that used to be duplicated between
+      `renderWelcomeBanner()` and `renderContinueButton()` is now factored into one shared
+      `getCurrentDestination()` helper that all three render functions (including the new
+      card) consume. `renderContinueButton()`'s own href-construction logic is byte-for-byte
+      unchanged, just reading from the shared object instead of re-deriving it.
+- [x] Do **not** create a second progress/unlock algorithm in the dashboard.
+      — confirmed: `getCurrentDestination()` calls the exact same
+      `window.LWProgress.getOrderedLiveCategories()` / `getCategoryProgress()` /
+      `isCategoryUnlocked()` + `window.LWData.getUnits()` / `getCategorySigns()` /
+      `getSign()` this file's own "Code/data flow to preserve" section (§19) lists — no
+      new ordering/unlock rule was written.
 
 #### Acceptance criteria
 
 A learner who returns to the dashboard can immediately continue from their
-real next lesson without opening `learn.html` first.
+real next lesson without opening `learn.html` first. **Met in code** — not yet
+confirmed in a real browser (see §23 below).
+
+#### Files touched this session
+
+- `pages/dashboard.html` — new hero card markup; removed the old inline CTA
+  button from `.dash-header` (moved into the hero card).
+- `js/dashboard.js` — new `getCurrentDestination()` (shared), new
+  `renderContinueCard()`; `renderWelcomeBanner()`/`renderContinueButton()` now
+  take the shared destination as a param instead of each re-deriving it.
+- `css/dashboard.css` — new `.continue-card*` rules + a narrow-viewport
+  (`max-width: 640px`) stack layout for it.
+
+**Explicitly not touched:** `js/auth.js` (excluded by user request, same as
+every prior dashboard session), `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` — per this checklist's own "Dashboard implementation
+boundary" (§20) / `SYSTEM_ARCHITECTURE.md`'s matching section.
 
 ---
 
@@ -550,8 +595,12 @@ These are observations, not claims that every one is a confirmed code defect.
 - [ ] **Practice percentage is easy to misread as mastery.**
       The code explicitly counts practiced signs, while the page visually presents
       it as a general progress percentage.
-- [ ] **Current location is not prominent.**
+- [x] **Current location is not prominent.**
       The learner must infer where to continue from the unit list / Continue button.
+      — Addressed 2026-08-21 (code session) by the new Continue Learning hero card
+      (Priority 0 #1, §1 above): destination is now spelled out explicitly
+      (`Unit N · {unit} — {category} → {sign}`), not inferred. Pending real-browser
+      verification like everything else in this list.
 - [ ] **Current Unit is missing from the account summary.**
       `Current Level: Basic` is now conceptually obsolete under Rev 4.
 - [ ] **Dashboard repeats the learning path.**
@@ -740,3 +789,69 @@ The result of this session is:
 - dashboard redesign direction,
 - this ready-to-paste checklist,
 - memory/architecture update text in companion files.
+
+---
+
+### 23. Implementation session — Priority 0 #1 (2026-08-21, code session)
+
+**This session DID write code** — a follow-up to §22 above, explicitly scoped to
+**only** Priority 0 item #1 ("Make 'Continue Learning' the primary action," §1).
+Items #2 and #3 (also Priority 0) and everything Priority 1/2 are **still open** —
+see §1's own bullets for exactly what was and wasn't covered, since #1 overlaps
+partially with #2/#3's intent without fully resolving either.
+
+**Pre-change checks completed**, per this file's own header rule: read
+`AI_MEMORY.md` first, then this checklist (found §1 = the requested "Priority 0
+#1"), then confirmed no conflicting in-progress work in
+`SYSTEM_ARCHITECTURE.md`'s Rev 4 section. No changes were made to `data.js`,
+`learn.js`, `progress.js`, or `auth.js` — `auth.js` was excluded per explicit
+user instruction this session too, same as every dashboard session before it.
+
+**Files changed:** `pages/dashboard.html`, `js/dashboard.js`, `css/dashboard.css`
+— see §1's "Files touched this session" for specifics. Exactly the three files
+this checklist's own §20 ("Allowed implementation scope") names.
+
+**Bugs/observations found while implementing (not pre-existing — introduced-and-
+fixed within this same session, so not separately logged as regressions):**
+1. `renderWelcomeBanner()` and `renderContinueButton()` each independently
+   re-walked `getOrderedLiveCategories()` to answer the same question ("what's
+   the learner's current category"). Adding a third consumer (the new hero
+   card) for a third copy of that walk would have meant three places that could
+   drift out of sync with each other. Factored into one shared
+   `getCurrentDestination()` instead — see `js/dashboard.js`'s doc comment
+   above it. This is a refactor, not a behavior change: `renderContinueButton()`'s
+   href output and `renderWelcomeBanner()`'s three message states are unchanged.
+
+**Verification performed:**
+- `node --check` on `js/dashboard.js` — clean, no syntax errors (no
+  `import`/`export` in this file, confirmed by grep first, so no `.mjs` rename
+  needed — same discipline as prior sessions' verification notes).
+- Every new `data-continue-*` attribute cross-checked between
+  `pages/dashboard.html` and `js/dashboard.js`'s `querySelector` calls via
+  `grep` — all match.
+- HTML tag balance (`<section>`/`<div>` open vs. close count) and CSS brace
+  balance checked programmatically — both balanced.
+
+**NOT verified — same standing limitation as every prior dashboard/lesson
+session that touched UI:**
+- Not exercised in a real browser. In particular:
+  - Whether the hero card actually clears the fold on common viewport heights
+    without scrolling (acceptance criterion in §1) is reasoned about via
+    section placement, not measured.
+  - The 3 hero-card states (fresh/in-progress/all-caught-up) were each
+    hand-traced against `getCurrentDestination()`'s logic, not clicked through
+    with real `localStorage` progress data in each shape.
+  - Light/dark theme and the new `max-width: 640px` narrow-viewport stack for
+    `.continue-card` are unverified visually.
+
+**Still open after this session:**
+1. Real-browser verification of this session's change (see above) — the
+   single biggest recommendation coming out of this session, consistent with
+   every UI-touching session before it.
+2. Priority 0 items #2 ("replace the report feeling") and #3 ("fix the meaning
+   of the 9% number") — not started.
+3. Every Priority 1 / Priority 2 item in this checklist (§4–§15) — not started.
+4. Everything already listed as still-open in every prior session log entry
+   (Phase 7 capture/retraining, real-browser checks from earlier sessions,
+   etc.) — unchanged by this session.
+5. `auth.js` remains explicitly excluded, per user instruction.
