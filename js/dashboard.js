@@ -613,12 +613,23 @@ function getCurrentDestination() {
       const signs = window.LWData.getCategorySigns(cat.level, cat.id);
       const practicedCount = signs.filter(s => !!prog.signs[s]).length;
       const nextSign = signs.find(s => !prog.signs[s]) || signs[0] || null;
-      return { chain, cat, unit, signs, prog, practicedCount, nextSign };
+      // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22
+      // screenshot review): a category can be fully practiced (progress
+      // bar full) but still unpassed because the assessment itself
+      // hasn't been taken yet. `nextSign` above silently falls back to
+      // signs[0] in that case — with nothing to flag it, every render
+      // function below read that as "go practice sign #1 again" (the
+      // reported "Continue still points to Alphabet → Letter A" even at
+      // 26/26 practiced). Computed once here, alongside the fields it's
+      // derived from, rather than re-checking practicedCount===signs.length
+      // separately in each of renderContinueCard()/renderContinueButton().
+      const readyForAssessment = signs.length > 0 && practicedCount === signs.length;
+      return { chain, cat, unit, signs, prog, practicedCount, nextSign, readyForAssessment };
     }
   }
   // Every live category in the chain is already passed (or the chain
   // itself is empty — e.g. pre-launch with everything still comingSoon).
-  return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null };
+  return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null, readyForAssessment: false };
 }
 
 /**
@@ -866,8 +877,17 @@ function renderUnitRow(unit, destination) {
   // isCurrentUnit guarantees destination.cat belongs to THIS unit (see
   // getCurrentDestination(): unit is looked up from cat.unit), so no
   // extra matching is needed here.
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): mirrors the same readyForAssessment branch renderContinueCard()
+  // now has — without it, this row's own "Next: …" detail (and its
+  // aria-label below) would still say "Next: Alphabet → Letter A" at
+  // 26/26 practiced even after the hero card above it correctly says
+  // "Take the assessment," which is exactly the kind of two-surfaces-
+  // disagreeing bug this file's header comment says to avoid.
   const currentSignLabel = isCurrentUnit && destination.cat
-    ? `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`
+    ? (destination.readyForAssessment
+        ? `${destination.cat.title} → Take the assessment`
+        : `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`)
     : null;
 
   // NEW (Priority 2 §13, 2026-08-22) — aria-label for the graded case,
@@ -1156,8 +1176,15 @@ function renderContinueButton(destination) {
     return;
   }
 
-  const { cat, nextSign } = destination;
-  btn.href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
+  const { cat, nextSign, readyForAssessment } = destination;
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): once every sign in the category is practiced, the real next
+  // step is the assessment (same `quiz.html?level=X&category=Y` URL
+  // learn.js's own "Take Assessment" card and lesson.js's end-of-lesson
+  // CTA already use), not another pass at signs[0].
+  btn.href = readyForAssessment
+    ? `quiz.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}`
+    : `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
 }
 
 /**
@@ -1224,8 +1251,35 @@ function renderContinueCard(destination) {
   }
 
   // State: a real next destination exists.
-  const { cat, unit, signs, practicedCount, nextSign } = destination;
+  const { cat, unit, signs, practicedCount, nextSign, readyForAssessment } = destination;
   const icon = UNIT_ICONS[unit?.id] ?? '🔖';
+
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): fully-practiced-but-unassessed used to fall straight into
+  // the generic branch below, which reads `nextSign` (silently signs[0])
+  // and shows "Alphabet → Letter A" even at 26/26 practiced — reading as
+  // if nothing had been learned. Distinct state instead: name the
+  // assessment as the next action, same "Unit N · Title" eyebrow so it
+  // doesn't look like a different unit, progress bar left full rather
+  // than hidden so the 26/26 context isn't lost.
+  if (readyForAssessment) {
+    if (iconEl) iconEl.textContent = '📝';
+    if (eyebrowEl) eyebrowEl.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
+    if (titleEl) titleEl.textContent = `${cat.title} → Take the assessment`;
+    if (progWrapEl && progFillEl && progLabelEl) {
+      progWrapEl.style.display = '';
+      progFillEl.style.width = '100%';
+      progLabelEl.textContent = `${practicedCount}/${signs.length} signs practiced — ready for assessment`;
+    }
+    if (primaryBtn) primaryBtn.textContent = '📝 Take Assessment';
+    if (secondaryBtn) {
+      secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
+      secondaryBtn.textContent = unit ? `Open Unit ${unit.order} Path` : 'Open Path';
+      secondaryBtn.style.display = '';
+    }
+    return;
+  }
+
   const signTitle = window.LWData.getSign?.(cat.level, nextSign)?.title ?? nextSign;
 
   if (iconEl) iconEl.textContent = icon;

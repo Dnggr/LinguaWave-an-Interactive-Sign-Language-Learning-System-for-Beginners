@@ -222,10 +222,13 @@ linguawave/
   `auth.js`. `LWAuth.redirectIfLoggedIn()` bounces an already-logged-in
   user straight to the dashboard. No signup-time level picker (Rev 4
   Phase 5) — every account gets `level: 'basic'`.
-- **`pages/dashboard.html`** — welcome + Continue Learning hero, account
-  info (name/email/Current Unit/member-since), aggregate + per-unit
-  progress, "Signs You've Learned" recap, review entry point. Auth-guarded
-  via `LWAuth.requireAuth()`.
+- **`pages/dashboard.html`** — welcome + Continue Learning hero (primary
+  CTA + a secondary "Open Unit N Path" button next to it, straight to
+  `learn.html?unit=X` — present since the Priority 2 §13 session,
+  previously undocumented here; flagged by the 2026-08-22 screenshot
+  review), account info (name/email/Current Unit/member-since), aggregate
+  + per-unit progress, "Signs You've Learned" recap, review entry point.
+  Auth-guarded via `LWAuth.requireAuth()`.
 - **`pages/learn.html`** — the unit trail (locked/current/done nodes).
   `?unit=`/`?category=` params.
 - **`pages/lesson.html`** — sign viewer + course sidebar (Rev 5). Optional

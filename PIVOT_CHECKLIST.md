@@ -117,6 +117,113 @@ dashboard work:**
 
 ---
 
+## Bugs observed — 2026-08-22 screenshot review (dashboard → learn → learn?category=numbers)
+
+> Screenshot-based observations from a live local server (`127.0.0.1:5500`),
+> same discipline as the earlier §16 review. **Confirmed against the
+> actual code and fixed/resolved same day (2026-08-22, later session)** —
+> see each item. `auth.js` not implicated in any of these.
+
+- [x] **`learn.html` root trail has no visible locked/current/done
+  state.** Root cause confirmed: `learn.js`'s `getUnitState()` marked
+  *every* unlocked-and-incomplete category-group unit `'current'`
+  independently, instead of picking the one unit that's actually next.
+  Normally invisible (sequential unlocking usually leaves only one such
+  unit at a time), but `DEBUG_UNLOCK_ALL` unlocks all of them at once, so
+  all 8 rows got the identical accent-border/shadow treatment — which
+  reads as "nothing is highlighted" rather than "everything is." This is
+  also why it disagreed with the dashboard's own mini preview: that page
+  already stops at the first unlocked-but-unpassed category
+  (`getCurrentDestination()`); `learn.js` didn't have an equivalent
+  single-current rule until now. **Fix:** added `findCurrentUnitId()` to
+  `learn.js`, mirroring `dashboard.js`'s walk-and-stop-at-first pattern;
+  only that one unit gets `status: 'current'` now, every other
+  unlocked-incomplete unit renders neutral (`'available'`, no special
+  border). Independent of `DEBUG_UNLOCK_ALL` — true either way, but the
+  visual difference will be much less obvious until the flag is flipped
+  back (only then does the trail normally have just one unlocked+
+  incomplete unit to show as current in the first place). `js/learn.js`.
+- [x] **"← Back to Trail" wording.** Confirmed literal — all 6 occurrences
+  (5 in `learn.js`, 1 static fallback in `learn.html`) said "Trail".
+  Changed to "← Back to Learning Path" everywhere, matching the page's
+  own H1 and the dashboard's "LEARNING PATH" heading. `js/learn.js`,
+  `pages/learn.html`.
+- [x] **Dashboard "Continue" doesn't account for "fully practiced, not
+  yet assessed."** Confirmed: `getCurrentDestination()`'s `nextSign`
+  falls back to `signs[0]` once every sign is practiced (nothing left
+  unpracticed to find), and nothing downstream branched on that case —
+  so Continue kept pointing at "Alphabet → Letter A" at 26/26. **Fix:**
+  added a `readyForAssessment` flag to `getCurrentDestination()`'s
+  return value (`practicedCount === signs.length`); `renderContinueCard()`
+  now shows a distinct "📝 Take Assessment" state instead of falling
+  into the sign-practice branch, `renderContinueButton()` routes its
+  href to `quiz.html?level=X&category=Y` instead of `lesson.html?...&
+  sign=...`, and the matching unit-row "Next: …" detail (same bug, same
+  fallback, second surface) got the same branch so the hero card and the
+  unit row can't disagree with each other. `js/dashboard.js`.
+- [x] **Undocumented "Open Unit 1 Path" button.** Confirmed real and
+  working as designed (`[data-continue-secondary]`, added in the
+  Priority 2 §13 session) — not a functional bug. Added to
+  `SYSTEM_ARCHITECTURE.md`'s dashboard description so it doesn't get
+  flagged as drift again.
+
+**Not re-verified in a real browser this session** (text-only repo
+export, same limitation as every prior AI session) — the fixes above are
+confirmed against the actual code paths, but Joshua should still eyeball
+`learn.html`'s trail and the dashboard hero card once, ideally after
+flipping `DEBUG_UNLOCK_ALL` back to `false` per `AI_MEMORY.md` §0, since
+that's also when the trail's single-current-unit fix becomes visually
+meaningful (today, with the flag on, there's usually nothing else
+unlocked+incomplete to contrast the one 'current' unit against).
+
+---
+
+## Proposed Unit reorder — Omen's request (2026-08-22, NOT yet implemented)
+
+Differs from the live Unit Map in `SYSTEM_ARCHITECTURE.md` → Rev 4.
+Goal stated by Omen: restructure for better data collection for the
+detection engine. This needs its own planning pass before touching
+`data.js` — same weight as the original Rev 4 planning session, not a
+quick edit — so treat this as a plan to confirm, not a to-do to just
+execute.
+
+**Target order:**
+1. ASL History — new content. Current Unit 0 ("Welcome to ASL") is
+   generic background + how-camera-practice-works, not history
+   specifically — needs new copy, not just a rename.
+2. Letters (= current Unit 1, unchanged)
+3. Fingerspell — **as an assessment.** Current Unit 2 is an ungated
+   practice drill (Camera Check has been optional/bonus everywhere
+   since Rev 3, reaffirmed through Phase 6). Making it a graded gate is
+   a real policy reversal, not just a reorder — flag for an explicit
+   decision before implementing, same way Phase 4's locking reversal
+   and Phase 6's Level-Final retirement were each called out.
+4. Numbers (= current Unit 3, unchanged)
+5. Everyday Essentials
+6. Greetings and Introduction
+7. Basic Responses
+8. Polite Expressions
+9. Days of the Week — current `time` category (`DAY`/`WEEK`/`MONTH`/
+   `YEAR`/`TODAY`) is generic time vocabulary, **not** the 7 weekday
+   names (Monday–Sunday). If literal weekdays are wanted, that's new
+   content/training data, not a relabel of what exists.
+10. Everything else already in the app — just categorize, no reshuffle
+    urgency (today's Unit 5 remainder, Unit 6 phrases, Unit 7
+    Phrasebook).
+
+**Blocking question before this can become a `data.js` phase:** items
+5–8 above are currently one bucket — Unit 4 "Everyday Essentials"
+holds all 16 `requests`-category placeholder signs (`PLEASE`, `SORRY`,
+`YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`,
+`FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) plus `HELLO`/`THANK YOU`.
+Splitting that one bucket into 4 named categories needs someone to sort
+which specific signs go in Everyday Essentials vs. Greetings vs. Basic
+Responses vs. Polite Expressions before any code changes — recommend
+Omen sketch that mapping first (mirrors how Rev 4's own planning
+session worked before Phase 1 touched `data.js`).
+
+---
+
 ## Open / backlog (suggested, not adviser-required — low priority)
 
 - [ ] Review/Trainer mode — spaced-repetition-style camera drill over
