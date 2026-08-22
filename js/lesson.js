@@ -1062,6 +1062,15 @@ function updateLessonMeta() {
       lessonVideoEl.load();
     }
 
+    // NOTE:make sure to read data.js line 338, and lesson.html line 177 first to make this work properly
+    // if we're gonna use embedded youtube video 
+    // replace the condition above with this commented condition below 
+    
+    // if (lessonVideoEl) {  
+    //   lessonVideoEl.src = signData.videoUrl;
+    //   console.log(`src success`);
+    // }
+
     // NEW: link out to Lifeprint.com (ASL University) for a second,
     // authoritative reference on this sign, when we have one.
     const referenceEl = document.getElementById('lesson-reference-link');
