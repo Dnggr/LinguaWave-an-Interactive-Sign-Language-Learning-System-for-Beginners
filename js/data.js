@@ -942,7 +942,13 @@ const SIGNS = [
     // CHANGED — split out of a combined 'COME/GO' entry, same fix as
     // IN/OUT earlier: a single signId can only ever match ONE detected
     // label, so a pair-entry could never actually be detected correctly.
-    // Both COME and GO are already separately captured/trained.
+    // BUGFIX (this session): the line below used to claim "Both COME and
+    // GO are already separately captured/trained" — false. Confirmed
+    // against asl_motion_model/labels.json (no COME/GO/J-Z-word class
+    // for either) and dictionary.js (`disabled: true` on both). They're
+    // on the Phase 7 capture list like the other Essential Words —
+    // correcting the comment so a future session doesn't skip them
+    // assuming this category is fully live.
     description: 'Point both index fingers up with palms facing you, and rotate them inward toward your body.',
     tips: [
       'Palms face you, both index fingers extended',

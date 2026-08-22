@@ -64,6 +64,56 @@
    because it's declared later in this same file. */
 .section--tight { padding-block: var(--space-4); }
 
+/* ── Loading / error / fallback states (Priority 2 §15, 2026-08-22
+   session) ────────────────────────────────────────────────────────────
+   PIVOT_CHECKLIST.md §15 ("Error/loading states"). See js/dashboard.js's
+   file-header §15 paragraph for the full story (including a real,
+   Playwright-verified hang bug in js/engine/progress.js's hydration this
+   item's verification surfaced — not fixed there, that file is out of
+   scope; this page's DOMContentLoaded handler now works around it with
+   a bounded timeout instead).
+
+   .dash-loading-pulse: a small, reusable "still working" cue for the
+   handful of static placeholder strings this page shows before
+   js/dashboard.js's first render pass — the Continue Learning card's
+   eyebrow, #unit-progress-list's loading row, and #recap-empty. Kept
+   deliberately subtle (opacity only, no motion/scale) since this is a
+   secondary affordance layered on TEXT that already explains what's
+   happening ("Loading your path…" etc.) — the animation is a bonus cue
+   for a wait that takes a moment, not the only signal that something
+   is happening. Respects prefers-reduced-motion. */
+.dash-loading-pulse {
+  animation: dash-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dash-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-loading-pulse { animation: none; }
+}
+
+/* Matches unit-progress-row's own internal padding so the loading
+   placeholder (pages/dashboard.html) sits at the same inset as the real
+   rows that replace it, instead of looking like a smaller, misaligned
+   flash of content right before the real list renders. */
+.unit-progress-list__loading {
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+/* js/dashboard.js's showProgressUnavailable() reuses css/style.css's
+   existing `.alert`/`.alert--error` component (already loaded on every
+   page; same `--clr-red`/`--clr-red-soft` reuse pattern toast.css and
+   quiz.css already use) rather than inventing new error styling here.
+   This is the one small adjustment needed to nest it cleanly inside
+   #unit-progress-list, which — unlike a normal page-level alert banner —
+   already sits inside a bordered/rounded container of its own. */
+.dash-fallback-alert {
+  margin: 0;
+  border-radius: var(--radius-md);
+}
+
 /* ── Continue Learning hero card (2026-08-21 code session) ───────────
    PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 #1
    ("Make 'Continue Learning' the primary action"). Deliberately the
@@ -638,11 +688,14 @@ a.unit-progress-row:focus-visible {
   margin-top: var(--space-4);
 }
 
-/* ── REVIEW entry point (Priority 1 §6, 2026-08-21 code session) ───
+/* ── REVIEW entry point (Priority 1 §6, 2026-08-21; extended
+   2026-08-22 per §17 "Recommended learning-site structure") ───────
    Deliberately a single lightweight card, not a second recap grid or
    a new trainer UI — see js/dashboard.js's renderReviewEntry() for
-   why. [data-review-actions] content (the link, or the disabled-style
-   placeholder) is filled entirely by JS. */
+   why. [data-review-actions] now holds up to 3 small chip-style links
+   (most recent first) instead of one button; .review-card__actions'
+   flex-wrap/gap keeps them tidy at any width. Content (the links, or
+   the disabled-style placeholder) is filled entirely by JS. */
 .review-card {
   display: flex;
   align-items: center;
@@ -657,6 +710,9 @@ a.unit-progress-row:focus-visible {
 }
 .review-card__actions {
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 /* Same "no href, no fake button" empty state unitRowHtml() uses for
    locked units, rendered here as a non-interactive <span> instead of

@@ -638,6 +638,30 @@ const FACE_WARN_HOLD_MS   = 600;
 const HAND_STATUS_HOLD_MS = 400;
 let lastFaceSeenAt = Date.now();
 let lastHandSeenAt = Date.now();
+
+// WARM-UP GRACE (2026-08-22 session — PIVOT_CHECKLIST.md §16 "camera
+// warning state needs real-browser verification" item). The two hold
+// constants above are tuned for debouncing brief drop-outs *during* an
+// active lesson (600ms/400ms — short on purpose, so a genuinely lost
+// hand mid-practice reacts fast). The earlier "no more two false
+// warnings on first camera load" fix (see bootDetectionEngine()) only
+// cleared *stale* timestamps left over from module-load time — it did
+// NOT give the learner more than 400-600ms to physically get their
+// hand/face in frame after the camera actually goes live, which isn't
+// realistic (positioning yourself in front of a camera takes a couple
+// of seconds, not milliseconds). That's the actual reason the
+// 2026-08-21 learner review still saw both warnings fire almost
+// immediately on the Letter M screenshot even though the timestamp-
+// staleness bug was already fixed — this is a second, distinct bug,
+// not a re-verification of the first one. Give the learner one longer,
+// one-time grace window right after camera boot, and end it early the
+// moment a hand or face is actually seen (see startRenderLoop()) so a
+// learner who's ready immediately isn't held to the full window, and
+// every later drop-out during the lesson still gets the tight,
+// responsive 600/400ms debounce, unchanged.
+const INITIAL_WARMUP_MS = 2500;
+let warmingUp = false;
+let warmupTimer = null;
 let lastHandCount  = 0;
 
 // ── Page boot ──────────────────────────────────────────────────────
@@ -1291,25 +1315,30 @@ async function bootDetectionEngine() {
     setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
 
-  // FIX (2026-08-21, this session — was PIVOT_CHECKLIST.md's "camera
-  // panel shows two orange warning boxes on first load" item): the
-  // SAME staleness bug BUG 11 FIX already fixed for startAssessment()
-  // was never fixed here, at the OTHER place these two timestamps get
-  // read from a stale starting point. `lastFaceSeenAt`/`lastHandSeenAt`
-  // are stamped at module-load time (see their `let` declarations,
-  // module scope), which happens well BEFORE this function's own
-  // `await initMediaPipe()` / `await startCamera()` / `await
-  // loadModels()` calls above — those routinely take a second or more
-  // for a first-time model fetch. By the time startRenderLoop() below
-  // runs its very first frame, `now - lastFaceSeenAt` and `now -
-  // lastHandSeenAt` are already bigger than FACE_WARN_HOLD_MS/
-  // HAND_STATUS_HOLD_MS, so both the face-warn box and the "No hand
-  // detected" pill fire on frame one — before the learner has had any
-  // chance to get in frame — reading as "already broken" rather than
-  // neutral first-run state. Same fix as BUG 11: stamp both to "now"
-  // right before the loop that actually reads them starts.
+  // FIX (2026-08-21, earlier session): stamp both to "now" right before
+  // the loop that actually reads them starts, so a stale module-load-
+  // time timestamp can't fire either warning on frame one. Still not
+  // enough on its own to give the learner a real chance to get in
+  // frame — see the WARM-UP GRACE comment above FACE_WARN_HOLD_MS's
+  // declaration for why (this session's fix, directly below).
   lastFaceSeenAt = Date.now();
   lastHandSeenAt = Date.now();
+
+  // THIS SESSION'S FIX (2026-08-22 — PIVOT_CHECKLIST.md §16 "camera
+  // warning state" item): arm the longer warm-up grace window so
+  // startRenderLoop()'s hold-time checks use INITIAL_WARMUP_MS instead
+  // of the tight 600/400ms constants until either a hand/face is
+  // actually seen or INITIAL_WARMUP_MS elapses, whichever comes first
+  // — see the loop below, which clears `warmingUp` the moment either is
+  // detected. Not applied to startAssessment()'s own timestamp reset
+  // (BUG 11 FIX, further down this file) — that one fires when the
+  // camera is already live and the learner already got through boot,
+  // a much lower-risk moment than a fresh page load, so it keeps the
+  // existing tight behavior unchanged to keep this fix narrowly scoped
+  // to the bug actually reported.
+  warmingUp = true;
+  clearTimeout(warmupTimer);
+  warmupTimer = setTimeout(() => { warmingUp = false; }, INITIAL_WARMUP_MS);
 
   startRenderLoop();
 }
@@ -1328,6 +1357,14 @@ function startRenderLoop() {
 
     if (handsForDrawing.length > 0) { lastHandSeenAt = now; lastHandCount = handsForDrawing.length; }
     if (faceLandmarks)              lastFaceSeenAt = now;
+    // THIS SESSION'S FIX: end the warm-up grace early once the learner
+    // is actually visible, so a quick starter isn't held to the full
+    // window and a later genuine drop-out still gets the tight 600/
+    // 400ms debounce, not the multi-second warm-up allowance.
+    if (warmingUp && (handsForDrawing.length > 0 || faceLandmarks)) {
+      warmingUp = false;
+      clearTimeout(warmupTimer);
+    }
 
     if (handsForDrawing.length > 0) {
       drawSkeleton(ctx, handsForDrawing, canvasEl.width, canvasEl.height);
@@ -1340,15 +1377,20 @@ function startRenderLoop() {
     }
     // BUG 11 FIX: only report "no hand" once it's actually been gone
     // for a beat, so the pill doesn't flicker between states.
-    const handLostForAWhile = now - lastHandSeenAt > HAND_STATUS_HOLD_MS;
+    // THIS SESSION'S FIX: use the longer INITIAL_WARMUP_MS window while
+    // warmingUp is armed, falling back to the normal tight constants
+    // once it's cleared (early, on first detection, or after it times
+    // out) — see the WARM-UP GRACE comment near this file's top.
+    const handLostForAWhile = now - lastHandSeenAt > (warmingUp ? INITIAL_WARMUP_MS : HAND_STATUS_HOLD_MS);
     setHandStatus(handLostForAWhile ? 0 : lastHandCount);
 
     // BUG 7 FIX: face-relative detection needs the whole head in frame.
     // BUG 11 FIX: same hysteresis — don't flash the warning on a single
     // dropped face-detection frame, only on a sustained loss.
     if (isModelReady()) {
+      const faceHoldMs = warmingUp ? INITIAL_WARMUP_MS : FACE_WARN_HOLD_MS;
       setFaceWarn(
-        now - lastFaceSeenAt > FACE_WARN_HOLD_MS
+        now - lastFaceSeenAt > faceHoldMs
           ? '⚠️ Face not detected — step back so your whole head is visible.'
           : ''
       );
@@ -2065,10 +2107,23 @@ function updateConfidenceUI(result) {
   if (!detectedEl || !confidenceEl || !confTextEl) return;
 
   if (result.label) {
-    const isCorrectSign = result.label === getActiveSignId();
+    const expectedId    = getActiveSignId();
+    const isCorrectSign = result.label === expectedId;
     const showAsSuccess = result.matched && isCorrectSign;
     confidenceEl.classList.remove('confidence-bar-fill--pulse');
-    detectedEl.textContent        = result.label;
+    // THIS SESSION'S FIX (2026-08-22 — PIVOT_CHECKLIST.md §16 "detected
+    // C while teaching M is visually confusing" item): the color-
+    // correctness fix above (matched && isCorrectSign) already stops a
+    // confident wrong guess from glowing green, but the review flagged
+    // that yellow-vs-green alone still isn't "unmistakable" — a learner
+    // skimming quickly, or who can't rely on color, just saw a bare
+    // wrong letter with no indication it was wrong. Only touches the
+    // CONFIDENT-wrong case (matched but not the active sign); a low-
+    // confidence/still-forming label is left as the bare letter, since
+    // calling an in-progress attempt "not a match" before it's even
+    // settled would read as premature.
+    const showAsWrongMatch = result.matched && !isCorrectSign;
+    detectedEl.textContent        = showAsWrongMatch ? `${result.label} — not "${expectedId}"` : result.label;
     detectedEl.style.color        = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
     confidenceEl.style.background = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-yellow)';

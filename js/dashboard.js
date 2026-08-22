@@ -134,6 +134,13 @@
  * relabeling what that number means (vs. mastery) was left as
  * Priority 0 item #3.
  *
+ * PIVOT_CHECKLIST.md §17 REVIEW-LIST UPGRADE (2026-08-22, code
+ * session): audited §17 ("Recommended learning-site structure")
+ * against the current app — every hop except the Review step was
+ * already built. renderReviewEntry() below now shows up to
+ * REVIEW_ENTRY_LIMIT (3) recently-practiced signs instead of 1; see
+ * that function's own doc comment for the full reasoning.
+ *
  * DASHBOARD UX REVIEW — PRIORITY 0 #3 (2026-08-21, later same day,
  * code session): "Fix the meaning of the 9% progress number." Turned
  * out to be a markup-only fix — see pages/dashboard.html's Overall
@@ -416,6 +423,62 @@
  * screen-reader pass is the one check that would most directly confirm
  * an accessibility item actually worked; that's the single biggest
  * follow-up before treating §13 as fully closed.
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 2, §15 ("Error/loading states",
+ * 2026-08-22, this session): PIVOT_CHECKLIST.md §15's four sub-items.
+ * Verification surfaced a REAL bug, not just a hypothetical one this
+ * item's title implied: `window.LWProgress.whenProgressReady()`
+ * (js/engine/progress.js) can hang FOREVER if js/auth.js's Firebase
+ * import fails to load — confirmed with a real Playwright run in this
+ * sandbox (gstatic.com isn't reachable here, which reproduces the same
+ * "Firebase unavailable" failure a learner could hit from an
+ * ad-blocker, an outage, or being offline). `window.LWAuth` stays
+ * `undefined`; `js/engine/progress.js`'s `hydrateStore()` then throws
+ * while destructuring it, BEFORE it ever calls `resolveProgressReady()`
+ * — so the promise this page's DOMContentLoaded handler awaits never
+ * resolves. See PIVOT_CHECKLIST.md §15 for the full repro/trace. Root
+ * cause is entirely inside js/engine/progress.js / js/auth.js, both out
+ * of this task's scope (§20) — NEITHER FILE WAS OPENED FOR EDITING.
+ * Instead, this session added a dashboard-local safety net:
+ *   1. The DOMContentLoaded handler now races `whenProgressReady()`
+ *      against a bounded timeout (`PROGRESS_READY_TIMEOUT_MS`, 6s).
+ *      Every render function below already reads straight from
+ *      localStorage, synchronously, with no dependency on hydration
+ *      actually finishing (see progress.js's own "write locally first,
+ *      always" comment on saveStore()) — so on timeout, this proceeds
+ *      to render from whatever's already local instead of leaving the
+ *      learner stuck on the static loading placeholders forever. This
+ *      is correct for the common case (same device — the local cache
+ *      already matches). It CAN show stale/incomplete progress on a
+ *      brand-new device if hydration specifically is what's stuck —
+ *      flagged, not solved, since fixing that for real means fixing
+ *      hydrateStore() itself, out of scope here.
+ *   2. New `showProgressUnavailable()` — the genuine "nothing to
+ *      render" case: `window.LWProgress`/`window.LWData` never loaded
+ *      at all (their `<script>` tag failed), or a render function
+ *      throws. Replaces every section's loading placeholder with
+ *      css/style.css's existing `.alert`/`.alert--error` component
+ *      (already used the same way by toast.css/quiz.css — no new color
+ *      token invented) plus a working "Reload" action and a "Go to
+ *      Learn" link, so the learner is never just stuck looking at a
+ *      dead page.
+ *   3. pages/dashboard.html's `#unit-progress-list` (previously
+ *      completely empty until JS ran — the literal "blank unit list"
+ *      this item's checklist wording names) and `#recap-empty`
+ *      (previously showed the real "nothing practiced yet" copy even
+ *      while still loading — indistinguishable from actually having
+ *      practiced nothing) both now start with an explicit, neutral
+ *      loading message. `renderRecap()`'s zero-signs branch below now
+ *      explicitly re-sets `#recap-empty`'s text to the genuine
+ *      empty-state copy, rather than relying on static default text
+ *      that used to silently mean two different things depending on
+ *      timing.
+ * No auth handling was added anywhere in this file for this item — no
+ * `window.LWAuth` call, no login/logout/redirect/session logic; every
+ * change is this page's OWN wait → render → fallback flow. See
+ * PIVOT_CHECKLIST.md §15 and SYSTEM_ARCHITECTURE.md's matching entry
+ * for the full write-up, including how the hang was verified with a
+ * real Playwright run rather than just read out of progress.js's code.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -550,12 +613,23 @@ function getCurrentDestination() {
       const signs = window.LWData.getCategorySigns(cat.level, cat.id);
       const practicedCount = signs.filter(s => !!prog.signs[s]).length;
       const nextSign = signs.find(s => !prog.signs[s]) || signs[0] || null;
-      return { chain, cat, unit, signs, prog, practicedCount, nextSign };
+      // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22
+      // screenshot review): a category can be fully practiced (progress
+      // bar full) but still unpassed because the assessment itself
+      // hasn't been taken yet. `nextSign` above silently falls back to
+      // signs[0] in that case — with nothing to flag it, every render
+      // function below read that as "go practice sign #1 again" (the
+      // reported "Continue still points to Alphabet → Letter A" even at
+      // 26/26 practiced). Computed once here, alongside the fields it's
+      // derived from, rather than re-checking practicedCount===signs.length
+      // separately in each of renderContinueCard()/renderContinueButton().
+      const readyForAssessment = signs.length > 0 && practicedCount === signs.length;
+      return { chain, cat, unit, signs, prog, practicedCount, nextSign, readyForAssessment };
     }
   }
   // Every live category in the chain is already passed (or the chain
   // itself is empty — e.g. pre-launch with everything still comingSoon).
-  return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null };
+  return { chain, cat: null, unit: null, signs: [], prog: null, practicedCount: 0, nextSign: null, readyForAssessment: false };
 }
 
 /**
@@ -803,8 +877,17 @@ function renderUnitRow(unit, destination) {
   // isCurrentUnit guarantees destination.cat belongs to THIS unit (see
   // getCurrentDestination(): unit is looked up from cat.unit), so no
   // extra matching is needed here.
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): mirrors the same readyForAssessment branch renderContinueCard()
+  // now has — without it, this row's own "Next: …" detail (and its
+  // aria-label below) would still say "Next: Alphabet → Letter A" at
+  // 26/26 practiced even after the hero card above it correctly says
+  // "Take the assessment," which is exactly the kind of two-surfaces-
+  // disagreeing bug this file's header comment says to avoid.
   const currentSignLabel = isCurrentUnit && destination.cat
-    ? `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`
+    ? (destination.readyForAssessment
+        ? `${destination.cat.title} → Take the assessment`
+        : `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`)
     : null;
 
   // NEW (Priority 2 §13, 2026-08-22) — aria-label for the graded case,
@@ -965,7 +1048,19 @@ function renderRecap() {
   const learned = window.LWProgress.getAllLearnedSigns();
 
   if (learned.length === 0) {
-    if (empty) empty.style.display = '';
+    // PRIORITY 2 §15 (2026-08-22) — #recap-empty's static default text
+    // is now a neutral "Loading…" message (see pages/dashboard.html),
+    // since this same element used to show the real "nothing practiced
+    // yet" copy from first paint — indistinguishable from actually
+    // having practiced nothing while this was still loading. Once we
+    // genuinely know the learner has zero practiced signs, overwrite it
+    // with the real copy explicitly instead of assuming the static text
+    // still says the right thing.
+    if (empty) {
+      empty.textContent = 'Nothing practiced yet — open a lesson to get started!';
+      empty.classList.remove('dash-loading-pulse');
+      empty.style.display = '';
+    }
     if (countEl) countEl.textContent = '';
     if (footEl) footEl.style.display = 'none';
     return;
@@ -1008,40 +1103,59 @@ function handleRecapToggle() {
 }
 
 /**
- * NEW (Priority 1 §6, 2026-08-21) — fills the "Review recent signs"
- * card's action slot. See the file header's §6 note for why this is
- * deliberately NOT a spaced-repetition trainer.
+ * NEW (Priority 1 §6, 2026-08-21; extended 2026-08-22 per
+ * PIVOT_CHECKLIST.md §17 "Recommended learning-site structure" — that
+ * flow names this step "Review → previously practiced signs" (plural),
+ * which the original single-link MVP under-delivered on. Still
+ * deliberately NOT a spaced-repetition trainer — no new algorithm, and
+ * js/engine/progress.js was not opened this session either.
  *
  * window.LWProgress.getAllLearnedSigns() has no timestamp field, but
  * (same assumption renderRecap()'s own most-recent-first ordering
- * already relies on) it returns signs in the order they were recorded — JS
- * preserves object-key insertion order — so the LAST entry is the
- * most recently practiced sign. Reads only that one existing,
- * already-exported function; no new progress.js code, no new
- * algorithm, no second store read/parse.
+ * already relies on) it returns signs in the order they were recorded —
+ * JS preserves object-key insertion order — so reading from the END of
+ * the array gives the most-recently-practiced signs first. Reads only
+ * that one existing, already-exported function; no new progress.js
+ * code, no new algorithm, no second store read/parse.
+ *
+ * Walks backward and collects up to REVIEW_ENTRY_LIMIT entries whose
+ * level/category resolved (same guard the single-link version already
+ * had — see getAllLearnedSigns()'s own comment on why `level` can be
+ * null — just applied per-candidate instead of once). No dedupe step
+ * is needed: getAllLearnedSigns() already returns at most one entry per
+ * signId per category (the underlying store keys signs by id inside
+ * each category), so the array itself never repeats a signId within
+ * one category.
  *
  * Mirrors the `href ? <a> : <div>` pattern unitRowHtml() already uses
- * for locked units: when there's nothing to review yet (or the
- * practiced sign's category/level couldn't be resolved — see
- * getAllLearnedSigns()'s own comment on why `level` can be null),
- * render a non-interactive placeholder instead of a button pointing
- * at a broken link.
+ * for locked units: when there's nothing to review yet, render a
+ * non-interactive placeholder instead of a button pointing at a
+ * broken link.
  */
+const REVIEW_ENTRY_LIMIT = 3;
+
 function renderReviewEntry() {
   const actionsEl = document.querySelector('[data-review-actions]');
   if (!actionsEl || !window.LWProgress) return;
 
   const learned = window.LWProgress.getAllLearnedSigns();
-  const last = learned[learned.length - 1];
 
-  if (!last || !last.level) {
+  const recent = [];
+  for (let i = learned.length - 1; i >= 0 && recent.length < REVIEW_ENTRY_LIMIT; i--) {
+    const entry = learned[i];
+    if (entry && entry.level) recent.push(entry);
+  }
+
+  if (recent.length === 0) {
     actionsEl.innerHTML = '<span class="btn btn--ghost" aria-disabled="true">Practice a sign to unlock Review</span>';
     return;
   }
 
-  const signTitle = window.LWData?.getSign?.(last.level, last.signId)?.title ?? last.signId;
-  const href = `lesson.html?level=${encodeURIComponent(last.level)}&category=${encodeURIComponent(last.category)}&sign=${encodeURIComponent(last.signId)}`;
-  actionsEl.innerHTML = `<a class="btn btn--secondary" href="${href}" data-review-link>↺ Review "${escapeHtml(signTitle)}"</a>`;
+  actionsEl.innerHTML = recent.map(entry => {
+    const signTitle = window.LWData?.getSign?.(entry.level, entry.signId)?.title ?? entry.signId;
+    const href = `lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
+    return `<a class="btn btn--secondary btn--sm" href="${href}" data-review-link>↺ ${escapeHtml(signTitle)}</a>`;
+  }).join('');
 }
 
 /** RESTORED (this session, unchanged) — "Continue Learning" button —
@@ -1062,8 +1176,15 @@ function renderContinueButton(destination) {
     return;
   }
 
-  const { cat, nextSign } = destination;
-  btn.href = `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
+  const { cat, nextSign, readyForAssessment } = destination;
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): once every sign in the category is practiced, the real next
+  // step is the assessment (same `quiz.html?level=X&category=Y` URL
+  // learn.js's own "Take Assessment" card and lesson.js's end-of-lesson
+  // CTA already use), not another pass at signs[0].
+  btn.href = readyForAssessment
+    ? `quiz.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}`
+    : `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
 }
 
 /**
@@ -1097,6 +1218,13 @@ function renderContinueCard(destination) {
   const secondaryBtn = document.querySelector('[data-continue-secondary]');
   if (!destination) return;
 
+  // PRIORITY 2 §15 (2026-08-22) — the static pre-JS markup carries
+  // `dash-loading-pulse` on the eyebrow so it visibly animates while
+  // this card is waiting (see pages/dashboard.html). Strip it here,
+  // once, regardless of which of the three branches below actually
+  // runs, rather than repeating this line in all three.
+  if (eyebrowEl) eyebrowEl.classList.remove('dash-loading-pulse');
+
   // State: nothing live in the chain at all (defensive — e.g. a
   // fresh Rev 4 install pre-Phase-7 where a whole unit is still
   // comingSoon end-to-end). Shouldn't happen post-launch but costs
@@ -1123,8 +1251,35 @@ function renderContinueCard(destination) {
   }
 
   // State: a real next destination exists.
-  const { cat, unit, signs, practicedCount, nextSign } = destination;
+  const { cat, unit, signs, practicedCount, nextSign, readyForAssessment } = destination;
   const icon = UNIT_ICONS[unit?.id] ?? '🔖';
+
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
+  // review): fully-practiced-but-unassessed used to fall straight into
+  // the generic branch below, which reads `nextSign` (silently signs[0])
+  // and shows "Alphabet → Letter A" even at 26/26 practiced — reading as
+  // if nothing had been learned. Distinct state instead: name the
+  // assessment as the next action, same "Unit N · Title" eyebrow so it
+  // doesn't look like a different unit, progress bar left full rather
+  // than hidden so the 26/26 context isn't lost.
+  if (readyForAssessment) {
+    if (iconEl) iconEl.textContent = '📝';
+    if (eyebrowEl) eyebrowEl.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
+    if (titleEl) titleEl.textContent = `${cat.title} → Take the assessment`;
+    if (progWrapEl && progFillEl && progLabelEl) {
+      progWrapEl.style.display = '';
+      progFillEl.style.width = '100%';
+      progLabelEl.textContent = `${practicedCount}/${signs.length} signs practiced — ready for assessment`;
+    }
+    if (primaryBtn) primaryBtn.textContent = '📝 Take Assessment';
+    if (secondaryBtn) {
+      secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
+      secondaryBtn.textContent = unit ? `Open Unit ${unit.order} Path` : 'Open Path';
+      secondaryBtn.style.display = '';
+    }
+    return;
+  }
+
   const signTitle = window.LWData.getSign?.(cat.level, nextSign)?.title ?? nextSign;
 
   if (iconEl) iconEl.textContent = icon;
@@ -1158,30 +1313,200 @@ function renderContinueCard(destination) {
   }
 }
 
+// PRIORITY 2 §15 (2026-08-22) — see the file header's §15 paragraph for
+// the full story. `whenProgressReady()` has no rejection path and can
+// hang forever (confirmed, not hypothetical — see that paragraph); this
+// bounds how long the DOMContentLoaded handler below will wait on it
+// before giving up and rendering from whatever's already in
+// localStorage instead. 6s is generous for something that's normally
+// near-instant (a synchronous localStorage read plus, at most, one
+// Firebase Auth state check) without making a learner watch a stuck
+// page for an uncomfortably long time first.
+const PROGRESS_READY_TIMEOUT_MS = 6000;
+
+/**
+ * PIVOT_CHECKLIST.md §15 ("Error/loading states"). Called only when the
+ * dashboard has no reasonable way to render real progress data:
+ * `window.LWProgress`/`window.LWData` themselves never loaded (their
+ * `<script>` tag failed/errored), or a render function threw partway
+ * through. NOT called just because `whenProgressReady()` was slow — see
+ * the DOMContentLoaded handler below for why a slow-but-unresolved
+ * hydration instead falls through to rendering from localStorage rather
+ * than landing here.
+ *
+ * Reuses css/style.css's existing `.alert`/`.alert--error` component
+ * (already loaded on every page; already the pattern toast.css/
+ * quiz.css use for the same red/error state) instead of inventing new
+ * error styling in css/dashboard.css. Every message keeps the learner
+ * able to move — a working "Reload" action, a "Go to Learn" link —
+ * rather than a dead end, matching unitRowHtml()'s existing
+ * `href ? <a> : <div>` "never link to something broken" instinct.
+ *
+ * Touches ONLY this page's own presentational state. No
+ * `window.LWAuth` call, no login/logout/redirect/session logic
+ * anywhere in this function — auth handling stays explicitly out of
+ * this task, per PIVOT_CHECKLIST.md §15's own instruction and every
+ * session before it.
+ *
+ * @param {string} reason - console-only diagnostic; never shown to the learner.
+ */
+function showProgressUnavailable(reason) {
+  console.error('[dashboard.js] progress data unavailable, showing fallback UI. Reason:', reason);
+
+  const FALLBACK_MSG = "We couldn't load your progress right now.";
+
+  // Continue Learning hero card — the page's primary action, so it
+  // gets the most complete treatment: a clear message, a Reload button
+  // that actually works (a fresh load re-runs hydration from scratch,
+  // the one thing guaranteed to help), and a Learn link that doesn't
+  // depend on progress data loading at all.
+  const eyebrowEl     = document.querySelector('[data-continue-eyebrow]');
+  const titleEl       = document.querySelector('[data-continue-title]');
+  const progWrapEl    = document.querySelector('[data-continue-progress-wrap]');
+  const primaryBtn    = document.querySelector('[data-continue-learning]');
+  const secondaryBtn  = document.querySelector('[data-continue-secondary]');
+  if (eyebrowEl) { eyebrowEl.textContent = "Couldn't load"; eyebrowEl.classList.remove('dash-loading-pulse'); }
+  if (titleEl)   titleEl.textContent = `${FALLBACK_MSG} Reload the page to try again.`;
+  if (progWrapEl) progWrapEl.style.display = 'none';
+  if (primaryBtn) {
+    primaryBtn.textContent = '↻ Reload';
+    primaryBtn.href = '#';
+    primaryBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      location.reload();
+    });
+  }
+  if (secondaryBtn) {
+    secondaryBtn.textContent = 'Go to Learn';
+    secondaryBtn.href = 'learn.html';
+    secondaryBtn.style.display = '';
+  }
+
+  // Overall Progress + Progress Snapshot tiles: deliberately left as
+  // their static "–" placeholders rather than adding a second alert box
+  // directly beneath the hero card's own message — a dash never claims
+  // a specific number the way a stale/wrong one would, so it's already
+  // a safe fallback, not a blank one.
+
+  // Learning Path (unit list) — was completely blank pre-JS before this
+  // session (the literal "blank unit list" PIVOT_CHECKLIST.md §15 names);
+  // gets an explicit fallback instead of staying empty with no
+  // explanation.
+  const listEl = document.getElementById('unit-progress-list');
+  if (listEl) {
+    listEl.innerHTML = `<div class="alert alert--error dash-fallback-alert">${FALLBACK_MSG} <a href="learn.html">Go to Learn</a> to keep going, or reload this page to try again.</div>`;
+  }
+
+  // Signs You've Learned (recap) — distinct wording from the genuine
+  // "nothing practiced yet" empty state (see renderRecap()'s own §15
+  // update): telling a learner who HAS practiced signs that they have
+  // nothing practiced would be actively wrong, not just unhelpful.
+  const recapGrid   = document.getElementById('recap-grid');
+  const recapCountEl = document.querySelector('[data-recap-count]');
+  const recapFootEl  = document.querySelector('[data-recap-foot]');
+  if (recapGrid) {
+    recapGrid.innerHTML = `<p class="text-muted">${FALLBACK_MSG} Your practiced signs are saved locally — reload the page to see them.</p>`;
+  }
+  if (recapCountEl) recapCountEl.textContent = '';
+  if (recapFootEl) recapFootEl.style.display = 'none';
+
+  // Review recent signs
+  const reviewActionsEl = document.querySelector('[data-review-actions]');
+  if (reviewActionsEl) {
+    reviewActionsEl.innerHTML = '<a class="btn btn--ghost" href="learn.html">Go to Learn</a>';
+  }
+
+  // Your Account → Current Unit: left as its static "–", same reasoning
+  // as Overall Progress above — no guess is safer than a wrong guess.
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[dashboard.js] waiting for progress...');
-  await window.LWProgress?.whenProgressReady?.();
-  console.log('[dashboard.js] progress ready, rendering now');
 
-  // Computed once, consumed by all three "where's the learner" renders
-  // below — see getCurrentDestination()'s doc comment for why this
-  // replaced two separate copies of the same walk.
-  const destination = getCurrentDestination();
+  // PRIORITY 2 §15 (2026-08-22) — race whenProgressReady() against a
+  // bounded timeout instead of awaiting it unconditionally. See the
+  // file header's §15 paragraph and PROGRESS_READY_TIMEOUT_MS's own
+  // comment above for the full reasoning: this promise has no
+  // rejection path and can hang forever (confirmed with a real
+  // Playwright run, not assumed), so an unconditional await could leave
+  // this page on its static loading placeholders indefinitely with no
+  // explanation — exactly what this checklist item asks to avoid.
+  const readyPromise = window.LWProgress?.whenProgressReady?.();
+  let timedOut = false;
 
-  renderOverallProgress();
-  renderCurrentUnit(destination);
-  renderStatsSnapshot(destination);
-  renderWelcomeBanner(destination);
-  renderUnitList(destination);
-  renderRecap();
-  renderReviewEntry();
-  renderContinueButton(destination);
-  renderContinueCard(destination);
+  if (readyPromise && typeof readyPromise.then === 'function') {
+    const outcome = await Promise.race([
+      readyPromise.then(() => 'ready'),
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), PROGRESS_READY_TIMEOUT_MS)),
+    ]);
+    timedOut = outcome === 'timeout';
+    if (timedOut) {
+      // Every render function below reads straight from localStorage
+      // synchronously (see progress.js's "write locally first, always"
+      // comment on saveStore()) — hydration finishing only matters for
+      // pulling in a DIFFERENT device's saved progress, so rendering
+      // now instead of continuing to wait is safe for the common case.
+      // See the file header's §15 paragraph for the one edge case this
+      // doesn't fully cover (a brand-new device where hydration itself
+      // is the thing that's stuck).
+      console.warn(`[dashboard.js] whenProgressReady() did not resolve within ${PROGRESS_READY_TIMEOUT_MS}ms — rendering from local cache instead of waiting indefinitely.`);
+    } else {
+      console.log('[dashboard.js] progress ready, rendering now');
+    }
+  } else {
+    // window.LWProgress (or whenProgressReady itself) isn't present at
+    // all — most likely js/engine/progress.js's <script> tag failed to
+    // load. Nothing to wait on; fall through to the LWProgress/LWData
+    // check right below, which will catch this and show the fallback.
+    console.warn('[dashboard.js] window.LWProgress.whenProgressReady() is unavailable.');
+  }
 
-  // PRIORITY 1 §7 (2026-08-21) — bound once here, not inside renderRecap()
-  // itself, so re-renders (e.g. from the toggle click) never re-attach
-  // (and double-fire) the same listener. No-op if the button doesn't
-  // exist for some reason (e.g. a future markup change) — same optional
-  // chaining pattern the rest of this handler already uses.
-  document.querySelector('[data-recap-toggle]')?.addEventListener('click', handleRecapToggle);
+  // The one case none of the render functions can gracefully no-op
+  // their way past: window.LWProgress / window.LWData never loaded at
+  // all. (Every render function below already guards on this — see
+  // e.g. computeOverallStats()/getCurrentDestination()'s own `if
+  // (!window.LWProgress || !window.LWData) return null/`; — so this
+  // check isn't strictly required for THEM not to throw, but without it
+  // the learner would just silently keep seeing the static loading
+  // placeholders forever with no explanation, which is the exact
+  // failure this checklist item exists to prevent.)
+  if (!window.LWProgress || !window.LWData) {
+    showProgressUnavailable('window.LWProgress/window.LWData did not load');
+    return;
+  }
+
+  try {
+    // Computed once, consumed by all three "where's the learner" renders
+    // below — see getCurrentDestination()'s doc comment for why this
+    // replaced two separate copies of the same walk.
+    const destination = getCurrentDestination();
+
+    renderOverallProgress();
+    renderCurrentUnit(destination);
+    renderStatsSnapshot(destination);
+    renderWelcomeBanner(destination);
+    renderUnitList(destination);
+    renderRecap();
+    renderReviewEntry();
+    renderContinueButton(destination);
+    renderContinueCard(destination);
+
+    // PRIORITY 1 §7 (2026-08-21) — bound once here, not inside renderRecap()
+    // itself, so re-renders (e.g. from the toggle click) never re-attach
+    // (and double-fire) the same listener. No-op if the button doesn't
+    // exist for some reason (e.g. a future markup change) — same optional
+    // chaining pattern the rest of this handler already uses.
+    document.querySelector('[data-recap-toggle]')?.addEventListener('click', handleRecapToggle);
+  } catch (e) {
+    // PRIORITY 2 §15 (2026-08-22) — belt-and-suspenders. None of the
+    // render functions above are expected to throw (every one already
+    // guards on missing LWProgress/LWData individually), but if a
+    // future data.js shape change or a corrupt localStorage record ever
+    // makes one throw partway through, this stops the learner from
+    // being stuck on a half-rendered page with nothing but a silent
+    // console error — the same "safe fallback" requirement as the
+    // missing-script case above, just for a different cause.
+    console.error('[dashboard.js] rendering failed partway through:', e);
+    showProgressUnavailable('render threw: ' + (e && e.message));
+  }
 });

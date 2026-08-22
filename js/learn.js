@@ -146,12 +146,19 @@ document.addEventListener('DOMContentLoaded', () => {
     contextEl.textContent = text;
   }
 
+  // CHANGED (PIVOT_CHECKLIST.md "Bugs observed" #2, 2026-08-22 screenshot
+  // review): was "← Back to Trail" everywhere in this file — leftover
+  // internal naming (renderTrail()/.trail) that never matched what a
+  // learner actually sees. This page's own H1 says "Your ASL Learning
+  // Path" and the dashboard's matching section is headed "LEARNING
+  // PATH" — every default/override string below (and pages/learn.html's
+  // static pre-JS fallback) now says "Learning Path" to match both.
   function setBack(fn, label) {
     backTarget = fn;
     if (!backLinkEl) return;
     if (!fn) { backLinkEl.style.display = 'none'; return; }
     backLinkEl.style.display = '';
-    backLinkEl.textContent = label || '← Back to Trail';
+    backLinkEl.textContent = label || '← Back to Learning Path';
   }
 
   backLinkEl?.addEventListener('click', (e) => {
@@ -222,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderBasicCategoryGrid(cat, opts = {}) {
     history.replaceState(null, '', `learn.html?category=${encodeURIComponent(cat.id)}`);
     setContext(cat.title);
-    setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Trail');
+    setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Learning Path');
     grid.classList.remove('lesson-grid--categories');
     grid.classList.remove('trail');
 
@@ -254,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderWordPicker(cat, opts = {}) {
     history.replaceState(null, '', `learn.html?category=${encodeURIComponent(cat.id)}`);
     setContext(cat.title);
-    setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Trail');
+    setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Learning Path');
     grid.classList.add('lesson-grid--categories');
     grid.classList.remove('trail');
 
@@ -433,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUnitCategoryList(unit) {
     history.replaceState(null, '', `learn.html?unit=${encodeURIComponent(unit.id)}`);
     setContext(unit.title);
-    setBack(renderTrail, '← Back to Trail');
+    setBack(renderTrail, '← Back to Learning Path');
     grid.classList.add('lesson-grid--categories');
     grid.classList.remove('trail');
 
@@ -466,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUnitInfo(unit) {
     history.replaceState(null, '', `learn.html?unit=${encodeURIComponent(unit.id)}`);
     setContext(unit.title);
-    setBack(renderTrail, '← Back to Trail');
+    setBack(renderTrail, '← Back to Learning Path');
     grid.classList.remove('lesson-grid--categories');
     grid.classList.remove('trail');
 
@@ -510,16 +517,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const allCats = window.LWData.getCategoriesForUnit(unit.order);
     if (allCats.length === 1) {
-      renderCategoryView(allCats[0], { backFn: renderTrail, backLabel: '← Back to Trail' });
+      renderCategoryView(allCats[0], { backFn: renderTrail, backLabel: '← Back to Learning Path' });
       return;
     }
     renderUnitCategoryList(unit);
   }
 
+  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #1, 2026-08-22 screenshot
+  // review, root-caused this session): getUnitState() used to mark EVERY
+  // unlocked-but-not-fully-passed category-group unit 'current'
+  // independently. Under normal sequential unlocking that's usually only
+  // one unit at a time so the bug was invisible — but with
+  // DEBUG_UNLOCK_ALL true (see AI_MEMORY.md §0 — Joshua's own flag,
+  // intentionally on while he tests) EVERY category-group unit is
+  // simultaneously "unlocked", so all of them computed to 'current' and
+  // rendered with the identical accent-border/shadow style. That reads
+  // as "no current highlight at all" (nothing stands out when everything
+  // is highlighted the same way) — exactly what the screenshot review
+  // reported, and why dashboard.js's own "You are here" badge (driven by
+  // its getCurrentDestination(), which walks the chain and stops at the
+  // FIRST unlocked+unpassed category) disagreed with this page on the
+  // same underlying data. This mirrors that same "stop at the first one"
+  // rule so both surfaces agree regardless of the debug flag.
+  function findCurrentUnitId(units) {
+    for (const unit of units) {
+      if (unit.kind !== 'category-group') continue;
+      const liveCats = window.LWData.getCategoriesForUnit(unit.order)
+        .filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+      if (liveCats.length === 0) continue;
+      const first = liveCats[0];
+      const unlocked = window.LWProgress?.isCategoryUnlocked?.(first.level, first.id) ?? true;
+      if (!unlocked) continue;
+      const passedCount = liveCats.filter(c => !!window.LWProgress?.getCategoryProgress?.(c.level, c.id)?.assessment?.passed).length;
+      if (passedCount < liveCats.length) return unit.id;
+    }
+    return null;
+  }
+
   /** Computes a trail node's lock/progress state.
-   *  status: 'available' (info/interactive/reference — never gated) |
-   *          'locked' | 'current' | 'done' (category-group units only). */
-  function getUnitState(unit) {
+   *  status: 'available' (info/interactive/reference — never gated, and
+   *          also used for a category-group unit that's unlocked+
+   *          incomplete but ISN'T the one 'current' unit — see BUGFIX
+   *          above) | 'locked' | 'current' | 'done' (category-group only).
+   *  @param {string|null} currentUnitId - from findCurrentUnitId(), the
+   *         one unit id (if any) allowed to render as 'current'. */
+  function getUnitState(unit, currentUnitId) {
     if (unit.kind === 'info')        return { status: 'available', label: 'Start here' };
     if (unit.kind === 'interactive') return { status: 'available', label: 'Practice drill · always open', href: 'lesson.html?level=basic&category=fingerspell_name' };
     // WORDING FIX (PIVOT_CHECKLIST.md §12, same session as the
@@ -552,9 +594,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const passedCount = liveCats.filter(c => !!window.LWProgress?.getCategoryProgress?.(c.level, c.id)?.assessment?.passed).length;
     const done = passedCount === liveCats.length;
+    if (done) {
+      return { status: 'done', label: `Complete · ${passedCount}/${liveCats.length}` };
+    }
+    // CHANGED: only the ONE unit findCurrentUnitId() picked gets the
+    // 'current' highlight now; every other unlocked-but-incomplete unit
+    // (only reachable today via DEBUG_UNLOCK_ALL) falls back to
+    // 'available' — same as info/interactive/reference — so it renders
+    // with no special border, same label text as before.
     return {
-      status: done ? 'done' : 'current',
-      label: done ? `Complete · ${passedCount}/${liveCats.length}` : `${passedCount}/${liveCats.length} categories passed`,
+      status: unit.id === currentUnitId ? 'current' : 'available',
+      label: `${passedCount}/${liveCats.length} categories passed`,
     };
   }
 
@@ -564,8 +614,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'badge--basic';
   }
 
-  function renderUnitNode(unit) {
-    const state = getUnitState(unit);
+  function renderUnitNode(unit, currentUnitId) {
+    const state = getUnitState(unit, currentUnitId);
     const icon = state.lockIcon ? '🔒' : (UNIT_ICONS[unit.id] ?? '🔖');
     const stateClass = state.status === 'locked' ? ' lesson-card--locked'
       : state.status === 'done' ? ' lesson-card--done'
@@ -597,7 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.classList.add('trail');
 
     const units = window.LWData.getUnits();
-    grid.innerHTML = units.map(renderUnitNode).join('');
+    const currentUnitId = findCurrentUnitId(units);
+    grid.innerHTML = units.map(u => renderUnitNode(u, currentUnitId)).join('');
 
     grid.querySelectorAll('[data-open-unit]').forEach(el => {
       el.addEventListener('click', () => {
