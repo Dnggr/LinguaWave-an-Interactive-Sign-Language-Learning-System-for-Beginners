@@ -274,12 +274,21 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
+    // WORDING FIX (PIVOT_CHECKLIST.md §12 "status vocabulary" session):
+    // was "No quiz or camera check yet". Every other surface (quiz.js's
+    // own results screen, dashboard.js's unit rows, this checklist's
+    // §3/§7/§12 vocabulary) calls this concept "assessment", not
+    // "quiz" — "quiz" only survives as the literal filename
+    // (quiz.html/quiz.js), never as learner-facing copy. This was
+    // flagged as a cross-file mismatch back in the §10 dashboard
+    // session (see dashboard.js's own header comment) but left
+    // unfixed because learn.js wasn't in that session's scope.
     const tailHtml = opts.isReference
       ? `
         <div class="lesson-card category-card lesson-card--locked" style="max-width: 320px;">
           <div class="category-card__icon">📖</div>
           <span class="category-card__title">Reference only</span>
-          <span class="badge badge--locked">No quiz or camera check yet</span>
+          <span class="badge badge--locked">No assessment or camera check yet</span>
         </div>
       `
       : renderCategoryAssessmentCTA(cat.level, cat.id, signs, progress);
@@ -513,7 +522,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function getUnitState(unit) {
     if (unit.kind === 'info')        return { status: 'available', label: 'Start here' };
     if (unit.kind === 'interactive') return { status: 'available', label: 'Practice drill · always open', href: 'lesson.html?level=basic&category=fingerspell_name' };
-    if (unit.kind === 'reference')   return { status: 'available', label: 'Browse only, no quiz yet' };
+    // WORDING FIX (PIVOT_CHECKLIST.md §12, same session as the
+    // renderWordPicker() tailHtml fix above): was "Browse only, no quiz
+    // yet". §12's own checklist text says this phrase can be kept for
+    // Unit 7 "if desired", but dashboard.js's equivalent unit-row
+    // string already reads "Browse only, no assessment yet" for this
+    // exact same unit/concept (see its unitRowHtml() call for
+    // kind:'reference') — matching that verbatim was picked over
+    // keeping "quiz", since the whole point of this checklist item is
+    // one word per concept across dashboard/learn/lesson, and
+    // "assessment" is the term every other surface already converged
+    // on (see dashboard.js's header comment, flagged there but not
+    // fixed since learn.js wasn't in that session's scope).
+    if (unit.kind === 'reference')   return { status: 'available', label: 'Browse only, no assessment yet' };
 
     // kind: 'category-group'
     const allCats  = window.LWData.getCategoriesForUnit(unit.order);

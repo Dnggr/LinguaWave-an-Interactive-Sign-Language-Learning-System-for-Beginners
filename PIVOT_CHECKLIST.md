@@ -425,6 +425,59 @@ debug-unlock change is separate, temporary, and clearly flagged in
 `AI_MEMORY.md` §0 for the next session to see immediately. Priority 1
 §9–§10 and all of Priority 2 remain open.
 
+### 30. Implementation session — Dashboard Priority 1 §9 (2026-08-21)
+
+**Request:** implement checklist item #9, "Improve first-viewport
+layout" — 6 sub-items, all checked off above. `auth.js` explicitly
+excluded per user instruction (not opened).
+
+**What changed:**
+1. Page-scoped `.section--sm` padding reduction (32px→24px
+   padding-block) in `css/dashboard.css` — safe because this stylesheet
+   only loads on `pages/dashboard.html`, so no other page that shares
+   the `.section--sm` class name in `css/style.css` is affected.
+2. New `.section--tight` modifier (16px padding-block), applied to the
+   header/hero/Overall Progress sections in `pages/dashboard.html` —
+   the three that must fit above the fold.
+3. `.progress-card--secondary` padding 32px→16px; its `mb-8`/`mt-4`
+   utility classes swapped for the already-existing `mb-4`/`mt-2`.
+4. `.account-card` padding 32px→16px, `.account-avatar` 64px→44px,
+   `.account-meta` gap 24px→16px.
+5. `.unit-progress-list`/`.unit-progress-row` restyled from N separate
+   bordered/background/radius boxes with gaps between them into one
+   bordered list container with thin row separators — current/done
+   state now shown via a left accent border + tinted background rather
+   than a full box border. No class names renamed; `js/dashboard.js`'s
+   `unitRowHtml()` was not touched.
+
+**Files touched:** `pages/dashboard.html`, `css/dashboard.css`. No
+`.js` file was touched — every change was achievable in CSS/markup
+sizing alone, since `js/dashboard.js` already emits stable class names
+for every row/card state.
+
+**Suggestions / bugs / risks found during the session:**
+1. Pre-existing, unrelated to this change: `.unit-progress-row__reference-badge`
+   is declared twice in `css/dashboard.css` (once inside a joint
+   selector with `__current-badge`, once again solo) — harmless
+   (identical properties both times) but redundant. Not touched.
+2. Same standing gap as every prior session: no real-browser
+   verification. The "readable at narrow desktop widths" sub-item in
+   particular is reasoned through, not measured — worth an actual
+   ~900px viewport check (see item #14).
+
+**Verification:** HTML tag balance on `pages/dashboard.html` checked
+with a real HTML parser (void/self-closing tags handled correctly) —
+balanced. Every `data-*` hook `js/dashboard.js` queries cross-checked
+against the HTML — all present (`data-level-card` appears only in a
+stale code comment, not a real query, and was not touched). CSS brace
+count on `css/dashboard.css` — balanced (86 open / 86 close). Class
+names applied in HTML (`section--tight`, `unit-progress-row` family)
+cross-checked against what's defined in CSS and what `js/dashboard.js`
+emits — all match. **Still not exercised in a real browser.**
+
+**Result:** Priority 1 §9 is fully implemented per the checklist above.
+Priority 1 §10 and all of Priority 2 remain open.
+
 ## Explicitly deferred / not in scope for this pivot
 - [ ] The 18 `intermediate` phrase categories (~100 sentences, all of Unit 7/Phrasebook including `greetings_intro`) — demoted to a read-only Phrasebook per Rev 4, not a graded unit. **Implemented in Phase 4**: `learn.js` renders these in `isReference` mode — browsable, no assessment CTA, never locked. Revisit only if full-sentence detection becomes realistic later. (Note: this item previously said "17 non-`greetings_intro`" — corrected 2026-08-19, since Phase 1's actual code tags all 18 uniformly as `unit: 7` and none of the 18 have `SIGN_DICTIONARY` entries, per the correction already noted in AI_MEMORY.md §0.)
 - [ ] Review/Trainer mode (spaced-repetition-style camera drill) — suggested addition, not required by the adviser. Pick up after Phase 6 if time allows.
@@ -809,18 +862,52 @@ This aligns the account card with the actual Rev 4 product model.
 
 ---
 
-### 9. Priority 1 — Improve first-viewport layout
+### 9. Priority 1 — Improve first-viewport layout ✅ Done 2026-08-21 (code session)
 
 The provided screenshot is already scrolled into `Overall Progress`, which means
 the learner's dashboard content is long enough that key information can disappear
 below the first viewport.
 
-- [ ] Put the primary learning action in the first viewport.
-- [ ] Reduce vertical duplication between sections.
-- [ ] Keep the account card compact.
-- [ ] Keep the overall-progress card compact.
-- [ ] Avoid making every unit row look like a large standalone card.
-- [ ] Keep the page readable at desktop and narrow desktop widths.
+- [x] Put the primary learning action in the first viewport.
+      — reinforced (was already the case structurally after Priority 0 #1):
+      header + hero card sections now use the new `section--tight` padding
+      (16px vs the old 32px), so "Continue Learning" sits closer to the top
+      of the page instead of being pushed down by two full-padding sections
+      above it.
+- [x] Reduce vertical duplication between sections.
+      — `.section--sm` (page-scoped in css/dashboard.css, so only this page
+      is affected) dropped from 32px to 24px padding-block for every section
+      on the page; the header/hero/Overall Progress trio additionally use
+      the new `.section--tight` (16px). Six sections each paying full
+      top+bottom padding was the main source of duplicated vertical space.
+- [x] Keep the account card compact.
+      — card padding 32px→16px, avatar 64px→44px, internal gaps
+      24px→16px. Content and every `data-user-*` hook unchanged.
+- [x] Keep the overall-progress card compact.
+      — `.progress-card--secondary` padding 32px→16px; its internal
+      `mb-8`/`mt-4` spacing utilities swapped for `mb-4`/`mt-2` so the
+      inner spacing matches the smaller card.
+- [x] Avoid making every unit row look like a large standalone card.
+      — restyled `.unit-progress-list`/`.unit-progress-row` from N
+      separate bordered+background+radius boxes with gaps between them
+      into ONE bordered list container with thin border-bottom row
+      separators; current/done state now reads via a left accent border +
+      tinted background instead of a full box border. Pure CSS — the
+      `--current`/`--done`/`--locked` class names `js/dashboard.js`'s
+      `unitRowHtml()` emits are unchanged, so no JS was touched.
+- [x] Keep the page readable at desktop and narrow desktop widths.
+      — no responsive breakpoints removed or restructured, no font sizes
+      reduced, no layout (grid/flex) direction changed; only padding/
+      sizing values reduced. The existing `@media (max-width: 640px)`
+      block for `.unit-progress-row` is untouched. ⚠️ Reasoned through,
+      not verified in a real browser at ~900px — still worth an actual
+      viewport check (ties into item #14 below).
+
+Files touched: `pages/dashboard.html`, `css/dashboard.css`. No changes to
+`js/dashboard.js` (none needed), `data.js`, `learn.js`, `progress.js`, or
+`auth.js`, per this session's boundary. See
+SYSTEM_ARCHITECTURE.md's "Implementation status — Dashboard Priority 1 §9"
+for the full writeup.
 
 #### Visual target
 
@@ -848,7 +935,7 @@ Not:
 
 ---
 
-### 10. Priority 1 — Reduce dashboard duplication
+### 10. Priority 1 — Reduce dashboard duplication — ✅ Done 2026-08-22 (code session)
 
 The same concepts currently appear across:
 
@@ -858,22 +945,92 @@ The same concepts currently appear across:
 
 This is acceptable only if each surface has a different job.
 
-- [ ] Dashboard: summary + next action.
-- [ ] Learn: full path navigation.
-- [ ] Lesson: course player + current lesson navigation.
-- [ ] Keep wording consistent across all three.
-- [ ] Do not introduce new dashboard-specific versions of unit ordering.
+- [x] Dashboard: summary + next action.
+      — confirmed: `js/dashboard.js` never renders individual sign-level
+      navigation, only compact per-unit summary rows plus the one
+      "Continue Learning" hero CTA. No change needed.
+- [x] Learn: full path navigation.
+      — confirmed unchanged: `js/learn.js`'s trail is still the only
+      screen a learner actually browses the whole path from (unit info
+      / category picker / sign grid). Read for comparison, not
+      modified — out of this session's scope per §20.
+- [x] Lesson: course player + current lesson navigation.
+      — confirmed unchanged: `js/lesson.js`'s `renderCourseSidebar()`
+      (Rev 5) is still icon+percentage sign-by-sign navigation inside
+      a unit you're already in — a different shape of UI from either
+      of the other two, doing a different job. Read for comparison,
+      not modified.
+- [x] Keep wording consistent across all three.
+      — 3 mismatches found between dashboard.js's unit-row text and
+      the other two (unchanged) surfaces, all fixed on the dashboard
+      side only: (1) "Interactive drill" → "Practice drill", matching
+      `js/learn.js`'s existing label for the same unit verbatim; (2)
+      the Phrasebook row said "Reference" twice in one row (badge +
+      status text) — shortened the status text to "Browse only, no
+      assessment yet", dropping the redundant word and matching the
+      *shape* of `js/learn.js`'s "Browse only, no quiz yet" for the
+      same unit; (3) this file's own two "assessments passed" strings
+      disagreed with each other (`renderOverallProgress()` said
+      "category assessments passed", the per-unit row said just
+      "assessments passed") — added "category" to the per-unit line so
+      they match. **Flagged, not fixed** (would mean editing excluded
+      files): `js/learn.js` uses "quiz" in learner-facing copy where
+      every other surface + this checklist's own §3/§7/§12 vocabulary
+      use "assessment" for the same `progress.assessment.passed`
+      concept — looks like `learn.js` is the not-yet-updated outlier,
+      but that's a call for a session with `learn.js` in scope. Also
+      flagged: `js/lesson.js`'s own header comment describing
+      dashboard.js's unit-row wording is now stale (says "categories
+      passed"; hasn't said that since Phase 4's §4 session, and
+      definitely doesn't after fix #3 above) — a documentation-only bug
+      in a file this session didn't touch.
+      Also added a "Learning Path" heading above the unit list in
+      `pages/dashboard.html` (it previously had none of its own, and
+      ran on directly under "Overall Progress"): the exact phrase
+      `js/learn.js`'s own `<h1>` already uses ("Your ASL Learning
+      Path"), and this checklist's own §18 wireframe already labels
+      this block "Learning Path" — adopting already-settled wording,
+      not inventing new copy.
+- [x] Do not introduce new dashboard-specific versions of unit ordering.
+      — confirmed: `renderUnitList()`/`renderUnitRow()` still walk
+      `window.LWData.getUnits()` in its existing order; nothing new was
+      introduced.
+
+**Files touched:** `js/dashboard.js` (3 string changes in
+`renderUnitRow()`/`unitRowHtml()`, no logic/control-flow change),
+`pages/dashboard.html` (new heading + comments), `css/dashboard.css`
+(comment update only, no new rules — the new heading reuses the
+already-existing `.dash-heading--secondary`/`mb-4`/`mt-4` classes).
+`js/learn.js`, `js/lesson.js`, `js/auth.js`, `js/data.js`,
+`js/engine/progress.js` — read for comparison where relevant, not
+opened for editing.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Real
+HTML-parser tag-balance check on `pages/dashboard.html` — balanced,
+zero errors. CSS brace count on `css/dashboard.css` — balanced.
+Declaration-vs-call-site check — all 13 functions in `dashboard.js`
+still resolve (this session did NOT repeat the §4 "deleted but still
+called" bug). Cross-checked every `data-*`/`getElementById` hook
+`dashboard.js` queries against the HTML — all present (the one
+"missing" hit, `data-level-card`, is inside a historical doc comment,
+not a live query). Built a Node + `vm` harness loading the real
+`js/dashboard.js` with mocked `window.LWData`/`window.LWProgress` and
+called `renderUnitRow()` directly for the interactive, reference, and
+a category-group unit — confirmed all three render the new wording
+correctly, including the "category assessment" singular/plural branch.
+**Still not exercised in a real browser** — same standing gap as every
+dashboard/lesson session to date.
 
 ---
 
-### 11. Priority 2 — Add learning statistics that actually motivate
+### 11. Priority 2 — Add learning statistics that actually motivate — ✅ MVP done 2026-08-22 (code session)
 
 Optional, but recommended for a Cisco/learning-platform-style feel:
 
-- [ ] `Practice Progress`
-- [ ] `Assessments Passed`
-- [ ] `Signs Practiced`
-- [ ] `Current Unit`
+- [x] `Practice Progress`
+- [x] `Assessments Passed`
+- [x] `Signs Practiced`
+- [x] `Current Unit`
 - [ ] Later: `Current streak`
 - [ ] Later: `Review due`
 - [ ] Later: `Best assessment score`
@@ -882,9 +1039,93 @@ Do not build all of these at once.
 
 Recommended MVP: only add the first four.
 
+**What was built:** a new 4-tile "Progress Snapshot" stat grid
+(`.stats-grid`/`.stat-tile` in `pages/dashboard.html` +
+`css/dashboard.css`), filled by a new `renderStatsSnapshot()` in
+`js/dashboard.js`. Exactly the recommended MVP subset — the three
+"Later" items were NOT built; there's no streak/review-due/best-score
+data source to read yet, and inventing one would violate §19's "do not
+create a new algorithm" rule.
+
+**No new computation was added.** Two small refactors let
+`renderStatsSnapshot()` reuse numbers that already existed elsewhere
+instead of recomputing them a second, possibly-drifting way:
+1. `renderOverallProgress()`'s inline chain-walk is now
+   `computeOverallStats()`, called by both `renderOverallProgress()`
+   (unchanged output) and `renderStatsSnapshot()`.
+2. `renderCurrentUnit()`'s inline 3-branch label is now
+   `getCurrentUnitLabel(destination)`, called by both
+   `renderCurrentUnit()` (unchanged output) and the new "Current Unit"
+   tile.
+
+Both refactors are the same "one shared helper, not two copies of the
+same walk" pattern `getCurrentDestination()` already established in
+this file — see `js/dashboard.js`'s own header comment.
+
+**Duplication, flagged deliberately (not an oversight):** three of the
+four tiles restate numbers already visible elsewhere on the page — the
+Overall Progress card's %/count/status line, and Your Account's Current
+Unit field. This checklist's own §10 test for whether that's OK is
+"distinct job + agreeing wording": this grid is a single-glance stat
+strip directly under the primary CTA; the Overall Progress card is the
+fuller, labeled version a learner reads once they want more detail.
+Wording matches exactly rather than inventing synonyms. Worth a second
+look before calling this permanently settled — same as every other
+judgment call flagged in this file.
+
+**"Signs Practiced" specifically** uses the chain-scoped
+`practicedSigns` from `computeOverallStats()` (same number as
+`[data-overall-count]`'s numerator) — NOT
+`window.LWProgress.getAllLearnedSigns().length` (the number
+`renderRecap()` shows as `[data-recap-count]`). The two CAN differ in
+principle: `getAllLearnedSigns()` returns every sign ever recorded,
+including any outside the live grading chain; `computeOverallStats()`
+only counts the live chain. Picked the chain-scoped number so all four
+tiles in this one row stay internally consistent with each other.
+**Not verified against real localStorage data whether the two numbers
+ever actually diverge in practice today** — flagging for a future
+session to check with real data.
+
+**Placement:** inside the EXISTING "Overall Progress" `section--tight`
+container, between that heading and the practice-progress card — not a
+new `<section>` — so it doesn't reintroduce the vertical padding
+Priority 1 §9 removed. Same reasoning §10 already used for the
+"Learning Path" heading in this same container.
+
+**Files touched:** `js/dashboard.js` (2 refactors +
+`renderStatsSnapshot()` + one new call in `DOMContentLoaded`),
+`pages/dashboard.html` (new `.stats-grid` markup + comments),
+`css/dashboard.css` (new `.stats-grid`/`.stat-tile*` rules, no existing
+rules changed). `js/auth.js` explicitly excluded, same as every prior
+dashboard session — untouched.
+
+**Verification:** `node --check` — clean. Declaration-vs-call-site
+check — all 16 functions in `dashboard.js` resolve. Real HTML-parser
+tag-balance check on `pages/dashboard.html` — balanced. CSS brace count
+on `css/dashboard.css` — balanced (91/91). Every new `data-stat-*` hook
+cross-checked present in the HTML exactly once. Built a Node + `vm`
+harness loading the real `js/dashboard.js` against mocked
+`window.LWData`/`window.LWProgress` for a learner partway through Unit
+1 (2/4 signs practiced, 0/1 assessments passed) — confirmed all four
+snapshot tiles (`50%` / `0/1` / `2` / `"Unit 1 · The Alphabet"`)
+render, AND match `[data-overall-pct]` (`50%`), `[data-overall-count]`
+(`2 / 4 signs practiced`), `[data-overall-status]` (`0 / 1 category
+assessments passed`), and `[data-user-unit]` (`Unit 1 · The Alphabet`)
+exactly — no drift between the new tiles and the existing card/account
+field they intentionally overlap with. **Still not exercised in a real
+browser** — same standing gap as every dashboard session to date.
+
+**Still open:** real-browser verification (standing gap); Priority 2
+§12–§15; the two flagged cross-file wording items from §10 (need a
+session with `learn.js`/`lesson.js` in scope); double-checking whether
+`getAllLearnedSigns()` and the chain-scoped practiced count ever
+actually diverge with real data; a second look at whether the
+Progress-Snapshot/Overall-Progress-card overlap is worth keeping
+long-term.
+
 ---
 
-### 12. Priority 2 — Add clearer status vocabulary
+### 12. Priority 2 — Add clearer status vocabulary — ✅ Done 2026-08-22 (code session)
 
 Use a small controlled vocabulary across dashboard + learn + lesson:
 
@@ -895,9 +1136,82 @@ Use a small controlled vocabulary across dashboard + learn + lesson:
 - `Locked`
 - `Reference`
 
-- [ ] Audit dashboard wording against this vocabulary.
-- [ ] Keep `Browse only, no quiz yet` for Unit 7 if desired.
-- [ ] Avoid mixing `viewed`, `practiced`, and `learned` when the metric is actually practice.
+- [x] Audit dashboard wording against this vocabulary. **Result: already
+  compliant.** `dashboard.js` already uses "Not started yet" (Your
+  Account / Current Unit tile), "Locked", "Reference", "Practiced",
+  and "assessment(s) ... passed" consistently — no changes needed on
+  the dashboard side itself.
+- [x] Keep `Browse only, no quiz yet` for Unit 7 if desired — **decided
+  NOT to keep it.** This bullet allowed keeping "quiz" as an
+  exception; picked consistency instead, since `dashboard.js`'s
+  equivalent Unit 7 string already reads "Browse only, no assessment
+  yet" for the identical concept, and the whole point of this item is
+  one word per concept across all three surfaces. `js/learn.js`'s two
+  learner-facing "quiz" strings (`renderWordPicker()`'s reference
+  tail badge, `getUnitState()`'s reference-unit label) now read
+  "assessment", matching `dashboard.js` verbatim. This was the
+  specific item flagged as unfixed in the §10 dashboard session (see
+  `dashboard.js`'s header comment) and in `AI_MEMORY.md`'s Session Log
+  — now closed. `quiz.html`/`quiz.js` filenames and URL params are
+  UNCHANGED — only learner-facing copy moved, not the file/route
+  naming scheme (out of scope, high-risk, not requested).
+- [x] Avoid mixing `viewed`, `practiced`, and `learned` when the metric
+  is actually practice. **Result: already resolved by an earlier
+  session** (the 2026-08-21 "viewed" → "practiced" fix in
+  `learn.js`'s assessment-CTA badges, and `dashboard.js`'s recap count
+  already says "N signs practiced," not "learned"). The word
+  "learned" only remains as (a) the `getAllLearnedSigns()` API/variable
+  name, and (b) the "Signs You've Learned" section heading — both
+  deliberately kept as-is per the §7 session's own explicit reasoning
+  (documented in `pages/dashboard.html`'s comment above that section:
+  "every other doc/session log in this repo refers to the section by
+  that exact name... the checklist item never asked for a rename").
+  Not re-litigated this session.
+
+Also fixed as part of the same audit (not a separate checklist item,
+but directly caused by finally having `js/learn.js`/`js/lesson.js` in
+scope): `js/lesson.js`'s `renderCourseSidebar()` header comment had a
+stale "X/Y categories passed" reference to `dashboard.js`'s wording,
+already two revisions out of date (dashboard.js has said "X/Y category
+assessments passed" since the §10 session) — corrected to match.
+`js/dashboard.js`'s own header comment, which had flagged both of the
+above as "NOT fixed," was updated to mark them resolved rather than
+left pointing at a stale status.
+
+**Deliberately NOT touched, flagged for a possible future item:**
+`js/learn.js`'s trail-node label for a category-group unit
+(`getUnitState()`'s `"${passedCount}/${liveCats.length} categories
+passed"`) uses the same shorter phrasing `dashboard.js`'s own per-unit
+line used BEFORE the §10 session added the word "assessment(s)" —
+i.e. it has the same drift, just not the specific "quiz" wording this
+checklist item named. Left as-is because neither `AI_MEMORY.md` nor
+`SYSTEM_ARCHITECTURE.md` had flagged it as one of the two known
+cross-file mismatches (only the two "quiz" strings and the stale
+sidebar comment were), and it's a numeric progress count rather than
+the discrete state-word vocabulary this item is actually about —
+expanding scope to it without it being flagged first risked exactly
+the kind of unrequested rewrite this project's own sessions have
+consistently avoided. Noted here so a future session can decide
+explicitly rather than assume it was missed.
+
+**Scope:** `js/learn.js`, `js/lesson.js` (comment only), `js/dashboard.js`
+(header comment only — no logic/markup change). `js/auth.js`,
+`js/data.js`, `js/engine/progress.js`, `js/quiz.js`, all `pages/*.html`,
+all `css/*` — not opened for editing (grepped to confirm no
+learner-facing "quiz" copy exists outside `js/learn.js`; the rest are
+filename/comment references, left alone). `js/auth.js` excluded per
+explicit user instruction this session, same as every session before it.
+
+**Verification:** `node --check` on all three edited files — clean.
+Exact-string checks confirm both new strings match `dashboard.js`
+verbatim and the old "quiz" strings no longer appear as live code
+(only inside this session's own explanatory comments). Function-count
+sanity check (no accidental deletions) on all three files. **Not
+exercised in a real browser** — same standing gap as every
+dashboard/learn/lesson session to date; this is a pure string change
+with no new DOM hooks, markup, or CSS, so the risk profile is lower
+than prior sessions' UI/layout changes, but real-browser confirmation
+is still the honest thing to flag.
 
 ---
 
