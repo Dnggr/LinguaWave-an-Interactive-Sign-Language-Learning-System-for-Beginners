@@ -235,6 +235,62 @@
    (.continue-card is deliberately untouched — see its own comment). */
 .progress-card--secondary { padding: var(--space-4); }
 
+/* ── Progress Snapshot — 4-tile stat strip (Priority 2 §11, 2026-08-22
+   session) ────────────────────────────────────────────────────────────
+   PIVOT_CHECKLIST.md §11 ("Add learning statistics that actually
+   motivate"), MVP subset (Practice Progress / Assessments Passed /
+   Signs Practiced / Current Unit — the checklist's own "only add the
+   first four" instruction; streak/review-due/best-score are explicitly
+   deferred). See js/dashboard.js's renderStatsSnapshot() for the data
+   side and its own doc comment for why this deliberately overlaps with
+   the Overall Progress card and Your Account's Current Unit field.
+
+   auto-fit + minmax reflows from 4 columns down to 1 with no extra
+   media query needed. Incidentally already covers PIVOT_CHECKLIST.md
+   §14's ~900px/mobile checks for THIS block specifically — §14 itself,
+   for the rest of the page, is still open/untested.
+
+   Kept lighter than `.card` (no shadow, no hover accent) so four tiles
+   in a row don't outweigh the single Continue Learning hero card above
+   them — same "don't compete with the hero card" instinct already
+   applied to `.progress-card--secondary`. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-4);
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+}
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--clr-text);
+  font-variant-numeric: tabular-nums;
+}
+/* "Current Unit" is a name, not a number — tabular-nums/xl sizing would
+   either do nothing useful or risk overflow on a "Unit 3 · Everyday
+   Essentials"-length string. Smaller, no tabular-nums, and wraps
+   instead of pushing the tile wider than its grid track. */
+.stat-tile__value--text {
+  font-size: var(--fs-base);
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+.stat-tile__label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-text-muted);
+}
+
 /* ── Unit progress list — compact learning-path summary (Priority 1) ──
    Still secondary to the Continue Learning card. This is a summary of the
    existing flat trail, NOT a second trail/navigation surface.

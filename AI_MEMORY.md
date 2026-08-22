@@ -2583,3 +2583,257 @@ standing gap as every dashboard/lesson session to date.
    vs. "assessment", and `lesson.js`'s stale sidebar comment) — need a
    session with those files in scope.
 4. Auth remains explicitly excluded.
+
+### 2026-08-22 (same day, follow-up) — Priority 2 §11 ("Add learning statistics that actually motivate")
+
+**Pre-change order followed** (per this file's own header rule): this
+file → `PIVOT_CHECKLIST.md` §11 (found the 7-item wish list, the "only
+add the first four" MVP instruction, and §19/§20's "no new algorithm,
+dashboard-scope-only" rules) → `SYSTEM_ARCHITECTURE.md`'s Dashboard UX
+Review Addendum and its §10 implementation-status entry (the most
+recent one, so the "current state" this session builds on).
+
+**Request:** implement `PIVOT_CHECKLIST.md` §11, MVP subset only
+(`Practice Progress` / `Assessments Passed` / `Signs Practiced` /
+`Current Unit` — the checklist's own recommended first four; the three
+"Later" items — streak, review due, best assessment score — explicitly
+NOT built, since none of those has a data source yet and inventing one
+would be exactly the "new algorithm" §19 warns against). `js/auth.js`
+excluded per instruction, same as every dashboard session before it.
+
+**What was built:** a new 4-tile "Progress Snapshot" stat grid
+(`.stats-grid`/`.stat-tile` in `pages/dashboard.html` +
+`css/dashboard.css`), filled by a new `renderStatsSnapshot()` in
+`js/dashboard.js`.
+
+**No new computation was added — two small refactors instead:**
+1. `renderOverallProgress()`'s inline chain-walk (totalSigns /
+   practicedSigns / passedCategories / pct) is now a standalone
+   `computeOverallStats()`, called by BOTH `renderOverallProgress()`
+   and the new `renderStatsSnapshot()`. `renderOverallProgress()`'s own
+   output is byte-for-byte unchanged — confirmed via the `vm` harness
+   below, not just by inspection.
+2. `renderCurrentUnit()`'s inline 3-branch label logic (`"Not started
+   yet"` / `"All units complete"` / `"Unit N · Title"`) is now
+   `getCurrentUnitLabel(destination)`, called by BOTH
+   `renderCurrentUnit()` (Your Account card) and the new "Current Unit"
+   tile. Output unchanged.
+
+Both refactors follow the exact "one shared helper, not two copies of
+the same walk" pattern `getCurrentDestination()` already established in
+this file back in the Priority 0 #1 session — not a new pattern, reuse
+of an existing one.
+
+**Duplication, flagged deliberately, not an oversight:** three of the
+four new tiles restate numbers already visible elsewhere on the same
+page — the Overall Progress card's %/count/status line, and Your
+Account's Current Unit field (added by Priority 1 §8). This is a real
+tension with the very audit this project just did in §10 ("Reduce
+dashboard duplication"). Weighed it against §10's own stated test —
+"overlap is acceptable only if each surface has a distinct job and
+shared wording agrees" — and judged it passes: this grid is a
+single-glance, Cisco/Duolingo-style stat strip read in under a second,
+sitting directly under the primary CTA; the Overall Progress card is
+the fuller, labeled explanation (progress bar, "not a mastery score"
+caption) a learner reads once they want more detail; wording matches
+exactly rather than inventing synonyms. This is a judgment call, not a
+certainty — flagging it the same way every other judgment call in this
+file gets flagged, in case Joshua or a future session weighs it
+differently. If it's decided the overlap isn't worth it, `renderStatsSnapshot()`
+and its markup block can be deleted without touching anything else —
+nothing downstream reads from it.
+
+**"Signs Practiced" specifically** uses `computeOverallStats()`'s
+chain-scoped `practicedSigns` (the same number as
+`[data-overall-count]`'s numerator) — NOT
+`window.LWProgress.getAllLearnedSigns().length` (the number
+`renderRecap()` shows via `[data-recap-count]`). Those two CAN differ
+in principle: `getAllLearnedSigns()` returns every sign ever recorded
+in the store, including any outside the current live grading chain,
+while `computeOverallStats()` only counts the live chain — the same
+scope "Practice Progress" and "Assessments Passed" already use in this
+same tile row. Picked the chain-scoped number so all four tiles in ONE
+row stay internally consistent with each other; `renderRecap()` keeps
+its own broader number because its job ("everything you've ever
+practiced") is genuinely different from this row's job ("progress
+through the current curriculum"). **Not verified against real
+localStorage data whether the two numbers ever actually diverge in
+practice today** — flagging so a future session checks with real data
+rather than assuming they always match.
+
+**Placement:** inside the EXISTING "Overall Progress" `section--tight`
+container in `pages/dashboard.html`, between that `<h2>` and the
+practice-progress card — deliberately NOT a new `<section>`, so it
+doesn't reintroduce the vertical padding Priority 1 §9 removed. Same
+reasoning §10 already used when it added the "Learning Path" heading to
+this same container instead of a new section.
+
+**Files touched:** `js/dashboard.js` (2 refactors — `computeOverallStats()`
+extracted from `renderOverallProgress()`, `getCurrentUnitLabel()`
+extracted from `renderCurrentUnit()` — plus new `renderStatsSnapshot()`
+and one new call in `DOMContentLoaded`), `pages/dashboard.html` (new
+`.stats-grid` markup + comments), `css/dashboard.css` (new
+`.stats-grid`/`.stat-tile`/`.stat-tile__value`/`.stat-tile__value--text`/
+`.stat-tile__label` rules; no existing rule changed). `js/auth.js`,
+`js/data.js`, `js/learn.js`, `js/engine/progress.js` — not opened.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean.
+Declaration-vs-call-site check — all 16 functions in `dashboard.js`
+resolve (confirmed this session did not repeat the §4 "deleted but
+still called" regression). Real HTML-parser tag-balance check on
+`pages/dashboard.html` — balanced, zero errors. CSS brace count on
+`css/dashboard.css` — balanced (91 open / 91 close). Every new
+`data-stat-*` hook cross-checked present in the HTML exactly once.
+Built a Node + `vm` harness loading the real `js/dashboard.js` against
+mocked `window.LWData`/`window.LWProgress` for a learner partway
+through Unit 1 (2/4 alphabet signs practiced, 0/1 assessments passed)
+and ran the full `DOMContentLoaded` handler end-to-end (not just a
+single function in isolation, unlike most prior harness runs) —
+confirmed all four snapshot tiles render (`50%` / `0/1` / `2` /
+`"Unit 1 · The Alphabet"`) AND match `[data-overall-pct]` (`50%`),
+`[data-overall-count]` (`2 / 4 signs practiced`), `[data-overall-status]`
+(`0 / 1 category assessments passed`), and `[data-user-unit]`
+(`Unit 1 · The Alphabet`) exactly — direct evidence the two refactors
+didn't change either existing function's output, and that the new
+tiles can't drift from the numbers they intentionally overlap with.
+**Still not exercised in a real browser** — same standing gap as every
+dashboard session to date; this session's harness proves the JS logic
+is correct, not that the grid reads well or looks right at any given
+width.
+
+**Still open:**
+1. Real-browser verification of this session's changes (see above),
+   and everything still open from every prior session log entry.
+2. Priority 2 §12–§15 (status vocabulary, accessibility/feedback,
+   responsive behavior, error/loading states) — not started.
+3. Whether `getAllLearnedSigns()` and the chain-scoped practiced-signs
+   count ever actually diverge with real learner data — flagged above,
+   not checked.
+4. A second look at whether the Progress-Snapshot/Overall-Progress-card
+   overlap is worth keeping long-term, per the duplication note above.
+5. The two flagged cross-file wording items from the §10 session
+   (`learn.js`'s "quiz" vs. "assessment"; `lesson.js`'s stale sidebar
+   comment) — still need a session with those files in scope.
+6. Auth remains explicitly excluded.
+
+### 2026-08-22 (same day, follow-up 2) — Priority 2 §12 ("Add clearer status vocabulary")
+
+**Pre-change order followed**, per this file's own header rule: this
+file → `PIVOT_CHECKLIST.md` §12 (the six-word controlled vocabulary,
+its three sub-bullets, including the "keep `Browse only, no quiz yet`
+for Unit 7 if desired" allowance) → `SYSTEM_ARCHITECTURE.md`'s Rev 4
+section, per the user's explicit instruction this session, plus its
+own most recent (§11) implementation-status entry for current dashboard
+state.
+
+**Request:** implement §12, `js/auth.js` explicitly excluded ("my
+teammate will fix that") — same exclusion every session has honored.
+
+**What this session is, structurally, that prior Priority 2 sessions
+weren't:** the first one to actually open `js/learn.js` and
+`js/lesson.js`. §10 and §11 both flagged real cross-file wording
+mismatches touching those two files but stayed out of them because
+neither file was in that session's own preferred scope. §12's own
+header text ("across dashboard + learn + lesson") and its Unit-7 quiz
+bullet are specifically about `learn.js` content, which is what
+justified bringing it into scope now rather than treating
+`PIVOT_CHECKLIST.md` §20's "dashboard session" file list as a blanket,
+permanent exclusion. Treated as a real scope decision, not a default —
+flagging it here the way every other judgment call in this file gets
+flagged.
+
+**Audit finding:** `js/dashboard.js` was already fully compliant with
+the vocabulary — "Not started yet", "Locked", "Reference", "Practiced",
+"assessment(s) ... passed" all already consistent. No dashboard
+changes were needed.
+
+**Two fixes made, both in `js/learn.js`, both exactly the "quiz" item
+the §10 session flagged and explicitly left for "whoever next has
+learn.js in scope":**
+1. `renderWordPicker()`'s Phrasebook reference-tail badge: "No quiz or
+   camera check yet" → "No assessment or camera check yet".
+2. `getUnitState()`'s reference-unit trail label: "Browse only, no quiz
+   yet" → "Browse only, no assessment yet" — now matches
+   `js/dashboard.js`'s identical string for the identical unit,
+   character for character.
+
+**Decision made, not just noted:** §12 explicitly allows keeping
+"Browse only, no quiz yet" for Unit 7 "if desired." Chose consistency
+over keeping it, because `dashboard.js` had already independently
+landed on "assessment" for this exact same unit and concept back in
+the §10 session — keeping "quiz" in `learn.js` would have meant
+picking the one surface still out of step, using the checklist's own
+permission slip to preserve the very inconsistency the item exists to
+remove. `quiz.html`/`quiz.js` filenames, routes, and URL params are
+completely unchanged — this was learner-facing copy only. Renaming the
+actual page/file was never considered; that's a materially bigger,
+riskier change than a wording audit and wasn't asked for.
+
+**One doc-only fix, in `js/lesson.js`:** `renderCourseSidebar()`'s
+header comment claimed dashboard's unit rows show "X/Y categories
+passed" — already two revisions stale (dashboard.js has said "X/Y
+category assessments passed" since §10). Corrected the comment text
+only; zero runtime behavior in this file changed.
+
+**Closed the loop in `js/dashboard.js`:** its own header comment had a
+"Flagged, NOT fixed" block describing exactly these two items. Updated
+it to record both as resolved this session, with a pointer to where
+the actual fixes live, instead of leaving a stale "not fixed" note
+sitting in a file a future session might trust at face value.
+
+**Deliberately NOT fixed, flagged instead:** `getUnitState()` has its
+own separate "${passedCount}/${liveCats.length} categories passed"
+string (the in-progress category-group trail label) with the same
+missing-"assessment" gap `dashboard.js` closed for itself in §10 — but
+neither this file nor `SYSTEM_ARCHITECTURE.md` had ever flagged that
+specific string as a known mismatch, and it's a numeric progress count
+rather than one of the six discrete status words §12 actually lists.
+Judged that fixing it anyway — because it resembles a flagged item,
+not because it was one — would be exactly the kind of scope creep this
+project's own session discipline has consistently pushed back on.
+Left as an explicit flag for the future rather than a silent fix or a
+silent skip.
+
+**Confirmed already resolved, not reopened:** the
+"viewed"/"practiced"/"learned" mixing §12 also warns about. An earlier
+(2026-08-21) session already fixed the one real instance (`learn.js`'s
+assessment-CTA badges). The word "learned" surviving as
+`getAllLearnedSigns()`'s function name and the "Signs You've Learned"
+heading is a previous session's own deliberate, explicitly-reasoned
+choice (see `pages/dashboard.html`'s comment above that section) —
+re-litigating settled decisions from a vocabulary-audit task wasn't
+the ask, so left both alone.
+
+**Files touched:** `js/learn.js` (2 string changes + explanatory
+comments), `js/lesson.js` (1 comment correction, zero logic change),
+`js/dashboard.js` (1 header-comment update, zero logic/markup change).
+`js/auth.js`, `js/data.js`, `js/engine/progress.js`, `js/quiz.js`, all
+`pages/*.html`, all `css/*` — not opened. Grepped first across every
+JS file and every HTML page to confirm no learner-facing "quiz" copy
+existed anywhere outside the two `learn.js` strings fixed — everything
+else matching `/quiz/i` is either the `quiz.html`/`quiz.js` filenames
+themselves or code comments, both correctly left alone.
+
+**Verification:** `node --check` — clean on all three edited files.
+A small Node script confirmed by exact string count (not just
+inspection) that both new strings appear exactly once each, match
+`dashboard.js` verbatim, and that the old "quiz" strings exist nowhere
+as live code afterward — only inside this session's own explanatory
+comments, which quote the old text on purpose. Function-declaration
+counts diffed before/after on all three files (no accidental
+deletions). **Not exercised in a real browser** — same standing gap as
+every dashboard/learn/lesson session before this one. Lower risk than
+most prior UI sessions, though, since this touched zero markup, zero
+CSS, and zero DOM hooks — a pure string swap plus documentation, so
+there's no new interactive surface a browser check would be catching
+that the string/syntax checks above wouldn't.
+
+**Still open:**
+1. Real-browser verification — standing gap, every session.
+2. `PIVOT_CHECKLIST.md` §13–§15 (accessibility/feedback, responsive
+   behavior, error/loading states) — not started.
+3. `getUnitState()`'s own "categories passed" wording drift, flagged
+   above — not decided.
+4. Everything else already open per every prior session log entry
+   (Phase 7 capture/retraining foremost).
+5. Auth remains explicitly excluded.

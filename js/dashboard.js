@@ -91,23 +91,28 @@
  *      unitRowHtml()'s per-unit line said "X/Y assessments passed" —
  *      missing "category". Added "category" to the per-unit line so
  *      the same underlying concept reads the same way in both places.
- * Flagged, NOT fixed (would require editing excluded files):
- *   - js/learn.js uses "quiz" in learner-facing copy ("Browse only, no
+ * RESOLVED (PIVOT_CHECKLIST.md §12 "status vocabulary" session,
+ * 2026-08-22): both items flagged directly below as "NOT fixed" were
+ * fixed once learn.js/lesson.js were actually in scope. Left the
+ * original flag text in place (rather than deleting it) since it's
+ * still useful context for why the fix looked the way it did — see
+ * js/learn.js's renderWordPicker()/getUnitState() and js/lesson.js's
+ * renderCourseSidebar() header comment for the actual changes.
+ *   - js/learn.js used "quiz" in learner-facing copy ("Browse only, no
  *     quiz yet", "No quiz or camera check yet") where every dashboard
  *     string and PIVOT_CHECKLIST.md's own §3/§7/§12 vocabulary use
  *     "assessment" for the identical `progress.assessment.passed`
- *     concept. This looks like the real direction of travel (assessment)
+ *     concept. This looked like the real direction of travel (assessment)
  *     with learn.js as the not-yet-updated outlier, not the other way
- *     around — but that's a call for whoever next has learn.js in
- *     scope, not this session.
+ *     around — confirmed and changed to "assessment" in both spots,
+ *     matching this file's own strings verbatim.
  *   - js/lesson.js's renderCourseSidebar() header comment (the "One
- *     deliberate difference from dashboard.js" note) says dashboard's
+ *     deliberate difference from dashboard.js" note) said dashboard's
  *     unit rows show "X/Y categories passed" — that was true before
  *     Priority 1 §4 changed the wording to "assessments passed"
  *     (and now "category assessments passed" per fix #3 above). The
- *     comment is stale documentation in a file outside this session's
- *     scope; flagging so a future lesson.js session updates it rather
- *     than trusting it at face value.
+ *     comment was stale documentation in a file outside that session's
+ *     scope; now corrected to match this file's actual current string.
  * No new unit-ordering/unlock logic was added anywhere — confirmed by
  * re-reading this file's own renderUnitList()/renderUnitRow(): both
  * still walk window.LWData.getUnits() in its existing order, exactly
@@ -252,6 +257,53 @@
  * window.LWProgress.getOrderedLiveCategories() directly — already in
  * the correct flat order and doesn't take a level at all. Still true
  * of getCurrentDestination() below, since it's the same walk.
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 2, §11 (2026-08-22, this session):
+ * "Add learning statistics that actually motivate." Implemented the
+ * checklist's own recommended MVP subset — Practice Progress,
+ * Assessments Passed, Signs Practiced, Current Unit — as a new 4-tile
+ * "Progress Snapshot" grid (renderStatsSnapshot()). The other three
+ * bulleted items (streak, review due, best assessment score) are
+ * explicitly marked "Later" in PIVOT_CHECKLIST.md §11 and were NOT
+ * built — there's no streak/review-due/best-score data source to read
+ * yet, and inventing one would be exactly the "new algorithm" §19
+ * warns against.
+ *
+ * Two small refactors made this possible without a second copy of
+ * either existing computation (same "one shared helper, not two
+ * copies of the same walk" rule getCurrentDestination() already
+ * established in this file):
+ *   1. renderOverallProgress()'s inline chain-walk (totalSigns /
+ *      practicedSigns / passedCategories / pct) is now
+ *      computeOverallStats(), called by BOTH renderOverallProgress()
+ *      and the new renderStatsSnapshot(). renderOverallProgress()'s
+ *      own output is byte-for-byte unchanged — same fields, same
+ *      values, same rounding — this is a refactor, not a behavior
+ *      change.
+ *   2. renderCurrentUnit()'s inline 3-branch label logic is now
+ *      getCurrentUnitLabel(destination), called by BOTH
+ *      renderCurrentUnit() (Your Account card) and the new "Current
+ *      Unit" tile. Output unchanged.
+ *
+ * DUPLICATION, flagged deliberately (see renderStatsSnapshot()'s own
+ * doc comment for the full reasoning): three of these four tiles
+ * restate numbers already visible elsewhere (Overall Progress card;
+ * Your Account's Current Unit). This is a considered exception to the
+ * §10 "don't show the same concept twice" rule, not an oversight —
+ * §10's own test is "distinct job + agreeing wording," and a glanceable
+ * stat strip vs. a detailed labeled card meets that test. Flagging for
+ * a second look rather than declaring it settled, same as every other
+ * judgment call in this file gets flagged.
+ *
+ * Markup: pages/dashboard.html gained a `.stats-grid` of 4
+ * `.stat-tile`s, placed inside the EXISTING "Overall Progress"
+ * `section--tight` container (between that heading and its
+ * progress-card), not a new `<section>` — preserves Priority 1 §9's
+ * first-viewport padding budget, same reasoning §10 already used when
+ * it added the "Learning Path" heading to this same container instead
+ * of a new section. New CSS: `.stats-grid`/`.stat-tile`/
+ * `.stat-tile__value`/`.stat-tile__value--text`/`.stat-tile__label` in
+ * css/dashboard.css (auto-fit grid, no new media query needed).
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -287,15 +339,30 @@ function escapeHtml(str) {
  *  "X / Y category assessments passed" mastery signal into
  *  [data-overall-status]. Don't re-derive a "relabel" here — the label
  *  lives in the HTML next to [data-overall-pct], not in this string. */
-function renderOverallProgress() {
-  if (!window.LWProgress || !window.LWData) return;
+/**
+ * NEW (Priority 2 §11, 2026-08-22) — factored out of
+ * renderOverallProgress()'s own body so a second consumer
+ * (renderStatsSnapshot() below) can read the exact same aggregate
+ * numbers without re-walking window.LWProgress.getOrderedLiveCategories()
+ * a second time with a slightly different loop. Same "one shared
+ * helper, not two copies of the same walk" rule getCurrentDestination()
+ * already established for the "where's the learner" walk (see this
+ * file's header comment). renderOverallProgress() below is now just
+ * this helper plus its own DOM writes — its OUTPUT is byte-for-byte
+ * unchanged (same fields, same values, same rounding); this is a
+ * refactor, not a behavior change.
+ *
+ * @returns {null | {
+ *   chain: object[],
+ *   totalSigns: number,
+ *   practicedSigns: number,
+ *   passedCategories: number,
+ *   pct: number,
+ * }}
+ */
+function computeOverallStats() {
+  if (!window.LWProgress || !window.LWData) return null;
   const chain = window.LWProgress.getOrderedLiveCategories();
-
-  const pctEl    = document.querySelector('[data-overall-pct]');
-  const barEl    = document.querySelector('[data-overall-progress]');
-  const countEl  = document.querySelector('[data-overall-count]');
-  const statusEl = document.querySelector('[data-overall-status]');
-  if (!pctEl) return;
 
   let totalSigns = 0, practicedSigns = 0, passedCategories = 0;
   chain.forEach(cat => {
@@ -307,6 +374,20 @@ function renderOverallProgress() {
   });
 
   const pct = totalSigns > 0 ? Math.round((practicedSigns / totalSigns) * 100) : 0;
+  return { chain, totalSigns, practicedSigns, passedCategories, pct };
+}
+
+function renderOverallProgress() {
+  const stats = computeOverallStats();
+  if (!stats) return;
+  const { chain, totalSigns, practicedSigns, passedCategories, pct } = stats;
+
+  const pctEl    = document.querySelector('[data-overall-pct]');
+  const barEl    = document.querySelector('[data-overall-progress]');
+  const countEl  = document.querySelector('[data-overall-count]');
+  const statusEl = document.querySelector('[data-overall-status]');
+  if (!pctEl) return;
+
   pctEl.textContent = `${pct}%`;
   if (barEl) { barEl.dataset.progress = pct; barEl.style.width = `${pct}%`; }
   if (countEl) countEl.textContent = `${practicedSigns} / ${totalSigns || '—'} signs practiced`;
@@ -385,20 +466,97 @@ function getCurrentDestination() {
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
+/**
+ * NEW (Priority 2 §11, 2026-08-22) — factored out of
+ * renderCurrentUnit()'s own body so the new "Current Unit" stat tile
+ * (renderStatsSnapshot() below) shows the exact same three-state label
+ * ("Not started yet" / "All units complete" / "Unit N · Title") instead
+ * of a second copy of this branch. renderCurrentUnit() below now just
+ * calls this helper — its own output is unchanged.
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
+ * @returns {string}
+ */
+function getCurrentUnitLabel(destination) {
+  if (!destination || destination.chain.length === 0) return 'Not started yet';
+  if (!destination.cat) return 'All units complete';
+  const { cat, unit } = destination;
+  return unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
+}
+
 function renderCurrentUnit(destination) {
   const el = document.querySelector('[data-user-unit]');
   if (!el || !destination) return;
+  el.textContent = getCurrentUnitLabel(destination);
+}
 
-  if (destination.chain.length === 0) {
-    el.textContent = 'Not started yet';
-    return;
-  }
-  if (!destination.cat) {
-    el.textContent = 'All units complete';
-    return;
-  }
-  const { cat, unit } = destination;
-  el.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
+/**
+ * NEW — PIVOT_CHECKLIST.md Priority 2 §11 ("Add learning statistics
+ * that actually motivate", 2026-08-22 session). Fills the 4-tile
+ * "Progress Snapshot" grid: Practice Progress, Assessments Passed,
+ * Signs Practiced, Current Unit — the exact MVP subset §11 recommends
+ * ("Recommended MVP: only add the first four"; streak / review due /
+ * best assessment score are explicitly "Later" items and NOT built
+ * here — there's no streak or best-score data source to read yet, and
+ * adding one would be exactly the "new algorithm" §19 warns against).
+ *
+ * Deliberately reuses computeOverallStats() and getCurrentUnitLabel()
+ * rather than re-deriving any of these four numbers a second way — see
+ * this file's header comment for why. Every number here is guaranteed
+ * to agree with the Overall Progress card and the Your Account card,
+ * because they call the exact same two functions; there's no way for
+ * this tile grid to drift out of sync with either one.
+ *
+ * DUPLICATION NOTE (flagging per this project's own §10 audit
+ * precedent, not an oversight): three of these four numbers ARE already
+ * visible elsewhere on the page — the Overall Progress card's
+ * %/count/status line, and Your Account's Current Unit field. §10's
+ * own test for whether overlap is OK is "distinct job + agreeing
+ * wording": this grid's job is a single-glance, Cisco/Duolingo-style
+ * stat strip read in under a second, sitting directly under the
+ * primary CTA; the Overall Progress card's job is the fuller, labeled
+ * explanation (progress bar, "not a mastery score" caption) a learner
+ * reads once they want more detail. Wording matches exactly ("Practice
+ * Progress", the "category assessments passed" pattern, "Current
+ * Unit") rather than inventing synonyms. If a future session decides
+ * the overlap isn't worth keeping, this function and its markup block
+ * (`.stats-grid` in pages/dashboard.html) can be deleted without
+ * touching anything else — nothing downstream reads from it.
+ *
+ * "Signs Practiced" specifically uses computeOverallStats()'s
+ * chain-scoped `practicedSigns` (the same number as
+ * [data-overall-count]'s numerator) — NOT
+ * window.LWProgress.getAllLearnedSigns().length, the number
+ * renderRecap() shows via [data-recap-count]. Those two CAN differ in
+ * principle: getAllLearnedSigns() returns every sign ever recorded in
+ * the store, including any outside the current live grading chain,
+ * while computeOverallStats() only counts the live chain — the same
+ * scope "Practice Progress" and "Assessments Passed" already use in
+ * this same tile row. Picked the chain-scoped number so all four tiles
+ * in ONE row stay internally consistent with each other; renderRecap()
+ * keeps its own broader number because its job ("everything you've
+ * ever practiced") is genuinely different from this row's job
+ * ("progress through the current curriculum"). Not verified against
+ * real localStorage data whether the two numbers ever actually diverge
+ * in practice today — flagging so a future session checks with real
+ * data rather than assuming they always match.
+ *
+ * @param {ReturnType<typeof getCurrentDestination>} destination
+ */
+function renderStatsSnapshot(destination) {
+  const stats = computeOverallStats();
+  if (!stats) return;
+
+  const pctEl    = document.querySelector('[data-stat-practice-pct]');
+  const assessEl = document.querySelector('[data-stat-assessments]');
+  const signsEl  = document.querySelector('[data-stat-signs]');
+  const unitEl   = document.querySelector('[data-stat-unit]');
+  if (!pctEl && !assessEl && !signsEl && !unitEl) return;
+
+  if (pctEl)    pctEl.textContent = `${stats.pct}%`;
+  if (assessEl) assessEl.textContent = `${stats.passedCategories}/${stats.chain.length}`;
+  if (signsEl)  signsEl.textContent = `${stats.practicedSigns}`;
+  if (unitEl)   unitEl.textContent = getCurrentUnitLabel(destination);
 }
 
 /**
@@ -836,6 +994,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderOverallProgress();
   renderCurrentUnit(destination);
+  renderStatsSnapshot(destination);
   renderWelcomeBanner(destination);
   renderUnitList(destination);
   renderRecap();

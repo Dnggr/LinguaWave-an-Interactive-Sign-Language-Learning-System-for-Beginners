@@ -1023,14 +1023,14 @@ dashboard/lesson session to date.
 
 ---
 
-### 11. Priority 2 — Add learning statistics that actually motivate
+### 11. Priority 2 — Add learning statistics that actually motivate — ✅ MVP done 2026-08-22 (code session)
 
 Optional, but recommended for a Cisco/learning-platform-style feel:
 
-- [ ] `Practice Progress`
-- [ ] `Assessments Passed`
-- [ ] `Signs Practiced`
-- [ ] `Current Unit`
+- [x] `Practice Progress`
+- [x] `Assessments Passed`
+- [x] `Signs Practiced`
+- [x] `Current Unit`
 - [ ] Later: `Current streak`
 - [ ] Later: `Review due`
 - [ ] Later: `Best assessment score`
@@ -1039,9 +1039,93 @@ Do not build all of these at once.
 
 Recommended MVP: only add the first four.
 
+**What was built:** a new 4-tile "Progress Snapshot" stat grid
+(`.stats-grid`/`.stat-tile` in `pages/dashboard.html` +
+`css/dashboard.css`), filled by a new `renderStatsSnapshot()` in
+`js/dashboard.js`. Exactly the recommended MVP subset — the three
+"Later" items were NOT built; there's no streak/review-due/best-score
+data source to read yet, and inventing one would violate §19's "do not
+create a new algorithm" rule.
+
+**No new computation was added.** Two small refactors let
+`renderStatsSnapshot()` reuse numbers that already existed elsewhere
+instead of recomputing them a second, possibly-drifting way:
+1. `renderOverallProgress()`'s inline chain-walk is now
+   `computeOverallStats()`, called by both `renderOverallProgress()`
+   (unchanged output) and `renderStatsSnapshot()`.
+2. `renderCurrentUnit()`'s inline 3-branch label is now
+   `getCurrentUnitLabel(destination)`, called by both
+   `renderCurrentUnit()` (unchanged output) and the new "Current Unit"
+   tile.
+
+Both refactors are the same "one shared helper, not two copies of the
+same walk" pattern `getCurrentDestination()` already established in
+this file — see `js/dashboard.js`'s own header comment.
+
+**Duplication, flagged deliberately (not an oversight):** three of the
+four tiles restate numbers already visible elsewhere on the page — the
+Overall Progress card's %/count/status line, and Your Account's Current
+Unit field. This checklist's own §10 test for whether that's OK is
+"distinct job + agreeing wording": this grid is a single-glance stat
+strip directly under the primary CTA; the Overall Progress card is the
+fuller, labeled version a learner reads once they want more detail.
+Wording matches exactly rather than inventing synonyms. Worth a second
+look before calling this permanently settled — same as every other
+judgment call flagged in this file.
+
+**"Signs Practiced" specifically** uses the chain-scoped
+`practicedSigns` from `computeOverallStats()` (same number as
+`[data-overall-count]`'s numerator) — NOT
+`window.LWProgress.getAllLearnedSigns().length` (the number
+`renderRecap()` shows as `[data-recap-count]`). The two CAN differ in
+principle: `getAllLearnedSigns()` returns every sign ever recorded,
+including any outside the live grading chain; `computeOverallStats()`
+only counts the live chain. Picked the chain-scoped number so all four
+tiles in this one row stay internally consistent with each other.
+**Not verified against real localStorage data whether the two numbers
+ever actually diverge in practice today** — flagging for a future
+session to check with real data.
+
+**Placement:** inside the EXISTING "Overall Progress" `section--tight`
+container, between that heading and the practice-progress card — not a
+new `<section>` — so it doesn't reintroduce the vertical padding
+Priority 1 §9 removed. Same reasoning §10 already used for the
+"Learning Path" heading in this same container.
+
+**Files touched:** `js/dashboard.js` (2 refactors +
+`renderStatsSnapshot()` + one new call in `DOMContentLoaded`),
+`pages/dashboard.html` (new `.stats-grid` markup + comments),
+`css/dashboard.css` (new `.stats-grid`/`.stat-tile*` rules, no existing
+rules changed). `js/auth.js` explicitly excluded, same as every prior
+dashboard session — untouched.
+
+**Verification:** `node --check` — clean. Declaration-vs-call-site
+check — all 16 functions in `dashboard.js` resolve. Real HTML-parser
+tag-balance check on `pages/dashboard.html` — balanced. CSS brace count
+on `css/dashboard.css` — balanced (91/91). Every new `data-stat-*` hook
+cross-checked present in the HTML exactly once. Built a Node + `vm`
+harness loading the real `js/dashboard.js` against mocked
+`window.LWData`/`window.LWProgress` for a learner partway through Unit
+1 (2/4 signs practiced, 0/1 assessments passed) — confirmed all four
+snapshot tiles (`50%` / `0/1` / `2` / `"Unit 1 · The Alphabet"`)
+render, AND match `[data-overall-pct]` (`50%`), `[data-overall-count]`
+(`2 / 4 signs practiced`), `[data-overall-status]` (`0 / 1 category
+assessments passed`), and `[data-user-unit]` (`Unit 1 · The Alphabet`)
+exactly — no drift between the new tiles and the existing card/account
+field they intentionally overlap with. **Still not exercised in a real
+browser** — same standing gap as every dashboard session to date.
+
+**Still open:** real-browser verification (standing gap); Priority 2
+§12–§15; the two flagged cross-file wording items from §10 (need a
+session with `learn.js`/`lesson.js` in scope); double-checking whether
+`getAllLearnedSigns()` and the chain-scoped practiced count ever
+actually diverge with real data; a second look at whether the
+Progress-Snapshot/Overall-Progress-card overlap is worth keeping
+long-term.
+
 ---
 
-### 12. Priority 2 — Add clearer status vocabulary
+### 12. Priority 2 — Add clearer status vocabulary — ✅ Done 2026-08-22 (code session)
 
 Use a small controlled vocabulary across dashboard + learn + lesson:
 
@@ -1052,9 +1136,82 @@ Use a small controlled vocabulary across dashboard + learn + lesson:
 - `Locked`
 - `Reference`
 
-- [ ] Audit dashboard wording against this vocabulary.
-- [ ] Keep `Browse only, no quiz yet` for Unit 7 if desired.
-- [ ] Avoid mixing `viewed`, `practiced`, and `learned` when the metric is actually practice.
+- [x] Audit dashboard wording against this vocabulary. **Result: already
+  compliant.** `dashboard.js` already uses "Not started yet" (Your
+  Account / Current Unit tile), "Locked", "Reference", "Practiced",
+  and "assessment(s) ... passed" consistently — no changes needed on
+  the dashboard side itself.
+- [x] Keep `Browse only, no quiz yet` for Unit 7 if desired — **decided
+  NOT to keep it.** This bullet allowed keeping "quiz" as an
+  exception; picked consistency instead, since `dashboard.js`'s
+  equivalent Unit 7 string already reads "Browse only, no assessment
+  yet" for the identical concept, and the whole point of this item is
+  one word per concept across all three surfaces. `js/learn.js`'s two
+  learner-facing "quiz" strings (`renderWordPicker()`'s reference
+  tail badge, `getUnitState()`'s reference-unit label) now read
+  "assessment", matching `dashboard.js` verbatim. This was the
+  specific item flagged as unfixed in the §10 dashboard session (see
+  `dashboard.js`'s header comment) and in `AI_MEMORY.md`'s Session Log
+  — now closed. `quiz.html`/`quiz.js` filenames and URL params are
+  UNCHANGED — only learner-facing copy moved, not the file/route
+  naming scheme (out of scope, high-risk, not requested).
+- [x] Avoid mixing `viewed`, `practiced`, and `learned` when the metric
+  is actually practice. **Result: already resolved by an earlier
+  session** (the 2026-08-21 "viewed" → "practiced" fix in
+  `learn.js`'s assessment-CTA badges, and `dashboard.js`'s recap count
+  already says "N signs practiced," not "learned"). The word
+  "learned" only remains as (a) the `getAllLearnedSigns()` API/variable
+  name, and (b) the "Signs You've Learned" section heading — both
+  deliberately kept as-is per the §7 session's own explicit reasoning
+  (documented in `pages/dashboard.html`'s comment above that section:
+  "every other doc/session log in this repo refers to the section by
+  that exact name... the checklist item never asked for a rename").
+  Not re-litigated this session.
+
+Also fixed as part of the same audit (not a separate checklist item,
+but directly caused by finally having `js/learn.js`/`js/lesson.js` in
+scope): `js/lesson.js`'s `renderCourseSidebar()` header comment had a
+stale "X/Y categories passed" reference to `dashboard.js`'s wording,
+already two revisions out of date (dashboard.js has said "X/Y category
+assessments passed" since the §10 session) — corrected to match.
+`js/dashboard.js`'s own header comment, which had flagged both of the
+above as "NOT fixed," was updated to mark them resolved rather than
+left pointing at a stale status.
+
+**Deliberately NOT touched, flagged for a possible future item:**
+`js/learn.js`'s trail-node label for a category-group unit
+(`getUnitState()`'s `"${passedCount}/${liveCats.length} categories
+passed"`) uses the same shorter phrasing `dashboard.js`'s own per-unit
+line used BEFORE the §10 session added the word "assessment(s)" —
+i.e. it has the same drift, just not the specific "quiz" wording this
+checklist item named. Left as-is because neither `AI_MEMORY.md` nor
+`SYSTEM_ARCHITECTURE.md` had flagged it as one of the two known
+cross-file mismatches (only the two "quiz" strings and the stale
+sidebar comment were), and it's a numeric progress count rather than
+the discrete state-word vocabulary this item is actually about —
+expanding scope to it without it being flagged first risked exactly
+the kind of unrequested rewrite this project's own sessions have
+consistently avoided. Noted here so a future session can decide
+explicitly rather than assume it was missed.
+
+**Scope:** `js/learn.js`, `js/lesson.js` (comment only), `js/dashboard.js`
+(header comment only — no logic/markup change). `js/auth.js`,
+`js/data.js`, `js/engine/progress.js`, `js/quiz.js`, all `pages/*.html`,
+all `css/*` — not opened for editing (grepped to confirm no
+learner-facing "quiz" copy exists outside `js/learn.js`; the rest are
+filename/comment references, left alone). `js/auth.js` excluded per
+explicit user instruction this session, same as every session before it.
+
+**Verification:** `node --check` on all three edited files — clean.
+Exact-string checks confirm both new strings match `dashboard.js`
+verbatim and the old "quiz" strings no longer appear as live code
+(only inside this session's own explanatory comments). Function-count
+sanity check (no accidental deletions) on all three files. **Not
+exercised in a real browser** — same standing gap as every
+dashboard/learn/lesson session to date; this is a pure string change
+with no new DOM hooks, markup, or CSS, so the risk profile is lower
+than prior sessions' UI/layout changes, but real-browser confirmation
+is still the honest thing to flag.
 
 ---
 

@@ -300,6 +300,47 @@
     <div class="container">
       <h2 class="mb-4 dash-heading--secondary">Overall Progress</h2>
 
+      <!-- ── PROGRESS SNAPSHOT (Priority 2 §11, 2026-08-22) ───────────
+           PIVOT_CHECKLIST.md §11 ("Add learning statistics that
+           actually motivate"), MVP subset only — the checklist's own
+           "Recommended MVP: only add the first four" instruction.
+           Streak / review due / best assessment score are explicitly
+           "Later" items in §11 and are NOT here.
+
+           Filled entirely by js/dashboard.js's renderStatsSnapshot(),
+           which reuses computeOverallStats()/getCurrentUnitLabel() —
+           the SAME helpers renderOverallProgress()/renderCurrentUnit()
+           already call — so these four numbers can never disagree with
+           the progress-card below or the Current Unit field in "Your
+           Account". See that function's own doc comment for the full
+           reasoning on why this deliberately overlaps with both (a
+           glanceable stat strip vs. a detailed labeled card — §10's
+           own "distinct job + agreeing wording" test).
+
+           Placed inside this SAME section--tight container (not a new
+           <section>) so it doesn't reintroduce the vertical padding
+           Priority 1 §9 removed — identical reasoning to why the
+           "Learning Path" heading below was added here instead of a
+           new section. -->
+      <div class="stats-grid mb-4" data-stats-snapshot>
+        <div class="stat-tile">
+          <span class="stat-tile__value" data-stat-practice-pct>–</span>
+          <span class="stat-tile__label">Practice Progress</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value" data-stat-assessments>–</span>
+          <span class="stat-tile__label">Assessments Passed</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value" data-stat-signs>–</span>
+          <span class="stat-tile__label">Signs Practiced</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value stat-tile__value--text" data-stat-unit>–</span>
+          <span class="stat-tile__label">Current Unit</span>
+        </div>
+      </div>
+
       <!-- Aggregate card — filled in by js/dashboard.js from
            window.LWProgress.getOrderedLiveCategories(), the same flat
            cross-unit chain js/learn.js's trail view walks. Markup

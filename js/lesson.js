@@ -676,8 +676,13 @@ let lastHandCount  = 0;
 // silently disagree with either of those screens about what's locked.
 //
 // One deliberate difference from dashboard.js's per-unit percentage:
-// dashboard.js's unit rows show "X/Y categories passed" (assessment-
-// gated). This sidebar instead shows practiced-signs / total-signs
+// dashboard.js's unit rows show "X/Y category assessments passed"
+// (assessment-gated — STALENESS FIX, PIVOT_CHECKLIST.md §12 session:
+// this comment previously said "X/Y categories passed", which was
+// already out of date by the time the §10 dashboard session flagged
+// it as stale documentation in a file outside its own scope; now
+// corrected to match dashboard.js's actual current string verbatim).
+// This sidebar instead shows practiced-signs / total-signs
 // within the unit (same finer-grained formula renderOverallProgress()
 // uses for the single dashboard-wide percentage) — a smoother number
 // that updates sign-by-sign instead of jumping only when a whole
