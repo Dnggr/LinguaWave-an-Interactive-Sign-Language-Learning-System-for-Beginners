@@ -304,6 +304,118 @@
  * of a new section. New CSS: `.stats-grid`/`.stat-tile`/
  * `.stat-tile__value`/`.stat-tile__value--text`/`.stat-tile__label` in
  * css/dashboard.css (auto-fit grid, no new media query needed).
+ *
+ * DASHBOARD UX REVIEW — PRIORITY 2, §13 ("Dashboard accessibility and
+ * feedback", 2026-08-22, this session): implements PIVOT_CHECKLIST.md
+ * §13's six sub-items, scoped to pages/dashboard.html / js/dashboard.js
+ * / css/dashboard.css only, same as every Priority 1/2 session before
+ * it. js/auth.js excluded per explicit user instruction, same as always.
+ *
+ * Audit first, then fixes — three of the six sub-items were already
+ * satisfied by earlier sessions and needed no code change (documented
+ * here so a future session doesn't re-derive the same audit):
+ *   - "Keep text state labels" — already true. Locked rows have always
+ *     shown "Locked · finish the previous unit first" as visible text
+ *     (unitRowHtml()'s statusText branch), and the current-unit badge
+ *     ("You are here") has been text, not a color/icon-only signal,
+ *     since Priority 1 §4/§5.
+ *   - "Ensure progress percentages remain understandable without
+ *     color" — already true everywhere a percentage/fraction appears
+ *     on this page: the hero card's within-destination progress
+ *     ([data-continue-progress-label], "N/M signs practiced in
+ *     {category}"), the Overall Progress card ([data-overall-pct] +
+ *     [data-overall-count] + [data-overall-status], all plain text
+ *     next to the bar, not color-only), the Priority 2 §11 stat tiles
+ *     (plain numbers, no color coding at all), and each unit row's own
+ *     "{practiced}/{total} signs practiced" / "{passed}/{total}
+ *     category assessment(s) passed" lines. Every one of these pairs
+ *     the number with adjacent text; color (where used, e.g. the
+ *     assessment line turning `--clr-success` on a done row) is always
+ *     a supplement to a number that already says the same thing, never
+ *     the only signal. Checked, not changed.
+ *   - CTA labels were already mostly action-verb-led ("▶ Start Lesson"
+ *     / "▶ Continue" / "↺ Review Your Path" / `↺ Review "{sign}"`),
+ *     EXCEPT the hero card's secondary "Open Path" button, which named
+ *     an action but not WHICH path — fixed below.
+ *
+ * Three real changes followed from the audit:
+ *
+ * 1. "Current/locked/done state must not rely only on border color."
+ *    Locked and current rows already had a non-color signal (status
+ *    text / "You are here" badge); a fully "done" row (passedCount ===
+ *    assessmentTotal) had NONE — only the left border color and
+ *    background tint flipping from accent to `--clr-success` told a
+ *    learner a unit was finished, exactly the failure mode this bullet
+ *    names. renderUnitRow()'s graded branch now also passes a `done`
+ *    flag into unitRowHtml(), which renders a third badge —
+ *    `.unit-progress-row__done-badge`, "✓ Completed" — alongside the
+ *    existing "You are here" / "Reference" badges (same markup/CSS
+ *    pattern, see css/dashboard.css). Text + checkmark, not color
+ *    alone.
+ *
+ * 2. "Ensure CTA labels describe the action" (the "Open Path" gap
+ *    above). renderContinueCard()'s secondary button now reads
+ *    `Open Unit {order} Path` when a specific unit is known (the exact
+ *    same `unit` field the eyebrow line above it already names), and
+ *    falls back to the previous generic "Open Path" only in the
+ *    destination-less edge cases (empty chain / everything passed)
+ *    where renderContinueCard() hides the secondary button entirely
+ *    anyway — so the fallback string is dead code today, kept only for
+ *    defensiveness if that branch ever changes.
+ *    Separately, each unit row's own accessible name (its `aria-label`)
+ *    is new: previously a screen reader linearized the row's visible
+ *    text/nested-aria-label content into one run-on string with no
+ *    verb ("Unit 3 · Everyday Essentials You are here Next: Requests →
+ *    HELLO 45% practice progress 0/1 category assessment passed" — the
+ *    45%/etc. reads oddly out of visual context). Every graded/info/
+ *    interactive/reference row now gets an explicit `aria-label`
+ *    starting "Open Unit N: {title} — …", built entirely from fields
+ *    renderUnitRow() already computes (no new lookup) — see
+ *    unitRowHtml()'s own comment. Locked and "coming soon" rows are
+ *    plain `<div>`s, not links, so they were never focusable and don't
+ *    need one.
+ *
+ * 3. "Ensure keyboard navigation reaches Continue first." The Continue
+ *    Learning button was already the first focusable element in the
+ *    page's OWN content (right after the header, per Priority 0 #1's
+ *    placement) — but a keyboard user still has to tab through the
+ *    entire navbar (logo, 2 nav links, theme toggle, "Log out") first.
+ *    Added a standard "skip link" — a visually-hidden-until-focused
+ *    `<a href="#continue-cta">Skip to Continue Learning</a>` as the
+ *    very first element in `<body>`, jumping straight to the primary
+ *    CTA (`id="continue-cta"` added to the SAME `[data-continue-learning]`
+ *    anchor — no new element). New CSS only (`.skip-link` in
+ *    css/dashboard.css, page-scoped the same way `.section--tight` is —
+ *    see that rule's own comment for why page-scoping a class in this
+ *    file never leaks to learn.html/lesson.html/etc.). No JS change for
+ *    this item.
+ *
+ * "Ensure interactive unit rows have visible focus states" — the last
+ * sub-item — is CSS-only (css/dashboard.css: `a.unit-progress-row:
+ * focus-visible`), see that file. Nothing here changed for it. Scoped
+ * to unit rows only, per the item's literal wording — other buttons on
+ * this page (`.btn`) already show the browser's default focus outline
+ * (nothing in css/style.css removes it for `.btn`), so they were left
+ * alone; flagging a general `.btn` focus-style pass as a possible
+ * future item if a session ever wants one, not something this item
+ * asked for.
+ *
+ * Verification performed this session: node --check (clean),
+ * declaration-vs-call-site check (all functions resolve), a Node + vm
+ * harness running renderUnitRow() against mocked LWData/LWProgress
+ * across locked/current/done/interactive/info/reference states
+ * (confirmed the done badge appears only on fully-passed rows, and
+ * every linked row's aria-label is present and HTML-escaped — tested
+ * with a unit title containing `&`/`<`), and a manual DOM-order trace
+ * confirming the skip link is the first element in <body> and
+ * `#continue-cta` resolves to exactly one element. See
+ * PIVOT_CHECKLIST.md §13 and SYSTEM_ARCHITECTURE.md's matching entry
+ * for the full writeup. NOT exercised in a real browser or with an
+ * actual screen reader (VoiceOver/NVDA) — flagged same as every
+ * session before this one, but called out specifically here since a
+ * screen-reader pass is the one check that would most directly confirm
+ * an accessibility item actually worked; that's the single biggest
+ * follow-up before treating §13 as fully closed.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -619,21 +731,35 @@ function renderWelcomeBanner(destination) {
 function renderUnitRow(unit, destination) {
   const icon = UNIT_ICONS[unit.id] ?? '🔖';
   const isCurrentUnit = !!destination?.unit && destination.unit.order === unit.order;
+  // NEW (Priority 2 §13, 2026-08-22) — short suffix appended to a row's
+  // aria-label when it's the learner's current unit, shared across the
+  // info/interactive/graded branches below so "you are here" isn't
+  // spelled three different ways in the accessible name.
+  const hereSuffix = isCurrentUnit ? ', you are here' : '';
 
   if (unit.kind === 'info') {
     return unitRowHtml(icon, unit, 'Welcome · no assessment', 'learn.html?unit=welcome',
-      isCurrentUnit ? 'current' : null, { current: isCurrentUnit });
+      isCurrentUnit ? 'current' : null, {
+        current: isCurrentUnit,
+        ariaLabel: `Open Unit ${unit.order}: ${unit.title} — welcome guide, no assessment${hereSuffix}`,
+      });
   }
 
   if (unit.kind === 'interactive') {
     return unitRowHtml(icon, unit, 'Practice drill · always open',
       'lesson.html?level=basic&category=fingerspell_name',
-      isCurrentUnit ? 'current' : null, { current: isCurrentUnit });
+      isCurrentUnit ? 'current' : null, {
+        current: isCurrentUnit,
+        ariaLabel: `Open Unit ${unit.order}: ${unit.title} — practice drill, always open${hereSuffix}`,
+      });
   }
 
   if (unit.kind === 'reference') {
     return unitRowHtml(icon, unit, 'Browse only, no assessment yet',
-      'learn.html?unit=phrasebook', null, { reference: true });
+      'learn.html?unit=phrasebook', null, {
+        reference: true,
+        ariaLabel: `Open Unit ${unit.order}: ${unit.title} — reference, browse only, no assessment yet`,
+      });
   }
 
   const allCats  = window.LWData.getCategoriesForUnit(unit.order);
@@ -681,14 +807,29 @@ function renderUnitRow(unit, destination) {
     ? `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`
     : null;
 
+  // NEW (Priority 2 §13, 2026-08-22) — aria-label for the graded case,
+  // built from the exact same numbers the visible row already renders
+  // (no new computation): "completed" when passedCount===assessmentTotal
+  // (matches the new doneBadge in unitRowHtml()), otherwise the
+  // practiced/passed fractions, plus the "you are here"/"next" suffix
+  // on the current row.
+  const assessmentWord = `category assessment${assessmentTotal === 1 ? '' : 's'}`;
+  const ariaStatus = done
+    ? `completed, ${passedCount} of ${assessmentTotal} ${assessmentWord} passed`
+    : `${practicedSigns} of ${totalSigns} signs practiced, ${passedCount} of ${assessmentTotal} ${assessmentWord} passed`;
+  const ariaLabel = `Open Unit ${unit.order}: ${unit.title} — ${ariaStatus}${hereSuffix}` +
+    (isCurrentUnit && currentSignLabel ? `, next: ${currentSignLabel}` : '');
+
   return unitRowHtml(icon, unit, '', href, state, {
     current: isCurrentUnit,
+    done,
     currentDetail: currentSignLabel,
     practicePct,
     practicedSigns,
     totalSigns,
     passedCount,
-    assessmentTotal
+    assessmentTotal,
+    ariaLabel,
   });
 }
 
@@ -699,6 +840,17 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
     : '';
   const referenceBadge = metrics.reference
     ? '<span class="unit-progress-row__reference-badge">Reference</span>'
+    : '';
+  // NEW (Priority 2 §13, 2026-08-22) — "Current/locked/done state must
+  // not rely only on border color." Locked rows already say so in
+  // `statusText` ("Locked · finish the previous unit first"); current
+  // rows already had `currentBadge` above. A fully-done row
+  // (passedCount === assessmentTotal) had NO non-color signal at all
+  // before this — only the left border/background flipping to
+  // `--clr-success` told a learner a unit was finished. Same
+  // text-badge shape as the two badges above it, see css/dashboard.css.
+  const doneBadge = metrics.done
+    ? '<span class="unit-progress-row__done-badge">✓ Completed</span>'
     : '';
   // PRIORITY 1 §5 — see renderUnitRow()'s own comment for where this
   // string comes from. Only ever set alongside currentBadge.
@@ -725,15 +877,30 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
     <span class="unit-progress-row__body">
       <span class="unit-progress-row__head">
         <span class="unit-progress-row__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</span>
-        ${currentBadge}${referenceBadge}
+        ${currentBadge}${doneBadge}${referenceBadge}
       </span>
       ${currentDetailMarkup}
       ${practiceMarkup}
     </span>
   `;
 
+  // NEW (Priority 2 §13, 2026-08-22) — "Ensure CTA labels describe the
+  // action." Without this, a screen reader linearized a row's visible
+  // text + nested aria-labels into one run-on string with no verb
+  // ("Unit 3 · Everyday Essentials You are here Next: Requests → HELLO
+  // 45% practice progress 0/1 category assessment passed"). Every
+  // linked row now gets an explicit `aria-label` starting "Open Unit
+  // N: {title} — …", built entirely from fields renderUnitRow() already
+  // computed (see that function) — no new lookup. Only applied when
+  // `href` exists: locked/"coming soon" rows render as plain <div>s (no
+  // href), were never focusable, and an aria-label on a non-interactive
+  // div wouldn't help a keyboard/screen-reader user here anyway.
+  const ariaAttr = href && metrics.ariaLabel
+    ? ` aria-label="${escapeHtml(metrics.ariaLabel)}"`
+    : '';
+
   return href
-    ? `<a class="unit-progress-row${stateClass}" href="${href}">${inner}</a>`
+    ? `<a class="unit-progress-row${stateClass}" href="${href}"${ariaAttr}>${inner}</a>`
     : `<div class="unit-progress-row${stateClass}">${inner}</div>`;
 }
 
@@ -977,7 +1144,16 @@ function renderContinueCard(destination) {
 
   if (secondaryBtn) {
     secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
-    secondaryBtn.textContent = 'Open Path';
+    // CHANGED (Priority 2 §13, 2026-08-22) — "Ensure CTA labels
+    // describe the action." Previously always read the generic "Open
+    // Path" no matter which unit it opened; now names the unit, same
+    // `unit` field the eyebrow line above already shows. The plain
+    // "Open Path" fallback only survives for the case where this
+    // button is visible with no `unit` — today unreachable, since both
+    // branches above that lack a `unit` (empty chain / everything
+    // passed) already leave `secondaryBtn.style.display` as 'none' —
+    // kept only for defensiveness, not currently exercised.
+    secondaryBtn.textContent = unit ? `Open Unit ${unit.order} Path` : 'Open Path';
     secondaryBtn.style.display = '';
   }
 }

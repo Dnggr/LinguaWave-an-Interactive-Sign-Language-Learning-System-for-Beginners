@@ -2837,3 +2837,188 @@ that the string/syntax checks above wouldn't.
 4. Everything else already open per every prior session log entry
    (Phase 7 capture/retraining foremost).
 5. Auth remains explicitly excluded.
+
+### 2026-08-22 (same day, follow-up 3) — Priority 2 §13 ("Dashboard accessibility and feedback")
+
+**Pre-change order followed**, per this file's own header rule: this
+file → `PIVOT_CHECKLIST.md` §13 (six unchecked sub-items, no prior
+session had touched it) → `SYSTEM_ARCHITECTURE.md`'s Rev 4 section,
+confirming an "accessibility" item implied no curriculum/progress-model
+change before starting.
+
+**Request:** implement §13, `js/auth.js` explicitly excluded ("my
+teammate will fix that") — same exclusion every session has honored.
+
+**Audit result:** 3 of 6 sub-items were already satisfied by earlier
+sessions (text state labels; progress percentages already paired with
+adjacent text everywhere; CTA labels mostly action-verb-led already,
+except one). No change needed for those three — see
+`SYSTEM_ARCHITECTURE.md`'s matching §13 entry for the itemized list.
+
+**Three fixes made:**
+1. `js/dashboard.js`'s `renderUnitRow()`/`unitRowHtml()` — a new
+   `.unit-progress-row__done-badge` ("✓ Completed") for fully-passed
+   unit rows, so "done" no longer relies only on the row's left-border/
+   background color.
+2. Per-row `aria-label`s (built from fields already computed — `unit`,
+   `passedCount`, `assessmentTotal`, `practicedSigns`, `totalSigns`,
+   `isCurrentUnit` — no new lookup) + `renderContinueCard()`'s
+   secondary button reworded from a bare "Open Path" to "Open Unit {N}
+   Path".
+3. `pages/dashboard.html` — a skip link (`.skip-link`, first element in
+   `<body>`) jumping to `#continue-cta` (`id` added to the existing
+   `[data-continue-learning]` anchor, no new element), so keyboard nav
+   reaches Continue Learning without crossing the full navbar first.
+
+**Fourth item, CSS-only:** `a.unit-progress-row:focus-visible` in
+`css/dashboard.css` — an INSET box-shadow ring, not `outline` or an
+outer box-shadow, because `.unit-progress-list`'s `overflow: hidden`
+(needed to clip square row corners to the list's rounded ones) would
+clip an outer ring on the first/last row. Scoped to unit rows only, per
+the item's literal wording; other buttons already show the browser
+default focus outline (nothing in `css/style.css` removes it for
+`.btn`) and were left alone.
+
+**Files touched:** `pages/dashboard.html` (skip link + `id`, header
+comment), `js/dashboard.js` (`renderUnitRow()`, `unitRowHtml()`,
+`renderContinueCard()`, header comment), `css/dashboard.css`
+(`.skip-link`, `.unit-progress-row__done-badge`,
+`a.unit-progress-row:focus-visible`). `js/auth.js`, `js/data.js`,
+`js/learn.js`, `js/engine/progress.js` — not opened, per
+`PIVOT_CHECKLIST.md` §20.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean.
+Declaration-vs-call-site check — all functions still resolve. HTML
+tag-balance check on `pages/dashboard.html` (comments stripped first,
+since the header comment's own prose mentions literal tag names like
+`<h1>`) — balanced. CSS brace count on `css/dashboard.css` — balanced;
+every new custom property used confirmed to exist in `css/style.css`'s
+`:root` token list, both dark and light palettes. A Node + `vm` harness
+ran `renderUnitRow()` against mocked `LWData`/`LWProgress` across
+locked/current/done/interactive/info/reference states — confirmed the
+done badge appears only on fully-passed rows and every linked row's
+`aria-label` is present and HTML-escaped (tested with a unit title
+containing `&`/`<`). Traced the skip link manually against DOM order —
+first element in `<body>`, `#continue-cta` resolves to exactly one
+element. **Not verified in a real browser or with an actual screen
+reader** — same standing gap as every prior session, called out
+specifically here since a screen-reader pass is the one check that
+would most directly confirm an accessibility item actually worked.
+
+**Also noticed, not fixed (unrelated to §13):**
+`pages/dashboard.html`'s own header comment still says "Contains FOUR
+things, in this order" while listing five items below it — a
+pre-existing doc-count drift, not something this session's scope (or
+this task) asked to touch. Flagged here rather than silently fixed or
+silently ignored.
+
+**Still open:**
+1. Real-browser AND screen-reader verification of this session's
+   changes — the standing gap, doubly so for an accessibility item.
+2. `PIVOT_CHECKLIST.md` §14–§15 (responsive behavior, error/loading
+   states) — not started.
+3. A general `.btn` focus-style pass was flagged as a possible future
+   item (not asked for here, not built).
+4. Everything else already open per every prior session log entry
+   (Phase 7 capture/retraining foremost).
+5. Auth remains explicitly excluded.
+
+### 2026-08-22 (same day, follow-up 4) — Priority 2 §14 ("Responsive behavior")
+
+**Pre-change order followed**, per this file's own header rule: this
+file → `PIVOT_CHECKLIST.md` §14 (found unchecked, eight sub-items, no
+prior session had touched it) → `SYSTEM_ARCHITECTURE.md`'s Rev 4
+section, confirming a "responsive behavior" item implied no
+curriculum/progress-model change before starting.
+
+**Request:** implement §14, `js/auth.js` explicitly excluded ("my
+teammate will fix that") — same exclusion every session has honored.
+
+**Methodology change — first real-browser verification in this
+project's history, not screenshot-tracing or static analysis.** The
+sandbox already had Playwright and a cached Chrome-for-Testing binary
+available. Rather than keep flagging "not verified in a real browser"
+as a standing gap, this session built a small throwaway test harness
+(`/home/claude/test_responsive.js`, not part of the repo/deliverable):
+a local static file server served the actual repo, and `js/auth.js`'s
+Firebase `import` URLs (gstatic.com) were intercepted at the network
+layer (`page.route()`) and swapped for a stub module — no edit to
+`auth.js` itself, just faking what it talks to, since Firebase isn't
+reachable from this sandbox. That let the real `pages/dashboard.html`
+load and render end-to-end. Rendered at desktop (1440px), ~1200px,
+~900px, and 375px mobile, in two data states: empty/new-account, and a
+populated state (multiple completed units, 189 practiced signs,
+deliberately including long phrase-length Unit 6 signs like "WHERE IS
+THE HOSPITAL" to stress-test wrapping/truncation with realistic long
+content instead of short placeholder strings).
+
+**Every checklist sub-item was checked against the live rendered DOM,
+not eyeballed:**
+- Horizontal-overflow: queried every element for `rect.right >
+  viewportWidth` at each of the 4 widths.
+- Unit-row tap targets: measured actual rendered height (75–152px
+  across every width — comfortably above the ~44px usual minimum).
+- Recap chips: measured actual rendered width (capped at 160px as
+  styled) and used `scrollWidth` vs `clientWidth` to detect truncation
+  directly, rather than assuming the CSS did what it said.
+- Continue CTA: stress-tested by injecting an artificially long
+  destination title/eyebrow (well past any real `data.js` category+sign
+  name) at 900px and 375px — confirmed the button stays full-width and
+  clearly visible below the wrapped title at both widths. No code
+  change needed here; existing `.continue-card` CSS already handles it.
+
+**One real bug found AND fixed, inside `css/dashboard.css`:**
+`.recap-card__img` used `display:flex; justify-content:center` together
+with `text-overflow: ellipsis` — flexbox-centering an overflowing
+element breaks the browser's ellipsis anchor entirely. Long chip labels
+were being silently clipped with **no "…" shown**, and because the box
+was centered rather than left-anchored, some labels lost characters off
+the *front* of the string instead of the end (rendered "HIS IS AN
+EMERGENCY" for practiced sign "THIS IS AN EMERGENCY"). This was caught
+by literally reading the rendered pixels (a cropped/zoomed screenshot
+of the recap grid), not by reading the CSS and assuming it worked.
+Fixed by switching to `display:block; text-align:center` plus a
+`line-height` matching the pill's content height, replacing
+`align-items:center` (block text can't use flex alignment for vertical
+centering). Re-verified in the same harness post-fix: every truncated
+chip now shows a trailing "…" and reads from the start of the phrase,
+at all 4 widths. Grepped every `css/*.css` file for the same
+flex-center-plus-ellipsis pattern — confirmed no other occurrence.
+
+**One real bug found, deliberately NOT fixed — flagged instead:** at
+375px, the shared `.navbar__user` (theme toggle + greeting + "Log out")
+overflows the viewport by ~120–135px (measured: full-page screenshot
+rendered 498–509px wide against a 375px viewport), causing horizontal
+scroll. This is `css/style.css`'s unscoped `.navbar` rules — shared by
+every page, not something `css/dashboard.css` can fix on its own, and
+well outside this item's three-file scope
+(`pages/dashboard.html`/`js/dashboard.js`/`css/dashboard.css` per
+`PIVOT_CHECKLIST.md` §20). Fixing it would mean editing a file every
+other page also depends on, which is exactly the kind of scope
+expansion §20 says needs to be "discovered and documented first," not
+done silently inside a dashboard-scoped task. Left untouched; see
+`PIVOT_CHECKLIST.md` §14 for the recommended fix direction for whoever
+picks this up.
+
+**Files touched:** `css/dashboard.css` only (the one `.recap-card__img`
+rule + its explanatory comment). `pages/dashboard.html` and
+`js/dashboard.js` confirmed byte-identical before/after (hashed, not
+just "didn't mean to touch it"). `js/auth.js`, `js/data.js`,
+`js/learn.js`, `js/engine/progress.js` — not opened, per §20.
+
+**Verification:** real-browser screenshots at all 4 required widths ×
+2 data scenarios, both before and after the fix — this IS the
+verification this time, not a stand-in for it. CSS brace count
+balanced. Grepped for the bug pattern elsewhere (none found). The
+navbar bug is the one item in this session that's confirmed by
+measurement but intentionally not resolved — see above.
+
+**Still open:**
+1. The `.navbar` overflow bug at 375px — flagged above, needs a
+   dedicated session scoped to `css/style.css`.
+2. Real screen-reader verification — standing gap from §13, still open
+   (this session's real-browser work doesn't cover assistive tech).
+3. `PIVOT_CHECKLIST.md` §15 (error/loading states) — not started.
+4. Everything else already open per every prior session log entry
+   (Phase 7 capture/retraining foremost).
+5. Auth remains explicitly excluded.

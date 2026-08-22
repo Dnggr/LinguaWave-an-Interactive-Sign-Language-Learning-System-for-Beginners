@@ -116,6 +116,23 @@
 
     TODO     : Pull real progress data from Firestore using the
                logged-in user's UID. Replace MOCK_PROGRESS entirely.
+
+    PRIORITY 2 §13 (2026-08-22, this session) — "Dashboard accessibility
+    and feedback" (PIVOT_CHECKLIST.md §13). Two markup-level changes in
+    this file:
+      1. A "Skip to Continue Learning" link (`.skip-link`, first
+         element in <body>, see css/dashboard.css) — keyboard nav
+         previously had to cross the whole navbar before reaching the
+         Continue Learning button; the skip link jumps straight to it.
+      2. `id="continue-cta"` added to the SAME `[data-continue-learning]`
+         anchor the skip link targets — no new element.
+    Everything else for §13 (the "not just border color" done-state
+    badge, per-row aria-labels, the "Open Unit N Path" CTA wording, and
+    the row focus-visible ring) is entirely js/dashboard.js /
+    css/dashboard.css — see those files' own §13 comments,
+    PIVOT_CHECKLIST.md §13, and SYSTEM_ARCHITECTURE.md's Dashboard UX
+    Review Addendum for the full writeup + audit findings (3 of the 6
+    sub-items were already compliant, no code needed for those).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -135,6 +152,16 @@
   </script>
 </head>
 <body>
+
+  <!-- ── SKIP LINK (Priority 2 §13, 2026-08-22 session) ────────────
+       PIVOT_CHECKLIST.md §13 — "Ensure keyboard navigation reaches
+       'Continue' first." Hidden off-screen until it receives keyboard
+       focus (see css/dashboard.css's .skip-link), then jumps straight
+       to the Continue Learning button (#continue-cta below) — skips
+       the navbar's 4 focusable items (logo, 2 nav links, theme
+       toggle) + "Log out" that would otherwise come first in tab
+       order. Must stay the very first element in <body> to work. -->
+  <a href="#continue-cta" class="skip-link">Skip to Continue Learning</a>
 
   <!-- ── NAVBAR ───────────────────────────────────────────────── -->
   <nav class="navbar">
@@ -231,7 +258,7 @@
                (renderContinueButton() sets href, renderContinueCard()
                sets the label so it reads "Start Lesson" vs "Continue"
                vs "Review Your Path" depending on state). -->
-          <a href="learn.html" data-continue-learning class="btn btn--primary btn--lg">▶ Continue Learning</a>
+          <a href="learn.html" data-continue-learning id="continue-cta" class="btn btn--primary btn--lg">▶ Continue Learning</a>
           <!-- Secondary CTA — shown only when there's a specific unit
                worth opening (checklist: "secondary CTA only when
                useful"); hidden by JS otherwise. -->
@@ -384,6 +411,16 @@
         block for the 3 wording fixes made alongside this (unit-row
         label text only — no markup/hook here needed to change for
         those).
+
+        PRIORITY 2 §13 (2026-08-22): each row rendered into this
+        container now also carries a "✓ Completed" text badge for
+        fully-passed units and an explicit aria-label describing the
+        action (e.g. "Open Unit 3: Everyday Essentials — 2 of 8 signs
+        practiced, 0 of 1 category assessments passed") — both entirely
+        JS-rendered, no markup change needed here. See
+        js/dashboard.js's renderUnitRow()/unitRowHtml() and
+        css/dashboard.css's .unit-progress-row__done-badge /
+        a.unit-progress-row:focus-visible.
       -->
       <h2 class="mb-4 mt-4 dash-heading--secondary">Learning Path</h2>
       <div class="unit-progress-list" id="unit-progress-list"></div>
