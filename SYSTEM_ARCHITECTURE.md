@@ -49,6 +49,34 @@
 > cross-file wording inconsistencies flagged but deliberately not fixed
 > (would require editing `js/learn.js`/`js/lesson.js`, both outside this
 > session's scope).
+> **§16 learner-review follow-up (2026-08-22, code session)** — audited
+> all 12 items in `PIVOT_CHECKLIST.md` §16 ("Current bugs / problems
+> observed during the 2026-08-21 learner review") against the actual
+> current code. 6 were already resolved by the Priority 0–2 dashboard
+> sessions above and are now checked off with an audit note; 2 were
+> genuine, still-open bugs in `js/lesson.js` and are now fixed (the
+> camera warm-up grace window, and explicit "not a match" text on a
+> confident wrong sign); 1 (the Letter M reference-image placeholder)
+> could not be verified either way — binary image assets aren't present
+> in this environment, so whether `assets/images/basic/M.png` actually
+> exists on disk is unconfirmed, though the placeholder/fallback code
+> itself was traced and confirmed correct; 1 (Alphabet page "what to do
+> next") needs a `js/learn.js` change and was deliberately left alone,
+> per that file's standing exclusion. See the new addendum at the end
+> of the Rev 5 section below and `PIVOT_CHECKLIST.md` §16/§31 for the
+> full breakdown. `js/auth.js` untouched, per standing instruction.
+> **§17 review-list upgrade (2026-08-22, code session)** — audited
+> `PIVOT_CHECKLIST.md` §17 ("Recommended learning-site structure")
+> against the current app. The Continue Learning → Lesson/Course
+> Player → Quick Check → Optional Camera Practice → Category
+> Assessment → Next Unit chain, and the Learning Path → Learn chain,
+> were already fully implemented. The `Dashboard → Review →
+> previously practiced signs` chain was still MVP-only (1 link) —
+> `js/dashboard.js`'s `renderReviewEntry()` now surfaces up to 3
+> recently-practiced signs, still reading only the existing
+> `getAllLearnedSigns()` export. See the "Implementation status —
+> §17" addendum below and `PIVOT_CHECKLIST.md` §17/§32. `js/auth.js`
+> untouched, per standing instruction.
 > **Rev. 4 (IN PROGRESS — Phase 7 partially done)** — Curriculum pivot: single continuous "Basic ASL" path replacing the three user-selectable levels. Planning complete 2026-08-17; Phase 1 (`data.js` restructure), Phase 2 (Fingerspell Your Name drill), Phase 3 (`progress.js` unlock-chain flattening), Phase 4 (`learn.js`/`dashboard.js` trail-view UI), Phase 5 (signup-time level picker removed), and Phase 6 (`quiz.js`/`lesson.js` assessment format changes) implemented 2026-08-18 → 2026-08-20 — see the Rev 4 section below and `PIVOT_CHECKLIST.md` for phase-by-phase status. All app-code phases are complete. Phase 7 (content capture + model retraining) is partially done as of 2026-08-20: the `6`/`9`/`10` routing fix and 6 curated Unit 6 phrases have landed; capture + retraining for the 16 Essential Words, 5 phrase placeholders, and `HELLO`/`THANK YOU`/`HOT`/`COLD` is still open (the latter four now fail cleanly instead of silently — see Rev 5) — see `PIVOT_CHECKLIST.md` and `AI_MEMORY.md`'s Session Log for detail.
 > **Rev. 3** — Lesson/assessment/progress rework (UI + auth untouched, out of scope for this pass).
 > **Rev. 2** — Admin panel removed, login/register merged into the landing page, auth running in bypass mode pending Firebase integration.
@@ -245,6 +273,117 @@ green/yellow behavior mid-assessment, fix #5's actual on-load feel).
 Full reasoning, verification detail, and the "why now" for the
 decision in #1 are in `AI_MEMORY.md`'s 2026-08-21 Session Log entry and
 `PIVOT_CHECKLIST.md`'s matching section — not repeated here.
+
+### Addendum (2026-08-22) — `PIVOT_CHECKLIST.md` §16 learner-review
+### follow-up: audit + camera warm-up grace + explicit wrong-match text
+
+**Requested:** work through §16 ("Current bugs / problems observed
+during the 2026-08-21 learner review"), 12 items, `js/auth.js`
+explicitly excluded (teammate owns it). Read `AI_MEMORY.md`, then
+`PIVOT_CHECKLIST.md`, then this file's Rev 4 section first, per the
+standing pre-change rule.
+
+**Every item was audited against the current code before deciding
+whether it needed a fix** — §16 itself was largely a restatement of
+the 2026-08-21 review session's screenshot findings, several of which
+the *later same-day* Priority 0–2 dashboard implementation sessions
+had already resolved without anyone going back to check the boxes on
+this specific list. Re-verifying each claim against the live code,
+rather than assuming either "still open" or "already done," is what
+this session actually spent most of its time on:
+
+- **6 items (dashboard: "too report-like," practice-vs-mastery
+  wording, "Current Unit" missing, path duplication, no review action,
+  below-the-fold risk) — confirmed ALREADY RESOLVED**, by the Priority
+  0–2 sessions logged above and in `PIVOT_CHECKLIST.md` §1–§15. No
+  dashboard files were touched this session. See `PIVOT_CHECKLIST.md`
+  §16 for exactly which prior section resolves each one.
+- **2 items — genuine, still-open bugs, fixed this session, both in
+  `js/lesson.js` only:**
+  1. **Camera warm-up grace window.** The 2026-08-21 "5 fixes" session
+     already fixed a *staleness* bug (module-load-time timestamps
+     making `bootDetectionEngine()`'s warnings fire on frame one) —
+     but that fix reset the timestamps to "now" and then immediately
+     applied the same tight 600ms/400ms hold constants that are tuned
+     for debouncing brief mid-lesson drop-outs, not for giving a
+     learner a realistic few seconds to physically get in frame after
+     a fresh page load. That's the actual reason the review's Letter M
+     screenshot still showed both warnings — a second, distinct bug
+     from the one already fixed, not a re-verification of it. Added a
+     one-time `INITIAL_WARMUP_MS` (2500ms) grace window, armed in
+     `bootDetectionEngine()` right before `startRenderLoop()` starts,
+     cleared early the moment a hand or face is actually seen so a
+     learner who's ready immediately isn't held to the full window.
+     Every later drop-out during the lesson still uses the original
+     600ms/400ms constants, unchanged. Deliberately NOT applied to
+     `startAssessment()`'s own timestamp reset (`BUG 11 FIX`) — that
+     one fires with the camera already live, a lower-risk moment than
+     a fresh page load, so it was left alone to keep this fix scoped
+     to the bug actually reported.
+  2. **`updateConfidenceUI()` — confident-wrong detections now say so
+     in text, not just color.** The 2026-08-21 "5 fixes" session
+     already made this readout color-correctness-aware (`matched &&
+     isCorrectSign` gates green). The review flagged that yellow vs.
+     green alone still isn't "unmistakable." Added: when a detection
+     is confidently matched but not the sign being taught, the label
+     now reads `"C — not \"M\""` instead of a bare `"C"`. Left
+     low-confidence/still-forming labels as the bare letter — calling
+     an in-progress attempt "not a match" before it's even settled
+     would read as premature, not helpful.
+- **1 item — cannot verify in this environment:** whether
+  `assets/images/basic/M.png` actually exists on disk. This session's
+  source material is a text-only repository export with binary assets
+  (all `.png`/`.mp4` files) excluded, so there's no way to confirm or
+  deny asset presence from here. What WAS confirmed by tracing the
+  code: the placeholder/fallback mechanism itself
+  (`pages/lesson.html`'s `<img onerror=...>` + `updateLessonMeta()`
+  setting `lessonImgHintEl.textContent` fresh per-sign) is already
+  correct and not stale — the hint shown for M is the actual M path,
+  not a leftover from another letter. If the asset genuinely doesn't
+  exist yet, the placeholder UI showing is expected behavior (same
+  known gap as the 0–9 Numbers image assets, already tracked
+  elsewhere), not a bug. Needs a human with filesystem access to
+  confirm either way.
+- **1 item — deliberately not touched:** the Alphabet category page's
+  "what to do next beyond selecting a tile" gap lives in `js/learn.js`
+  rendering, which this checklist's own §20 flags as already-complete
+  architecture and outside this kind of session's allowed scope (same
+  standing exclusion as `data.js`/`progress.js`/`auth.js`). Left open
+  with a direction noted in `PIVOT_CHECKLIST.md` §16 rather than edited
+  unilaterally.
+
+**Verification:** `node --check` on the edited `js/lesson.js` (via a
+temp `.mjs` copy, same discipline as every prior session touching this
+file) — clean, no syntax errors. Character-level brace/paren counts
+confirmed this session's own edits are individually balanced (17 open,
+17 close parens added); the file's overall paren count carries one
+pre-existing +1 imbalance that was already present before this
+session's changes (traced to a prose comment elsewhere in the file,
+not code) — noted here so a future session doesn't mistake it for
+something this session introduced.
+
+**Not verified — same standing limitation as every prior session that
+touched this camera path:** not exercised in a real browser. This is
+the one most worth an actual click-through of the two changes above —
+whether 2500ms feels like the right warm-up length in practice, and
+whether the new `"C — not \"M\""` text fits the confidence readout's
+width without wrapping awkwardly, are both reasoned about here, not
+seen rendered.
+
+**Excluded from this session, as requested:** `js/auth.js` — not
+opened. Also not touched, per the audit above: `pages/dashboard.html`,
+`js/dashboard.js`, `css/dashboard.css` (already correct), `js/data.js`,
+`js/learn.js`, `js/engine/progress.js`.
+
+**Still open:**
+1. Real-browser verification of this session's 2 fixes (see above).
+2. Whether `assets/images/basic/M.png` (and the rest of the letter/
+   number image set) actually exists on disk — needs a human check.
+3. Alphabet page "what to do next" instructional gap — needs a
+   `js/learn.js`-scoped session (see `PIVOT_CHECKLIST.md` §16).
+4. Everything else already open per every prior session log entry
+   (Phase 7 capture/retraining foremost).
+5. `auth.js` remains explicitly excluded.
 
 ---
 
@@ -1282,9 +1421,154 @@ assistive-tech).
 
 **Known remaining items:** the `.navbar` overflow bug (flagged above,
 needs its own `css/style.css`-scoped session). `PIVOT_CHECKLIST.md` §15
-(error/loading states) — not started. Screen-reader verification —
+(error/loading states) — done, see below. Screen-reader verification —
 standing gap from §13. Everything else already open (Phase 7
 capture/retraining foremost). `auth.js` remains untouched.
+
+---
+
+### Implementation status — Dashboard Priority 2 §15 ("Error/loading states", 2026-08-22)
+
+**What it does:** implements `PIVOT_CHECKLIST.md` §15's four sub-items
+— see that file's own §15 entry for the full sub-item-by-sub-item
+write-up; this section gives the same architectural summary §10/§12/
+§13/§14 each got, plus the one thing that makes this entry different
+from those four: **verification surfaced a real, reproducible bug in
+the existing hydration flow, confirmed with a live Playwright run
+rather than assumed from reading the code.**
+
+**The bug:** `window.LWProgress.whenProgressReady()` (`js/engine/
+progress.js`) can hang **forever**, not just take "a moment," whenever
+`js/auth.js`'s Firebase import fails to load — confirmed reproducible
+in this sandbox (`gstatic.com` unreachable), and equally possible for
+a real learner via an ad-blocker, a Firebase outage, or being offline.
+With `window.LWAuth` left `undefined`, `hydrateStore()`'s
+`await window.LWAuth?.whenAuthReady?.()` resolves instantly (optional
+chaining on `undefined`), and the very next line —
+`const { db, doc, getDoc, getCurrentUser } = window.LWAuth;` — throws.
+That throw sits outside `hydrateStore()`'s own try/catch (scoped only
+to the Firestore fetch) and the function is fired without a `.catch()`,
+so it's silently swallowed — and, critically, happens BEFORE
+`resolveProgressReady()` is ever called. The `progressReady` promise
+then never resolves, for the lifetime of the page load. Before this
+session, `pages/dashboard.html` would sit on its static loading
+placeholders indefinitely, with a completely empty unit list and no
+explanation — this session's own real-browser Playwright run confirmed
+that exact behavior against the unmodified code, before any fix was
+written.
+
+**This bug lives entirely inside `js/engine/progress.js`/`js/auth.js`
+— both confirmed out of this task's scope (§20) and NOT opened for
+editing.** The fix implemented here is a dashboard-side safety net
+around the symptom, which is the correct place to draw the line given
+this task's stated scope — but it is not a repair of the actual defect.
+**Flagging clearly for whoever next works in those two files:**
+`hydrateStore()`'s body should be wrapped in a try/catch that calls
+`resolveProgressReady()` in a `finally` block, so this class of bug
+structurally cannot recur regardless of what `dashboard.js` does
+defensively. That's a small, contained fix in `progress.js` alone — it
+just wasn't this session's file to touch.
+
+**What was built, all inside the three in-scope files:**
+1. `js/dashboard.js`: `whenProgressReady()` raced against a bounded 6s
+   timeout instead of awaited unconditionally. On timeout, rendering
+   proceeds from `localStorage` directly — every render function
+   already reads it synchronously, independent of whether remote
+   hydration ever finished (see `progress.js`'s own "write locally
+   first, always" comment on `saveStore()`) — rather than leaving the
+   learner stuck. This is correct for the common case (same device,
+   local cache already matches the account) with one known,
+   deliberately-not-solved tradeoff: a brand-new device where hydration
+   specifically is what's stuck could show stale/incomplete progress
+   instead of the learner's real synced history, since there's no way
+   to distinguish "genuinely nothing to sync" from "sync is broken"
+   without touching `progress.js` itself.
+2. `js/dashboard.js`: new `showProgressUnavailable()` for the genuine
+   "nothing to render" case — `window.LWProgress`/`window.LWData`
+   themselves never loaded, or a render function throws. Reuses
+   `css/style.css`'s existing `.alert`/`.alert--error` component (the
+   same `--clr-red` reuse pattern `toast.css`/`quiz.css` already use —
+   no new color token invented) with a working Reload action and a "Go
+   to Learn" link, so the learner is never simply stuck.
+3. `pages/dashboard.html`: `#unit-progress-list` (previously
+   completely empty until JS ran) and `#recap-empty` (previously showed
+   the real "Nothing practiced yet" copy from first paint, effectively
+   indistinguishable from a learner who's genuinely practiced nothing)
+   both now carry an explicit, neutral loading placeholder;
+   `js/dashboard.js`'s `renderRecap()` explicitly re-sets the genuine
+   empty-state copy once zero-signs is actually confirmed.
+4. `css/dashboard.css`: a small, `prefers-reduced-motion`-aware
+   `.dash-loading-pulse` opacity animation applied to the loading
+   placeholders above.
+
+**No auth handling was added.** No `window.LWAuth` call anywhere in
+this session's changes — every change is this page's own
+wait → render → fallback flow, per this item's own fourth sub-item and
+every session's honored exclusion.
+
+**Scope:** `js/dashboard.js`, `pages/dashboard.html`,
+`css/dashboard.css`. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` — not opened.
+
+**Verification:** three separate real-browser Playwright runs against
+the live repo (not static analysis) — the bug reproduced on unmodified
+code, the timeout-then-render-from-cache path against the fixed code,
+and the true-unavailable path (`progress.js`'s own `<script>` request
+blocked outright via `page.route()`, a different failure mode from the
+hang). Full detail, including the exact console/pageerror traces and a
+note on a Reload-button test method that initially gave a false
+negative, lives in `PIVOT_CHECKLIST.md` §15 and `AI_MEMORY.md`'s
+matching session-log entry rather than duplicated here. `node --check`,
+HTML tag-balance, and CSS brace-balance all clean; both reused custom
+properties confirmed to already exist in `css/style.css`.
+
+**Not verified:** a real screen-reader pass (standing gap from §13/§14,
+unrelated to this item's own scope). A genuinely-successful Firebase
+hydration end-to-end, since this sandbox cannot reach `gstatic.com` at
+all — every scenario tested here necessarily has Firebase failing one
+way or another. Not a gap in this fix's own logic (the timeout/fallback
+doesn't care *why* hydration didn't resolve), but worth knowing: no
+session in this project's history has yet watched this dashboard
+hydrate successfully against real Firebase in an automated test.
+
+**Known remaining items:** the real root-cause fix in
+`js/engine/progress.js`/`js/auth.js` (flagged above — out of scope
+here, not solved). The `.navbar` overflow bug from §14 — still open.
+Screen-reader verification — still open. **All five Priority 2 items
+(§11–§15) are now done** — worth a fresh full read of
+`PIVOT_CHECKLIST.md` to confirm what (if anything) is next, rather than
+assuming another dashboard item is queued.
+
+### Implementation status — §17 (2026-08-22)
+
+`PIVOT_CHECKLIST.md` §17 ("Recommended learning-site structure") is now
+audited and, for the one gap found, implemented.
+
+**Audit result:** the course-player chain (Continue Learning → Lesson →
+Quick Check → Optional Camera Practice → Category Assessment → Next
+Unit) and the Learning Path → Learn chain were already fully built by
+earlier phases/sessions — nothing needed to change there.
+
+**What changed:** the Review chain (`Dashboard → Review → previously
+practiced signs`) was still the single-link MVP from Priority 1 §6.
+`renderReviewEntry()` now shows up to 3 recently-practiced signs
+instead of 1, most-recent-first, reusing the same
+`getAllLearnedSigns()` call and the same "reopen the sign in
+lesson.html" pattern §6 already established. Still deliberately not a
+spaced-repetition trainer — no new algorithm, `js/engine/progress.js`
+untouched.
+
+**Scope respected:** `pages/dashboard.html`, `js/dashboard.js`,
+`css/dashboard.css` only. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` not opened.
+
+**Verification:** `node --check` — clean. Not exercised in a real
+browser — same standing gap as every dashboard session to date.
+
+**Known remaining items:** `PIVOT_CHECKLIST.md` §21's checkbox drift
+(still unaudited); `DEBUG_UNLOCK_ALL` in `progress.js` still hardcoded
+`true`; real-browser verification remains the single biggest open risk
+across every dashboard session.
 
 ---
 

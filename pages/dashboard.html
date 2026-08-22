@@ -133,6 +133,32 @@
     PIVOT_CHECKLIST.md §13, and SYSTEM_ARCHITECTURE.md's Dashboard UX
     Review Addendum for the full writeup + audit findings (3 of the 6
     sub-items were already compliant, no code needed for those).
+
+    PRIORITY 2 §15 (2026-08-22, this session) — "Error/loading states"
+    (PIVOT_CHECKLIST.md §15). Two markup-level changes, both loading-
+    state placeholders only — see js/dashboard.js's own §15 header
+    paragraph for the full story, including a REAL (Playwright-verified,
+    not hypothetical) hang bug this item's verification surfaced in
+    js/engine/progress.js / js/auth.js — neither file touched, per §20:
+      1. `#unit-progress-list` (below, in "Learning Path") previously
+         started completely empty and stayed that way until JS ran —
+         the literal "blank unit list" this checklist item names. Now
+         has a visible "Loading your learning path…" placeholder.
+      2. `#recap-empty` (in "Signs You've Learned" further down)
+         previously showed the real "Nothing practiced yet" copy from
+         first paint — indistinguishable from a learner who's actually
+         practiced nothing, while this was really just still loading.
+         Now shows a neutral loading message; js/dashboard.js's
+         renderRecap() explicitly re-sets the real empty-state text once
+         it's confirmed true.
+    The `.dash-loading-pulse` class (css/dashboard.css) is a small,
+    `prefers-reduced-motion`-aware opacity animation applied to both —
+    and to the pre-existing "Loading your path…" eyebrow on the Continue
+    Learning card below, which already existed before this session but
+    had no animation cue that it was still working. Everything else this
+    item asks for (the timeout + safe-fallback logic when progress data
+    genuinely can't load) lives entirely in js/dashboard.js's new
+    showProgressUnavailable() — no further markup needed for that part.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -238,7 +264,7 @@
         <div class="continue-card__main">
           <span class="continue-card__icon" data-continue-icon aria-hidden="true">🎯</span>
           <div class="continue-card__text">
-            <p class="continue-card__eyebrow" data-continue-eyebrow>Loading your path…</p>
+            <p class="continue-card__eyebrow dash-loading-pulse" data-continue-eyebrow>Loading your path…</p>
             <p class="continue-card__title" data-continue-title>—</p>
             <!-- Progress WITHIN this destination (e.g. "3/8 signs
                  practiced in Family") — deliberately separate from the
@@ -423,7 +449,15 @@
         a.unit-progress-row:focus-visible.
       -->
       <h2 class="mb-4 mt-4 dash-heading--secondary">Learning Path</h2>
-      <div class="unit-progress-list" id="unit-progress-list"></div>
+      <!-- PRIORITY 2 §15 (2026-08-22): was completely empty here until
+           JS ran — js/dashboard.js's renderUnitList() always replaces
+           this via innerHTML (success) or showProgressUnavailable()
+           replaces it with an .alert--error (failure), so this
+           placeholder is only ever visible for the brief window before
+           either one runs. See this page's header comment's §15 note. -->
+      <div class="unit-progress-list" id="unit-progress-list">
+        <p class="text-muted unit-progress-list__loading dash-loading-pulse">Loading your learning path…</p>
+      </div>
     </div>
   </section>
 
@@ -514,8 +548,15 @@
         <span class="recap-head__count" data-recap-count></span>
       </div>
       <p class="text-muted recap-head__subtitle">Recently practiced signs — not a mastery list.</p>
+      <!-- PRIORITY 2 §15 (2026-08-22): #recap-empty used to show the
+           real "Nothing practiced yet" copy from first paint — no way
+           to tell that apart from a learner who's genuinely practiced
+           nothing while this section was still loading. Neutral loading
+           text now; js/dashboard.js's renderRecap() explicitly re-sets
+           this to the real empty-state copy once it's confirmed true
+           (see that function's own §15 comment). -->
       <div class="recap-grid" id="recap-grid">
-        <p class="text-muted" id="recap-empty">Nothing practiced yet — open a lesson to get started!</p>
+        <p class="text-muted dash-loading-pulse" id="recap-empty">Loading your practiced signs…</p>
       </div>
       <div class="recap-foot" data-recap-foot style="display:none;">
         <button type="button" class="btn btn--ghost btn--sm" data-recap-toggle>View all</button>
@@ -524,23 +565,26 @@
   </section>
 
   <!-- ── REVIEW ENTRY POINT ────────────────────────────────────────
-       PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 1
-       item #6 ("Add a review/repetition entry point," 2026-08-21 code
-       session). Per that item and SYSTEM_ARCHITECTURE.md's Dashboard
-       UX Review Addendum → "Review entry point": deliberately NOT a
-       spaced-repetition trainer. No new algorithm was written and
-       js/engine/progress.js was not modified — see js/dashboard.js's
-       renderReviewEntry() header comment.
+       PIVOT_CHECKLIST.md Priority 1 §6 ("Add a review/repetition
+       entry point," 2026-08-21), extended 2026-08-22 per §17
+       ("Recommended learning-site structure" — this step is
+       "Review → previously practiced signs," plural). Per
+       SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Review
+       entry point": deliberately NOT a spaced-repetition trainer. No
+       new algorithm was written and js/engine/progress.js was not
+       modified — see js/dashboard.js's renderReviewEntry() header
+       comment.
 
-       The MVP action reuses the existing lesson/camera-practice
-       infrastructure: it reopens the learner's most recently
-       practiced sign. There is no dedicated Review/Trainer page yet
-       ("MVP can be a simple link/button to a review/trainer route
-       once available" — PIVOT_CHECKLIST.md §6), so [data-review-link]
-       points at lesson.html today. When that dedicated route exists,
-       swap the href source in renderReviewEntry() only — this
-       section's markup and the [data-review-actions] hook are meant
-       to stay stable across that change.
+       Shows up to 3 recently-practiced signs (most recent first),
+       each its own small link. Still reuses the existing lesson/
+       camera-practice infrastructure — there is no dedicated
+       Review/Trainer page yet ("MVP can be a simple link/button to a
+       review/trainer route once available" — PIVOT_CHECKLIST.md §6),
+       so every [data-review-link] points at lesson.html today. When
+       that dedicated route exists, swap the href source in
+       renderReviewEntry() only — this section's markup and the
+       [data-review-actions] hook are meant to stay stable across that
+       change.
 
        [data-review-actions] is filled entirely by JS. The empty state
        (nothing practiced yet) is also rendered by JS, not hardcoded

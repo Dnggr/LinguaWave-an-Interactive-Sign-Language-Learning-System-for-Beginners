@@ -3022,3 +3022,204 @@ measurement but intentionally not resolved — see above.
 4. Everything else already open per every prior session log entry
    (Phase 7 capture/retraining foremost).
 5. Auth remains explicitly excluded.
+
+
+---
+
+### 2026-08-22 (new session) — `PIVOT_CHECKLIST.md` §16 learner-review follow-up: camera warm-up grace + explicit wrong-match text + checklist audit
+
+**Requested:** work through §16 ("Current bugs / problems observed during
+the 2026-08-21 learner review"), 12 items. `js/auth.js` explicitly excluded
+("my teammate will fix that") — same standing exclusion as every session.
+
+**Pre-change checks completed**, per this file's own header rule: read this
+file first, then `PIVOT_CHECKLIST.md` (found §16, plus read §17–§21 for the
+surrounding recommendation/scope/definition-of-done context it sits in),
+then `SYSTEM_ARCHITECTURE.md`'s Rev 4 section — confirmed none of §16's 12
+items imply a change to lesson ordering, `data.js`, `progress.js`, or the
+signup flow before starting.
+
+**Audited every item against the current code first, rather than trusting
+§16's own unchecked boxes.** §16 is close to a verbatim restatement of the
+2026-08-21 review session's screenshot findings — but several *later,
+same-day* Priority 0–2 dashboard implementation sessions had already fixed
+6 of those 12 things without anyone going back to check this specific list.
+Re-verifying each claim against the live code (not assuming "still open"
+just because the box was empty, and not assuming "already done" without
+checking either) is most of what this session's time went to:
+
+- **6 items — confirmed already resolved, checked off with a pointer to the
+  session that actually fixed each one** (dashboard "too report-like" →
+  Priority 0 #1/#2; practice-vs-mastery wording → Priority 0 #3; missing
+  Current Unit → Priority 1 §8, confirmed via `grep` that `data-user-level`
+  no longer appears anywhere in app code; path duplication → Priority 1
+  §10; no review action → Priority 1 §6's `renderReviewEntry()`; below-the-
+  fold risk → Priority 1 §9). No dashboard files were opened to make a
+  change — only read, to confirm. See `PIVOT_CHECKLIST.md` §16 for the
+  one-line pointer against each.
+- **2 items — genuine, still-open bugs, both in `js/lesson.js` only, both
+  fixed this session:**
+  1. **Camera warm-up grace window.** Root cause, traced by reading
+     `bootDetectionEngine()`/`startRenderLoop()` directly rather than
+     re-guessing: the 2026-08-21 "5 fixes" session already fixed a
+     *staleness* bug (`lastFaceSeenAt`/`lastHandSeenAt` stamped at module-
+     load time, before the async camera/model boot, so both warnings fired
+     on frame one). That fix reset the timestamps to "now" — but then the
+     render loop immediately applied the SAME `FACE_WARN_HOLD_MS`/
+     `HAND_STATUS_HOLD_MS` constants (600ms/400ms) that are tuned for
+     debouncing a brief mid-lesson drop-out, not for giving a learner a
+     realistic few seconds to physically get in frame after a page just
+     finished loading. That's the actual, distinct reason the 2026-08-21
+     review's Letter M screenshot still showed both warnings, even though
+     the staleness bug really was already fixed — this session's fix is
+     for a second bug, not a re-verification of the first.
+     Fix: added `INITIAL_WARMUP_MS = 2500` and a `warmingUp` flag, armed in
+     `bootDetectionEngine()` right before `startRenderLoop()` starts (a
+     `setTimeout` clears it after 2.5s as a fallback), and cleared early,
+     inside the render loop itself, the moment a hand OR face is actually
+     seen — so a learner who's ready immediately isn't held to the full
+     window. `startRenderLoop()`'s two hold-time checks now read
+     `warmingUp ? INITIAL_WARMUP_MS : <original constant>`. Every later
+     drop-out during the lesson (once `warmingUp` clears) still uses the
+     original tight 600ms/400ms behavior, completely unchanged.
+     **Deliberately NOT applied** to `startAssessment()`'s own timestamp
+     reset (the existing `BUG 11 FIX` further down the file, for a fresh
+     practice-check run) — that one fires with the camera already live and
+     the learner already through boot, a lower-risk moment than a cold page
+     load, so left alone to keep this fix scoped to the bug actually
+     reported rather than changing behavior nobody flagged.
+  2. **`updateConfidenceUI()` — confident-wrong detections now say so in
+     text.** The 2026-08-21 "5 fixes" session made this readout's color
+     correctness-aware (`result.matched && result.label ===
+     getActiveSignId()` gates green vs. yellow/muted). The 2026-08-21
+     review flagged that color alone still isn't "unmistakable" — a
+     learner skimming quickly, or who can't rely on color perception, saw
+     a bare "C" with nothing textually marking it wrong. Fix: when a
+     detection is confidently matched (`result.matched`) but not the
+     active sign, the readout now reads `${result.label} — not
+     "${expectedId}"` (e.g. `C — not "M"`) instead of the bare letter.
+     Deliberately scoped to ONLY the confident-wrong case — a low-
+     confidence/still-forming label (frames where the model hasn't
+     settled yet) is left as the bare letter, since flagging an
+     in-progress attempt as "not a match" before it's even confident would
+     read as premature rather than helpful.
+- **1 item — cannot verify in this environment.** Whether
+  `assets/images/basic/M.png` actually exists on disk. This session's
+  source material is a text-only repository export (Repomix) with all
+  binary files (`.png`/`.mp4`/model weights) excluded by design — there is
+  no way to confirm or deny asset presence from here, unlike a real
+  checkout. What COULD be confirmed by tracing the code: the fallback
+  mechanism itself is correct and not stale — `updateLessonMeta()` sets
+  `lessonImgHintEl.textContent` to the real per-sign `imageUrl` every time
+  a lesson loads (this was the exact bug the 2026-08-20 review session
+  already fixed for the name-drill case; letter lessons were never
+  affected by that particular bug), and `pages/lesson.html`'s `<img
+  onerror="...">` only swaps to the placeholder box if the real file
+  actually fails to load. If `M.png` genuinely doesn't exist yet, the
+  placeholder showing is correct, expected behavior — same known content
+  gap as the already-tracked missing 0–9 Numbers image set — not a new
+  bug. Left unchecked in `PIVOT_CHECKLIST.md` §16 with this explanation;
+  needs a human with filesystem access to actually look.
+- **1 item — deliberately not touched.** The Alphabet category page's "no
+  obvious what to do next beyond selecting a tile" gap lives entirely in
+  `js/learn.js`'s category-tile rendering. `PIVOT_CHECKLIST.md` §20 (the
+  dashboard session's own scope rules) already flags `learn.js` as
+  "architecture is already complete" and out of bounds without a
+  documented blocker — same standing exclusion this file's own header
+  rule applies to `data.js`/`progress.js`/`auth.js`. Left open rather than
+  edited unilaterally; noted a possible direction (auto-highlight/badge
+  the next not-yet-practiced tile) in `PIVOT_CHECKLIST.md` §16 for
+  whoever picks up a `learn.js`-scoped session.
+
+**Verification performed:**
+- `node --check` on the edited `js/lesson.js`, via a temp `.mjs` copy (it's
+  an ES module — `import`/`export` — same discipline every prior session
+  touching this file has used) — clean, no syntax errors.
+- Character-level brace/paren balance checked programmatically before and
+  after the edit: this session's own changes added exactly 17 open and 17
+  close parentheses (individually balanced). The file as a whole carries a
+  pre-existing +1 paren-count imbalance that was ALREADY present before
+  this session touched anything (confirmed by running the same count
+  against a fresh, unedited extraction) — almost certainly a parenthetical
+  in a prose comment somewhere, not a code defect (`node --check` would
+  have caught a real one). Noting this explicitly so a future session
+  doesn't mistake a harmless pre-existing artifact for something this
+  session introduced.
+- Every new identifier (`INITIAL_WARMUP_MS`, `warmingUp`, `warmupTimer`)
+  greppped to confirm single, consistent declaration + all read/write
+  sites agree (declared once near `FACE_WARN_HOLD_MS`, armed in
+  `bootDetectionEngine()`, cleared in both the render loop and its own
+  fallback timer, read in both hold-time checks).
+
+**NOT verified — same standing limitation as every prior session that
+touched this camera path:** not exercised in a real browser. In particular:
+whether 2.5s is the right warm-up length in practice (too short still
+flashes the warning, too long feels unresponsive to a learner who really
+did wander off), and whether the new `"C — not \"M\""` string fits the
+confidence readout's width without wrapping oddly on narrow viewports —
+both reasoned about, not seen rendered. Recommend an actual click-through
+of the Letter M lesson specifically (both cold-load, and holding a wrong
+letter steady) to confirm.
+
+**Files changed:** `js/lesson.js` only (2 fixes, function-scoped: the
+`FACE_WARN_HOLD_MS`/`HAND_STATUS_HOLD_MS` declaration block,
+`bootDetectionEngine()`, `startRenderLoop()`'s inner `loop()`, and
+`updateConfidenceUI()`). `pages/dashboard.html`, `js/dashboard.js`,
+`css/dashboard.css` — read during the audit, confirmed already correct,
+not modified. `js/auth.js`, `js/data.js`, `js/learn.js`,
+`js/engine/progress.js` — not opened, per standing exclusions.
+
+**Not done this session, flagging rather than silently expanding scope:**
+`PIVOT_CHECKLIST.md` §21 ("Definition of done") has the same kind of
+checkbox drift §16 had — most of its items are actually already satisfied
+by the Priority 0–2 sessions, but the boxes were never checked. This
+session's explicit ask was §16 only, so §21 was left as-is; worth the same
+audit treatment next.
+
+**Still open after this session:**
+1. Real-browser verification of this session's 2 `js/lesson.js` fixes (see
+   above) — the single biggest recommendation coming out of this session,
+   consistent with every camera-touching session before it.
+2. Whether `assets/images/basic/M.png` (and the rest of the letter/number
+   image set) actually exists on disk — needs a human filesystem check,
+   not another AI session.
+3. Alphabet page "what to do next" instructional gap — needs a dedicated
+   `js/learn.js`-scoped session.
+4. `PIVOT_CHECKLIST.md` §21's own unaudited checkbox drift (see note
+   above).
+5. Everything else already open per every prior session log entry (Phase 7
+   capture/retraining foremost).
+6. `auth.js` remains explicitly excluded, per user instruction.
+
+### 2026-08-22 (new session) — PIVOT_CHECKLIST.md §17 "Recommended learning-site structure" audit + Review-list upgrade
+**Requested:** implement §17, `js/auth.js` explicitly out of scope ("my teammate will do it").
+
+**Audited every hop in §17 against current code before changing anything.**
+Continue Learning → Lesson/Course Player → Quick Check → Optional Camera
+Practice → Category Assessment → Next Unit, and Learning Path → Learn, are
+already fully implemented (Phases 4–6 + prior dashboard sessions — see
+`quiz.js`'s `buildActionButtons()` for confirmation the Next-Unit hop
+correctly crosses unit boundaries). The one real gap: `Dashboard → Review →
+previously practiced signs` (plural) was MVP-only — `renderReviewEntry()`
+only ever surfaced 1 sign.
+
+**Changed (`js/dashboard.js`, `css/dashboard.css`, `pages/dashboard.html`
+only):** `renderReviewEntry()` now shows up to `REVIEW_ENTRY_LIMIT = 3`
+recently-practiced signs instead of 1, most-recent-first, each its own
+small link. Still reads only the existing `getAllLearnedSigns()` export —
+no new `progress.js` code, no timestamp/spaced-repetition logic (per
+SYSTEM_ARCHITECTURE.md's "Review entry point" note, still explicitly out
+of scope). `.review-card__actions` gained `display:flex; flex-wrap:wrap;
+gap` to hold multiple chips.
+
+**Verification:** `node --check` on the edited `js/dashboard.js` — clean.
+No changes to `data.js`/`learn.js`/`progress.js`/`auth.js`.
+
+**Not done, flagging:** `PIVOT_CHECKLIST.md` §21's checkbox drift (same
+issue §16 had) — still unaudited, same as the last two sessions left it.
+`DEBUG_UNLOCK_ALL` in `progress.js` is still hardcoded `true` — unrelated
+to this ask, re-flagging so it isn't forgotten before deploy.
+
+**Still open:** everything already open per every prior entry (Phase 7
+capture/retraining foremost); §21 audit; real-browser verification of
+this session's change; `auth.js` remains explicitly excluded.
