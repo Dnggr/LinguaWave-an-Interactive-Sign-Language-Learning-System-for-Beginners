@@ -2,6 +2,39 @@
  * dashboard.css — Dashboard Page Styles
  * CONNECTS : pages/dashboard.html
  */
+
+/* ── Skip link (Priority 2 §13, 2026-08-22 session) ──────────────────
+   PIVOT_CHECKLIST.md §13 ("Ensure keyboard navigation reaches
+   'Continue' first"). The Continue Learning button was already the
+   first focusable element in this PAGE's own content (right after the
+   header, per Priority 0 #1's placement) — but every keyboard user
+   still has to tab through the full navbar (logo, 2 nav links, theme
+   toggle, "Log out") first. Standard skip-link pattern: hidden
+   off-screen until it receives keyboard focus, then jumps straight to
+   `#continue-cta` (the SAME [data-continue-learning] anchor — see
+   pages/dashboard.html, no new element). Page-scoped on purpose, same
+   reasoning as `.section--tight` below: dashboard.css only loads on
+   pages/dashboard.html, so this class can't leak onto or conflict with
+   any other page even though the selector itself isn't page-prefixed. */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-4);
+  z-index: 1000;
+  background: var(--clr-accent);
+  color: var(--clr-text-invert);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: top var(--dur-fast) var(--ease);
+}
+.skip-link:focus {
+  top: var(--space-4);
+}
+
 .dash-header {
   display: flex;
   align-items: flex-start;
@@ -334,6 +367,27 @@ a.unit-progress-row:hover {
   background: var(--clr-surface-2);
   text-decoration: none;
 }
+/* NEW (Priority 2 §13, 2026-08-22) — "Ensure interactive unit rows
+   have visible focus states." Before this, keyboard focus on a row
+   fell back to the browser's default outline — functional, but this
+   list sits inside .unit-progress-list's `overflow: hidden` (needed to
+   clip square row corners to the container's rounded ones), which can
+   visually clip a default OUTER outline ring on the first/last row. An
+   INSET box-shadow can't be clipped by the container the same way (it
+   never extends past the row's own border box), so it's used here
+   instead of `outline` — same "outline:none + box-shadow ring"
+   substitution css/style.css's own `.form-input:focus` already uses,
+   just inset instead of a soft outer glow since this is a full-width
+   list row, not a small form field with room around it. `:focus-visible`
+   (not `:focus`) so a mouse click doesn't show a ring meant for
+   keyboard users only. Scoped to unit rows only, per this item's
+   literal wording — other buttons on this page (`.btn`) already show
+   the browser's default focus outline (nothing in css/style.css
+   removes it for `.btn`), left alone. */
+a.unit-progress-row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--clr-accent);
+}
 .unit-progress-row--locked { opacity: .52; }
 .unit-progress-row--current {
   border-left-color: var(--clr-accent);
@@ -373,7 +427,8 @@ a.unit-progress-row:hover {
   color: var(--clr-text);
 }
 .unit-progress-row__current-badge,
-.unit-progress-row__reference-badge {
+.unit-progress-row__reference-badge,
+.unit-progress-row__done-badge {
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-2);
@@ -391,6 +446,19 @@ a.unit-progress-row:hover {
   background: var(--clr-surface-2);
   border: 1px solid var(--clr-border);
   color: var(--clr-text-muted);
+}
+/* NEW (Priority 2 §13, 2026-08-22) — "Current/locked/done state must
+   not rely only on border color." A fully-done row previously had NO
+   non-color signal at all — only the left border/background flipping
+   to --clr-success. Same shared-base rule above, own color block here,
+   same shape as the other two badges (see the Priority 1 §10 session
+   log for why this "shared base + per-badge override" split is
+   deliberate, not duplicated CSS). Rendered by unitRowHtml() in
+   js/dashboard.js only when metrics.done is true. */
+.unit-progress-row__done-badge {
+  background: var(--clr-success-soft);
+  border: 1px solid var(--clr-success);
+  color: var(--clr-success);
 }
 .unit-progress-row__status {
   font-size: var(--fs-xs);
@@ -499,17 +567,42 @@ a.unit-progress-row:hover {
   align-items: center;
   gap: 0;
 }
+/*
+  BUG FIX (Priority 2 §14, 2026-08-22 session): text-overflow:ellipsis
+  was silently failing on long chip labels — verified in a real browser
+  (headless Chromium via Playwright) with actual phrase-length signs
+  (e.g. "WHERE IS THE HOSPITAL", "WHAT IS YOUR FAVORITE SUBJECT?").
+  Long labels were clipped with NO "…" shown, and — because this rule
+  was `display:flex; justify-content:center`, not a normal block —
+  the clip point wasn't anchored to the end of the string: text got
+  cut from whichever side had less room once centered, sometimes
+  losing characters off the FRONT of the phrase instead of the end
+  ("HIS IS AN EMERGENCY" instead of "THIS IS AN EMERGENCY…").
+  `text-overflow: ellipsis` only works reliably on a normal block/
+  inline-block box with `white-space: nowrap` — flexbox centering the
+  overflowing element itself breaks the browser's overflow anchor.
+  Fixed by switching to `display:block; text-align:center` (keeps the
+  same visual centering for short labels) and `line-height` equal to
+  the pill's content height (38px = 40px height − 2×1px border) to
+  replace the vertical centering `align-items:center` used to provide,
+  since single-line block text can't use flex alignment. Verified
+  post-fix in the same real-browser harness: every truncated chip now
+  shows a trailing "…" and reads from the start of the phrase. No
+  other rule on this page uses this flex-center-with-ellipsis pattern
+  (grepped `text-overflow` across css/*.css to confirm this is the
+  only occurrence).
+*/
 .recap-card__img {
   min-width: 40px;
   height: 40px;
+  line-height: 38px;
   max-width: 160px;
   padding: 0 var(--space-3);
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-pill);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  text-align: center;
   font-family: var(--font-display);
   font-size: var(--fs-sm);
   font-weight: 700;
