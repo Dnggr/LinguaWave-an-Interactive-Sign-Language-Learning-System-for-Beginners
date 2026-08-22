@@ -61,6 +61,19 @@
                      renderReviewEntry() needs to change — this section's
                      markup and [data-review-actions] hook stay put.
 
+                 PRIORITY 1 §10 ("Reduce dashboard duplication," this
+                 session) — audited this page/js/dashboard.js against
+                 js/learn.js (full trail) and js/lesson.js (course-player
+                 sidebar), both read-only this session. Each surface still
+                 has a distinct job, so no structural change was made; 3
+                 wording mismatches between this page's unit rows and the
+                 other two surfaces were fixed (see js/dashboard.js's own
+                 §10 comment for the full list), and a new "Learning Path"
+                 heading was added above the unit list (see that section's
+                 own comment below) — wording already established by
+                 js/learn.js's <h1> and PIVOT_CHECKLIST.md §18's wireframe,
+                 not new copy.
+
                  ⚠️ SESSION NOTE (this session): the §4 patch that added item 3
                  above also silently deleted renderRecap()/renderContinueButton()/
                  renderContinueCard() from js/dashboard.js (still called, just
@@ -71,6 +84,22 @@
                  No markup here needed to change to fix it — both were pure
                  JS/CSS regressions, now restored. See AI_MEMORY.md's session
                  log for the full writeup.
+
+                 PRIORITY 1 §9 (2026-08-21, this session) — "Improve
+                 first-viewport layout." Purely spacing/sizing, no section
+                 reordered, no data-* hook renamed, no JS touched: added
+                 `section--tight` (new page-scoped class — see
+                 css/dashboard.css) to sections 1/2 above (header +
+                 hero + Overall Progress) so those three fit above the fold;
+                 every `.section--sm` on this page got a smaller default
+                 padding too (page-scoped — doesn't affect other pages);
+                 the Overall Progress card, the unit-progress rows, and the
+                 account card (section 3) were all tightened/shrunk; and the
+                 unit rows were restyled from N separate bordered "cards"
+                 into one bordered list with thin row separators (flagged in
+                 the checklist review as looking too card-heavy). See
+                 SYSTEM_ARCHITECTURE.md's "Implementation status — Dashboard
+                 Priority 1 §9" for the full writeup.
 
     CONNECTS : ← index.html (redirected here after login)
                → pages/learn.html      (unit rows + hero card's
@@ -141,7 +170,13 @@
        card is the single canonical place that names the destination.
        Static text here is just the pre-JS fallback, kept in the same
        generic register. -->
-  <section class="section section--sm">
+  <!-- PRIORITY 1 §9 (2026-08-21): added `section--tight` here (plus on
+       the two sections below it) so the header/hero/overall-progress
+       trio use var(--space-4) padding-block instead of the page's
+       already-reduced var(--space-6) default (see css/dashboard.css's
+       "First-viewport layout" comment) — these three are the ones that
+       must fit above the fold. -->
+  <section class="section section--sm section--tight">
     <div class="container">
       <div class="dash-header">
         <div>
@@ -164,8 +199,13 @@
        fed by the SAME getCurrentDestination() helper that also feeds
        renderWelcomeBanner() and renderContinueButton() — one shared
        chain-walk, not a new unlock/progress algorithm. Markup below is
-       just the loading-state / pre-JS fallback. -->
-  <section class="section section--sm">
+       just the loading-state / pre-JS fallback.
+
+       PRIORITY 1 §9: `section--tight` added — see the header section's
+       comment above. This card's OWN padding (.continue-card, from
+       .card) is deliberately untouched — it's still meant to be the
+       most visually weighted element on the page. -->
+  <section class="section section--sm section--tight">
     <div class="container">
       <div class="card continue-card" data-continue-card>
         <div class="continue-card__main">
@@ -246,25 +286,34 @@
        its own line below the practice count, so nothing there was
        combined into the % or needed to move. See
        SYSTEM_ARCHITECTURE.md's "Implementation status — Priority 0 #3"
-       and PIVOT_CHECKLIST.md §3 for the full writeup. -->
-  <section class="section section--sm">
+       and PIVOT_CHECKLIST.md §3 for the full writeup.
+
+       PRIORITY 1 §9 (2026-08-21): `section--tight` added (see the
+       header section's comment above). Also swapped this block's
+       `mb-8`/`mt-4` spacing utilities for the tighter `mb-4`/`mt-2`
+       (both already-existing utility classes in css/style.css — no new
+       CSS needed) so the card's internal spacing matches its now-
+       smaller padding (css/dashboard.css's `.progress-card--secondary`
+       padding reduction) instead of leaving extra air around
+       already-shrunk text. -->
+  <section class="section section--sm section--tight">
     <div class="container">
-      <h2 class="mb-8 dash-heading--secondary">Overall Progress</h2>
+      <h2 class="mb-4 dash-heading--secondary">Overall Progress</h2>
 
       <!-- Aggregate card — filled in by js/dashboard.js from
            window.LWProgress.getOrderedLiveCategories(), the same flat
            cross-unit chain js/learn.js's trail view walks. Markup
            below is just a loading-state placeholder. -->
-      <div class="card progress-card progress-card--secondary mb-8">
+      <div class="card progress-card progress-card--secondary mb-4">
         <div class="progress-card__head">
           <span class="badge badge--basic" data-overall-metric-label>Practice Progress</span>
           <span class="progress-card__pct" data-overall-pct>–</span>
         </div>
         <p class="progress-card__label">Signs practiced across all units — not a mastery score</p>
-        <div class="progress-bar mt-4">
+        <div class="progress-bar mt-2">
           <div class="progress-bar__fill" data-overall-progress="0"></div>
         </div>
-        <p class="text-muted mt-4" style="font-size: var(--fs-sm);" data-overall-count>– / – signs practiced</p>
+        <p class="text-muted mt-2" style="font-size: var(--fs-sm);" data-overall-count>– / – signs practiced</p>
         <p class="text-muted mt-2" style="font-size: var(--fs-xs);" data-overall-status></p>
       </div>
 
@@ -276,7 +325,26 @@
         "You are here" marker. Locked units stay subdued. Unit 7 is explicitly
         reference/read-only; Unit 0 and Unit 2 retain descriptive non-graded
         states because Rev 4 excludes them from the grading chain.
+
+        PRIORITY 1 §10 (this session) — "Reduce dashboard duplication."
+        Added the "Learning Path" heading directly below, which this
+        block never had before (the unit list used to run on directly
+        under "Overall Progress" with no label of its own — read as
+        more of the same aggregate metric above it rather than the
+        distinct "which units, in what order" summary it actually is).
+        "Learning Path" is not new copy: it's the exact phrase
+        js/learn.js's own <h1> already uses ("Your ASL Learning Path"),
+        and PIVOT_CHECKLIST.md §18's wireframe already labels this same
+        block "Learning Path" — this just applies wording the project
+        had already settled on. Kept inside the SAME section--tight
+        container as "Overall Progress" (not a new <section>) so this
+        doesn't reintroduce the extra vertical padding Priority 1 §9
+        just removed. See js/dashboard.js's own §10 header-comment
+        block for the 3 wording fixes made alongside this (unit-row
+        label text only — no markup/hook here needed to change for
+        those).
       -->
+      <h2 class="mb-4 mt-4 dash-heading--secondary">Learning Path</h2>
       <div class="unit-progress-list" id="unit-progress-list"></div>
     </div>
   </section>
@@ -290,13 +358,19 @@
     byte-for-byte identical to before, only its position in the page
     moved.
 
+    COMPACTED (Priority 1 §9, 2026-08-21): checklist explicitly asks to
+    "keep the account card compact" — card padding, avatar size, and
+    gaps all shrunk in css/dashboard.css's `.account-card`/
+    `.account-avatar`/`.account-meta` rules. No markup or hook changed
+    here, sizing only.
+
     TODO: once Firestore is live, also surface editable fields here
           (e.g. "Change starting level", "Update name") writing back
           to users/{uid}.
   -->
   <section class="section section--sm">
     <div class="container">
-      <h2 class="mb-8">Your Account</h2>
+      <h2 class="mb-4">Your Account</h2>
       <div class="card account-card">
         <div class="account-avatar" data-user-initial>?</div>
         <div class="account-details">
@@ -395,7 +469,7 @@
        here, so it can never contradict the recap grid above it. -->
   <section class="section section--sm">
     <div class="container">
-      <h2 class="mb-8">Review recent signs</h2>
+      <h2 class="mb-4">Review recent signs</h2>
       <div class="card review-card">
         <p class="review-card__body">Refresh the signs you already learned so they stick.</p>
         <div class="review-card__actions" data-review-actions>

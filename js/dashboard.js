@@ -48,6 +48,82 @@
  * function's behavior are UNCHANGED by this — only
  * renderWelcomeBanner()'s own output text changed.
  *
+ * DASHBOARD UX REVIEW — PRIORITY 1, §10 (this session): "Reduce
+ * dashboard duplication." PIVOT_CHECKLIST.md §10 asks for an audit of
+ * three surfaces (Dashboard / Learn trail / Lesson sidebar) that all
+ * show overlapping unit/progress concepts, on the premise that overlap
+ * is fine as long as each surface has a distinct JOB and the WORDING
+ * for shared concepts agrees. `js/learn.js` and `js/lesson.js` were
+ * read for comparison but NOT modified — out of this session's scope
+ * per PIVOT_CHECKLIST.md §20 ("Explicitly excluded: js/learn.js"; the
+ * Rev 5 course-player sidebar in lesson.js isn't in the preferred-files
+ * list either, and every prior Priority 1 session has stayed inside
+ * pages/dashboard.html / js/dashboard.js / css/dashboard.css only).
+ *
+ * Audit result — the three surfaces DO have distinct jobs today, so no
+ * structural change was needed:
+ *   - Dashboard (this file): compact summary + one "next action" CTA.
+ *     Never renders individual sign-level navigation.
+ *   - Learn (js/learn.js, untouched): the full trail — every unit,
+ *     every category picker, every sign grid. The only place a learner
+ *     actually BROWSES the whole path.
+ *   - Lesson (js/lesson.js's renderCourseSidebar(), untouched): a
+ *     course-player sidebar for moving between signs INSIDE a unit
+ *     you're already in, shown as icon+percentage, not status prose.
+ * Three wording mismatches were found BETWEEN this file and the other
+ * two surfaces' existing (unchanged) text, and fixed on this file's
+ * side only:
+ *   1. The Fingerspell-Your-Name unit row said "Interactive drill";
+ *      js/learn.js's equivalent trail-node label has always said
+ *      "Practice drill". Changed to match verbatim.
+ *   2. The Phrasebook (reference) unit row said "Reference · browse
+ *      only, no assessment" — restating "Reference" a SECOND time in
+ *      the same row (the `.unit-progress-row__reference-badge` chip
+ *      already says it), which is exactly the kind of same-info-twice
+ *      duplication this checklist item is about. Shortened to "Browse
+ *      only, no assessment yet" — drops the redundant prefix and
+ *      matches the *shape* of js/learn.js's "Browse only, no quiz yet"
+ *      for the same unit.
+ *   3. This file's own two "how many assessments passed" strings
+ *      disagreed with EACH OTHER: renderOverallProgress() (Priority 0
+ *      #3, locked in and explicitly not to be re-worded — see that
+ *      function's comment) says "X / Y category assessments passed";
+ *      unitRowHtml()'s per-unit line said "X/Y assessments passed" —
+ *      missing "category". Added "category" to the per-unit line so
+ *      the same underlying concept reads the same way in both places.
+ * Flagged, NOT fixed (would require editing excluded files):
+ *   - js/learn.js uses "quiz" in learner-facing copy ("Browse only, no
+ *     quiz yet", "No quiz or camera check yet") where every dashboard
+ *     string and PIVOT_CHECKLIST.md's own §3/§7/§12 vocabulary use
+ *     "assessment" for the identical `progress.assessment.passed`
+ *     concept. This looks like the real direction of travel (assessment)
+ *     with learn.js as the not-yet-updated outlier, not the other way
+ *     around — but that's a call for whoever next has learn.js in
+ *     scope, not this session.
+ *   - js/lesson.js's renderCourseSidebar() header comment (the "One
+ *     deliberate difference from dashboard.js" note) says dashboard's
+ *     unit rows show "X/Y categories passed" — that was true before
+ *     Priority 1 §4 changed the wording to "assessments passed"
+ *     (and now "category assessments passed" per fix #3 above). The
+ *     comment is stale documentation in a file outside this session's
+ *     scope; flagging so a future lesson.js session updates it rather
+ *     than trusting it at face value.
+ * No new unit-ordering/unlock logic was added anywhere — confirmed by
+ * re-reading this file's own renderUnitList()/renderUnitRow(): both
+ * still walk window.LWData.getUnits() in its existing order, exactly
+ * as before this session.
+ *
+ * pages/dashboard.html also gained a new "Learning Path" heading above
+ * the unit list (previously it had no heading of its own — it just
+ * ran on directly under "Overall Progress", which is arguably its own
+ * small duplication/ambiguity, since the unit list is a different
+ * thing from the aggregate percentage above it). "Learning Path" is
+ * the exact phrase js/learn.js's own <h1> already uses ("Your ASL
+ * Learning Path"), and is also PIVOT_CHECKLIST.md §18's own wireframe
+ * label for this block — so this is adopting existing, already-decided
+ * wording, not inventing new copy. Presentational only; no JS change
+ * needed for it.
+ *
  * NOT part of Priority 0 #2: renderOverallProgress() itself. Its
  * output (a bare "%") was intentionally untouched that session —
  * relabeling what that number means (vs. mastery) was left as
@@ -392,13 +468,13 @@ function renderUnitRow(unit, destination) {
   }
 
   if (unit.kind === 'interactive') {
-    return unitRowHtml(icon, unit, 'Interactive drill · always open',
+    return unitRowHtml(icon, unit, 'Practice drill · always open',
       'lesson.html?level=basic&category=fingerspell_name',
       isCurrentUnit ? 'current' : null, { current: isCurrentUnit });
   }
 
   if (unit.kind === 'reference') {
-    return unitRowHtml(icon, unit, 'Reference · browse only, no assessment',
+    return unitRowHtml(icon, unit, 'Browse only, no assessment yet',
       'learn.html?unit=phrasebook', null, { reference: true });
   }
 
@@ -481,7 +557,7 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
           <span class="unit-progress-row__metric">${metrics.practicedSigns}/${metrics.totalSigns} signs practiced</span>
         </div>
         <span class="unit-progress-row__assessment">
-          ${metrics.passedCount}/${metrics.assessmentTotal} assessment${metrics.assessmentTotal === 1 ? '' : 's'} passed
+          ${metrics.passedCount}/${metrics.assessmentTotal} category assessment${metrics.assessmentTotal === 1 ? '' : 's'} passed
         </span>
       `
     : `<span class="unit-progress-row__status">${escapeHtml(statusText)}</span>`;

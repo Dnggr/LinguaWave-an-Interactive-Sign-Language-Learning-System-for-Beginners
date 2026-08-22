@@ -10,6 +10,27 @@
   flex-wrap: wrap;
 }
 
+/* ── First-viewport layout (Dashboard UX Review Priority 1 §9,
+   2026-08-21 code session) ──────────────────────────────────────────
+   PIVOT_CHECKLIST.md's own review screenshot was already scrolled past
+   "Overall Progress" by default — six stacked `.section--sm` blocks
+   (header, hero, overall progress, account, recap, review), each
+   paying var(--space-8)=32px of padding on BOTH top and bottom, push
+   the primary action + progress summary below the fold on common
+   screen heights before any content height is even counted.
+
+   dashboard.css is only <link>ed from pages/dashboard.html, so both
+   rules below are page-scoped by construction — they cannot affect
+   learn.html/lesson.html/quiz.html/feedback.html, which don't load
+   this file, even though `.section--sm` is a shared class name defined
+   in css/style.css. No selector rename, no shared-file edit. */
+.section--sm { padding-block: var(--space-6); }
+/* Applied (see pages/dashboard.html) only to the 3 sections that must
+   fit in the first viewport: page header, Continue Learning hero card,
+   Overall Progress. Wins over .section--sm above at equal specificity
+   because it's declared later in this same file. */
+.section--tight { padding-block: var(--space-4); }
+
 /* ── Continue Learning hero card (2026-08-21 code session) ───────────
    PIVOT_CHECKLIST.md Dashboard UX Review Checklist → Priority 0 #1
    ("Make 'Continue Learning' the primary action"). Deliberately the
@@ -102,14 +123,21 @@
 }
 
 /* ── Overall Progress heading: demoted (Priority 0 #2, 2026-08-21) ───
-   Applied only to the "Overall Progress" <h2> in pages/dashboard.html
-   — every other dashboard heading (Your Account, Signs You've
-   Learned) is unchanged. Shrinks it from the default bold display-font
-   h2 down to a small uppercase label, so it reads as a section of
-   supporting detail under the Continue Learning hero card rather than
-   a second headline competing with it. Purely typographic — no
-   underlying markup/heading level changed (still an <h2>, so document
-   outline / accessibility tree is unaffected). */
+   Applied to the "Overall Progress" <h2> in pages/dashboard.html —
+   every other dashboard heading (Your Account, Signs You've Learned)
+   is unchanged. Shrinks it from the default bold display-font h2 down
+   to a small uppercase label, so it reads as a section of supporting
+   detail under the Continue Learning hero card rather than a second
+   headline competing with it. Purely typographic — no underlying
+   markup/heading level changed (still an <h2>, so document outline /
+   accessibility tree is unaffected).
+
+   UPDATED (Priority 1 §10, this session): the new "Learning Path"
+   heading added above the unit-progress-list also uses this class —
+   it's a sibling summary block in the same secondary tier as Overall
+   Progress, not a new headline of its own weight. Still just these
+   two headings; "Your Account" and "Signs You've Learned" remain
+   unchanged, same as the note above already said. */
 .dash-heading--secondary {
   font-size: var(--fs-base);
   font-weight: 600;
@@ -199,51 +227,76 @@
   color: var(--clr-text-muted);
   border: 1px solid var(--clr-border);
 }
+/* Priority 1 §9: the card's own padding was still .card's default 32px
+   on every side — shrunk it now that the badge/pct/label are already
+   smaller (Priority 0 #2/#3), so the card's footprint matches its
+   reduced visual weight instead of just having smaller text inside a
+   full-size box. Only affects this card, not the hero card above it
+   (.continue-card is deliberately untouched — see its own comment). */
+.progress-card--secondary { padding: var(--space-4); }
 
 /* ── Unit progress list — compact learning-path summary (Priority 1) ──
    Still secondary to the Continue Learning card. This is a summary of the
-   existing flat trail, NOT a second trail/navigation surface. */
+   existing flat trail, NOT a second trail/navigation surface.
+
+   RESTYLED (Priority 1 §9, 2026-08-21): PIVOT_CHECKLIST.md's item #9
+   explicitly flags "avoid making every unit row look like a large
+   standalone card" — before this pass each row had its own border +
+   background + border-radius + a gap between rows, i.e. N separate
+   mini-cards stacked with air between them. Restyled into ONE bordered
+   list container (this rule) with thin border-bottom row separators
+   instead — no HTML or JS change: js/dashboard.js's unitRowHtml() still
+   emits the exact same `unit-progress-row`/`--current`/`--done`/
+   `--locked` class names, only what those classes paint changed.
+   Current/done state now reads via a left accent border + tinted
+   background instead of a full box border, so rows stay visually
+   distinct without each one reading as its own card. */
 .unit-progress-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--clr-surface);
 }
 .unit-progress-row {
   display: flex;
   align-items: flex-start;
   gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--clr-surface);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--clr-border);
+  border-left: 3px solid transparent;
+  border-radius: 0;
   text-decoration: none;
   color: var(--clr-text);
 }
+.unit-progress-row:last-child { border-bottom: none; }
 a.unit-progress-row:hover {
-  border-color: var(--clr-accent);
   background: var(--clr-surface-2);
   text-decoration: none;
 }
 .unit-progress-row--locked { opacity: .52; }
 .unit-progress-row--current {
-  border-color: var(--clr-accent);
+  border-left-color: var(--clr-accent);
   background: var(--clr-accent-soft);
-  box-shadow: 0 0 0 1px var(--clr-accent-soft);
 }
 .unit-progress-row--done {
-  border-color: var(--clr-success);
+  border-left-color: var(--clr-success);
   background: var(--clr-success-soft);
 }
 .unit-progress-row__icon {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--clr-accent-soft);
   border-radius: var(--radius-pill);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-base);
 }
 .unit-progress-row__body {
   flex: 1 1 auto;
@@ -471,15 +524,21 @@ a.unit-progress-row:hover {
 }
 
 /* ── YOUR ACCOUNT (user details card) ───────────────────────────── */
+/* Priority 1 §9 (2026-08-21): checklist explicitly asks to "keep the
+   account card compact." Card padding shrunk from .card's default 32px
+   to 16px, avatar shrunk 64px → 44px (font size stepped down to match),
+   and the gaps tightened. Content and every data-user-* hook are
+   unchanged — sizing/spacing only. */
 .account-card {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-4);
   flex-wrap: wrap;
+  padding: var(--space-4);
 }
 .account-avatar {
-  width: 64px;
-  height: 64px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-dim));
@@ -487,7 +546,7 @@ a.unit-progress-row:hover {
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text-invert);
   box-shadow: var(--shadow-card);
@@ -509,7 +568,7 @@ a.unit-progress-row:hover {
 }
 .account-meta {
   display: flex;
-  gap: var(--space-6);
+  gap: var(--space-4);
   margin-left: auto;
   flex-wrap: wrap;
 }

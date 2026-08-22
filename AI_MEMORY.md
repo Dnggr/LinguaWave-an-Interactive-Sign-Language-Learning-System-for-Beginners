@@ -2422,3 +2422,164 @@ dashboard session to date.
    debugging is done — see the flag's own doc comment in
    `js/engine/progress.js`.
 4. Auth remains explicitly excluded.
+
+### 2026-08-21 (same day, follow-up) — Priority 1 §9 ("Improve first-viewport layout")
+
+**Request:** implement checklist item #9's 6 sub-items (put the
+primary action above the fold, reduce vertical duplication, keep the
+account card / overall-progress card compact, stop unit rows from
+each looking like a large standalone card, stay readable at desktop
+and narrow-desktop widths). `auth.js` excluded per instruction.
+
+**What changed — all presentational, no HTML restructuring, no JS
+touched:**
+- `css/dashboard.css`: page-scoped `.section--sm` padding cut 32px→24px
+  (safe — this stylesheet only loads on `pages/dashboard.html`, so no
+  other page sharing that class name in `css/style.css` is affected);
+  new `.section--tight` modifier (16px) applied to the header/hero/
+  Overall Progress sections; `.progress-card--secondary` and
+  `.account-card` padding both cut to 16px, avatar 64px→44px; the
+  `.unit-progress-row` family restyled from separate bordered/
+  background/radius boxes into one bordered list with thin row
+  separators + left-accent state indicators (same class names
+  `js/dashboard.js`'s `unitRowHtml()` already emits).
+- `pages/dashboard.html`: added `section--tight` to 3 sections; swapped
+  `mb-8`/`mt-4` for the already-existing `mb-4`/`mt-2` utilities in the
+  Overall Progress block.
+
+**Verification:** HTML tag balance via a real parser — clean. All
+`data-*` hooks `js/dashboard.js` queries cross-checked present in the
+HTML. CSS brace count balanced. Class-name cross-check (HTML ↔ CSS ↔
+JS) for `section--tight` and the `unit-progress-row` family — all
+match. **Still not exercised in a real browser.**
+
+**Suggestions / bugs found:** pre-existing, unrelated dead-CSS-style
+redundancy — `.unit-progress-row__reference-badge` is declared twice
+in `css/dashboard.css` (harmless, not touched).
+
+**Still open:** Priority 1 §10 and all of Priority 2. Real-browser
+verification remains the standing gap across every dashboard session,
+this one included — the "readable at narrow desktop widths" sub-item
+especially deserves an actual ~900px check. See PIVOT_CHECKLIST.md §9
+and SYSTEM_ARCHITECTURE.md's "Implementation status — Dashboard
+Priority 1 §9" for the full writeup.
+
+### 2026-08-22 — Priority 1 §10 ("Reduce dashboard duplication")
+
+**Pre-change order followed** (per this file's own header rule): this
+file → `PIVOT_CHECKLIST.md` §10/§20 → `SYSTEM_ARCHITECTURE.md`'s Rev 5
+section and Dashboard UX Review Addendum, including the §9
+implementation-status subsection at the end of it.
+
+**Request:** implement `PIVOT_CHECKLIST.md`'s §10 — audit the Dashboard
+/ Learn trail / Lesson sidebar for concept duplication, on the premise
+that overlap is acceptable only if each surface has a distinct job and
+shared wording agrees. `js/auth.js` excluded per instruction, same as
+every dashboard session before it.
+
+**What was audited:** `js/learn.js` (the full trail) and `js/lesson.js`
+(Rev 5's `renderCourseSidebar()`, the course-player sidebar) were both
+read in full for comparison — neither was opened for editing, per
+`PIVOT_CHECKLIST.md` §20's exclusion list (`js/learn.js` explicitly;
+`js/lesson.js` isn't in the preferred-files list either, and no prior
+Priority 1 session has touched it). Conclusion: the three surfaces
+already have distinct jobs today — Dashboard summarizes + points at
+one next action, Learn is the only full path browser, Lesson's sidebar
+is fine-grained in-unit sign navigation shown as icon+percentage, not
+status prose. No structural change was needed or made.
+
+**What changed (dashboard-side wording only):**
+1. `js/dashboard.js`'s `renderUnitRow()` — the Fingerspell Your Name
+   (interactive) unit row said "Interactive drill · always open";
+   `js/learn.js`'s `getUnitState()` has always labeled the exact same
+   unit "Practice drill · always open". Changed to match verbatim —
+   plain word-choice drift between two files, no judgment call needed.
+2. `js/dashboard.js`'s `renderUnitRow()` — the Phrasebook (reference)
+   unit row said "Reference · browse only, no assessment" while ALSO
+   rendering a separate "Reference" badge chip on the same row — the
+   word "Reference" appeared twice in one row, which is exactly the
+   kind of same-information-twice duplication this checklist item is
+   about. Shortened the status text to "Browse only, no assessment
+   yet": drops the redundant prefix (the badge already says it) and
+   matches the *shape* of `js/learn.js`'s "Browse only, no quiz yet"
+   for the same unit.
+3. `js/dashboard.js`'s `unitRowHtml()` — its own per-unit "assessments
+   passed" line disagreed with `renderOverallProgress()`'s aggregate
+   line in the SAME file: the aggregate says "X / Y category
+   assessments passed" (Priority 0 #3, explicitly locked in — not
+   re-worded here), the per-unit line said "X/Y assessments passed",
+   missing "category". Added "category" so the same concept reads the
+   same way in both places on the same page.
+4. `pages/dashboard.html` — added a "Learning Path" heading above the
+   unit-progress-list, which previously had none of its own and ran on
+   directly under "Overall Progress" (itself a small duplication/
+   ambiguity — the unit list is a different thing from the aggregate
+   %, but had no label saying so). "Learning Path" is not new copy:
+   it's the exact phrase `js/learn.js`'s own `<h1>` already uses
+   ("Your ASL Learning Path"), and `PIVOT_CHECKLIST.md` §18's wireframe
+   already labels this same block "Learning Path". Kept inside the
+   existing `section--tight` container, not a new `<section>`, so this
+   doesn't undo Priority 1 §9's first-viewport padding work.
+5. `css/dashboard.css` — updated the `.dash-heading--secondary` comment
+   (it previously said, accurately at the time, that only the "Overall
+   Progress" heading used that class) to note the new "Learning Path"
+   heading reuses it too. No new CSS rules — the heading reuses already
+   -existing `mb-4`/`mt-4`/`dash-heading--secondary`.
+
+**Flagged, not fixed** (both would mean editing files outside this
+session's scope):
+1. `js/learn.js` uses "quiz" in learner-facing copy ("Browse only, no
+   quiz yet", "No quiz or camera check yet") for the exact same
+   `progress.assessment.passed` concept every other surface, and this
+   checklist's own §3/§7/§12, call "assessment". Reads as `learn.js`
+   being the not-yet-updated outlier rather than "assessment" being
+   wrong — but that's a call for whoever next has `learn.js` in scope,
+   not this session.
+2. `js/lesson.js`'s own header comment above `renderCourseSidebar()`
+   (the "one deliberate difference from dashboard.js" note) says
+   dashboard's unit rows show "X/Y categories passed" — that stopped
+   being true when Priority 1 §4 changed the wording to "assessments
+   passed", and is now further off after fix #3 above ("category
+   assessments passed"). Stale documentation in a file this session
+   didn't open; flagging so a future `lesson.js` session corrects it
+   rather than trusting it at face value.
+3. Re-examined the pre-existing flag from the 2026-08-21 §9 session
+   about `.unit-progress-row__reference-badge` being "declared twice"
+   in `css/dashboard.css` (line 320 and line 334) — on inspection this
+   is ordinary shared-base-plus-override CSS (a combined selector with
+   `.unit-progress-row__current-badge` for shared properties, then its
+   own rule for background/border/color), not a bug. Closing that flag
+   as reviewed-and-not-an-issue rather than leaving it open indefinitely.
+
+**Files touched:** `js/dashboard.js` (3 string changes in
+`renderUnitRow()`/`unitRowHtml()`, plus a header-comment block — no
+control-flow change), `pages/dashboard.html` (new heading + comments),
+`css/dashboard.css` (one comment update, no new rules). `js/learn.js`,
+`js/lesson.js`, `js/auth.js`, `js/data.js`, `js/engine/progress.js` —
+read where relevant, not opened for editing.
+
+**Verification:** `node --check` on `js/dashboard.js` — clean. Real
+HTML-parser (Python's `html.parser`) tag-balance check on
+`pages/dashboard.html` — balanced, zero errors. CSS brace count on
+`css/dashboard.css` — balanced. Declaration-vs-call-site check — all
+13 functions in `dashboard.js` still resolve (confirmed this session
+did not repeat the §4 "deleted but still called" regression). Every
+`data-*`/`getElementById` hook `dashboard.js` queries cross-checked
+present in the HTML (the one nominal "miss," `data-level-card`, is
+inside a historical doc comment, not a live query). Built a Node + `vm`
+harness loading the real `js/dashboard.js` with mocked
+`window.LWData`/`window.LWProgress`, and called `renderUnitRow()`
+directly for the interactive, reference, and a category-group unit —
+confirmed all three render the new wording correctly, including the
+"category assessment" singular/plural branch (`0/1 category assessment
+passed` vs. plural). **Still not exercised in a real browser** — same
+standing gap as every dashboard/lesson session to date.
+
+**Still open:**
+1. Real-browser verification of this session's changes, and everything
+   still open from every prior session log entry above.
+2. All of Priority 2 (§11–§15) — not started.
+3. The two flagged cross-file wording items above (`learn.js`'s "quiz"
+   vs. "assessment", and `lesson.js`'s stale sidebar comment) — need a
+   session with those files in scope.
+4. Auth remains explicitly excluded.
