@@ -547,6 +547,25 @@ export const SIGN_DICTIONARY = {
   'RESTROOM': { fingerStates:[1,1,0,0,0], category:'word', imageFile:'restroom.gif', detectionType:'motion', disabled:true },
   'HUNGRY':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hungry.gif',   detectionType:'motion', disabled:true },
 
+  // BUGFIX (this session, found auditing Phase 7 / Unit 4 for the
+  // proposed reorder): data.js's 'requests' category (Unit 4) has 11
+  // signIds, but only 6 (PLEASE/THANK YOU/HELP/WHERE/WHY/WHAT) had a
+  // disabled placeholder here. The other 5 had NO entry at all — not
+  // the same as disabled, just silently absent. Functionally near-
+  // identical today (neither model has any of these 11 labels, so
+  // classifyGesture/classifyMotion's `!entry` check and `entry.disabled`
+  // check both end in "no match"), but getAllowedLabelsForSign(signId)
+  // returns null (unrestricted matching) for a signId with no entry vs.
+  // a real category Set for a disabled one — and leaving these 5
+  // silently missing looks like an oversight, not a decision, to the
+  // next person reading this file. Added for parity with their 6
+  // siblings and with the HELLO/THANK YOU/HOT/COLD fixes above.
+  'EXCUSE': { fingerStates:[1,1,1,1,1], category:'word', imageFile:'excuse.gif', detectionType:'motion', disabled:true },
+  'WHO':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'who.gif',    detectionType:'motion', disabled:true },
+  'WHEN':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'when.gif',   detectionType:'motion', disabled:true },
+  'HOW':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'how.gif',    detectionType:'motion', disabled:true },
+  'STOP':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'stop.gif',   detectionType:'motion', disabled:true },
+
   // ══════════════════════════════════════════════════════════
   // INTERMEDIATE LEVEL — PHRASES (all motion, disabled until model trained)
   // ══════════════════════════════════════════════════════════

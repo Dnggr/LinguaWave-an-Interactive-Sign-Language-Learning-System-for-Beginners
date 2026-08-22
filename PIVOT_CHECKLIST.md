@@ -51,6 +51,20 @@
   `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`,
   `GO`, `COME`, `RESTROOM`, `HUNGRY`. Needs camera capture + Colab
   retrain — not doable in an AI chat session.
+  **Correction (2026-08-23, audited for the reorder below): this list
+  is NOT one bucket in `data.js`.** Traced each signId:
+  `PLEASE`/`HELP`/`WHAT`/`WHERE`/`WHY` live in Unit 4 `requests`;
+  `SORRY`/`GOOD`/`BAD` live in Unit 5 `feelings` (**comingSoon: true —
+  hidden from the UI today**); `WATER`/`HUNGRY` live in Unit 5 `food`
+  (also comingSoon); `GO`/`COME` live in Unit 5 `places` (**not**
+  comingSoon — the Unit Map below calls "places" trained & working,
+  which is only true for its other ~7 words). `YES`/`NO`/`RESTROOM`/
+  `FOOD` (the word) have **no `data.js` SIGNS entry at all** — only the
+  disabled `dictionary.js` placeholder, no lesson page to attach a
+  retrained label to yet. Same story for `HELLO` (tracked below,
+  outside this 16): zero `data.js` content. Net: "16 Essential Words"
+  is a training/tracking label, not a data.js grouping — worth knowing
+  before anyone reshuffles Unit 4/5 around it.
 - [ ] Capture + retrain 5 phrase placeholders: `NICE TO MEET YOU`,
   `HOW ARE YOU`, `WHERE IS`, `I AM LEARNING`, `WHAT IS YOUR NAME`.
 - [ ] Capture + retrain `HELLO`/`THANK YOU` (Unit 4) and `HOT`/`COLD`
@@ -211,16 +225,63 @@ execute.
     urgency (today's Unit 5 remainder, Unit 6 phrases, Unit 7
     Phrasebook).
 
-**Blocking question before this can become a `data.js` phase:** items
-5–8 above are currently one bucket — Unit 4 "Everyday Essentials"
-holds all 16 `requests`-category placeholder signs (`PLEASE`, `SORRY`,
-`YES`, `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`,
-`FOOD`, `GO`, `COME`, `RESTROOM`, `HUNGRY`) plus `HELLO`/`THANK YOU`.
-Splitting that one bucket into 4 named categories needs someone to sort
-which specific signs go in Everyday Essentials vs. Greetings vs. Basic
-Responses vs. Polite Expressions before any code changes — recommend
-Omen sketch that mapping first (mirrors how Rev 4's own planning
-session worked before Phase 1 touched `data.js`).
+**Blocking question before this can become a `data.js` phase — corrected
+2026-08-23:** items 5–8 are NOT currently one bucket (see the Phase 7
+correction above) — they're split across Unit 4 `requests` and three
+different Unit 5 categories, plus 5 signIds (`YES`/`NO`/`RESTROOM`/
+`FOOD`/`HELLO`) with no `data.js` content at all yet. Splitting/merging
+into 4 named categories still needs a human sign-off — same weight as
+before — but here's a draft mapping to confirm or correct rather than
+starting from a blank sketch:
+
+| Proposed category | SignIds | Notes |
+|---|---|---|
+| Greetings and Introduction | `HELLO` | Needs a *new* `data.js` SIGNS entry, not just a re-tag — `HELLO` has zero lesson content today, not just an untrained model. |
+| Basic Responses | `YES`, `NO`, `GOOD`, `BAD`, `WHO`, `WHAT`, `WHERE`, `WHEN`, `WHY`, `HOW` | `YES`/`NO` also need new `data.js` content (dictionary-only today). |
+| Polite Expressions | `PLEASE`, `THANK YOU`, `EXCUSE`, `SORRY` | — |
+| Everyday Essentials (narrowed) | `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `RESTROOM`, `GO`, `COME` | `FOOD`/`RESTROOM` also need new `data.js` content. |
+
+This is one reasonable split, not the only one (e.g. `EXCUSE` could sit
+in Greetings instead of Polite Expressions) — Omen/Joshua should treat
+it as a draft to edit, not a decision already made.
+
+**New blocker found this session, not in the original request:**
+`data.js`'s `CATEGORIES` already has an `intermediate`/Unit-7 category
+with id `basic_responses` (line ~254) and one with id `polite_expressions`
+(line ~270) — the Phrasebook's full-sentence versions. New basic-level
+categories reusing those exact ids would collide; whoever implements
+this needs different ids (e.g. `essentials_basic_responses`,
+`essentials_polite_expressions`) for the two that share a name with
+existing Phrasebook categories.
+
+Fingerspell-as-assessment (item 3) is unchanged from before — still a
+policy reversal that needs its own explicit yes/no from Joshua, separate
+from the mapping question above.
+
+---
+
+## Bugs found this session — 2026-08-23 (auditing Phase 7 for the reorder)
+
+- [x] **`dictionary.js` missing 5 disabled placeholders.** Unit 4's
+  `requests` category has 11 signIds; only 6 (`PLEASE`/`THANK YOU`/
+  `HELP`/`WHERE`/`WHY`/`WHAT`) had a `disabled: true` entry — `EXCUSE`/
+  `WHO`/`WHEN`/`HOW`/`STOP` had no entry at all. Functionally near-
+  identical today (neither model has any of these 11 labels), but
+  `getAllowedLabelsForSign()` returns unrestricted matching (`null`) for
+  a missing entry vs. a real Set for a disabled one, and it reads as an
+  oversight rather than a decision. **Fixed** — added the 5 missing
+  placeholders, same pattern as the existing 6. `js/engine/dictionary.js`.
+- [x] **Stale comment in `data.js` claiming `COME`/`GO` are "already
+  separately captured/trained."** False — confirmed against
+  `asl_motion_model/labels.json` (neither label exists) and
+  `dictionary.js` (`disabled: true` on both). They're on the Phase 7
+  list like the other Essential Words. **Fixed** — comment corrected so
+  a future session doesn't skip them assuming Unit 5's `places` category
+  is fully live. `js/data.js` (comment only, no logic change).
+- [ ] **`SYSTEM_ARCHITECTURE.md`'s Unit Map row for Unit 5 says
+  "family/places/time trained & working" without qualification** — true
+  for ~7 of `places`' words, not for `COME`/`GO`. Corrected in that file
+  this session (see its own note).
 
 ---
 
