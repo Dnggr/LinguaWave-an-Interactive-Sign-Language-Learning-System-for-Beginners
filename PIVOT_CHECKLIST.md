@@ -49,7 +49,8 @@
 
 - [ ] Capture + retrain 16 Essential Words: `PLEASE`, `SORRY`, `YES`,
   `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`,
-  `GO`, `COME`, `RESTROOM`, `HUNGRY`. Needs camera capture + Colab
+  `GO`, `COME`, `BATHROOM` (was tracked as `RESTROOM` — see
+  2026-08-23 merge note below), `HUNGRY`. Needs camera capture + Colab
   retrain — not doable in an AI chat session.
   **Correction (2026-08-23, audited for the reorder below): this list
   is NOT one bucket in `data.js`.** Traced each signId:
@@ -62,9 +63,16 @@
   `FOOD` (the word) have **no `data.js` SIGNS entry at all** — only the
   disabled `dictionary.js` placeholder, no lesson page to attach a
   retrained label to yet. Same story for `HELLO` (tracked below,
-  outside this 16): zero `data.js` content. Net: "16 Essential Words"
-  is a training/tracking label, not a data.js grouping — worth knowing
-  before anyone reshuffles Unit 4/5 around it.
+  outside this 16): zero `data.js` content.
+  **Update (2026-08-23, implementing the reorder):** all 16 now live in
+  `data.js`'s Everyday Essentials/Greetings/Basic Responses/Polite
+  Expressions units (see "Unit reorder" section below for the exact new
+  category per word) — `HELLO`/`YES`/`NO`/`FOOD` got real content
+  written this session (previously zero), and `RESTROOM` turned out to
+  already exist under the label `BATHROOM` (Unit 5 `health`) — merged
+  rather than duplicated. **Still capture/retrain-blocked** — none of
+  the 16 have a trained model class; only their `data.js`/`dictionary.js`
+  bookkeeping changed, not their detection status.
 - [ ] Capture + retrain 5 phrase placeholders: `NICE TO MEET YOU`,
   `HOW ARE YOU`, `WHERE IS`, `I AM LEARNING`, `WHAT IS YOUR NAME`.
 - [ ] Capture + retrain `HELLO`/`THANK YOU` (Unit 4) and `HOT`/`COLD`
@@ -192,71 +200,75 @@ unlocked+incomplete to contrast the one 'current' unit against).
 
 ---
 
-## Proposed Unit reorder — Omen's request (2026-08-22, NOT yet implemented)
+## Unit reorder — Omen's request (2026-08-22) — ✅ mapping + Fingerspell-as-assessment implemented 2026-08-23
 
-Differs from the live Unit Map in `SYSTEM_ARCHITECTURE.md` → Rev 4.
-Goal stated by Omen: restructure for better data collection for the
-detection engine. This needs its own planning pass before touching
-`data.js` — same weight as the original Rev 4 planning session, not a
-quick edit — so treat this as a plan to confirm, not a to-do to just
-execute.
+Differs from the live Unit Map in `SYSTEM_ARCHITECTURE.md` → **Rev 6**
+(supersedes the Rev 4 table). Goal stated by Omen: restructure for
+better data collection for the detection engine.
 
-**Target order:**
+**Target order (original request):**
 1. ASL History — new content. Current Unit 0 ("Welcome to ASL") is
    generic background + how-camera-practice-works, not history
-   specifically — needs new copy, not just a rename.
-2. Letters (= current Unit 1, unchanged)
-3. Fingerspell — **as an assessment.** Current Unit 2 is an ungated
-   practice drill (Camera Check has been optional/bonus everywhere
-   since Rev 3, reaffirmed through Phase 6). Making it a graded gate is
-   a real policy reversal, not just a reorder — flag for an explicit
-   decision before implementing, same way Phase 4's locking reversal
-   and Phase 6's Level-Final retirement were each called out.
-4. Numbers (= current Unit 3, unchanged)
-5. Everyday Essentials
-6. Greetings and Introduction
-7. Basic Responses
-8. Polite Expressions
+   specifically — needs new copy, not just a rename. **Not done** —
+   still generic Unit 0 content, needs a dedicated content-writing pass.
+2. Letters (= current Unit 1, unchanged) ✅
+3. Fingerspell — **as an assessment.** ✅ **Confirmed 2026-08-23
+   ("Yes, make it graded") and implemented same day** — see
+   `SYSTEM_ARCHITECTURE.md` Rev 6 for the `gated`/`unitAssessments`
+   mechanism. Pass condition is lenient (completing the drill once = 
+   pass, matching its existing forgiving retry behavior) — flagged as a
+   simplification, not re-confirmed separately.
+4. Numbers (= current Unit 3, unchanged) ✅ — now also gated behind #3.
+5. Everyday Essentials ✅ — narrowed, see mapping below.
+6. Greetings and Introduction ✅ — new unit + category.
+7. Basic Responses ✅ — new unit + category.
+8. Polite Expressions ✅ — new unit + category.
 9. Days of the Week — current `time` category (`DAY`/`WEEK`/`MONTH`/
    `YEAR`/`TODAY`) is generic time vocabulary, **not** the 7 weekday
-   names (Monday–Sunday). If literal weekdays are wanted, that's new
-   content/training data, not a relabel of what exists.
+   names (Monday–Sunday). **Not done** — no new content/training data
+   was available to build this from; `time` was left alone (still Unit
+   8 today, unrenamed).
 10. Everything else already in the app — just categorize, no reshuffle
-    urgency (today's Unit 5 remainder, Unit 6 phrases, Unit 7
-    Phrasebook).
+    urgency. ✅ (bumped to units 8/9/10, content unchanged).
 
-**Blocking question before this can become a `data.js` phase — corrected
-2026-08-23:** items 5–8 are NOT currently one bucket (see the Phase 7
-correction above) — they're split across Unit 4 `requests` and three
-different Unit 5 categories, plus 5 signIds (`YES`/`NO`/`RESTROOM`/
-`FOOD`/`HELLO`) with no `data.js` content at all yet. Splitting/merging
-into 4 named categories still needs a human sign-off — same weight as
-before — but here's a draft mapping to confirm or correct rather than
-starting from a blank sketch:
+**Mapping — confirmed 2026-08-23, then implemented same session:**
 
-| Proposed category | SignIds | Notes |
+| Category (unit) | SignIds | Content status |
 |---|---|---|
-| Greetings and Introduction | `HELLO` | Needs a *new* `data.js` SIGNS entry, not just a re-tag — `HELLO` has zero lesson content today, not just an untrained model. |
-| Basic Responses | `YES`, `NO`, `GOOD`, `BAD`, `WHO`, `WHAT`, `WHERE`, `WHEN`, `WHY`, `HOW` | `YES`/`NO` also need new `data.js` content (dictionary-only today). |
-| Polite Expressions | `PLEASE`, `THANK YOU`, `EXCUSE`, `SORRY` | — |
-| Everyday Essentials (narrowed) | `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `RESTROOM`, `GO`, `COME` | `FOOD`/`RESTROOM` also need new `data.js` content. |
+| Greetings and Introduction (5) | `HELLO` | New `data.js` entry written this session (had zero content before). |
+| Basic Responses (6) | `YES`, `NO`, `GOOD`, `BAD`, `WHO`, `WHAT`, `WHERE`, `WHEN`, `WHY`, `HOW` | `YES`/`NO` are new entries; the rest moved in with existing content unchanged. |
+| Polite Expressions (7) | `PLEASE`, `THANK YOU`, `EXCUSE`, `SORRY` | All moved in with existing content unchanged. |
+| Everyday Essentials (4, narrowed) | `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `BATHROOM`, `GO`, `COME` | `FOOD` is a new entry. `BATHROOM` — see merge note below, **not** a new `RESTROOM` entry. |
 
-This is one reasonable split, not the only one (e.g. `EXCUSE` could sit
-in Greetings instead of Polite Expressions) — Omen/Joshua should treat
-it as a draft to edit, not a decision already made.
+**Resolved this session — the "RESTROOM" list item was a duplicate,
+not a gap.** Traced it against `data.js` before writing new content:
+`RESTROOM` (dictionary.js-only, from the original 16-word list) and the
+pre-existing `BATHROOM` entry (Unit 5 `health`, still comingSoon,
+description: T-hand shake, note already said "also commonly used for
+restroom/toilet") are the same physical sign, tracked under two
+different labels in two different files that never referenced each
+other. Merged: moved `BATHROOM` into Everyday Essentials, renamed
+`dictionary.js`'s `RESTROOM` key to `BATHROOM` to match, wrote no new
+"RESTROOM" content. Worth a scan for other Phase-7-list-vs-existing-
+content collisions like this one if more essential words get added
+later — this one wasn't caught by either the original request or last
+session's audit.
 
-**New blocker found this session, not in the original request:**
-`data.js`'s `CATEGORIES` already has an `intermediate`/Unit-7 category
-with id `basic_responses` (line ~254) and one with id `polite_expressions`
-(line ~270) — the Phrasebook's full-sentence versions. New basic-level
-categories reusing those exact ids would collide; whoever implements
-this needs different ids (e.g. `essentials_basic_responses`,
-`essentials_polite_expressions`) for the two that share a name with
-existing Phrasebook categories.
+**Naming collision — resolved.** `data.js`'s `CATEGORIES` already had
+Unit-7-Phrasebook (now Unit 10) categories with ids `basic_responses`
+and `polite_expressions`. The 2 new basic-level categories use
+`essentials_basic_responses`/`essentials_polite_expressions` instead —
+no collision, both sets of ids now coexist.
 
-Fingerspell-as-assessment (item 3) is unchanged from before — still a
-policy reversal that needs its own explicit yes/no from Joshua, separate
-from the mapping question above.
+**Not done / open follow-ups:**
+- ASL History (Unit 0) and Days-of-the-Week (item 9) content — flagged
+  above, need dedicated content-writing sessions.
+- `learn.js`'s Fingerspell unit card label updated to reflect gated
+  state (was hardcoded "always open" regardless) — **not verified in a
+  real browser**, same limitation as every prior session. Worth an
+  eyeball once `DEBUG_UNLOCK_ALL` is back to `false`.
+- Fingerspell's lenient pass condition (see #3 above) — flag for a
+  second look if a stricter assessment mode is wanted later.
 
 ---
 

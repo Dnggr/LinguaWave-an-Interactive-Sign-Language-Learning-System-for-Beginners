@@ -544,7 +544,13 @@ export const SIGN_DICTIONARY = {
   'WHERE':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'where.gif',    detectionType:'motion', disabled:true },
   'WHY':      { fingerStates:[0,1,1,1,0], category:'word', imageFile:'why.gif',      detectionType:'motion', disabled:true },
   'WHAT':     { fingerStates:[1,1,1,1,1], category:'word', imageFile:'what.gif',     detectionType:'motion', disabled:true },
-  'RESTROOM': { fingerStates:[1,1,0,0,0], category:'word', imageFile:'restroom.gif', detectionType:'motion', disabled:true },
+  // BUGFIX (this session): this key used to be 'RESTROOM'. data.js has
+  // no 'RESTROOM' signId — it has a 'BATHROOM' entry (in `health`,
+  // moved to `requests` this session) with the identical T-hand-shake
+  // description. Same real-world sign, two different labels, neither
+  // file referencing the other — renamed to match data.js rather than
+  // create a second, duplicate dictionary entry for one physical sign.
+  'BATHROOM': { fingerStates:[1,1,0,0,0], category:'word', imageFile:'bathroom.gif', detectionType:'motion', disabled:true },
   'HUNGRY':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hungry.gif',   detectionType:'motion', disabled:true },
 
   // BUGFIX (this session, found auditing Phase 7 / Unit 4 for the

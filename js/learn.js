@@ -563,7 +563,22 @@ document.addEventListener('DOMContentLoaded', () => {
    *         one unit id (if any) allowed to render as 'current'. */
   function getUnitState(unit, currentUnitId) {
     if (unit.kind === 'info')        return { status: 'available', label: 'Start here' };
-    if (unit.kind === 'interactive') return { status: 'available', label: 'Practice drill · always open', href: 'lesson.html?level=basic&category=fingerspell_name' };
+    // CHANGED (this session) — was unconditionally "Practice drill ·
+    // always open". Fingerspell Your Name is now a gated assessment
+    // (see data.js's fingerspell_name UNITS entry, `gated: true`,
+    // confirmed 2026-08-23) — label now reflects pass state instead of
+    // always implying it's optional. Generalized on unit.gated/unit.id
+    // rather than hardcoding 'fingerspell_name' a second time (the href
+    // below already did, kept as-is — same convention already in use
+    // here before this session).
+    if (unit.kind === 'interactive') {
+      const href = 'lesson.html?level=basic&category=fingerspell_name';
+      if (!unit.gated) return { status: 'available', label: 'Practice drill · always open', href };
+      const passed = !!window.LWProgress?.getUnitAssessment?.(unit.id)?.passed;
+      return passed
+        ? { status: 'done', label: 'Assessment passed', href }
+        : { status: 'available', label: 'Assessment · required to continue', href };
+    }
     // WORDING FIX (PIVOT_CHECKLIST.md §12, same session as the
     // renderWordPicker() tailHtml fix above): was "Browse only, no quiz
     // yet". §12's own checklist text says this phrase can be kept for

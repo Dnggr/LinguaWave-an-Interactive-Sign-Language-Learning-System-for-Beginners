@@ -56,6 +56,12 @@
  *     levelAssessments: {
  *       [level]: { attempts, bestScore, lastScore, passed,
  *                  breakdown, lastAt } | null
+ *     },
+ *     unitAssessments: {
+ *       // NEW (this session, Rev 6 — Fingerspell-as-assessment): same
+ *       // shape as levelAssessments, keyed by a `gated: true` UNITS id
+ *       // instead of a level. Currently only 'fingerspell_name'.
+ *       [unitId]: { attempts, bestScore, lastScore, passed, lastAt } | null
  *     }
  *   }
  *
@@ -131,6 +137,15 @@
     return store.categories[categoryId];
   }
 
+  // NEW (this session) — small flat map for gated 'interactive' units
+  // (currently just fingerspell_name). Same shape/pattern as
+  // levelAssessments below, keyed by unit id instead of level. See
+  // isCategoryUnlocked()'s CHANGED note for why this exists.
+  function ensureUnitAssessments(store) {
+    if (!store.unitAssessments) store.unitAssessments = {};
+    return store.unitAssessments;
+  }
+
   // NEW — level-final assessments still get their own small flat map;
   // this concept is untouched by the Phase 3 flattening (see file header).
   function ensureLevelAssessments(store) {
@@ -175,7 +190,7 @@ async function hydrateStore() {
     const snapshot = await getDoc(userRef);
     // REV 4 PHASE 3 — CHANGED: flat default shape (categories/levelAssessments)
     // instead of the old { levels: {} }.
-    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, categories: {}, levelAssessments: {} };
+    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, categories: {}, levelAssessments: {}, unitAssessments: {} };
     remoteStore.uid = user.uid;
     saveStoreLocal(remoteStore);
     console.log('[progress.js] hydration complete, saved:', remoteStore);
@@ -228,6 +243,29 @@ async function hydrateStore() {
   }
 
   /**
+   * NEW (this session) — record the result of a gated 'interactive'
+   * unit's assessment (currently just fingerspell_name). Same shape as
+   * recordCategoryAssessment above, keyed by unitId instead of a
+   * category id, since gated interactive units deliberately have no
+   * CATEGORIES entry (see UNITS' fingerspell_name comment in data.js).
+   * @param {{score:number, passed:boolean}} result
+   */
+  function recordUnitAssessment(unitId, result) {
+    const store = loadStore();
+    const map   = ensureUnitAssessments(store);
+    const prev  = map[unitId];
+    map[unitId] = {
+      attempts:  (prev?.attempts ?? 0) + 1,
+      bestScore: Math.max(prev?.bestScore ?? 0, result.score ?? 0),
+      lastScore: result.score ?? 0,
+      passed:    !!(prev?.passed) || !!result.passed,
+      lastAt:    new Date().toISOString(),
+    };
+    saveStore(store);
+    return map[unitId];
+  }
+
+  /**
    * Record the result of a level-final assessment.
    * UNCHANGED by Phase 3 — level-final assessments are still a
    * per-level concept (see file header); only their storage location
@@ -264,6 +302,12 @@ async function hydrateStore() {
   function getLevelAssessment(level) {
     const store = loadStore();
     return store.levelAssessments?.[level] ?? null;
+  }
+
+  /** NEW (this session) — mirrors getLevelAssessment, for gated units. */
+  function getUnitAssessment(unitId) {
+    const store = loadStore();
+    return store.unitAssessments?.[unitId] ?? null;
   }
 
   /** Categories in a level that actually have playable sign content. */
@@ -310,6 +354,30 @@ async function hydrateStore() {
   }
 
   /**
+   * NEW (this session) — every 'interactive' unit tagged `gated: true`
+   * in data.js's UNITS array (currently just fingerspell_name), in
+   * UNITS order. Data-driven per this repo's own convention (see
+   * AI_MEMORY.md §3 "Data-driven over hardcoded") — adding a second
+   * gated interactive unit later needs zero changes here, just the
+   * `gated: true` flag on its UNITS entry.
+   */
+  function getOrderedGates() {
+    const units = window.LWData?.getUnits?.() ?? [];
+    return units.filter(u => u.kind === 'interactive' && u.gated === true);
+  }
+
+  /**
+   * NEW (this session) — true only if every gate that sits BEFORE the
+   * given unit order (in UNITS order) has been passed. Category-group
+   * units with no gate before them are trivially true (empty filter).
+   */
+  function gatesClearedBefore(unitOrder) {
+    return getOrderedGates()
+      .filter(g => g.order < unitOrder)
+      .every(g => !!getUnitAssessment(g.id)?.passed);
+  }
+
+  /**
    * A category is unlocked if it's the first live category in the
    * FLAT cross-unit chain, or the previous live category in that same
    * chain has been passed.
@@ -324,11 +392,19 @@ async function hydrateStore() {
    * `level` is kept as a parameter purely for call-site compatibility
    * (js/dashboard.js calls isCategoryUnlocked(level, cat.id)) — it's
    * not used to scope the chain anymore.
+   *
+   * CHANGED (this session) — also checks gatesClearedBefore() first.
+   * This is how Fingerspell Your Name (Unit 2, gated:true) blocks
+   * Numbers (Unit 3) and everything after it without needing to be a
+   * CATEGORIES entry itself — see data.js's fingerspell_name comment.
    */
   function isCategoryUnlocked(level, categoryId) {
     // DEBUG_UNLOCK_ALL short-circuit — see its doc comment above. Real
     // logic (unchanged) still runs below when this is `false`.
     if (DEBUG_UNLOCK_ALL) return true;
+
+    const cat = (window.LWData?.CATEGORIES ?? []).find(c => c.id === categoryId);
+    if (cat && !gatesClearedBefore(cat.unit)) return false;
 
     const chain = getOrderedLiveCategories();
     const idx   = chain.findIndex(c => c.id === categoryId);
@@ -405,7 +481,9 @@ async function hydrateStore() {
   window.LWProgress = {
     PASS_THRESHOLD, LEVEL_ORDER,
     recordSignPracticed, recordCategoryAssessment, recordLevelAssessment,
+    recordUnitAssessment, // NEW (this session) — Fingerspell-as-assessment
     getCategoryProgress, getLevelAssessment, getLevelStats,
+    getUnitAssessment, // NEW (this session)
     isCategoryUnlocked, isLevelUnlocked, isLevelFinalUnlocked,
     liveCategoriesFor, getAllLearnedSigns,
     getOrderedLiveCategories, // NEW — exposed pre-emptively for Phase 4's learn.js trail view; not consumed anywhere yet.
