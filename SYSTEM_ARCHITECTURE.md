@@ -7,8 +7,13 @@
 **Current state, in one line:** Rev 4 (curriculum pivot to one linear
 "Basic ASL" path) is code-complete except Phase 7 (content
 capture/retraining — see `PIVOT_CHECKLIST.md`). Rev 5 (course-player
-sidebar) and the Dashboard UX pass are both done. `js/auth.js` is real
-Firebase auth, out of scope for AI sessions (teammate owns it).
+sidebar) and the Dashboard UX pass are both done. Rev 6 (Omen's unit
+reorder — new Greetings/Basic Responses/Polite Expressions units,
+Fingerspell-as-assessment) is code-complete as of 2026-08-23, same
+caveat as Rev 4: content/training (Phase 7) still open, and 2 pieces of
+Omen's original request (ASL History content, literal Days-of-the-Week
+content) are explicitly not done — see the Unit Map. `js/auth.js` is
+real Firebase auth, out of scope for AI sessions (teammate owns it).
 
 > Compressed 2026-08-22 — this file used to carry a full per-item
 > "Implementation status" session log duplicating `PIVOT_CHECKLIST.md`'s
@@ -40,21 +45,37 @@ lingvano.com (tight teach→quiz loop, mixed question formats, camera
 just maps them onto a new presentation order. `unit`/`UNITS` (added
 Phase 1) is what actually drives ordering/unlocking now.
 
+> **Updated 2026-08-23 (Rev 6 — Omen's reorder, mapping confirmed and
+> implemented in `data.js`/`dictionary.js`/`progress.js`/`lesson.js`/
+> `learn.js` this session).** Replaces the Rev 4 8-unit table below.
+> `PIVOT_CHECKLIST.md` has the full session-by-session detail; this is
+> just the current state.
+
 | Unit | Title | Source data | Detection status |
 |---|---|---|---|
-| 0 | Welcome to ASL (background, how practice works, Deaf-culture notes) | new, static text | N/A — no camera |
+| 0 | Welcome to ASL | new, static text | N/A — no camera. **Still titled/framed as generic welcome, NOT "ASL History"** — Omen's target order wants History content here, but that's new copywriting, not a restructure; not done this session, see PIVOT_CHECKLIST.md. |
 | 1 | The Alphabet (A–Z) | `basic/alphabet`, unchanged | ✅ fully trained |
-| 2 | Fingerspell Your Name | new interactive drill | ✅ reuses A–Z static model |
-| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ⚠️ static 0–9 trained; `6`/`9`/`10` correctly routed to motion model but that model has zero digit classes yet — Phase 7 |
-| 4 | Everyday Essentials | `medium/requests` + 16 `disabled:true` placeholders | ❌ none trained yet — Phase 7 |
-| 5 | Common Things & People | `medium` — family/places/time/temperature (+8 comingSoon: food/clothes/health/feelings/colors/money/animals/amounts) | ⚠️ family/time trained & working; **places mostly trained, except `COME`/`GO` which are `disabled: true` placeholders (corrected 2026-08-23 — a stale comment previously claimed both were trained)**; temperature (`HOT`/`COLD`) has placeholder entries only; the 8 comingSoon ones have no `SIGN_DICTIONARY` entry at all (by design, hidden from UI) — though 5 of those comingSoon words (`SORRY`/`GOOD`/`BAD` in `feelings`, `WATER`/`HUNGRY` in `food`) DO have disabled placeholders, since they're also on the Phase 7 Essential Words list; see `PIVOT_CHECKLIST.md` → Phase 7 |
-| 6 | Basic Phrases | `sequence_demo` mechanism + 6 curated real phrases (`MOM_HOME`, `DAD_WORK`, `TODAY_SCHOOL`, `FINISH_WORK`, `SISTER_STORE`, `TODAY_GRANDMA_HOME`) | ✅ done — built only from already-trained words |
-| 7+ | Phrasebook (read-only reference, not graded) | all 18 `intermediate` categories, ~100 sentences | ❌ 0 trained — deliberately demoted to browse-only, not a graded unit (full-sentence detection for ~100 sentences isn't realistic capstone scope) |
+| 2 | Fingerspell Your Name | new interactive drill | ✅ reuses A–Z static model. **CHANGED this session: now a gated assessment** (`gated: true` on its UNITS entry) — completing the drill once (the drill is forgiving by design, so completion = pass) unlocks Unit 3 onward via `progress.js`'s new `recordUnitAssessment`/`getUnitAssessment`/`gatesClearedBefore`. Previously "always open," never blocked anything. |
+| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ⚠️ static 0–9 trained; `6`/`9`/`10` correctly routed to motion model but that model has zero digit classes yet — Phase 7. Now also gated behind Unit 2's assessment (see above). |
+| 4 | Everyday Essentials | `medium/requests`, **narrowed this session** to `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `BATHROOM`, `GO`, `COME` | ❌ none trained yet — Phase 7. `FOOD` and `HELLO`(Unit 5)/`YES`/`NO`(Unit 6) got real `data.js` lesson content this session (previously zero content existed for any of the four). `BATHROOM` moved in from Unit 5 `health` — same physical sign as the "RESTROOM" item on Phase 7's list, merged rather than duplicated (see `dictionary.js`'s note). |
+| 5 | Greetings and Introduction | **NEW this session** — `medium/essentials_greetings` | ❌ none trained yet — Phase 7. Sole content: `HELLO`. |
+| 6 | Basic Responses | **NEW this session** — `medium/essentials_basic_responses` | ❌ none trained yet — Phase 7. `YES`/`NO`/`GOOD`/`BAD`/`WHO`/`WHAT`/`WHERE`/`WHEN`/`WHY`/`HOW`, moved in from the old Unit 4 `requests` and Unit 5 `feelings`. |
+| 7 | Polite Expressions | **NEW this session** — `medium/essentials_polite_expressions` | ❌ none trained yet — Phase 7. `PLEASE`/`THANK YOU`/`EXCUSE`/`SORRY`, moved in from the old Unit 4 `requests` and Unit 5 `feelings`. ids prefixed `essentials_` to avoid colliding with the Unit 10 Phrasebook's own (unrelated, full-sentence) `basic_responses`/`polite_expressions` categories — see PIVOT_CHECKLIST.md's "New blocker." |
+| 8 | Common Things & People | `medium` — family/places/time/temperature (+8 comingSoon: food/clothes/health/feelings/colors/money/animals/amounts) — **was Unit 5, bumped to make room for units 5–7 above** | ⚠️ family/time trained & working; places mostly trained except `COME`/`GO` (moved out to Unit 4 this session, so this is moot for `places` now — its remaining ~7 words are fine); temperature (`HOT`/`COLD`) placeholder only; food/feelings similarly had their Phase-7-tracked words (`WATER`/`HUNGRY`, `SORRY`/`GOOD`/`BAD`) moved out this session — their remaining words are genuinely comingSoon, no Phase 7 placeholder exists for any of them |
+| 9 | Basic Phrases | `sequence_demo` mechanism + 6 curated real phrases — **was Unit 6, bumped** | ✅ done — built only from already-trained words |
+| 10 | Phrasebook (read-only reference, not graded) | all 18 `intermediate` categories, ~100 sentences — **was Unit 7, bumped** | ❌ 0 trained — deliberately demoted to browse-only, not a graded unit |
+
+**Still not done from Omen's target order** (flagged, not attempted this
+session — both need new content, not restructuring): ASL History copy
+for Unit 0, and literal Days-of-the-Week content (today's `time`
+category is generic day/week/month/year vocabulary, not the 7 weekday
+names) — see PIVOT_CHECKLIST.md.
 
 ### Data model
 
 - `UNITS`: `{ id, order, title, kind: 'info' | 'category-group' |
-  'interactive' | 'reference' }`, sits above `CATEGORIES`.
+  'interactive' | 'reference', gated?: boolean }`. `gated` is NEW this
+  session — only meaningful on `kind:'interactive'` units; see below.
 - Every `CATEGORIES` entry gets a `unit` field (int, matches
   `UNITS[].order`).
 - **`level` is not renamed.** Values (`basic`/`medium`/`intermediate`)
@@ -71,12 +92,34 @@ Phase 1) is what actually drives ordering/unlocking now.
 that chain — **a category is no longer auto-unlocked just for being
 first in its `level`** (e.g. Unit 4's `requests`, `level:medium`, now
 gates on Unit 3's `numbers`, `level:basic`, passing — the chain crosses
-level boundaries). Unit 0/Unit 7/Unit 2 are structurally excluded
-(wrong `kind`). Storage: `lw_progress_v3`, flat `{ categories,
-levelAssessments }` shape, no migration shim from `v2` (reset accepted).
+level boundaries). Unit 0/Unit 10/Unit 2 are structurally excluded
+(wrong `kind`) **except Unit 2 also has a second, additive role — see
+below.** Storage: `lw_progress_v3`, flat `{ categories,
+levelAssessments, unitAssessments }` shape (`unitAssessments` added
+this session), no migration shim from `v2` (reset accepted).
 `level`/`category` *params* on every public `progress.js` function are
 unchanged, so `learn.js`/`quiz.js`/`dashboard.js`/`lesson.js` never
 needed a call-site rewrite for this.
+
+**NEW this session — gated interactive units.** Fingerspell-as-
+assessment (confirmed 2026-08-23, was previously "always open," never
+blocked anything) needed a mechanism outside the CATEGORIES-based chain
+above, since `fingerspell_name` deliberately has no CATEGORIES entry
+(its content is generated at runtime from the learner's name, not
+authored — see Phase 2's note in `AI_MEMORY.md`). Added: `gated: true`
+on a `UNITS` entry marks it as a pass/fail gate; `recordUnitAssessment`/
+`getUnitAssessment` (new, mirror `recordLevelAssessment`'s shape) store
+the result; `getOrderedGates()` + `gatesClearedBefore(unitOrder)` (new)
+check every gated unit whose `order` is smaller than the target
+category's unit before falling through to the existing chain logic —
+data-driven (reading `UNITS[].gated`), not a hardcoded check for
+`fingerspell_name` by name, so a second gated interactive unit later
+needs no changes to this logic. The pass condition itself is lenient by
+design: `lesson.js`'s phrase-chaining drill already retries a wrong
+letter rather than failing the attempt, so reaching "Phrase complete!"
+IS the pass — there's no separate strict-mode UI. Flagged as a
+simplification worth a second look if a stricter bar (no retries,
+timed) is wanted later.
 
 ### Assessment format (✅ done, Phase 6)
 
@@ -129,6 +172,77 @@ correctly and surfaced/fixed 4 unrelated bugs — see `AI_MEMORY.md`
 Session Log. Two Phase 7 items were also folded into this session:
 `HELLO`/`THANK YOU` and `HOT`/`COLD` now carry `disabled: true` in
 `dictionary.js` (previously silently ran the wrong classifier).
+
+---
+
+## Rev 6 — Unit reorder + Fingerspell-as-assessment (Omen's request)
+
+**Status: mapping + Fingerspell-as-assessment done, 2026-08-23. ASL
+History content and literal Days-of-the-Week content NOT done — both
+need new copywriting, not restructuring, and weren't attempted.**
+
+### Why
+
+Omen's stated goal: restructure for better data-collection ordering.
+Proposed a 10-item target order (see `PIVOT_CHECKLIST.md`'s original
+request); two items were content-only (ASL History, Days of the Week)
+and out of scope for a restructuring pass; the rest reordered/split
+existing units. The word-to-category mapping was drafted, corrected
+against actual `data.js` locations (the original ask assumed the 16
+"Essential Words" were one Unit 4 bucket — they weren't, see
+`PIVOT_CHECKLIST.md` Phase 7's correction), and confirmed before any
+code changed.
+
+### What changed
+
+- **3 new units** inserted at order 5/6/7 (Greetings and Introduction,
+  Basic Responses, Polite Expressions), each holding one new `medium`
+  category (`essentials_greetings`, `essentials_basic_responses`,
+  `essentials_polite_expressions` — prefixed to avoid colliding with
+  the Phrasebook's own same-named categories, see the Unit Map).
+  `common_things_people`/`basic_phrases`/`phrasebook` bumped from order
+  5/6/7 → 8/9/10 to make room — every `CATEGORIES` entry pointing at
+  those (31 entries) was bumped to match, since `getCategoriesForUnit`
+  matches by numeric `order`, not unit id.
+- **Unit 4 (`requests`, retitled "Everyday Essentials") narrowed** to
+  `HELP`/`STOP`/`WATER`/`FOOD`/`HUNGRY`/`BATHROOM`/`GO`/`COME`. The
+  other original members moved to the 3 new units above.
+- **New lesson content written** for `HELLO`, `YES`, `NO`, `FOOD` — the
+  only 4 signIds with zero prior `data.js` content (previously only
+  disabled `dictionary.js` placeholders existed).
+- **Merged, not duplicated:** Phase 7's tracked "RESTROOM" word and the
+  pre-existing `BATHROOM` entry (Unit 5 `health`, still comingSoon) are
+  the same physical sign. Moved `BATHROOM` into Unit 4 instead of
+  writing a redundant new `RESTROOM` entry; renamed `dictionary.js`'s
+  `RESTROOM` placeholder key to `BATHROOM` to match.
+- **Fingerspell Your Name (Unit 2) is now a gated assessment** —
+  reverses its "always open, never blocks anything" status. See
+  "Progress / unlock model" above (Rev 4 section) for the
+  `gated`/`getOrderedGates`/`gatesClearedBefore` mechanism and the
+  lenient pass condition. `learn.js`'s unit card label updated to match
+  (was hardcoded "Practice drill · always open" regardless of state).
+- 3 small pre-existing bugs fixed along the way (not part of the
+  reorder itself): `dictionary.js` missing 5 disabled placeholders for
+  `requests`-category signs, a stale `data.js` comment claiming
+  `COME`/`GO` were already trained, and stale `words[]` array entries
+  (`GOOD/BAD`, `COME/GO`) left over from earlier signId splits — all
+  cosmetic/documentation, `words[]` is not read by any code.
+
+### What's still open
+
+- ASL History content for Unit 0 (currently generic "Welcome to ASL").
+- Literal Days-of-the-Week content — no unit currently holds the 7
+  weekday names; `time` (Unit 8) is generic day/week/month/year
+  vocabulary and was left alone.
+- Fingerspell's pass condition is deliberately lenient (completion =
+  pass, matching the drill's existing forgiving retry behavior) — flag
+  for a second look if a stricter bar is wanted.
+- Not verified in a real browser — same limitation as every prior
+  session. Verified in Node: `data.js` parses clean, `UNITS` order is a
+  contiguous 0–10, every touched category resolves to the intended
+  signIds, zero duplicate category/sign ids, and the gate-clearing logic
+  was unit-tested standalone (Numbers correctly blocked until
+  Fingerspell passes, Alphabet correctly never blocked).
 
 ---
 

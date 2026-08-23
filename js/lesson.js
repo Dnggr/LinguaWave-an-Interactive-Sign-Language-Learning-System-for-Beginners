@@ -1734,6 +1734,18 @@ function handlePracticeFrame(result) {
     enterCooldown(1200);
     if (isMotion) resetMotionBuffer();
     showFeedback('✅ Phrase complete!', 'success');
+    // NEW (this session) — Fingerspell-as-assessment. This drill is
+    // deliberately forgiving (a wrong letter retries that step instead
+    // of failing the attempt — see the comment above this block), so
+    // there's no separate strict/lenient distinction to make here:
+    // reaching this line at all means the whole name was signed
+    // correctly, letter by letter. That's the pass condition.
+    // isNameDrill-only guard: sequence_demo's phrase completions
+    // (MOM_HOME etc.) go through this exact same code path and must
+    // NOT be treated as clearing the fingerspell gate.
+    if (isNameDrill) {
+      window.LWProgress?.recordUnitAssessment?.('fingerspell_name', { score: 1, passed: true });
+    }
     phraseSteps = null;
     return;
   }

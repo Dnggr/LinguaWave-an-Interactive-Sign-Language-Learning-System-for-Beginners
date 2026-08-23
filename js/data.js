@@ -69,12 +69,36 @@
 const UNITS = [
   { id: 'welcome', order: 0, title: 'Welcome to ASL', kind: 'info' },
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
-  { id: 'fingerspell_name', order: 2, title: 'Fingerspell Your Name', kind: 'interactive' },
+  // CHANGED (this session) — `gated: true` added. Confirmed 2026-08-23
+  // (see PIVOT_CHECKLIST.md): Fingerspell Your Name becomes a real
+  // assessment gate, reversing the "optional practice drill" status it
+  // held since Phase 2. This flag is read by progress.js's
+  // isCategoryUnlocked() — any 'interactive' unit with `gated: true`
+  // must have a passed js/engine/progress.js unitAssessment before any
+  // LATER category-group unit's categories count as unlocked. Passing
+  // condition: completing the full name sequence once (see lesson.js's
+  // phrase-chaining "Phrase complete!" handler) — the drill is
+  // deliberately forgiving (retries a wrong letter rather than failing
+  // the attempt), so there's no separate "strict assessment mode" to
+  // build; one full completion IS the pass. Flagging this simplification
+  // for confirmation — a stricter mode (e.g. no retries, timed) would be
+  // a separate follow-up if wanted.
+  { id: 'fingerspell_name', order: 2, title: 'Fingerspell Your Name', kind: 'interactive', gated: true },
   { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' },
   { id: 'everyday_essentials', order: 4, title: 'Everyday Essentials', kind: 'category-group' },
-  { id: 'common_things_people', order: 5, title: 'Common Things & People', kind: 'category-group' },
-  { id: 'basic_phrases', order: 6, title: 'Basic Phrases', kind: 'category-group' },
-  { id: 'phrasebook', order: 7, title: 'Phrasebook', kind: 'reference' },
+  // NEW (this session) — Omen's proposed reorder, mapping confirmed
+  // 2026-08-23 (see PIVOT_CHECKLIST.md). Each of these 3 is a
+  // single-category unit, same pattern as 'everyday_essentials' above.
+  { id: 'greetings_intro', order: 5, title: 'Greetings and Introduction', kind: 'category-group' },
+  { id: 'essentials_responses', order: 6, title: 'Basic Responses', kind: 'category-group' },
+  { id: 'essentials_politeness', order: 7, title: 'Polite Expressions', kind: 'category-group' },
+  // CHANGED — order bumped 5/6/7 -> 8/9/10 to make room for the 3 new
+  // units above. Every CATEGORIES entry that pointed at unit: 5/6/7 was
+  // bumped to match (getCategoriesForUnit() matches by this numeric
+  // `order`, not by id) — see the corresponding CHANGED note on each.
+  { id: 'common_things_people', order: 8, title: 'Common Things & People', kind: 'category-group' },
+  { id: 'basic_phrases', order: 9, title: 'Basic Phrases', kind: 'category-group' },
+  { id: 'phrasebook', order: 10, title: 'Phrasebook', kind: 'reference' },
 ];
 
 /* ── UNIT 0 CONTENT — "Welcome to ASL" ──────────────────────────────
@@ -139,16 +163,22 @@ const CATEGORIES = [
   // content but zero SIGN_DICTIONARY entries, so a camera check would
   // silently never match).
   {
-    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 5,
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 8,
     source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
     words: ['MOM', 'DAD', 'BOY', 'GIRL', 'MARRIAGE', 'BROTHER', 'SISTER', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'BABY', 'SINGLE', 'DIVORCED'],
   },
   {
-    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false, unit: 5,
+    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false, unit: 8,
     // CHANGED: 'CAR/DRIVE' -> 'CAR', 'IN/OUT' -> 'IN','OUT' — kept in
     // sync with the SIGNS entries' signId fixes below (see those entries
     // and dictionary.js's PLACES block comment for why).
-    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'COME/GO', 'CAR', 'IN', 'OUT', 'WITH'],
+    // BUGFIX (this session): 'COME/GO' was a stale combined entry —
+    // COME and GO have been separate SIGNS entries since the split
+    // documented on medium_places_COME below; this array just never got
+    // updated (words[] is documentation only, cosmetic not functional).
+    // CHANGED (this session) — COME/GO also moved out entirely, to
+    // `requests` (Everyday Essentials) per the confirmed reorder mapping.
+    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'CAR', 'IN', 'OUT', 'WITH'],
   },
   // Tier 0 phrase-chaining (lesson.js). Chains several already-working
   // atomic detections (letters and/or trained word-signs) in sequence
@@ -174,17 +204,17 @@ const CATEGORIES = [
   // Phase 1 note (renaming touches lesson.js's phraseSteps + every
   // ?category=sequence_demo link for zero functional gain).
   {
-    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 6,
+    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 9,
     words: ['MOM_HOME', 'DAD_WORK', 'TODAY_SCHOOL', 'FINISH_WORK', 'SISTER_STORE', 'TODAY_GRANDMA_HOME'],
   },
   {
-    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false, unit: 5,
+    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false, unit: 8,
     // CHANGED: 'TODAY/NOW' -> 'NOW', 'TODAY' — kept in sync with the
     // SIGNS entries' signId split below.
     words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'NOW', 'TODAY', 'FINISH'],
   },
   {
-    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false, unit: 5,
+    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false, unit: 8,
     words: ['HOT', 'COLD'],
   },
   // CHANGED (Rev 4 Phase 1): comingSoon flipped false -> true. No
@@ -194,46 +224,79 @@ const CATEGORIES = [
   // stay visible as content but not presented as a playable lesson
   // yet. Flip back to false once real detection backs each one.
   {
-    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true, unit: 5,
-    words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'WATER', 'CANDY', 'COOKIE', 'HUNGRY'],
+    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true, unit: 8,
+    // CHANGED (this session) — WATER/HUNGRY moved to `requests`
+    // (Everyday Essentials) per the confirmed reorder mapping.
+    words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'CANDY', 'COOKIE'],
   },
   {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true, unit: 5,
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true, unit: 8,
     words: ['SHIRT', 'PANTS', 'SOCKS', 'SHOES', 'COAT', 'UNDERWEAR'],
   },
   {
-    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true, unit: 5,
-    words: ['WASH', 'HURT', 'BATHROOM', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
+    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true, unit: 8,
+    // CHANGED (this session) — BATHROOM moved to `requests` (merged
+    // with the "RESTROOM" Phase 7 tracking item, same physical sign).
+    words: ['WASH', 'HURT', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
   },
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true, unit: 5,
-    words: ['HAPPY', 'ANGRY', 'SAD', 'SORRY', 'CRY', 'LIKE', 'GOOD/BAD', 'LOVE'],
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true, unit: 8,
+    // BUGFIX (this session): 'GOOD/BAD' was a stale combined entry —
+    // GOOD and BAD have been separate SIGNS entries for a while (see
+    // medium_feelings_GOOD/medium_feelings_BAD below), this array just
+    // never got updated when they were split (words[] is documentation
+    // only, getCategorySigns() reads the SIGNS array's own `category`
+    // field, so this was cosmetic, not a functional bug).
+    // CHANGED (this session) — SORRY/GOOD/BAD also moved out entirely,
+    // to essentials_polite_expressions / essentials_basic_responses
+    // per the confirmed reorder mapping.
+    words: ['HAPPY', 'ANGRY', 'SAD', 'CRY', 'LIKE', 'LOVE'],
   },
-  // unit: 4 (Everyday Essentials) — NOT unit 5. HELLO/THANK YOU are
-  // trained; the rest of Unit 4's word list comes from dictionary.js's
-  // disabled:true placeholders, not from this category's `words`
-  // array — see SYSTEM_ARCHITECTURE.md Rev 4 Unit Map row 4.
-  // comingSoon left false (unchanged) since this category partially
-  // works today via HELLO/THANK YOU; only the Unit 5 all-or-nothing
-  // untrained categories above were flipped per Joshua's answer.
+  // CHANGED (this session) — narrowed to the "Everyday Essentials"
+  // slot per the confirmed reorder mapping (PIVOT_CHECKLIST.md,
+  // confirmed 2026-08-23). id kept as 'requests' (internal only, not
+  // user-facing) to avoid touching every ?category=requests deep link
+  // for zero functional gain — only `title`/`words`/membership changed.
+  // PLEASE/EXCUSE/THANK YOU moved to essentials_polite_expressions;
+  // WHO/WHAT/WHEN/WHERE/WHY/HOW moved to essentials_basic_responses;
+  // WATER/HUNGRY moved in from `food`, GO/COME moved in from `places`;
+  // FOOD/RESTROOM are brand-new SIGNS entries (no prior data.js content
+  // existed for either signId).
   {
-    id: 'requests', level: 'medium', title: 'Requests', order: 9, comingSoon: false, unit: 4,
-    words: ['PLEASE', 'EXCUSE', 'THANK YOU', 'HELP', 'WHO', 'WHAT', 'WHEN', 'WHERE', 'WHY', 'HOW', 'STOP'],
+    id: 'requests', level: 'medium', title: 'Everyday Essentials', order: 9, comingSoon: false, unit: 4,
+    words: ['HELP', 'STOP', 'WATER', 'FOOD', 'HUNGRY', 'BATHROOM', 'GO', 'COME'],
+  },
+  // NEW (this session) — 3 categories for the reorder's new units
+  // (order 5/6/7 in UNITS above). ids prefixed `essentials_`/
+  // `greetings_intro` avoided the Unit 7 Phrasebook's existing
+  // 'basic_responses'/'polite_expressions'/'greetings_intro' category
+  // ids (found this session — see PIVOT_CHECKLIST.md's "New blocker").
+  {
+    id: 'essentials_greetings', level: 'medium', title: 'Greetings and Introduction', order: 1, comingSoon: false, unit: 5,
+    words: ['HELLO'],
   },
   {
-    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true, unit: 5,
+    id: 'essentials_basic_responses', level: 'medium', title: 'Basic Responses', order: 1, comingSoon: false, unit: 6,
+    words: ['YES', 'NO', 'GOOD', 'BAD', 'WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW'],
+  },
+  {
+    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Expressions', order: 1, comingSoon: false, unit: 7,
+    words: ['PLEASE', 'THANK YOU', 'EXCUSE', 'SORRY'],
+  },
+  {
+    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true, unit: 8,
     words: ['BIG', 'TALL', 'FULL', 'MORE'],
   },
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true, unit: 5,
+    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true, unit: 8,
     words: ['BLUE', 'GREEN', 'YELLOW', 'RED', 'BROWN', 'ORANGE', 'GOLD', 'SILVER'],
   },
   {
-    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true, unit: 5,
+    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true, unit: 8,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true, unit: 5,
+    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true, unit: 8,
     words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
   },
 
@@ -247,77 +310,77 @@ const CATEGORIES = [
   // conflating "not gradeable" with "hide the content."
   // Level 2 — Basic (Common Phrases), Modules 1–8
   {
-    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 7,
+    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 10,
     words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
   },
   {
-    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 7,
+    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 10,
     words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
   },
   {
-    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 7,
+    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 10,
     words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
   },
   {
-    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 7,
+    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 10,
     words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
   },
   {
-    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 7,
+    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 10,
     words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
   },
   {
-    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 7,
+    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 10,
     words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
   },
   {
-    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 7,
+    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 10,
     words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
   },
   {
-    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 7,
+    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 10,
     words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
   },
 
   // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
   {
-    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 7,
+    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 10,
     words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
   },
   {
-    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 7,
+    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 10,
     words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
   },
   {
-    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 7,
+    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 10,
     words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
   },
   {
-    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 7,
+    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 10,
     words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
   },
   {
-    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 7,
+    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 10,
     words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
   },
   {
-    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 7,
+    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 10,
     words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
   },
   {
-    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 7,
+    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 10,
     words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
   },
   {
-    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 7,
+    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 10,
     words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
   },
   {
-    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 7,
+    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 10,
     words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
   },
   {
-    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 7,
+    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 10,
     words: [
       'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
       'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
@@ -931,7 +994,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_COME', level: 'medium', category: 'places', signId: 'COME', title: 'Come', order: 6,
+    id: 'medium_places_COME', level: 'medium', category: 'requests', signId: 'COME', title: 'Come', order: 6,
     // CHANGED — split out of a combined 'COME/GO' entry, same fix as
     // IN/OUT earlier: a single signId can only ever match ONE detected
     // label, so a pair-entry could never actually be detected correctly.
@@ -951,7 +1014,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/come.png', videoUrl: '../assets/videos/medium/places/come.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_GO', level: 'medium', category: 'places', signId: 'GO', title: 'Go', order: 7,
+    id: 'medium_places_GO', level: 'medium', category: 'requests', signId: 'GO', title: 'Go', order: 7,
     // CHANGED — the other half of the old combined 'COME/GO' entry.
     description: 'Point both index fingers up and forward, then flick them away from your body.',
     tips: [
@@ -1382,7 +1445,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/food/cereal.png', videoUrl: '../assets/videos/medium/food/cereal.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_food_WATER', level: 'medium', category: 'food', signId: 'WATER', title: 'Water', order: 13,
+    id: 'medium_food_WATER', level: 'medium', category: 'requests', signId: 'WATER', title: 'Water', order: 13,
     description: 'Form a ‘W’ handshape (index, middle, and ring fingers extended) and tap it gently against your chin twice.',
     tips: [
       'Handshape is ‘W’ — three fingers extended',
@@ -1412,7 +1475,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/food/cookie.png', videoUrl: '../assets/videos/medium/food/cookie.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_food_HUNGRY', level: 'medium', category: 'food', signId: 'HUNGRY', title: 'Hungry', order: 16,
+    id: 'medium_food_HUNGRY', level: 'medium', category: 'requests', signId: 'HUNGRY', title: 'Hungry', order: 16,
     description: 'Form a ‘C’ handshape and move it down the center of your chest, from below your throat toward your stomach.',
     tips: [
       'One smooth downward stroke',
@@ -1506,7 +1569,18 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/health/hurt.png', videoUrl: '../assets/videos/medium/health/hurt.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_health_BATHROOM', level: 'medium', category: 'health', signId: 'BATHROOM', title: 'Bathroom', order: 3,
+    // CHANGED (this session) — moved from `health` (still comingSoon)
+    // into `requests`/Everyday Essentials. This IS the "RESTROOM" item
+    // from Phase 7's Essential Words list — same physical sign (T-hand
+    // shake), just tracked under two different labels in two different
+    // files: `dictionary.js` had a `RESTROOM` placeholder, `data.js` had
+    // this `BATHROOM` entry, and neither file referenced the other.
+    // Kept the richer, already-written `BATHROOM` content rather than
+    // writing a redundant new `RESTROOM` entry with the same
+    // description; renamed dictionary.js's placeholder key to match
+    // (see that file). signId/id left as `BATHROOM` — only `category`
+    // and `order` changed here.
+    id: 'medium_health_BATHROOM', level: 'medium', category: 'requests', signId: 'BATHROOM', title: 'Bathroom', order: 12,
     description: 'Form a ‘T’ handshape (fist with your thumb tucked between your index and middle fingers) and shake it gently side to side.',
     tips: [
       'Thumb pokes out between index and middle finger',
@@ -1578,7 +1652,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/sad.png', videoUrl: '../assets/videos/medium/feelings/sad.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_SORRY', level: 'medium', category: 'feelings', signId: 'SORRY', title: 'Sorry', order: 4,
+    id: 'medium_feelings_SORRY', level: 'medium', category: 'essentials_polite_expressions', signId: 'SORRY', title: 'Sorry', order: 4,
     description: 'Make a fist and rub it in a circular motion over the center of your chest.',
     tips: [
       'Hand is a closed fist',
@@ -1608,7 +1682,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/like.png', videoUrl: '../assets/videos/medium/feelings/like.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_GOOD', level: 'medium', category: 'feelings', signId: 'GOOD', title: 'Good', order: 7,
+    id: 'medium_feelings_GOOD', level: 'medium', category: 'essentials_basic_responses', signId: 'GOOD', title: 'Good', order: 7,
     // CHANGED — split out of a combined 'GOOD/BAD' entry, same fix as
     // IN/OUT and COME/GO above. Both GOOD and BAD are already
     // separately captured/trained.
@@ -1621,7 +1695,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/medium/feelings/good.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_BAD', level: 'medium', category: 'feelings', signId: 'BAD', title: 'Bad', order: 8,
+    id: 'medium_feelings_BAD', level: 'medium', category: 'essentials_basic_responses', signId: 'BAD', title: 'Bad', order: 8,
     // CHANGED — the other half of the old combined 'GOOD/BAD' entry.
     description: 'Touch your fingertips to your chin, then flip your hand downward so the palm faces the floor.',
     tips: [
@@ -1644,7 +1718,7 @@ const SIGNS = [
 
   // ── MEDIUM · REQUESTS ──
   {
-    id: 'medium_requests_PLEASE', level: 'medium', category: 'requests', signId: 'PLEASE', title: 'Please', order: 1,
+    id: 'medium_requests_PLEASE', level: 'medium', category: 'essentials_polite_expressions', signId: 'PLEASE', title: 'Please', order: 1,
     description: 'Hold your flat hand on your chest and rub it in a circular motion.',
     tips: [
       'Hand stays flat against the chest',
@@ -1654,7 +1728,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/please.png', videoUrl: '../assets/videos/medium/requests/please.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_EXCUSE', level: 'medium', category: 'requests', signId: 'EXCUSE', title: 'Excuse', order: 2,
+    id: 'medium_requests_EXCUSE', level: 'medium', category: 'essentials_polite_expressions', signId: 'EXCUSE', title: 'Excuse', order: 2,
     description: 'Brush the fingertips of your dominant hand across the palm of your other flat hand, from the base toward the fingertips.',
     tips: [
       'Base hand stays flat and still',
@@ -1664,7 +1738,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/medium/requests/excuse.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_THANK_YOU', level: 'medium', category: 'requests', signId: 'THANK YOU', title: 'Thank You', order: 3,
+    id: 'medium_requests_THANK_YOU', level: 'medium', category: 'essentials_polite_expressions', signId: 'THANK YOU', title: 'Thank You', order: 3,
     description: 'Touch your flat fingertips to your chin, then move your hand forward and down, as if extending your thanks outward.',
     tips: [
       'Starts with fingertips at the chin',
@@ -1684,7 +1758,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_WHO', level: 'medium', category: 'requests', signId: 'WHO', title: 'Who', order: 5,
+    id: 'medium_requests_WHO', level: 'medium', category: 'essentials_basic_responses', signId: 'WHO', title: 'Who', order: 5,
     description: 'Hold your index finger near your chin and move it in a small circle, or tap it against your lips.',
     tips: [
       'Only the index finger is extended',
@@ -1694,7 +1768,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/who.png', videoUrl: '../assets/videos/medium/requests/who.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_WHAT', level: 'medium', category: 'requests', signId: 'WHAT', title: 'What', order: 6,
+    id: 'medium_requests_WHAT', level: 'medium', category: 'essentials_basic_responses', signId: 'WHAT', title: 'What', order: 6,
     description: 'Hold both hands out in front of you, palms up, and give a small questioning shrug, or brush your index finger across the palm of your other hand.',
     tips: [
       'Palms face up in the shrug version',
@@ -1704,7 +1778,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/what.png', videoUrl: '../assets/videos/medium/requests/what.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_WHEN', level: 'medium', category: 'requests', signId: 'WHEN', title: 'When', order: 7,
+    id: 'medium_requests_WHEN', level: 'medium', category: 'essentials_basic_responses', signId: 'WHEN', title: 'When', order: 7,
     description: 'Hold one index finger up and still, then circle your other index finger around it and bring it down to touch.',
     tips: [
       'One hand stays still as an anchor',
@@ -1714,7 +1788,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/when.png', videoUrl: '../assets/videos/medium/requests/when.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_WHERE', level: 'medium', category: 'requests', signId: 'WHERE', title: 'Where', order: 8,
+    id: 'medium_requests_WHERE', level: 'medium', category: 'essentials_basic_responses', signId: 'WHERE', title: 'Where', order: 8,
     description: 'Hold your index finger up and shake it quickly from side to side.',
     tips: [
       'Only the index finger is extended',
@@ -1724,7 +1798,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/where.png', videoUrl: '../assets/videos/medium/requests/where.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_WHY', level: 'medium', category: 'requests', signId: 'WHY', title: 'Why', order: 9,
+    id: 'medium_requests_WHY', level: 'medium', category: 'essentials_basic_responses', signId: 'WHY', title: 'Why', order: 9,
     description: 'Touch your fingertips to your forehead, then pull your hand away while changing it into a ‘Y’ handshape (thumb and pinky extended), shaking it slightly.',
     tips: [
       'Starts at the forehead',
@@ -1734,7 +1808,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/why.png', videoUrl: '../assets/videos/medium/requests/why.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_HOW', level: 'medium', category: 'requests', signId: 'HOW', title: 'How', order: 10,
+    id: 'medium_requests_HOW', level: 'medium', category: 'essentials_basic_responses', signId: 'HOW', title: 'How', order: 10,
     description: 'Hold both hands with bent fingers and knuckles touching in front of you, then rotate your hands outward and up so your palms face up.',
     tips: [
       'Knuckles touch at the start',
@@ -1752,6 +1826,62 @@ const SIGNS = [
       'Contact is the edge (pinky-side) of the dominant hand',
     ],
     imageUrl: '../assets/images/medium/requests/stop.png', videoUrl: '../assets/videos/medium/requests/stop.mp4', detectionType: 'motion',
+  },
+  {
+    // NEW (this session) — no prior data.js content existed for this
+    // signId (it was only ever a disabled dictionary.js placeholder,
+    // see PIVOT_CHECKLIST.md Phase 7's "16 Essential Words" note). Not
+    // the same sign as `medium_food_HAMBURGER` etc. — this is the
+    // general "food/eat" sign, distinct from any specific dish.
+    id: 'medium_requests_FOOD', level: 'medium', category: 'requests', signId: 'FOOD', title: 'Food', order: 12,
+    description: 'Bring a flattened O handshape (fingertips and thumb pinched together) up to your mouth, tapping it against your lips two or three times.',
+    tips: [
+      'Fingertips and thumb pinch together into a flat O',
+      'Motion is toward the mouth, like bringing food in',
+      'Tap two or three times, not just once',
+    ],
+    imageUrl: '../assets/images/medium/requests/food.png', videoUrl: '../assets/videos/medium/requests/food.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · ESSENTIALS_GREETINGS ──
+  // NEW (this session) — no prior data.js content existed for HELLO at
+  // all (only a disabled dictionary.js placeholder) — see
+  // PIVOT_CHECKLIST.md Phase 7. This is the category's only sign today.
+  {
+    id: 'medium_essentials_greetings_HELLO', level: 'medium', category: 'essentials_greetings', signId: 'HELLO', title: 'Hello', order: 1,
+    description: 'Hold your dominant hand flat near your forehead, fingers together like a salute, then move it outward and slightly down, away from your head.',
+    tips: [
+      'Starts near the forehead/temple, like a salute',
+      'Hand is flat, fingers together, palm facing out',
+      'Motion arcs outward and down, away from your head',
+    ],
+    imageUrl: '../assets/images/medium/essentials_greetings/hello.png', videoUrl: '../assets/videos/medium/essentials_greetings/hello.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · ESSENTIALS_BASIC_RESPONSES (YES/NO — new content;
+  // WHO/WHAT/WHEN/WHERE/WHY/HOW/GOOD/BAD moved here from `requests`/
+  // `feelings`, see those entries above for their unchanged content) ──
+  {
+    // NEW (this session) — no prior data.js content existed for YES.
+    id: 'medium_essentials_basic_responses_YES', level: 'medium', category: 'essentials_basic_responses', signId: 'YES', title: 'Yes', order: 1,
+    description: 'Make an ‘S’ handshape (a closed fist) and nod it up and down at the wrist, like a small head nod.',
+    tips: [
+      'Handshape is a simple closed fist',
+      'The whole fist bobs up and down from the wrist',
+      'Think of it as your fist "nodding"',
+    ],
+    imageUrl: '../assets/images/medium/essentials_basic_responses/yes.png', videoUrl: '../assets/videos/medium/essentials_basic_responses/yes.mp4', detectionType: 'motion',
+  },
+  {
+    // NEW (this session) — no prior data.js content existed for NO.
+    id: 'medium_essentials_basic_responses_NO', level: 'medium', category: 'essentials_basic_responses', signId: 'NO', title: 'No', order: 2,
+    description: 'Bring your thumb, index, and middle fingers together in front of you, opening and closing them once like a small beak.',
+    tips: [
+      'Thumb + index + middle finger, the rest stay closed',
+      'One quick open-close snap, like a beak',
+      'Not the same handshape as YES — no fist involved',
+    ],
+    imageUrl: '../assets/images/medium/essentials_basic_responses/no.png', videoUrl: '../assets/videos/medium/essentials_basic_responses/no.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · AMOUNTS ──

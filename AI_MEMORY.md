@@ -17,7 +17,7 @@
 
 ---
 
-## 0. Curriculum pivot status (Rev 4 in SYSTEM_ARCHITECTURE.md)
+## 0. Curriculum pivot status (Rev 4 in SYSTEM_ARCHITECTURE.md, superseded by Rev 6)
 
 **Phases 1–6 (all app-code phases) are done.** Only **Phase 7** — real
 camera capture + model retraining for the Essential Words / phrase
@@ -25,13 +25,23 @@ placeholders / HELLO / THANK YOU / HOT / COLD / digits 6·9·10 — remains,
 and it needs a human with a camera + Colab, not another AI session. See
 `PIVOT_CHECKLIST.md` → Phase 7 for the exact class list.
 
+**Rev 6 (2026-08-23) reordered/split units on top of Rev 4** — read
+`SYSTEM_ARCHITECTURE.md`'s Rev 6 section and its updated Unit Map before
+assuming Unit 4/5/6/7 mean what an older mental model of this app might
+expect. Short version: 3 new units inserted (Greetings and Introduction,
+Basic Responses, Polite Expressions, orders 5–7), the old Unit 5/6/7
+bumped to 8/9/10, Unit 4 narrowed, and Unit 2 (Fingerspell Your Name) is
+now a real assessment gate instead of always-open practice.
+
 One-line model of the product: LinguaWave is **one linear "Basic ASL"
 path** (no user-picked level tiers) — background → letters → your name
-fingerspelled → numbers → essentials → thematic vocab → phrases →
+fingerspelled (now gated) → numbers → essentials → greetings → basic
+responses → polite expressions → thematic vocab → phrases →
 (future) conversations. `level`/`category` internal field names in
 `data.js`/`dictionary.js` are unchanged (legacy grouping keys) — the
 `UNITS` array + each category's `unit` field is what actually drives
-ordering now. Full rationale: `SYSTEM_ARCHITECTURE.md` → Rev 4.
+ordering now. Full rationale: `SYSTEM_ARCHITECTURE.md` → Rev 4 (base
+model) + Rev 6 (this reorder).
 
 **Two decisions made unilaterally by AI sessions, not pre-approved by
 Joshua — worth a nod of confirmation:**
@@ -114,6 +124,14 @@ assessment/progress work today.
   flat-grid category needs an entry in `learn.js`'s
   `BASIC_LABEL_PREFIX`/`FLAT_GRID_CATEGORIES` and `lesson.js`'s
   `singleCharPrefix`.
+- **Gated interactive units** (NEW, Rev 6): a `kind:'interactive'` UNITS
+  entry with no CATEGORIES entry of its own (e.g. `fingerspell_name`)
+  can still block later units — tag it `gated: true` in `data.js`,
+  record a pass via `LWProgress.recordUnitAssessment(unitId, result)`
+  wherever that unit's own logic decides "passed" (see `lesson.js`'s
+  phrase-complete handler), and `isCategoryUnlocked()` picks it up
+  automatically via `gatesClearedBefore()` — no per-unit special-casing
+  needed elsewhere. See `SYSTEM_ARCHITECTURE.md` Rev 6.
 
 ## 4. Open threads / known gaps
 
@@ -186,3 +204,4 @@ don't simplify without checking it still round-trips a fresh export.
 | 08-22 (later) | Screenshot review (dashboard/learn/learn?category=numbers) — 4 UI bugs flagged, none fixed; logged Omen's proposed Unit reorder (ASL History→Letters→Fingerspell-as-assessment→Numbers→Everyday Essentials→Greetings→Basic Responses→Polite Expressions→Days of the Week→rest) as a plan, not yet implemented — needs a sign-to-category mapping decision first. No app code touched. | `PIVOT_CHECKLIST.md` |
 | 08-22 (later, follow-up) | Confirmed + fixed 3 of the 4 flagged screenshot-review bugs: trail now has a single 'current' unit instead of marking every unlocked-incomplete unit current (`findCurrentUnitId()`, new); "← Back to Trail"→"← Back to Learning Path" everywhere; dashboard Continue/unit-row next-action now detects "fully practiced, not yet assessed" and routes to `quiz.html` instead of `signs[0]` (`readyForAssessment` flag, new). 4th (undocumented "Open Unit N Path" button) was real/working, just undocumented — added to `SYSTEM_ARCHITECTURE.md`. Not re-verified in a real browser. | `js/learn.js`, `js/dashboard.js`, `SYSTEM_ARCHITECTURE.md`, `PIVOT_CHECKLIST.md` |
 | 08-23 | Audited Omen's proposed reorder before touching anything: found `PIVOT_CHECKLIST.md`'s "16 Essential Words = one Unit 4 bucket" assumption was wrong (actually spans Unit 4 `requests` + Unit 5 `feelings`/`food`/`places`, 5 signIds with zero `data.js` content); drafted a corrected 4-category mapping as an unconfirmed proposal, not implemented; flagged a real `basic_responses`/`polite_expressions` category-id collision with existing Unit 7 Phrasebook categories. Fixed 2 small bugs found along the way (5 missing `dictionary.js` disabled placeholders for `requests`-category signs; a stale `data.js` comment claiming `COME`/`GO` are trained when both are `disabled: true`). No `learn.js`/`progress.js`/`auth.js` touched; `data.js` touched for one comment only, no logic/data change. | `js/engine/dictionary.js`, `js/data.js` (comment only), `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
+| 08-23 (later, follow-up — "Rev 6") | Mapping + Fingerspell-as-assessment both confirmed by Joshua/Omen via chat, then implemented same session. `data.js`: inserted 3 units (order 5/6/7), bumped 31 downstream `CATEGORIES` entries' `unit` field to match (5/6/7→8/9/10 — categories link by numeric order, not id, this was the main risk area); narrowed `requests`→"Everyday Essentials"; wrote new content for `HELLO`/`YES`/`NO`/`FOOD` (previously zero); found `RESTROOM` (Phase 7 tracking) and pre-existing `BATHROOM` entry are the same physical sign — merged instead of duplicating, renamed `dictionary.js`'s key to match. `progress.js`: added `gated` flag support (`getOrderedGates`/`gatesClearedBefore`/`recordUnitAssessment`/`getUnitAssessment`, new `unitAssessments` store map) so Fingerspell Your Name can block Numbers onward without being a CATEGORIES entry itself — data-driven via `UNITS[].gated`, not hardcoded by unit id. `lesson.js`: records a pass when the name-drill phrase sequence completes (drill's existing forgiving retry-on-mistake behavior means completion = pass, no separate strict mode built). `learn.js`: Fingerspell's unit-card label no longer hardcodes "always open" regardless of state. Verified in Node only (no browser): `data.js` parses clean, `UNITS` order contiguous 0–10, every touched category resolves to intended signIds, zero duplicate ids, gate-clearing logic unit-tested standalone. **Not done:** ASL History (Unit 0) and Days-of-the-Week content — both need new copywriting, flagged not attempted. | `js/data.js`, `js/engine/dictionary.js`, `js/engine/progress.js`, `js/lesson.js`, `js/learn.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
