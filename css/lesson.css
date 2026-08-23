@@ -74,6 +74,45 @@
 .course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600; }
 .course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent); }
 
+/* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
+   PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
+   yet matching dashboard". Same outline:none + box-shadow-ring
+   substitution as css/dashboard.css's a.unit-progress-row and this
+   session's matching addition to css/learn.css — see either of those
+   files' own comment for the full "why not outline" reasoning. Every
+   interactive row type in the sidebar gets one: the flat single-link
+   units (Unit 0/Unit 2, `.course-sidebar__unit--flat`), the
+   collapsible unit header (`.course-sidebar__unit-head`, a <button>),
+   the category header inside an open unit (`.course-sidebar__cat-head`),
+   and individual sign rows (`.course-sidebar__sign`). `.course-sidebar`
+   itself scrolls (`overflow-y: auto`) but doesn't clip square corners
+   the way dashboard's `.unit-progress-list` does, so a normal (non-
+   inset) ring is enough here, same call as css/learn.css made for the
+   same reason. Locked units (`.course-sidebar__unit--locked`) render as
+   plain, non-interactive <div>s — not focusable, nothing to add. */
+.course-sidebar__unit--flat:focus-visible,
+.course-sidebar__unit-head:focus-visible,
+.course-sidebar__cat-head:focus-visible,
+.course-sidebar__sign:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--clr-accent);
+}
+
+/* ── Error fallback (Design pass, 2026-08-23) ────────────────────────
+   Same item, gap #4. js/lesson.js's renderCourseSidebar() used to
+   silently `return` and leave the sidebar however it last looked
+   (including this session's new static loading placeholder, forever)
+   if window.LWData wasn't available, or leave a half-built list if it
+   threw partway through — reuses css/style.css's `.alert`/`.alert--error`
+   component, same pattern as `.learn-fallback-alert`/`.dash-fallback-alert`,
+   just sized for the narrower sidebar column instead of a full-width grid. */
+.sidebar-fallback-alert {
+  margin: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+}
+
 .lesson-strip { background: var(--clr-surface); border-bottom: 1px solid var(--clr-border); }
 .lesson-strip__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding-block: var(--space-3); flex-wrap: wrap; }
 .lesson-strip__progress { display: flex; align-items: center; gap: var(--space-4); }

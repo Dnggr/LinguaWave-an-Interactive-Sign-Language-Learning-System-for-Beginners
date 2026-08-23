@@ -124,11 +124,54 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ── Fallback UI (Design pass, 2026-08-23) ──────────────────────────
+// PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
+// yet matching dashboard", gap #4: js/dashboard.js has a real fallback
+// (showProgressUnavailable()) if window.LWData fails to load or a
+// render call throws; this file had neither — a failure here would
+// have silently left the static "Loading your learning path…"
+// placeholder (pages/learn.html) up forever with no explanation.
+//
+// Deliberately narrower than dashboard.js's version: only
+// window.LWData is a hard requirement here (every window.LWProgress
+// call in this file already goes through `?.` + a `?? default`, so a
+// missing LWProgress degrades to "nothing unlocked shows as done" on
+// its own, not a blank/broken page — see AI_MEMORY.md §2's note on
+// this file). Reuses css/style.css's `.alert`/`.alert--error`
+// component, same as dashboard.js, via the small `.learn-fallback-alert`
+// nesting tweak in css/learn.css — not a new error style.
+function showLearnUnavailable(reason) {
+  console.error('[learn.js] cannot render — window.LWData unavailable or a render call threw. Reason:', reason);
+  const grid = document.getElementById('lesson-grid');
+  if (!grid) return;
+  grid.classList.remove('trail', 'lesson-grid--categories');
+  grid.innerHTML = `<div class="alert alert--error learn-fallback-alert">` +
+    `We couldn't load your learning path right now. ` +
+    `<a href="dashboard.html">Go to Dashboard</a>, or reload this page to try again.` +
+    `</div>`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const grid       = document.getElementById('lesson-grid');
   const contextEl  = document.getElementById('learn-context');
   const backLinkEl = document.getElementById('learn-back-link');
   if (!grid) return;
+
+  // Design pass, 2026-08-23: the one case no render function below can
+  // gracefully no-op past — window.LWData never loaded at all (its
+  // <script> tag failed, or threw before reaching `window.LWData = `).
+  // Every render function in this file calls straight into
+  // `window.LWData.getUnits()`/`.getCategoriesForUnit()`/etc. with no
+  // guard, by design (AI_MEMORY.md's "data-driven over hardcoded"
+  // convention treats LWData as a hard dependency, unlike the optional
+  // LWProgress calls) — without this check, a missing LWData would
+  // throw partway into whichever render* function boot() picks and
+  // leave the static loading placeholder up with no explanation, the
+  // exact failure this checklist item exists to prevent.
+  if (!window.LWData) {
+    showLearnUnavailable('window.LWData did not load');
+    return;
+  }
 
   // Which function "back" calls right now — null on the trail root
   // (nothing to go back to). Set by every render* function below via
@@ -711,5 +754,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (legacyLevel) scrollToLevel(legacyLevel);
   }
 
-  boot();
+  // Design pass, 2026-08-23: belt-and-suspenders, same reasoning as
+  // js/dashboard.js's matching try/catch around its own render calls.
+  // None of the render* functions above are expected to throw (the
+  // window.LWData guard right above already covers the one case that
+  // would make ALL of them fail at once), but a future data.js shape
+  // change or an unexpected URL param combo making one function throw
+  // partway through shouldn't leave the learner stuck on a half-
+  // rendered or blank grid with nothing but a silent console error.
+  try {
+    boot();
+  } catch (e) {
+    console.error('[learn.js] rendering failed partway through:', e);
+    showLearnUnavailable('render threw: ' + (e && e.message));
+  }
 });

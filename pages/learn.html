@@ -62,6 +62,20 @@
 </head>
 <body>
 
+  <!-- ── SKIP LINK (Design pass, 2026-08-23) ─────────────────────────
+       PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
+       not yet matching dashboard": dashboard.html has had a skip link
+       since Priority 2 §13; this page didn't. Jumps straight to the
+       trail/category grid (#lesson-grid), skipping the navbar's 4
+       focusable items (logo, 2 nav links, theme toggle) + "Log out".
+       `tabindex="-1"` on #lesson-grid below is what lets a plain <div>
+       actually receive focus on jump (an <a>/<button> wouldn't need
+       this — dashboard's own skip target, #continue-cta, is an <a> and
+       doesn't have one). Must stay the very first element in <body>
+       to work, same as dashboard.html's. Uses css/style.css's shared
+       `.skip-link` (see that file's §16) rather than a page-local copy. -->
+  <a href="#lesson-grid" class="skip-link">Skip to learning path</a>
+
   <nav class="navbar">
     <div class="container navbar__inner">
       <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
@@ -119,9 +133,20 @@
        the full state breakdown — this container used to only ever
        hold one level's worth of lesson/category cards; now it holds
        whatever the current trail position is. -->
+  <!-- Design pass, 2026-08-23: `tabindex="-1"` (skip-link target, see
+       above) + a static loading placeholder using css/style.css's
+       shared `.loading-pulse` (PIVOT_CHECKLIST.md's gap #3 — this grid
+       previously just popped in with no transition, indistinguishable
+       from "empty" for the instant before js/learn.js's first render).
+       Every render path in js/learn.js replaces this div's innerHTML
+       wholesale (`grid.innerHTML = ...`) on its first call, so this
+       placeholder is naturally overwritten by the real content and
+       needs no cleanup code. -->
   <section class="section section--sm">
     <div class="container">
-      <div class="lesson-grid" id="lesson-grid"></div>
+      <div class="lesson-grid" id="lesson-grid" tabindex="-1">
+        <p class="text-muted loading-pulse" style="grid-column:1/-1;">Loading your learning path…</p>
+      </div>
     </div>
   </section>
 

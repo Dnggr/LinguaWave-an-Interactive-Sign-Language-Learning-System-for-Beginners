@@ -126,6 +126,48 @@ button.trail-node { font: inherit; width: 100%; cursor: pointer; }
 .trail-node__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .trail-node__title { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 700; }
 
+/* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
+   PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
+   yet matching dashboard": css/dashboard.css already gives
+   a.unit-progress-row a visible keyboard-focus ring
+   (outline:none + inset box-shadow, chosen there because that row sits
+   inside an overflow:hidden list); ported the same substitution here
+   for every interactive tile on this page. Neither `.lesson-grid` nor
+   `.trail` clips overflow, so a normal (non-inset) ring is enough — no
+   need for dashboard's inset variant. `:focus-visible` (not `:focus`)
+   so a mouse click doesn't show a ring meant for keyboard users only.
+   `.lesson-card` alone covers alphabet/number tiles, category cards
+   (always rendered with `class="lesson-card category-card"`) and the
+   word/phrase picker (`class="lesson-card word-picker-card"`) — one
+   rule, no need to also list `.category-card`/`.word-picker-card`.
+   `.trail-node` is separate since trail nodes never carry
+   `.lesson-card`. Locked tiles (`.lesson-card--locked`,
+   `.course-sidebar__unit--locked`-style) already use
+   `pointer-events:none` and, where rendered as `<div>`, aren't
+   focusable in the first place, so nothing extra is needed to exclude
+   them here. */
+.lesson-card:focus-visible,
+.trail-node:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--clr-accent);
+}
+
+/* ── Loading / error fallback (Design pass, 2026-08-23) ─────────────
+   Same PIVOT_CHECKLIST.md item. The initial "Loading your learning
+   path…" placeholder (pages/learn.html) uses css/style.css's shared
+   `.loading-pulse` directly — no page-specific class needed for that
+   half. `.learn-fallback-alert` below is the one small page-specific
+   adjustment `js/learn.js`'s showLearnUnavailable() needs to nest
+   css/style.css's existing `.alert`/`.alert--error` component cleanly
+   inside `#lesson-grid`, same reuse pattern css/dashboard.css's own
+   `.dash-fallback-alert` already established — not a new error style,
+   just margin/radius/column-span for this specific spot. */
+.learn-fallback-alert {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-radius: var(--radius-md);
+}
+
 /* ── Unit 0 info screen (NEW, Phase 4) ────────────────────────────
    Prose content (window.LWData.UNIT0_CONTENT), not lesson cards — a
    plain-text block dropped full-width into #lesson-grid, same
