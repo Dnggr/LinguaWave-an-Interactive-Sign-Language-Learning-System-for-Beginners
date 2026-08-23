@@ -67,7 +67,13 @@
  *          flag this for Joshua/adviser sign-off if it matters).
  * ──────────────────────────────────────────────────────────────── */
 const UNITS = [
-  { id: 'welcome', order: 0, title: 'Welcome to ASL', kind: 'info' },
+  // CHANGED (this session, content-writing pass) — title reframed to
+  // reflect the real ASL History content now in UNIT0_CONTENT below
+  // (previously pure "welcome" framing with no history in it at all —
+  // see SYSTEM_ARCHITECTURE.md Rev 6 Unit Map row 0). Content-only
+  // change: id/order/kind untouched, so nothing keying off
+  // unit.id === 'welcome' needed updating (checked — nothing does).
+  { id: 'welcome', order: 0, title: 'Welcome to ASL: A Brief History', kind: 'info' },
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
   // CHANGED (this session) — `gated: true` added. Confirmed 2026-08-23
   // (see PIVOT_CHECKLIST.md): Fingerspell Your Name becomes a real
@@ -101,12 +107,28 @@ const UNITS = [
   { id: 'phrasebook', order: 10, title: 'Phrasebook', kind: 'reference' },
 ];
 
-/* ── UNIT 0 CONTENT — "Welcome to ASL" ──────────────────────────────
+/* ── UNIT 0 CONTENT — "Welcome to ASL: A Brief History" ─────────────
  * NEW — Rev 4 Phase 1. Answered by Joshua: static text (fastest to
  * ship), NOT the capture.html YouTube reference-video panel. No
  * camera, no SIGN_DICTIONARY entry, no CATEGORIES entry — this is
- * read by a dedicated Unit 0 "info" screen (not yet built — that
- * screen itself is a Phase 4 UI task; this const is just the content).
+ * read by a dedicated Unit 0 "info" screen (learn.js's
+ * renderUnitInfo()).
+ * CHANGED (this session, content-writing pass) — added the
+ * 'brief_history' section below. Unit 0 previously had no actual
+ * history content despite Omen's target reorder wanting Unit 0 to BE
+ * "ASL History" (see PIVOT_CHECKLIST.md → "Unit reorder", item 1, and
+ * SYSTEM_ARCHITECTURE.md Rev 6 Unit Map row 0) — every prior section
+ * here was general "welcome" framing or app onboarding, not history.
+ * Dates/names checked against ASLU (lifeprint.com, Dr. Bill Vicars)
+ * per AI_MEMORY.md §1's standing instruction to check ASLU before
+ * drafting new data.js content, for consistency with what's already
+ * in the app — see this session's AI_MEMORY.md log entry for the
+ * specific ASLU pages checked. Kept deliberately short and
+ * complementary to pages/intro-to-asl.html's own, more detailed "A
+ * short history" section (linked from the info screen) rather than
+ * duplicating it — that page/Unit-0 overlap is still an open product
+ * decision (merge vs. keep cross-linked), unchanged by this session;
+ * see PIVOT_CHECKLIST.md "Open / backlog."
  * Optional 2–3 question comprehension check mentioned in Rev 4 is NOT
  * included here yet — add a `check` field per section if/when that's
  * built.
@@ -116,6 +138,16 @@ const UNIT0_CONTENT = [
     id: 'what_is_asl',
     title: 'What is ASL?',
     body: 'American Sign Language (ASL) is a complete, natural language with its own grammar and structure — it is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.',
+  },
+  // NEW (this session) — see file header comment above for sourcing
+  // and scope notes. Kept to one paragraph on purpose: the fuller
+  // version (Stokoe's linguistic research, the "why it matters" case
+  // for ASL being recognized as a real language) already lives on the
+  // linked intro-to-asl.html page, so it isn't repeated here.
+  {
+    id: 'brief_history',
+    title: 'A Brief History of ASL',
+    body: 'Modern ASL traces back to 1817, when Thomas Hopkins Gallaudet and Laurent Clerc opened the American School for the Deaf in Hartford, Connecticut — the first permanent school for Deaf students in the U.S. Gallaudet was inspired to study Deaf education by his neighbor\'s Deaf daughter, Alice Cogswell, and it was her father, Dr. Mason Cogswell, who helped fund Gallaudet\'s trip to Europe. There he met Clerc, a Deaf teacher who signed French Sign Language, and convinced him to cross the Atlantic and help start the school. At Hartford, Clerc\'s French Sign Language blended with the sign language Deaf students already brought with them — including Martha\'s Vineyard Sign Language, used for generations on a Massachusetts island by a community with an unusually high rate of hereditary deafness — and modern ASL grew out of that mix over the decades that followed.',
   },
   {
     id: 'how_practice_works',

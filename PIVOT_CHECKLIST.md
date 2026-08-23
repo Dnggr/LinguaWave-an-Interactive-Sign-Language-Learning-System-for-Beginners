@@ -218,8 +218,16 @@ better data collection for the detection engine.
 **Target order (original request):**
 1. ASL History — new content. Current Unit 0 ("Welcome to ASL") is
    generic background + how-camera-practice-works, not history
-   specifically — needs new copy, not just a rename. **Not done** —
-   still generic Unit 0 content, needs a dedicated content-writing pass.
+   specifically — needs new copy, not just a rename. **✅ Done
+   2026-08-23 (later, eighth session).** Added a `brief_history` section
+   to `UNIT0_CONTENT` (data.js) — Gallaudet/Clerc/Cogswell, American
+   School for the Deaf (1817, Hartford CT), Martha's Vineyard Sign
+   Language's contribution — fact-checked against ASLU/lifeprint.com per
+   `AI_MEMORY.md` §1. Retitled the unit `'Welcome to ASL'` → `'Welcome
+   to ASL: A Brief History'`. Kept short, still links out to
+   `intro-to-asl.html`'s own fuller history section rather than
+   duplicating it — see "Open / backlog" below, that overlap decision
+   is still open. See `AI_MEMORY.md` Session Log for the full note.
 2. Letters (= current Unit 1, unchanged) ✅
 3. Fingerspell — **as an assessment.** ✅ **Confirmed 2026-08-23
    ("Yes, make it graded") and implemented same day** — see
@@ -270,8 +278,10 @@ and `polite_expressions`. The 2 new basic-level categories use
 no collision, both sets of ids now coexist.
 
 **Not done / open follow-ups:**
-- ASL History (Unit 0) and Days-of-the-Week (item 9) content — flagged
-  above, need dedicated content-writing sessions.
+- Days-of-the-Week (item 9) content — still needs a dedicated
+  content-writing session (no source data for the 7 weekday names yet).
+  ASL History (Unit 0) — the other item that used to be listed here —
+  is done, see item 1 above.
 - `learn.js`'s Fingerspell unit card label updated to reflect gated
   state (was hardcoded "always open" regardless) — **not verified in a
   real browser**, same limitation as every prior session. Worth an
@@ -607,7 +617,10 @@ find bugs."
   ASL.
 - [ ] Sign-variation callouts (e.g. "HOW" has two accepted forms).
 - [ ] `pages/intro-to-asl.html` vs. Unit 0's `UNIT0_CONTENT` overlap —
-  needs a decision (merge, or keep both cross-linked as-is).
+  needs a decision (merge, or keep both cross-linked as-is). Slightly
+  more overlap now that Unit 0 has its own `brief_history` section
+  (2026-08-23) — still not resolved, decision deliberately left to
+  Joshua/Omen rather than made unilaterally here.
 - [ ] Later dashboard stat tiles: current streak, review due, best
   assessment score.
 

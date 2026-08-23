@@ -10,10 +10,12 @@ capture/retraining — see `PIVOT_CHECKLIST.md`). Rev 5 (course-player
 sidebar) and the Dashboard UX pass are both done. Rev 6 (Omen's unit
 reorder — new Greetings/Basic Responses/Polite Expressions units,
 Fingerspell-as-assessment) is code-complete as of 2026-08-23, same
-caveat as Rev 4: content/training (Phase 7) still open, and 2 pieces of
-Omen's original request (ASL History content, literal Days-of-the-Week
-content) are explicitly not done — see the Unit Map. `js/auth.js` is
-real Firebase auth, out of scope for AI sessions (teammate owns it).
+caveat as Rev 4: content/training (Phase 7) still open. Of Omen's
+original request, ASL History content for Unit 0 was written and
+ASLU-checked 2026-08-23 (later, eighth session — see the Unit Map);
+literal Days-of-the-Week content is the one piece still explicitly not
+done. `js/auth.js` is real Firebase auth, out of scope for AI sessions
+(teammate owns it).
 `PIVOT_CHECKLIST.md`'s Phase C (camera/tab-lifecycle hygiene bugs in
 `quiz.js`/`cameraUtils.js`/`classifier.js`) is also now done — see that
 file; Phase B (auth-adjacent bugs) remains open, flagged for the
@@ -57,7 +59,7 @@ Phase 1) is what actually drives ordering/unlocking now.
 
 | Unit | Title | Source data | Detection status |
 |---|---|---|---|
-| 0 | Welcome to ASL | new, static text | N/A — no camera. **Still titled/framed as generic welcome, NOT "ASL History"** — Omen's target order wants History content here, but that's new copywriting, not a restructure; not done this session, see PIVOT_CHECKLIST.md. |
+| 0 | Welcome to ASL: A Brief History | new, static text | N/A — no camera. **Updated 2026-08-23 (later, eighth session)** — added a real `brief_history` section to `UNIT0_CONTENT` (Gallaudet/Clerc/Cogswell, American School for the Deaf founded 1817 in Hartford CT, Martha's Vineyard Sign Language's contribution), fact-checked against ASLU/lifeprint.com per `AI_MEMORY.md` §1, and retitled the unit to match. Kept short and still links out to `intro-to-asl.html`'s own fuller history section rather than duplicating it — see PIVOT_CHECKLIST.md, that page/Unit-0 overlap is still an open decision. |
 | 1 | The Alphabet (A–Z) | `basic/alphabet`, unchanged | ✅ fully trained |
 | 2 | Fingerspell Your Name | new interactive drill | ✅ reuses A–Z static model. **CHANGED this session: now a gated assessment** (`gated: true` on its UNITS entry) — completing the drill once (the drill is forgiving by design, so completion = pass) unlocks Unit 3 onward via `progress.js`'s new `recordUnitAssessment`/`getUnitAssessment`/`gatesClearedBefore`. Previously "always open," never blocked anything. |
 | 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ❌ **CORRECTED 2026-08-23 (code-read audit, see `PIVOT_CHECKLIST.md` Phase A) — this row previously said "static 0–9 trained," which was wrong and self-contradicted §5's own model table below.** `asl_static_model/labels.json` has zero digit classes (25 classes, all letters); `classifyGesture()` can only ever return a label from that file, so `0,1,2,3,4,5,7,8` cannot be detected today, not just "not yet captured." `6`/`9`/`10` are correctly routed to the motion model but that model also has zero digit classes yet. **All 10 digits are Phase 7 work**, not just 3 — `PIVOT_CHECKLIST.md`'s Phase 7 item list reconciled to match this (merged digit item, static/motion split already decided in `dictionary.js`, not an open question). Now also gated behind Unit 2's assessment (see above). |
@@ -69,11 +71,12 @@ Phase 1) is what actually drives ordering/unlocking now.
 | 9 | Basic Phrases | `sequence_demo` mechanism + 6 curated real phrases — **was Unit 6, bumped** | ✅ done — built only from already-trained words |
 | 10 | Phrasebook (read-only reference, not graded) | all 18 `intermediate` categories, ~100 sentences — **was Unit 7, bumped** | ❌ 0 trained — deliberately demoted to browse-only, not a graded unit |
 
-**Still not done from Omen's target order** (flagged, not attempted this
-session — both need new content, not restructuring): ASL History copy
-for Unit 0, and literal Days-of-the-Week content (today's `time`
-category is generic day/week/month/year vocabulary, not the 7 weekday
-names) — see PIVOT_CHECKLIST.md.
+**Still not done from Omen's target order:** literal Days-of-the-Week
+content (today's `time` category is generic day/week/month/year
+vocabulary, not the 7 weekday names) — needs new content, not
+restructuring, not yet attempted; see PIVOT_CHECKLIST.md. (ASL History
+copy for Unit 0 — the other item that used to be listed here — was
+written 2026-08-23, see the Unit Map above.)
 
 ### Data model
 
@@ -182,8 +185,9 @@ Session Log. Two Phase 7 items were also folded into this session:
 ## Rev 6 — Unit reorder + Fingerspell-as-assessment (Omen's request)
 
 **Status: mapping + Fingerspell-as-assessment done, 2026-08-23. ASL
-History content and literal Days-of-the-Week content NOT done — both
-need new copywriting, not restructuring, and weren't attempted.**
+History content done 2026-08-23 (later, eighth session — content-only,
+not a restructure, see the Unit Map above). Literal Days-of-the-Week
+content still NOT done — needs new copywriting, not attempted.**
 
 ### Why
 
@@ -234,7 +238,6 @@ code changed.
 
 ### What's still open
 
-- ASL History content for Unit 0 (currently generic "Welcome to ASL").
 - Literal Days-of-the-Week content — no unit currently holds the 7
   weekday names; `time` (Unit 8) is generic day/week/month/year
   vocabulary and was left alone.
