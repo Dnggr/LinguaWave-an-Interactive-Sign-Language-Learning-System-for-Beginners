@@ -714,15 +714,30 @@ let lastHandCount  = 0;
 // not a copy of dashboard's unit-row percentage, in case a literal
 // match to that number is wanted instead.
 
+// CHANGED (this session — new lesson-plan pivot) — copied verbatim
+// from js/learn.js's own (also just-updated) UNIT_ICONS/CATEGORY_ICONS,
+// same documented small-duplication call as before this session.
 const UNIT_ICONS = {
   welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
-  everyday_essentials: '🙏', common_things_people: '🗂️',
+  greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
+  needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
+  body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
+  size: '📏', appearance: '✨', touch: '🌡️', taste: '👅', sound: '🔊',
+  descriptions: '📝', family_unit: '👪', home: '🏠', furniture: '🛋️',
+  household: '🪟', bathroom: '🚿', kitchen: '🍳', school: '🏫',
+  school_supplies: '✏️', classroom: '📋', classroom_actions: '🙋',
+  subjects: '📚', food_unit: '🍽️', fruits: '🍎', vegetables: '🥕',
+  snacks: '🍪', drinks: '🥤', animals_unit: '🐾', wild_animals: '🦁',
+  insects: '🐝', clothes_unit: '👕', dressing: '🧺', personal_items: '🎒',
+  nature: '🌳', plants: '🌱', weather: '⛅', seasons: '🍂',
+  places_unit: '🗺️', vehicles: '🚗', transportation: '🚶',
+  professions: '👷', community: '🏙️', time_unit: '⏰', daytime: '🌅',
+  days: '📅', months: '🗓️', sequence: '🔢', frequency: '🔁',
+  location: '📍', distance: '📐', directions: '🧭', social: '🤝',
+  manners: '🙇', turn_taking: '🔄', responses: '💬', questions: '❓',
+  conversation: '💭', requests_unit: '🙋', answers: '✅',
   basic_phrases: '💬', phrasebook: '📖',
 };
-// Copied verbatim from js/learn.js's own CATEGORY_ICONS (small,
-// header-comment-documented duplication there already — same call
-// here for the same reason: two tiny copies were judged simpler and
-// lower-risk than a shared module just for an icon lookup).
 const CATEGORY_ICONS = {
   alphabet: '🔤', numbers: '🔢',
   family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
@@ -734,6 +749,20 @@ const CATEGORY_ICONS = {
   daily_activities: '📅', family_conversations: '🗣️', talking_about_feelings: '💭',
   asking_for_help: '🆘', school_conversations: '🏫', shopping_ordering: '🛍️',
   social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
+  people: '🧑‍🤝‍🧑', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
+  body: '🧍', personal_information: '🪪', shapes: '🔺', size: '📏',
+  appearance: '✨', taste: '👅', sound: '🔊', descriptions: '📝',
+  home: '🏠', furniture: '🛋️', household: '🪟', bathroom: '🚿',
+  kitchen: '🍳', school: '🏫', school_supplies: '✏️', classroom: '📋',
+  classroom_actions: '🙋', subjects: '📚', fruits: '🍎', vegetables: '🥕',
+  snacks: '🍪', drinks: '🥤', wild_animals: '🦁', insects: '🐝',
+  dressing: '🧺', personal_items: '🎒', nature: '🌳', plants: '🌱',
+  weather: '⛅', seasons: '🍂', vehicles: '🚗', transportation: '🚶',
+  professions: '👷', community: '🏙️', daytime: '🌅', days: '📅',
+  months: '🗓️', sequence: '🔢', frequency: '🔁', location: '📍',
+  distance: '📐', directions: '🧭', social: '🤝', manners: '🙇',
+  turn_taking: '🔄', responses: '💬', conversation: '💭',
+  making_requests: '🙋', answers: '✅',
 };
 
 // Which unit (by `order`) this page is currently inside, so the

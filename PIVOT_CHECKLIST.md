@@ -1,14 +1,126 @@
 # PIVOT_CHECKLIST.md — Curriculum pivot implementation tracker
 
-> Tracks execution of `SYSTEM_ARCHITECTURE.md` → **Rev 4**. This file is
-> the *what/done-or-not*; that section is the *why*. Check items off as
-> they land. **`js/auth.js` is out of scope — teammate owns it.**
+> Tracks execution of `SYSTEM_ARCHITECTURE.md` → **Rev 7** (current —
+> supersedes Rev 4/5/6, all archived in that file's own history). This
+> file is the *what/done-or-not*; that section is the *why*. Check
+> items off as they land. **`js/auth.js` is out of scope — teammate
+> owns it.**
 >
 > Compressed 2026-08-22: completed phases collapsed to one line each
 > (full reasoning previously here is now redundant with the finished
 > code + `AI_MEMORY.md`'s changelog). Only genuinely open items keep
 > their detail. Add new work below the `## Open / backlog` section —
 > that's the room this compression freed up.
+
+---
+
+## Rev 7 — Omen's uploaded curriculum implemented (2026-08-24) — ✅ done
+
+Implements `updated_fixed_lesson.txt` (Omen's upload — 68 numbered
+topics, "already sorted," one ASL-basics topic per line) as the new
+`UNITS`/`CATEGORIES` structure in `data.js`. Full 72-row Unit Map is in
+`SYSTEM_ARCHITECTURE.md` → Rev 7; this section is the decision log.
+
+- [x] **`UNITS` rewritten 11 → 72 entries**, order 0–71, one topic per
+  unit, in the source file's exact order (topic N in the file = unit
+  N+1 for topics 1–2, unit N+1 for topics 3–68 — see data.js's UNITS
+  header comment for the precise offset table). `kind`/`gated`
+  mechanics themselves are UNCHANGED from Rev 6.
+- [x] **`CATEGORIES` rewritten** — 90 entries total (68 new-topic
+  categories + `alphabet`/`numbers` + `sequence_demo` + 18-category
+  Phrasebook + `health`/`amounts`/`money` restored, see below).
+- [x] **Two Rev 6 mechanisms kept, not in the source list** (flagged,
+  not confirmed by Omen yet):
+  - `fingerspell_name` (gated assessment) stays at Unit 2, right after
+    the Alphabet — real, working feature; the source list has no
+    fingerspelling topic at all, dropping it would have been a
+    regression, not an implementation of the new plan.
+  - `sequence_demo` ("Basic Phrases," trained) and the 18-category
+    intermediate Phrasebook stay, moved to the very end (Units 70/71)
+    — the source list is pure vocabulary, no phrase-combination
+    content, so there's nowhere in it for these to "belong"; end-
+    of-sequence matches the adviser's own "combine what's already
+    taught" framing (see Rev 4 §Why in SYSTEM_ARCHITECTURE.md).
+- [x] **Every category id with real SIGNS/`dictionary.js` content kept
+  its id, unchanged** — `alphabet`, `numbers`, `family`, `places`,
+  `time`, `temperature`, `requests`, `essentials_greetings`,
+  `essentials_basic_responses`, `essentials_polite_expressions`,
+  `sequence_demo`, the 18 Phrasebook ids. Only `unit`/`title`/`words[]`
+  changed on these. **`dictionary.js` was not opened this session** —
+  zero risk to detection routing. Three got a title change to match
+  the new plan's topic name while keeping the old id (`essentials_
+  basic_responses` "Basic Responses"→"Questions"; `requests` "Everyday
+  Essentials"→"Needs"; `temperature` "Temperature"→"Touch") — the
+  `words[]` preview on all three (and on `family`/`places`/`time`/
+  `essentials_greetings`/`essentials_polite_expressions`) now shows
+  the new plan's fuller topic vocabulary, which is **broader than
+  the real placeholder/trained SIGNS set** underneath — flagging this
+  explicitly so a future session doesn't assume `words[].length` means
+  that many signs are actually playable. Pre-existing pattern (see
+  `requests`'s old words/SIGNS mismatch, already documented before
+  this session) — just wider now across more categories.
+- [x] **Bug caught: `health`/`amounts`/`money` were about to be
+  silently dropped.** These 3 legacy categories are `comingSoon: true`
+  with **real authored SIGNS entries** (title/description/tips/images
+  — 5+4+3 signs respectively) even though they have zero
+  `dictionary.js` entries (the AI_MEMORY.md §4 note about these was
+  about `SIGN_DICTIONARY`, not about `data.js` SIGNS — easy to
+  conflate, and this session initially did). The new plan has no
+  matching topic for any of the three. Caught this via a scripted
+  orphan-reference check (every `SIGNS[].category` cross-checked
+  against the new `CATEGORIES` array) before finalizing, not by
+  inspection — **worth running that same check again after any future
+  CATEGORIES edit**, it's cheap and would have caught this silently
+  otherwise. Restored, not dropped: `health` → Unit 42 (Dressing, 2nd
+  category), `amounts` → Unit 16 (Size, 2nd category), `money` → Unit
+  43 (Personal Items, 2nd category) — closest-fit placement, not exact
+  matches. **`money` in particular has no good home in the new 68-topic
+  list at all** — flagged for Omen, a better spot (or a 73rd unit of
+  its own) may be wanted.
+- [x] **Bug found & fixed: icon maps only covered the old Rev 6 ids.**
+  `UNIT_ICONS` (`learn.js`/`lesson.js`/`dashboard.js`) and
+  `CATEGORY_ICONS` (`learn.js`/`lesson.js`) keyed off the 11 old unit
+  ids / ~34 old category ids. Every one of the 66 new units and ~52
+  new categories would have silently rendered through the "generic
+  bookmark" fallback — not a crash, but the whole new curriculum would
+  have looked unfinished (blank/generic icons everywhere). Extended
+  all 5 map copies with matching entries — cosmetic-only, additive,
+  no other logic in any of these 3 files touched.
+- [x] **Near-collision flagged, not merged:** the source file has two
+  "Requests"-flavored topics — #7 "Needs" (mapped onto the pre-existing
+  `requests` id/content) and the literal #67 "Requests" (new content,
+  no dictionary.js entries). Kept as two separate categories
+  (`requests` vs. new `making_requests`) rather than merged, matching
+  the source file's own structure — same call already made once before
+  for `essentials_polite_expressions` vs. the Phrasebook's
+  `polite_expressions` (see the original "New blocker" note, now
+  superseded but same reasoning).
+- [ ] **Not done, flagged for Omen/adviser confirmation** (same spirit
+  as the two unilateral Rev 4/6 decisions already logged in
+  `AI_MEMORY.md` §0):
+  - Keeping Fingerspell Your Name and Basic Phrases/Phrasebook at all,
+    since the source list doesn't mention them.
+  - `money`'s placement under Personal Items (no good fit exists).
+  - Whether `numbers`'s `comingSoon: false` (despite 0% of digits
+    being trained, per the existing Phase A finding) should finally
+    flip to `true` to match reality — pre-existing inconsistency,
+    untouched this session, just surfaced again here for visibility.
+- [ ] **Not done — Phase 7's capture priority list still reflects the
+  old unit order**, not the new one. Under Rev 7, Units 3–8/18/22/48/
+  53/66 (Numbers, Greetings, Polite Words, Needs, Touch, Family,
+  Places, Time, Questions) are the earliest-reached content a learner
+  hits, and several already have `dictionary.js` scaffolding (disabled
+  placeholders) — recapturing/reprioritizing Phase 7's list to match
+  this new front-of-the-line order would unlock progress sooner than
+  the old priority order. Not reordered here — a content/capture-
+  planning call, not a data-structure one.
+- Verified this session (Node-only, no browser): `node --check` on
+  `data.js`/`learn.js`/`lesson.js`/`dashboard.js`; a sandboxed VM eval
+  of the full `data.js` confirming `UNITS` order is contiguous 0–71 and
+  unique, every `CATEGORIES[].unit` resolves to a real `UNITS[].order`,
+  every `CATEGORIES` id is unique per level, and — the important one —
+  **zero `SIGNS[].category` values point at a category that no longer
+  exists** (this is what caught the health/amounts/money bug above).
 
 ---
 
@@ -46,6 +158,17 @@
   call made by an AI session, flagged for confirmation.
 
 ## Phase 7 — Capture + retrain (content/ML, not app code) — the only open phase
+
+> **Rev 7 note (2026-08-24):** the unit numbers below predate the Rev 7
+> reorder — cross-reference against the "Rev 7" section above /
+> `SYSTEM_ARCHITECTURE.md`'s new Unit Map for where each word's
+> category now lives (ids are unchanged, only unit numbers moved — e.g.
+> `requests` is now Unit 8 "Needs", `essentials_basic_responses` is now
+> Unit 66 "Questions"). The word list itself and what's actually
+> capture-blocked are otherwise unchanged by Rev 7 — this phase is
+> still content/ML work, not touched this session. Reprioritizing this
+> list to match the new front-of-the-line unit order is flagged as a
+> next step in the "Rev 7" section above, not done here.
 
 - [ ] Capture + retrain 16 Essential Words: `PLEASE`, `SORRY`, `YES`,
   `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`,
@@ -625,3 +748,4 @@ find bugs."
   assessment score.
 
 *(Add new session's tasks here.)*
+</file>

@@ -488,9 +488,28 @@
 // and lower-risk than introducing a shared module/global just for an
 // icon lookup — see the Phase 4 session log for the reasoning). Also
 // reused by the Continue Learning hero card below.
+// CHANGED (this session — new lesson-plan pivot) — copied verbatim
+// from js/learn.js's own (also just-updated) UNIT_ICONS, same
+// documented small-duplication call as before this session.
 const UNIT_ICONS = {
   welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
-  everyday_essentials: '🙏', common_things_people: '🗂️',
+  greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
+  needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
+  body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
+  size: '📏', appearance: '✨', touch: '🌡️', taste: '👅', sound: '🔊',
+  descriptions: '📝', family_unit: '👪', home: '🏠', furniture: '🛋️',
+  household: '🪟', bathroom: '🚿', kitchen: '🍳', school: '🏫',
+  school_supplies: '✏️', classroom: '📋', classroom_actions: '🙋',
+  subjects: '📚', food_unit: '🍽️', fruits: '🍎', vegetables: '🥕',
+  snacks: '🍪', drinks: '🥤', animals_unit: '🐾', wild_animals: '🦁',
+  insects: '🐝', clothes_unit: '👕', dressing: '🧺', personal_items: '🎒',
+  nature: '🌳', plants: '🌱', weather: '⛅', seasons: '🍂',
+  places_unit: '🗺️', vehicles: '🚗', transportation: '🚶',
+  professions: '👷', community: '🏙️', time_unit: '⏰', daytime: '🌅',
+  days: '📅', months: '🗓️', sequence: '🔢', frequency: '🔁',
+  location: '📍', distance: '📐', directions: '🧭', social: '🤝',
+  manners: '🙇', turn_taking: '🔄', responses: '💬', questions: '❓',
+  conversation: '💭', requests_unit: '🙋', answers: '✅',
   basic_phrases: '💬', phrasebook: '📖',
 };
 

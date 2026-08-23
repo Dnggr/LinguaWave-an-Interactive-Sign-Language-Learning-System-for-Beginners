@@ -75,6 +75,10 @@
 // One icon per category id, purely decorative. Falls back to a
 // generic bookmark icon for anything not listed here. UNCHANGED from
 // before this revision.
+// CHANGED (this session — new lesson-plan pivot) — every pre-existing
+// entry here is UNCHANGED (all those CATEGORIES ids still exist,
+// several just moved to a different unit/title — see data.js). Added
+// one icon per brand-new CATEGORIES id the new lesson plan introduced.
 const CATEGORY_ICONS = {
   alphabet: '🔤', numbers: '🔢',
   family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
@@ -86,6 +90,20 @@ const CATEGORY_ICONS = {
   daily_activities: '📅', family_conversations: '🗣️', talking_about_feelings: '💭',
   asking_for_help: '🆘', school_conversations: '🏫', shopping_ordering: '🛍️',
   social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
+  people: '🧑‍🤝‍🧑', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
+  body: '🧍', personal_information: '🪪', shapes: '🔺', size: '📏',
+  appearance: '✨', taste: '👅', sound: '🔊', descriptions: '📝',
+  home: '🏠', furniture: '🛋️', household: '🪟', bathroom: '🚿',
+  kitchen: '🍳', school: '🏫', school_supplies: '✏️', classroom: '📋',
+  classroom_actions: '🙋', subjects: '📚', fruits: '🍎', vegetables: '🥕',
+  snacks: '🍪', drinks: '🥤', wild_animals: '🦁', insects: '🐝',
+  dressing: '🧺', personal_items: '🎒', nature: '🌳', plants: '🌱',
+  weather: '⛅', seasons: '🍂', vehicles: '🚗', transportation: '🚶',
+  professions: '👷', community: '🏙️', daytime: '🌅', days: '📅',
+  months: '🗓️', sequence: '🔢', frequency: '🔁', location: '📍',
+  distance: '📐', directions: '🧭', social: '🤝', manners: '🙇',
+  turn_taking: '🔄', responses: '💬', conversation: '💭',
+  making_requests: '🙋', answers: '✅',
 };
 
 // NEW (Phase 4) — one icon per UNITS entry, for the trail nodes.
@@ -94,9 +112,31 @@ const CATEGORY_ICONS = {
 // layer, so MODULE_GROUPS (and the renderCategories() function that
 // consumed it) is gone rather than kept alongside a second grouping
 // mechanism that would just fight the trail for authority over order.
+// CHANGED (this session — new lesson-plan pivot) — rebuilt for the new
+// 72-unit UNITS array (see data.js's UNITS header comment). The old
+// 11-entry map only covered the Rev 6 unit set; 'everyday_essentials'/
+// 'common_things_people' no longer exist as UNITS ids (their content
+// is now spread across the new topic units below), so those two keys
+// were dropped rather than left as dead entries.
 const UNIT_ICONS = {
   welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
-  everyday_essentials: '🙏', common_things_people: '🗂️',
+  greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
+  needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
+  body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
+  size: '📏', appearance: '✨', touch: '🌡️', taste: '👅', sound: '🔊',
+  descriptions: '📝', family_unit: '👪', home: '🏠', furniture: '🛋️',
+  household: '🪟', bathroom: '🚿', kitchen: '🍳', school: '🏫',
+  school_supplies: '✏️', classroom: '📋', classroom_actions: '🙋',
+  subjects: '📚', food_unit: '🍽️', fruits: '🍎', vegetables: '🥕',
+  snacks: '🍪', drinks: '🥤', animals_unit: '🐾', wild_animals: '🦁',
+  insects: '🐝', clothes_unit: '👕', dressing: '🧺', personal_items: '🎒',
+  nature: '🌳', plants: '🌱', weather: '⛅', seasons: '🍂',
+  places_unit: '🗺️', vehicles: '🚗', transportation: '🚶',
+  professions: '👷', community: '🏙️', time_unit: '⏰', daytime: '🌅',
+  days: '📅', months: '🗓️', sequence: '🔢', frequency: '🔁',
+  location: '📍', distance: '📐', directions: '🧭', social: '🤝',
+  manners: '🙇', turn_taking: '🔄', responses: '💬', questions: '❓',
+  conversation: '💭', requests_unit: '🙋', answers: '✅',
   basic_phrases: '💬', phrasebook: '📖',
 };
 

@@ -1,25 +1,25 @@
 # LinguaWave — System Architecture & Developer Handoff
 
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST, then
-     PIVOT_CHECKLIST.md, then this file's Rev 4 section. -->
+     PIVOT_CHECKLIST.md, then this file's Rev 7 section. -->
 > Capstone Project · ASL Interactive Learning System for Beginners
 
-**Current state, in one line:** Rev 4 (curriculum pivot to one linear
-"Basic ASL" path) is code-complete except Phase 7 (content
-capture/retraining — see `PIVOT_CHECKLIST.md`). Rev 5 (course-player
-sidebar) and the Dashboard UX pass are both done. Rev 6 (Omen's unit
-reorder — new Greetings/Basic Responses/Polite Expressions units,
-Fingerspell-as-assessment) is code-complete as of 2026-08-23, same
-caveat as Rev 4: content/training (Phase 7) still open. Of Omen's
-original request, ASL History content for Unit 0 was written and
-ASLU-checked 2026-08-23 (later, eighth session — see the Unit Map);
-literal Days-of-the-Week content is the one piece still explicitly not
-done. `js/auth.js` is real Firebase auth, out of scope for AI sessions
+**Current state, in one line:** Rev 7 (2026-08-24) replaced the Unit
+Map wholesale — 72 units implementing Omen's uploaded "updated fixed
+lesson.txt" curriculum, one topic per unit, superseding Rev 4/5/6's
+11-unit table below (kept for history, see each Rev's own section).
+Code-complete except Phase 7 (content capture/retraining — see
+`PIVOT_CHECKLIST.md`), same caveat every revision here has had:
+restructuring the curriculum's presentation doesn't train any models.
+`js/auth.js` is real Firebase auth, out of scope for AI sessions
 (teammate owns it).
 `PIVOT_CHECKLIST.md`'s Phase C (camera/tab-lifecycle hygiene bugs in
-`quiz.js`/`cameraUtils.js`/`classifier.js`) is also now done — see that
-file; Phase B (auth-adjacent bugs) remains open, flagged for the
-teammate, untouched by AI sessions per scope.
+`quiz.js`/`cameraUtils.js`/`classifier.js`) is done — see that file;
+Phase B (auth-adjacent bugs) remains open, flagged for the teammate,
+untouched by AI sessions per scope. Days-of-the-Week content is no
+longer a separate open item — Rev 7's topic 54 "Days" covers it
+(content-wise; still Phase 7-blocked for detection like everything
+else new in Rev 7).
 
 > Compressed 2026-08-22 — this file used to carry a full per-item
 > "Implementation status" session log duplicating `PIVOT_CHECKLIST.md`'s
@@ -253,6 +253,169 @@ code changed.
 
 ---
 
+## Rev 7 — Full curriculum replaced with Omen's uploaded lesson plan (2026-08-24)
+
+**Status: done.** Replaces the Rev 4/6 11-unit table above wholesale —
+that table is kept for history, not current. `PIVOT_CHECKLIST.md`'s
+"Rev 7" section is the fuller decision log; this is the resulting
+structure.
+
+### Why
+
+Omen uploaded a complete 68-topic vocabulary curriculum
+(`updated_fixed_lesson.txt` — "already sorted," per Omen, one ASL-
+basics topic per numbered line, background context before topic 1) and
+asked for it to be implemented as the app's lesson plan, replacing the
+Rev 4/6 ordering rather than extending it.
+
+### What changed
+
+- `UNITS`: 11 entries → **72 entries** (order 0–71). One topic = one
+  unit, in the source file's exact order. `kind`/`gated` mechanics are
+  byte-identical to Rev 6 — only which/how-many units exist changed.
+- `CATEGORIES`: **90 entries** (was 33). 68 new-topic categories (one
+  per new unit) + `alphabet`/`numbers` (basic level, unchanged) + the
+  18-category Phrasebook (unchanged content, unit number only moved) +
+  `sequence_demo` (unchanged) + `health`/`amounts`/`money` (unchanged
+  content, folded in as secondary categories on the closest-fit new
+  unit — see `PIVOT_CHECKLIST.md`, these were nearly dropped by
+  mistake and restored).
+- **Every id with real SIGNS/`dictionary.js` content is unchanged**:
+  `alphabet`, `numbers`, `family`, `places`, `time`, `temperature`,
+  `requests`, `essentials_greetings`, `essentials_basic_responses`,
+  `essentials_polite_expressions`, `sequence_demo`, `health`,
+  `amounts`, `money`, the 18 Phrasebook ids. Only `unit`/`title`/
+  `words[]` moved on these — `dictionary.js`/`classifier.js` were not
+  opened this session, so detection routing is byte-for-byte unchanged.
+- **Two Rev 6 mechanisms kept though the source list doesn't mention
+  them** (flagged for confirmation, not a unilateral deletion):
+  Fingerspell Your Name (still Unit 2, gated) and Basic Phrases +
+  Phrasebook (moved to the very end, Units 70/71, since the source list
+  is pure vocabulary with nowhere for phrase-combination content to
+  sit — matches Rev 4's own "combine what's already taught" framing).
+- **Icon maps extended** (`UNIT_ICONS` in `learn.js`/`lesson.js`/
+  `dashboard.js`, `CATEGORY_ICONS` in `learn.js`/`lesson.js`) to cover
+  every new id — cosmetic only, would otherwise have silently fallen
+  back to a generic icon for all 66 new units.
+
+### The Unit Map (Rev 7 — current)
+
+`level`/`category` field *values* are still unchanged internal
+grouping keys (see Rev 4's "Data model" section above, still accurate)
+— this table just maps the new `UNITS`/`CATEGORIES` content onto them.
+"Detection status" reflects `dictionary.js` as of Rev 6 (untouched this
+session): ✅ = real trained model behind it today, ❌ (structurally
+present) = has a `disabled:true` placeholder waiting on Phase 7 capture,
+❌ (content only) = new-plan topic with no `dictionary.js` entry at all
+yet (the overwhelming majority — this was a curriculum/content
+restructure, not a training session).
+
+| Unit | Title | Category id(s) | Detection status |
+|---|---|---|---|
+| 0 | Welcome to ASL: A Brief History | — | N/A — info screen |
+| 1 | The Alphabet | `alphabet` | ✅ trained |
+| 2 | Fingerspell Your Name | — (interactive) | ✅ reuses trained A–Z model (gated assessment) |
+| 3 | Numbers | `numbers` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 4 | Greetings | `essentials_greetings` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 5 | Polite Words | `essentials_polite_expressions` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 6 | People | `people` | ❌ Phase 7 (content only) |
+| 7 | Feelings | `feelings` | ❌ Phase 7 (content only) |
+| 8 | Needs | `requests` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 9 | Actions | `actions` | ❌ Phase 7 (content only) |
+| 10 | Hand Actions | `hand_actions` | ❌ Phase 7 (content only) |
+| 11 | Communication | `communication` | ❌ Phase 7 (content only) |
+| 12 | Body | `body` | ❌ Phase 7 (content only) |
+| 13 | Personal Information | `personal_information` | ❌ Phase 7 (content only) |
+| 14 | Colors | `colors` | ❌ Phase 7 (content only) |
+| 15 | Shapes | `shapes` | ❌ Phase 7 (content only) |
+| 16 | Size | `size`, `amounts` | ❌ Phase 7 (content only) |
+| 17 | Appearance | `appearance` | ❌ Phase 7 (content only) |
+| 18 | Touch | `temperature` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 19 | Taste | `taste` | ❌ Phase 7 (content only) |
+| 20 | Sound | `sound` | ❌ Phase 7 (content only) |
+| 21 | Descriptions | `descriptions` | ❌ Phase 7 (content only) |
+| 22 | Family | `family` | ✅ trained |
+| 23 | Home | `home` | ❌ Phase 7 (content only) |
+| 24 | Furniture | `furniture` | ❌ Phase 7 (content only) |
+| 25 | Household | `household` | ❌ Phase 7 (content only) |
+| 26 | Bathroom | `bathroom` | ❌ Phase 7 (content only) |
+| 27 | Kitchen | `kitchen` | ❌ Phase 7 (content only) |
+| 28 | School | `school` | ❌ Phase 7 (content only) |
+| 29 | School Supplies | `school_supplies` | ❌ Phase 7 (content only) |
+| 30 | Classroom | `classroom` | ❌ Phase 7 (content only) |
+| 31 | Classroom Actions | `classroom_actions` | ❌ Phase 7 (content only) |
+| 32 | Subjects | `subjects` | ❌ Phase 7 (content only) |
+| 33 | Food | `food` | ❌ Phase 7 (content only) |
+| 34 | Fruits | `fruits` | ❌ Phase 7 (content only) |
+| 35 | Vegetables | `vegetables` | ❌ Phase 7 (content only) |
+| 36 | Snacks | `snacks` | ❌ Phase 7 (content only) |
+| 37 | Drinks | `drinks` | ❌ Phase 7 (content only) |
+| 38 | Animals | `animals` | ❌ Phase 7 (content only) |
+| 39 | Wild Animals | `wild_animals` | ❌ Phase 7 (content only) |
+| 40 | Insects | `insects` | ❌ Phase 7 (content only) |
+| 41 | Clothes | `clothes` | ❌ Phase 7 (content only) |
+| 42 | Dressing | `dressing`, `health` | ❌ Phase 7 (content only) |
+| 43 | Personal Items | `personal_items`, `money` | ❌ Phase 7 (content only) |
+| 44 | Nature | `nature` | ❌ Phase 7 (content only) |
+| 45 | Plants | `plants` | ❌ Phase 7 (content only) |
+| 46 | Weather | `weather` | ❌ Phase 7 (content only) |
+| 47 | Seasons | `seasons` | ❌ Phase 7 (content only) |
+| 48 | Places | `places` | ✅ trained |
+| 49 | Vehicles | `vehicles` | ❌ Phase 7 (content only) |
+| 50 | Transportation | `transportation` | ❌ Phase 7 (content only) |
+| 51 | Professions | `professions` | ❌ Phase 7 (content only) |
+| 52 | Community | `community` | ❌ Phase 7 (content only) |
+| 53 | Time | `time` | ✅ trained |
+| 54 | Daytime | `daytime` | ❌ Phase 7 (content only) |
+| 55 | Days | `days` | ❌ Phase 7 (content only) — closes the old "literal Days-of-the-Week content" gap, content-wise |
+| 56 | Months | `months` | ❌ Phase 7 (content only) |
+| 57 | Sequence | `sequence` | ❌ Phase 7 (content only) |
+| 58 | Frequency | `frequency` | ❌ Phase 7 (content only) |
+| 59 | Location | `location` | ❌ Phase 7 (content only) |
+| 60 | Distance | `distance` | ❌ Phase 7 (content only) |
+| 61 | Directions | `directions` | ❌ Phase 7 (content only) |
+| 62 | Social | `social` | ❌ Phase 7 (content only) |
+| 63 | Manners | `manners` | ❌ Phase 7 (content only) |
+| 64 | Turn-Taking | `turn_taking` | ❌ Phase 7 (content only) |
+| 65 | Responses | `responses` | ❌ Phase 7 (content only) |
+| 66 | Questions | `essentials_basic_responses` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 67 | Conversation | `conversation` | ❌ Phase 7 (content only) |
+| 68 | Requests | `making_requests` | ❌ Phase 7 (content only) |
+| 69 | Answers | `answers` | ❌ Phase 7 (content only) |
+| 70 | Basic Phrases | `sequence_demo` | ✅ trained (built only from already-trained words) |
+| 71 | Phrasebook | 18 intermediate categories (unchanged) | ❌ 0 trained — deliberately browse-only, not graded |
+
+### What's still open
+
+- **Phase 7 is now a much longer list** — 66 of 72 units have zero
+  `dictionary.js` entries at all (vs. Rev 6's much shorter gap list).
+  See `PIVOT_CHECKLIST.md`'s Phase 7 note for the cross-reference to
+  old vs. new unit numbers; reprioritizing the capture list to match
+  the new front-of-the-line order (Units 3–8/18/22/48/53/66 already
+  have some `dictionary.js` scaffolding) is flagged, not done.
+- **Two kept-but-unlisted mechanisms** (Fingerspell Your Name; Basic
+  Phrases + Phrasebook) need a nod of confirmation from Omen — the
+  source list doesn't mention either, they were kept because deleting
+  working features felt like a bigger unilateral call than keeping
+  them out of the way at the end.
+- **`money`'s placement (Unit 43, alongside Personal Items) is a
+  forced fit** — the source's 68 topics have no shopping/money topic
+  at all. Worth a real home if Omen wants one.
+- **`numbers`'s `comingSoon: false` despite 0% of digits being
+  trained** — pre-existing inconsistency (see Phase A in
+  `PIVOT_CHECKLIST.md`), not introduced or fixed this session, just
+  surfaced again since it's more visible now that so many other new
+  units are correctly `comingSoon: true`.
+- Not verified in a real browser — same limitation as every prior
+  session. Verified in Node: `node --check` on `data.js`/`learn.js`/
+  `lesson.js`/`dashboard.js`; a sandboxed VM eval of the full `data.js`
+  confirming `UNITS` order is contiguous 0–71 and unique, every
+  `CATEGORIES[].unit` resolves to a real `UNITS[].order`, every
+  `CATEGORIES` id is unique per level, and zero `SIGNS[].category`
+  values point at a category that no longer exists.
+
+---
+
 ## Dashboard design principles
 
 (Realized in code as of the 2026-08-21/22 Priority 0–2 pass — see
@@ -425,3 +588,4 @@ used at the top of every guarded page.
 | `--font-display` | Space Grotesk | Headings |
 | `--font-body`    | Inter | Body text |
 | Pass threshold | 80% | Quiz assessment |
+</file>

@@ -28,6 +28,13 @@
  * EDITING  : To add a new sign, add another object to SIGNS below.
  *            `signId` must match a key in js/engine/dictionary.js so
  *            the detection engine and the lesson content stay in sync.
+ *
+ * REV 7 (this session) — UNITS/CATEGORIES rewritten to implement
+ * Omen's uploaded "updated fixed lesson.txt" 68-topic curriculum.
+ * SIGNS, QUESTIONS, UNIT0_CONTENT, and every helper function below
+ * are UNCHANGED — this pivot only touched the two arrays it needed
+ * to. See AI_MEMORY.md §0 / PIVOT_CHECKLIST.md / SYSTEM_ARCHITECTURE.md
+ * Rev 7 section for the full writeup, mapping table, and open flags.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -61,50 +68,117 @@
  *       'category-group' (one or more CATEGORIES entries tagged with
  *          this unit's order, walked in `CATEGORIES[].order` order) |
  *       'reference' (browse-only, not graded, not gating anything —
- *          Unit 7+ Phrasebook; NOT one of the three kinds named in
+ *          Unit 71 Phrasebook (Rev 7); NOT one of the three kinds named in
  *          Rev 4's data-model note, added here because the Phrasebook
  *          needs a kind that is neither gradeable nor an info screen —
  *          flag this for Joshua/adviser sign-off if it matters).
  * ──────────────────────────────────────────────────────────────── */
+/* ── UNITS — REV 7 PIVOT (Omen's "updated fixed lesson" curriculum) ──
+ * REPLACED (this session) — the old Rev 6 11-unit table is gone.
+ * Implements the 68-topic vocabulary progression from Omen's uploaded
+ * "updated fixed lesson.txt" 1:1, in the order given (that file says
+ * it's "already sorted," so this doesn't re-sort it) — background info
+ * screen, then topics 1–68 exactly as numbered there, one topic = one
+ * unit. `kind`/`gated` mechanics are UNCHANGED from Rev 6 — only the
+ * unit COUNT and CONTENT changed, not how units function.
+ *
+ * Two units are NOT from the source file and were kept from Rev 6 —
+ * flagging both for confirmation, not a unilateral removal:
+ *   - order:2 'fingerspell_name' (gated assessment) — the source list
+ *     has no fingerspelling topic, but this is a working, already-built
+ *     gate mechanism (reuses the trained A–Z model). Deleting it would
+ *     remove real functionality the lesson plan simply doesn't mention.
+ *     Kept in its Rev 6 position, right after the Alphabet.
+ *   - order:70/71 'basic_phrases' (sequence_demo) and 'phrasebook' —
+ *     the source list is pure vocabulary, no phrase-combination or
+ *     reference-sentence topics. Kept at the very END, after every
+ *     vocab unit, matching the adviser's own "combine what's already
+ *     taught" framing from Rev 4 (see SYSTEM_ARCHITECTURE.md). Both are
+ *     UNCHANGED from Rev 6 otherwise (same id, same content, same
+ *     kind) — only the `order` number moved to make room.
+ *
+ * kind meanings unchanged from Rev 6 — see SYSTEM_ARCHITECTURE.md.
+ * ──────────────────────────────────────────────────────────────── */
 const UNITS = [
-  // CHANGED (this session, content-writing pass) — title reframed to
-  // reflect the real ASL History content now in UNIT0_CONTENT below
-  // (previously pure "welcome" framing with no history in it at all —
-  // see SYSTEM_ARCHITECTURE.md Rev 6 Unit Map row 0). Content-only
-  // change: id/order/kind untouched, so nothing keying off
-  // unit.id === 'welcome' needed updating (checked — nothing does).
   { id: 'welcome', order: 0, title: 'Welcome to ASL: A Brief History', kind: 'info' },
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
-  // CHANGED (this session) — `gated: true` added. Confirmed 2026-08-23
-  // (see PIVOT_CHECKLIST.md): Fingerspell Your Name becomes a real
-  // assessment gate, reversing the "optional practice drill" status it
-  // held since Phase 2. This flag is read by progress.js's
-  // isCategoryUnlocked() — any 'interactive' unit with `gated: true`
-  // must have a passed js/engine/progress.js unitAssessment before any
-  // LATER category-group unit's categories count as unlocked. Passing
-  // condition: completing the full name sequence once (see lesson.js's
-  // phrase-chaining "Phrase complete!" handler) — the drill is
-  // deliberately forgiving (retries a wrong letter rather than failing
-  // the attempt), so there's no separate "strict assessment mode" to
-  // build; one full completion IS the pass. Flagging this simplification
-  // for confirmation — a stricter mode (e.g. no retries, timed) would be
-  // a separate follow-up if wanted.
+  // UNCHANGED from Rev 6 — see file header note above. Not in the
+  // source lesson plan; kept as a working feature.
   { id: 'fingerspell_name', order: 2, title: 'Fingerspell Your Name', kind: 'interactive', gated: true },
   { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' },
-  { id: 'everyday_essentials', order: 4, title: 'Everyday Essentials', kind: 'category-group' },
-  // NEW (this session) — Omen's proposed reorder, mapping confirmed
-  // 2026-08-23 (see PIVOT_CHECKLIST.md). Each of these 3 is a
-  // single-category unit, same pattern as 'everyday_essentials' above.
-  { id: 'greetings_intro', order: 5, title: 'Greetings and Introduction', kind: 'category-group' },
-  { id: 'essentials_responses', order: 6, title: 'Basic Responses', kind: 'category-group' },
-  { id: 'essentials_politeness', order: 7, title: 'Polite Expressions', kind: 'category-group' },
-  // CHANGED — order bumped 5/6/7 -> 8/9/10 to make room for the 3 new
-  // units above. Every CATEGORIES entry that pointed at unit: 5/6/7 was
-  // bumped to match (getCategoriesForUnit() matches by this numeric
-  // `order`, not by id) — see the corresponding CHANGED note on each.
-  { id: 'common_things_people', order: 8, title: 'Common Things & People', kind: 'category-group' },
-  { id: 'basic_phrases', order: 9, title: 'Basic Phrases', kind: 'category-group' },
-  { id: 'phrasebook', order: 10, title: 'Phrasebook', kind: 'reference' },
+  // ── Topics 3–68 below, one per unit, order matches the source
+  // file's own numbering exactly (topic N below = "N. <title>" in
+  // updated_fixed_lesson.txt) minus the 2-unit offset from Welcome +
+  // Fingerspell above.
+  { id: 'greetings', order: 4, title: 'Greetings', kind: 'category-group' },
+  { id: 'polite_words', order: 5, title: 'Polite Words', kind: 'category-group' },
+  { id: 'people', order: 6, title: 'People', kind: 'category-group' },
+  { id: 'feelings', order: 7, title: 'Feelings', kind: 'category-group' },
+  { id: 'needs', order: 8, title: 'Needs', kind: 'category-group' },
+  { id: 'actions', order: 9, title: 'Actions', kind: 'category-group' },
+  { id: 'hand_actions', order: 10, title: 'Hand Actions', kind: 'category-group' },
+  { id: 'communication', order: 11, title: 'Communication', kind: 'category-group' },
+  { id: 'body', order: 12, title: 'Body', kind: 'category-group' },
+  { id: 'personal_information', order: 13, title: 'Personal Information', kind: 'category-group' },
+  { id: 'colors_unit', order: 14, title: 'Colors', kind: 'category-group' },
+  { id: 'shapes', order: 15, title: 'Shapes', kind: 'category-group' },
+  { id: 'size', order: 16, title: 'Size', kind: 'category-group' },
+  { id: 'appearance', order: 17, title: 'Appearance', kind: 'category-group' },
+  { id: 'touch', order: 18, title: 'Touch', kind: 'category-group' },
+  { id: 'taste', order: 19, title: 'Taste', kind: 'category-group' },
+  { id: 'sound', order: 20, title: 'Sound', kind: 'category-group' },
+  { id: 'descriptions', order: 21, title: 'Descriptions', kind: 'category-group' },
+  { id: 'family_unit', order: 22, title: 'Family', kind: 'category-group' },
+  { id: 'home', order: 23, title: 'Home', kind: 'category-group' },
+  { id: 'furniture', order: 24, title: 'Furniture', kind: 'category-group' },
+  { id: 'household', order: 25, title: 'Household', kind: 'category-group' },
+  { id: 'bathroom', order: 26, title: 'Bathroom', kind: 'category-group' },
+  { id: 'kitchen', order: 27, title: 'Kitchen', kind: 'category-group' },
+  { id: 'school', order: 28, title: 'School', kind: 'category-group' },
+  { id: 'school_supplies', order: 29, title: 'School Supplies', kind: 'category-group' },
+  { id: 'classroom', order: 30, title: 'Classroom', kind: 'category-group' },
+  { id: 'classroom_actions', order: 31, title: 'Classroom Actions', kind: 'category-group' },
+  { id: 'subjects', order: 32, title: 'Subjects', kind: 'category-group' },
+  { id: 'food_unit', order: 33, title: 'Food', kind: 'category-group' },
+  { id: 'fruits', order: 34, title: 'Fruits', kind: 'category-group' },
+  { id: 'vegetables', order: 35, title: 'Vegetables', kind: 'category-group' },
+  { id: 'snacks', order: 36, title: 'Snacks', kind: 'category-group' },
+  { id: 'drinks', order: 37, title: 'Drinks', kind: 'category-group' },
+  { id: 'animals_unit', order: 38, title: 'Animals', kind: 'category-group' },
+  { id: 'wild_animals', order: 39, title: 'Wild Animals', kind: 'category-group' },
+  { id: 'insects', order: 40, title: 'Insects', kind: 'category-group' },
+  { id: 'clothes_unit', order: 41, title: 'Clothes', kind: 'category-group' },
+  { id: 'dressing', order: 42, title: 'Dressing', kind: 'category-group' },
+  { id: 'personal_items', order: 43, title: 'Personal Items', kind: 'category-group' },
+  { id: 'nature', order: 44, title: 'Nature', kind: 'category-group' },
+  { id: 'plants', order: 45, title: 'Plants', kind: 'category-group' },
+  { id: 'weather', order: 46, title: 'Weather', kind: 'category-group' },
+  { id: 'seasons', order: 47, title: 'Seasons', kind: 'category-group' },
+  { id: 'places_unit', order: 48, title: 'Places', kind: 'category-group' },
+  { id: 'vehicles', order: 49, title: 'Vehicles', kind: 'category-group' },
+  { id: 'transportation', order: 50, title: 'Transportation', kind: 'category-group' },
+  { id: 'professions', order: 51, title: 'Professions', kind: 'category-group' },
+  { id: 'community', order: 52, title: 'Community', kind: 'category-group' },
+  { id: 'time_unit', order: 53, title: 'Time', kind: 'category-group' },
+  { id: 'daytime', order: 54, title: 'Daytime', kind: 'category-group' },
+  { id: 'days', order: 55, title: 'Days', kind: 'category-group' },
+  { id: 'months', order: 56, title: 'Months', kind: 'category-group' },
+  { id: 'sequence', order: 57, title: 'Sequence', kind: 'category-group' },
+  { id: 'frequency', order: 58, title: 'Frequency', kind: 'category-group' },
+  { id: 'location', order: 59, title: 'Location', kind: 'category-group' },
+  { id: 'distance', order: 60, title: 'Distance', kind: 'category-group' },
+  { id: 'directions', order: 61, title: 'Directions', kind: 'category-group' },
+  { id: 'social', order: 62, title: 'Social', kind: 'category-group' },
+  { id: 'manners', order: 63, title: 'Manners', kind: 'category-group' },
+  { id: 'turn_taking', order: 64, title: 'Turn-Taking', kind: 'category-group' },
+  { id: 'responses', order: 65, title: 'Responses', kind: 'category-group' },
+  { id: 'questions', order: 66, title: 'Questions', kind: 'category-group' },
+  { id: 'conversation', order: 67, title: 'Conversation', kind: 'category-group' },
+  { id: 'requests_unit', order: 68, title: 'Requests', kind: 'category-group' },
+  { id: 'answers', order: 69, title: 'Answers', kind: 'category-group' },
+  // UNCHANGED from Rev 6 (id/kind/content) — see file header note above.
+  { id: 'basic_phrases', order: 70, title: 'Basic Phrases', kind: 'category-group' },
+  { id: 'phrasebook', order: 71, title: 'Phrasebook', kind: 'reference' },
 ];
 
 /* ── UNIT 0 CONTENT — "Welcome to ASL: A Brief History" ─────────────
@@ -167,252 +241,525 @@ const UNIT0_CONTENT = [
 ];
 
 const CATEGORIES = [
-  // ── level=basic — LETTERS (Level 1: Letters — ASL Alphabet A–Z) ──
-  // unit: 1 (Rev 4 Phase 1 — see Unit Map in SYSTEM_ARCHITECTURE.md)
+  // ── level=basic — Alphabet & Numbers (topics 1-2, unchanged from Rev 6) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
+  { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 3 },
 
-  // Numbers 0–9 are single, held handshapes with NO motion — EXCEPT
-  // '6' and '9', which are statically identical to the letters W/F
-  // and need the motion model instead (see dictionary.js's NUMBERS
-  // block comment). Wired through the SAME asl_static_model as the
-  // alphabet for 0–5/7/8 — it is NOT a separate model. For those to
-  // actually classify anything, asl_static_model/labels.json (and
-  // the matching model.json + weights .bin) must be RETRAINED to
-  // output '0'..'9' alongside the existing letters, with label
-  // STRINGS exactly '0','1',...,'9' to match the SIGN_DICTIONARY
-  // keys — see AI_MEMORY.md → "Numbers category" for the checklist.
-  // '6'/'9'/'10' need the same treatment on asl_motion_model instead
-  // (PIVOT_CHECKLIST.md Phase 7 — capture/retrain still open).
-  // unit: 3 (Rev 4 Phase 1)
-  { id: 'numbers', level: 'basic', title: 'Numbers', order: 2, comingSoon: false, unit: 3 },
+  // ── level=medium — topics 3-68, one category per unit, in the exact
+  // order given in Omen's uploaded 'updated fixed lesson.txt' (topic
+  // numbers in the comments below match that file's own numbering) ──
+  // 3. Greetings
+  // LEGACY id/content kept — see dictionary.js's HELLO placeholder
+  // (disabled:true). words[] below is the fuller preview list from the new
+  // plan; only HELLO has an actual SIGNS/dictionary entry so far.
+  {
+    id: 'essentials_greetings', level: 'medium', title: 'Greetings', order: 1, comingSoon: false, unit: 4,
+    words: ['HELLO', 'HI', 'MORNING', 'AFTERNOON', 'EVENING', 'NIGHT', 'GOODBYE', 'BYE', 'WELCOME'],
+  },
+  // 4. Polite Words
+  // LEGACY id/content kept — PLEASE/THANK YOU/EXCUSE/SORRY have disabled:true
+  // dictionary.js placeholders. words[] below is the new plan's fuller Polite
+  // Words list; THANKS/WELCOME/YES/NO have no SIGNS entry of their own yet
+  // (YES/NO live under 'essentials_basic_responses'/'questions' instead — see
+  // that entry).
+  {
+    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Words', order: 1, comingSoon: false, unit: 5,
+    words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'YES', 'NO'],
+  },
+  // 5. People
+  {
+    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: true, unit: 6,
+    words: ['I', 'ME', 'MY', 'YOU', 'YOUR', 'HE', 'SHE', 'BOY', 'GIRL', 'BABY', 'CHILD', 'MAN', 'WOMAN', 'PERSON', 'FRIEND', 'TEACHER', 'STUDENT'],
+  },
+  // 6. Feelings
+  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
+  // words[] replaced wholesale with the new plan's Feelings list;
+  // CRY/LIKE/LOVE from the old list moved to 'actions'/'social' per the new
+  // plan, safe since none were ever wired to detection.
+  {
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: true, unit: 7,
+    words: ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'EXCITED', 'TIRED', 'SLEEPY', 'HUNGRY', 'THIRSTY', 'SICK', 'FINE', 'OKAY', 'BORED', 'WORRIED', 'NERVOUS'],
+  },
+  // 7. Needs
+  // LEGACY id/content kept — HELP/STOP/WATER/FOOD/HUNGRY/BATHROOM/GO/COME have
+  // disabled:true dictionary.js placeholders (Phase 7). words[] below is the
+  // new plan's fuller Needs list; the real placeholder set is narrower (no
+  // SLEEP/MORE/LESS/WANT/NEED/LIKE entry yet) — flagged, not a regression,
+  // just the preview text now says more than the app can actually check yet.
+  {
+    id: 'requests', level: 'medium', title: 'Needs', order: 1, comingSoon: false, unit: 8,
+    words: ['FOOD', 'WATER', 'HELP', 'SLEEP', 'BATHROOM', 'HOME', 'SCHOOL', 'MORE', 'LESS', 'WANT', 'NEED', 'LIKE'],
+  },
+  // 8. Actions
+  {
+    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: true, unit: 9,
+    words: ['GO', 'COME', 'STOP', 'WAIT', 'SIT', 'STAND', 'WALK', 'RUN', 'JUMP', 'EAT', 'DRINK', 'SLEEP', 'WAKE', 'PLAY', 'LOOK', 'SEE', 'LISTEN', 'TALK', 'READ', 'WRITE', 'DRAW', 'SING', 'DANCE', 'COOK', 'CLEAN', 'THINK', 'CRY', 'LAUGH', 'RIDE', 'BATH'],
+  },
+  // 9. Hand Actions
+  {
+    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: true, unit: 10,
+    words: ['GIVE', 'TAKE', 'PUT', 'GET', 'BRING', 'CARRY', 'PUSH', 'PULL', 'THROW', 'CATCH', 'PICK'],
+  },
+  // 10. Communication
+  {
+    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: true, unit: 11,
+    words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'HELP', 'SHARE', 'TEACH', 'SIGN'],
+  },
+  // 11. Body
+  {
+    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: true, unit: 12,
+    words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
+  },
+  // 12. Personal Information
+  {
+    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: true, unit: 13,
+    words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
+  },
+  // 13. Colors
+  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
+  // words[] replaced wholesale with the new plan's Colors list (GOLD/SILVER
+  // dropped, PURPLE/WHITE/BLACK/GRAY/PINK added).
+  {
+    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: true, unit: 14,
+    words: ['RED', 'BLUE', 'YELLOW', 'GREEN', 'ORANGE', 'PURPLE', 'WHITE', 'BLACK', 'GRAY', 'BROWN', 'PINK'],
+  },
+  // 14. Shapes
+  {
+    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: true, unit: 15,
+    words: ['CIRCLE', 'SQUARE', 'TRIANGLE', 'RECTANGLE', 'OVAL', 'STAR', 'HEART', 'DIAMOND'],
+  },
+  // 15. Size
+  // Replaces the retired legacy 'amounts' category (BIG/TALL/FULL/MORE,
+  // comingSoon:true, zero dictionary.js entries — safe to retire, no
+  // detection risk). FULL moved to 'descriptions' per the new plan.
+  {
+    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: true, unit: 16,
+    words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
+  },
+  // 16. Appearance
+  {
+    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: true, unit: 17,
+    words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'NEAT', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
+  },
+  // 17. Touch
+  // LEGACY id/content kept — HOT/COLD have disabled:true dictionary.js
+  // placeholders (Phase 7). Retitled 'Temperature' -> 'Touch' to match the new
+  // plan's topic 17; words[] below is the fuller Touch list, but only HOT/COLD
+  // have any real placeholder so far.
+  {
+    id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 18,
+    words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY', 'SHARP'],
+  },
+  // 18. Taste
+  {
+    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: true, unit: 19,
+    words: ['SWEET', 'SOUR', 'SALTY', 'BITTER', 'SPICY', 'DELICIOUS', 'FRESH'],
+  },
+  // 19. Sound
+  {
+    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: true, unit: 20,
+    words: ['LOUD', 'QUIET', 'NOISY', 'SILENT', 'HIGH', 'LOW'],
+  },
+  // 20. Descriptions
+  {
+    id: 'descriptions', level: 'medium', title: 'Descriptions', order: 1, comingSoon: true, unit: 21,
+    words: ['FAST', 'SLOW', 'STRONG', 'WEAK', 'GOOD', 'BAD', 'FULL', 'EMPTY', 'OPEN', 'CLOSED'],
+  },
+  // 21. Family
+  // LEGACY id/content kept — this is real, TRAINED detection content
+  // (MOM/DAD/BOY/GIRL/MARRIAGE/BROTHER/SISTER/GRANDMA/GRANDPA/AUNT/UNCLE/BABY/SINGLE/DIVORCED).
+  // words[] below is the new plan's fuller Family list for the lesson-content
+  // preview; the trained SIGNS set is unchanged and narrower — do not
+  // delete/rename any 'family' SIGNS entries to 'match' this list.
+  {
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 22,
+    words: ['FAMILY', 'MOTHER', 'MOM', 'FATHER', 'DAD', 'BROTHER', 'SISTER', 'BABY', 'SON', 'DAUGHTER', 'PARENT', 'CHILD', 'GRANDMOTHER', 'GRANDMA', 'GRANDFATHER', 'GRANDPA', 'AUNT', 'UNCLE', 'COUSIN', 'GRANDCHILD'],
+  },
+  // 22. Home
+  {
+    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: true, unit: 23,
+    words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'GARDEN', 'YARD'],
+  },
+  // 23. Furniture
+  {
+    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: true, unit: 24,
+    words: ['BED', 'PILLOW', 'BLANKET', 'CHAIR', 'TABLE', 'SOFA', 'DESK', 'SHELF', 'CABINET', 'CLOSET', 'LAMP'],
+  },
+  // 24. Household
+  {
+    id: 'household', level: 'medium', title: 'Household', order: 1, comingSoon: true, unit: 25,
+    words: ['DOOR', 'WINDOW', 'WALL', 'FLOOR', 'ROOF', 'CLOCK', 'MIRROR', 'FAN', 'TV', 'REMOTE', 'PHONE', 'COMPUTER', 'BOOK', 'BAG', 'KEY', 'TOY'],
+  },
+  // 25. Bathroom
+  {
+    id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: true, unit: 26,
+    words: ['TOILET', 'SHOWER', 'BATHTUB', 'SINK', 'SOAP', 'SHAMPOO', 'TOWEL', 'TOOTHBRUSH', 'TOOTHPASTE'],
+  },
+  // 26. Kitchen
+  {
+    id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: true, unit: 27,
+    words: ['STOVE', 'OVEN', 'REFRIGERATOR', 'FREEZER', 'PLATE', 'BOWL', 'CUP', 'GLASS', 'SPOON', 'FORK', 'KNIFE', 'POT', 'PAN'],
+  },
+  // 27. School
+  {
+    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: true, unit: 28,
+    words: ['TEACHER', 'STUDENT', 'PRINCIPAL', 'FRIEND', 'CLASSMATE', 'BOY', 'GIRL'],
+  },
+  // 28. School Supplies
+  {
+    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: true, unit: 29,
+    words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'PEN', 'ERASER', 'PAPER', 'CRAYON', 'MARKER', 'RULER', 'SCISSORS', 'GLUE', 'FOLDER', 'BACKPACK'],
+  },
+  // 29. Classroom
+  {
+    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: true, unit: 30,
+    words: ['DESK', 'CHAIR', 'TABLE', 'BOARD', 'DOOR', 'WINDOW', 'CLOCK', 'COMPUTER', 'SHELF', 'TRASH'],
+  },
+  // 30. Classroom Actions
+  {
+    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: true, unit: 31,
+    words: ['READ', 'WRITE', 'DRAW', 'COLOR', 'LISTEN', 'LOOK', 'SIT', 'STAND', 'ASK', 'ANSWER', 'OPEN', 'CLOSE', 'RAISE', 'LOWER', 'SHARE', 'HELP'],
+  },
+  // 31. Subjects
+  {
+    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: true, unit: 32,
+    words: ['ENGLISH', 'MATH', 'SCIENCE', 'ART', 'MUSIC', 'HISTORY', 'COMPUTER'],
+  },
+  // 32. Food
+  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
+  // words[] replaced wholesale with the new plan's Food list
+  // (APPLE/MILK/COOKIE/CANDY moved out to the new 'fruits'/'drinks'/'snacks'
+  // topics, matching the new plan's finer split).
+  {
+    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: true, unit: 33,
+    words: ['FOOD', 'RICE', 'BREAD', 'EGG', 'CHICKEN', 'FISH', 'MEAT', 'SOUP', 'CHEESE', 'NOODLES', 'SANDWICH', 'PIZZA', 'PASTA'],
+  },
+  // 33. Fruits
+  {
+    id: 'fruits', level: 'medium', title: 'Fruits', order: 1, comingSoon: true, unit: 34,
+    words: ['APPLE', 'BANANA', 'ORANGE', 'MANGO', 'GRAPES', 'WATERMELON', 'PINEAPPLE', 'PAPAYA', 'STRAWBERRY', 'COCONUT', 'AVOCADO', 'PEAR', 'MELON'],
+  },
+  // 34. Vegetables
+  {
+    id: 'vegetables', level: 'medium', title: 'Vegetables', order: 1, comingSoon: true, unit: 35,
+    words: ['CARROT', 'POTATO', 'TOMATO', 'ONION', 'GARLIC', 'CORN', 'PEA', 'BEAN', 'CABBAGE', 'LETTUCE', 'PUMPKIN', 'BROCCOLI', 'CUCUMBER'],
+  },
+  // 35. Snacks
+  {
+    id: 'snacks', level: 'medium', title: 'Snacks', order: 1, comingSoon: true, unit: 36,
+    words: ['COOKIE', 'CAKE', 'CANDY', 'CHOCOLATE', 'DONUT', 'PIE', 'POPCORN', 'CHIPS', 'CUPCAKE', 'ICECREAM'],
+  },
+  // 36. Drinks
+  {
+    id: 'drinks', level: 'medium', title: 'Drinks', order: 1, comingSoon: true, unit: 37,
+    words: ['WATER', 'MILK', 'JUICE', 'SODA', 'TEA', 'COFFEE'],
+  },
+  // 37. Animals
+  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
+  // words[] replaced wholesale with the new plan's Animals list (BUG moved out
+  // to the new 'insects' topic).
+  {
+    id: 'animals', level: 'medium', title: 'Animals', order: 1, comingSoon: true, unit: 38,
+    words: ['DOG', 'CAT', 'BIRD', 'FISH', 'RABBIT', 'CHICKEN', 'DUCK', 'COW', 'PIG', 'HORSE', 'GOAT', 'SHEEP'],
+  },
+  // 38. Wild Animals
+  {
+    id: 'wild_animals', level: 'medium', title: 'Wild Animals', order: 1, comingSoon: true, unit: 39,
+    words: ['LION', 'TIGER', 'ELEPHANT', 'MONKEY', 'GIRAFFE', 'BEAR', 'ZEBRA', 'SNAKE', 'FROG', 'TURTLE'],
+  },
+  // 39. Insects
+  {
+    id: 'insects', level: 'medium', title: 'Insects', order: 1, comingSoon: true, unit: 40,
+    words: ['ANT', 'BUTTERFLY', 'BEE', 'SPIDER'],
+  },
+  // 40. Clothes
+  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
+  // words[] replaced wholesale with the new plan's Clothes list (UNDERWEAR
+  // dropped, SHORTS/DRESS/SKIRT/HAT/CAP/BELT added).
+  {
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 1, comingSoon: true, unit: 41,
+    words: ['SHIRT', 'PANTS', 'SHORTS', 'DRESS', 'SKIRT', 'SHOES', 'SOCKS', 'HAT', 'CAP', 'JACKET', 'COAT', 'BELT'],
+  },
+  // 41. Dressing
+  {
+    id: 'dressing', level: 'medium', title: 'Dressing', order: 1, comingSoon: true, unit: 42,
+    words: ['WEAR', 'CHANGE', 'WASH', 'FOLD', 'CLEAN', 'DIRTY'],
+  },
+  // 42. Personal Items
+  {
+    id: 'personal_items', level: 'medium', title: 'Personal Items', order: 1, comingSoon: true, unit: 43,
+    words: ['BAG', 'WALLET', 'PHONE', 'WATCH', 'GLASSES', 'KEY', 'UMBRELLA', 'BOTTLE'],
+  },
+  // 43. Nature
+  {
+    id: 'nature', level: 'medium', title: 'Nature', order: 1, comingSoon: true, unit: 44,
+    words: ['SUN', 'MOON', 'STAR', 'SKY', 'CLOUD', 'RAIN', 'WIND', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROCK', 'SAND', 'MOUNTAIN', 'RIVER', 'LAKE', 'OCEAN', 'BEACH', 'ISLAND'],
+  },
+  // 44. Plants
+  {
+    id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: true, unit: 45,
+    words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROOT', 'BRANCH', 'SEED', 'GARDEN', 'GROW', 'WATER', 'SOIL'],
+  },
+  // 45. Weather
+  {
+    id: 'weather', level: 'medium', title: 'Weather', order: 1, comingSoon: true, unit: 46,
+    words: ['SUNNY', 'RAINY', 'CLOUDY', 'WINDY', 'STORMY', 'HOT', 'COLD', 'WARM', 'COOL', 'THUNDER', 'LIGHTNING', 'SNOW'],
+  },
+  // 46. Seasons
+  {
+    id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: true, unit: 47,
+    words: ['SPRING', 'SUMMER', 'FALL', 'WINTER'],
+  },
+  // 47. Places
+  // LEGACY id/content kept — this is real, TRAINED detection content for
+  // HOME/SCHOOL/STORE/CHURCH (WORK/CAR/IN/OUT/WITH also trained but not on the
+  // new plan's Places word list). words[] below is the new plan's fuller
+  // Places list for the lesson-content preview; the trained SIGNS set is
+  // unchanged.
+  {
+    id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 48,
+    words: ['HOME', 'SCHOOL', 'PARK', 'STORE', 'MARKET', 'LIBRARY', 'HOSPITAL', 'RESTAURANT', 'ZOO', 'FARM', 'BEACH', 'CHURCH', 'BANK', 'AIRPORT'],
+  },
+  // 48. Vehicles
+  {
+    id: 'vehicles', level: 'medium', title: 'Vehicles', order: 1, comingSoon: true, unit: 49,
+    words: ['CAR', 'BUS', 'TRUCK', 'VAN', 'TAXI', 'TRAIN', 'BIKE', 'MOTORCYCLE', 'AIRPLANE', 'BOAT', 'SHIP'],
+  },
+  // 49. Transportation
+  {
+    id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: true, unit: 50,
+    words: ['WALK', 'RIDE', 'DRIVE', 'FLY', 'GO', 'STOP', 'WAIT'],
+  },
+  // 50. Professions
+  {
+    id: 'professions', level: 'medium', title: 'Professions', order: 1, comingSoon: true, unit: 51,
+    words: ['TEACHER', 'DOCTOR', 'NURSE', 'POLICE', 'FIREFIGHTER', 'FARMER', 'DRIVER', 'COOK', 'CHEF', 'ENGINEER', 'DENTIST', 'MECHANIC', 'CARPENTER', 'LAWYER', 'SOLDIER', 'CASHIER', 'WAITER', 'ARTIST', 'WORKER', 'OWNER'],
+  },
+  // 51. Community
+  {
+    id: 'community', level: 'medium', title: 'Community', order: 1, comingSoon: true, unit: 52,
+    words: ['SCHOOL', 'HOSPITAL', 'POLICE', 'FIRE', 'LIBRARY', 'BANK', 'MARKET', 'STORE', 'RESTAURANT', 'PARK'],
+  },
+  // 52. Time
+  // LEGACY id/content kept — this is real, TRAINED detection content
+  // (DAY/NIGHT/WEEK/MONTH/YEAR/WILL/BEFORE/NOW/TODAY/FINISH). words[] below is
+  // the new plan's Time list for the lesson-content preview (adds
+  // LATER/SOON/AFTER/EARLY/LATE/TOMORROW/YESTERDAY, none of which are trained
+  // yet); the trained SIGNS set is unchanged.
+  {
+    id: 'time', level: 'medium', title: 'Time', order: 1, comingSoon: false, unit: 53,
+    words: ['TIME', 'NOW', 'LATER', 'SOON', 'BEFORE', 'AFTER', 'EARLY', 'LATE', 'TODAY', 'TOMORROW', 'YESTERDAY'],
+  },
+  // 53. Daytime
+  {
+    id: 'daytime', level: 'medium', title: 'Daytime', order: 1, comingSoon: true, unit: 54,
+    words: ['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT'],
+  },
+  // 54. Days
+  {
+    id: 'days', level: 'medium', title: 'Days', order: 1, comingSoon: true, unit: 55,
+    words: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
+  },
+  // 55. Months
+  {
+    id: 'months', level: 'medium', title: 'Months', order: 1, comingSoon: true, unit: 56,
+    words: ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'],
+  },
+  // 56. Sequence
+  {
+    id: 'sequence', level: 'medium', title: 'Sequence', order: 1, comingSoon: true, unit: 57,
+    words: ['FIRST', 'SECOND', 'THIRD', 'NEXT', 'THEN', 'BEGINNING', 'MIDDLE', 'END', 'FINALLY', 'FINISHED'],
+  },
+  // 57. Frequency
+  {
+    id: 'frequency', level: 'medium', title: 'Frequency', order: 1, comingSoon: true, unit: 58,
+    words: ['ALWAYS', 'OFTEN', 'SOMETIMES', 'RARELY', 'NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'],
+  },
+  // 58. Location
+  {
+    id: 'location', level: 'medium', title: 'Location', order: 1, comingSoon: true, unit: 59,
+    words: ['IN', 'OUT', 'INSIDE', 'OUTSIDE', 'ON', 'UNDER', 'ABOVE', 'BELOW', 'FRONT', 'BACK', 'BEHIND', 'BESIDE', 'BETWEEN', 'NEXT'],
+  },
+  // 59. Distance
+  {
+    id: 'distance', level: 'medium', title: 'Distance', order: 1, comingSoon: true, unit: 60,
+    words: ['NEAR', 'FAR', 'HERE', 'THERE', 'CLOSE', 'AWAY'],
+  },
+  // 60. Directions
+  {
+    id: 'directions', level: 'medium', title: 'Directions', order: 1, comingSoon: true, unit: 61,
+    words: ['LEFT', 'RIGHT', 'UP', 'DOWN', 'FORWARD', 'BACK', 'TURN', 'GO', 'STOP', 'WAIT'],
+  },
+  // 61. Social
+  {
+    id: 'social', level: 'medium', title: 'Social', order: 1, comingSoon: true, unit: 62,
+    words: ['FRIEND', 'CLASSMATE', 'NEIGHBOR', 'PLAY', 'TALK', 'SHARE', 'HELP', 'MEET', 'VISIT', 'LIKE', 'LOVE', 'TOGETHER'],
+  },
+  // 62. Manners
+  {
+    id: 'manners', level: 'medium', title: 'Manners', order: 1, comingSoon: true, unit: 63,
+    words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'MAY', 'HELP'],
+  },
+  // 63. Turn-Taking
+  {
+    id: 'turn_taking', level: 'medium', title: 'Turn-Taking', order: 1, comingSoon: true, unit: 64,
+    words: ['MY', 'YOUR', 'TURN', 'WAIT', 'GO', 'STOP', 'AGAIN', 'FINISHED'],
+  },
+  // 64. Responses
+  {
+    id: 'responses', level: 'medium', title: 'Responses', order: 1, comingSoon: true, unit: 65,
+    words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'REALLY', 'GOOD', 'UNDERSTAND'],
+  },
+  // 65. Questions
+  // LEGACY id/content kept, RETITLED 'Basic Responses' -> 'Questions' to match
+  // the new plan's topic 65 — WHO/WHAT/WHERE/WHEN/WHY/HOW have disabled:true
+  // dictionary.js placeholders, matching 6 of this topic's 10 words.
+  // YES/NO/GOOD/BAD also live in THIS category's real SIGNS/dictionary content
+  // (not shown in words[] below since they're not part of the new plan's
+  // literal 'Questions' list) — see the new
+  // 'responses'/'answers'/'polite_words' categories below for where those 4
+  // words sit in the new plan; no SIGNS entries were moved or renamed.
+  {
+    id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 66,
+    words: ['WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW', 'WHICH', 'WHOSE', 'MANY', 'MUCH'],
+  },
+  // 66. Conversation
+  {
+    id: 'conversation', level: 'medium', title: 'Conversation', order: 1, comingSoon: true, unit: 67,
+    words: ['HELLO', 'GOOD', 'FINE', 'NAME', 'NICE', 'MEET', 'THANKS', 'WELCOME', 'LATER', 'GOODBYE'],
+  },
+  // 67. Requests
+  // id deliberately NOT 'requests' -- that id is already used by topic 7
+  // 'Needs' (Everyday Essentials), which has real disabled:true dictionary
+  // placeholders. Two different source-file topics are both titled
+  // 'Requests'-ish (7='Needs', 67='Requests') -- kept as two categories,
+  // not merged, matching the source file's own structure.
+  {
+    id: 'making_requests', level: 'medium', title: 'Requests', order: 1, comingSoon: true, unit: 68,
+    words: ['HAVE', 'CAN', 'HELP', 'GIVE', 'PLEASE', 'WAIT', 'GO', 'WHERE', 'THIS', 'THAT'],
+  },
+  // 68. Answers
+  {
+    id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: true, unit: 69,
+    words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'KNOW', 'DON\'T', 'UNDERSTAND', 'GOOD'],
+  },
 
-  // ── level=medium — WORDS (Level 1: 100 Basic ASL Signs, by category) ──
-  // family/places/time/temperature are unit: 5, and are the ONLY four
-  // Unit 5 sub-categories with real SIGN_DICTIONARY detection today —
-  // per Joshua's Phase 0 answer they stay comingSoon:false and are
-  // ordered first; every other Unit 5 category below is flipped to
-  // comingSoon:true (see AI_MEMORY.md gap note — they have data.js
-  // content but zero SIGN_DICTIONARY entries, so a camera check would
-  // silently never match).
+  // ── Legacy categories with real SIGNS content that the new plan
+  // doesn't have a topic for. RESTORED here (not dropped) — verified
+  // against the original data.js that each has authored lesson
+  // content (title/description/tips), not just a words[] preview;
+  // dropping the CATEGORIES entry would have made that content
+  // permanently unreachable (getCategorySigns() filters by category,
+  // and learn.js only offers categories it finds in this array) even
+  // though the SIGNS entries themselves would still exist. Folded
+  // into the closest-fit new unit as a SECOND category there (a unit
+  // with >1 category already renders a category-list screen — see
+  // 'family'/'places'/'time' etc. above for the same one-unit-many-
+  // categories pattern from Rev 6). None of these are Phase 7
+  // detection content (comingSoon stays as it was) — this is a
+  // content-placement fix only, id/words/level/comingSoon all
+  // unchanged from the pre-existing file.
   {
-    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 8,
-    source: 'LinguaWave ASL Lesson Compilation — Level 1, Family',
-    words: ['MOM', 'DAD', 'BOY', 'GIRL', 'MARRIAGE', 'BROTHER', 'SISTER', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'BABY', 'SINGLE', 'DIVORCED'],
-  },
-  {
-    id: 'places', level: 'medium', title: 'Places', order: 2, comingSoon: false, unit: 8,
-    // CHANGED: 'CAR/DRIVE' -> 'CAR', 'IN/OUT' -> 'IN','OUT' — kept in
-    // sync with the SIGNS entries' signId fixes below (see those entries
-    // and dictionary.js's PLACES block comment for why).
-    // BUGFIX (this session): 'COME/GO' was a stale combined entry —
-    // COME and GO have been separate SIGNS entries since the split
-    // documented on medium_places_COME below; this array just never got
-    // updated (words[] is documentation only, cosmetic not functional).
-    // CHANGED (this session) — COME/GO also moved out entirely, to
-    // `requests` (Everyday Essentials) per the confirmed reorder mapping.
-    words: ['HOME', 'WORK', 'SCHOOL', 'STORE', 'CHURCH', 'CAR', 'IN', 'OUT', 'WITH'],
-  },
-  // Tier 0 phrase-chaining (lesson.js). Chains several already-working
-  // atomic detections (letters and/or trained word-signs) in sequence
-  // instead of needing a whole new continuous-recognition model — see
-  // the phraseSteps block comment in lesson.js for the full mechanism.
-  // PHASE 7 (2026-08-20): the six entries below replaced the old
-  // CAR_SPELL/HOME_WORK_DEMO demo placeholders — real curated phrases
-  // per SYSTEM_ARCHITECTURE.md Rev 4 §"New content needed", item 4.
-  // Every component word was individually grepped against this repo's
-  // asl_motion_model/labels.json (not just assumed from the absence of
-  // a `disabled` flag) — only family/places/time vocab confirmed
-  // present there was used. HELLO/THANK_YOU/HOT/COLD were deliberately
-  // left OUT even though dictionary.js's own entries don't mark them
-  // `disabled` — confirmed this session that asl_motion_model/labels.json
-  // has no HELLO/THANK_YOU class at all, and that HOT/COLD have ZERO
-  // dictionary.js SIGN_DICTIONARY entry (not even a disabled
-  // placeholder) — see PIVOT_CHECKLIST.md/AI_MEMORY.md Phase 7 entries.
-  // order: 100 keeps this out of the way of the real category
-  // numbering rather than needing to renumber anything (no collision —
-  // checked, no other CATEGORIES entry uses order: 100).
-  // id/title: title updated to drop the "(Demo content)" framing now
-  // that real content replaces it; id kept as 'sequence_demo' per the
-  // Phase 1 note (renaming touches lesson.js's phraseSteps + every
-  // ?category=sequence_demo link for zero functional gain).
-  {
-    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 9,
-    words: ['MOM_HOME', 'DAD_WORK', 'TODAY_SCHOOL', 'FINISH_WORK', 'SISTER_STORE', 'TODAY_GRANDMA_HOME'],
-  },
-  {
-    id: 'time', level: 'medium', title: 'Time', order: 3, comingSoon: false, unit: 8,
-    // CHANGED: 'TODAY/NOW' -> 'NOW', 'TODAY' — kept in sync with the
-    // SIGNS entries' signId split below.
-    words: ['DAY', 'NIGHT', 'WEEK', 'MONTH', 'YEAR', 'WILL', 'BEFORE', 'NOW', 'TODAY', 'FINISH'],
-  },
-  {
-    id: 'temperature', level: 'medium', title: 'Temperature', order: 4, comingSoon: false, unit: 8,
-    words: ['HOT', 'COLD'],
-  },
-  // CHANGED (Rev 4 Phase 1): comingSoon flipped false -> true. No
-  // SIGN_DICTIONARY entries exist for any of these words (confirmed by
-  // grep, see AI_MEMORY.md gap note) — a camera check would silently
-  // never match, so per Rev 4's "Suggested removals" reasoning these
-  // stay visible as content but not presented as a playable lesson
-  // yet. Flip back to false once real detection backs each one.
-  {
-    id: 'food', level: 'medium', title: 'Food', order: 5, comingSoon: true, unit: 8,
-    // CHANGED (this session) — WATER/HUNGRY moved to `requests`
-    // (Everyday Essentials) per the confirmed reorder mapping.
-    words: ['PIZZA', 'MILK', 'HAMBURGER', 'HOT DOG', 'EGG', 'APPLE', 'CHEESE', 'DRINK', 'SPOON', 'FORK', 'CUP', 'CEREAL', 'CANDY', 'COOKIE'],
-  },
-  {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 6, comingSoon: true, unit: 8,
-    words: ['SHIRT', 'PANTS', 'SOCKS', 'SHOES', 'COAT', 'UNDERWEAR'],
-  },
-  {
-    id: 'health', level: 'medium', title: 'Health', order: 7, comingSoon: true, unit: 8,
-    // CHANGED (this session) — BATHROOM moved to `requests` (merged
-    // with the "RESTROOM" Phase 7 tracking item, same physical sign).
+    id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: true, unit: 42,
     words: ['WASH', 'HURT', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
   },
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 8, comingSoon: true, unit: 8,
-    // BUGFIX (this session): 'GOOD/BAD' was a stale combined entry —
-    // GOOD and BAD have been separate SIGNS entries for a while (see
-    // medium_feelings_GOOD/medium_feelings_BAD below), this array just
-    // never got updated when they were split (words[] is documentation
-    // only, getCategorySigns() reads the SIGNS array's own `category`
-    // field, so this was cosmetic, not a functional bug).
-    // CHANGED (this session) — SORRY/GOOD/BAD also moved out entirely,
-    // to essentials_polite_expressions / essentials_basic_responses
-    // per the confirmed reorder mapping.
-    words: ['HAPPY', 'ANGRY', 'SAD', 'CRY', 'LIKE', 'LOVE'],
-  },
-  // CHANGED (this session) — narrowed to the "Everyday Essentials"
-  // slot per the confirmed reorder mapping (PIVOT_CHECKLIST.md,
-  // confirmed 2026-08-23). id kept as 'requests' (internal only, not
-  // user-facing) to avoid touching every ?category=requests deep link
-  // for zero functional gain — only `title`/`words`/membership changed.
-  // PLEASE/EXCUSE/THANK YOU moved to essentials_polite_expressions;
-  // WHO/WHAT/WHEN/WHERE/WHY/HOW moved to essentials_basic_responses;
-  // WATER/HUNGRY moved in from `food`, GO/COME moved in from `places`;
-  // FOOD/RESTROOM are brand-new SIGNS entries (no prior data.js content
-  // existed for either signId).
-  {
-    id: 'requests', level: 'medium', title: 'Everyday Essentials', order: 9, comingSoon: false, unit: 4,
-    words: ['HELP', 'STOP', 'WATER', 'FOOD', 'HUNGRY', 'BATHROOM', 'GO', 'COME'],
-  },
-  // NEW (this session) — 3 categories for the reorder's new units
-  // (order 5/6/7 in UNITS above). ids prefixed `essentials_`/
-  // `greetings_intro` avoided the Unit 7 Phrasebook's existing
-  // 'basic_responses'/'polite_expressions'/'greetings_intro' category
-  // ids (found this session — see PIVOT_CHECKLIST.md's "New blocker").
-  {
-    id: 'essentials_greetings', level: 'medium', title: 'Greetings and Introduction', order: 1, comingSoon: false, unit: 5,
-    words: ['HELLO'],
-  },
-  {
-    id: 'essentials_basic_responses', level: 'medium', title: 'Basic Responses', order: 1, comingSoon: false, unit: 6,
-    words: ['YES', 'NO', 'GOOD', 'BAD', 'WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW'],
-  },
-  {
-    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Expressions', order: 1, comingSoon: false, unit: 7,
-    words: ['PLEASE', 'THANK YOU', 'EXCUSE', 'SORRY'],
-  },
-  {
-    id: 'amounts', level: 'medium', title: 'Amounts', order: 10, comingSoon: true, unit: 8,
+    id: 'amounts', level: 'medium', title: 'Amounts', order: 2, comingSoon: true, unit: 16,
     words: ['BIG', 'TALL', 'FULL', 'MORE'],
   },
+  // No topic in the new plan is even a loose fit for Money — placed
+  // alongside Personal Items (closest available theme: wallet/cost)
+  // rather than invented a 73rd unit for 3 words. Flagging this one
+  // for a second look/better home if Omen wants one.
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 11, comingSoon: true, unit: 8,
-    words: ['BLUE', 'GREEN', 'YELLOW', 'RED', 'BROWN', 'ORANGE', 'GOLD', 'SILVER'],
-  },
-  {
-    id: 'money', level: 'medium', title: 'Money', order: 12, comingSoon: true, unit: 8,
+    id: 'money', level: 'medium', title: 'Money', order: 2, comingSoon: true, unit: 43,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
+
+  // ── Basic Phrases (unit 70) — UNCHANGED from Rev 6, see UNITS header
+  // note. Real TRAINED content, built only from already-trained words.
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 13, comingSoon: true, unit: 8,
-    words: ['CAT', 'DOG', 'BIRD', 'HORSE', 'COW', 'SHEEP', 'PIG', 'BUG'],
+    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 70,
+    words: ['MOM_HOME', 'DAD_WORK', 'TODAY_SCHOOL', 'FINISH_WORK', 'SISTER_STORE', 'TODAY_GRANDMA_HOME'],
   },
 
-  // ── level=intermediate — PHRASES ────────────────────────────────
-  // ALL 18 categories below: unit: 7 (Phrasebook — read-only reference
-  // per Rev 4 "Suggested removals" #2; none have any SIGN_DICTIONARY
-  // entry, so none are graded or camera-checkable). comingSoon left
-  // as-is (false) — Rev 4 recommends demoting these to browse-only
-  // content, which is a Phase 4 UI/rendering decision, not a
-  // comingSoon-flag decision; flag not touched here to avoid
-  // conflating "not gradeable" with "hide the content."
+  // ── level=intermediate — Phrasebook (unit 71) — UNCHANGED from Rev 6
+  // other than the unit number (was 10, now 71 — every other field
+  // identical). Read-only reference, not graded, no SIGN_DICTIONARY
+  // entries. See file's original header note (kept below unedited).
   // Level 2 — Basic (Common Phrases), Modules 1–8
   {
-    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 10,
+    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 71,
     words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
   },
   {
-    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 10,
+    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 71,
     words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
   },
   {
-    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 10,
+    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 71,
     words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
   },
   {
-    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 10,
+    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 71,
     words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
   },
   {
-    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 10,
+    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 71,
     words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
   },
   {
-    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 10,
+    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 71,
     words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
   },
   {
-    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 10,
+    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 71,
     words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
   },
   {
-    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 10,
+    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 71,
     words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
   },
 
   // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
   {
-    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 10,
+    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 71,
     words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
   },
   {
-    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 10,
+    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 71,
     words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
   },
   {
-    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 10,
+    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 71,
     words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
   },
   {
-    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 10,
+    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 71,
     words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
   },
   {
-    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 10,
+    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 71,
     words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
   },
   {
-    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 10,
+    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 71,
     words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
   },
   {
-    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 10,
+    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 71,
     words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
   },
   {
-    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 10,
+    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 71,
     words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
   },
   {
-    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 10,
+    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 71,
     words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
   },
   {
-    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 10,
+    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 71,
     words: [
       'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
       'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
