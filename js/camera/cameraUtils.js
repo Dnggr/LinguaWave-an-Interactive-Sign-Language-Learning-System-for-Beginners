@@ -26,6 +26,20 @@
  * @returns {Promise<void>} Resolves when stream is live and dimensions are set
  */
 export async function startCamera(videoElement, canvasElement) {
+  // BUGFIX (PIVOT_CHECKLIST.md Phase C) — this function assumed
+  // canvasElement (and videoElement) were always passed and non-null;
+  // a null canvasElement threw a raw, unhandled TypeError from deep
+  // inside the onReady()/resolve() path below (`canvasElement.width !==
+  // videoElement.videoWidth`) instead of failing gracefully like every
+  // other startup problem here does. Every current call site does pass
+  // both elements, so this was latent, not currently triggered — this
+  // guard just makes that assumption explicit and safe if a future call
+  // site ever gets it wrong.
+  if (!videoElement || !canvasElement) {
+    showCameraError('Camera setup is missing required page elements. Please reload the page.');
+    throw new Error('startCamera: videoElement and canvasElement are required');
+  }
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showCameraError('Your browser does not support camera access. Please use Chrome or Edge.');
     throw new Error('getUserMedia not supported');

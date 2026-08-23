@@ -387,25 +387,35 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   let confidence = 0;
   let runnerUpConfidence = 0;
 
-  tf.tidy(() => {
-    const output = staticModel.predict(input);
-    const probs  = Array.from(output.dataSync());
+  // BUGFIX (PIVOT_CHECKLIST.md Phase C) — `input` is allocated OUTSIDE
+  // tf.tidy() (tidy only auto-disposes tensors created inside its own
+  // callback), so it always needed its own manual dispose(). That used
+  // to be a plain call placed after the tidy block; if
+  // staticModel.predict(input)/.dataSync() ever threw inside the
+  // callback, that line was skipped and `input` leaked in WebGL memory
+  // for the rest of the session. try/finally guarantees disposal on
+  // both the normal and thrown paths.
+  try {
+    tf.tidy(() => {
+      const output = staticModel.predict(input);
+      const probs  = Array.from(output.dataSync());
 
-    // Restrict to labels valid in the current context BEFORE picking a
-    // winner — not filtered after — so a genuine '6' isn't discarded
-    // just because the raw softmax briefly favored 'W' this frame.
-    const candidateIdxs = probs
-      .map((_, i) => i)
-      .filter(i => !allowedLabels || allowedLabels.has(staticLabels[String(i)]));
-    candidateIdxs.sort((a, b) => probs[b] - probs[a]);
+      // Restrict to labels valid in the current context BEFORE picking a
+      // winner — not filtered after — so a genuine '6' isn't discarded
+      // just because the raw softmax briefly favored 'W' this frame.
+      const candidateIdxs = probs
+        .map((_, i) => i)
+        .filter(i => !allowedLabels || allowedLabels.has(staticLabels[String(i)]));
+      candidateIdxs.sort((a, b) => probs[b] - probs[a]);
 
-    const maxIdx = candidateIdxs[0];
-    confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
-    runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
-    rawLabel     = maxIdx == null ? null : (staticLabels[String(maxIdx)] ?? null);
-  });
-
-  input.dispose();
+      const maxIdx = candidateIdxs[0];
+      confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
+      runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
+      rawLabel     = maxIdx == null ? null : (staticLabels[String(maxIdx)] ?? null);
+    });
+  } finally {
+    input.dispose();
+  }
   logTfMemoryIfDue('classifyGesture (static)');
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
@@ -491,22 +501,29 @@ function runMotionInference(frameWindow, allowedLabels = null) {
   let confidence = 0;
   let runnerUpConfidence = 0;
 
-  tf.tidy(() => {
-    const output = motionModel.predict(input);
-    const probs  = Array.from(output.dataSync());
+  // BUGFIX (PIVOT_CHECKLIST.md Phase C) — same input-tensor leak as
+  // classifyGesture() above, same fix: `input` lives outside tf.tidy()
+  // so it needs its own dispose(); try/finally guarantees that happens
+  // even if motionModel.predict(input)/.dataSync() throws inside the
+  // callback, instead of leaking the tensor in WebGL memory.
+  try {
+    tf.tidy(() => {
+      const output = motionModel.predict(input);
+      const probs  = Array.from(output.dataSync());
 
-    const candidateIdxs = probs
-      .map((_, i) => i)
-      .filter(i => !allowedLabels || allowedLabels.has(motionLabels[String(i)]));
-    candidateIdxs.sort((a, b) => probs[b] - probs[a]);
+      const candidateIdxs = probs
+        .map((_, i) => i)
+        .filter(i => !allowedLabels || allowedLabels.has(motionLabels[String(i)]));
+      candidateIdxs.sort((a, b) => probs[b] - probs[a]);
 
-    const maxIdx = candidateIdxs[0];
-    confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
-    runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
-    rawLabel     = maxIdx == null ? null : (motionLabels[String(maxIdx)] ?? null);
-  });
-
-  input.dispose();
+      const maxIdx = candidateIdxs[0];
+      confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
+      runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
+      rawLabel     = maxIdx == null ? null : (motionLabels[String(maxIdx)] ?? null);
+    });
+  } finally {
+    input.dispose();
+  }
   logTfMemoryIfDue('runMotionInference (motion)');
 
   if (!rawLabel) {

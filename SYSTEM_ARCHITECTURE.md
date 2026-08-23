@@ -14,6 +14,10 @@ caveat as Rev 4: content/training (Phase 7) still open, and 2 pieces of
 Omen's original request (ASL History content, literal Days-of-the-Week
 content) are explicitly not done — see the Unit Map. `js/auth.js` is
 real Firebase auth, out of scope for AI sessions (teammate owns it).
+`PIVOT_CHECKLIST.md`'s Phase C (camera/tab-lifecycle hygiene bugs in
+`quiz.js`/`cameraUtils.js`/`classifier.js`) is also now done — see that
+file; Phase B (auth-adjacent bugs) remains open, flagged for the
+teammate, untouched by AI sessions per scope.
 
 > Compressed 2026-08-22 — this file used to carry a full per-item
 > "Implementation status" session log duplicating `PIVOT_CHECKLIST.md`'s
@@ -56,7 +60,7 @@ Phase 1) is what actually drives ordering/unlocking now.
 | 0 | Welcome to ASL | new, static text | N/A — no camera. **Still titled/framed as generic welcome, NOT "ASL History"** — Omen's target order wants History content here, but that's new copywriting, not a restructure; not done this session, see PIVOT_CHECKLIST.md. |
 | 1 | The Alphabet (A–Z) | `basic/alphabet`, unchanged | ✅ fully trained |
 | 2 | Fingerspell Your Name | new interactive drill | ✅ reuses A–Z static model. **CHANGED this session: now a gated assessment** (`gated: true` on its UNITS entry) — completing the drill once (the drill is forgiving by design, so completion = pass) unlocks Unit 3 onward via `progress.js`'s new `recordUnitAssessment`/`getUnitAssessment`/`gatesClearedBefore`. Previously "always open," never blocked anything. |
-| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ❌ **CORRECTED 2026-08-23 (code-read audit, see `PIVOT_CHECKLIST.md` Phase A) — this row previously said "static 0–9 trained," which was wrong and self-contradicted §5's own model table below.** `asl_static_model/labels.json` has zero digit classes (25 classes, all letters); `classifyGesture()` can only ever return a label from that file, so `0,1,2,3,4,5,7,8` cannot be detected today, not just "not yet captured." `6`/`9`/`10` are correctly routed to the motion model but that model also has zero digit classes yet. **All 10 digits are Phase 7 work**, not just 3 — `PIVOT_CHECKLIST.md`'s Phase 7 item list itself hasn't been updated to reflect this yet, flagged there. Now also gated behind Unit 2's assessment (see above). |
+| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ❌ **CORRECTED 2026-08-23 (code-read audit, see `PIVOT_CHECKLIST.md` Phase A) — this row previously said "static 0–9 trained," which was wrong and self-contradicted §5's own model table below.** `asl_static_model/labels.json` has zero digit classes (25 classes, all letters); `classifyGesture()` can only ever return a label from that file, so `0,1,2,3,4,5,7,8` cannot be detected today, not just "not yet captured." `6`/`9`/`10` are correctly routed to the motion model but that model also has zero digit classes yet. **All 10 digits are Phase 7 work**, not just 3 — `PIVOT_CHECKLIST.md`'s Phase 7 item list reconciled to match this (merged digit item, static/motion split already decided in `dictionary.js`, not an open question). Now also gated behind Unit 2's assessment (see above). |
 | 4 | Everyday Essentials | `medium/requests`, **narrowed this session** to `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `BATHROOM`, `GO`, `COME` | ❌ none trained yet — Phase 7. `FOOD` and `HELLO`(Unit 5)/`YES`/`NO`(Unit 6) got real `data.js` lesson content this session (previously zero content existed for any of the four). `BATHROOM` moved in from Unit 5 `health` — same physical sign as the "RESTROOM" item on Phase 7's list, merged rather than duplicated (see `dictionary.js`'s note). |
 | 5 | Greetings and Introduction | **NEW this session** — `medium/essentials_greetings` | ❌ none trained yet — Phase 7. Sole content: `HELLO`. |
 | 6 | Basic Responses | **NEW this session** — `medium/essentials_basic_responses` | ❌ none trained yet — Phase 7. `YES`/`NO`/`GOOD`/`BAD`/`WHO`/`WHAT`/`WHERE`/`WHEN`/`WHY`/`HOW`, moved in from the old Unit 4 `requests` and Unit 5 `feelings`. |
@@ -285,9 +289,14 @@ future page reaches for the shared class instead of copy-pasting
 `dashboard.css`'s page-local versions a third time; `dashboard.css`
 itself was left untouched (still has its own identical, working copies)
 to avoid any regression risk to that already-shipped page.
-**`quiz.html`/`quiz.css` has the identical gap and is still unaddressed**
-— named but out of scope in `PIVOT_CHECKLIST.md`'s original audit, still
-true after this session.
+**`quiz.html`/`quiz.css` had the identical gap — done 2026-08-23 (later,
+seventh session).** Same 4 patterns: skip link (`#question-card`),
+`:focus-visible` on `.quiz-option`, `.loading-pulse` on the static
+"Loading…" text, and a real error fallback (new `js/quiz.js`
+`showQuizUnavailable()`, wired into a `!window.LWData` guard +
+try/catch in `boot()`). See `PIVOT_CHECKLIST.md`'s matching entry for
+the fuller writeup, including a pre-existing double-`boot()`-call bug
+found and fixed along the way (unrelated to the design pass itself).
 
 ---
 

@@ -78,19 +78,19 @@
 - [ ] Capture + retrain `HELLO`/`THANK YOU` (Unit 4) and `HOT`/`COLD`
   (Unit 5 temperature) — currently `disabled: true` placeholders in
   `dictionary.js` so they fail cleanly instead of silently.
-- [ ] Capture + retrain digits `6`/`9`/`10` for `asl_motion_model` —
-  routing is already fixed (`detectionType: 'motion'` set correctly in
-  both `data.js` and `dictionary.js`), but `asl_motion_model/labels.json`
-  has zero digit classes today, so nothing actually detects yet.
-- [ ] **NEW (2026-08-23, code-read audit — see "Bugs found this session"
-  → Phase A below).** Capture + retrain digits `0,1,2,3,4,5,7,8` for
-  `asl_static_model` — previously believed already trained
-  (`SYSTEM_ARCHITECTURE.md`'s Unit Map said so), actually has zero digit
-  classes in `asl_static_model/labels.json` today, same root problem as
-  `6`/`9`/`10` above just on the other model. **Numbers is effectively a
-  0%-trained unit, not a mostly-done one** — worth knowing before
-  planning a capture session's scope/time. Decide static vs. motion model
-  for these 8 before capturing (see Phase A's note).
+- [ ] **Capture + retrain all 10 digits — Numbers is 0%-trained, not
+  mostly-done, on EITHER model.** `asl_static_model/labels.json` (25
+  classes, all letters) and `asl_motion_model/labels.json` (33 classes,
+  `J`/`Z`/words) both currently have zero digit classes. Routing is
+  already decided and implemented (`dictionary.js`'s Numbers block
+  comment, 2026-08-20 — **this was NOT actually an open decision**, see
+  Phase A below): `0,1,2,3,4,5,7,8` default to `'static'` (plain held
+  handshapes, no motion) → capture for `asl_static_model`; `6`/`9`/`10`
+  are explicit `detectionType: 'motion'` (`6`/`9` are statically
+  identical to `W`/`F`, only disambiguated by a small tap the static
+  model can't see; `10` is a genuine twist, never a held pose) → capture
+  for `asl_motion_model`. Two separate Colab batches to match the model
+  split: 8 static handshapes, 3 motion clips.
 
 ---
 
@@ -306,6 +306,72 @@ no collision, both sets of ids now coexist.
 
 ---
 
+## Design pass — quiz.html / quiz.css — 2026-08-23 (later, seventh session) — ✅ implemented
+
+Extends the item below to `quiz.html`/`quiz.css`, closing the one gap
+its own "still wasn't in scope" note left open. Same 4 patterns,
+scoped to what quiz.html actually has:
+
+- [x] **Skip link** — added, jumps to `#question-card` (the page's one
+  real interactive area; nothing in `.quiz-header`/`.progress-bar`
+  above it is a tab stop, so this is a plain navbar-only skip, same as
+  dashboard.html/learn.html — no course-sidebar-sized tab-order problem
+  here to justify skipping further). `#question-card` got
+  `tabindex="-1"` to receive the jump.
+- [x] **`:focus-visible` ring** — added to `.quiz-option` (the MC/
+  Identification answer buttons) in `quiz.css`. Nothing else on this
+  page needed one: every other clickable element is a shared `.btn`,
+  which none of the other design-pass pages touched either — kept
+  consistent with that scope line instead of expanding it.
+- [x] **Loading-state shimmer** — `#q-prompt`'s existing static
+  "Loading…" text now carries `.loading-pulse`. `js/quiz.js` already
+  overwrites it on first render, so no extra cleanup code was needed —
+  same free-parity fix as the other two pages.
+- [x] **Error/fallback state** — new `js/quiz.js` function
+  `showQuizUnavailable()`, wired into `boot()`: a `!window.LWData`
+  guard (previously absent — a missing LWData silently fell into
+  `showEmptyState()`'s "no trained content" message, which means
+  something different and real — see `AI_MEMORY.md` §4) plus a
+  belt-and-suspenders `try/catch` around the rest of `boot()`, same
+  shape as `js/learn.js`'s own. Renders a real `.alert--error` fallback
+  (`.quiz-fallback-alert`, new in `quiz.css`) inside `#question-card`
+  instead of leaving a stuck "Loading…" card.
+
+**Scope note, same spirit as `js/learn.js`'s/`js/lesson.js`'s "narrower
+on purpose":** only `window.LWData` and an unexpected `boot()` throw
+are guarded. `window.LWProgress` calls reached from the boot path
+(`PASS_THRESHOLD`, `liveCategoriesFor()`) already use `?.`. **Not
+guarded, flagged not fixed:** `buildActionButtons()`'s two
+`window.LWProgress.LEVEL_ORDER`/`.getOrderedLiveCategories()` calls
+(no `?.`) — but those only run after a completed, passed assessment,
+well outside this design pass's boot-time scope.
+
+**Bug found and fixed along the way (not part of the design pass
+itself):** `js/quiz.js`'s DOMContentLoaded bootstrap was
+`document.addEventListener('DOMContentLoaded', boot); if
+(document.readyState !== 'loading') boot();` — unlike `js/lesson.js`'s
+already-fixed "BUG 3" version of this exact idiom, this calls `boot()`
+**twice** in the normal case (a `type="module"` script typically runs
+at `readyState === 'interactive'`, so the immediate check fires AND
+the listener fires again moments later). Silently rebuilt both rounds
+and re-rendered the first question a second time — harmless-looking in
+practice, but a real double-execution, and would have double-fired
+`showQuizUnavailable()`'s `console.error` on a genuine load failure.
+Switched to `js/lesson.js`'s mutually-exclusive `if (readyState ===
+'loading') { addEventListener(...) } else { boot() }` form.
+
+**Excluded from this session, per request:** `js/auth.js` — untouched,
+teammate's per scope (same as every session).
+
+**Verified Node-only this session** (`node --check js/quiz.js`, a
+brace-balance pass on `quiz.css`/`style.css`, a Python HTML-parse pass
+on `quiz.html`) — all clean. **Not yet verified in a real browser**
+(keyboard tab order into `#question-card`, screen reader, and actually
+triggering `showQuizUnavailable()` by simulating a `data.js` load
+failure) — same limitation as every prior design-pass session.
+
+---
+
 ## Design pass — learn.html / lesson.html sidebar not yet matching dashboard — 2026-08-23 (✅ implemented, this session — see follow-up note below)
 
 Omen's observation, confirmed by code read: `learn.css`/`lesson.css` share the
@@ -347,9 +413,10 @@ sidebar. Concretely, dashboard had and the other three didn't:
   gracefully (unlocked-state defaults) rather than needing its own
   fallback path, unlike dashboard.js which required both.
 
-`quiz.html`/`quiz.css` has the identical gap (checked while auditing this)
-but still wasn't named in the request — still flagged as a bonus, still not
-in scope unless wanted.
+`quiz.html`/`quiz.css` had the identical gap (checked while auditing this)
+but wasn't named in the request at the time — **done in a later session,
+same day, see the "Design pass — quiz.html / quiz.css" entry above this
+one.**
 
 **Implementation note vs. the prior session's suggested approach:** the
 `.skip-link`/loading-pulse rules were made "generic and reusable" by
@@ -383,27 +450,43 @@ before calling this fully done.
 
 ### Phase A — Model/label alignment (read this before any camera capture)
 
-- [ ] **CRITICAL — Numbers `0,1,2,3,4,5,7,8` (7 of 10 digits) cannot be
-  detected at all today, not just "not yet captured."** Confirmed by
-  reading the actual model files, not just the docs: `asl_static_model/
-  labels.json` has 25 classes and every one is a letter (`A`–`Y` minus
-  `J`/`Z`, +`NONE`) — zero digit classes exist. `classifier.js`'s
-  `classifyGesture()` returns `rawLabel` straight from that file, and
-  `lesson.js`'s practice/assessment handlers do a direct
-  `result.label !== expectedStep` string compare against the digit signId
-  (e.g. `'0'`). A digit signId can never equal a letter string, so this
-  fails 100% of the time — not probabilistically, structurally. This
-  directly **contradicts `AI_MEMORY.md` §0 / `SYSTEM_ARCHITECTURE.md`'s
-  own Unit Map**, which says Unit 3's "static 0–9 trained" — that line is
-  wrong and self-contradicts the same file's own §5 model-reference table
-  (correctly lists static = letters only, no digits). **Practical impact:
-  Phase 7's tracked digit list ("6·9·10 need capture") is incomplete —
-  it's actually all 10 digits, not 3.** Worth deciding before a capture
-  session: do 0–5/7/8 get folded into the `asl_static_model` retrain (new
-  digit classes there) or moved to `asl_motion_model` alongside 6/9/10 for
-  consistency? Either way, updating the Unit Map's Unit 3 row and Phase
-  7's checklist item once a plan is picked is a small doc fix, not
-  discussed further here since it's a decision, not a bug fix.
+- [ ] **CRITICAL (still open — needs a human + camera + Colab) — Numbers
+  `0,1,2,3,4,5,7,8` (7 of 10 digits) cannot be detected at all today, not
+  just "not yet captured."** Confirmed by reading the actual model
+  files, not just the docs: `asl_static_model/labels.json` has 25 classes
+  and every one is a letter (`A`–`Y` minus `J`/`Z`, +`NONE`) — zero digit
+  classes exist. `classifier.js`'s `classifyGesture()` returns `rawLabel`
+  straight from that file, and `lesson.js`'s practice/assessment handlers
+  do a direct `result.label !== expectedStep` string compare against the
+  digit signId (e.g. `'0'`). A digit signId can never equal a letter
+  string, so this fails 100% of the time — not probabilistically,
+  structurally. This directly contradicted `AI_MEMORY.md` §0 /
+  `SYSTEM_ARCHITECTURE.md`'s own Unit Map, which said Unit 3's "static
+  0–9 trained" — **that row was already corrected 2026-08-23** (Unit Map
+  now correctly says 0 trained, all 10 digits are Phase 7 work).
+  **Not a wrong-guess bug, just a dead one** — traced
+  `getAllowedLabelsForSign()` + `classifyGesture()`'s candidate
+  restriction (this session, no code changed): a digit's `allowedLabels`
+  set never intersects the static model's letters-only output classes,
+  so `candidateIdxs` is always empty and the result is a clean
+  `{label:null, matched:false}`, same as a `disabled:true` entry — not a
+  confusing wrong-letter readout. Learner-facing symptom is "camera never
+  detects it," not "detects the wrong sign." Same logic applies to
+  `6`/`9`/`10` against the (also digit-less) motion model.
+  ✅ **RESOLVED this session — the "decide static vs. motion" framing
+  below was wrong, there was nothing to decide:** `dictionary.js`'s own
+  Numbers block comment (written 2026-08-20, Phase 7 — this audit just
+  hadn't cross-checked it) already settled and implemented the split:
+  `0,1,2,3,4,5,7,8` default to `'static'` (plain held handshapes) →
+  `asl_static_model`; `6`/`9`/`10` are explicit
+  `detectionType: 'motion'` → `asl_motion_model`. Nothing to decide, only
+  needed reconciling across docs — done this session, see the merged
+  Phase 7 digit item above and the (already-corrected) Unit Map row.
+  ~~Worth deciding before a capture session: do 0–5/7/8 get folded into
+  the `asl_static_model` retrain (new digit classes there) or moved to
+  `asl_motion_model` alongside 6/9/10 for consistency?~~ — moot, see
+  above. **Only thing still actually open here is the camera capture
+  itself**, tracked in Phase 7.
 
 ### Phase B — Auth/session hygiene (cross-file; coordinate with teammate before touching `auth.js` itself)
 
@@ -436,23 +519,33 @@ before calling this fully done.
   `try/catch/finally` around the `getDoc` call in `auth.js`, teammate's
   call on timing/priority.
 
-### Phase C — Page lifecycle & camera hygiene (small, independent, safe to hand to any session)
+### Phase C — Page lifecycle & camera hygiene — ✅ done 2026-08-23 (later, sixth session)
 
-- [ ] `js/quiz.js` has no `visibilitychange` handler — `js/lesson.js` stops
-  the camera when the tab is backgrounded (`document.hidden`), `quiz.js`
-  only stops it on `beforeunload` / when the camera round finishes. If a
-  learner tabs away mid camera-round assessment, the webcam stays live
-  (indicator light on) until they return or leave the page.
-- [ ] `js/camera/cameraUtils.js`'s `startCamera()` assumes `canvasElement`
-  is always passed and non-null (`canvasElement.width !== …`) — a null
-  canvas throws instead of failing gracefully. Every current call site
-  does pass one, so this is latent, not currently triggered.
-- [ ] `js/engine/classifier.js`'s `classifyGesture()`/`classifyMotion()`
-  allocate `input = tf.tensor2d(...)` OUTSIDE `tf.tidy()` and call
-  `input.dispose()` after the tidy block, not in a `finally`. If
-  `staticModel.predict()`/`.dataSync()` throws inside the tidy callback,
-  `input.dispose()` is skipped and that tensor leaks in WebGL memory for
-  the rest of the session.
+- [x] `js/quiz.js` had no `visibilitychange` handler — added one, mirrors
+  `js/lesson.js`'s existing `document.hidden` → `stopCamera()` pattern
+  exactly. `stopCamera()` is a safe no-op when no stream is active, so no
+  extra "is the camera round running" check was needed. `js/quiz.js`.
+- [x] `js/camera/cameraUtils.js`'s `startCamera()` assumed `canvasElement`
+  (and `videoElement`) were always passed and non-null — added an early
+  guard that fails the same way every other startup problem here does
+  (`showCameraError()` + a caught `throw`) instead of a raw TypeError
+  from deep inside the `onReady()`/resolve path. Still latent today
+  (every real call site passes both elements) — this just makes the
+  assumption explicit and safe. `js/camera/cameraUtils.js`.
+- [x] `js/engine/classifier.js`'s `classifyGesture()`/`runMotionInference()`
+  (the shared path behind `classifyMotion()`/`finalizeMotionWindow()`)
+  each allocated `input = tf.tensor2d/tensor3d(...)` OUTSIDE `tf.tidy()`
+  and disposed it with a plain call placed after the tidy block — skipped,
+  leaking the tensor in WebGL memory, if `predict()`/`.dataSync()` ever
+  threw inside the callback. Wrapped both in `try { tf.tidy(...) } finally
+  { input.dispose(); }` so disposal happens on the thrown path too, no
+  behavior change on the normal path. `js/engine/classifier.js`.
+
+Verified Node-only this session (`node --check` on all 3 touched files) —
+**not yet verified in a real browser** (visibility-toggle + WebGL memory
+trace), same limitation as every prior session. `auth.js`/Phase B
+untouched, left for the teammate per scope, per this session's explicit
+request.
 
 ### Phase D — Reconciling `CLAUDE_TASKS.md` (a second, un-merged audit already sitting in the repo)
 
