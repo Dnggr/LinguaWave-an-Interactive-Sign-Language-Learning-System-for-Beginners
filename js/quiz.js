@@ -216,18 +216,70 @@ function questionsAnsweredSoFar() {
   return n + qIdx;
 }
 
-function boot() {
-  if (titleEl)    titleEl.textContent    = scope.title;
-  if (subtitleEl) subtitleEl.textContent = scope.subtitle;
+// Design pass, 2026-08-23 (later, seventh session) — see
+// PIVOT_CHECKLIST.md's "Design pass" item, css/quiz.css's matching
+// comment, and pages/quiz.html's #question-card. Mirrors js/learn.js's
+// showLearnUnavailable()/js/lesson.js's showSidebarUnavailable(): a
+// real "couldn't load" state, distinct from showEmptyState() below
+// (which means something different — a genuinely untrained/comingSoon
+// category, not a load failure). Narrower than either of those two
+// functions on purpose, same reasoning as their own comments: this
+// only guards window.LWData (the one hard dependency buildScope() has
+// no fallback for) and an unexpected throw inside boot() itself —
+// window.LWProgress calls reached from THIS path (PASS_THRESHOLD,
+// liveCategoriesFor()) already degrade via `?.`. The later,
+// results-only window.LWProgress calls inside buildActionButtons()
+// (LEVEL_ORDER, getOrderedLiveCategories()) do NOT have the same `?.`
+// guard, but those only run after a completed, passed assessment —
+// well outside this design pass's boot-time scope. Flagged, not fixed
+// here.
+function showQuizUnavailable(reason) {
+  console.error('[quiz.js] cannot render — window.LWData unavailable or a render call threw. Reason:', reason);
+  if (questionCardEl) {
+    questionCardEl.innerHTML = `<div class="alert alert--error quiz-fallback-alert">` +
+      `We couldn't load this assessment right now. ` +
+      `<a href="learn.html?level=${encodeURIComponent(level)}">Back to Lessons</a>, or reload this page to try again.` +
+      `</div>`;
+  }
+  if (gateCardEl)   gateCardEl.style.display   = 'none';
+  if (cameraCardEl) cameraCardEl.style.display = 'none';
+}
 
-  if (scope.signs.length === 0) {
-    showEmptyState();
+function boot() {
+  // Design pass, 2026-08-23 (later, seventh session): previously no
+  // guard at all — a missing window.LWData silently produced
+  // scope.signs === [] (buildScope()'s optional chaining) and fell
+  // into showEmptyState() below with a misleading "no trained content"
+  // message. Same failure mode + same fix as js/learn.js's/
+  // js/lesson.js's matching guards this design pass ported here.
+  if (!window.LWData) {
+    showQuizUnavailable('window.LWData did not load');
     return;
   }
 
-  rounds[0].questions = buildMCRound(scope.signs);
-  rounds[1].questions = buildIdRound(scope.signs);
-  showQuestion();
+  // Design pass, 2026-08-23 (later, seventh session): belt-and-
+  // suspenders try/catch, same reasoning as js/learn.js's own around
+  // its boot(). Nothing inside is expected to throw (the guard above
+  // already covers the one case that would make buildMCRound/
+  // buildIdRound/showQuestion fail at once), but an unexpected data
+  // shape shouldn't leave the learner stuck on a blank/stale "Loading…"
+  // card with nothing but a silent console error.
+  try {
+    if (titleEl)    titleEl.textContent    = scope.title;
+    if (subtitleEl) subtitleEl.textContent = scope.subtitle;
+
+    if (scope.signs.length === 0) {
+      showEmptyState();
+      return;
+    }
+
+    rounds[0].questions = buildMCRound(scope.signs);
+    rounds[1].questions = buildIdRound(scope.signs);
+    showQuestion();
+  } catch (e) {
+    console.error('[quiz.js] rendering failed partway through:', e);
+    showQuizUnavailable('render threw: ' + (e && e.message));
+  }
 }
 
 function showEmptyState() {
@@ -240,8 +292,29 @@ function showEmptyState() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', boot);
-if (document.readyState !== 'loading') boot();
+// BUGFIX (found this session, design pass — not part of the design pass
+// itself): this used to be
+//   document.addEventListener('DOMContentLoaded', boot);
+//   if (document.readyState !== 'loading') boot();
+// which — unlike js/lesson.js's already-fixed "BUG 3" version of this
+// exact idiom — calls boot() TWICE in the common case. A `type="module"`
+// script (this file) runs after the document is parsed but before
+// DOMContentLoaded fires, so `document.readyState` is normally
+// `'interactive'`, not `'loading'`, by the time this line runs: the
+// `if` on the second line fires immediately, AND the listener registered
+// on the first line still fires again moments later when DOMContentLoaded
+// actually happens. In practice this silently rebuilt both rounds and
+// re-rendered the first question a second time (a fresh shuffle,
+// harmless-looking) — invisible unless a learner somehow answers inside
+// that first instant, but a real double-execution of everything boot()
+// does, including now showQuizUnavailable()'s console.error firing twice
+// on a genuine load failure. Switched to the same mutually-exclusive
+// if/else js/lesson.js already uses.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
 
 /* ── Rendering a question (shared by MC + Identification) ───────── */
 function showQuestion() {
@@ -608,6 +681,20 @@ function endCameraRound() {
 }
 
 window.addEventListener('beforeunload', () => { if (rafId) cancelAnimationFrame(rafId); stopCamera(videoEl); });
+
+// BUGFIX (PIVOT_CHECKLIST.md Phase C) — js/lesson.js already stops the
+// camera when the tab is backgrounded (visibilitychange → document.hidden);
+// quiz.js only had the beforeunload handler above, so tabbing away mid
+// camera-round assessment left the webcam indicator light on until the
+// learner came back or left the page entirely. Mirrors lesson.js's handler
+// exactly (see that file's own `document.addEventListener('visibilitychange', ...)`
+// near its shutdown()). stopCamera() is a safe no-op when no stream is
+// active (checks videoElement.srcObject internally — see cameraUtils.js),
+// so this doesn't need to check whether the camera round is actually
+// running before calling it.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopCamera(videoEl);
+});
 
 /* ── Finish + results ─────────────────────────────────────────────── */
 function finishAssessment() {

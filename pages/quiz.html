@@ -50,6 +50,22 @@
 </head>
 <body>
 
+  <!-- ── SKIP LINK (Design pass, 2026-08-23, later — seventh session) ───
+       PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
+       not yet matching dashboard" flagged quiz.html/quiz.css as having
+       the identical gap, named but out of scope at the time. Same
+       technique as learn.html/lesson.html: jump straight past the
+       navbar's 5 focusable items (logo, 2 nav links, theme toggle, log
+       out) to #question-card, the page's actual interactive content —
+       nothing in .quiz-header/.progress-bar above it is a tab stop, so
+       this is exactly the same navbar-only skip dashboard.html/
+       learn.html already established, not a new pattern. `tabindex="-1"`
+       on #question-card below is what lets that plain <div> receive
+       focus on jump. Uses css/style.css's shared `.skip-link` (§16),
+       not a page-local copy. Must stay the very first element in
+       <body>, same as every other page carrying this pattern. -->
+  <a href="#question-card" class="skip-link">Skip to assessment</a>
+
   <nav class="navbar">
     <div class="container navbar__inner">
       <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
@@ -87,9 +103,20 @@
         <div class="progress-bar__fill" data-progress="0" id="quiz-progress"></div>
       </div>
 
-      <!-- ── QUESTION CARD (Multiple Choice + Identification share this) ── -->
-      <div class="quiz-question card mt-8" id="question-card">
-        <p class="quiz-question__prompt" id="q-prompt" style="white-space: pre-line;">Loading…</p>
+      <!-- ── QUESTION CARD (Multiple Choice + Identification share this) ──
+           Design pass, 2026-08-23 (later, seventh session): `id`/
+           `tabindex="-1"` = skip-link target, see the very top of
+           <body>. The initial "Loading…" text below gets
+           css/style.css's shared `.loading-pulse` (§16) — same
+           "bonus cue on text that already says what's happening"
+           treatment as learn.html's/lesson.html's own static loading
+           placeholders. js/quiz.js's boot()/showQuestion() replace
+           #q-prompt's content on first render (no extra cleanup code
+           needed), and now also handle the case where that first
+           render never happens at all — see js/quiz.js's
+           showQuizUnavailable(). -->
+      <div class="quiz-question card mt-8" id="question-card" tabindex="-1">
+        <p class="quiz-question__prompt loading-pulse" id="q-prompt" style="white-space: pre-line;">Loading…</p>
 
         <div class="quiz-question__img-clue" id="q-image-wrap" style="display:none;">
           <img id="q-image" alt="Sign reference" style="max-height:180px; border-radius: var(--radius-md); display:none;" />

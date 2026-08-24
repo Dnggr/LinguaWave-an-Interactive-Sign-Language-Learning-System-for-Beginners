@@ -61,6 +61,21 @@
 </head>
 <body>
 
+  <!-- ── SKIP LINK (Design pass, 2026-08-23) ─────────────────────────
+       PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
+       not yet matching dashboard": this page's own tab-order problem is
+       arguably bigger than dashboard's navbar — #course-sidebar (below)
+       is a full unit/category/sign outline, potentially dozens of
+       links/buttons, and it sits BEFORE the actual lesson content in
+       DOM order (see the "course player" comment on .course-layout
+       below), so every keyboard user currently tabs through the whole
+       outline before reaching the sign they're actually here for. Jumps
+       straight to #lesson-content (the reference/camera panel), same
+       `tabindex="-1"`-on-target technique as learn.html's skip link.
+       Uses css/style.css's shared `.skip-link` (§16), not a page-local
+       copy. Must stay the very first element in <body>. -->
+  <a href="#lesson-content" class="skip-link">Skip to lesson content</a>
+
   <!-- ── NAVBAR ───────────────────────────────────────────────── -->
   <nav class="navbar">
     <div class="container navbar__inner">
@@ -112,8 +127,18 @@
   <section class="section section--sm">
     <div class="container container--wide">
       <div class="course-layout">
-        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline"></aside>
-      <div class="lesson-layout">
+        <!-- Design pass, 2026-08-23: static loading placeholder (same
+             gap #3 as learn.html's #lesson-grid) — js/lesson.js's
+             renderCourseSidebar() replaces this aside's innerHTML
+             wholesale on its first call, so this is naturally
+             overwritten and needs no cleanup code. Uses
+             css/style.css's shared `.loading-pulse` (§16). -->
+        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline">
+          <p class="text-muted loading-pulse" style="padding: var(--space-3);">Loading course outline…</p>
+        </aside>
+      <!-- `id`/`tabindex="-1"` = skip-link target, see the very top of
+           <body>. -->
+      <div class="lesson-layout" id="lesson-content" tabindex="-1">
 
         <!-- ══════════════════════════════════════════════════════
              LEFT PANEL — Reference lesson content

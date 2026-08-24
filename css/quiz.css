@@ -31,3 +31,41 @@
 .quiz-feedback--success { background: var(--clr-success-soft); color: var(--clr-success); }
 .quiz-feedback--error   { background: var(--clr-red-soft);     color: var(--clr-red); }
 .quiz-option:disabled { cursor: default; opacity: .85; }
+
+/* ── :focus-visible ring (Design pass, 2026-08-23, later — seventh
+   session) ──────────────────────────────────────────────────────────
+   PIVOT_CHECKLIST.md "Design pass" item, extended to quiz.html/quiz.css
+   (previously flagged, out of scope until this session). Same
+   outline:none + box-shadow-ring substitution as css/learn.css's
+   .lesson-card/.trail-node and css/lesson.css's .course-sidebar__*
+   rules — see either file's own comment for the fuller "why not
+   outline" reasoning. `.quiz-option` (the MC/Identification answer
+   buttons, js/quiz.js's showQuestion()) is the only quiz-specific
+   interactive element without one; every other clickable thing on this
+   page (camera-round controls, results actions) is a shared `.btn`,
+   which none of the other design-pass pages touched either — kept
+   consistent with that existing scope line rather than expanding it
+   here. Disabled options (`.quiz-option:disabled`, set once an answer
+   is locked in) aren't reachable by keyboard focus in the first place,
+   so nothing extra needed to exclude them. */
+.quiz-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--clr-accent);
+}
+
+/* ── Error fallback (Design pass, 2026-08-23, later — seventh session)
+   ──────────────────────────────────────────────────────────────────
+   Same item. js/quiz.js's boot() used to have no real "couldn't load"
+   path — a missing window.LWData silently fell through buildScope()'s
+   optional chaining into showEmptyState()'s "This category doesn't
+   have trained sign content yet" message, which is misleading (that
+   message means something real and different — a genuinely
+   comingSoon/untrained category — see AI_MEMORY.md §4). New
+   showQuizUnavailable() reuses css/style.css's `.alert`/`.alert--error`
+   component inside #question-card, same reuse pattern as
+   `.learn-fallback-alert`/`.sidebar-fallback-alert`, just sized for
+   this card instead of a full grid or a sidebar column. */
+.quiz-fallback-alert {
+  margin: 0;
+  border-radius: var(--radius-md);
+}

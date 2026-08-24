@@ -2,8 +2,9 @@
 
 > **For any AI assistant working on this repo:** read this file, then
 > `PIVOT_CHECKLIST.md` (done/not-done tracker), then `SYSTEM_ARCHITECTURE.md`
-> → **Rev 4** (the full plan) before touching `data.js`, `learn.js`,
-> `progress.js`, or `auth.js`.
+> → **Rev 7** (the current plan — supersedes Rev 4/5/6, all archived in
+> that file's own history) before touching `data.js`, `learn.js`,
+> `dashboard.js`, `progress.js`, or `auth.js`.
 >
 > **`js/auth.js` is explicitly out of scope — Omen's teammate owns it.**
 > Don't open, audit, or suggest edits to it unless explicitly asked.
@@ -17,21 +18,38 @@
 
 ---
 
-## 0. Curriculum pivot status (Rev 4 in SYSTEM_ARCHITECTURE.md, superseded by Rev 6)
+## 0. Curriculum pivot status (Rev 7 in SYSTEM_ARCHITECTURE.md — supersedes Rev 4/5/6)
 
-**Phases 1–6 (all app-code phases) are done.** Only **Phase 7** — real
-camera capture + model retraining for the Essential Words / phrase
-placeholders / HELLO / THANK YOU / HOT / COLD / digits 6·9·10 — remains,
-and it needs a human with a camera + Colab, not another AI session. See
-`PIVOT_CHECKLIST.md` → Phase 7 for the exact class list.
+**Rev 7 (2026-08-24) replaced the entire Unit Map with Omen's uploaded
+curriculum ("updated fixed lesson.txt") — 72 units now, not 11.** Read
+`SYSTEM_ARCHITECTURE.md`'s Rev 7 section and its full 72-row Unit Map
+before assuming any unit number from an older mental model of this app
+(Rev 6's Unit 4 ≠ Rev 7's Unit 4 — almost every unit's content and
+number changed). Short version: `data.js`'s `UNITS`/`CATEGORIES` arrays
+were rewritten wholesale to implement the uploaded 68-topic vocabulary
+list in the order given, one topic = one unit, with the pre-existing
+Rev 6 mechanisms kept where the new list didn't cover them (Fingerspell
+Your Name gate at Unit 2, Basic Phrases + Phrasebook moved to the very
+end, Units 70/71). Every category id that had **real** SIGNS/
+dictionary.js content (`alphabet`, `numbers`, `family`, `places`,
+`time`, `temperature`, `requests`, `essentials_greetings`,
+`essentials_basic_responses`, `essentials_polite_expressions`,
+`sequence_demo`, `health`, `amounts`, `money`, the 18 Phrasebook
+categories) kept its id and its SIGNS/dictionary.js entries byte-
+identical — only `unit`/`title`/`words[]` changed. **`dictionary.js`
+and `classifier.js` were NOT touched this session** — zero detection-
+routing risk. `SIGNS`/`QUESTIONS`/`UNIT0_CONTENT`/every helper function
+in `data.js` are also unchanged. See `PIVOT_CHECKLIST.md` → "Rev 7" for
+the full mapping table, every id/placement decision, and open flags.
 
-**Rev 6 (2026-08-23) reordered/split units on top of Rev 4** — read
-`SYSTEM_ARCHITECTURE.md`'s Rev 6 section and its updated Unit Map before
-assuming Unit 4/5/6/7 mean what an older mental model of this app might
-expect. Short version: 3 new units inserted (Greetings and Introduction,
-Basic Responses, Polite Expressions, orders 5–7), the old Unit 5/6/7
-bumped to 8/9/10, Unit 4 narrowed, and Unit 2 (Fingerspell Your Name) is
-now a real assessment gate instead of always-open practice.
+**Phase 7 (real camera capture + model retraining) is still the only
+work that actually unlocks detection**, and is now a much bigger list
+than before — see `PIVOT_CHECKLIST.md` → Phase 7. The new Unit Map
+doesn't change what's trained today: still just `alphabet`/`family`/
+`places`/`time`/`sequence_demo` (Units 1, 22, 48, 53, 70), plus
+Fingerspell Your Name (Unit 2, reuses the alphabet model). Everything
+else — all 66 new-plan topics plus `numbers`/`temperature`/`requests`/
+`essentials_*` — is unchanged in detection status, just moved/retitled.
 
 One-line model of the product: LinguaWave is **one linear "Basic ASL"
 path** (no user-picked level tiers) — background → letters → your name
@@ -62,6 +80,14 @@ LinguaWave — browser-based ASL learning app. Static HTML/CSS/JS, no
 build step, no framework. Auth is Firebase but currently real (not
 bypass — see `SYSTEM_ARCHITECTURE.md` §6). Real-time sign detection
 runs client-side via MediaPipe (hand+face landmarks) + two TF.js models.
+
+**Content source: Joshua uses ASLU (ASL University, Dr. Bill Vicars) for
+lesson/category content.** Relevant for any future content-writing
+session — e.g. `PIVOT_CHECKLIST.md`'s still-open literal Days-of-the-Week
+content — check ASLU's own treatment of a topic before drafting new
+`data.js` copy, for consistency with what's already in the app. (ASL
+History for Unit 0 — the other item that used to be listed here — was
+written and ASLU-checked 2026-08-23, see Session Log.)
 
 `README.md` is stale (describes an old "no gesture recognition" pitch).
 Trust `SYSTEM_ARCHITECTURE.md` over it for anything about how detection/
@@ -205,3 +231,10 @@ don't simplify without checking it still round-trips a fresh export.
 | 08-22 (later, follow-up) | Confirmed + fixed 3 of the 4 flagged screenshot-review bugs: trail now has a single 'current' unit instead of marking every unlocked-incomplete unit current (`findCurrentUnitId()`, new); "← Back to Trail"→"← Back to Learning Path" everywhere; dashboard Continue/unit-row next-action now detects "fully practiced, not yet assessed" and routes to `quiz.html` instead of `signs[0]` (`readyForAssessment` flag, new). 4th (undocumented "Open Unit N Path" button) was real/working, just undocumented — added to `SYSTEM_ARCHITECTURE.md`. Not re-verified in a real browser. | `js/learn.js`, `js/dashboard.js`, `SYSTEM_ARCHITECTURE.md`, `PIVOT_CHECKLIST.md` |
 | 08-23 | Audited Omen's proposed reorder before touching anything: found `PIVOT_CHECKLIST.md`'s "16 Essential Words = one Unit 4 bucket" assumption was wrong (actually spans Unit 4 `requests` + Unit 5 `feelings`/`food`/`places`, 5 signIds with zero `data.js` content); drafted a corrected 4-category mapping as an unconfirmed proposal, not implemented; flagged a real `basic_responses`/`polite_expressions` category-id collision with existing Unit 7 Phrasebook categories. Fixed 2 small bugs found along the way (5 missing `dictionary.js` disabled placeholders for `requests`-category signs; a stale `data.js` comment claiming `COME`/`GO` are trained when both are `disabled: true`). No `learn.js`/`progress.js`/`auth.js` touched; `data.js` touched for one comment only, no logic/data change. | `js/engine/dictionary.js`, `js/data.js` (comment only), `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
 | 08-23 (later, follow-up — "Rev 6") | Mapping + Fingerspell-as-assessment both confirmed by Joshua/Omen via chat, then implemented same session. `data.js`: inserted 3 units (order 5/6/7), bumped 31 downstream `CATEGORIES` entries' `unit` field to match (5/6/7→8/9/10 — categories link by numeric order, not id, this was the main risk area); narrowed `requests`→"Everyday Essentials"; wrote new content for `HELLO`/`YES`/`NO`/`FOOD` (previously zero); found `RESTROOM` (Phase 7 tracking) and pre-existing `BATHROOM` entry are the same physical sign — merged instead of duplicating, renamed `dictionary.js`'s key to match. `progress.js`: added `gated` flag support (`getOrderedGates`/`gatesClearedBefore`/`recordUnitAssessment`/`getUnitAssessment`, new `unitAssessments` store map) so Fingerspell Your Name can block Numbers onward without being a CATEGORIES entry itself — data-driven via `UNITS[].gated`, not hardcoded by unit id. `lesson.js`: records a pass when the name-drill phrase sequence completes (drill's existing forgiving retry-on-mistake behavior means completion = pass, no separate strict mode built). `learn.js`: Fingerspell's unit-card label no longer hardcodes "always open" regardless of state. Verified in Node only (no browser): `data.js` parses clean, `UNITS` order contiguous 0–10, every touched category resolves to intended signIds, zero duplicate ids, gate-clearing logic unit-tested standalone. **Not done:** ASL History (Unit 0) and Days-of-the-Week content — both need new copywriting, flagged not attempted. | `js/data.js`, `js/engine/dictionary.js`, `js/engine/progress.js`, `js/lesson.js`, `js/learn.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
+| 08-23 (later, third session) | Analysis-only, no code: (1) full-repo code-read bug audit, phased in `PIVOT_CHECKLIST.md` so future sessions can paste one phase at a time — headline finding: digits `0,1,2,3,4,5,7,8` (not just `6,9,10`) have zero classes in `asl_static_model/labels.json`, so they can never be detected today, contradicting the Unit Map's "static 0–9 trained" line (now flagged wrong, not yet corrected — see Phase A). Also reconciled a second, previously un-merged audit file (`CLAUDE_TASKS.md`) against current code — several of its claims were already fixed, one was never actually broken (learn.js's legacy `?level=` link), a few are still genuinely open. (2) Design gap logged, not implemented: `learn.html`/back-to-trail/category views (and `lesson.html`'s sidebar) never got the Dashboard Priority 2 UX-pass polish (skip link, focus-visible states, loading shimmer, error fallback) — see `PIVOT_CHECKLIST.md`'s new "Design pass" section. (3) Noted ASLU (Dr. Bill Vicars) as the content reference source (§1 above), relevant to the still-open ASL History / Days-of-the-Week content items. | `AI_MEMORY.md`, `PIVOT_CHECKLIST.md` |
+| 08-23 (later, fourth session) | Implemented the "Design pass" item the previous session had only logged: `learn.html`+`lesson.html` now have a skip link, `:focus-visible` rings on every card/sidebar row, a loading-state placeholder, and a real error fallback (`js/learn.js`'s `showLearnUnavailable()`, `js/lesson.js`'s `showSidebarUnavailable()` inside `renderCourseSidebar()`) — matching dashboard.html's Priority 2 UX pass, narrower on purpose (only `window.LWData` treated as a hard requirement; every `LWProgress` call in both files already degrades gracefully via `?.`). `.skip-link`/`.loading-pulse` made reusable via a new `css/style.css` §16 (additive — `dashboard.css`'s own copies untouched, zero regression risk to that page). Verified Node-only this session (`node --check` both `.js` files, brace-balance on all 3 `.css` files, HTML-parse pass on both `.html` files) — **not yet checked in a real browser** (keyboard tab order, screen reader). `quiz.html`/`quiz.css` has the identical gap, still out of scope (not named in the request). | `css/style.css`, `css/learn.css`, `css/lesson.css`, `pages/learn.html`, `pages/lesson.html`, `js/learn.js`, `js/lesson.js`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md`, `AI_MEMORY.md` |
+| 08-23 (later, fifth session) | Phase A closed out (doc-only, no app code touched): merged Phase 7's split `6/9/10` + `0,1,2,3,4,5,7,8` digit items into one; corrected Phase A's own stale "decide static vs. motion" framing — `dictionary.js`'s 2026-08-20 comment already settled it, nothing was open; traced `classifyGesture()`'s `allowedLabels` restriction to confirm untrained digits already fail cleanly (no wrong-letter readout), not just structurally-always-false; updated this file's §0 digit count. Camera capture itself is still open (Phase 7, needs a human). | `AI_MEMORY.md`, `PIVOT_CHECKLIST.md` |
+| 08-23 (later, sixth session) | Phase C closed out, all 3 items fixed: `quiz.js` gained a `visibilitychange` handler (mirrors `lesson.js`'s existing pattern — camera no longer stays live if a learner tabs away mid camera-round); `cameraUtils.js`'s `startCamera()` now guards a missing/null `videoElement`/`canvasElement` with a normal `showCameraError()` + throw instead of a raw TypeError; `classifier.js`'s `classifyGesture()`/`runMotionInference()` input tensors now dispose in a `finally` so a mid-inference throw can't leak them in WebGL memory. `auth.js`/Phase B explicitly left alone this session (teammate's, per request). Node-only verification (`node --check` × 3), not browser-tested. | `js/quiz.js`, `js/camera/cameraUtils.js`, `js/engine/classifier.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md` |
+| 08-23 (later, seventh session) | Extended the "Design pass" (fourth session, above) to `quiz.html`/`quiz.css`, the one page it had left out: skip link (`#question-card`), `:focus-visible` ring on `.quiz-option`, `.loading-pulse` on the static "Loading…" text, and a real error fallback (new `js/quiz.js` `showQuizUnavailable()` + a `!window.LWData` guard + try/catch in `boot()` — previously a missing `LWData` silently showed the wrong message, `showEmptyState()`'s "no trained content yet," instead of a load error). Reused `css/style.css` §16's `.skip-link`/`.loading-pulse` as instructed, no duplication. Found and fixed one pre-existing bug along the way, unrelated to the design pass: `quiz.js`'s DOMContentLoaded bootstrap was the two-line form that double-calls `boot()` in the normal case (unlike `lesson.js`'s already-fixed "BUG 3" version of the same idiom) — switched to `lesson.js`'s mutually-exclusive if/else form. `window.LWProgress` calls inside `buildActionButtons()` (post-assessment, outside boot-time scope) still lack `?.` guards — flagged, not fixed. `auth.js` untouched, per request. Node-only verification (`node --check` on `quiz.js`, brace-balance on `quiz.css`/`style.css`, HTML-parse on `quiz.html`) — not browser-tested. | `pages/quiz.html`, `css/quiz.css`, `js/quiz.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
+| 08-23 (later, eighth session) | ASL History content pass for Unit 0 (`PIVOT_CHECKLIST.md` → "Unit reorder" item 1, `SYSTEM_ARCHITECTURE.md` Rev 6 Unit Map row 0). Unit 0 previously had zero history content despite the title implying it — replaced that gap with a new `brief_history` section in `UNIT0_CONTENT` (Gallaudet/Clerc/Cogswell, American School for the Deaf, 1817, Hartford CT, Martha's Vineyard Sign Language's contribution), fact-checked against ASLU/lifeprint.com (Dr. Bill Vicars' own "evolution of sign language" page and the Martha's Vineyard topic page) per §1's standing instruction, original wording throughout (no text lifted). Kept short and deliberately non-duplicative of `intro-to-asl.html`'s own fuller "A short history" section, which it still links out to — that page/Unit-0 overlap remains an open, un-resolved product decision (unchanged this session). Retitled the unit `'Welcome to ASL'` → `'Welcome to ASL: A Brief History'` (content-only — confirmed nothing keys off the literal title string or off `unit.id`, both unchanged) — flagged as a call made without a separate confirmation, same spirit as the two unilateral decisions already logged in §0. `auth.js` untouched, excluded per this session's request (teammate's, unchanged from every prior session). Verified in Node: `node --check data.js` clean, and the edited file evaluated in a sandboxed VM context to confirm `UNIT0_CONTENT` has 5 unique-id sections and `UNITS` order is still a contiguous, unique 0–10 — not browser-tested. | `js/data.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |
+| 08-24 (Rev 7 pivot) | Implemented Omen's uploaded "updated fixed lesson.txt" as the new curriculum: `data.js`'s `UNITS`/`CATEGORIES` rewritten from 11→72 units, one topic per unit, exact source order (background→Alphabet→Fingerspell[kept]→Numbers→...→Answers→Basic Phrases[kept]→Phrasebook[kept]). Every category id with real SIGNS/dictionary.js content kept its id/content byte-identical, only unit/title/words[] moved — `dictionary.js`/`classifier.js` untouched, zero detection-routing risk (verified: no orphaned SIGNS category refs, no invalid unit refs, UNITS order contiguous 0–71, all ids unique — sandboxed VM check on the full file). Found and fixed 3 real bugs along the way: (1) `health`/`amounts`/`money` — legacy categories with real authored SIGNS content but comingSoon:true — were about to be silently dropped since the new plan doesn't mention them; caught by the orphan-check, restored as secondary categories under the closest-fit new unit (Dressing/Size/Personal Items) instead of deleted. (2) `UNIT_ICONS` in `learn.js`/`lesson.js`/`dashboard.js` and `CATEGORY_ICONS` in `learn.js`/`lesson.js` only had entries for the old Rev 6 ids — every one of the 66 new units/categories would have silently rendered the generic fallback icon; extended all icon maps to cover the new ids (cosmetic-only, additive, no logic touched). (3) two source-list topics are both "Requests"-flavored (topic 7 "Needs" vs. literal topic 67 "Requests") — kept as two separate categories (`requests` vs. new `making_requests`) rather than merged, matching the source file's own structure; flagged the near-collision. Also flagged, not fixed: `money` has no good conceptual home in the new 68-topic list at all (parked under Personal Items); several now-legacy categories' `words[]` preview is considerably broader than their real trained/placeholder SIGNS set (pre-existing pattern, just wider now — see PIVOT_CHECKLIST.md); Phase 7's capture priority list doesn't yet reflect the new unit order. `auth.js` untouched, per scope. Verified: `node --check` on `data.js`/`learn.js`/`lesson.js`/`dashboard.js`, full structural validation via a sandboxed VM eval (see above) — not browser-tested. | `js/data.js`, `js/learn.js`, `js/lesson.js`, `js/dashboard.js`, `AI_MEMORY.md`, `PIVOT_CHECKLIST.md`, `SYSTEM_ARCHITECTURE.md` |

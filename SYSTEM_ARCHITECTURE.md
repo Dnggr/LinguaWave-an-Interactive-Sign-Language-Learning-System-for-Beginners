@@ -1,19 +1,25 @@
 # LinguaWave — System Architecture & Developer Handoff
 
 <!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST, then
-     PIVOT_CHECKLIST.md, then this file's Rev 4 section. -->
+     PIVOT_CHECKLIST.md, then this file's Rev 7 section. -->
 > Capstone Project · ASL Interactive Learning System for Beginners
 
-**Current state, in one line:** Rev 4 (curriculum pivot to one linear
-"Basic ASL" path) is code-complete except Phase 7 (content
-capture/retraining — see `PIVOT_CHECKLIST.md`). Rev 5 (course-player
-sidebar) and the Dashboard UX pass are both done. Rev 6 (Omen's unit
-reorder — new Greetings/Basic Responses/Polite Expressions units,
-Fingerspell-as-assessment) is code-complete as of 2026-08-23, same
-caveat as Rev 4: content/training (Phase 7) still open, and 2 pieces of
-Omen's original request (ASL History content, literal Days-of-the-Week
-content) are explicitly not done — see the Unit Map. `js/auth.js` is
-real Firebase auth, out of scope for AI sessions (teammate owns it).
+**Current state, in one line:** Rev 7 (2026-08-24) replaced the Unit
+Map wholesale — 72 units implementing Omen's uploaded "updated fixed
+lesson.txt" curriculum, one topic per unit, superseding Rev 4/5/6's
+11-unit table below (kept for history, see each Rev's own section).
+Code-complete except Phase 7 (content capture/retraining — see
+`PIVOT_CHECKLIST.md`), same caveat every revision here has had:
+restructuring the curriculum's presentation doesn't train any models.
+`js/auth.js` is real Firebase auth, out of scope for AI sessions
+(teammate owns it).
+`PIVOT_CHECKLIST.md`'s Phase C (camera/tab-lifecycle hygiene bugs in
+`quiz.js`/`cameraUtils.js`/`classifier.js`) is done — see that file;
+Phase B (auth-adjacent bugs) remains open, flagged for the teammate,
+untouched by AI sessions per scope. Days-of-the-Week content is no
+longer a separate open item — Rev 7's topic 54 "Days" covers it
+(content-wise; still Phase 7-blocked for detection like everything
+else new in Rev 7).
 
 > Compressed 2026-08-22 — this file used to carry a full per-item
 > "Implementation status" session log duplicating `PIVOT_CHECKLIST.md`'s
@@ -53,10 +59,10 @@ Phase 1) is what actually drives ordering/unlocking now.
 
 | Unit | Title | Source data | Detection status |
 |---|---|---|---|
-| 0 | Welcome to ASL | new, static text | N/A — no camera. **Still titled/framed as generic welcome, NOT "ASL History"** — Omen's target order wants History content here, but that's new copywriting, not a restructure; not done this session, see PIVOT_CHECKLIST.md. |
+| 0 | Welcome to ASL: A Brief History | new, static text | N/A — no camera. **Updated 2026-08-23 (later, eighth session)** — added a real `brief_history` section to `UNIT0_CONTENT` (Gallaudet/Clerc/Cogswell, American School for the Deaf founded 1817 in Hartford CT, Martha's Vineyard Sign Language's contribution), fact-checked against ASLU/lifeprint.com per `AI_MEMORY.md` §1, and retitled the unit to match. Kept short and still links out to `intro-to-asl.html`'s own fuller history section rather than duplicating it — see PIVOT_CHECKLIST.md, that page/Unit-0 overlap is still an open decision. |
 | 1 | The Alphabet (A–Z) | `basic/alphabet`, unchanged | ✅ fully trained |
 | 2 | Fingerspell Your Name | new interactive drill | ✅ reuses A–Z static model. **CHANGED this session: now a gated assessment** (`gated: true` on its UNITS entry) — completing the drill once (the drill is forgiving by design, so completion = pass) unlocks Unit 3 onward via `progress.js`'s new `recordUnitAssessment`/`getUnitAssessment`/`gatesClearedBefore`. Previously "always open," never blocked anything. |
-| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ⚠️ static 0–9 trained; `6`/`9`/`10` correctly routed to motion model but that model has zero digit classes yet — Phase 7. Now also gated behind Unit 2's assessment (see above). |
+| 3 | Numbers (0–9, working toward 10) | `basic/numbers`, unchanged | ❌ **CORRECTED 2026-08-23 (code-read audit, see `PIVOT_CHECKLIST.md` Phase A) — this row previously said "static 0–9 trained," which was wrong and self-contradicted §5's own model table below.** `asl_static_model/labels.json` has zero digit classes (25 classes, all letters); `classifyGesture()` can only ever return a label from that file, so `0,1,2,3,4,5,7,8` cannot be detected today, not just "not yet captured." `6`/`9`/`10` are correctly routed to the motion model but that model also has zero digit classes yet. **All 10 digits are Phase 7 work**, not just 3 — `PIVOT_CHECKLIST.md`'s Phase 7 item list reconciled to match this (merged digit item, static/motion split already decided in `dictionary.js`, not an open question). Now also gated behind Unit 2's assessment (see above). |
 | 4 | Everyday Essentials | `medium/requests`, **narrowed this session** to `HELP`, `STOP`, `WATER`, `FOOD`, `HUNGRY`, `BATHROOM`, `GO`, `COME` | ❌ none trained yet — Phase 7. `FOOD` and `HELLO`(Unit 5)/`YES`/`NO`(Unit 6) got real `data.js` lesson content this session (previously zero content existed for any of the four). `BATHROOM` moved in from Unit 5 `health` — same physical sign as the "RESTROOM" item on Phase 7's list, merged rather than duplicated (see `dictionary.js`'s note). |
 | 5 | Greetings and Introduction | **NEW this session** — `medium/essentials_greetings` | ❌ none trained yet — Phase 7. Sole content: `HELLO`. |
 | 6 | Basic Responses | **NEW this session** — `medium/essentials_basic_responses` | ❌ none trained yet — Phase 7. `YES`/`NO`/`GOOD`/`BAD`/`WHO`/`WHAT`/`WHERE`/`WHEN`/`WHY`/`HOW`, moved in from the old Unit 4 `requests` and Unit 5 `feelings`. |
@@ -65,11 +71,12 @@ Phase 1) is what actually drives ordering/unlocking now.
 | 9 | Basic Phrases | `sequence_demo` mechanism + 6 curated real phrases — **was Unit 6, bumped** | ✅ done — built only from already-trained words |
 | 10 | Phrasebook (read-only reference, not graded) | all 18 `intermediate` categories, ~100 sentences — **was Unit 7, bumped** | ❌ 0 trained — deliberately demoted to browse-only, not a graded unit |
 
-**Still not done from Omen's target order** (flagged, not attempted this
-session — both need new content, not restructuring): ASL History copy
-for Unit 0, and literal Days-of-the-Week content (today's `time`
-category is generic day/week/month/year vocabulary, not the 7 weekday
-names) — see PIVOT_CHECKLIST.md.
+**Still not done from Omen's target order:** literal Days-of-the-Week
+content (today's `time` category is generic day/week/month/year
+vocabulary, not the 7 weekday names) — needs new content, not
+restructuring, not yet attempted; see PIVOT_CHECKLIST.md. (ASL History
+copy for Unit 0 — the other item that used to be listed here — was
+written 2026-08-23, see the Unit Map above.)
 
 ### Data model
 
@@ -178,8 +185,9 @@ Session Log. Two Phase 7 items were also folded into this session:
 ## Rev 6 — Unit reorder + Fingerspell-as-assessment (Omen's request)
 
 **Status: mapping + Fingerspell-as-assessment done, 2026-08-23. ASL
-History content and literal Days-of-the-Week content NOT done — both
-need new copywriting, not restructuring, and weren't attempted.**
+History content done 2026-08-23 (later, eighth session — content-only,
+not a restructure, see the Unit Map above). Literal Days-of-the-Week
+content still NOT done — needs new copywriting, not attempted.**
 
 ### Why
 
@@ -230,7 +238,6 @@ code changed.
 
 ### What's still open
 
-- ASL History content for Unit 0 (currently generic "Welcome to ASL").
 - Literal Days-of-the-Week content — no unit currently holds the 7
   weekday names; `time` (Unit 8) is generic day/week/month/year
   vocabulary and was left alone.
@@ -243,6 +250,169 @@ code changed.
   signIds, zero duplicate category/sign ids, and the gate-clearing logic
   was unit-tested standalone (Numbers correctly blocked until
   Fingerspell passes, Alphabet correctly never blocked).
+
+---
+
+## Rev 7 — Full curriculum replaced with Omen's uploaded lesson plan (2026-08-24)
+
+**Status: done.** Replaces the Rev 4/6 11-unit table above wholesale —
+that table is kept for history, not current. `PIVOT_CHECKLIST.md`'s
+"Rev 7" section is the fuller decision log; this is the resulting
+structure.
+
+### Why
+
+Omen uploaded a complete 68-topic vocabulary curriculum
+(`updated_fixed_lesson.txt` — "already sorted," per Omen, one ASL-
+basics topic per numbered line, background context before topic 1) and
+asked for it to be implemented as the app's lesson plan, replacing the
+Rev 4/6 ordering rather than extending it.
+
+### What changed
+
+- `UNITS`: 11 entries → **72 entries** (order 0–71). One topic = one
+  unit, in the source file's exact order. `kind`/`gated` mechanics are
+  byte-identical to Rev 6 — only which/how-many units exist changed.
+- `CATEGORIES`: **90 entries** (was 33). 68 new-topic categories (one
+  per new unit) + `alphabet`/`numbers` (basic level, unchanged) + the
+  18-category Phrasebook (unchanged content, unit number only moved) +
+  `sequence_demo` (unchanged) + `health`/`amounts`/`money` (unchanged
+  content, folded in as secondary categories on the closest-fit new
+  unit — see `PIVOT_CHECKLIST.md`, these were nearly dropped by
+  mistake and restored).
+- **Every id with real SIGNS/`dictionary.js` content is unchanged**:
+  `alphabet`, `numbers`, `family`, `places`, `time`, `temperature`,
+  `requests`, `essentials_greetings`, `essentials_basic_responses`,
+  `essentials_polite_expressions`, `sequence_demo`, `health`,
+  `amounts`, `money`, the 18 Phrasebook ids. Only `unit`/`title`/
+  `words[]` moved on these — `dictionary.js`/`classifier.js` were not
+  opened this session, so detection routing is byte-for-byte unchanged.
+- **Two Rev 6 mechanisms kept though the source list doesn't mention
+  them** (flagged for confirmation, not a unilateral deletion):
+  Fingerspell Your Name (still Unit 2, gated) and Basic Phrases +
+  Phrasebook (moved to the very end, Units 70/71, since the source list
+  is pure vocabulary with nowhere for phrase-combination content to
+  sit — matches Rev 4's own "combine what's already taught" framing).
+- **Icon maps extended** (`UNIT_ICONS` in `learn.js`/`lesson.js`/
+  `dashboard.js`, `CATEGORY_ICONS` in `learn.js`/`lesson.js`) to cover
+  every new id — cosmetic only, would otherwise have silently fallen
+  back to a generic icon for all 66 new units.
+
+### The Unit Map (Rev 7 — current)
+
+`level`/`category` field *values* are still unchanged internal
+grouping keys (see Rev 4's "Data model" section above, still accurate)
+— this table just maps the new `UNITS`/`CATEGORIES` content onto them.
+"Detection status" reflects `dictionary.js` as of Rev 6 (untouched this
+session): ✅ = real trained model behind it today, ❌ (structurally
+present) = has a `disabled:true` placeholder waiting on Phase 7 capture,
+❌ (content only) = new-plan topic with no `dictionary.js` entry at all
+yet (the overwhelming majority — this was a curriculum/content
+restructure, not a training session).
+
+| Unit | Title | Category id(s) | Detection status |
+|---|---|---|---|
+| 0 | Welcome to ASL: A Brief History | — | N/A — info screen |
+| 1 | The Alphabet | `alphabet` | ✅ trained |
+| 2 | Fingerspell Your Name | — (interactive) | ✅ reuses trained A–Z model (gated assessment) |
+| 3 | Numbers | `numbers` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 4 | Greetings | `essentials_greetings` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 5 | Polite Words | `essentials_polite_expressions` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 6 | People | `people` | ❌ Phase 7 (content only) |
+| 7 | Feelings | `feelings` | ❌ Phase 7 (content only) |
+| 8 | Needs | `requests` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 9 | Actions | `actions` | ❌ Phase 7 (content only) |
+| 10 | Hand Actions | `hand_actions` | ❌ Phase 7 (content only) |
+| 11 | Communication | `communication` | ❌ Phase 7 (content only) |
+| 12 | Body | `body` | ❌ Phase 7 (content only) |
+| 13 | Personal Information | `personal_information` | ❌ Phase 7 (content only) |
+| 14 | Colors | `colors` | ❌ Phase 7 (content only) |
+| 15 | Shapes | `shapes` | ❌ Phase 7 (content only) |
+| 16 | Size | `size`, `amounts` | ❌ Phase 7 (content only) |
+| 17 | Appearance | `appearance` | ❌ Phase 7 (content only) |
+| 18 | Touch | `temperature` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 19 | Taste | `taste` | ❌ Phase 7 (content only) |
+| 20 | Sound | `sound` | ❌ Phase 7 (content only) |
+| 21 | Descriptions | `descriptions` | ❌ Phase 7 (content only) |
+| 22 | Family | `family` | ✅ trained |
+| 23 | Home | `home` | ❌ Phase 7 (content only) |
+| 24 | Furniture | `furniture` | ❌ Phase 7 (content only) |
+| 25 | Household | `household` | ❌ Phase 7 (content only) |
+| 26 | Bathroom | `bathroom` | ❌ Phase 7 (content only) |
+| 27 | Kitchen | `kitchen` | ❌ Phase 7 (content only) |
+| 28 | School | `school` | ❌ Phase 7 (content only) |
+| 29 | School Supplies | `school_supplies` | ❌ Phase 7 (content only) |
+| 30 | Classroom | `classroom` | ❌ Phase 7 (content only) |
+| 31 | Classroom Actions | `classroom_actions` | ❌ Phase 7 (content only) |
+| 32 | Subjects | `subjects` | ❌ Phase 7 (content only) |
+| 33 | Food | `food` | ❌ Phase 7 (content only) |
+| 34 | Fruits | `fruits` | ❌ Phase 7 (content only) |
+| 35 | Vegetables | `vegetables` | ❌ Phase 7 (content only) |
+| 36 | Snacks | `snacks` | ❌ Phase 7 (content only) |
+| 37 | Drinks | `drinks` | ❌ Phase 7 (content only) |
+| 38 | Animals | `animals` | ❌ Phase 7 (content only) |
+| 39 | Wild Animals | `wild_animals` | ❌ Phase 7 (content only) |
+| 40 | Insects | `insects` | ❌ Phase 7 (content only) |
+| 41 | Clothes | `clothes` | ❌ Phase 7 (content only) |
+| 42 | Dressing | `dressing`, `health` | ❌ Phase 7 (content only) |
+| 43 | Personal Items | `personal_items`, `money` | ❌ Phase 7 (content only) |
+| 44 | Nature | `nature` | ❌ Phase 7 (content only) |
+| 45 | Plants | `plants` | ❌ Phase 7 (content only) |
+| 46 | Weather | `weather` | ❌ Phase 7 (content only) |
+| 47 | Seasons | `seasons` | ❌ Phase 7 (content only) |
+| 48 | Places | `places` | ✅ trained |
+| 49 | Vehicles | `vehicles` | ❌ Phase 7 (content only) |
+| 50 | Transportation | `transportation` | ❌ Phase 7 (content only) |
+| 51 | Professions | `professions` | ❌ Phase 7 (content only) |
+| 52 | Community | `community` | ❌ Phase 7 (content only) |
+| 53 | Time | `time` | ✅ trained |
+| 54 | Daytime | `daytime` | ❌ Phase 7 (content only) |
+| 55 | Days | `days` | ❌ Phase 7 (content only) — closes the old "literal Days-of-the-Week content" gap, content-wise |
+| 56 | Months | `months` | ❌ Phase 7 (content only) |
+| 57 | Sequence | `sequence` | ❌ Phase 7 (content only) |
+| 58 | Frequency | `frequency` | ❌ Phase 7 (content only) |
+| 59 | Location | `location` | ❌ Phase 7 (content only) |
+| 60 | Distance | `distance` | ❌ Phase 7 (content only) |
+| 61 | Directions | `directions` | ❌ Phase 7 (content only) |
+| 62 | Social | `social` | ❌ Phase 7 (content only) |
+| 63 | Manners | `manners` | ❌ Phase 7 (content only) |
+| 64 | Turn-Taking | `turn_taking` | ❌ Phase 7 (content only) |
+| 65 | Responses | `responses` | ❌ Phase 7 (content only) |
+| 66 | Questions | `essentials_basic_responses` | ❌ Phase 7 (structurally present, capture-blocked) |
+| 67 | Conversation | `conversation` | ❌ Phase 7 (content only) |
+| 68 | Requests | `making_requests` | ❌ Phase 7 (content only) |
+| 69 | Answers | `answers` | ❌ Phase 7 (content only) |
+| 70 | Basic Phrases | `sequence_demo` | ✅ trained (built only from already-trained words) |
+| 71 | Phrasebook | 18 intermediate categories (unchanged) | ❌ 0 trained — deliberately browse-only, not graded |
+
+### What's still open
+
+- **Phase 7 is now a much longer list** — 66 of 72 units have zero
+  `dictionary.js` entries at all (vs. Rev 6's much shorter gap list).
+  See `PIVOT_CHECKLIST.md`'s Phase 7 note for the cross-reference to
+  old vs. new unit numbers; reprioritizing the capture list to match
+  the new front-of-the-line order (Units 3–8/18/22/48/53/66 already
+  have some `dictionary.js` scaffolding) is flagged, not done.
+- **Two kept-but-unlisted mechanisms** (Fingerspell Your Name; Basic
+  Phrases + Phrasebook) need a nod of confirmation from Omen — the
+  source list doesn't mention either, they were kept because deleting
+  working features felt like a bigger unilateral call than keeping
+  them out of the way at the end.
+- **`money`'s placement (Unit 43, alongside Personal Items) is a
+  forced fit** — the source's 68 topics have no shopping/money topic
+  at all. Worth a real home if Omen wants one.
+- **`numbers`'s `comingSoon: false` despite 0% of digits being
+  trained** — pre-existing inconsistency (see Phase A in
+  `PIVOT_CHECKLIST.md`), not introduced or fixed this session, just
+  surfaced again since it's more visible now that so many other new
+  units are correctly `comingSoon: true`.
+- Not verified in a real browser — same limitation as every prior
+  session. Verified in Node: `node --check` on `data.js`/`learn.js`/
+  `lesson.js`/`dashboard.js`; a sandboxed VM eval of the full `data.js`
+  confirming `UNITS` order is contiguous 0–71 and unique, every
+  `CATEGORIES[].unit` resolves to a real `UNITS[].order`, every
+  `CATEGORIES` id is unique per level, and zero `SIGNS[].category`
+  values point at a category that no longer exists.
 
 ---
 
@@ -269,6 +439,30 @@ headline number is **Practice Progress** (signs practiced), explicitly
 not "Mastery" — assessment pass/fail is a separate, differently-labeled
 signal. First viewport should prioritize the next action (Continue
 Learning) over the aggregate stats.
+
+**Accessibility/loading/error patterns, however, SHOULD spread to every
+page** — unlike the progress logic above, these are presentation-only
+and were dashboard-specific by accident (built during the 2026-08-21/22
+Priority 2 pass, never ported) rather than by design. Design pass,
+2026-08-23 (see `PIVOT_CHECKLIST.md`): `learn.html`/`lesson.html` now
+carry the same 4 patterns dashboard.css established — skip link,
+`:focus-visible` ring on every interactive card/row, a loading-state
+placeholder instead of a blank pre-render flash, and a real fallback UI
+(reusing `css/style.css`'s `.alert--error`) if `window.LWData` fails to
+load or a render call throws. The skip-link + loading-pulse rules
+themselves moved to `css/style.css` (a new §16 — see that file) so a
+future page reaches for the shared class instead of copy-pasting
+`dashboard.css`'s page-local versions a third time; `dashboard.css`
+itself was left untouched (still has its own identical, working copies)
+to avoid any regression risk to that already-shipped page.
+**`quiz.html`/`quiz.css` had the identical gap — done 2026-08-23 (later,
+seventh session).** Same 4 patterns: skip link (`#question-card`),
+`:focus-visible` on `.quiz-option`, `.loading-pulse` on the static
+"Loading…" text, and a real error fallback (new `js/quiz.js`
+`showQuizUnavailable()`, wired into a `!window.LWData` guard +
+try/catch in `boot()`). See `PIVOT_CHECKLIST.md`'s matching entry for
+the fuller writeup, including a pre-existing double-`boot()`-call bug
+found and fixed along the way (unrelated to the design pass itself).
 
 ---
 
@@ -394,3 +588,4 @@ used at the top of every guarded page.
 | `--font-display` | Space Grotesk | Headings |
 | `--font-body`    | Inter | Body text |
 | Pass threshold | 80% | Quiz assessment |
+</file>

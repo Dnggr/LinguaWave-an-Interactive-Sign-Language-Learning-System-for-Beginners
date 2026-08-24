@@ -482,3 +482,60 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ── 16. SKIP LINK + LOADING PULSE (shared, page-agnostic) ─────────
+   Design pass, 2026-08-23 (PIVOT_CHECKLIST.md "Design pass — learn.html
+   / lesson.html sidebar not yet matching dashboard"). css/dashboard.css
+   already had its own `.skip-link` and `.dash-loading-pulse` — both are
+   plain, page-agnostic patterns (nothing in either rule references
+   dashboard-specific markup), so PIVOT_CHECKLIST.md's own suggested
+   approach for this item was to make them available here instead of
+   re-typing the same rules into learn.css/lesson.css.
+
+   `.skip-link` below is IDENTICAL to dashboard.css's own copy — a name
+   collision on purpose, not a conflict: dashboard.css loads AFTER this
+   file on pages/dashboard.html, so its rule still wins there at equal
+   specificity and dashboard's already-shipped look is untouched. This
+   just makes the same class usable on learn.html/lesson.html (and any
+   future page) without duplicating the declaration a third/fourth time.
+
+   `.loading-pulse` is the same animation dashboard.css calls
+   `.dash-loading-pulse`, renamed generically here on purpose — kept
+   deliberately subtle (opacity only, no motion/scale), same reasoning
+   as dashboard.css's own comment on it: a bonus cue layered on text
+   that already says what's happening ("Loading…"), not the only signal.
+   Respects prefers-reduced-motion beyond the blanket rule in §15 above
+   (that rule speeds the animation up to near-zero but doesn't remove
+   it outright; explicit `animation: none` here does). dashboard.css's
+   `.dash-loading-pulse` name is left as-is for dashboard.html's own
+   markup — not deprecated, just not the name new pages should reach
+   for; see AI_MEMORY.md's 2026-08-23 session log. */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-4);
+  z-index: 1000;
+  background: var(--clr-accent);
+  color: var(--clr-text-invert);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: top var(--dur-fast) var(--ease);
+}
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+.loading-pulse {
+  animation: lw-loading-pulse 1.4s ease-in-out infinite;
+}
+@keyframes lw-loading-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-pulse { animation: none; }
+}
