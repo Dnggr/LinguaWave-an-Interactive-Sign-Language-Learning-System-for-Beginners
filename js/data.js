@@ -267,9 +267,19 @@ const CATEGORIES = [
     words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'YES', 'NO'],
   },
   // 5. People
+  // REV 8 (2026-08-25): 'I', 'HE', 'SHE' removed from words[] — resolves the
+  // decision previously flagged in the "MEDIUM · PEOPLE" SIGNS block comment.
+  // 'I' is the same physical sign as 'ME' (ASLU doesn't treat them as visually
+  // distinct) and its signId would've collided with the fingerspelled letter
+  // 'I'; medium_people_ME's own tips already note it covers "I". 'HE'/'SHE'
+  // aren't distinguished by handshape in ASL — both are done by pointing at
+  // whatever referent was established in space — so giving them separate
+  // "how to sign" descriptions would misteach a distinction that doesn't
+  // exist. Per project convention (see BATHROOM/RESTROOM), we don't invent
+  // duplicate physical-sign entries just to hit one-entry-per-word.
   {
-    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: true, unit: 6,
-    words: ['I', 'ME', 'MY', 'YOU', 'YOUR', 'HE', 'SHE', 'BOY', 'GIRL', 'BABY', 'CHILD', 'MAN', 'WOMAN', 'PERSON', 'FRIEND', 'TEACHER', 'STUDENT'],
+    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: false, unit: 6,
+    words: ['ME', 'MY', 'YOU', 'YOUR', 'BOY', 'GIRL', 'BABY', 'CHILD', 'MAN', 'WOMAN', 'PERSON', 'FRIEND', 'TEACHER', 'STUDENT'],
   },
   // 6. Feelings
   // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
@@ -277,7 +287,7 @@ const CATEGORIES = [
   // CRY/LIKE/LOVE from the old list moved to 'actions'/'social' per the new
   // plan, safe since none were ever wired to detection.
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: true, unit: 7,
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: false, unit: 7,
     words: ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'EXCITED', 'TIRED', 'SLEEPY', 'HUNGRY', 'THIRSTY', 'SICK', 'FINE', 'OKAY', 'BORED', 'WORRIED', 'NERVOUS'],
   },
   // 7. Needs
@@ -291,19 +301,35 @@ const CATEGORIES = [
     words: ['FOOD', 'WATER', 'HELP', 'SLEEP', 'BATHROOM', 'HOME', 'SCHOOL', 'MORE', 'LESS', 'WANT', 'NEED', 'LIKE'],
   },
   // 8. Actions
+  // REV 8 (2026-08-25): flipped to comingSoon:false — full ASLU-checked SIGNS
+  // coverage added for every word[] below (see "MEDIUM · ACTIONS" block).
+  // GO/COME/STOP/DRINK/SLEEP/CRY were relocated here from other categories'
+  // SIGNS entries (category:'requests'/'food'/'health'/'feelings') where they
+  // were orphaned leftovers — none of those categories' own words[] claimed
+  // them, except 'health', which is still comingSoon:true/dormant, so no live
+  // regression. CLEAN reuses the old 'health' NICE/CLEAN entry (same physical
+  // sign) rather than inventing a duplicate — see that entry's history note.
   {
-    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: true, unit: 9,
+    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: false, unit: 9,
     words: ['GO', 'COME', 'STOP', 'WAIT', 'SIT', 'STAND', 'WALK', 'RUN', 'JUMP', 'EAT', 'DRINK', 'SLEEP', 'WAKE', 'PLAY', 'LOOK', 'SEE', 'LISTEN', 'TALK', 'READ', 'WRITE', 'DRAW', 'SING', 'DANCE', 'COOK', 'CLEAN', 'THINK', 'CRY', 'LAUGH', 'RIDE', 'BATH'],
   },
   // 9. Hand Actions
+  // REV 8 (2026-08-25): flipped to comingSoon:false — full ASLU-checked SIGNS
+  // coverage added for every word[] below (see "MEDIUM · HAND ACTIONS" block).
   {
-    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: true, unit: 10,
+    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: false, unit: 10,
     words: ['GIVE', 'TAKE', 'PUT', 'GET', 'BRING', 'CARRY', 'PUSH', 'PULL', 'THROW', 'CATCH', 'PICK'],
   },
   // 10. Communication
+  // REV 8 (2026-08-25): flipped to comingSoon:false. 'HELP' removed from
+  // words[] — it's already live under 'requests' (Needs, Unit 8) and that
+  // category's own words[] claims it; per project convention we don't
+  // duplicate a physical-sign entry across two categories, so it's not
+  // repeated here. Every remaining word has real SIGNS coverage (see
+  // "MEDIUM · COMMUNICATION" block).
   {
-    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: true, unit: 11,
-    words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'HELP', 'SHARE', 'TEACH', 'SIGN'],
+    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: false, unit: 11,
+    words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'SHARE', 'TEACH', 'SIGN'],
   },
   // 11. Body
   {
@@ -402,28 +428,31 @@ const CATEGORIES = [
   },
   // 27. School
   {
-    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: true, unit: 28,
+    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: false, unit: 28,
     words: ['TEACHER', 'STUDENT', 'PRINCIPAL', 'FRIEND', 'CLASSMATE', 'BOY', 'GIRL'],
   },
   // 28. School Supplies
   {
-    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: true, unit: 29,
-    words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'PEN', 'ERASER', 'PAPER', 'CRAYON', 'MARKER', 'RULER', 'SCISSORS', 'GLUE', 'FOLDER', 'BACKPACK'],
+    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 29,
+    // PEN removed — no dedicated ASLU sign; fingerspell P-E-N (existing Fingerspell feature covers this).
+    words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'ERASER', 'PAPER', 'CRAYON', 'MARKER', 'RULER', 'SCISSORS', 'GLUE', 'FOLDER', 'BACKPACK'],
   },
   // 29. Classroom
   {
-    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: true, unit: 30,
+    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 30,
     words: ['DESK', 'CHAIR', 'TABLE', 'BOARD', 'DOOR', 'WINDOW', 'CLOCK', 'COMPUTER', 'SHELF', 'TRASH'],
   },
   // 30. Classroom Actions
   {
-    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: true, unit: 31,
+    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: false, unit: 31,
     words: ['READ', 'WRITE', 'DRAW', 'COLOR', 'LISTEN', 'LOOK', 'SIT', 'STAND', 'ASK', 'ANSWER', 'OPEN', 'CLOSE', 'RAISE', 'LOWER', 'SHARE', 'HELP'],
   },
   // 31. Subjects
   {
-    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: true, unit: 32,
-    words: ['ENGLISH', 'MATH', 'SCIENCE', 'ART', 'MUSIC', 'HISTORY', 'COMPUTER'],
+    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: false, unit: 32,
+    // ART removed — identical clip to DRAW (ASLU: combine DRAW/ART with the person affix); use DRAW instead.
+    // ENGLISH removed — no dedicated ASLU sign; fingerspell E-N-G-L-I-S-H (existing Fingerspell feature covers this).
+    words: ['MATH', 'SCIENCE', 'MUSIC', 'HISTORY', 'COMPUTER'],
   },
   // 32. Food
   // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
@@ -659,9 +688,14 @@ const CATEGORIES = [
   // detection content (comingSoon stays as it was) — this is a
   // content-placement fix only, id/words/level/comingSoon all
   // unchanged from the pre-existing file.
+  // REV 8 (2026-08-25): 'SLEEP' and 'NICE/CLEAN' removed from words[] — their
+  // SIGNS entries were relocated to 'actions' (Unit 9, as SLEEP and CLEAN)
+  // since 'actions' words[] already called for both and this category is
+  // still dormant. Don't re-add SIGNS content for them here; if this
+  // category is ever worked, WASH/HURT/BRUSH TEETH are what's left to do.
   {
     id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: true, unit: 42,
-    words: ['WASH', 'HURT', 'BRUSH TEETH', 'SLEEP', 'NICE/CLEAN'],
+    words: ['WASH', 'HURT', 'BRUSH TEETH'],
   },
   {
     id: 'amounts', level: 'medium', title: 'Amounts', order: 2, comingSoon: true, unit: 16,
@@ -1326,6 +1360,138 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/medium/family/DIVORCED.mp4', detectionType: 'motion',
   },
 
+  /* ── MEDIUM · SCHOOL GROUP (Units 28–32) ──────────────────────
+   * Lesson content for the School group's Batch 3b words that had
+   * no description/tips yet. TEACHER/STUDENT/FRIEND/CLASSMATE/BOOK/
+   * NOTEBOOK/ERASER/MARKER/GLUE/FOLDER/DESK/CHAIR/TABLE/DOOR/WINDOW/
+   * CLOCK/SHELF/READ/WRITE/DRAW/COLOR/LISTEN/LOOK/SIT/STAND/ASK/
+   * ANSWER/OPEN/RAISE/LOWER/SHARE still have no SIGNS entry in this
+   * file — BOY/GIRL (family) and HELP (requests) are already covered
+   * under their existing categories and don't need duplicates. */
+  {
+    id: 'medium_school_PRINCIPAL', level: 'medium', category: 'school', signId: 'PRINCIPAL', title: 'Principal', order: 1,
+    description: 'Form a "P" handshape with your dominant hand and hold your non-dominant hand flat, palm down, in front of you. Circle the "P" above your non-dominant hand, then bring it down to rest on the back of that hand.',
+    tips: [
+      'Dominant hand makes a clear "P" shape',
+      'Circle above the non-dominant palm before landing',
+      'Let the "P" settle down onto the back of the hand',
+    ],
+    imageUrl: '../assets/images/medium/school/PRINCIPAL.png', videoUrl: '../assets/videos/medium/school/PRINCIPAL.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_PAPER', level: 'medium', category: 'school_supplies', signId: 'PAPER', title: 'Paper', order: 1,
+    description: 'Hold your non-dominant hand flat, palm up. Strike it with the back of your dominant flat hand, then repeat the motion — like brushing a sheet of paper off a stack.',
+    tips: [
+      'Non-dominant palm stays flat and steady, facing up',
+      'Dominant hand strikes it with a brushing motion',
+      'Repeat the strike a second time',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/PAPER.png', videoUrl: '../assets/videos/medium/school_supplies/PAPER.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_PENCIL', level: 'medium', category: 'school_supplies', signId: 'PENCIL', title: 'Pencil', order: 2,
+    description: 'Pinch your dominant thumb and index finger together as if holding a pencil, and touch them near your lips. Then bring your hand down and "write" a short motion across your non-dominant palm.',
+    tips: [
+      'Pinch thumb and index finger like holding a tiny pencil',
+      'Touch near your lips first',
+      'Finish with a quick writing motion on your other palm',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/PENCIL.png', videoUrl: '../assets/videos/medium/school_supplies/PENCIL.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_SCISSORS', level: 'medium', category: 'school_supplies', signId: 'SCISSORS', title: 'Scissors', order: 3,
+    description: 'Hold up your dominant hand in a "V" handshape (index and middle finger spread) so it looks like an open pair of scissors. Open and close the two fingers twice, like taking two quick snips.',
+    tips: [
+      'Fingers form a clear "V" shape',
+      'Movement is a snipping open-close, not a wave',
+      'Two quick snips is enough',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/SCISSORS.png', videoUrl: '../assets/videos/medium/school_supplies/SCISSORS.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_RULER', level: 'medium', category: 'school_supplies', signId: 'RULER', title: 'Ruler', order: 4,
+    description: 'Start with the sign for MEASURE, then switch to "G" handshapes (thumb and index finger pinched) on both hands. Trace the straight edges of a ruler by pulling the "G"-hands apart from the middle out to each side.',
+    tips: [
+      'Lead with the MEASURE motion so the meaning is clear',
+      'Switch to pinched "G" hands for the outline',
+      'Trace from the center outward to each side',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/RULER.png', videoUrl: '../assets/videos/medium/school_supplies/RULER.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_BACKPACK', level: 'medium', category: 'school_supplies', signId: 'BACKPACK', title: 'Backpack', order: 5,
+    description: 'Form both hands into loose "C" shapes over your shoulders. Bring them down twice so the backs of your thumbs tap the area between your neck and shoulders, like feeling the straps of a backpack.',
+    tips: [
+      'Both hands start above the shoulders in a "C" shape',
+      'Motion is a light double tap, not a hard pat',
+      'Thumbs land near the collarbone',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/BACKPACK.png', videoUrl: '../assets/videos/medium/school_supplies/BACKPACK.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_school_supplies_CRAYON', level: 'medium', category: 'school_supplies', signId: 'CRAYON', title: 'Crayon', order: 6,
+    // Compound sign — reuses COLOR + a modified ART/DRAW motion. COLOR (noun/verb) itself
+    // has no SIGNS entry yet either; flag for the team before treating this as fully self-contained.
+    description: 'Sign COLOR first, then modify the sign for ART/DRAW: rub your pinkie finger side-to-side against your non-dominant palm, as if coloring with a small crayon tip.',
+    tips: [
+      'Start clearly with the COLOR handshape',
+      'Switch to a small pinkie-only rubbing motion',
+      'Keep the second part small and controlled',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/CRAYON.png', videoUrl: '../assets/videos/medium/school_supplies/CRAYON.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_classroom_TRASH', level: 'medium', category: 'classroom', signId: 'TRASH', title: 'Trash', order: 1,
+    // ASLU glosses this sign GARBAGE.
+    description: 'Lay your non-dominant forearm flat in front of you, palm down, to act like the rim of a bag. Trace the outline of a hanging trash bag underneath it with your dominant hand in a loose fist/"U" shape.',
+    tips: [
+      'Non-dominant arm stays flat and still, like a frame',
+      'Dominant hand traces a bag-like curve underneath it',
+      'Keep the motion smooth, like tracing a shape once',
+    ],
+    imageUrl: '../assets/images/medium/classroom/TRASH.png', videoUrl: '../assets/videos/medium/classroom/TRASH.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_subjects_MATH', level: 'medium', category: 'subjects', signId: 'MATH', title: 'Math', order: 1,
+    description: 'Form both hands into "M" handshapes (thumb tucked under three fingers) and tap or brush them together twice in front of you.',
+    tips: [
+      'Both hands hold a clean "M" handshape',
+      'Motion is a light double tap, not a big swing',
+      'Keep the hands close together in neutral space',
+    ],
+    imageUrl: '../assets/images/medium/subjects/MATH.png', videoUrl: '../assets/videos/medium/subjects/MATH.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_subjects_SCIENCE', level: 'medium', category: 'subjects', signId: 'SCIENCE', title: 'Science', order: 2,
+    description: 'Hold both hands in loose fist ("A") shapes near waist height, as if holding two small beakers. Alternate tilting them up and down, like pouring chemicals from one container into another.',
+    tips: [
+      'Both hands stay loosely fisted, like holding beakers',
+      'Alternate tilting — one up while the other tips down',
+      'Keep the motion at waist/chest height',
+    ],
+    imageUrl: '../assets/images/medium/subjects/SCIENCE.png', videoUrl: '../assets/videos/medium/subjects/SCIENCE.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_subjects_MUSIC', level: 'medium', category: 'subjects', signId: 'MUSIC', title: 'Music', order: 3,
+    description: 'Hold your non-dominant forearm flat and horizontal in front of your body. Wave your dominant open hand back and forth just above it, like a conductor leading an orchestra.',
+    tips: [
+      'Non-dominant forearm stays flat and still, like a stage',
+      'Dominant hand waves smoothly above it',
+      'Let the motion flow — this is a graceful sign',
+    ],
+    imageUrl: '../assets/images/medium/subjects/MUSIC.png', videoUrl: '../assets/videos/medium/subjects/MUSIC.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_subjects_HISTORY', level: 'medium', category: 'subjects', signId: 'HISTORY', title: 'History', order: 4,
+    description: 'Form an "H" handshape with your dominant hand, fingers pointing forward and palm facing sideways. Move the hand downward twice, with a slightly bent wrist, near the side of your body.',
+    tips: [
+      'Keep a crisp "H" handshape (index + middle finger together)',
+      'Two downward movements, not a circle',
+      'Slightly bend the wrist on each downward motion',
+    ],
+    imageUrl: '../assets/images/medium/subjects/HISTORY.png', videoUrl: '../assets/videos/medium/subjects/HISTORY.mp4', detectionType: 'motion',
+  },
+
   /* ── MEDIUM · WORDS (auto-generated content — see BUGFIX notes) ── */
 
   // ── MEDIUM · PLACES ──
@@ -1378,37 +1544,6 @@ const SIGNS = [
       'Two taps on the back of the fist',
     ],
     imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_places_COME', level: 'medium', category: 'requests', signId: 'COME', title: 'Come', order: 6,
-    // CHANGED — split out of a combined 'COME/GO' entry, same fix as
-    // IN/OUT earlier: a single signId can only ever match ONE detected
-    // label, so a pair-entry could never actually be detected correctly.
-    // BUGFIX (this session): the line below used to claim "Both COME and
-    // GO are already separately captured/trained" — false. Confirmed
-    // against asl_motion_model/labels.json (no COME/GO/J-Z-word class
-    // for either) and dictionary.js (`disabled: true` on both). They're
-    // on the Phase 7 capture list like the other Essential Words —
-    // correcting the comment so a future session doesn't skip them
-    // assuming this category is fully live.
-    description: 'Point both index fingers up with palms facing you, and rotate them inward toward your body.',
-    tips: [
-      'Palms face you, both index fingers extended',
-      'Motion pulls inward, toward your body',
-      'This is a MOTION sign',
-    ],
-    imageUrl: '../assets/images/medium/places/come.png', videoUrl: '../assets/videos/medium/places/come.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_places_GO', level: 'medium', category: 'requests', signId: 'GO', title: 'Go', order: 7,
-    // CHANGED — the other half of the old combined 'COME/GO' entry.
-    description: 'Point both index fingers up and forward, then flick them away from your body.',
-    tips: [
-      'Palms face forward, both index fingers extended',
-      'Motion pushes outward, away from your body — the reverse of COME',
-      'This is a MOTION sign',
-    ],
-    imageUrl: '../assets/images/medium/places/go.png', videoUrl: '../assets/videos/medium/places/go.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 8,
@@ -1781,16 +1916,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/food/cheese.png', videoUrl: '../assets/videos/medium/food/cheese.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_food_DRINK', level: 'medium', category: 'food', signId: 'DRINK', title: 'Drink', order: 8,
-    description: 'Form a ‘C’ handshape as if holding a cup, bring it to your mouth, and tilt it slightly, as if taking a sip.',
-    tips: [
-      'Handshape curves like it\'s wrapped around a cup',
-      'The tilt happens right at the mouth',
-      'One smooth lift-and-tilt motion',
-    ],
-    imageUrl: '../assets/images/medium/food/drink.png', videoUrl: '../assets/videos/medium/food/drink.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_food_SPOON', level: 'medium', category: 'food', signId: 'SPOON', title: 'Spoon', order: 9,
     description: 'Hold your non-dominant hand flat, palm up. Use your dominant hand\'s curved index and middle fingers to scoop across the palm, like using a spoon.',
     tips: [
@@ -1985,25 +2110,124 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/health/brush_teeth.png', videoUrl: '../assets/videos/medium/health/brush_teeth.mp4', detectionType: 'motion',
   },
+
+  /* ── MEDIUM · PEOPLE (Unit 6) ─────────────────────────────────
+   * BOY/GIRL/BABY already covered under 'family' — not duplicated here.
+   * REV 8 (2026-08-25): I/HE/SHE resolved — removed from words[] above
+   * rather than given entries here. 'I' is the same physical sign as
+   * 'ME' (see medium_people_ME's tips below); 'HE'/'SHE' are both done
+   * by pointing at an established referent, not a distinct handshape,
+   * so no separate visual description exists to give them. */
   {
-    id: 'medium_health_SLEEP', level: 'medium', category: 'health', signId: 'SLEEP', title: 'Sleep', order: 5,
-    description: 'Hold your spread-out hand in front of your face, then draw it down and close it near your chin, closing your eyes as your hand moves down.',
+    id: 'medium_people_ME', level: 'medium', category: 'people', signId: 'ME', title: 'Me', order: 1,
+    // Also covers "I" — same physical sign in ASL (see block comment above).
+    description: 'Point your index finger at your own chest, or touch your index fingertip to your chest.',
     tips: [
-      'Fingers start spread, then close together',
-      'Close your eyes as the hand comes down',
-      'One smooth downward motion',
+      'Point directly at your own chest/sternum',
+      'A single touch or point is enough — no repeated motion',
+      'Also used for "I" — ASL doesn\u2019t use a separate sign for it',
     ],
-    imageUrl: '../assets/images/medium/health/sleep.png', videoUrl: '../assets/videos/medium/health/sleep.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/people/me.png', videoUrl: '../assets/videos/medium/people/me.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_health_NICE', level: 'medium', category: 'health', signId: 'NICE/CLEAN', title: 'Nice / Clean', order: 6,
-    description: 'Hold your non-dominant hand flat, palm up. Slide your dominant flat hand across the palm from base to fingertips, as if wiping it clean.',
+    id: 'medium_people_MY', level: 'medium', category: 'people', signId: 'MY', title: 'My', order: 2,
+    description: 'Place your flat, open dominant hand on the center of your chest, palm facing in.',
     tips: [
-      'Base hand stays flat and still',
-      'One smooth sliding motion, base to fingertips',
-      'Also commonly used to mean ‘nice’',
+      'Handshape is flat ("B" hand), not a fist',
+      'Palm rests against your own chest',
+      'A single touch — no repeated motion',
     ],
-    imageUrl: '../assets/images/medium/health/nice.png', videoUrl: '../assets/videos/medium/health/nice.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/people/my.png', videoUrl: '../assets/videos/medium/people/my.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_YOU', level: 'medium', category: 'people', signId: 'YOU', title: 'You', order: 3,
+    description: 'Point your index finger directly at the person you\u2019re talking to.',
+    tips: [
+      'Aim the point at the actual person, not off to the side',
+      'A single clear point is enough',
+      'Eye contact with the person reinforces the meaning',
+    ],
+    imageUrl: '../assets/images/medium/people/you.png', videoUrl: '../assets/videos/medium/people/you.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_YOUR', level: 'medium', category: 'people', signId: 'YOUR', title: 'Your', order: 4,
+    description: 'Push your flat, open dominant hand outward, palm facing the person you\u2019re talking to.',
+    tips: [
+      'Handshape is flat ("B" hand), not a point',
+      'Palm faces toward the other person, not toward you',
+      'A short outward push is enough',
+    ],
+    imageUrl: '../assets/images/medium/people/your.png', videoUrl: '../assets/videos/medium/people/your.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_MAN', level: 'medium', category: 'people', signId: 'MAN', title: 'Man', order: 5,
+    description: 'Touch the thumb of an open hand to your forehead (like tipping an imaginary hat brim), then bring the hand down and touch the thumb to your chest.',
+    tips: [
+      'Two touches: forehead first, then chest',
+      'Handshape stays open ("5" hand) the whole time',
+      'Combines the "hat brim" location from BOY with the chest location',
+    ],
+    imageUrl: '../assets/images/medium/people/man.png', videoUrl: '../assets/videos/medium/people/man.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_WOMAN', level: 'medium', category: 'people', signId: 'WOMAN', title: 'Woman', order: 6,
+    description: 'Touch the thumb of an open hand to your chin/jawline, then bring the hand down and touch the thumb to your chest.',
+    tips: [
+      'Two touches: chin first, then chest',
+      'Handshape stays open ("5" hand) the whole time',
+      'Combines the chin location from GIRL with the chest location',
+    ],
+    imageUrl: '../assets/images/medium/people/woman.png', videoUrl: '../assets/videos/medium/people/woman.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_PERSON', level: 'medium', category: 'people', signId: 'PERSON', title: 'Person', order: 7,
+    description: 'Hold both flat hands in front of your body, palms facing each other, and move them straight down together, tracing the outline of a standing figure.',
+    tips: [
+      'Both hands move together, palms facing each other',
+      'Motion is a straight downward line, not a curve',
+      'This is the "person" suffix used on many profession signs',
+    ],
+    imageUrl: '../assets/images/medium/people/person.png', videoUrl: '../assets/videos/medium/people/person.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_CHILD', level: 'medium', category: 'people', signId: 'CHILD', title: 'Child', order: 8,
+    description: 'Hold your flat dominant hand palm-down at about waist/hip height, then pat downward once or twice, as if patting the head of a small child.',
+    tips: [
+      'Palm faces down the whole time',
+      'Height stays low, around hip level',
+      'A light patting motion, not a big wave',
+    ],
+    imageUrl: '../assets/images/medium/people/child.png', videoUrl: '../assets/videos/medium/people/child.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_FRIEND', level: 'medium', category: 'people', signId: 'FRIEND', title: 'Friend', order: 9,
+    description: 'Hook your index fingers together, then reverse and hook them together the other way — like two links of a chain interlocking.',
+    tips: [
+      'Both hands use a hooked index-finger ("X") handshape',
+      'Hook, then flip and hook again the opposite way',
+      'Keep the motion small and centered in front of you',
+    ],
+    imageUrl: '../assets/images/medium/people/friend.png', videoUrl: '../assets/videos/medium/people/friend.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_TEACHER', level: 'medium', category: 'people', signId: 'TEACHER', title: 'Teacher', order: 10,
+    description: 'Sign TEACH — both open "flat-O" hands near the forehead, moving forward and out twice, as if handing knowledge outward — then add the PERSON suffix by moving both flat hands straight down in front of you.',
+    tips: [
+      'TEACH motion happens near the forehead/temple',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Together they form "teach" + "person" = teacher',
+    ],
+    imageUrl: '../assets/images/medium/people/teacher.png', videoUrl: '../assets/videos/medium/people/teacher.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_people_STUDENT', level: 'medium', category: 'people', signId: 'STUDENT', title: 'Student', order: 11,
+    description: 'Sign LEARN — fingertips of a "flat-O" hand pick up information from your non-dominant palm and touch it to your forehead — then add the PERSON suffix by moving both flat hands straight down in front of you.',
+    tips: [
+      'LEARN motion goes from the open palm up to the forehead',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Together they form "learn" + "person" = student',
+    ],
+    imageUrl: '../assets/images/medium/people/student.png', videoUrl: '../assets/videos/medium/people/student.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · FEELINGS ──
@@ -2048,16 +2272,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/sorry.png', videoUrl: '../assets/videos/medium/feelings/sorry.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_CRY', level: 'medium', category: 'feelings', signId: 'CRY', title: 'Cry', order: 5,
-    description: 'Hold both index fingers just below your eyes and trace them downward along your cheeks, alternating hands, like tears falling.',
-    tips: [
-      'Only the index fingers are extended',
-      'Alternate hands going down, like falling tears',
-      'Repeat a couple of times',
-    ],
-    imageUrl: '../assets/images/medium/feelings/cry.png', videoUrl: '../assets/videos/medium/feelings/cry.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_feelings_LIKE', level: 'medium', category: 'feelings', signId: 'LIKE', title: 'Like', order: 6,
     description: 'Place your thumb and middle finger against your chest as if pinching your shirt, then pull your hand outward while opening your fingers.',
     tips: [
@@ -2100,6 +2314,119 @@ const SIGNS = [
       'Hold briefly once crossed',
     ],
     imageUrl: '../assets/images/medium/feelings/love.png', videoUrl: '../assets/videos/medium/feelings/love.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_SCARED', level: 'medium', category: 'feelings', signId: 'SCARED', title: 'Scared', order: 10,
+    // ASLU glosses this sign AFRAID.
+    description: 'Cross both "S" (fist) hands in front of your chest, then quickly pull them apart and open into "5" hands, with a startled facial expression.',
+    tips: [
+      'Start with both hands as fists, crossed at the chest',
+      'Pull apart sharply while opening into "5" hands',
+      'A wide-eyed, startled expression completes the sign',
+    ],
+    imageUrl: '../assets/images/medium/feelings/scared.png', videoUrl: '../assets/videos/medium/feelings/scared.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_EXCITED', level: 'medium', category: 'feelings', signId: 'EXCITED', title: 'Excited', order: 11,
+    description: 'Hold both hands in front of your chest with bent middle fingers, and brush them alternately up your chest, like HAPPY but quicker and using a bent-finger handshape.',
+    tips: [
+      'Middle finger is bent, not a flat palm like HAPPY',
+      'Hands alternate brushing upward, one after the other',
+      'A bright, energetic facial expression reinforces the meaning',
+    ],
+    imageUrl: '../assets/images/medium/feelings/excited.png', videoUrl: '../assets/videos/medium/feelings/excited.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_TIRED', level: 'medium', category: 'feelings', signId: 'TIRED', title: 'Tired', order: 12,
+    description: 'Hold both bent hands with fingertips touching your upper chest/collarbone, then let them droop downward and slightly outward, shoulders relaxing.',
+    tips: [
+      'Fingertips start touching the upper chest',
+      'The drooping motion is what carries the meaning',
+      'Let your shoulders and expression sag slightly too',
+    ],
+    imageUrl: '../assets/images/medium/feelings/tired.png', videoUrl: '../assets/videos/medium/feelings/tired.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_SLEEPY', level: 'medium', category: 'feelings', signId: 'SLEEPY', title: 'Sleepy', order: 13,
+    description: 'Hold an open hand in front of your face and draw it downward, closing the fingers into a loose fist near your chin as your eyes droop half-closed.',
+    tips: [
+      'Hand starts open, near the top of the face',
+      'Fingers close together as the hand moves down',
+      'Half-closing your eyes reinforces the sleepy expression',
+    ],
+    imageUrl: '../assets/images/medium/feelings/sleepy.png', videoUrl: '../assets/videos/medium/feelings/sleepy.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_THIRSTY', level: 'medium', category: 'feelings', signId: 'THIRSTY', title: 'Thirsty', order: 14,
+    description: 'Draw your index finger straight down the front of your throat.',
+    tips: [
+      'Contact point is the throat, not the chin or chest',
+      'One smooth downward stroke',
+      'Index finger only, other fingers curled in',
+    ],
+    imageUrl: '../assets/images/medium/feelings/thirsty.png', videoUrl: '../assets/videos/medium/feelings/thirsty.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_SICK', level: 'medium', category: 'feelings', signId: 'SICK', title: 'Sick', order: 15,
+    description: 'Bend the middle finger of each hand into a claw shape. Touch one middle fingertip to your forehead and the other to your stomach, at the same time.',
+    tips: [
+      'Both hands use the same bent middle-finger handshape',
+      'One hand touches the forehead, the other the stomach',
+      'Both touches happen simultaneously, not one after the other',
+    ],
+    imageUrl: '../assets/images/medium/feelings/sick.png', videoUrl: '../assets/videos/medium/feelings/sick.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_FINE', level: 'medium', category: 'feelings', signId: 'FINE', title: 'Fine', order: 16,
+    description: 'Touch the thumb of an open "5" hand to the center of your chest.',
+    tips: [
+      'Handshape is an open "5" hand, thumb leading',
+      'A single touch to the chest is enough',
+      'A neutral or slight smile fits the "I\u2019m fine" meaning',
+    ],
+    imageUrl: '../assets/images/medium/feelings/fine.png', videoUrl: '../assets/videos/medium/feelings/fine.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_BORED', level: 'medium', category: 'feelings', signId: 'BORED', title: 'Bored', order: 17,
+    // Often paired with a flat, unimpressed facial expression.
+    description: 'Touch the tip of your index finger to the side of your nose and give it a small twist, keeping your face flat and unimpressed.',
+    tips: [
+      'Index finger touches the side of the nose, not the tip',
+      'A small twisting motion, not a poke',
+      'A deliberately flat, uninterested expression matches the meaning',
+    ],
+    imageUrl: '../assets/images/medium/feelings/bored.png', videoUrl: '../assets/videos/medium/feelings/bored.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_WORRIED', level: 'medium', category: 'feelings', signId: 'WORRIED', title: 'Worried', order: 18,
+    description: 'Hold both flat hands near your face and circle them alternately, one rising while the other falls, with a furrowed, concerned expression.',
+    tips: [
+      'Hands move opposite each other — one up while one goes down',
+      'Keep the circles small, close to the face',
+      'A furrowed brow completes the meaning',
+    ],
+    imageUrl: '../assets/images/medium/feelings/worried.png', videoUrl: '../assets/videos/medium/feelings/worried.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_NERVOUS', level: 'medium', category: 'feelings', signId: 'NERVOUS', title: 'Nervous', order: 19,
+    description: 'Hold both bent "5" hands out in front of your body and shake them with a small, rapid trembling motion.',
+    tips: [
+      'Handshape is bent/claw-like, not fully open',
+      'The shake is quick and small — like a jitter, not a wave',
+      'A tense, uneasy expression reinforces the meaning',
+    ],
+    imageUrl: '../assets/images/medium/feelings/nervous.png', videoUrl: '../assets/videos/medium/feelings/nervous.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_feelings_OKAY', level: 'medium', category: 'feelings', signId: 'OKAY', title: 'Okay', order: 20,
+    // ASLU note: commonly fingerspelled O-K, or signed with the informal OK handshape below.
+    description: 'Form an "OK" handshape (thumb and index finger touching in a circle, other three fingers extended up) and hold it out in front of you, or fingerspell O-K.',
+    tips: [
+      'Thumb and index finger form a small circle',
+      'Other three fingers stay extended and relaxed',
+      'Fingerspelling O-K is an equally common alternative',
+    ],
+    imageUrl: '../assets/images/medium/feelings/okay.png', videoUrl: '../assets/videos/medium/feelings/okay.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · REQUESTS ──
@@ -2204,16 +2531,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/how.png', videoUrl: '../assets/videos/medium/requests/how.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_requests_STOP', level: 'medium', category: 'requests', signId: 'STOP', title: 'Stop', order: 11,
-    description: 'Hold your non-dominant hand flat, palm up, and chop the edge of your dominant flat hand down onto it in one sharp motion.',
-    tips: [
-      'Base hand stays flat and still',
-      'One sharp, decisive chopping motion',
-      'Contact is the edge (pinky-side) of the dominant hand',
-    ],
-    imageUrl: '../assets/images/medium/requests/stop.png', videoUrl: '../assets/videos/medium/requests/stop.mp4', detectionType: 'motion',
-  },
-  {
     // NEW (this session) — no prior data.js content existed for this
     // signId (it was only ever a disabled dictionary.js placeholder,
     // see PIVOT_CHECKLIST.md Phase 7's "16 Essential Words" note). Not
@@ -2227,6 +2544,550 @@ const SIGNS = [
       'Tap two or three times, not just once',
     ],
     imageUrl: '../assets/images/medium/requests/food.png', videoUrl: '../assets/videos/medium/requests/food.mp4', detectionType: 'motion',
+  },
+
+  /* ── MEDIUM · ACTIONS (Unit 9) ──────────────────────────────────
+   * REV 8 (2026-08-25): new block. GO/COME/STOP/DRINK/SLEEP/CRY are
+   * relocated entries (content unchanged from their old category, only
+   * id/category/order updated — see each entry's own note for where it
+   * came from). CLEAN reuses the old 'health' NICE/CLEAN entry (same
+   * physical sign, per the BATHROOM/RESTROOM no-duplicate-signs
+   * precedent). Everything else is new, ASLU-checked (lifeprint.com)
+   * content added this session. All entries added with matching
+   * disabled:true dictionary.js placeholders — see that file. */
+  {
+    // RELOCATED (this session) — was 'medium_places_GO', category:'requests'.
+    // Content unchanged. 'requests' words[] never actually claimed this
+    // word, so nothing else loses coverage by moving it here.
+    id: 'medium_actions_GO', level: 'medium', category: 'actions', signId: 'GO', title: 'Go', order: 1,
+    description: 'Point both index fingers up and forward, then flick them away from your body.',
+    tips: [
+      'Palms face forward, both index fingers extended',
+      'Motion pushes outward, away from your body — the reverse of COME',
+      'This is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/actions/go.png', videoUrl: '../assets/videos/medium/actions/go.mp4', detectionType: 'motion',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_places_COME', category:'requests'.
+    // Content unchanged. 'requests' words[] never actually claimed this word.
+    id: 'medium_actions_COME', level: 'medium', category: 'actions', signId: 'COME', title: 'Come', order: 2,
+    description: 'Point both index fingers up with palms facing you, and rotate them inward toward your body.',
+    tips: [
+      'Palms face you, both index fingers extended',
+      'Motion pulls inward, toward your body',
+      'This is a MOTION sign',
+    ],
+    imageUrl: '../assets/images/medium/actions/come.png', videoUrl: '../assets/videos/medium/actions/come.mp4', detectionType: 'motion',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_requests_STOP', category:'requests'.
+    // Content unchanged. 'requests' words[] never actually claimed this word.
+    id: 'medium_actions_STOP', level: 'medium', category: 'actions', signId: 'STOP', title: 'Stop', order: 3,
+    description: 'Hold your non-dominant hand flat, palm up, and chop the edge of your dominant flat hand down onto it in one sharp motion.',
+    tips: [
+      'Base hand stays flat and still',
+      'One sharp, decisive chopping motion',
+      'Contact is the edge (pinky-side) of the dominant hand',
+    ],
+    imageUrl: '../assets/images/medium/actions/stop.png', videoUrl: '../assets/videos/medium/actions/stop.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_WAIT', level: 'medium', category: 'actions', signId: 'WAIT', title: 'Wait', order: 4,
+    description: 'Hold both hands up in front of you with fingers loosely bent and spread, and wiggle your fingers.',
+    tips: [
+      'Fingers stay loose and bent (not a fist, not flat)',
+      'Wiggle the fingers gently, hands mostly still',
+      'This is a held sign more than a big motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/wait.png', videoUrl: '../assets/videos/medium/actions/wait.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wait.htm',
+  },
+  {
+    id: 'medium_actions_SIT', level: 'medium', category: 'actions', signId: 'SIT', title: 'Sit', order: 5,
+    description: 'Hold both hands in a bent, two-finger \u2018H\u2019 shape (like two bent legs), and rest the fingers of your dominant hand down on top of your non-dominant hand\u2019s fingers.',
+    tips: [
+      'Both hands use the same bent two-finger shape',
+      'The dominant hand lands on top of the stationary hand',
+      'One clear downward landing motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/sit.png', videoUrl: '../assets/videos/medium/actions/sit.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sit.htm',
+  },
+  {
+    id: 'medium_actions_STAND', level: 'medium', category: 'actions', signId: 'STAND', title: 'Stand', order: 6,
+    description: 'Hold your non-dominant hand flat, palm up. Stand the first two fingers of your dominant hand (like two legs, pointing down) upright on your palm.',
+    tips: [
+      'Dominant hand points its fingers downward, like legs',
+      'Base hand stays flat, palm up, the whole time',
+      'The \u2018legs\u2019 rest in place — no walking motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/stand.png', videoUrl: '../assets/videos/medium/actions/stand.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_WALK', level: 'medium', category: 'actions', signId: 'WALK', title: 'Walk', order: 7,
+    description: 'Hold both flat hands, palms down, out in front of you and move them alternately forward, like two feet walking.',
+    tips: [
+      'Both hands stay flat, palms facing down',
+      'Alternate which hand moves forward',
+      'The rhythm mimics footsteps',
+    ],
+    imageUrl: '../assets/images/medium/actions/walk.png', videoUrl: '../assets/videos/medium/actions/walk.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_RUN', level: 'medium', category: 'actions', signId: 'RUN', title: 'Run', order: 8,
+    description: 'Hook the bent index finger of your dominant \u2018L\u2019 hand onto the thumb of your non-dominant \u2018L\u2019 hand, then move both hands forward quickly while your index finger flicks.',
+    tips: [
+      'Both hands form an \u2018L\u2019 handshape',
+      'The dominant hand\u2019s index finger hooks onto the other hand\u2019s thumb',
+      'Move forward with a quick, energetic motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/run.png', videoUrl: '../assets/videos/medium/actions/run.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_JUMP', level: 'medium', category: 'actions', signId: 'JUMP', title: 'Jump', order: 9,
+    description: 'Rest the fingertips of your bent \u2018V\u2019 hand (like two legs) on your flat non-dominant palm, then hop the \u2018V\u2019 hand up and back down.',
+    tips: [
+      'Dominant hand uses a bent \u2018V\u2019 shape for legs',
+      'Base hand stays flat, acting as the ground',
+      'A quick up-and-down hopping motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/jump.png', videoUrl: '../assets/videos/medium/actions/jump.mp4', detectionType: 'motion',
+  },
+  {
+    // Same physical sign as medium_requests_FOOD (ASL doesn't distinguish
+    // the noun "food" from the verb "eat") — this is not a fabricated
+    // second sign, just a second word/lesson entry for the same sign.
+    id: 'medium_actions_EAT', level: 'medium', category: 'actions', signId: 'EAT', title: 'Eat', order: 10,
+    description: 'Bring the fingertips of your flat-O hand (fingers and thumb pinched together) to your mouth, tapping gently as if putting food in.',
+    tips: [
+      'Fingertips and thumb pinch together loosely',
+      'Motion moves toward the mouth, not away',
+      'Same sign as FOOD (Needs) — context tells them apart',
+    ],
+    imageUrl: '../assets/images/medium/actions/eat.png', videoUrl: '../assets/videos/medium/actions/eat.mp4', detectionType: 'motion',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_food_DRINK', category:'food'.
+    // Content unchanged. 'food' words[] never claimed this word, and
+    // 'food' is still comingSoon:true, so nothing live loses coverage.
+    id: 'medium_actions_DRINK', level: 'medium', category: 'actions', signId: 'DRINK', title: 'Drink', order: 11,
+    description: 'Form a \u2018C\u2019 handshape as if holding a cup, bring it to your mouth, and tilt it slightly, as if taking a sip.',
+    tips: [
+      'Handshape curves like it\'s wrapped around a cup',
+      'The tilt happens right at the mouth',
+      'One smooth lift-and-tilt motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/drink.png', videoUrl: '../assets/videos/medium/actions/drink.mp4', detectionType: 'motion',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_health_SLEEP', category:'health'.
+    // Content unchanged. 'health' words[] did list this word, but 'health'
+    // is still comingSoon:true/dormant (see that category's updated
+    // comment) — this word was already intended to move to 'actions'.
+    id: 'medium_actions_SLEEP', level: 'medium', category: 'actions', signId: 'SLEEP', title: 'Sleep', order: 12,
+    description: 'Hold your spread-out hand in front of your face, then draw it down and close it near your chin, closing your eyes as your hand moves down.',
+    tips: [
+      'Fingers start spread, then close together',
+      'Close your eyes as the hand comes down',
+      'One smooth downward motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/sleep.png', videoUrl: '../assets/videos/medium/actions/sleep.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_WAKE', level: 'medium', category: 'actions', signId: 'WAKE', title: 'Wake Up', order: 13,
+    description: 'Hold your index finger and thumb pinched together near the corner of each eye, then open them apart, like eyelids opening.',
+    tips: [
+      'Start with fingers pinched closed at the eyes',
+      'Open them outward like your eyes opening',
+      'Use a sleepy expression, not a surprised one',
+    ],
+    imageUrl: '../assets/images/medium/actions/wake.png', videoUrl: '../assets/videos/medium/actions/wake.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wake-up.htm',
+  },
+  {
+    id: 'medium_actions_PLAY', level: 'medium', category: 'actions', signId: 'PLAY', title: 'Play', order: 14,
+    description: 'Form \u2018Y\u2019 handshapes (thumb and pinky out, middle fingers curled) with both hands and twist them back and forth at the wrists.',
+    tips: [
+      'Both hands use the \u2018Y\u2019 handshape',
+      'Twisting comes from the wrist, not the whole arm',
+      'Repeat the twisting motion a couple of times',
+    ],
+    imageUrl: '../assets/images/medium/actions/play.png', videoUrl: '../assets/videos/medium/actions/play.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_LOOK', level: 'medium', category: 'actions', signId: 'LOOK', title: 'Look', order: 15,
+    description: 'Point the first two fingers of your dominant hand (a \u2018V\u2019 handshape) away from your eyes, aiming them in the direction you\u2019re looking.',
+    tips: [
+      'Fingers start near your own eyes',
+      'The \u2018V\u2019 shape represents your two eyes looking',
+      'Direction can change to show where you\u2019re looking',
+    ],
+    imageUrl: '../assets/images/medium/actions/look.png', videoUrl: '../assets/videos/medium/actions/look.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_SEE', level: 'medium', category: 'actions', signId: 'SEE', title: 'See', order: 16,
+    description: 'Point the first two fingers of your dominant hand (a \u2018V\u2019 handshape) from your eyes outward and slightly down, in one short motion.',
+    tips: [
+      'Same handshape as LOOK, but the motion is quick and brief',
+      'Fingers start near the eyes and move slightly outward',
+      'A single short movement, not a sustained gaze',
+    ],
+    imageUrl: '../assets/images/medium/actions/see.png', videoUrl: '../assets/videos/medium/actions/see.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_LISTEN', level: 'medium', category: 'actions', signId: 'LISTEN', title: 'Listen', order: 17,
+    description: 'Cup your dominant hand and place it just behind your ear, as if trying to hear something better.',
+    tips: [
+      'Hand forms a loose cupped shape',
+      'Rests gently near, not on, the ear',
+      'A slight lean toward the sound can help reinforce it',
+    ],
+    imageUrl: '../assets/images/medium/actions/listen.png', videoUrl: '../assets/videos/medium/actions/listen.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_TALK', level: 'medium', category: 'actions', signId: 'TALK', title: 'Talk', order: 18,
+    description: 'Point your index finger at your mouth, then move it forward and back between yourself and the person you\u2019re talking to.',
+    tips: [
+      'Index finger starts near your own mouth/chin',
+      'Motion alternates outward and back',
+      'Represents an exchange of words between two people',
+    ],
+    imageUrl: '../assets/images/medium/actions/talk.png', videoUrl: '../assets/videos/medium/actions/talk.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_READ', level: 'medium', category: 'actions', signId: 'READ', title: 'Read', order: 19,
+    description: 'Hold your non-dominant hand flat, palm up, like an open book. Move the first two fingers of your dominant hand (a \u2018V\u2019 handshape) down across the palm, as if scanning lines of text.',
+    tips: [
+      'Dominant hand uses a \u2018V\u2019 shape, like two eyes',
+      'Motion moves downward across the base palm',
+      'Base hand stays flat and steady',
+    ],
+    imageUrl: '../assets/images/medium/actions/read.png', videoUrl: '../assets/videos/medium/actions/read.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_WRITE', level: 'medium', category: 'actions', signId: 'WRITE', title: 'Write', order: 20,
+    description: 'Pinch your thumb and index finger together as if holding a pen, and move your hand across your flat non-dominant palm, as if writing on paper.',
+    tips: [
+      'Dominant hand pinches like holding a small pen',
+      'Base hand stays flat, palm up, like a sheet of paper',
+      'A side-to-side scribbling motion works well',
+    ],
+    imageUrl: '../assets/images/medium/actions/write.png', videoUrl: '../assets/videos/medium/actions/write.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_DRAW', level: 'medium', category: 'actions', signId: 'DRAW', title: 'Draw', order: 21,
+    description: 'Extend your pinky finger and trace a wavy, wiggly line across your flat non-dominant palm, as if sketching a picture.',
+    tips: [
+      'Only the pinky finger extends on the dominant hand',
+      'The path is wavy/zig-zag, not straight',
+      'Base hand stays flat and steady',
+    ],
+    imageUrl: '../assets/images/medium/actions/draw.png', videoUrl: '../assets/videos/medium/actions/draw.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_SING', level: 'medium', category: 'actions', signId: 'SING', title: 'Sing', order: 22,
+    description: 'Hold your non-dominant arm out in front of you and wave your flat dominant hand back and forth above it, like conducting music.',
+    tips: [
+      'Non-dominant arm stays extended and still',
+      'Dominant hand stays relaxed and open',
+      'The waving motion flows smoothly back and forth',
+    ],
+    imageUrl: '../assets/images/medium/actions/sing.png', videoUrl: '../assets/videos/medium/actions/sing.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_DANCE', level: 'medium', category: 'actions', signId: 'DANCE', title: 'Dance', order: 23,
+    description: 'Hold your non-dominant hand flat, palm up. Swing the first two fingers of your dominant hand (a \u2018V\u2019 handshape, like two legs) back and forth over the palm.',
+    tips: [
+      'Dominant hand uses the same \u2018V\u2019 shape as WALK/JUMP, but swings side to side',
+      'Base hand stays flat, representing the floor',
+      'A loose, rhythmic swinging motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/dance.png', videoUrl: '../assets/videos/medium/actions/dance.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_COOK', level: 'medium', category: 'actions', signId: 'COOK', title: 'Cook', order: 24,
+    description: 'Hold your non-dominant hand flat, palm up, like a pan. Place your dominant flat hand on top and flip it over, like flipping food while cooking.',
+    tips: [
+      'Base hand stays flat, palm up, the whole time',
+      'Dominant hand flips completely over, palm up to palm down',
+      'One clear flipping motion is enough',
+    ],
+    imageUrl: '../assets/images/medium/actions/cook.png', videoUrl: '../assets/videos/medium/actions/cook.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cook.htm',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_health_NICE', signId
+    // 'NICE/CLEAN', category:'health'. Renamed to the plain 'CLEAN' signId
+    // and content otherwise unchanged; 'health' words[] listed this as
+    // 'NICE/CLEAN' but is still comingSoon:true/dormant. The "also means
+    // nice" tip is kept so the connection isn't lost.
+    id: 'medium_actions_CLEAN', level: 'medium', category: 'actions', signId: 'CLEAN', title: 'Clean', order: 25,
+    description: 'Hold your non-dominant hand flat, palm up. Slide your dominant flat hand across the palm from base to fingertips, as if wiping it clean.',
+    tips: [
+      'Base hand stays flat and still',
+      'One smooth sliding motion, base to fingertips',
+      'Also commonly used to mean \u2018nice\u2019',
+    ],
+    imageUrl: '../assets/images/medium/actions/clean.png', videoUrl: '../assets/videos/medium/actions/clean.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_THINK', level: 'medium', category: 'actions', signId: 'THINK', title: 'Think', order: 26,
+    description: 'Touch your index finger to the side of your forehead near your temple, and make a small circling motion.',
+    tips: [
+      'Only the index finger extends',
+      'Contact point is the temple, not the top of the head',
+      'A small circular motion, not a single tap',
+    ],
+    imageUrl: '../assets/images/medium/actions/think.png', videoUrl: '../assets/videos/medium/actions/think.mp4', detectionType: 'motion',
+  },
+  {
+    // RELOCATED (this session) — was 'medium_feelings_CRY', category:'feelings'.
+    // Content unchanged. AI_MEMORY already documented CRY as intended to
+    // move to 'actions'; 'feelings' words[] never claimed it, so nothing
+    // live loses coverage.
+    id: 'medium_actions_CRY', level: 'medium', category: 'actions', signId: 'CRY', title: 'Cry', order: 27,
+    description: 'Hold both index fingers just below your eyes and trace them downward along your cheeks, alternating hands, like tears falling.',
+    tips: [
+      'Only the index fingers are extended',
+      'Alternate hands going down, like falling tears',
+      'Repeat a couple of times',
+    ],
+    imageUrl: '../assets/images/medium/actions/cry.png', videoUrl: '../assets/videos/medium/actions/cry.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_actions_LAUGH', level: 'medium', category: 'actions', signId: 'LAUGH', title: 'Laugh', order: 28,
+    description: 'Hold both hands near the corners of your mouth with your index fingers bent, and brush them upward and outward, repeating the motion, as if tracing a growing smile.',
+    tips: [
+      'Both index fingers stay bent (hooked), not straight',
+      'Motion brushes up and outward from the mouth',
+      'Repeat the motion with a big smile for emphasis',
+    ],
+    imageUrl: '../assets/images/medium/actions/laugh.png', videoUrl: '../assets/videos/medium/actions/laugh.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/laugh.htm',
+  },
+  {
+    id: 'medium_actions_RIDE', level: 'medium', category: 'actions', signId: 'RIDE', title: 'Ride', order: 29,
+    description: 'Rest the bent first two fingers of your dominant hand (\u2018sitting\u2019 like legs) inside the curved \u2018C\u2019 shape of your non-dominant hand, then move both hands forward together.',
+    tips: [
+      'Dominant hand\u2019s fingers rest inside the base hand, like a rider',
+      'Base hand keeps a loose \u2018C\u2019 curve',
+      'Move both hands forward together, not separately',
+    ],
+    imageUrl: '../assets/images/medium/actions/ride.png', videoUrl: '../assets/videos/medium/actions/ride.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/ride.htm',
+  },
+  {
+    id: 'medium_actions_BATH', level: 'medium', category: 'actions', signId: 'BATH', title: 'Bath', order: 30,
+    description: 'Make loose \u2018A\u2019 handshapes (fists with the thumb resting on the side) and rub them up and down against your chest, as if scrubbing yourself clean.',
+    tips: [
+      'Both hands stay in loose fists the whole time',
+      'Motion rubs straight up and down, no arc',
+      'Keep the motion at chest height',
+    ],
+    imageUrl: '../assets/images/medium/actions/bath.png', videoUrl: '../assets/videos/medium/actions/bath.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bath.htm',
+  },
+
+  /* ── MEDIUM · HAND ACTIONS (Unit 10) ────────────────────────────
+   * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
+   * added this session. All entries added with matching disabled:true
+   * dictionary.js placeholders — see that file. */
+  {
+    id: 'medium_hand_actions_GIVE', level: 'medium', category: 'hand_actions', signId: 'GIVE', title: 'Give', order: 1,
+    description: 'Hold your dominant hand in a flat-O shape (fingers and thumb pinched together) and move it from your body outward toward the person receiving, opening your fingers slightly as you finish.',
+    tips: [
+      'Fingers and thumb start pinched together, like holding a small object',
+      'Motion moves outward, away from your body',
+      'Direction can change depending on who you\u2019re giving to',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/give.png', videoUrl: '../assets/videos/medium/hand_actions/give.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101//pages-signs/g/give.htm',
+  },
+  {
+    id: 'medium_hand_actions_TAKE', level: 'medium', category: 'hand_actions', signId: 'TAKE', title: 'Take', order: 2,
+    description: 'Reach your dominant hand out with fingers slightly bent (a loose claw shape), then pull it back toward your body while closing your fingers into a fist, as if grabbing something.',
+    tips: [
+      'Fingers start bent and open, then close into a fist',
+      'Motion pulls inward, toward your body',
+      'The closing grip happens as the hand arrives at your chest',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/take.png', videoUrl: '../assets/videos/medium/hand_actions/take.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_hand_actions_PUT', level: 'medium', category: 'hand_actions', signId: 'PUT', title: 'Put', order: 3,
+    description: 'Hold your dominant hand in a flat-O shape (fingers and thumb pinched together) and move it down to a spot in front of you, opening your fingers as you set it down.',
+    tips: [
+      'Start with fingers pinched together, as if holding something small',
+      'Motion moves downward to the placement spot',
+      'Fingers open at the very end, like releasing an object',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/put.png', videoUrl: '../assets/videos/medium/hand_actions/put.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_hand_actions_GET', level: 'medium', category: 'hand_actions', signId: 'GET', title: 'Get', order: 4,
+    description: 'Hold both hands out in front of you with fingers slightly open, then pull them in toward your body while closing them into fists, as if grabbing hold of something.',
+    tips: [
+      'Both hands move together, mirroring each other',
+      'Fingers close into fists as the hands arrive at your body',
+      'One decisive pull inward',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/get.png', videoUrl: '../assets/videos/medium/hand_actions/get.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_hand_actions_BRING', level: 'medium', category: 'hand_actions', signId: 'BRING', title: 'Bring', order: 5,
+    description: 'Hold both hands flat, palms up, side by side, and move them together from one side toward the other (or toward your body), as if carrying something on your palms.',
+    tips: [
+      'Both hands stay flat and move together as a pair',
+      'Palms face upward the whole time, like a tray',
+      'The path sweeps from the starting point to the destination',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/bring.png', videoUrl: '../assets/videos/medium/hand_actions/bring.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_hand_actions_CARRY', level: 'medium', category: 'hand_actions', signId: 'CARRY', title: 'Carry', order: 6,
+    description: 'Hold both hands flat, palms up, and move them forward together in a series of small hops or arcs, as if carrying something along with you.',
+    tips: [
+      'Both hands stay flat and move together',
+      'Motion repeats in small steps rather than one big sweep',
+      'Palms stay facing up throughout',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/carry.png', videoUrl: '../assets/videos/medium/hand_actions/carry.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_hand_actions_PUSH', level: 'medium', category: 'hand_actions', signId: 'PUSH', title: 'Push', order: 7,
+    description: 'Hold your flat hand(s), palm facing away from you, and move them forward and away from your body with a firm, deliberate motion.',
+    tips: [
+      'Palm(s) face away from your body',
+      'Motion moves outward, away from you',
+      'Add a bit of tension in the hand to show effort',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/push.png', videoUrl: '../assets/videos/medium/hand_actions/push.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/push.htm',
+  },
+  {
+    id: 'medium_hand_actions_PULL', level: 'medium', category: 'hand_actions', signId: 'PULL', title: 'Pull', order: 8,
+    description: 'Make \u2018S\u2019 handshapes (fists) as if gripping a rope out in front of you, and pull both hands back toward your body.',
+    tips: [
+      'Both hands stay in a fist the whole time',
+      'Motion pulls inward, toward your body',
+      'The reverse motion and handshape of PUSH',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/pull.png', videoUrl: '../assets/videos/medium/hand_actions/pull.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pull.htm',
+  },
+  {
+    id: 'medium_hand_actions_THROW', level: 'medium', category: 'hand_actions', signId: 'THROW', title: 'Throw', order: 9,
+    description: 'Start with your thumb touching the fingernails of your index and middle fingers, then thrust your hand forward and open the fingers, as if hurling an object away from you.',
+    tips: [
+      'Handshape opens as the hand moves forward',
+      'Motion thrusts outward, in the direction of the throw',
+      'Add speed and force to show how hard something is thrown',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/throw.png', videoUrl: '../assets/videos/medium/hand_actions/throw.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/throw.htm',
+  },
+  {
+    id: 'medium_hand_actions_CATCH', level: 'medium', category: 'hand_actions', signId: 'CATCH', title: 'Catch', order: 10,
+    description: 'Hold both hands open in front of you, then quickly close them together, as if grabbing something out of the air.',
+    tips: [
+      'Hands start open and close together at the same time',
+      'Time the closing motion like actually catching something',
+      'Keep the motion at chest height, in front of your body',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/catch.png', videoUrl: '../assets/videos/medium/hand_actions/catch.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/catch.htm',
+  },
+  {
+    id: 'medium_hand_actions_PICK', level: 'medium', category: 'hand_actions', signId: 'PICK', title: 'Pick Up', order: 11,
+    description: 'Lower your open hand, palm down, thumb and fingers slightly apart, then pinch your thumb and fingers together as you lift your hand, as if picking something up off a surface.',
+    tips: [
+      'Hand starts open, palm facing down',
+      'Fingers pinch together as the hand lifts',
+      'The lifting motion follows the pinch',
+    ],
+    imageUrl: '../assets/images/medium/hand_actions/pick.png', videoUrl: '../assets/videos/medium/hand_actions/pick.mp4', detectionType: 'motion',
+  },
+
+  /* ── MEDIUM · COMMUNICATION (Unit 11) ───────────────────────────
+   * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
+   * added this session. 'HELP' is intentionally NOT here — it's already
+   * live under 'requests' (Needs, Unit 8) and that category's words[]
+   * claims it; see the CATEGORIES entry's comment. All entries added
+   * with matching disabled:true dictionary.js placeholders. */
+  {
+    id: 'medium_communication_ASK', level: 'medium', category: 'communication', signId: 'ASK', title: 'Ask', order: 1,
+    description: 'Start with your index finger extended, palm facing the person you\u2019re asking, then bend it into an \u2018X\u2019 handshape as you move your hand toward them.',
+    tips: [
+      'Handshape changes from a straight index finger to a bent \u2018X\u2019',
+      'Motion moves toward the person you\u2019re asking',
+      'Direction can change depending on who you\u2019re asking',
+    ],
+    imageUrl: '../assets/images/medium/communication/ask.png', videoUrl: '../assets/videos/medium/communication/ask.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/ask.htm',
+  },
+  {
+    id: 'medium_communication_ANSWER', level: 'medium', category: 'communication', signId: 'ANSWER', title: 'Answer', order: 2,
+    description: 'Hold both index fingers up near your mouth, then flip them forward and downward, as if words are flowing out toward the other person.',
+    tips: [
+      'Both index fingers start near your mouth/chin',
+      'Motion flips forward and down, away from you',
+      'One smooth flipping motion is enough',
+    ],
+    imageUrl: '../assets/images/medium/communication/answer.png', videoUrl: '../assets/videos/medium/communication/answer.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_communication_TELL', level: 'medium', category: 'communication', signId: 'TELL', title: 'Tell', order: 3,
+    description: 'Touch your index finger to your chin, then move it forward in a small arc toward the person you\u2019re telling.',
+    tips: [
+      'Contact point starts at the chin, not the cheek',
+      'Motion arcs forward, toward the listener',
+      'Direction shows who is being told',
+    ],
+    imageUrl: '../assets/images/medium/communication/tell.png', videoUrl: '../assets/videos/medium/communication/tell.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_communication_SHOW', level: 'medium', category: 'communication', signId: 'SHOW', title: 'Show', order: 4,
+    description: 'Press the index finger of your dominant hand against the palm of your flat non-dominant hand, then move both hands forward together, toward the person you\u2019re showing.',
+    tips: [
+      'Index finger stays in contact with the base palm',
+      'Both hands move together as a unit',
+      'Direction points toward whoever you\u2019re showing',
+    ],
+    imageUrl: '../assets/images/medium/communication/show.png', videoUrl: '../assets/videos/medium/communication/show.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_communication_SHARE', level: 'medium', category: 'communication', signId: 'SHARE', title: 'Share', order: 5,
+    description: 'Hold your non-dominant hand flat with fingers together. Brush the pinky-side edge of your dominant flat hand back and forth along the side of your index finger, from the base to the fingertips.',
+    tips: [
+      'Base hand stays flat and still, fingers together',
+      'Dominant hand\u2019s pinky edge does the brushing',
+      'Motion moves back and forth, not just one direction',
+    ],
+    imageUrl: '../assets/images/medium/communication/share.png', videoUrl: '../assets/videos/medium/communication/share.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/share.htm',
+  },
+  {
+    id: 'medium_communication_TEACH', level: 'medium', category: 'communication', signId: 'TEACH', title: 'Teach', order: 6,
+    description: 'Hold both hands near your forehead in a \u2018flattened-O\u2019 shape (fingertips and thumb together), then move them forward and open into flat hands, repeating the motion, as if handing knowledge outward.',
+    tips: [
+      'Both hands move together, starting near the forehead/temple',
+      'Fingers open into flat hands as they move forward',
+      'Repeat the motion once or twice for emphasis',
+    ],
+    imageUrl: '../assets/images/medium/communication/teach.png', videoUrl: '../assets/videos/medium/communication/teach.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/teach.htm',
+  },
+  {
+    id: 'medium_communication_SIGN', level: 'medium', category: 'communication', signId: 'SIGN', title: 'Sign', order: 7,
+    description: 'Point both index fingers toward each other in front of your body and rotate them around one another as you move your hands slightly forward.',
+    tips: [
+      'Both hands use a straight index-finger (\u20181\u2019) handshape',
+      'Fingers circle around each other, not side to side',
+      'A small forward drift as the hands rotate',
+    ],
+    imageUrl: '../assets/images/medium/communication/sign.png', videoUrl: '../assets/videos/medium/communication/sign.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sign.htm',
   },
 
   // ── MEDIUM · ESSENTIALS_GREETINGS ──

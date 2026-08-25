@@ -124,6 +124,95 @@ topics, "already sorted," one ASL-basics topic per line) as the new
 
 ---
 
+## Rev 8 — Teaching-rhythm pass (2026-08-25) — ✅ done
+
+Implements the reference-app *teaching method* (PERSONALIZE → TEACH →
+SEE A REAL SIGNER → RECALL → FEEDBACK → OPTIONAL PRACTICE → CONTINUE),
+not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
+"Rev 8." Edit surface: `js/lesson.js`, `pages/lesson.html`,
+`css/lesson.css` only — `js/data.js`/`js/learn.js`/`js/engine/progress.js`/
+`js/auth.js` were read for context, not modified.
+
+- [x] **Tighter recall cadence** — `QUICK_CHECK_CLUSTER_SIZE`: 3 → 1
+  (`js/lesson.js`). Quick Check now fires after every sign instead of
+  every 3rd. No other logic changed; the `totalSigns <= 1` skip guard
+  and the "always show on the last sign" rule both still hold, just
+  now trivially (every sign already is a checkpoint at cluster size 1).
+- [x] **Recall variety — picture-identification format** —
+  `buildQuickCheckQuestion()` extended to alternate (~50/50) between
+  the original text-description prompt and a new picture prompt using
+  each sign's existing `imageUrl`. Renders via a new `#quick-check-image`
+  in `pages/lesson.html`, with an `onerror` fallback to avoid ever
+  showing a broken image. **Not implemented this session** (flagged,
+  not attempted): word→video matching, phrase completion,
+  sign/word-pair matching — D's other bullets. Would extend the same
+  function/card again rather than a new mechanism, if picked up later.
+- [x] **Light personalization** — new `initPersonalization()` +
+  `#personalize-card`/`#personalize-summary` (`pages/lesson.html`).
+  Two questions (who you're learning ASL for; how much time per day),
+  optional, shown once, collapsible/editable afterward. **Storage:
+  `localStorage` only** (`lw_personalize_v1` + `lw_personalize_skipped_v1`)
+  — confirmed NOT read by `isCategoryUnlocked()`, `getOrderedLiveCategories()`,
+  or any `js/engine/progress.js` function; confirmed it changes no
+  `js/data.js` UNITS/CATEGORIES ordering. Collected but not yet
+  *applied* anywhere beyond its own summary line — flagged as an open
+  follow-up below, not a bug.
+- [x] **No new teaching engine, no duplicated quiz/progress/camera
+  logic** — verified by inspection: this session added functions,
+  never modified `startAssessment()`/`handleAssessmentFrame()`/
+  `endAssessment()`/`recordSignPracticed()`/`isCategoryUnlocked()`/
+  anything in `quiz.js`, `progress.js`, or the camera/MediaPipe
+  pipeline (`cameraUtils.js`, `mediapipe.js`, `classifier.js`,
+  `renderer.js`, `dictionary.js` — none of these files were opened for
+  editing, only referenced by the pre-existing, untouched `import`
+  statements at the top of `lesson.js`).
+
+### Verification this session
+
+Differs from prior sessions' Node-syntax-only checks:
+- `node --check` on the full edited `lesson.js` — clean.
+- HTML tag-balance parse on the edited `lesson.html` (Python
+  `html.parser`, matches every open/close tag) — clean, 0 errors.
+- Brace-balance check on the edited `lesson.css` — 68/68 matched.
+- **DOM hook cross-reference**: every `getElementById()` call in the
+  edited `lesson.js` resolves to a real static id in `lesson.html`,
+  except `btn-personalize-edit` — confirmed intentional, it's created
+  dynamically via `innerHTML` inside `closePersonalizeCard()`, same
+  pattern the pre-existing Quick Check option buttons already use.
+  Zero duplicate ids introduced (one pre-existing false-positive
+  checked: `classifier-warn` appears twice in the file, but the first
+  occurrence is inside an HTML *comment*, not a second real element).
+- **jsdom runtime harness (new for this session)** — actually executes
+  the unmodified new/changed code (the exact DOM-refs-through-
+  `initPersonalization()` slice of the real file, extracted verbatim,
+  not retyped) against a real DOM built from the real `pages/lesson.html`,
+  with `window.LWData` mocked (5 signs, all with `imageUrl`) and real
+  `localStorage`. 14 test groups / 25 assertions, **all passing**:
+  Quick Check shape/format-variety/option-rendering/click-feedback (7
+  assertions), and the full personalization lifecycle — first-visit
+  card display, Save-button enable/disable, persistence, no-re-nag on
+  repeat "load," Edit pre-fill, Skip path, no-re-nag after skip (18
+  assertions). This is real DOM/interaction coverage, closer to an
+  integration test than a syntax check — but still not a real browser
+  (no actual webcam; the camera/MediaPipe import chain was stubbed out
+  since this pass's code never calls into it).
+- **Not done**: real-browser check (keyboard tab order, screen reader,
+  actual webcam alongside the new personalization card's layout,
+  visual regression on the `.quick-check__image` sizing at narrow
+  viewports). Same limitation flagged in every prior session's entry.
+
+### What's still open
+
+- D's other recall-variety formats (word/video matching, phrase
+  completion, sign/word matching) — not attempted, see above.
+- Personalization answers aren't used anywhere beyond their own
+  summary line yet (no copy elsewhere adapts to the learner's stated
+  audience/practice-time) — a reasonable next step, deliberately out
+  of this session's edit surface.
+- Real-browser verification, per above.
+
+---
+
 ## Phases 1–6 — ✅ all app-code phases done
 
 - [x] **Phase 0 — Planning** (2026-08-17). Adviser feedback → unit map;
@@ -170,6 +259,21 @@ topics, "already sorted," one ASL-basics topic per line) as the new
 > list to match the new front-of-the-line unit order is flagged as a
 > next step in the "Rev 7" section above, not done here.
 
+- [x] **Actions/Hand Actions/Communication (Units 9–11) content pass —
+  2026-08-25 (Rev 8).** These 3 categories previously had `words[]`
+  previews but were `comingSoon:true` with zero real `data.js` content
+  (part of the "66/72 units have zero content" gap this section used
+  to describe — now 63/72). All 41 words across the 3 categories now
+  have full ASLU-checked SIGNS entries and matching `dictionary.js`
+  `disabled:true` placeholders; all 3 flipped to `comingSoon:false`.
+  Also closed the standing `people` (Unit 6) `I`/`HE`/`SHE` flag as
+  part of the same pass (dropped from `words[]`, not given entries —
+  see that category's comment). **Still capture/retrain-blocked, same
+  as everything else below** — this was a content/lesson-copy pass
+  only, no model work; none of these 41 signs (or the 6 relocated
+  ones — `GO`/`COME`/`STOP`/`DRINK`/`SLEEP`/`CRY`) have a trained
+  model class. See `AI_MEMORY.md`'s 2026-08-25 session log entry for
+  the full relocation/dedup reasoning.
 - [ ] Capture + retrain 16 Essential Words: `PLEASE`, `SORRY`, `YES`,
   `NO`, `HELP`, `GOOD`, `BAD`, `WHAT`, `WHERE`, `WHY`, `WATER`, `FOOD`,
   `GO`, `COME`, `BATHROOM` (was tracked as `RESTROOM` — see
@@ -196,6 +300,11 @@ topics, "already sorted," one ASL-basics topic per line) as the new
   rather than duplicated. **Still capture/retrain-blocked** — none of
   the 16 have a trained model class; only their `data.js`/`dictionary.js`
   bookkeeping changed, not their detection status.
+  **Update (2026-08-25):** `GO`/`COME` relocated `data.js` category
+  (`requests`→`actions`, Unit 9) as part of that session's content
+  pass — still the same signIds, same capture-blocked status, just a
+  different lesson now owns the content. See Phase 7's new Actions/
+  Hand Actions/Communication item above.
 - [ ] Capture + retrain 5 phrase placeholders: `NICE TO MEET YOU`,
   `HOW ARE YOU`, `WHERE IS`, `I AM LEARNING`, `WHAT IS YOUR NAME`.
 - [ ] Capture + retrain `HELLO`/`THANK YOU` (Unit 4) and `HOT`/`COLD`
@@ -746,6 +855,13 @@ find bugs."
   Joshua/Omen rather than made unilaterally here.
 - [ ] Later dashboard stat tiles: current streak, review due, best
   assessment score.
+- [ ] **Content queue continuation (2026-08-25):** after Actions/Hand
+  Actions/Communication (Units 9–11, done this session), the next
+  `comingSoon:true` category in unit order is `body` (Unit 12) — not
+  started. `classroom_actions` (Unit 31) is also flagged as needing a
+  pass despite already being `comingSoon:false` — see the 2026-08-25
+  session log entry in `AI_MEMORY.md` for why (zero real signs despite
+  being live, `words[]` overlaps this session's new Actions/
+  Communication content).
 
 *(Add new session's tasks here.)*
-</file>

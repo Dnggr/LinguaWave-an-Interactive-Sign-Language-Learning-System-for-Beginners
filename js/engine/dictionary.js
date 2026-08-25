@@ -572,6 +572,61 @@ export const SIGN_DICTIONARY = {
   'HOW':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'how.gif',    detectionType:'motion', disabled:true },
   'STOP':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'stop.gif',   detectionType:'motion', disabled:true },
 
+  // REV 8 (2026-08-25): disabled placeholders for the new data.js content
+  // added this session (Actions/Hand Actions/Communication, Units 9-11).
+  // Same rationale as the HELLO/HOT-COLD/Essential-Words fixes above —
+  // a data.js SIGNS entry with no matching key here would make
+  // getAllowedLabelsForSign() fall back to unrestricted matching instead
+  // of a defined (disabled) category, which looks like an oversight to
+  // the next person reading this file. No new detection/training work
+  // is implied by adding these — they stay disabled until Phase 7
+  // capture + retraining actually happens for this content.
+  'WAIT':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'wait.gif',   detectionType:'motion', disabled:true },
+  'SIT':    { fingerStates:[0,1,1,0,0], category:'word', imageFile:'sit.gif',    detectionType:'motion', disabled:true },
+  'STAND':  { fingerStates:[0,1,1,0,0], category:'word', imageFile:'stand.gif',  detectionType:'motion', disabled:true },
+  'WALK':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'walk.gif',   detectionType:'motion', disabled:true },
+  'RUN':    { fingerStates:[1,1,0,0,0], category:'word', imageFile:'run.gif',    detectionType:'motion', disabled:true },
+  'JUMP':   { fingerStates:[0,1,1,0,0], category:'word', imageFile:'jump.gif',   detectionType:'motion', disabled:true },
+  'EAT':    { fingerStates:[1,1,1,1,0], category:'word', imageFile:'eat.gif',    detectionType:'motion', disabled:true },
+  'DRINK':  { fingerStates:[1,1,0,0,0], category:'word', imageFile:'drink.gif',  detectionType:'motion', disabled:true },
+  'SLEEP':  { fingerStates:[1,1,1,1,1], category:'word', imageFile:'sleep.gif',  detectionType:'motion', disabled:true },
+  'WAKE':   { fingerStates:[1,1,0,0,0], category:'word', imageFile:'wake.gif',   detectionType:'motion', disabled:true },
+  'PLAY':   { fingerStates:[1,0,0,0,1], category:'word', imageFile:'play.gif',   detectionType:'motion', disabled:true },
+  'LOOK':   { fingerStates:[0,1,1,0,0], category:'word', imageFile:'look.gif',   detectionType:'motion', disabled:true },
+  'SEE':    { fingerStates:[0,1,1,0,0], category:'word', imageFile:'see.gif',    detectionType:'motion', disabled:true },
+  'LISTEN': { fingerStates:[1,1,1,1,1], category:'word', imageFile:'listen.gif', detectionType:'motion', disabled:true },
+  'TALK':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'talk.gif',   detectionType:'motion', disabled:true },
+  'READ':   { fingerStates:[0,1,1,0,0], category:'word', imageFile:'read.gif',   detectionType:'motion', disabled:true },
+  'WRITE':  { fingerStates:[1,1,0,0,0], category:'word', imageFile:'write.gif',  detectionType:'motion', disabled:true },
+  'DRAW':   { fingerStates:[0,0,0,0,1], category:'word', imageFile:'draw.gif',   detectionType:'motion', disabled:true },
+  'SING':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'sing.gif',   detectionType:'motion', disabled:true },
+  'DANCE':  { fingerStates:[0,1,1,0,0], category:'word', imageFile:'dance.gif',  detectionType:'motion', disabled:true },
+  'COOK':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'cook.gif',   detectionType:'motion', disabled:true },
+  'CLEAN':  { fingerStates:[1,1,1,1,1], category:'word', imageFile:'clean.gif',  detectionType:'motion', disabled:true },
+  'THINK':  { fingerStates:[0,1,0,0,0], category:'word', imageFile:'think.gif',  detectionType:'motion', disabled:true },
+  'CRY':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'cry.gif',    detectionType:'motion', disabled:true },
+  'LAUGH':  { fingerStates:[0,1,0,0,0], category:'word', imageFile:'laugh.gif',  detectionType:'motion', disabled:true },
+  'RIDE':   { fingerStates:[0,1,1,0,0], category:'word', imageFile:'ride.gif',   detectionType:'motion', disabled:true },
+  'BATH':   { fingerStates:[1,0,0,0,0], category:'word', imageFile:'bath.gif',   detectionType:'motion', disabled:true },
+  'GIVE':   { fingerStates:[1,1,1,1,0], category:'word', imageFile:'give.gif',   detectionType:'motion', disabled:true },
+  'TAKE':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'take.gif',   detectionType:'motion', disabled:true },
+  'PUT':    { fingerStates:[1,1,1,1,0], category:'word', imageFile:'put.gif',    detectionType:'motion', disabled:true },
+  'GET':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'get.gif',    detectionType:'motion', disabled:true },
+  'BRING':  { fingerStates:[1,1,1,1,1], category:'word', imageFile:'bring.gif',  detectionType:'motion', disabled:true },
+  'CARRY':  { fingerStates:[1,1,1,1,1], category:'word', imageFile:'carry.gif',  detectionType:'motion', disabled:true },
+  'PUSH':   { fingerStates:[1,1,1,1,1], category:'word', imageFile:'push.gif',   detectionType:'motion', disabled:true },
+  'PULL':   { fingerStates:[0,0,0,0,0], category:'word', imageFile:'pull.gif',   detectionType:'motion', disabled:true },
+  'THROW':  { fingerStates:[1,1,1,0,0], category:'word', imageFile:'throw.gif',  detectionType:'motion', disabled:true },
+  'CATCH':  { fingerStates:[1,1,1,1,1], category:'word', imageFile:'catch.gif',  detectionType:'motion', disabled:true },
+  'PICK':   { fingerStates:[1,1,1,0,0], category:'word', imageFile:'pick.gif',   detectionType:'motion', disabled:true },
+  'ASK':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'ask.gif',    detectionType:'motion', disabled:true },
+  'ANSWER': { fingerStates:[0,1,0,0,0], category:'word', imageFile:'answer.gif', detectionType:'motion', disabled:true },
+  'TELL':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'tell.gif',   detectionType:'motion', disabled:true },
+  'SHOW':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'show.gif',   detectionType:'motion', disabled:true },
+  'SHARE':  { fingerStates:[0,1,1,1,1], category:'word', imageFile:'share.gif',  detectionType:'motion', disabled:true },
+  'TEACH':  { fingerStates:[1,1,1,1,0], category:'word', imageFile:'teach.gif',  detectionType:'motion', disabled:true },
+  'SIGN':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'sign.gif',   detectionType:'motion', disabled:true },
+
   // ══════════════════════════════════════════════════════════
   // INTERMEDIATE LEVEL — PHRASES (all motion, disabled until model trained)
   // ══════════════════════════════════════════════════════════

@@ -416,6 +416,97 @@ restructure, not a training session).
 
 ---
 
+## Rev 8 — Teaching-rhythm pass: personalization + tighter recall loop (2026-08-25)
+
+**Status: done, this session.** Additive only — no unit/category/sign
+ids, no ordering, no unlock logic touched. Brings LinguaWave's existing
+lesson mechanics (already most of the way there) into a tighter
+PERSONALIZE → TEACH → SEE A REAL SIGNER → RECALL → FEEDBACK → OPTIONAL
+PRACTICE → CONTINUE rhythm, per a product request to borrow the
+*teaching method* of a reference ASL app (not its branding, UI, AI/
+bot, or visual design — none of that was touched or copied).
+
+### Why
+
+The request: don't dump a vocabulary list before asking the learner to
+recall anything; teach one sign, then recall it immediately, with
+immediate feedback, before moving on. `pages/lesson.html` already had
+almost this exact shape (image → description/tips → video → Quick
+Check → optional camera practice → Prev/Next) from Rev 4 Phase 6/Rev 5
+— this pass is a small, targeted tightening of what already existed,
+not a rebuild. See `PIVOT_CHECKLIST.md` → "Rev 8" for the fuller
+before/after reasoning per item.
+
+### What changed
+
+- **`js/lesson.js` — `QUICK_CHECK_CLUSTER_SIZE`: 3 → 1.** This one
+  constant is what actually converts the lesson loop from "Quick Check
+  every 3rd sign" to "Quick Check after every sign" — `shouldShowQuickCheck()`
+  and `buildQuickCheckQuestion()`'s cluster logic were already generic
+  over this constant and needed no other change. Categories with only
+  1 sign still correctly skip Quick Check entirely (pre-existing
+  `totalSigns <= 1` guard, untouched).
+- **`buildQuickCheckQuestion()` extended (not duplicated) for recall
+  variety** — per the reference mechanics list's "identify a sign from
+  a signer image": ~50% of the time the question now shows the sign's
+  own `imageUrl` (same field the lesson's own reference image already
+  renders) and asks which word it is, instead of always reading a text
+  description. Falls back to the text format automatically if a sign
+  has no image, so this can never render a broken question.
+  `showQuickCheck()` renders the new optional `#quick-check-image`,
+  with an `onerror` fallback (same defensive pattern `#lesson-image`
+  already used) instead of a broken-image icon.
+- **New: light personalization** (`initPersonalization()` +
+  `#personalize-card`/`#personalize-summary` in `lesson.html`) — the
+  PERSONALIZE step. Two optional questions ("who do you want to use
+  ASL with?" / "how much time can you practice?"), shown at most once
+  (first-ever lesson visit with no saved answer and no prior skip),
+  collapsing to a one-line editable summary afterward. **Storage is a
+  single `localStorage` key (`lw_personalize_v1`, plus a
+  `lw_personalize_skipped_v1` flag)** — deliberately not a new
+  Firestore field, not a `js/data.js` structure, and never read by
+  `js/engine/progress.js`, `isCategoryUnlocked()`, or any ordering
+  logic. This is learner *context*, not a proficiency level; per the
+  request's own instruction, it must never (and does not) affect
+  curriculum ordering or unlocks.
+- **No change** to `SEE A REAL SIGNER` (the existing `#lesson-video`
+  block already covers this — reused as-is) or to the optional-camera-
+  practice step (`#btn-start-assessment` / the whole `.camera-panel` —
+  reused as-is, still never a pass/fail gate). `js/data.js`,
+  `js/learn.js`, `js/engine/progress.js`, `js/auth.js`, `pages/learn.html`,
+  `pages/quiz.html`, `js/quiz.js` were **not opened for editing** this
+  session — read for context only, confirming no dependency actually
+  required touching them.
+
+### What's still open
+
+- Recall-variety formats D's other bullets ("choose which video/sign
+  represents a word," "phrase completion," "sign/word matching") are
+  not implemented — only the picture-identification variant was added
+  this session. Flagged as a natural follow-up inside the same
+  `buildQuickCheckQuestion()` extension point, not started because the
+  request framed all of D as "where practical," not required.
+- Personalization answers are collected but not yet *used* anywhere
+  beyond the one-line summary reflection (e.g. no copy elsewhere
+  actually adapts to "learning for family" vs. "learning for work").
+  Deliberately scoped this way — using it more widely would touch more
+  files than this pass's edit surface justified; flagged as a
+  reasonable next step, not an oversight.
+- Not verified in a real browser — same limitation as every prior
+  session. This session's verification differs from prior sessions'
+  Node-only syntax checks, though: a jsdom-based runtime harness
+  actually executed the unmodified new/changed code (DOM refs through
+  `initPersonalization()`, extracted verbatim from the real file)
+  against a real DOM built from the real `pages/lesson.html`, with
+  simulated clicks and `localStorage` — 14 test groups / 25 assertions,
+  all passing. See `AI_MEMORY.md`'s Session Log for specifics. This is
+  real DOM/interaction coverage, not just parse-level syntax checking,
+  but it still isn't a real browser (no actual webcam/MediaPipe
+  involved, camera imports were stubbed out since this pass never
+  touches that code path).
+
+---
+
 ## Dashboard design principles
 
 (Realized in code as of the 2026-08-21/22 Priority 0–2 pass — see
@@ -588,4 +679,3 @@ used at the top of every guarded page.
 | `--font-display` | Space Grotesk | Headings |
 | `--font-body`    | Inter | Body text |
 | Pass threshold | 80% | Quiz assessment |
-</file>
