@@ -1,5 +1,17 @@
 # Rev 8 Personalization Feature Checklist
 
+> **⛔ REMOVED / CANCELLED — 2026-08-26.** The personalization feature
+> this checklist tracks (`#personalize-card`/`#personalize-summary`,
+> `initPersonalization()`) has been deleted from the app entirely, per
+> explicit request — not moved to the Dashboard, not replaced with any
+> other onboarding/preference system. See **Phase 7** below for what
+> was removed and its verification, and `REV8_TEACHING_AUDIT.md` → §12
+> for the full reasoning. Phases 1–5 below are preserved unedited as
+> the historical record of the feature's audit, bug fixes, and
+> verification while it existed — none of that work was wrong, the
+> feature is just gone now. **Phase 6 is cancelled outright** (see its
+> own note) — there's nothing left to move to the Dashboard.
+
 > Scope: Rev 8 learner-context personalization.
 > This checklist covers the current personalization feature and its
 > planned follow-up. It does NOT change curriculum ordering, unlocks,
@@ -229,9 +241,13 @@
 
 ---
 
-## Phase 6 — Future Decision: Dashboard Ownership 🔲
+## Phase 6 — Future Decision: Dashboard Ownership 🚫 CANCELLED — 2026-08-26
 
-> Do NOT implement this phase yet.
+> **Cancelled, not deferred.** The 2026-08-26 removal request was
+> explicit that personalization not be relocated to the Dashboard —
+> so this phase's entire premise (deciding *where* it should live) no
+> longer applies. Left unchecked/unedited below as the record of what
+> was being considered before the removal decision superseded it.
 
 - [ ] Determine whether personalization answers will actually affect
       learner experience.
@@ -247,7 +263,63 @@
 
 ---
 
+## Phase 7 — Removal ✅ done 2026-08-26
+
+> Full reasoning in `REV8_TEACHING_AUDIT.md` → §12. This section is
+> the terse what/verification record, matching this checklist's own
+> style.
+
+- [x] Delete `#personalize-card`, `#personalize-summary`, and the
+      "LIGHT PERSONALIZATION" block comment from `pages/lesson.html`.
+- [x] Delete `initPersonalization()`, its call site in `boot()`, and
+      every personalization storage/UI function from `js/lesson.js`
+      (`getCurrentUid`, `loadPersonalization`, `savePersonalization`,
+      `markPersonalizationSkipped`, `wasPersonalizationSkipped`,
+      `personalizeSummaryText`, `updatePersonalizeSaveEnabled`,
+      `renderPersonalizeSelection`, `openPersonalizeCard`,
+      `closePersonalizeCard`, `wirePersonalizeControls`,
+      `hasShownPersonalizationChromeThisSession`,
+      `markPersonalizationChromeShownThisSession`), plus all
+      `PERSONALIZE_*` constants and the DOM element refs.
+- [x] Delete `.personalize-card__*`/`.personalize-summary*` rules from
+      `css/lesson.css`.
+- [x] Trim the skip-link comment in `lesson.html` (dead reasoning about
+      personalization's former DOM position) — did NOT revert the
+      `tabindex="-1"` retarget itself, since that's a harmless,
+      unrelated accessibility fix from Phase 2.2, not something the
+      removal needed to touch.
+- [x] Grep all three edited files for `personaliz`/`PERSONALIZE_`/
+      `lw_personalize` — zero remaining matches.
+- [x] `node --check` on the edited `lesson.js` — clean.
+- [x] HTML tag-balance parse on the edited `lesson.html` — 0 errors.
+- [x] CSS brace-balance on the edited `lesson.css` — 59/59.
+- [x] DOM-hook cross-reference (`getElementById()` calls vs. real
+      static ids) — clean; the one pre-existing `btn-personalize-edit`
+      dynamic-id exception from Phases 2–3 is gone too (the function
+      that created it no longer exists).
+- [x] jsdom runtime harness against the real edited files — 30
+      structural assertions (every removed id/class confirmed absent,
+      every kept id — Quick Check, camera, nav, sidebar — confirmed
+      present) plus a full top-to-bottom execution of the real edited
+      `lesson.js` against the real edited `lesson.html`, zero runtime
+      errors, plus existence/no-throw checks on the untouched Quick
+      Check/sidebar functions.
+- [x] Confirmed NOT touched: Quick Check (cluster-size + picture-prompt,
+      both from this same Rev 8 session), camera/MediaPipe pipeline,
+      Prev/Next nav, course sidebar, `js/auth.js`, `js/data.js`,
+      `js/engine/progress.js`, `js/learn.js`, curriculum/unlock/progress
+      logic.
+- [ ] Real-browser check (keyboard tab order, screen reader) — **not
+      done**, same flagged gap as every prior Rev 8 session.
+
+---
+
 ## Definition of Done
+
+> **Superseded 2026-08-26** — this was the Definition of Done for the
+> *feature*, written while it still existed. Preserved unedited below
+> as the historical record of what "done" meant for Phases 1–5. The
+> feature's actual final state is Phase 7 above (removed, verified).
 
 - [x] Personalization is isolated to learner context.
 - [x] User preferences are correctly UID-scoped.

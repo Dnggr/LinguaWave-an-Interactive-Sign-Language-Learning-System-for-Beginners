@@ -416,15 +416,31 @@ restructure, not a training session).
 
 ---
 
-## Rev 8 — Teaching-rhythm pass: personalization + tighter recall loop (2026-08-25)
+## Rev 8 — Teaching-rhythm pass: tighter recall loop (2026-08-25; personalization removed 2026-08-26)
 
-**Status: done, this session.** Additive only — no unit/category/sign
-ids, no ordering, no unlock logic touched. Brings LinguaWave's existing
+**Status: done, this session (2026-08-25); personalization portion
+removed 2026-08-26 — see the note below and `REV8_TEACHING_AUDIT.md` →
+§12 for full reasoning.** Additive only — no unit/category/sign
+ids, no ordering, no unlock logic touched, then or since. Brings LinguaWave's existing
 lesson mechanics (already most of the way there) into a tighter
 PERSONALIZE → TEACH → SEE A REAL SIGNER → RECALL → FEEDBACK → OPTIONAL
 PRACTICE → CONTINUE rhythm, per a product request to borrow the
 *teaching method* of a reference ASL app (not its branding, UI, AI/
 bot, or visual design — none of that was touched or copied).
+
+> **Personalization removed, 2026-08-26.** The PERSONALIZE step
+> described below (`initPersonalization()`, `#personalize-card`/
+> `#personalize-summary`, `lw_personalize_v1`/`lw_personalize_skipped_v1`)
+> no longer exists in the app — removed per explicit request, not
+> relocated to the Dashboard, not replaced with any other onboarding/
+> preference system. **This does not alter the teaching loop, curriculum,
+> progress, unlocks, or assessment system** — the lesson now goes
+> straight to TEACH (sign image/description/tips) → SEE A REAL SIGNER
+> (video) → RECALL (Quick Check, unchanged) → FEEDBACK → OPTIONAL
+> PRACTICE (camera) → CONTINUE, same mechanics as below minus the one
+> step. The rest of this section (What changed / What's still open) is
+> preserved as the historical record of what Rev 8 originally shipped;
+> read the personalization bullet below as *removed*, not current.
 
 ### Why
 
@@ -456,19 +472,17 @@ before/after reasoning per item.
   `showQuickCheck()` renders the new optional `#quick-check-image`,
   with an `onerror` fallback (same defensive pattern `#lesson-image`
   already used) instead of a broken-image icon.
-- **New: light personalization** (`initPersonalization()` +
-  `#personalize-card`/`#personalize-summary` in `lesson.html`) — the
-  PERSONALIZE step. Two optional questions ("who do you want to use
-  ASL with?" / "how much time can you practice?"), shown at most once
-  (first-ever lesson visit with no saved answer and no prior skip),
-  collapsing to a one-line editable summary afterward. **Storage is a
-  single `localStorage` key (`lw_personalize_v1`, plus a
-  `lw_personalize_skipped_v1` flag)** — deliberately not a new
-  Firestore field, not a `js/data.js` structure, and never read by
-  `js/engine/progress.js`, `isCategoryUnlocked()`, or any ordering
-  logic. This is learner *context*, not a proficiency level; per the
-  request's own instruction, it must never (and does not) affect
-  curriculum ordering or unlocks.
+- ~~**New: light personalization**~~ — **REMOVED 2026-08-26, see the
+  note above.** Was: `initPersonalization()` + `#personalize-card`/
+  `#personalize-summary` in `lesson.html`, the PERSONALIZE step. Two
+  optional questions ("who do you want to use ASL with?" / "how much
+  time can you practice?"), shown at most once (first-ever lesson
+  visit with no saved answer and no prior skip), collapsing to a
+  one-line editable summary afterward. Storage was a single
+  `localStorage` key (`lw_personalize_v1`, plus a
+  `lw_personalize_skipped_v1` flag) — never a Firestore field, never a
+  `js/data.js` structure, never read by `js/engine/progress.js`,
+  `isCategoryUnlocked()`, or any ordering logic.
 - **No change** to `SEE A REAL SIGNER` (the existing `#lesson-video`
   block already covers this — reused as-is) or to the optional-camera-
   practice step (`#btn-start-assessment` / the whole `.camera-panel` —
@@ -485,13 +499,10 @@ before/after reasoning per item.
   not implemented — only the picture-identification variant was added
   this session. Flagged as a natural follow-up inside the same
   `buildQuickCheckQuestion()` extension point, not started because the
-  request framed all of D as "where practical," not required.
-- Personalization answers are collected but not yet *used* anywhere
-  beyond the one-line summary reflection (e.g. no copy elsewhere
-  actually adapts to "learning for family" vs. "learning for work").
-  Deliberately scoped this way — using it more widely would touch more
-  files than this pass's edit surface justified; flagged as a
-  reasonable next step, not an oversight.
+  request framed all of D as "where practical," not required. Still
+  open — unaffected by the 2026-08-26 personalization removal.
+- ~~Personalization answers are collected but not yet *used*
+  anywhere...~~ — **moot, feature removed 2026-08-26.**
 - Not verified in a real browser — same limitation as every prior
   session. This session's verification differs from prior sessions'
   Node-only syntax checks, though: a jsdom-based runtime harness
@@ -503,7 +514,11 @@ before/after reasoning per item.
   real DOM/interaction coverage, not just parse-level syntax checking,
   but it still isn't a real browser (no actual webcam/MediaPipe
   involved, camera imports were stubbed out since this pass never
-  touches that code path).
+  touches that code path). **The personalization-specific coverage in
+  that harness is now moot** (feature removed) — the 2026-08-26
+  removal session's own jsdom harness (30 structural + full top-to-
+  bottom execution assertions, see `AI_MEMORY.md`) is the current
+  verification record for what remains.
 
 ---
 

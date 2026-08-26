@@ -126,6 +126,16 @@ topics, "already sorted," one ASL-basics topic per line) as the new
 
 ## Rev 8 — Teaching-rhythm pass (2026-08-25) — ✅ done
 
+> **2026-08-26 (personalization removal):** the "Light personalization"
+> item below was removed wholesale this session — see
+> `Rev8_Personalization_Feature_Checklist.md` and
+> `REV8_TEACHING_AUDIT.md`'s updated "Current decision" for the full
+> reasoning. Struck through, not deleted, so this section still
+> accurately reflects what Rev 8 shipped and what happened to it.
+> Everything else in this Rev 8 section (tighter recall cadence,
+> picture-identification Quick Check format) is UNCHANGED and still
+> live — personalization was the only Rev 8 item touched.
+
 Implements the reference-app *teaching method* (PERSONALIZE → TEACH →
 SEE A REAL SIGNER → RECALL → FEEDBACK → OPTIONAL PRACTICE → CONTINUE),
 not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
@@ -147,18 +157,13 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   not attempted): word→video matching, phrase completion,
   sign/word-pair matching — D's other bullets. Would extend the same
   function/card again rather than a new mechanism, if picked up later.
-- [x] **Light personalization** — new `initPersonalization()` +
-  `#personalize-card`/`#personalize-summary` (`pages/lesson.html`).
-  Two questions (who you're learning ASL for; how much time per day),
-  optional, shown once per learner, collapsible/editable afterward.
-  **Storage: `localStorage` only, uid-scoped as of 2026-08-26** (see
-  "Audit fixes" sub-section below) — `lw_personalize_v1` +
-  `lw_personalize_skipped_v1` — confirmed NOT read by
-  `isCategoryUnlocked()`, `getOrderedLiveCategories()`, or any
-  `js/engine/progress.js` function; confirmed it changes no
-  `js/data.js` UNITS/CATEGORIES ordering. Collected but not yet
-  *applied* anywhere beyond its own summary line — flagged as an open
-  follow-up below, not a bug.
+- [x] ~~**Light personalization**~~ — **REMOVED 2026-08-26, see below.**
+  Was: new `initPersonalization()` + `#personalize-card`/
+  `#personalize-summary` (`pages/lesson.html`). Two questions (who
+  you're learning ASL for; how much time per day), optional, shown
+  once per learner, collapsible/editable afterward. Storage was
+  `localStorage`, uid-scoped as of 2026-08-26's audit fixes —
+  `lw_personalize_v1` + `lw_personalize_skipped_v1`.
 - [x] **No new teaching engine, no duplicated quiz/progress/camera
   logic** — verified by inspection: this session added functions,
   never modified `startAssessment()`/`handleAssessmentFrame()`/
@@ -170,6 +175,12 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   statements at the top of `lesson.js`).
 
 ### Audit fixes — 2026-08-26 (see `REV8_TEACHING_AUDIT.md` for full reasoning)
+
+> **Moot as of the 2026-08-26 personalization-removal session** — the
+> feature these fixes patched no longer exists (see the struck-through
+> item above). Left in place, unedited, as the historical record of
+> what shipped and was fixed before removal — nothing below should be
+> read as still-active behavior.
 
 `REV8_TEACHING_AUDIT.md` flagged two concrete bugs in the personalization
 feature above; both fixed this session, `js/lesson.js`/`pages/lesson.html`
@@ -244,17 +255,44 @@ Differs from prior sessions' Node-syntax-only checks:
 ### What's still open
 
 - D's other recall-variety formats (word/video matching, phrase
-  completion, sign/word matching) — not attempted, see above.
-- Personalization answers aren't used anywhere beyond their own
-  summary line yet (no copy elsewhere adapts to the learner's stated
-  audience/practice-time) — a reasonable next step, deliberately out
-  of this session's edit surface.
-- Personalization still lives on `lesson.html`, not the Dashboard —
-  explicitly out of scope for the 2026-08-26 audit-fixes session per
-  that session's own instructions, not forgotten.
-- Real-browser verification, per above (now also covers the
-  2026-08-26 audit fixes — no new browser-testing gap introduced, just
-  not yet closed).
+  completion, sign/word matching) — not attempted, see above. Still
+  open — unaffected by the personalization removal.
+- ~~Personalization answers aren't used anywhere beyond their own
+  summary line yet...~~ — **moot, feature removed 2026-08-26.**
+- ~~Personalization still lives on `lesson.html`, not the Dashboard...~~
+  — **moot, feature removed 2026-08-26** (removal request was explicit
+  that it not be relocated to the Dashboard either — see
+  `Rev8_Personalization_Feature_Checklist.md`).
+- Real-browser verification for the Quick Check picture-prompt work
+  above (keyboard tab order, screen reader, `.quick-check__image`
+  sizing at narrow viewports) — still open, unaffected by the removal.
+
+### Personalization removal — 2026-08-26
+
+Removed the entire "Light personalization" feature (question card,
+collapsed summary, both storage keys, all supporting JS/CSS/HTML) per
+explicit request — not relocated, not replaced with any other
+onboarding/preference system. Full reasoning, what was deleted, and
+verification: `REV8_TEACHING_AUDIT.md` → "Current decision" and
+`Rev8_Personalization_Feature_Checklist.md` (now marked
+REMOVED/CANCELLED). One-line summary: `js/lesson.js` lost the DOM refs,
+storage helpers (`loadPersonalization`/`savePersonalization`/
+`markPersonalizationSkipped`/`wasPersonalizationSkipped`/
+`getCurrentUid`), UI functions (`openPersonalizeCard`/
+`closePersonalizeCard`/`wirePersonalizeControls`/
+`renderPersonalizeSelection`/`updatePersonalizeSaveEnabled`/
+`personalizeSummaryText`), and `initPersonalization()` plus its call
+site in `boot()`; `pages/lesson.html` lost `#personalize-card`/
+`#personalize-summary` and their block comment; `css/lesson.css` lost
+the `.personalize-card__*`/`.personalize-summary*` rules. Quick Check
+(both this session's cluster-size and picture-prompt work above),
+camera, nav, sidebar, and everything in `js/data.js`/`js/learn.js`/
+`js/engine/progress.js`/`js/auth.js` are unaffected — verified via
+`node --check`, HTML/CSS balance checks, a DOM-hook cross-reference,
+and a jsdom runtime harness executing the real edited files (30
+structural assertions + a full top-to-bottom execution of the real
+`lesson.js` against the real edited `lesson.html` with zero errors).
+Not browser-tested, same flagged gap as every prior session.
 
 ---
 

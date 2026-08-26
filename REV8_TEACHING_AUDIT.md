@@ -6,20 +6,27 @@
 > If the implementation changes, update this file — don't let it go
 > stale and get trusted as permanent truth.
 
-- **Status:** Analysis complete AND both identified fixes implemented
-  + verified this pass. See §11 for the implementation result. No
-  Dashboard move — still deferred, per §6/§8 below, unchanged.
-- **Date:** 2026-08-26 (audit) / 2026-08-26 (implementation, same day,
-  separate session)
+- **Status:** Analysis complete, both identified fixes implemented +
+  verified (§11), and the feature itself has since been **removed
+  entirely** (§12, 2026-08-26, separate session). This file is kept as
+  the historical reasoning/handoff record for §1–§11; §12 is the final
+  update.
+- **Date:** 2026-08-26 (audit) / 2026-08-26 (fix implementation) /
+  2026-08-26 (removal, separate same-day session)
 - **Scope:** Rev 8's personalization card (`#personalize-card`/
   `#personalize-summary`, `initPersonalization()` in `js/lesson.js`) —
-  specifically *where it should live*, not the Quick Check changes
-  (those are settled, low-risk, and not revisited here).
-- **Current decision:** No move yet. Personalization stays in
-  `lesson.html`/`lesson.js` for now. The two small in-place fixes
-  recommended below are now DONE — see §11.
-- **Open questions:** see §7 (one resolved by the implementation, two
-  still genuinely open product calls).
+  originally *where it should live*, not the Quick Check changes
+  (those are settled, low-risk, and not revisited here). Superseded by
+  §12: the feature was removed rather than moved.
+- **Current decision:** **Personalization removed** (§12). Not moved
+  to the Dashboard, not replaced with any other onboarding/preference
+  system — removed per explicit request. §1–§11 below are preserved as
+  the record of the feature's design, the two bugs found and fixed in
+  it, and the reasoning at the time — none of that reasoning was wrong,
+  the product decision simply changed after it was written.
+- **Open questions:** see §7 — moot now (§12); the Dashboard-move
+  question in particular no longer applies to anything, since there's
+  no personalization left to move.
 - **Architectural constraints:** unchanged from the standing rules in
   `AI_MEMORY.md`'s header — `auth.js` out of scope; no curriculum/
   unlock/ordering changes; no new progress/order algorithm.
@@ -268,3 +275,88 @@ closed, same as every prior session's identical gap.
   feature at all, before or after this session — the jsdom harness is
   real DOM/interaction coverage but not a substitute for an actual
   screen-reader pass.
+
+---
+
+## 12. Removal — 2026-08-26 (separate session, after §11)
+
+**Why removed.** Explicit product request: the personalization card
+("Who do you want to use ASL with?" / "How much time can you
+practice?") was no longer wanted on the lesson page. The request was
+unambiguous that this is a *removal*, not a redesign — no replacement
+onboarding/preference system, and no relocation to the Dashboard (which
+§7/§8 above had flagged as the open "next step" question). That
+question is now moot: there's nothing left to move. This doesn't
+reflect anything wrong with §1–§11's analysis or the two bug fixes
+recorded there — the feature was working as designed and as fixed;
+the product decision about whether to have it at all simply changed.
+
+**What was deleted.** Everything §11 touched, plus the original Rev 8
+markup/CSS:
+- `js/lesson.js` — the DOM element refs (`personalizeCardEl` and
+  siblings), `PERSONALIZE_STORAGE_KEY`/`PERSONALIZE_SKIPPED_KEY`/
+  `PERSONALIZE_SESSION_SHOWN_KEY` and `PERSONALIZE_AUDIENCE_LABELS`,
+  every storage/UI function (`getCurrentUid`, `loadPersonalization`,
+  `savePersonalization`, `markPersonalizationSkipped`,
+  `wasPersonalizationSkipped`, `personalizeSummaryText`,
+  `updatePersonalizeSaveEnabled`, `renderPersonalizeSelection`,
+  `openPersonalizeCard`, `closePersonalizeCard`,
+  `wirePersonalizeControls`, `hasShownPersonalizationChromeThisSession`,
+  `markPersonalizationChromeShownThisSession`, `initPersonalization`),
+  and the `initPersonalization()` call site inside `boot()`.
+- `pages/lesson.html` — `#personalize-card` (both question groups,
+  Save/Skip buttons), `#personalize-summary`, and the "LIGHT
+  PERSONALIZATION" block comment above them. The skip-link comment at
+  the top of `<body>`, which explained the §11 tabindex retarget in
+  terms of personalization's DOM position, was trimmed to drop the
+  now-dead reasoning — the retarget itself (`tabindex="-1"` on
+  `.lesson-header`) was left in place since it's a harmless, unrelated
+  accessibility fix, not something the removal needed to revert.
+- `css/lesson.css` — the `.personalize-card__*`/`.personalize-summary*`
+  rule block.
+
+Confirmed NOT touched: Quick Check (both this Rev 8 session's own
+`QUICK_CHECK_CLUSTER_SIZE` change and the picture-prompt format),
+camera/MediaPipe pipeline, Prev/Next nav, course sidebar, and —
+unchanged from every session above — `js/auth.js`, `js/data.js`,
+`js/engine/progress.js`, `js/learn.js`, curriculum/unlock/progress
+logic.
+
+**Verification.** `node --check` on the edited `lesson.js`: clean.
+HTML tag-balance parse on the edited `lesson.html`: 0 errors. CSS
+brace-balance on the edited `lesson.css`: 59/59. Grep for
+`personaliz`/`PERSONALIZE_`/`lw_personalize` across all three edited
+files: zero remaining matches. DOM-hook cross-reference (every
+`getElementById()` call in `lesson.js` resolves to a real static id in
+`lesson.html`): clean, no exceptions needed anymore — removing the
+personalization functions also removed the one pre-existing
+`btn-personalize-edit` dynamic-id exception §9/§11 had to carry. jsdom
+runtime harness: 30 structural assertions (every removed id/class
+confirmed absent, every kept id — Quick Check, camera, nav, sidebar —
+confirmed present, `#lesson-content` confirmed still correctly
+targeted) plus a full top-to-bottom execution of the real edited
+`lesson.js` (imports stubbed, `boot()`'s auto-invoke suppressed so the
+harness only exercises module-level declarations) against the real
+edited `lesson.html`, zero runtime errors, and existence/no-throw
+checks on the untouched Quick Check/sidebar functions
+(`buildQuickCheckQuestion`, `showQuickCheck`, `renderCourseSidebar`,
+`updateLessonMeta`, `shuffleArr`, `escapeHtml`) confirming the removal
+didn't collaterally break anything they depend on. **Not
+browser-tested** — same flagged gap as every session above; no real
+keyboard/screen-reader pass confirming the skip-link's post-removal
+behavior in an actual browser.
+
+**Remaining uncertainty, honestly stated:**
+
+- The skip-link comment trim (see "What was deleted" above) is a
+  documentation-only change — didn't re-verify with a fresh
+  keyboard/screen-reader pass that the skip-link still behaves
+  correctly now that personalization's gone; structurally nothing
+  changed there (same id, same tabindex, same target element), so this
+  is treated as low-risk, not zero-risk.
+- No product sign-off captured here on whether the Quick Check
+  cluster-size/picture-prompt changes from the same Rev 8 session
+  should also be reconsidered now that personalization — the other
+  half of that session's "teaching rhythm" framing — is gone. Out of
+  scope for this removal (explicitly not touched), flagged as a
+  reasonable follow-up question, not a decision made either way.

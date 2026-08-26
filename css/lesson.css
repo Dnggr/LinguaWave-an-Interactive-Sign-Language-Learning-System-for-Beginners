@@ -174,35 +174,3 @@
   background: var(--clr-surface-2); border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
 }
-
-/* ── Light personalization (NEW — REV 8 teaching-rhythm pass) ────────
-   See #personalize-card / #personalize-summary in lesson.html and
-   initPersonalization() in lesson.js. Deliberately styled as its own
-   lightweight component rather than reusing .quick-check__options'
-   2-column grid — these are single-select "chip" groups (audience,
-   time), not a 4-way multiple-choice question, so a wrapping pill row
-   reads more correctly than a quiz-shaped grid. */
-.personalize-card__label { font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-2); }
-.personalize-card__options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.personalize-card__options button {
-  padding: var(--space-2) var(--space-4); background: var(--clr-surface-2);
-  border: 2px solid var(--clr-border); border-radius: var(--radius-pill);
-  color: var(--clr-text); font-size: var(--fs-sm); font-family: var(--font-body);
-  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-.personalize-card__options button:hover { border-color: var(--clr-accent); }
-.personalize-card__options button.personalize-card__option--selected {
-  border-color: var(--clr-accent); background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600;
-}
-.personalize-card__options button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
-
-.personalize-summary {
-  display: flex; align-items: center; gap: var(--space-2);
-  font-size: var(--fs-sm); color: var(--clr-text-muted);
-}
-.personalize-summary__edit {
-  background: none; border: none; padding: 0; margin: 0;
-  color: var(--clr-accent); font-size: var(--fs-sm); font-family: var(--font-body);
-  text-decoration: underline; cursor: pointer;
-}
-.personalize-summary__edit:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); border-radius: var(--radius-sm); }

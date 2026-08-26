@@ -73,22 +73,12 @@
        Uses css/style.css's shared `.skip-link` (§16), not a page-local
        copy. Must stay the very first element in <body>.
 
-       BUGFIX (REV 8 audit, 2026-08-26 — REV8_TEACHING_AUDIT.md §5
-       "Accessibility regression"): `#lesson-content`'s `tabindex="-1"`
-       used to sit on the outer two-column `.lesson-layout` wrapper, whose
-       first child is the personalization card/summary (see "LIGHT
-       PERSONALIZATION" block below) — so the skip link landed every
-       keyboard/screen-reader user on personalization chrome before the
-       actual sign content it was built to reach. `id="lesson-content"`/
-       `tabindex="-1"` moved down onto `.lesson-header` (the sign title
-       block) instead, so the skip link now lands directly on the
-       teaching content itself, past both the sidebar AND
-       personalization — consistent with personalization now also being
-       gated to once-per-session rather than every sign (see
-       js/lesson.js's initPersonalization()). `#lesson-content` id isn't
-       referenced anywhere else (checked: no CSS, no JS `getElementById`/
-       `querySelector` call) so moving it is a pure retarget, not a
-       structural change. -->
+       `id="lesson-content"`/`tabindex="-1"` lives on `.lesson-header`
+       (the sign title block) below, so the skip link lands directly on
+       the teaching content itself, past the sidebar. `#lesson-content`
+       id isn't referenced anywhere else (checked: no CSS, no JS
+       `getElementById`/`querySelector` call) so it's safe to leave in
+       place. -->
   <a href="#lesson-content" class="skip-link">Skip to lesson content</a>
 
   <!-- ── NAVBAR ───────────────────────────────────────────────── -->
@@ -161,73 +151,9 @@
              ══════════════════════════════════════════════════════ -->
         <div class="lesson-content-panel">
 
-          <!--
-            ══════════════════════════════════════════════════════════
-            LIGHT PERSONALIZATION — REV 8 teaching-rhythm pass
-            ══════════════════════════════════════════════════════════
-            PURPOSE: the "PERSONALIZE" step of the reference teaching
-            rhythm this pass implements — two optional, non-blocking
-            preference questions. Learner CONTEXT only, never a
-            proficiency level: nothing here touches curriculum
-            ordering, unlocks, or js/engine/progress.js. Persisted to a
-            single uid-scoped localStorage key per learner (see
-            js/lesson.js's REV 8 block), not a new Firestore schema.
-
-            The question CARD is shown at most once unprompted (first-
-            ever lesson visit with no saved answer and no prior skip
-            for the logged-in learner). BUGFIX (REV 8 audit,
-            2026-08-26): the collapsed #personalize-summary/"set
-            preferences" invite (and its "Edit" link) used to reopen —
-            i.e. re-render — on every single sign's page load, forever,
-            since initPersonalization() reruns on every full page load
-            and each sign is its own page load. It's now gated to once
-            per browser SESSION instead (sessionStorage, cleared on tab
-            close) — see PERSONALIZE_SESSION_SHOWN_KEY in js/lesson.js.
-            Wired/shown by js/lesson.js's initPersonalization(), called
-            once from boot(). Starts hidden; JS decides whether to
-            reveal one of #personalize-card / #personalize-summary
-            (never both) or leave both hidden (already shown this
-            session).
-          -->
-          <div class="personalize-card card mb-8" id="personalize-card" style="display:none;">
-            <div class="quick-check__head">
-              <span class="section__eyebrow" style="margin-bottom:0;">👋 Before you start</span>
-              <button class="detection-log__clear" id="btn-personalize-skip" type="button">Maybe later</button>
-            </div>
-            <p class="text-muted" style="margin-bottom: var(--space-4);">
-              Two quick questions — this just tailors the encouragement you see. It never changes your lesson order.
-            </p>
-            <div class="personalize-card__question">
-              <p class="personalize-card__label">Who do you want to use ASL with?</p>
-              <div class="personalize-card__options" id="personalize-audience-options" role="group" aria-label="Who do you want to use ASL with?">
-                <button type="button" data-value="partner">My partner</button>
-                <button type="button" data-value="family">My family</button>
-                <button type="button" data-value="friends">Friends</button>
-                <button type="button" data-value="work_school">Work / school</button>
-                <button type="button" data-value="general">General learning</button>
-              </div>
-            </div>
-            <div class="personalize-card__question mt-4">
-              <p class="personalize-card__label">How much time can you practice?</p>
-              <div class="personalize-card__options" id="personalize-time-options" role="group" aria-label="How much time can you practice?">
-                <button type="button" data-value="5">5 min/day</button>
-                <button type="button" data-value="10">10 min/day</button>
-                <button type="button" data-value="15">15 min/day</button>
-                <button type="button" data-value="20">20 min/day</button>
-              </div>
-            </div>
-            <button class="btn btn--primary mt-4" id="btn-personalize-save" type="button" disabled>Save</button>
-          </div><!-- /personalize-card -->
-
-          <!-- Collapsed state: saved-preferences summary, or a small
-               "set preferences" invite if skipped. Never shown at the
-               same time as #personalize-card above. -->
-          <p class="personalize-summary mb-8" id="personalize-summary" style="display:none;"></p>
-
           <!-- Sign header. `id="lesson-content"`/`tabindex="-1"` = skip-
-               link target (moved here 2026-08-26 from the outer
-               .lesson-layout wrapper — see the skip-link comment at the
-               top of <body>). -->
+               link target (see the skip-link comment at the top of
+               <body>). -->
           <div class="lesson-header" id="lesson-content" tabindex="-1">
             <div class="lesson-letter" id="lesson-letter">A</div>
             <div>
