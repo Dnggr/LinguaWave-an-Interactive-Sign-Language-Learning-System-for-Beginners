@@ -158,3 +158,51 @@
 .quick-check__options button.quick-check__option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
 .quick-check__options button.quick-check__option--wrong   { border-color: var(--clr-red);     background: var(--clr-red-soft); }
 @media (max-width: 480px) { .quick-check__options { grid-template-columns: 1fr; } }
+
+/* ── Quick Check picture prompt (NEW — REV 8 teaching-rhythm pass) ───
+   Recall variety: an alternate Quick Check format that shows the
+   sign's own reference image (same field the "Sign image" block above
+   already renders) and asks the learner to pick the matching word,
+   instead of always reading a text description. See
+   buildQuickCheckQuestion()'s promptImage branch in lesson.js. Sized
+   deliberately smaller than .lesson-image (which is the primary
+   teaching image higher up the page) so this reads as "part of a
+   quiz card," not a second full-size hero image. */
+.quick-check__image {
+  display: block; max-width: 220px; max-height: 220px; width: 100%;
+  object-fit: contain; margin: 0 auto var(--space-4);
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+}
+
+/* ── Light personalization (NEW — REV 8 teaching-rhythm pass) ────────
+   See #personalize-card / #personalize-summary in lesson.html and
+   initPersonalization() in lesson.js. Deliberately styled as its own
+   lightweight component rather than reusing .quick-check__options'
+   2-column grid — these are single-select "chip" groups (audience,
+   time), not a 4-way multiple-choice question, so a wrapping pill row
+   reads more correctly than a quiz-shaped grid. */
+.personalize-card__label { font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-2); }
+.personalize-card__options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.personalize-card__options button {
+  padding: var(--space-2) var(--space-4); background: var(--clr-surface-2);
+  border: 2px solid var(--clr-border); border-radius: var(--radius-pill);
+  color: var(--clr-text); font-size: var(--fs-sm); font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.personalize-card__options button:hover { border-color: var(--clr-accent); }
+.personalize-card__options button.personalize-card__option--selected {
+  border-color: var(--clr-accent); background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600;
+}
+.personalize-card__options button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
+
+.personalize-summary {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--fs-sm); color: var(--clr-text-muted);
+}
+.personalize-summary__edit {
+  background: none; border: none; padding: 0; margin: 0;
+  color: var(--clr-accent); font-size: var(--fs-sm); font-family: var(--font-body);
+  text-decoration: underline; cursor: pointer;
+}
+.personalize-summary__edit:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); border-radius: var(--radius-sm); }

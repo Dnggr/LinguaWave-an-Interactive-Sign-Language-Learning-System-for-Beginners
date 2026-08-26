@@ -145,9 +145,24 @@ const btnClearLogEl      = document.getElementById('btn-clear-log');
 // showQuickCheck()/buildQuickCheckQuestion() below for the mechanism.
 const quickCheckCardEl     = document.getElementById('quick-check-card');
 const quickCheckPromptEl   = document.getElementById('quick-check-prompt');
+// NEW — REV 8 teaching-rhythm pass: optional picture prompt (recall
+// variety, "identify a sign from a signer image" — see
+// buildQuickCheckQuestion()'s promptImage branch below). Hidden
+// whenever a question doesn't use the picture format.
+const quickCheckImageEl    = document.getElementById('quick-check-image');
 const quickCheckOptionsEl  = document.getElementById('quick-check-options');
 const quickCheckFeedbackEl = document.getElementById('quick-check-feedback');
 const btnQuickCheckSkipEl  = document.getElementById('btn-quick-check-skip');
+
+// NEW — REV 8 teaching-rhythm pass: light personalization refs. See
+// the "REV 8 — Light personalization" block further down for the
+// mechanism (localStorage only, no progress.js/data.js involvement).
+const personalizeCardEl     = document.getElementById('personalize-card');
+const personalizeSummaryEl  = document.getElementById('personalize-summary');
+const personalizeAudienceEl = document.getElementById('personalize-audience-options');
+const personalizeTimeEl     = document.getElementById('personalize-time-options');
+const btnPersonalizeSaveEl  = document.getElementById('btn-personalize-save');
+const btnPersonalizeSkipEl  = document.getElementById('btn-personalize-skip');
 
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
@@ -278,7 +293,18 @@ const totalSigns = signOrder.length;
 // panel's non-blocking, always-skippable INTERACTION PATTERN — not the
 // camera mechanism, which this has nothing to do with. See
 // AI_MEMORY.md's Phase 6 session log for the full reasoning.
-const QUICK_CHECK_CLUSTER_SIZE = 3;
+//
+// CHANGED — REV 8 teaching-rhythm pass: was 3 (a Quick Check every 3
+// signs). The reference teaching rhythm this pass implements calls for
+// an immediate small recall interaction after EACH sign taught — SIGN
+// → MEANING → SEE IT → RECALL → FEEDBACK → OPTIONAL PRACTICE → NEXT —
+// rather than teaching a small cluster before testing any of it. 1
+// makes shouldShowQuickCheck() below true for every sign and
+// buildQuickCheckQuestion()'s "cluster" collapse to just the current
+// sign, which is exactly the "one sign, then recall it" shape. No
+// other logic changed — a category still safely handles totalSigns<=1
+// (skips entirely) the same way it always did.
+const QUICK_CHECK_CLUSTER_SIZE = 1;
 
 /**
  * True on a "checkpoint" sign: every QUICK_CHECK_CLUSTER_SIGN'th sign
@@ -334,6 +360,29 @@ function buildQuickCheckQuestion() {
   const distractors = shuffleArr(pool).slice(0, 3);
   if (distractors.length < 3) return null;
 
+  // NEW — REV 8 teaching-rhythm pass: recall variety ("identify a sign
+  // from a signer image", per the reference teaching mechanics list),
+  // extending this same function/card rather than building a second
+  // question type elsewhere. Alternates roughly 50/50 with the
+  // original description-based format so Quick Check doesn't always
+  // ask the identical shape of question. Reuses signData.imageUrl —
+  // the exact same field the "Sign image" block above already loads —
+  // so this needs no new data.js content. Every SIGNS entry with a
+  // description also has an imageUrl today (see js/data.js), but the
+  // `targetData.imageUrl &&` guard means a future content-only entry
+  // missing one just silently falls back to the text format instead of
+  // ever showing a broken picture prompt.
+  const usePicture = !!targetData.imageUrl && Math.random() < 0.5;
+
+  if (usePicture) {
+    return {
+      signId: targetSign,
+      prompt: 'Quick recall — which word matches this sign?',
+      promptImage: targetData.imageUrl,
+      options: shuffleArr([targetSign, ...distractors]),
+    };
+  }
+
   const desc = targetData.description.length > 130
     ? targetData.description.slice(0, 129).trimEnd() + '…'
     : targetData.description;
@@ -341,6 +390,7 @@ function buildQuickCheckQuestion() {
   return {
     signId: targetSign,
     prompt: `Quick recall — which sign matches this description?\n"${desc}"`,
+    promptImage: null,
     options: shuffleArr([targetSign, ...distractors]),
   };
 }
@@ -367,6 +417,23 @@ function showQuickCheck() {
 
   quickCheckCardEl.style.display = '';
   if (quickCheckPromptEl) quickCheckPromptEl.textContent = q.prompt;
+
+  // NEW — REV 8 teaching-rhythm pass: optional picture prompt. onerror
+  // hides the image and falls back to just the (already-set) text
+  // prompt instead of showing a broken-image icon — same defensive
+  // pattern lesson-image/lesson.html's onerror already uses.
+  if (quickCheckImageEl) {
+    if (q.promptImage) {
+      quickCheckImageEl.src = q.promptImage;
+      quickCheckImageEl.alt = 'Sign to identify';
+      quickCheckImageEl.style.display = '';
+      quickCheckImageEl.onerror = () => { quickCheckImageEl.style.display = 'none'; };
+    } else {
+      quickCheckImageEl.removeAttribute('src');
+      quickCheckImageEl.style.display = 'none';
+    }
+  }
+
   if (quickCheckFeedbackEl) {
     quickCheckFeedbackEl.style.display = 'none';
     quickCheckFeedbackEl.textContent   = '';
@@ -406,6 +473,287 @@ if (btnQuickCheckSkipEl) {
   btnQuickCheckSkipEl.onclick = () => {
     if (quickCheckCardEl) quickCheckCardEl.style.display = 'none';
   };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// REV 8 — Light personalization (teaching-rhythm pass)
+// ══════════════════════════════════════════════════════════════════
+// Two optional, non-blocking preference questions — "who do you want
+// to use ASL with?" / "how much time can you practice?" — matching
+// the reference teaching rhythm's PERSONALIZE step. These are learner
+// CONTEXT ONLY, never proficiency levels: nothing here reads or writes
+// window.LWProgress, js/data.js, UNITS/CATEGORIES ordering, or any
+// unlock logic. Storage is a single localStorage key (same mechanism
+// pages/lesson.html's own <head> theme script already uses for
+// `lw-theme`) — deliberately not a new Firestore collection or a
+// js/engine/progress.js addition, per PIVOT_CHECKLIST's "only if it
+// can be done without introducing unnecessary state/data architecture"
+// instruction. The full question CARD is shown at most once unprompted
+// (first-ever lesson page load with no saved answer and no prior skip).
+// BUGFIX (REV 8 audit, 2026-08-26): the collapsed SUMMARY row used to be
+// claimed as similarly "shown once, then only reachable via Edit" here,
+// but initPersonalization() actually reruns on every sign's page load
+// (each sign is its own full page load, not an SPA route), so the summary
+// was really rendering as permanent chrome on every single sign — see
+// REV8_TEACHING_AUDIT.md §1/§5. Fixed: the unprompted summary/invite
+// render (and the Edit affordance inside it) is now gated to once per
+// browser SESSION via sessionStorage, not once ever — see
+// PERSONALIZE_SESSION_SHOWN_KEY and initPersonalization() further below
+// for the mechanism and why session-scoped (not first-sign-of-category
+// scoped, which real entry points like Continue Learning/review links/
+// direct sign deep-links would mostly bypass).
+const PERSONALIZE_STORAGE_KEY = 'lw_personalize_v1';
+const PERSONALIZE_SKIPPED_KEY = 'lw_personalize_skipped_v1';
+
+const PERSONALIZE_AUDIENCE_LABELS = {
+  partner:     'my partner',
+  family:      'my family',
+  friends:     'friends',
+  work_school: 'work / school',
+  general:     'general learning',
+};
+
+// BUGFIX (REV 8 audit, 2026-08-26 — see REV8_TEACHING_AUDIT.md §5 "Cross-
+// account leak"): lw_personalize_v1/lw_personalize_skipped_v1 used to have
+// no notion of WHO saved them, unlike js/engine/progress.js's own
+// lw_progress_v3 cache, which stores a `uid` and reconciles it against the
+// logged-in user on every load (hydrateStore(), `cached.uid === user.uid`)
+// so a shared browser/device can't let one account inherit another's
+// cached state. The two functions below mirror that same reconcile-by-uid
+// shape for personalization — same pattern, applied locally, no change to
+// progress.js itself (out of scope, untouched).
+/** Returns the logged-in learner's uid, or null if auth hasn't hydrated
+ *  yet. Same defensive optional-chaining access as getLearnerNameLetters()
+ *  above (window.LWAuth → js/auth.js, untouched/out of scope). Used only
+ *  to scope these two localStorage keys per-user — never read by
+ *  progress.js, never sent anywhere. */
+function getCurrentUid() {
+  return window.LWAuth?.getCurrentUser?.()?.uid ?? null;
+}
+
+/** Reads saved personalization prefs for the CURRENTLY logged-in learner
+ *  only. Never throws — a bad/corrupt localStorage value, OR a value
+ *  saved under a different uid, OR a value saved before this uid-scoping
+ *  fix existed (no `uid` field at all — old shape, `parsed.uid` is
+ *  `undefined`, which never strictly-equals a real uid string or `null`
+ *  from a not-yet-hydrated session) is all treated the same as "not
+ *  answered yet." That last case means anyone with pre-fix locally-saved
+ *  prefs sees the card once more after this ships and re-answers/skips —
+ *  a deliberate, flagged call (same "no migration shim, reset accepted"
+ *  precedent already used for lw_progress_v2→v3, see AI_MEMORY.md
+ *  2026-08-18), not an oversight, since a decorative feature reappearing
+ *  once is a far smaller cost than a real cross-account leak. */
+function loadPersonalization() {
+  try {
+    const raw = localStorage.getItem(PERSONALIZE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.uid === getCurrentUid() ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persists prefs (uid-stamped) and clears the "skipped" flag (answering
+ *  later, after an earlier skip, should count the same as answering the
+ *  first time). Fails silently if storage is unavailable (private
+ *  browsing etc.) — the card will just reappear next load, which is an
+ *  acceptable degradation for a purely cosmetic feature. */
+function savePersonalization(prefs) {
+  try {
+    localStorage.setItem(PERSONALIZE_STORAGE_KEY, JSON.stringify({ ...prefs, uid: getCurrentUid() }));
+    localStorage.removeItem(PERSONALIZE_SKIPPED_KEY);
+  } catch {
+    /* no-op — see comment above */
+  }
+}
+
+/** Skipped flag is now a small uid-stamped JSON object instead of the
+ *  literal string 'true', for the same cross-account reason as
+ *  loadPersonalization() above. A pre-fix plain-string 'true' value still
+ *  parses (JSON.parse('true') === true, a valid boolean), then safely
+ *  fails the `.uid` check below (undefined !== any uid) and is treated as
+ *  "not skipped" rather than throwing — no version bump needed for this
+ *  key either, same reasoning as above. */
+function markPersonalizationSkipped() {
+  try {
+    localStorage.setItem(PERSONALIZE_SKIPPED_KEY, JSON.stringify({ uid: getCurrentUid(), skipped: true }));
+  } catch { /* no-op */ }
+}
+
+function wasPersonalizationSkipped() {
+  try {
+    const raw = localStorage.getItem(PERSONALIZE_SKIPPED_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!parsed?.skipped && parsed?.uid === getCurrentUid();
+  } catch {
+    return false;
+  }
+}
+
+/** Builds the one-line "Learning ASL for family • 10 min/day" summary
+ *  shown once prefs are saved. Falls back gracefully if a value is
+ *  somehow missing/unrecognized (e.g. a future option was removed). */
+function personalizeSummaryText(prefs) {
+  const audience = PERSONALIZE_AUDIENCE_LABELS[prefs?.audience] || 'yourself';
+  const minutes  = Number(prefs?.minutes);
+  const timePart = Number.isFinite(minutes) && minutes > 0 ? ` • ${minutes} min/day` : '';
+  return `🎯 Learning ASL for ${audience}${timePart}`;
+}
+
+// Local (not persisted) selection state while the card is open —
+// mirrors the pattern quiz.js uses for in-progress answer state.
+let personalizeSelectedAudience = null;
+let personalizeSelectedMinutes  = null;
+
+function updatePersonalizeSaveEnabled() {
+  if (btnPersonalizeSaveEl) {
+    btnPersonalizeSaveEl.disabled = !(personalizeSelectedAudience && personalizeSelectedMinutes);
+  }
+}
+
+/** Renders the selected/unselected state of one option-button group
+ *  (audience or time) without rebuilding the DOM — used both on first
+ *  render and when reopening the card via "Edit" with prior answers. */
+function renderPersonalizeSelection(groupEl, selectedValue) {
+  if (!groupEl) return;
+  groupEl.querySelectorAll('button').forEach(btn => {
+    btn.classList.toggle('personalize-card__option--selected', btn.dataset.value === selectedValue);
+  });
+}
+
+/** Shows the question card, pre-filled with `prefs` if reopened via
+ *  "Edit" (prefs is null the very first time it's shown). */
+function openPersonalizeCard(prefs) {
+  if (!personalizeCardEl) return;
+  personalizeSelectedAudience = prefs?.audience ?? null;
+  personalizeSelectedMinutes  = prefs?.minutes != null ? String(prefs.minutes) : null;
+  renderPersonalizeSelection(personalizeAudienceEl, personalizeSelectedAudience);
+  renderPersonalizeSelection(personalizeTimeEl, personalizeSelectedMinutes);
+  updatePersonalizeSaveEnabled();
+  personalizeCardEl.style.display = '';
+  if (personalizeSummaryEl) personalizeSummaryEl.style.display = 'none';
+}
+
+/** Hides the question card and shows the appropriate one-line summary
+ *  row below it: the saved preference text if answered, or a small
+ *  "set preferences" invite if the learner skipped (never both, and
+ *  never the nagging full card again). */
+function closePersonalizeCard() {
+  if (personalizeCardEl) personalizeCardEl.style.display = 'none';
+  if (!personalizeSummaryEl) return;
+
+  const prefs = loadPersonalization();
+  personalizeSummaryEl.innerHTML = prefs
+    ? `${escapeHtml(personalizeSummaryText(prefs))} · <button type="button" class="personalize-summary__edit" id="btn-personalize-edit">Edit</button>`
+    : `<button type="button" class="personalize-summary__edit" id="btn-personalize-edit">🎯 Set learning preferences</button>`;
+  personalizeSummaryEl.style.display = '';
+
+  const editBtn = document.getElementById('btn-personalize-edit');
+  if (editBtn) editBtn.onclick = () => openPersonalizeCard(prefs);
+}
+
+/** Wires the two option groups + Save/Skip once. Idempotent (.onclick
+ *  assignment, same pattern as btnQuickCheckSkipEl above) so calling
+ *  initPersonalization() more than once — it isn't, but just in case —
+ *  can't stack duplicate handlers. */
+function wirePersonalizeControls() {
+  if (personalizeAudienceEl) {
+    personalizeAudienceEl.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        personalizeSelectedAudience = btn.dataset.value;
+        renderPersonalizeSelection(personalizeAudienceEl, personalizeSelectedAudience);
+        updatePersonalizeSaveEnabled();
+      };
+    });
+  }
+  if (personalizeTimeEl) {
+    personalizeTimeEl.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        personalizeSelectedMinutes = btn.dataset.value;
+        renderPersonalizeSelection(personalizeTimeEl, personalizeSelectedMinutes);
+        updatePersonalizeSaveEnabled();
+      };
+    });
+  }
+  if (btnPersonalizeSaveEl) {
+    btnPersonalizeSaveEl.onclick = () => {
+      if (!personalizeSelectedAudience || !personalizeSelectedMinutes) return;
+      savePersonalization({
+        audience: personalizeSelectedAudience,
+        minutes:  Number(personalizeSelectedMinutes),
+        savedAt:  Date.now(),
+      });
+      closePersonalizeCard();
+    };
+  }
+  if (btnPersonalizeSkipEl) {
+    btnPersonalizeSkipEl.onclick = () => {
+      markPersonalizationSkipped();
+      closePersonalizeCard();
+    };
+  }
+}
+
+// BUGFIX (REV 8 audit, 2026-08-26 — see REV8_TEACHING_AUDIT.md §5
+// "Permanent chrome, not one-time"): initPersonalization() runs once per
+// PAGE LOAD from boot(), but every sign is its own full page load — so
+// for a learner who'd already answered or skipped, the collapsed
+// #personalize-summary (with its "Edit" link) was rendering as the first
+// child inside #lesson-content on every single sign, forever. That's also
+// what the page's own skip-link landed keyboard/screen-reader users on
+// before the actual teaching content, on every sign (§5 "Accessibility
+// regression"). sessionStorage (unlike localStorage: scoped to this tab's
+// browsing session, cleared on tab/window close) lets this render once
+// per session instead of once ever or every load — chosen over "first
+// sign of category" (the audit's other suggested option, §6) because real
+// entry points into this page — Dashboard's Continue Learning hero, the
+// review entry point, direct `?sign=` deep-links — don't reliably land on
+// the first sign of a category, which would make the Edit affordance
+// effectively unreachable most of the time. The genuinely first-ever
+// (never answered, never skipped) card is exempt from this gate — it's
+// the actual one-time "PERSONALIZE" prompt the teaching rhythm calls for,
+// not chrome to suppress, and is itself only ever shown once regardless
+// of session (loadPersonalization()/wasPersonalizationSkipped() staying
+// falsy is what drives that, unchanged).
+const PERSONALIZE_SESSION_SHOWN_KEY = 'lw_personalize_summary_shown_v1';
+
+function hasShownPersonalizationChromeThisSession() {
+  try { return sessionStorage.getItem(PERSONALIZE_SESSION_SHOWN_KEY) === 'true'; } catch { return false; }
+}
+function markPersonalizationChromeShownThisSession() {
+  try { sessionStorage.setItem(PERSONALIZE_SESSION_SHOWN_KEY, 'true'); } catch { /* no-op */ }
+}
+
+/** Entry point, called once from boot() — deliberately NOT called from
+ *  updateLessonMeta() (which reruns on every sign) since this is a
+ *  once-per-visit prompt, not per-sign lesson content. */
+function initPersonalization() {
+  if (!personalizeCardEl) return; // markup missing — degrade silently
+  wirePersonalizeControls();
+
+  const saved = loadPersonalization();
+  if (saved || wasPersonalizationSkipped()) {
+    // Already answered or skipped before (for THIS uid) — only surface
+    // the collapsed summary/invite once per browser session, not on
+    // every sign's page load. See the block comment above
+    // PERSONALIZE_SESSION_SHOWN_KEY for why.
+    if (!hasShownPersonalizationChromeThisSession()) {
+      closePersonalizeCard(); // renders the summary/invite row, hides the card
+      markPersonalizationChromeShownThisSession();
+    }
+    // else: leave #personalize-card / #personalize-summary at their
+    // HTML-default display:none — already-shown-this-session, nothing to
+    // render. (Edit becomes reachable again next session, or immediately
+    // if the learner is still on the one sign where it did render.)
+  } else {
+    // First-ever visit for this learner (no saved answer, no prior skip)
+    // — always show the question card, exactly as before. This is the
+    // one deliberate PERSONALIZE prompt, not chrome to suppress.
+    openPersonalizeCard(null);
+    markPersonalizationChromeShownThisSession();
+  }
 }
 
 // BUG 8 (reverted): category assessments used to test every sign in
@@ -990,6 +1338,14 @@ async function boot() {
     window.location.replace(`learn.html?category=${encodeURIComponent(category)}`);
     return;
   }
+
+  // NEW — REV 8 teaching-rhythm pass: called once per page load (not
+  // per-sign like updateLessonMeta()) — see initPersonalization()'s own
+  // comment for why. Placed after the lock-redirect above (no point
+  // asking before a redirect that's about to navigate away) but before
+  // the name-drill/empty-category early returns below, so the prompt
+  // still appears even on those edge-case lessons.
+  initPersonalization();
 
   // NEW — Rev4 Phase 2: totalSigns is always 1 for the name drill (see
   // computeSignOrder()), so the empty-category bail below never fires

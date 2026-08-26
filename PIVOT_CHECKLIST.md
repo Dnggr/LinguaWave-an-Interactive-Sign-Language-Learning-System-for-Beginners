@@ -150,10 +150,12 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
 - [x] **Light personalization** — new `initPersonalization()` +
   `#personalize-card`/`#personalize-summary` (`pages/lesson.html`).
   Two questions (who you're learning ASL for; how much time per day),
-  optional, shown once, collapsible/editable afterward. **Storage:
-  `localStorage` only** (`lw_personalize_v1` + `lw_personalize_skipped_v1`)
-  — confirmed NOT read by `isCategoryUnlocked()`, `getOrderedLiveCategories()`,
-  or any `js/engine/progress.js` function; confirmed it changes no
+  optional, shown once per learner, collapsible/editable afterward.
+  **Storage: `localStorage` only, uid-scoped as of 2026-08-26** (see
+  "Audit fixes" sub-section below) — `lw_personalize_v1` +
+  `lw_personalize_skipped_v1` — confirmed NOT read by
+  `isCategoryUnlocked()`, `getOrderedLiveCategories()`, or any
+  `js/engine/progress.js` function; confirmed it changes no
   `js/data.js` UNITS/CATEGORIES ordering. Collected but not yet
   *applied* anywhere beyond its own summary line — flagged as an open
   follow-up below, not a bug.
@@ -166,6 +168,44 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   `renderer.js`, `dictionary.js` — none of these files were opened for
   editing, only referenced by the pre-existing, untouched `import`
   statements at the top of `lesson.js`).
+
+### Audit fixes — 2026-08-26 (see `REV8_TEACHING_AUDIT.md` for full reasoning)
+
+`REV8_TEACHING_AUDIT.md` flagged two concrete bugs in the personalization
+feature above; both fixed this session, `js/lesson.js`/`pages/lesson.html`
+only, nothing else in this section's scope re-touched:
+
+- [x] **Cross-account leak/suppression, fixed.** `lw_personalize_v1`/
+  `lw_personalize_skipped_v1` now store a `uid` and reconcile it against
+  the logged-in learner, mirroring `js/engine/progress.js`'s own
+  `cached.uid === user.uid` pattern (read for reference, not modified).
+  A mismatch — including a pre-fix record with no `uid` field — is
+  treated as "not answered," never auto-adopted. Tradeoff, deliberately
+  accepted: pre-fix locally-saved prefs need re-answering once (same
+  "reset accepted, no migration shim" precedent as Phase 3's
+  `lw_progress_v2→v3` above).
+- [x] **Permanent chrome / skip-link regression, fixed.** The collapsed
+  summary no longer renders on every sign's page load — gated to once
+  per browser session via a new `sessionStorage` flag
+  (`lw_personalize_summary_shown_v1`), chosen over first-sign-of-category
+  gating (rejected: real entry points — Continue Learning, review links,
+  `?sign=` deep-links — don't reliably land on signIdx 0). Also
+  retargeted the skip-link itself (`id="lesson-content"`/`tabindex="-1"`
+  moved from `.lesson-layout` down onto `.lesson-header`) so it lands
+  past personalization on *every* page load, not just the ones where the
+  session-gate happens to suppress it — closes the gap the session-gate
+  alone would have left on the one render-per-session.
+
+**Verification, same rigor as the section above, extended:** `node
+--check` clean; HTML tag-balance 0 errors; no duplicate ids; DOM-hook
+cross-reference clean (same pre-existing `btn-personalize-edit`
+exception); jsdom runtime harness against the real edited HTML/JS — 11
+groups / 46 assertions, all passing (uid isolation both directions,
+User A's own prefs still load post-fix, session-gating across 3
+simulated sign navigations then reopening on a simulated new session,
+Edit still reopens/pre-fills, 3 corrupt/legacy-localStorage shapes fail
+safe, Quick Check/camera/nav hooks unaffected). Not browser-tested — same
+flagged gap as every prior session.
 
 ### Verification this session
 
@@ -209,7 +249,12 @@ Differs from prior sessions' Node-syntax-only checks:
   summary line yet (no copy elsewhere adapts to the learner's stated
   audience/practice-time) — a reasonable next step, deliberately out
   of this session's edit surface.
-- Real-browser verification, per above.
+- Personalization still lives on `lesson.html`, not the Dashboard —
+  explicitly out of scope for the 2026-08-26 audit-fixes session per
+  that session's own instructions, not forgotten.
+- Real-browser verification, per above (now also covers the
+  2026-08-26 audit fixes — no new browser-testing gap introduced, just
+  not yet closed).
 
 ---
 

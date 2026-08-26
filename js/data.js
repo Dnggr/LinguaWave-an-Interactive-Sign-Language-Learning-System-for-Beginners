@@ -2981,6 +2981,16 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/throw.htm',
   },
   {
+    // BUGFIX (this session): referenceUrl pointed at lifeprint.com's
+    // "catch" page, but that page is a content-empty stub (title only,
+    // no image/video/description) — it doesn't actually corroborate this
+    // description, so keeping it implied a verification that never
+    // happened. Removed rather than leave a citation with nothing behind
+    // it. capturesystem's verified_batch.md already flagged CATCH (with
+    // GIVE/TAKE/GET/THROW/PICK) as "no dedicated ASLU page found in this
+    // pass ... high confidence given how basic/universal it is" — that
+    // caveat still stands; description content is unchanged (it was
+    // already a reasonable generic rendering, just not ASLU-sourced).
     id: 'medium_hand_actions_CATCH', level: 'medium', category: 'hand_actions', signId: 'CATCH', title: 'Catch', order: 10,
     description: 'Hold both hands open in front of you, then quickly close them together, as if grabbing something out of the air.',
     tips: [
@@ -2989,7 +2999,6 @@ const SIGNS = [
       'Keep the motion at chest height, in front of your body',
     ],
     imageUrl: '../assets/images/medium/hand_actions/catch.png', videoUrl: '../assets/videos/medium/hand_actions/catch.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/catch.htm',
   },
   {
     id: 'medium_hand_actions_PICK', level: 'medium', category: 'hand_actions', signId: 'PICK', title: 'Pick Up', order: 11,
