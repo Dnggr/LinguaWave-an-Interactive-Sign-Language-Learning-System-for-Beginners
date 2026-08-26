@@ -157,13 +157,16 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   not attempted): word→video matching, phrase completion,
   sign/word-pair matching — D's other bullets. Would extend the same
   function/card again rather than a new mechanism, if picked up later.
-- [x] ~~**Light personalization**~~ — **REMOVED 2026-08-26, see below.**
-  Was: new `initPersonalization()` + `#personalize-card`/
-  `#personalize-summary` (`pages/lesson.html`). Two questions (who
-  you're learning ASL for; how much time per day), optional, shown
-  once per learner, collapsible/editable afterward. Storage was
-  `localStorage`, uid-scoped as of 2026-08-26's audit fixes —
-  `lw_personalize_v1` + `lw_personalize_skipped_v1`.
+- [x] **Light personalization** — new `initPersonalization()` +
+  `#personalize-card`/`#personalize-summary` (`pages/lesson.html`).
+  Two questions (who you're learning ASL for; how much time per day),
+  optional, shown once, collapsible/editable afterward. **Storage:
+  `localStorage` only** (`lw_personalize_v1` + `lw_personalize_skipped_v1`)
+  — confirmed NOT read by `isCategoryUnlocked()`, `getOrderedLiveCategories()`,
+  or any `js/engine/progress.js` function; confirmed it changes no
+  `js/data.js` UNITS/CATEGORIES ordering. Collected but not yet
+  *applied* anywhere beyond its own summary line — flagged as an open
+  follow-up below, not a bug.
 - [x] **No new teaching engine, no duplicated quiz/progress/camera
   logic** — verified by inspection: this session added functions,
   never modified `startAssessment()`/`handleAssessmentFrame()`/
@@ -255,44 +258,12 @@ Differs from prior sessions' Node-syntax-only checks:
 ### What's still open
 
 - D's other recall-variety formats (word/video matching, phrase
-  completion, sign/word matching) — not attempted, see above. Still
-  open — unaffected by the personalization removal.
-- ~~Personalization answers aren't used anywhere beyond their own
-  summary line yet...~~ — **moot, feature removed 2026-08-26.**
-- ~~Personalization still lives on `lesson.html`, not the Dashboard...~~
-  — **moot, feature removed 2026-08-26** (removal request was explicit
-  that it not be relocated to the Dashboard either — see
-  `Rev8_Personalization_Feature_Checklist.md`).
-- Real-browser verification for the Quick Check picture-prompt work
-  above (keyboard tab order, screen reader, `.quick-check__image`
-  sizing at narrow viewports) — still open, unaffected by the removal.
-
-### Personalization removal — 2026-08-26
-
-Removed the entire "Light personalization" feature (question card,
-collapsed summary, both storage keys, all supporting JS/CSS/HTML) per
-explicit request — not relocated, not replaced with any other
-onboarding/preference system. Full reasoning, what was deleted, and
-verification: `REV8_TEACHING_AUDIT.md` → "Current decision" and
-`Rev8_Personalization_Feature_Checklist.md` (now marked
-REMOVED/CANCELLED). One-line summary: `js/lesson.js` lost the DOM refs,
-storage helpers (`loadPersonalization`/`savePersonalization`/
-`markPersonalizationSkipped`/`wasPersonalizationSkipped`/
-`getCurrentUid`), UI functions (`openPersonalizeCard`/
-`closePersonalizeCard`/`wirePersonalizeControls`/
-`renderPersonalizeSelection`/`updatePersonalizeSaveEnabled`/
-`personalizeSummaryText`), and `initPersonalization()` plus its call
-site in `boot()`; `pages/lesson.html` lost `#personalize-card`/
-`#personalize-summary` and their block comment; `css/lesson.css` lost
-the `.personalize-card__*`/`.personalize-summary*` rules. Quick Check
-(both this session's cluster-size and picture-prompt work above),
-camera, nav, sidebar, and everything in `js/data.js`/`js/learn.js`/
-`js/engine/progress.js`/`js/auth.js` are unaffected — verified via
-`node --check`, HTML/CSS balance checks, a DOM-hook cross-reference,
-and a jsdom runtime harness executing the real edited files (30
-structural assertions + a full top-to-bottom execution of the real
-`lesson.js` against the real edited `lesson.html` with zero errors).
-Not browser-tested, same flagged gap as every prior session.
+  completion, sign/word matching) — not attempted, see above.
+- Personalization answers aren't used anywhere beyond their own
+  summary line yet (no copy elsewhere adapts to the learner's stated
+  audience/practice-time) — a reasonable next step, deliberately out
+  of this session's edit surface.
+- Real-browser verification, per above.
 
 ---
 
@@ -938,13 +909,18 @@ find bugs."
   Joshua/Omen rather than made unilaterally here.
 - [ ] Later dashboard stat tiles: current streak, review due, best
   assessment score.
-- [ ] **Content queue continuation (2026-08-25):** after Actions/Hand
-  Actions/Communication (Units 9–11, done this session), the next
-  `comingSoon:true` category in unit order is `body` (Unit 12) — not
-  started. `classroom_actions` (Unit 31) is also flagged as needing a
-  pass despite already being `comingSoon:false` — see the 2026-08-25
-  session log entry in `AI_MEMORY.md` for why (zero real signs despite
-  being live, `words[]` overlaps this session's new Actions/
-  Communication content).
+- [x] **Content queue continuation (2026-08-25):** after Actions/Hand
+  Actions/Communication (Units 9–11, done that session), the next
+  `comingSoon:true` category in unit order was `body` (Unit 12) — done
+  2026-08-26 (16 SIGNS entries, ASLU-checked; see the 2026-08-26 session
+  log entry in `AI_MEMORY.md`). `personal_information` (Unit 13) also
+  done 2026-08-26 (later session) — 6 new SIGNS entries (the other 9
+  words[] reuse existing family/people/places coverage instead of
+  duplicating it; see that session's `AI_MEMORY.md` log entry). Next
+  up: `colors` (Unit 14) — not started. `classroom_actions` (Unit 31)
+  is also flagged as needing a pass despite already being
+  `comingSoon:false` — see the 2026-08-25 session log entry in
+  `AI_MEMORY.md` for why (zero real signs despite being live, `words[]`
+  overlaps this session's new Actions/Communication content).
 
 *(Add new session's tasks here.)*

@@ -627,6 +627,41 @@ export const SIGN_DICTIONARY = {
   'TEACH':  { fingerStates:[1,1,1,1,0], category:'word', imageFile:'teach.gif',  detectionType:'motion', disabled:true },
   'SIGN':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'sign.gif',   detectionType:'motion', disabled:true },
 
+  // CONTENT PASS (2026-08-26): parity placeholders for the new 'body'
+  // category opened in data.js this session (Unit 12, 16 words). Same
+  // convention as the REV 8 block above — disabled until Phase 7
+  // capture + retraining, added now so getAllowedLabelsForSign() and
+  // any SIGNS/SIGN_DICTIONARY parity check don't flag these as orphans.
+  'BODY':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'body.gif',    detectionType:'motion', disabled:true },
+  'HEAD':    { fingerStates:[1,1,0,0,0], category:'word', imageFile:'head.gif',    detectionType:'motion', disabled:true },
+  'HAIR':    { fingerStates:[0,1,0,0,1], category:'word', imageFile:'hair.gif',    detectionType:'motion', disabled:true },
+  'FACE':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'face.gif',    detectionType:'motion', disabled:true },
+  'EYE':     { fingerStates:[0,1,0,0,0], category:'word', imageFile:'eye.gif',     detectionType:'motion', disabled:true },
+  'EAR':     { fingerStates:[0,1,0,0,0], category:'word', imageFile:'ear.gif',     detectionType:'motion', disabled:true },
+  'NOSE':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'nose.gif',    detectionType:'motion', disabled:true },
+  'MOUTH':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'mouth.gif',   detectionType:'motion', disabled:true },
+  'TEETH':   { fingerStates:[0,1,0,0,0], category:'word', imageFile:'teeth.gif',   detectionType:'motion', disabled:true },
+  'HAND':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'hand.gif',    detectionType:'motion', disabled:true },
+  'FINGER':  { fingerStates:[0,1,0,0,0], category:'word', imageFile:'finger.gif',  detectionType:'motion', disabled:true },
+  'ARM':     { fingerStates:[1,1,1,1,1], category:'word', imageFile:'arm.gif',     detectionType:'motion', disabled:true },
+  'LEG':     { fingerStates:[0,1,0,0,0], category:'word', imageFile:'leg.gif',     detectionType:'motion', disabled:true },
+  'FOOT':    { fingerStates:[0,1,0,0,0], category:'word', imageFile:'foot.gif',    detectionType:'motion', disabled:true },
+  'STOMACH': { fingerStates:[1,1,1,1,1], category:'word', imageFile:'stomach.gif', detectionType:'motion', disabled:true },
+  'BACK':    { fingerStates:[1,1,1,1,1], category:'word', imageFile:'back.gif',    detectionType:'motion', disabled:true },
+
+  // CONTENT PASS (2026-08-26, later session): parity placeholders for
+  // the new 'personal_information' category opened in data.js this
+  // session (Unit 13, 6 new words — the other 9 words[] entries reuse
+  // existing SIGNS/dictionary.js coverage from 'family'/'people'/
+  // 'places' and don't need new entries here). Same convention as the
+  // 'body' block above — disabled until Phase 7 capture + retraining.
+  'NAME':     { fingerStates:[0,1,1,0,0], category:'word', imageFile:'name.gif',     detectionType:'motion', disabled:true },
+  'AGE':      { fingerStates:[1,1,1,1,1], category:'word', imageFile:'age.gif',      detectionType:'motion', disabled:true },
+  'FAMILY':   { fingerStates:[1,0,1,1,1], category:'word', imageFile:'family.gif',   detectionType:'motion', disabled:true },
+  'BIRTHDAY': { fingerStates:[0,0,1,0,0], category:'word', imageFile:'birthday.gif', detectionType:'motion', disabled:true },
+  'LIVE':     { fingerStates:[1,0,0,0,0], category:'word', imageFile:'live.gif',     detectionType:'motion', disabled:true },
+  'FROM':     { fingerStates:[0,1,0,0,0], category:'word', imageFile:'from.gif',     detectionType:'motion', disabled:true },
+
   // ══════════════════════════════════════════════════════════
   // INTERMEDIATE LEVEL — PHRASES (all motion, disabled until model trained)
   // ══════════════════════════════════════════════════════════

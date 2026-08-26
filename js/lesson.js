@@ -154,6 +154,16 @@ const quickCheckOptionsEl  = document.getElementById('quick-check-options');
 const quickCheckFeedbackEl = document.getElementById('quick-check-feedback');
 const btnQuickCheckSkipEl  = document.getElementById('btn-quick-check-skip');
 
+// NEW — REV 8 teaching-rhythm pass: light personalization refs. See
+// the "REV 8 — Light personalization" block further down for the
+// mechanism (localStorage only, no progress.js/data.js involvement).
+const personalizeCardEl     = document.getElementById('personalize-card');
+const personalizeSummaryEl  = document.getElementById('personalize-summary');
+const personalizeAudienceEl = document.getElementById('personalize-audience-options');
+const personalizeTimeEl     = document.getElementById('personalize-time-options');
+const btnPersonalizeSaveEl  = document.getElementById('btn-personalize-save');
+const btnPersonalizeSkipEl  = document.getElementById('btn-personalize-skip');
+
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
@@ -463,6 +473,191 @@ if (btnQuickCheckSkipEl) {
   btnQuickCheckSkipEl.onclick = () => {
     if (quickCheckCardEl) quickCheckCardEl.style.display = 'none';
   };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// REV 8 — Light personalization (teaching-rhythm pass)
+// ══════════════════════════════════════════════════════════════════
+// Two optional, non-blocking preference questions — "who do you want
+// to use ASL with?" / "how much time can you practice?" — matching
+// the reference teaching rhythm's PERSONALIZE step. These are learner
+// CONTEXT ONLY, never proficiency levels: nothing here reads or writes
+// window.LWProgress, js/data.js, UNITS/CATEGORIES ordering, or any
+// unlock logic. Storage is a single localStorage key (same mechanism
+// pages/lesson.html's own <head> theme script already uses for
+// `lw-theme`) — deliberately not a new Firestore collection or a
+// js/engine/progress.js addition, per PIVOT_CHECKLIST's "only if it
+// can be done without introducing unnecessary state/data architecture"
+// instruction. Shown at most once unprompted (first-ever lesson page
+// load with no saved answer and no prior skip); after that it's only
+// reachable via the small "Edit"/"Personalize" affordance in
+// #personalize-summary, so it never nags on every sign navigation
+// (each sign is its own full page load — see Rev 5's note on why the
+// course sidebar uses plain <a> links, same reasoning applies here).
+const PERSONALIZE_STORAGE_KEY = 'lw_personalize_v1';
+const PERSONALIZE_SKIPPED_KEY = 'lw_personalize_skipped_v1';
+
+const PERSONALIZE_AUDIENCE_LABELS = {
+  partner:     'my partner',
+  family:      'my family',
+  friends:     'friends',
+  work_school: 'work / school',
+  general:     'general learning',
+};
+
+/** Reads saved personalization prefs, if any. Never throws — a bad/
+ *  corrupt localStorage value is treated the same as "not answered
+ *  yet" rather than breaking the lesson page. */
+function loadPersonalization() {
+  try {
+    const raw = localStorage.getItem(PERSONALIZE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persists prefs and clears the "skipped" flag (answering later,
+ *  after an earlier skip, should count the same as answering the
+ *  first time). Fails silently if storage is unavailable (private
+ *  browsing etc.) — the card will just reappear next load, which is
+ *  an acceptable degradation for a purely cosmetic feature. */
+function savePersonalization(prefs) {
+  try {
+    localStorage.setItem(PERSONALIZE_STORAGE_KEY, JSON.stringify(prefs));
+    localStorage.removeItem(PERSONALIZE_SKIPPED_KEY);
+  } catch {
+    /* no-op — see comment above */
+  }
+}
+
+function markPersonalizationSkipped() {
+  try { localStorage.setItem(PERSONALIZE_SKIPPED_KEY, 'true'); } catch { /* no-op */ }
+}
+
+function wasPersonalizationSkipped() {
+  try { return localStorage.getItem(PERSONALIZE_SKIPPED_KEY) === 'true'; } catch { return false; }
+}
+
+/** Builds the one-line "Learning ASL for family • 10 min/day" summary
+ *  shown once prefs are saved. Falls back gracefully if a value is
+ *  somehow missing/unrecognized (e.g. a future option was removed). */
+function personalizeSummaryText(prefs) {
+  const audience = PERSONALIZE_AUDIENCE_LABELS[prefs?.audience] || 'yourself';
+  const minutes  = Number(prefs?.minutes);
+  const timePart = Number.isFinite(minutes) && minutes > 0 ? ` • ${minutes} min/day` : '';
+  return `🎯 Learning ASL for ${audience}${timePart}`;
+}
+
+// Local (not persisted) selection state while the card is open —
+// mirrors the pattern quiz.js uses for in-progress answer state.
+let personalizeSelectedAudience = null;
+let personalizeSelectedMinutes  = null;
+
+function updatePersonalizeSaveEnabled() {
+  if (btnPersonalizeSaveEl) {
+    btnPersonalizeSaveEl.disabled = !(personalizeSelectedAudience && personalizeSelectedMinutes);
+  }
+}
+
+/** Renders the selected/unselected state of one option-button group
+ *  (audience or time) without rebuilding the DOM — used both on first
+ *  render and when reopening the card via "Edit" with prior answers. */
+function renderPersonalizeSelection(groupEl, selectedValue) {
+  if (!groupEl) return;
+  groupEl.querySelectorAll('button').forEach(btn => {
+    btn.classList.toggle('personalize-card__option--selected', btn.dataset.value === selectedValue);
+  });
+}
+
+/** Shows the question card, pre-filled with `prefs` if reopened via
+ *  "Edit" (prefs is null the very first time it's shown). */
+function openPersonalizeCard(prefs) {
+  if (!personalizeCardEl) return;
+  personalizeSelectedAudience = prefs?.audience ?? null;
+  personalizeSelectedMinutes  = prefs?.minutes != null ? String(prefs.minutes) : null;
+  renderPersonalizeSelection(personalizeAudienceEl, personalizeSelectedAudience);
+  renderPersonalizeSelection(personalizeTimeEl, personalizeSelectedMinutes);
+  updatePersonalizeSaveEnabled();
+  personalizeCardEl.style.display = '';
+  if (personalizeSummaryEl) personalizeSummaryEl.style.display = 'none';
+}
+
+/** Hides the question card and shows the appropriate one-line summary
+ *  row below it: the saved preference text if answered, or a small
+ *  "set preferences" invite if the learner skipped (never both, and
+ *  never the nagging full card again). */
+function closePersonalizeCard() {
+  if (personalizeCardEl) personalizeCardEl.style.display = 'none';
+  if (!personalizeSummaryEl) return;
+
+  const prefs = loadPersonalization();
+  personalizeSummaryEl.innerHTML = prefs
+    ? `${escapeHtml(personalizeSummaryText(prefs))} · <button type="button" class="personalize-summary__edit" id="btn-personalize-edit">Edit</button>`
+    : `<button type="button" class="personalize-summary__edit" id="btn-personalize-edit">🎯 Set learning preferences</button>`;
+  personalizeSummaryEl.style.display = '';
+
+  const editBtn = document.getElementById('btn-personalize-edit');
+  if (editBtn) editBtn.onclick = () => openPersonalizeCard(prefs);
+}
+
+/** Wires the two option groups + Save/Skip once. Idempotent (.onclick
+ *  assignment, same pattern as btnQuickCheckSkipEl above) so calling
+ *  initPersonalization() more than once — it isn't, but just in case —
+ *  can't stack duplicate handlers. */
+function wirePersonalizeControls() {
+  if (personalizeAudienceEl) {
+    personalizeAudienceEl.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        personalizeSelectedAudience = btn.dataset.value;
+        renderPersonalizeSelection(personalizeAudienceEl, personalizeSelectedAudience);
+        updatePersonalizeSaveEnabled();
+      };
+    });
+  }
+  if (personalizeTimeEl) {
+    personalizeTimeEl.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        personalizeSelectedMinutes = btn.dataset.value;
+        renderPersonalizeSelection(personalizeTimeEl, personalizeSelectedMinutes);
+        updatePersonalizeSaveEnabled();
+      };
+    });
+  }
+  if (btnPersonalizeSaveEl) {
+    btnPersonalizeSaveEl.onclick = () => {
+      if (!personalizeSelectedAudience || !personalizeSelectedMinutes) return;
+      savePersonalization({
+        audience: personalizeSelectedAudience,
+        minutes:  Number(personalizeSelectedMinutes),
+        savedAt:  Date.now(),
+      });
+      closePersonalizeCard();
+    };
+  }
+  if (btnPersonalizeSkipEl) {
+    btnPersonalizeSkipEl.onclick = () => {
+      markPersonalizationSkipped();
+      closePersonalizeCard();
+    };
+  }
+}
+
+/** Entry point, called once from boot() — deliberately NOT called from
+ *  updateLessonMeta() (which reruns on every sign) since this is a
+ *  once-per-visit prompt, not per-sign lesson content. */
+function initPersonalization() {
+  if (!personalizeCardEl) return; // markup missing — degrade silently
+  wirePersonalizeControls();
+
+  const saved = loadPersonalization();
+  if (saved) {
+    closePersonalizeCard(); // renders the summary row, hides the card
+  } else if (wasPersonalizationSkipped()) {
+    closePersonalizeCard(); // renders the "set preferences" invite only
+  } else {
+    openPersonalizeCard(null); // first-ever visit — show the card
+  }
 }
 
 // BUG 8 (reverted): category assessments used to test every sign in
@@ -1048,6 +1243,14 @@ async function boot() {
     return;
   }
 
+  // NEW — REV 8 teaching-rhythm pass: called once per page load (not
+  // per-sign like updateLessonMeta()) — see initPersonalization()'s own
+  // comment for why. Placed after the lock-redirect above (no point
+  // asking before a redirect that's about to navigate away) but before
+  // the name-drill/empty-category early returns below, so the prompt
+  // still appears even on those edge-case lessons.
+  initPersonalization();
+
   // NEW — Rev4 Phase 2: totalSigns is always 1 for the name drill (see
   // computeSignOrder()), so the empty-category bail below never fires
   // for it — but a learner with no letters in their profile name (blank
@@ -1210,17 +1413,13 @@ function updateLessonMeta() {
     if (lessonVideoEl) {
       const source = lessonVideoEl.querySelector('source');
       if (source) source.src = signData.videoUrl;
+      // 2026-08-26: pairs with the new isNameDrill video-hide fix below —
+      // without resetting display here, once a learner visited "Fingerspell
+      // Your Name" (which now hides this element), every real sign visited
+      // afterward would keep showing a hidden video with no way to un-hide it.
+      lessonVideoEl.style.display = '';
       lessonVideoEl.load();
     }
-
-    // NOTE:make sure to read data.js line 338, and lesson.html line 177 first to make this work properly
-    // if we're gonna use embedded youtube video 
-    // replace the condition above with this commented condition below 
-    
-    // if (lessonVideoEl) {  
-    //   lessonVideoEl.src = signData.videoUrl;
-    //   console.log(`src success`);
-    // }
 
     // NEW: link out to Lifeprint.com (ASL University) for a second,
     // authoritative reference on this sign, when we have one.
@@ -1254,6 +1453,20 @@ function updateLessonMeta() {
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+    // BUG FIX (2026-08-26): lessonVideoEl is only ever touched inside the
+    // `if (signData)` branch above, which this drill never enters
+    // (signData is deliberately null for it — see signDataForTitle).
+    // Without this, the <video> kept showing whatever sign's clip last
+    // loaded (or the page's default markup source on first load) —
+    // "Fingerspell Your Name" was rendering with a stale/mismatched demo
+    // video instead of no video at all. Pause + hide it here, same
+    // reasoning as the lessonImgHintEl fix directly below: nothing about
+    // this drill maps to a single reference video, so there's nothing
+    // correct to show.
+    if (lessonVideoEl) {
+      lessonVideoEl.pause();
+      lessonVideoEl.style.display = 'none';
+    }
     // BUG FIX (2026-08-20, review session): lessonImgHintEl is only
     // ever updated inside the `if (signData)` branch above, which this
     // drill never enters (signData is deliberately null for it — see
@@ -2245,19 +2458,20 @@ function updateConfidenceUI(result) {
     const isCorrectSign = result.label === expectedId;
     const showAsSuccess = result.matched && isCorrectSign;
     confidenceEl.classList.remove('confidence-bar-fill--pulse');
-    // THIS SESSION'S FIX (2026-08-22 — PIVOT_CHECKLIST.md §16 "detected
-    // C while teaching M is visually confusing" item): the color-
-    // correctness fix above (matched && isCorrectSign) already stops a
-    // confident wrong guess from glowing green, but the review flagged
-    // that yellow-vs-green alone still isn't "unmistakable" — a learner
-    // skimming quickly, or who can't rely on color, just saw a bare
-    // wrong letter with no indication it was wrong. Only touches the
-    // CONFIDENT-wrong case (matched but not the active sign); a low-
-    // confidence/still-forming label is left as the bare letter, since
-    // calling an in-progress attempt "not a match" before it's even
-    // settled would read as premature.
-    const showAsWrongMatch = result.matched && !isCorrectSign;
-    detectedEl.textContent        = showAsWrongMatch ? `${result.label} — not "${expectedId}"` : result.label;
+    // 2026-08-22 fix (PIVOT_CHECKLIST.md §16 "detected C while teaching M
+    // is visually confusing"): a confident wrong guess is kept out of the
+    // green/"success" state via showAsSuccess below (matched &&
+    // isCorrectSign, not bare matched) — that part still stands.
+    //   2026-08-26 UPDATE: that same fix also appended literal text —
+    // `${label} — not "${expectedId}"` — onto the readout for a confident
+    // wrong guess. Removed per feedback: the readout should show only
+    // the detected sign, full stop. The yellow-vs-green color treatment
+    // below already carries the "this isn't the target" signal, and
+    // assessment mode has its own separate ❌ "Detected X — expected Y"
+    // text (handleAssessmentFrame) for that case — this panel doesn't
+    // need to duplicate it. Underlying classification/scoring (isCorrectSign,
+    // showAsSuccess, confidence%) is unchanged — only the displayed text.
+    detectedEl.textContent        = result.label;
     detectedEl.style.color        = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-text-muted)';
     confidenceEl.style.width      = `${result.confidence}%`;
     confidenceEl.style.background = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-yellow)';
