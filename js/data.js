@@ -810,6 +810,13 @@ const CATEGORIES = [
  * defined in js/engine/dictionary.js so the lesson content panel
  * never contradicts what the classifier is actually checking for.
  * ──────────────────────────────────────────────────────────────── */
+
+//NOTE: read the lesson.js line 1065 comment and lesson.html line 177 comment to proceed
+//If we're gonna use youtube video as the source for video demonstration
+//replace the value of the videoUrl with the corresponding youtube video embed source (src)
+//to get the embed source of the corresponding youtube video click share, select embed and copy the src
+//Example: videoUrl: "https://www.youtube.com/embed/rlhRQiVeQPY?si=U7AqOtDU-hoEq1p5"
+
 const SIGNS = [
   {
     id: 'basic_A', level: 'basic', signId: 'A', title: 'Letter A', order: 1,
