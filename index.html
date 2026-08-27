@@ -17,9 +17,15 @@
                no separate marketing landing page — visitors land
                directly on Log In, with a Sign Up tab right next to
                it. Logged-in users are bounced straight to the
-               dashboard before this page even renders.
+               Homepage before this page even renders.
 
-    CONNECTS : → pages/dashboard.html  (after login/register)
+    CONNECTS : → pages/homepage.html  (after login/register, and for an
+                 already-logged-in visitor — HOMEPAGE PIVOT, this
+                 session: was pages/dashboard.html. See
+                 pages/homepage.html's own header comment and
+                 SYSTEM_ARCHITECTURE.md for the full flow — Homepage
+                 itself links onward to pages/dashboard.html and
+                 pages/learn.html.)
 
     AUTH MODE: js/auth.js's login()/register()/logout() already call
                real Firebase Auth (createUserWithEmailAndPassword /
@@ -34,8 +40,12 @@
     REV 4 PHASE 5 (2026-08-19): removed the "Starting level" picker
                from the Sign Up form below — see
                SYSTEM_ARCHITECTURE.md Rev 4 → "Suggested removals" #1.
-               Every learner now starts at Unit 0 on the single trail;
+               Every learner lands on the same single continuous path;
                there's no proficiency tier to choose at signup anymore.
+               (Wording above no longer says "Unit 0" — HOMEPAGE PIVOT,
+               this session: Unit 0 is gone, see data.js. Every learner
+               now sees pages/homepage.html first, then starts the
+               trail proper at Unit 1, the Alphabet.)
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -54,7 +64,11 @@
   <script src="js/theme.js" defer></script>
   <script>
     window.addEventListener('lwauth-ready', () => {
-    LWAuth.redirectIfLoggedIn('pages/dashboard.html');
+    // HOMEPAGE PIVOT (this session) — an already-logged-in visitor now
+    // lands on pages/homepage.html (was pages/dashboard.html). js/auth.js
+    // itself is untouched — redirectIfLoggedIn() already took a
+    // destination argument, only the string passed to it changed.
+    LWAuth.redirectIfLoggedIn('pages/homepage.html');
    });
   </script>
 </head>
@@ -138,12 +152,15 @@
     }
 
     // BYPASS MODE: no validation against a backend yet — see js/auth.js.
+    // HOMEPAGE PIVOT (this session) — successful login now lands on
+    // pages/homepage.html (was pages/dashboard.html). js/auth.js's
+    // login() itself is untouched, only this destination string changed.
     async function handleLogin() {
       const email    = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
       try {
         await LWAuth.login(email, password);
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = 'pages/homepage.html';
       } catch (error) {
         //alert(error.message)
         showAuthModal(error.message)
@@ -151,15 +168,21 @@
     }
 
     // REV 4 PHASE 5: no more reg-level field to read — everyone starts
-    // at the same place (Unit 0), so LWAuth.register() no longer takes
+    // at the same place, so LWAuth.register() no longer takes
     // a level argument. See js/auth.js's register() for the matching change.
+    // HOMEPAGE PIVOT (this session) — successful registration now lands
+    // on pages/homepage.html (was pages/dashboard.html; every new
+    // learner now sees the welcome/intro page before the dashboard).
+    // js/auth.js's register() itself is untouched, only this
+    // destination string changed. ("Unit 0" wording above updated to
+    // drop the now-inaccurate unit reference — see data.js.)
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
       const email    = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
       try {
         await LWAuth.register(name, email, password);
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = 'pages/homepage.html';
       } catch (error) {
         //alert(error.message)
         showAuthModal(error.message)

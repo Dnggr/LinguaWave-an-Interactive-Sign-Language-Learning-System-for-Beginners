@@ -29,12 +29,30 @@
  *            `signId` must match a key in js/engine/dictionary.js so
  *            the detection engine and the lesson content stay in sync.
  *
- * REV 7 (this session) — UNITS/CATEGORIES rewritten to implement
+ * REV 7 (2026-08-24) — UNITS/CATEGORIES rewritten to implement
  * Omen's uploaded "updated fixed lesson.txt" 68-topic curriculum.
  * SIGNS, QUESTIONS, UNIT0_CONTENT, and every helper function below
- * are UNCHANGED — this pivot only touched the two arrays it needed
- * to. See AI_MEMORY.md §0 / PIVOT_CHECKLIST.md / SYSTEM_ARCHITECTURE.md
- * Rev 7 section for the full writeup, mapping table, and open flags.
+ * were UNCHANGED that session — the pivot only touched the two
+ * arrays it needed to. See AI_MEMORY.md §0 / PIVOT_CHECKLIST.md /
+ * SYSTEM_ARCHITECTURE.md Rev 7 section for the full writeup, mapping
+ * table, and open flags.
+ *
+ * HOMEPAGE PIVOT (this session) — Unit 0 ("Welcome to ASL: A Brief
+ * History") is no longer a curriculum unit. Its `UNITS` entry
+ * (order:0, kind:'info') is REMOVED — the learning trail now starts
+ * at order:1 (Alphabet); order:2 (Fingerspell)/order:3 (Numbers) and
+ * every unit after them keep their existing `order` values unchanged
+ * (a gap at 0 is intentional, not renumbered). `UNIT0_CONTENT` is
+ * REMOVED from this file entirely (Option B — see task notes): its
+ * five sections now live as static markup in the new
+ * `pages/homepage.html`, the authenticated landing page shown right
+ * after login/register (see index.html). `intro-to-asl.html` is
+ * UNCHANGED and still exists as the deeper, longer-form reference
+ * page homepage.html links out to. No other CATEGORIES/SIGNS content
+ * touched, no ordering/unlock logic touched — `js/engine/progress.js`
+ * was inspected and confirmed to need no change (it already only
+ * walks `kind:'category-group'` units, so Unit 0 was structurally
+ * excluded from gating even before this removal).
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -62,7 +80,10 @@
  * `UNITS` is what js/learn.js's future trail-view (Phase 4) walks in
  * order; `level` stays a legacy internal partition key only.
  *
- * kind: 'info' (no camera/sign, just reading — Unit 0) |
+ * kind: 'info' (no camera/sign, just reading — historically Unit 0;
+ *          NO LIVE UNIT USES THIS KIND as of the Homepage pivot, see
+ *          the file header comment above — kept documented here in
+ *          case a future info-only unit is ever added) |
  *       'interactive' (a drill with no CATEGORIES entry of its own —
  *          Unit 2, built in Phase 2 directly on the A–Z static model) |
  *       'category-group' (one or more CATEGORIES entries tagged with
@@ -100,7 +121,15 @@
  * kind meanings unchanged from Rev 6 — see SYSTEM_ARCHITECTURE.md.
  * ──────────────────────────────────────────────────────────────── */
 const UNITS = [
-  { id: 'welcome', order: 0, title: 'Welcome to ASL: A Brief History', kind: 'info' },
+  // HOMEPAGE PIVOT (this session) — order:0 'welcome' (kind:'info',
+  // "Welcome to ASL: A Brief History") REMOVED. That content is now
+  // the static pages/homepage.html landing page shown right after
+  // login, not a trail unit — see file header comment. Order
+  // deliberately starts at 1 now; 1/2/3 below keep their existing
+  // values unchanged (per task instructions: don't renumber just to
+  // close the gap at 0 — nothing reads UNITS as a zero-indexed array,
+  // every lookup below is by `.id` or `.order` value, confirmed via
+  // getUnits()/getCategoriesForUnit()/progress.js's getOrderedLiveCategories()).
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
   // UNCHANGED from Rev 6 — see file header note above. Not in the
   // source lesson plan; kept as a working feature.
@@ -181,64 +210,21 @@ const UNITS = [
   { id: 'phrasebook', order: 71, title: 'Phrasebook', kind: 'reference' },
 ];
 
-/* ── UNIT 0 CONTENT — "Welcome to ASL: A Brief History" ─────────────
- * NEW — Rev 4 Phase 1. Answered by Joshua: static text (fastest to
- * ship), NOT the capture.html YouTube reference-video panel. No
- * camera, no SIGN_DICTIONARY entry, no CATEGORIES entry — this is
- * read by a dedicated Unit 0 "info" screen (learn.js's
- * renderUnitInfo()).
- * CHANGED (this session, content-writing pass) — added the
- * 'brief_history' section below. Unit 0 previously had no actual
- * history content despite Omen's target reorder wanting Unit 0 to BE
- * "ASL History" (see PIVOT_CHECKLIST.md → "Unit reorder", item 1, and
- * SYSTEM_ARCHITECTURE.md Rev 6 Unit Map row 0) — every prior section
- * here was general "welcome" framing or app onboarding, not history.
- * Dates/names checked against ASLU (lifeprint.com, Dr. Bill Vicars)
- * per AI_MEMORY.md §1's standing instruction to check ASLU before
- * drafting new data.js content, for consistency with what's already
- * in the app — see this session's AI_MEMORY.md log entry for the
- * specific ASLU pages checked. Kept deliberately short and
- * complementary to pages/intro-to-asl.html's own, more detailed "A
- * short history" section (linked from the info screen) rather than
- * duplicating it — that page/Unit-0 overlap is still an open product
- * decision (merge vs. keep cross-linked), unchanged by this session;
- * see PIVOT_CHECKLIST.md "Open / backlog."
- * Optional 2–3 question comprehension check mentioned in Rev 4 is NOT
- * included here yet — add a `check` field per section if/when that's
- * built.
+/* ── UNIT 0 CONTENT — REMOVED this session (Homepage pivot) ─────────
+ * `UNIT0_CONTENT` (five sections: "What is ASL?", "A Brief History of
+ * ASL", "How practice works in LinguaWave", and two Deaf-culture
+ * notes — originally added Rev 4 Phase 1, history content added
+ * 2026-08-23) used to be read by a dedicated Unit 0 "info" trail
+ * screen (learn.js's now-also-removed renderUnitInfo()). Unit 0 is no
+ * longer a curriculum unit (see the UNITS array above and the file
+ * header comment) — this content was moved VERBATIM into the new
+ * pages/homepage.html as static markup (Option B: static HTML over a
+ * renamed-but-still-data-driven HOMEPAGE_CONTENT array, since nothing
+ * else reads this content and a static informational page needs no
+ * render layer). No SIGNS/SIGN_DICTIONARY/CATEGORIES entry ever
+ * referenced this const, so removing it has zero effect on lesson
+ * content, detection, or progress/unlock logic.
  * ──────────────────────────────────────────────────────────────── */
-const UNIT0_CONTENT = [
-  {
-    id: 'what_is_asl',
-    title: 'What is ASL?',
-    body: 'American Sign Language (ASL) is a complete, natural language with its own grammar and structure — it is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.',
-  },
-  // NEW (this session) — see file header comment above for sourcing
-  // and scope notes. Kept to one paragraph on purpose: the fuller
-  // version (Stokoe's linguistic research, the "why it matters" case
-  // for ASL being recognized as a real language) already lives on the
-  // linked intro-to-asl.html page, so it isn't repeated here.
-  {
-    id: 'brief_history',
-    title: 'A Brief History of ASL',
-    body: 'Modern ASL traces back to 1817, when Thomas Hopkins Gallaudet and Laurent Clerc opened the American School for the Deaf in Hartford, Connecticut — the first permanent school for Deaf students in the U.S. Gallaudet was inspired to study Deaf education by his neighbor\'s Deaf daughter, Alice Cogswell, and it was her father, Dr. Mason Cogswell, who helped fund Gallaudet\'s trip to Europe. There he met Clerc, a Deaf teacher who signed French Sign Language, and convinced him to cross the Atlantic and help start the school. At Hartford, Clerc\'s French Sign Language blended with the sign language Deaf students already brought with them — including Martha\'s Vineyard Sign Language, used for generations on a Massachusetts island by a community with an unusually high rate of hereditary deafness — and modern ASL grew out of that mix over the decades that followed.',
-  },
-  {
-    id: 'how_practice_works',
-    title: 'How practice works in LinguaWave',
-    body: 'Each lesson teaches a sign with an image, a written description, and a short demo video. When you are ready, you can open the optional Camera Check to practice in front of your webcam — LinguaWave will try to recognize your handshape live. This camera check is practice, not a pass/fail gate: your quiz score comes from the Multiple Choice and Identification rounds, not from the camera.',
-  },
-  {
-    id: 'deaf_culture_note_1',
-    title: "Deaf culture note: capitalizing \"Deaf\"",
-    body: 'You will often see "Deaf" capitalized. This marks Deaf as a cultural and linguistic identity — belonging to a community with its own language and traditions — rather than only describing a hearing level. Lowercase "deaf" is generally used when referring strictly to hearing status.',
-  },
-  {
-    id: 'deaf_culture_note_2',
-    title: 'Deaf culture note: getting someone\'s attention',
-    body: 'Waving in someone\'s line of sight, a light tap on the shoulder, or a gentle tap on a table to send a vibration are the polite ways to get a Deaf person\'s attention — calling out a name usually will not work the way it does in spoken conversation.',
-  },
-];
 
 const CATEGORIES = [
   // ── level=basic — Alphabet & Numbers (topics 1-2, unchanged from Rev 6) ──
@@ -332,27 +318,13 @@ const CATEGORIES = [
     words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'SHARE', 'TEACH', 'SIGN'],
   },
   // 11. Body
-  // CONTENT PASS (2026-08-26): flipped to comingSoon:false — full
-  // ASLU-checked (lifeprint.com) SIGNS coverage added for every word[]
-  // below (see "MEDIUM · BODY" block). Next up in the content queue per
-  // PIVOT_CHECKLIST.md is 'personal_information' (Unit 13) — not
-  // started this session.
   {
-    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 12,
+    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: true, unit: 12,
     words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
   },
   // 12. Personal Information
-  // CONTENT PASS (2026-08-26, later session): flipped to comingSoon:false.
-  // Of the 15 words[] below, only 6 are new SIGNS entries this session —
-  // NAME/AGE/FAMILY/BIRTHDAY/LIVE/FROM (ASLU-checked where lifeprint.com
-  // had real content). The other 9 — BOY/GIRL (family), CHILD/PERSON/
-  // FRIEND/STUDENT/TEACHER (people), SCHOOL/HOME (places) — already have
-  // real, live SIGNS entries under their existing categories and are NOT
-  // duplicated here, same convention as the school-group block's
-  // BOY/GIRL/HELP note below. Next up in the content queue per
-  // PIVOT_CHECKLIST.md is 'colors' (Unit 14) — not started.
   {
-    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 13,
+    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: true, unit: 13,
     words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
   // 13. Colors
@@ -824,6 +796,13 @@ const CATEGORIES = [
  * defined in js/engine/dictionary.js so the lesson content panel
  * never contradicts what the classifier is actually checking for.
  * ──────────────────────────────────────────────────────────────── */
+
+//NOTE: read the lesson.js line 1065 comment and lesson.html line 177 comment to proceed
+//If we're gonna use youtube video as the source for video demonstration
+//replace the value of the videoUrl with the corresponding youtube video embed source (src)
+//to get the embed source of the corresponding youtube video click share, select embed and copy the src
+//Example: videoUrl: "https://www.youtube.com/embed/rlhRQiVeQPY?si=U7AqOtDU-hoEq1p5"
+
 const SIGNS = [
   {
     id: 'basic_A', level: 'basic', signId: 'A', title: 'Letter A', order: 1,
@@ -3106,287 +3085,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sign.htm',
   },
 
-  /* ── MEDIUM · BODY (Unit 12) ─────────────────────────────────────
-   * CONTENT PASS (2026-08-26): new block, ASLU-checked (lifeprint.com)
-   * content added this session for every word[] entry. All 16 signs
-   * are simple point/touch/pat gestures at a body location — kept
-   * detectionType:'motion' for consistency with every other non-
-   * alphabet word in this file (the motion model's buffered-window
-   * architecture is what all word-level signs route through here,
-   * regardless of whether the underlying ASL sign itself involves
-   * much movement — see AI_MEMORY.md §5's model reference). FINGER has
-   * no referenceUrl: lifeprint.com's dedicated finger.htm page is a
-   * content-empty stub (title only, no description/image), same
-   * situation as the CATCH citation removed in the 2026-08-26 (earlier)
-   * session — description below is written from well-established
-   * general ASL knowledge instead, high confidence given how basic and
-   * widely-taught the sign is. Matching disabled:true dictionary.js
-   * placeholders added for all 16 (parity convention, see that file). */
-  {
-    id: 'medium_body_BODY', level: 'medium', category: 'body', signId: 'BODY', title: 'Body', order: 1,
-    description: 'Touch both hands to the upper part of your torso (chest), then move them down and touch the lower part of your torso (stomach).',
-    tips: [
-      'Both hands move together, chest then stomach',
-      'Open or flat hands both work — the two contact points matter more than the exact handshape',
-      'Represents the whole body as one concept',
-    ],
-    imageUrl: '../assets/images/medium/body/body.png', videoUrl: '../assets/videos/medium/body/body.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/body.htm',
-  },
-  {
-    id: 'medium_body_HEAD', level: 'medium', category: 'body', signId: 'HEAD', title: 'Head', order: 2,
-    description: 'Touch your fingertips to the upper/side part of your head near your temple, then bring your hand down and touch near your chin.',
-    tips: [
-      'Starts at the temple/side of the head, ends near the chin',
-      'One smooth downward motion between the two contact points',
-      'A slightly bent handshape (fingers curled) is typical',
-    ],
-    imageUrl: '../assets/images/medium/body/head.png', videoUrl: '../assets/videos/medium/body/head.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/head.htm',
-  },
-  {
-    id: 'medium_body_HAIR', level: 'medium', category: 'body', signId: 'HAIR', title: 'Hair', order: 3,
-    description: 'Hold an open \u2018F\u2019 handshape near the top of your head, then close it into a regular \u2018F\u2019 as your thumbnail touches a strand of your hair.',
-    tips: [
-      'Handshape closes from open to a pinched \u2018F\u2019 as it makes contact',
-      'Contact point is near the top/side of the head',
-      'A close-open-close repeated motion is common in careful/slow signing',
-    ],
-    imageUrl: '../assets/images/medium/body/hair.png', videoUrl: '../assets/videos/medium/body/hair.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hair.htm',
-  },
-  {
-    id: 'medium_body_FACE', level: 'medium', category: 'body', signId: 'FACE', title: 'Face', order: 4,
-    description: 'Point your index finger at your face and trace a circle in the air around it.',
-    tips: [
-      'The index finger stays a short distance from the skin as it circles',
-      'One full circle around the face is enough',
-      'Just pointing at the face (no circle) can also mean \u2018a face\u2019 on its own',
-    ],
-    imageUrl: '../assets/images/medium/body/face.png', videoUrl: '../assets/videos/medium/body/face.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/face.htm',
-  },
-  {
-    id: 'medium_body_EYE', level: 'medium', category: 'body', signId: 'EYE', title: 'Eye', order: 5,
-    description: 'Point your index finger at your own eye.',
-    tips: [
-      'A simple, direct point is all this sign needs',
-      'Pointing at both eyes one after the other is how \u2018eyes\u2019 (plural) is shown',
-      'Keep the motion small and close to your face',
-    ],
-    imageUrl: '../assets/images/medium/body/eye.png', videoUrl: '../assets/videos/medium/body/eye.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/eyes.htm',
-  },
-  {
-    id: 'medium_body_EAR', level: 'medium', category: 'body', signId: 'EAR', title: 'Ear', order: 6,
-    description: 'Point your index finger at your ear, or tap your index finger against your ear twice.',
-    tips: [
-      'Either a single point or a light double tap is understood',
-      'The tapping version can also mean \u2018sound\u2019 depending on context',
-      'Keep contact gentle \u2014 a light tap, not a poke',
-    ],
-    imageUrl: '../assets/images/medium/body/ear.png', videoUrl: '../assets/videos/medium/body/ear.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/ears.htm',
-  },
-  {
-    id: 'medium_body_NOSE', level: 'medium', category: 'body', signId: 'NOSE', title: 'Nose', order: 7,
-    description: 'Tap the tip of your index finger against your nose twice.',
-    tips: [
-      'Two light taps, not one',
-      'Keep the tap on the very tip of the nose',
-      'A single tap is common in fast, casual signing',
-    ],
-    imageUrl: '../assets/images/medium/body/nose.png', videoUrl: '../assets/videos/medium/body/nose.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nose.htm',
-  },
-  {
-    id: 'medium_body_MOUTH', level: 'medium', category: 'body', signId: 'MOUTH', title: 'Mouth', order: 8,
-    description: 'Point your index finger at your mouth and trace a small circle around it.',
-    tips: [
-      'The circle stays close to the lips',
-      'One circle is enough \u2014 no need to repeat it',
-      'Keep your finger a short distance from your skin as it traces the circle',
-    ],
-    imageUrl: '../assets/images/medium/body/mouth.png', videoUrl: '../assets/videos/medium/body/mouth.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mouth.htm',
-  },
-  {
-    id: 'medium_body_TEETH', level: 'medium', category: 'body', signId: 'TEETH', title: 'Teeth', order: 9,
-    description: 'Smile, and move an \u2018X\u2019 handshape (a bent index finger) from one side of your mouth to the other in front of your teeth.',
-    tips: [
-      'Smiling so your teeth show helps make the sign clear',
-      'The handshape is a bent index finger (\u2018X\u2019), not a straight point',
-      'Motion travels horizontally, side to side',
-    ],
-    imageUrl: '../assets/images/medium/body/teeth.png', videoUrl: '../assets/videos/medium/body/teeth.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/teeth.htm',
-  },
-  {
-    id: 'medium_body_HAND', level: 'medium', category: 'body', signId: 'HAND', title: 'Hand', order: 10,
-    description: 'Use the pinkie-edge of one flat hand to make a slicing motion across the opposite wrist, as if cutting your hand off at the wrist \u2014 then switch and do the same on the other side.',
-    tips: [
-      'Both hands take a turn \u2018slicing\u2019 the other',
-      'Motion is a quick, clean edge-of-hand chop at the wrist',
-      'The same sign covers both \u2018hand\u2019 and \u2018hands\u2019',
-    ],
-    imageUrl: '../assets/images/medium/body/hand.png', videoUrl: '../assets/videos/medium/body/hand.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hand.htm',
-  },
-  {
-    id: 'medium_body_FINGER', level: 'medium', category: 'body', signId: 'FINGER', title: 'Finger', order: 11,
-    description: 'Touch the tip of your dominant hand\u2019s index finger to the tip of your non-dominant hand\u2019s index finger.',
-    tips: [
-      'Just the two index fingertips touch \u2014 the other fingers stay out of the way',
-      'A brief, single touch is enough',
-      'Different from HAND, which uses a slicing motion at the wrist instead',
-    ],
-    imageUrl: '../assets/images/medium/body/finger.png', videoUrl: '../assets/videos/medium/body/finger.mp4', detectionType: 'motion',
-    // No referenceUrl — lifeprint.com's dedicated finger.htm page is a
-    // content-empty stub (title only, no description/image). See block
-    // comment above.
-  },
-  {
-    id: 'medium_body_ARM', level: 'medium', category: 'body', signId: 'ARM', title: 'Arm', order: 12,
-    description: 'Brush the fingertips of your dominant flat hand along the upper-inside edge of your non-dominant arm, from the lower bicep down to the wrist.',
-    tips: [
-      'Motion travels from the upper arm down toward the wrist',
-      'Keep the brushing hand flat, fingers together',
-      'The non-dominant arm is what the motion is \u2018describing\u2019',
-    ],
-    imageUrl: '../assets/images/medium/body/arm.png', videoUrl: '../assets/videos/medium/body/arm.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/body-parts.htm',
-  },
-  {
-    id: 'medium_body_LEG', level: 'medium', category: 'body', signId: 'LEG', title: 'Leg', order: 13,
-    description: 'Point at, or gently pat, your own leg.',
-    tips: [
-      'A simple point at the leg is enough for a first mention',
-      'A light pat also works \u2014 keep it gentle so it isn\u2019t mistaken for the sign DOG',
-      'Two flat \u2018B\u2019 hands can also outline the leg\u2019s shape for a more descriptive version',
-    ],
-    imageUrl: '../assets/images/medium/body/leg.png', videoUrl: '../assets/videos/medium/body/leg.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/leg.htm',
-  },
-  {
-    id: 'medium_body_FOOT', level: 'medium', category: 'body', signId: 'FOOT', title: 'Foot', order: 14,
-    description: 'Point your index finger down at your own foot.',
-    tips: [
-      'A short, quick point downward at the foot is the simplest version',
-      'A two-handed outline version exists for detailed/medical contexts, but pointing is the standard beginner form',
-      'Context (shoes, walking, standing) usually makes the meaning clear',
-    ],
-    imageUrl: '../assets/images/medium/body/foot.png', videoUrl: '../assets/videos/medium/body/foot.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/foot.htm',
-  },
-  {
-    id: 'medium_body_STOMACH', level: 'medium', category: 'body', signId: 'STOMACH', title: 'Stomach', order: 15,
-    description: 'Pat your open hand against your stomach twice, or poke it twice with the fingertips of a bent hand.',
-    tips: [
-      'Two light pats or pokes, not one',
-      'Location is the stomach/abdomen area, not the chest',
-      'Pointing at your stomach is also an accepted, simpler version',
-    ],
-    imageUrl: '../assets/images/medium/body/stomach.png', videoUrl: '../assets/videos/medium/body/stomach.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/stomach.htm',
-  },
-  {
-    id: 'medium_body_BACK', level: 'medium', category: 'body', signId: 'BACK', title: 'Back', order: 16,
-    description: 'Reach around and touch your own back with your fingertips, twice.',
-    tips: [
-      'This is the body-part version \u2014 a different sign is used for \u2018go back\u2019 or \u2018give it back\u2019',
-      'Two light touches to your back',
-      'Reach as far as is comfortable \u2014 the exact spot isn\u2019t strict',
-    ],
-    imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/medium/body/back.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/back.htm',
-  },
-
-  /* ── MEDIUM · PERSONAL_INFORMATION (Unit 13) ───────────────────────
-   * CONTENT PASS (2026-08-26, later session): new block. Of this
-   * category's 15 words[] (see CATEGORIES above), only the 6 below are
-   * new SIGNS entries — BOY/GIRL (family), CHILD/PERSON/FRIEND/STUDENT/
-   * TEACHER (people), and SCHOOL/HOME (places) already have real, live
-   * SIGNS entries under their existing categories and are reused
-   * rather than duplicated, same convention as the school-group
-   * block's BOY/GIRL/HELP note below. AGE has no referenceUrl:
-   * lifeprint.com's dedicated age.htm page is a content-empty stub
-   * (title only, no description), same situation as FINGER/CATCH in
-   * earlier sessions — description below is written from
-   * well-established general ASL knowledge instead (same location and
-   * closing-into-a-fist movement as OLD, corroborated across multiple
-   * independent ASL references). Matching disabled:true dictionary.js
-   * placeholders added for all 6 (parity convention, see that file).
-   * detectionType:'motion' throughout, same reasoning as the BODY
-   * block above. */
-  {
-    id: 'medium_personal_information_NAME', level: 'medium', category: 'personal_information', signId: 'NAME', title: 'Name', order: 1,
-    description: 'Form an \u2018H\u2019 handshape on both hands (index and middle fingers together, pointing out). Tap the fingertips of your dominant hand crosswise onto the fingertips of your non-dominant hand, twice.',
-    tips: [
-      'Both hands hold a flat \u2018H\u2019 handshape \u2014 two fingers together, not spread',
-      'The dominant hand taps crosswise (like an X) onto the non-dominant hand',
-      'A double tap is the noun \u2018name\u2019; a single tap instead means \u2018named/called\u2019',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/name.png', videoUrl: '../assets/videos/medium/personal_information/name.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
-  },
-  {
-    id: 'medium_personal_information_AGE', level: 'medium', category: 'personal_information', signId: 'AGE', title: 'Age', order: 2,
-    description: 'Hold a loose, open handshape with your thumb near the bottom of your chin, then close it into a fist as you move it a short distance downward.',
-    tips: [
-      'Starts open near the chin, ends as a fist a couple inches lower',
-      'A double downward movement is common, though a single movement is also seen',
-      'Shares its location and closing motion with the sign OLD',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/age.png', videoUrl: '../assets/videos/medium/personal_information/age.mp4', detectionType: 'motion',
-    // No referenceUrl — lifeprint.com's dedicated age.htm page is a
-    // content-empty stub (title only, no description). See block
-    // comment above.
-  },
-  {
-    id: 'medium_personal_information_FAMILY', level: 'medium', category: 'personal_information', signId: 'FAMILY', title: 'Family', order: 3,
-    description: 'Form \u2018F\u2019 handshapes on both hands (thumb and index finger touching, other three fingers up). Start with the hands touching, then arc them apart and back together to trace a circle.',
-    tips: [
-      'Handshape is \u2018F\u2019 on both hands throughout',
-      'The circle traces outward and then closes back to where it started',
-      'Swap the \u2018F\u2019 for a \u2018C\u2019 or \u2018G\u2019 handshape and the same circle motion means CLASS or GROUP instead',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/family.png', videoUrl: '../assets/videos/medium/personal_information/family.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/family.htm',
-  },
-  {
-    id: 'medium_personal_information_BIRTHDAY', level: 'medium', category: 'personal_information', signId: 'BIRTHDAY', title: 'Birthday', order: 4,
-    description: 'Touch the tip of your bent middle finger to your chin, then bring it down and touch it to your chest, near your heart.',
-    tips: [
-      'Two contact points: chin first, then chest',
-      'Handshape is a bent middle finger \u2014 the other fingers stay loosely curled',
-      'Has many accepted regional variants; combining the separate signs BIRTH + DAY is also always understood',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/birthday.png', videoUrl: '../assets/videos/medium/personal_information/birthday.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/birthday.htm',
-  },
-  {
-    id: 'medium_personal_information_LIVE', level: 'medium', category: 'personal_information', signId: 'LIVE', title: 'Live', order: 5,
-    description: 'Hold both hands in \u2018A\u2019 handshapes (fists, thumbs up) near your waist, then move them straight up your torso to chest height in a single motion.',
-    tips: [
-      'One clean upward movement \u2014 a double movement instead changes this to the noun ADDRESS',
-      'Both hands move together, thumbs leading the way up',
-      'An initialized version using \u2018L\u2019 handshapes also exists and means the same thing',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/live.png', videoUrl: '../assets/videos/medium/personal_information/live.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/live.htm',
-  },
-  {
-    id: 'medium_personal_information_FROM', level: 'medium', category: 'personal_information', signId: 'FROM', title: 'From', order: 6,
-    description: 'Hold your non-dominant index finger up and steady. Start your dominant hand as an index finger touching it, then pull the dominant hand back and away while twisting it into an \u2018X\u2019 handshape, like pulling back a bowstring.',
-    tips: [
-      'The non-dominant index finger stays still \u2014 only the dominant hand moves',
-      'The dominant hand changes from a straight index finger to a hooked \u2018X\u2019 as it pulls away',
-      'Often paired with a furrowed-brow question: FROM YOU? means \u2018Where are you from?\u2019',
-    ],
-    imageUrl: '../assets/images/medium/personal_information/from.png', videoUrl: '../assets/videos/medium/personal_information/from.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/from.htm',
-  },
-
   // ── MEDIUM · ESSENTIALS_GREETINGS ──
   // NEW (this session) — no prior data.js content existed for HELLO at
   // all (only a disabled dictionary.js placeholder) — see
@@ -4703,8 +4401,11 @@ function getCategoriesForUnit(unitOrder) {
 }
 
 /* ── EXPORTS ─────────────────────────────────────────────────────── */
+// HOMEPAGE PIVOT (this session) — UNIT0_CONTENT removed from this
+// export list (const no longer exists, see the "UNIT 0 CONTENT"
+// comment above). No other export changed.
 window.LWData = {
-  SIGNS, QUESTIONS, CATEGORIES, UNITS, UNIT0_CONTENT,
+  SIGNS, QUESTIONS, CATEGORIES, UNITS,
   getSign, getCategorySigns, getCategoriesForLevel, getCategory,
   getUnits, getCategoriesForUnit,
 };

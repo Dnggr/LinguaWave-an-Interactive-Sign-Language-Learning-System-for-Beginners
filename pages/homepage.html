@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- NEW: sets data-theme before any CSS loads, so the page never
+       flashes the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('lw-theme');
+      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <!--
+    pages/homepage.html — Authenticated Homepage / Welcome
+    ─────────────────────────────────────────────────────────────────
+    REV 2 (this session) — redesigned to a marketing-landing-page shape
+    (hero → stats → topic grid → ASL info) per reference screenshots of
+    Cisco Networking Academy's homepage. Was a single reading page (just
+    the old Unit 0 content as static prose) — that content is KEPT, just
+    demoted below the new hero/stats/topic-grid sections instead of
+    being the whole page. Still answers ONE question overall: "What is
+    ASL / welcome to LinguaWave?" — deliberately NOT the Dashboard
+    ("what should I do next?") and NOT the Learn trail ("where can I
+    go?"). No real usage stats exist for a capstone project, so the
+    stats bar below uses REAL content counts pulled from js/data.js at
+    build time (unit/sign counts), not invented adoption numbers.
+
+    NEW (this session) — the navbar's user block (greeting name) is now
+    a link to pages/dashboard.html, matching the reference's "click
+    your profile → go to your dashboard" behavior. Every other
+    authenticated page's navbar is UNCHANGED (still just a plain
+    <span>) — this was scoped to Homepage only, per the request; ask if
+    you want the same link added to dashboard.html/learn.html/
+    lesson.html/intro-to-asl.html's navbars too.
+
+    STILL STATIC: no homepage.js. Nothing here is progress-gated or
+    learner-specific beyond the name/profile-link in the navbar (filled
+    by the same js/main.js every other authenticated page already
+    loads). The stats/topic-grid below are hand-written static numbers/
+    links, not a live query against js/data.js — see this file's own
+    "Subject Areas"-equivalent comment further down for why.
+
+    AUTH     : requireAuth() at the top kicks anyone who isn't logged
+               in back to index.html — same guard, same pattern, as
+               pages/dashboard.html / pages/learn.html /
+               pages/lesson.html / pages/intro-to-asl.html.
+               ⚠️ js/auth.js is explicitly out of scope — not opened,
+               not touched, per every other session's rule.
+
+    CONNECTS : ← index.html            (after login/register, and for
+                                          an already-logged-in visitor)
+               → pages/dashboard.html  (Dashboard CTA + navbar profile)
+               → pages/learn.html      (Start Learning CTA + every
+                                          topic-grid card — each opens
+                                          straight into that unit)
+               → pages/intro-to-asl.html (optional "read more" banner)
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <!-- Reuses css/learn.css's .unit-info/.unit-info__section (originally
+       built for learn.js's now-removed Unit 0 screen, repurposed) and
+       .lesson-card--intro/.category-card__icon for the "Want more?"
+       banner further down. No new shared CSS file for this page's own
+       hero/stats/topic-grid — only the page-scoped rules below, same
+       "small scoped <style> block" pattern pages/intro-to-asl.html
+       already uses for its own `.lesson-article` rules. -->
+  <link rel="stylesheet" href="../css/learn.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../index.html');
+  });
+  </script>
+  <style>
+    /* Page-scoped hero/stats/topic-grid layout only — everything else
+       reuses css/style.css (.section/.container/.card/.btn/...) and
+       css/learn.css (.unit-info/.lesson-card--intro/...) as-is. */
+    .hero-banner {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill);
+      background: var(--clr-accent-soft); color: var(--clr-accent);
+      font-size: var(--fs-xs); font-weight: 600; text-decoration: none;
+      margin-bottom: var(--space-5);
+    }
+    .hero-banner:hover { text-decoration: underline; }
+    .homepage-hero { max-width: 720px; }
+    .homepage-hero h1 {
+      font-size: var(--fs-3xl, 2.75rem); line-height: 1.1; margin: 0;
+    }
+    .homepage-hero__actions {
+      display: flex; align-items: center; gap: var(--space-3);
+      flex-wrap: wrap; margin-top: var(--space-6);
+    }
+    @media (max-width: 640px) {
+      .homepage-hero__actions { flex-direction: column; align-items: stretch; }
+      .homepage-hero__actions .btn { width: 100%; }
+    }
+
+    /* Stats bar — real content counts (see js/data.js), not invented
+       usage numbers. Reuses .card for the surface/border treatment. */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-4); margin-top: var(--space-8);
+    }
+    .stats-bar__item { text-align: center; padding: var(--space-5) var(--space-3); }
+    .stats-bar__number {
+      font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700;
+      color: var(--clr-accent); display: block;
+    }
+    .stats-bar__label { font-size: var(--fs-xs); color: var(--clr-text-muted); margin-top: var(--space-1); }
+
+    /* Quote block */
+    .quote-block { max-width: 680px; margin: 0 auto; text-align: center; }
+    .quote-block__mark {
+      width: 56px; height: 56px; margin: 0 auto var(--space-4);
+      border: 2px solid var(--clr-accent); border-radius: var(--radius-pill);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--clr-accent); font-size: var(--fs-xl);
+    }
+    .quote-block__text {
+      font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.4;
+    }
+
+    /* Topic grid ("Subject Areas" equivalent) — 8 curated early units,
+       each a real link into that unit via learn.html?unit=X. Not a
+       live data.js query (would need homepage.js for no real benefit —
+       these 8 ids/titles/icons are stable, hand-picked "start here"
+       topics, not the full 71-unit catalog); if a featured unit's
+       id/title ever changes in data.js, update this list to match. */
+    .topic-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4); margin-top: var(--space-6);
+    }
+    @media (max-width: 900px) { .topic-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .topic-grid { grid-template-columns: 1fr; } }
+    .topic-card {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-5) var(--space-4); background: var(--clr-surface);
+      border: 1px solid var(--clr-border); border-radius: var(--radius-lg);
+      text-decoration: none; color: var(--clr-text);
+      transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+    }
+    .topic-card:hover {
+      border-color: var(--clr-accent); transform: translateY(-2px);
+      box-shadow: var(--shadow-card); text-decoration: none;
+    }
+    .topic-card__icon {
+      flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--radius-md);
+      background: var(--clr-accent-soft); display: flex; align-items: center;
+      justify-content: center; font-size: var(--fs-xl);
+    }
+    .topic-card__title { font-weight: 600; font-size: var(--fs-sm, 0.9rem); }
+
+    /* Navbar profile link — NEW (this session). Was a plain
+       non-interactive <span> before; now an <a> to dashboard.html
+       (see file header comment), styled to still look like the same
+       greeting text rather than an obvious link, with a subtle hover
+       affordance so it doesn't feel like dead UI. Page-scoped since
+       this change is Homepage-only this session — if this becomes the
+       navbar's permanent shape everywhere, move this rule into
+       css/style.css's own navbar section instead of copy-pasting it
+       into every page's <style> block. */
+    .navbar__profile-link {
+      color: inherit; text-decoration: none; border-radius: var(--radius-md);
+      padding: var(--space-1) var(--space-2); margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
+      transition: background var(--dur-base) var(--ease);
+    }
+    .navbar__profile-link:hover { background: var(--clr-accent-soft); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- ── SKIP LINK ─────────────────────────────────────────────────
+       Jumps straight to this page's own primary action, past the
+       navbar's now-5 focusable items (logo, 2 nav links, theme
+       toggle, profile link) + "Log out". Must stay the very first
+       element in <body> to work. -->
+  <a href="#start-learning-cta" class="skip-link">Skip to Start Learning</a>
+
+  <!-- ── NAVBAR ───────────────────────────────────────────────────
+       NEW (this session): the greeting/name block is now an <a> to
+       dashboard.html — "click your profile → dashboard", matching the
+       reference screenshot's behavior. Everything else unchanged. -->
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="homepage.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="learn.html">Learn</a></li>
+      </ul>
+      <div class="navbar__user">
+        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
+                aria-label="Toggle light/dark theme">
+          <span class="theme-toggle__thumb"></span>
+        </button>
+        <a href="dashboard.html" class="navbar__profile-link" aria-label="Go to your Dashboard">
+          👋 <span data-user-name>Learner</span>
+        </a>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ─────────────────────────────────────────────────────
+       Cisco-homepage-style: banner pill, big two-line headline,
+       subtext, two CTA buttons. -->
+  <section class="section">
+    <div class="container">
+      <a href="learn.html?unit=alphabet" class="hero-banner">🤟 New here? Start with the Alphabet — free &amp; self-paced</a>
+      <div class="homepage-hero">
+        <h1>Learn to sign.<br>Speak with your hands.</h1>
+        <p class="mt-4 text-muted">
+          Real handshapes, real practice, and a little Deaf-culture context —
+          LinguaWave teaches American Sign Language one sign at a time, right
+          in your browser.
+        </p>
+        <div class="homepage-hero__actions">
+          <a href="learn.html?unit=alphabet" id="start-learning-cta" class="btn btn--primary btn--lg">Start Learning →</a>
+          <a href="dashboard.html" class="btn btn--ghost btn--lg">Go to Dashboard</a>
+        </div>
+      </div>
+
+      <!-- Stats bar — real content counts, not fabricated adoption
+           numbers (see file header comment). Update these 4 figures if
+           the underlying data.js counts change materially. -->
+      <div class="stats-bar">
+        <div class="card stats-bar__item">
+          <span class="stats-bar__number">71</span>
+          <span class="stats-bar__label">Units on the learning path</span>
+        </div>
+        <div class="card stats-bar__item">
+          <span class="stats-bar__number">300+</span>
+          <span class="stats-bar__label">Signs &amp; phrases taught</span>
+        </div>
+        <div class="card stats-bar__item">
+          <span class="stats-bar__number">2</span>
+          <span class="stats-bar__label">Live camera-detection models</span>
+        </div>
+        <div class="card stats-bar__item">
+          <span class="stats-bar__number">Free</span>
+          <span class="stats-bar__label">Self-paced, always</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── QUOTE ────────────────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <div class="quote-block">
+        <div class="quote-block__mark">"</div>
+        <p class="quote-block__text">ASL is a complete, natural language — not a signed version of English. LinguaWave teaches it that way, one handshape at a time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TOPIC GRID ("Subject Areas" equivalent) ─────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2 class="text-center">Browse Topics</h2>
+      <p class="text-center text-muted mt-2">Jump straight into any of these to begin your learning path.</p>
+      <div class="topic-grid">
+        <a href="learn.html?unit=alphabet" class="topic-card">
+          <span class="topic-card__icon">🔤</span>
+          <span class="topic-card__title">The Alphabet</span>
+        </a>
+        <a href="learn.html?unit=fingerspell_name" class="topic-card">
+          <span class="topic-card__icon">🖊️</span>
+          <span class="topic-card__title">Fingerspell Your Name</span>
+        </a>
+        <a href="learn.html?unit=numbers" class="topic-card">
+          <span class="topic-card__icon">🔢</span>
+          <span class="topic-card__title">Numbers</span>
+        </a>
+        <a href="learn.html?unit=greetings" class="topic-card">
+          <span class="topic-card__icon">👋</span>
+          <span class="topic-card__title">Greetings</span>
+        </a>
+        <a href="learn.html?unit=polite_words" class="topic-card">
+          <span class="topic-card__icon">🙌</span>
+          <span class="topic-card__title">Polite Words</span>
+        </a>
+        <a href="learn.html?unit=people" class="topic-card">
+          <span class="topic-card__icon">🧑‍🤝‍🧑</span>
+          <span class="topic-card__title">People</span>
+        </a>
+        <a href="learn.html?unit=feelings" class="topic-card">
+          <span class="topic-card__icon">😊</span>
+          <span class="topic-card__title">Feelings</span>
+        </a>
+        <a href="learn.html?unit=needs" class="topic-card">
+          <span class="topic-card__icon">🥤</span>
+          <span class="topic-card__title">Needs</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── INTRO CONTENT (kept from the previous revision) ─────────────
+       The five sections below are the former js/data.js UNIT0_CONTENT
+       array, moved here verbatim as static markup — see AI_MEMORY.md
+       / SYSTEM_ARCHITECTURE.md's "Homepage" section. Demoted below the
+       new hero/stats/topic-grid this session, content unchanged.
+       .unit-info/.unit-info__section come from css/learn.css
+       (repurposed from the old Unit 0 trail screen). -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2>What is ASL?</h2>
+      <div class="unit-info mt-4">
+
+        <div class="unit-info__section">
+          <h3>What is ASL?</h3>
+          <p>American Sign Language (ASL) is a complete, natural language with its own grammar and structure — it is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.</p>
+        </div>
+
+        <div class="unit-info__section">
+          <h3>A Brief History of ASL</h3>
+          <p>Modern ASL traces back to 1817, when Thomas Hopkins Gallaudet and Laurent Clerc opened the American School for the Deaf in Hartford, Connecticut — the first permanent school for Deaf students in the U.S. Gallaudet was inspired to study Deaf education by his neighbor's Deaf daughter, Alice Cogswell, and it was her father, Dr. Mason Cogswell, who helped fund Gallaudet's trip to Europe. There he met Clerc, a Deaf teacher who signed French Sign Language, and convinced him to cross the Atlantic and help start the school. At Hartford, Clerc's French Sign Language blended with the sign language Deaf students already brought with them — including Martha's Vineyard Sign Language, used for generations on a Massachusetts island by a community with an unusually high rate of hereditary deafness — and modern ASL grew out of that mix over the decades that followed.</p>
+        </div>
+
+        <div class="unit-info__section">
+          <h3>How practice works in LinguaWave</h3>
+          <p>Each lesson teaches a sign with an image, a written description, and a short demo video. When you are ready, you can open the optional Camera Check to practice in front of your webcam — LinguaWave will try to recognize your handshape live. This camera check is practice, not a pass/fail gate: your quiz score comes from the Multiple Choice and Identification rounds, not from the camera.</p>
+        </div>
+
+        <div class="unit-info__section">
+          <h3>Deaf culture note: capitalizing "Deaf"</h3>
+          <p>You will often see "Deaf" capitalized. This marks Deaf as a cultural and linguistic identity — belonging to a community with its own language and traditions — rather than only describing a hearing level. Lowercase "deaf" is generally used when referring strictly to hearing status.</p>
+        </div>
+
+        <div class="unit-info__section">
+          <h3>Deaf culture note: getting someone's attention</h3>
+          <p>Waving in someone's line of sight, a light tap on the shoulder, or a gentle tap on a table to send a vibration are the polite ways to get a Deaf person's attention — calling out a name usually will not work the way it does in spoken conversation.</p>
+        </div>
+
+        <a href="intro-to-asl.html" class="lesson-card category-card lesson-card--intro">
+          <div class="category-card__icon">📖</div>
+          <span class="category-card__title">Want more? Read the full Introduction to ASL</span>
+          <span class="badge badge--basic">History, Deaf culture &amp; etiquette, learning tips</span>
+        </a>
+
+        <a href="learn.html?unit=alphabet" class="btn btn--primary mt-4">Continue to the Alphabet →</a>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>
