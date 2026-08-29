@@ -6,7 +6,7 @@
   <script>
     (function () {
       var saved = localStorage.getItem('lw-theme');
-      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      var theme = saved || 'light'; // DESIGN PASS (this session): light is now the app's default identity, not system-preference-based — dark is still available and persists once a user picks it via the toggle.
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
@@ -27,8 +27,10 @@
                the full breakdown of every view this page can show.
 
     CONNECTS : ← dashboard.html      (via "Continue Learning" + unit rows)
-               ← pages/homepage.html (topic-grid cards + "Continue to
-                                        the Alphabet" both land here)
+               ← ../index.html       (topic-grid cards + hero CTA both
+                                        land here — HOMEPAGE MERGE, this
+                                        session: was pages/homepage.html,
+                                        now merged into index.html itself)
                → pages/lesson.html   (on a sign card click)
                → pages/quiz.html     (via a category's assessment CTA)
 
@@ -179,7 +181,7 @@
   </section>
 
   <footer class="footer">
-    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+    <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
   </footer>
 
   <script src="../js/main.js"></script>

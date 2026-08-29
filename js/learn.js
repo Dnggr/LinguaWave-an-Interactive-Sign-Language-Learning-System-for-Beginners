@@ -15,7 +15,11 @@
  *
  * View states this file renders into #lesson-grid:
  *   1. TRAIL          — default view. One node per unit (renderTrail).
- *   2. UNIT CATEGORIES — a kind:'category-group' or kind:'reference'
+ *   2. UNIT INFO       — Unit 0 (kind:'info'), static UNIT0_CONTENT text
+ *                        (renderUnitInfo). First screen to ever render
+ *                        that content — it existed in data.js since
+ *                        Phase 1 with nothing displaying it until now.
+ *   3. UNIT CATEGORIES — a kind:'category-group' or kind:'reference'
  *                        unit with MORE than one category (today: Unit
  *                        5 Common Things & People, Unit 7 Phrasebook) —
  *                        a "pick a category" screen scoped to that unit
@@ -23,7 +27,7 @@
  *                        one category (Alphabet, Numbers, Everyday
  *                        Essentials, Basic Phrases) skip this screen
  *                        entirely and open the category directly.
- *   3. CATEGORY VIEW   — either the flat single-character grid
+ *   4. CATEGORY VIEW   — either the flat single-character grid
  *                        (renderBasicCategoryGrid — alphabet/numbers)
  *                        or the word/phrase picker (renderWordPicker —
  *                        everything else). Both link out to
@@ -36,30 +40,6 @@
  *   lesson.html?level=basic&category=fingerspell_name (see
  *   PIVOT_CHECKLIST.md Phase 2's last item — this is the "real nav
  *   entry point instead of a hand-typed URL" that item was waiting on).
- *
- * HOMEPAGE PIVOT (this session) — the old "2. UNIT INFO" view
- * (Unit 0/kind:'info', renderUnitInfo(), static UNIT0_CONTENT text) is
- * REMOVED. Unit 0 is no longer a UNITS entry — that content now lives
- * in the new pages/homepage.html, the authenticated landing page shown
- * right after login (see index.html/AI_MEMORY.md). No unit has
- * kind:'info' anymore, so renderUnitInfo() and every kind==='info'
- * branch below were genuinely dead code and removed along with it —
- * not a redesign, just following the removal through. Every other view
- * state, the URL scheme, and BACKWARD COMPAT note below are unchanged.
- *
- * "MY LEARNING" REDESIGN (this session, REV 2) — pages/learn.html is
- * now a two-column layout (see css/learn.css's .learn-layout): the
- * views below render into #lesson-grid same as always (left column),
- * plus a new right-hand sidebar (#learn-sidebar-progress/
- * #learn-sidebar-continue, populated by renderSidebar() — called from
- * renderTrail() only) and a text search box (#learn-search-input,
- * wired once by wireSearch()) that filters whatever's currently in
- * #lesson-grid. Visually, the trail's old single-column ".trail-node"
- * rows are now a responsive ".course-card" grid (thumbnail block +
- * title/status body) — getUnitState()'s status computation is
- * UNCHANGED, only renderUnitNode()'s returned markup shape changed.
- * No new data model, no new progress.js calls — the sidebar/search
- * both work entirely off data the render functions already have.
  *
  * URL SCHEME (own scheme, only learn.js itself parses its own
  * `?unit=`/`?category=` links — see the boot() comment below for why
@@ -138,10 +118,8 @@ const CATEGORY_ICONS = {
 // 'common_things_people' no longer exist as UNITS ids (their content
 // is now spread across the new topic units below), so those two keys
 // were dropped rather than left as dead entries.
-// HOMEPAGE PIVOT (this session) — 'welcome' entry removed (Unit 0 is
-// no longer a UNITS entry, see data.js). Every other id unchanged.
 const UNIT_ICONS = {
-  alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
+  welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
   greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
   needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
   body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
@@ -206,7 +184,7 @@ function showLearnUnavailable(reason) {
   console.error('[learn.js] cannot render — window.LWData unavailable or a render call threw. Reason:', reason);
   const grid = document.getElementById('lesson-grid');
   if (!grid) return;
-  grid.classList.remove('course-grid', 'lesson-grid--categories');
+  grid.classList.remove('trail', 'lesson-grid--categories');
   grid.innerHTML = `<div class="alert alert--error learn-fallback-alert">` +
     `We couldn't load your learning path right now. ` +
     `<a href="dashboard.html">Go to Dashboard</a>, or reload this page to try again.` +
@@ -245,13 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let backTarget = null;
 
   function setContext(text) {
-    // REV 2 (this session) — every render entry point calls this, so
-    // it's the one shared place to clear a stale search filter left
-    // over from the previous view (see wireSearch()'s own comment —
-    // grid.innerHTML replacement already wipes any hidden-card state,
-    // this just clears the visible typed query to match).
-    const searchInput = document.getElementById('learn-search-input');
-    if (searchInput) searchInput.value = '';
     if (!contextEl) return;
     if (!text) { contextEl.style.display = 'none'; contextEl.textContent = ''; return; }
     contextEl.style.display = '';
@@ -333,18 +304,18 @@ document.addEventListener('DOMContentLoaded', () => {
    *  "basic" level, so switching between them via the unified back
    *  link + trail is the more honest affordance now. Also drops the
    *  "Module 1 · Introduction to ASL" banner that used to sit above
-   *  this grid. HOMEPAGE PIVOT (this session) — the real intro entry
-   *  point is now pages/homepage.html, shown once right after login
-   *  (before the trail is ever reached), not a trail node the learner
-   *  passes through again on the way to Alphabet — repeating that
-   *  link again here would be a second entry point to the same
-   *  content for no reason. */
+   *  this grid — Unit 0 (renderUnitInfo below) is the intro entry
+   *  point in the trail now, sequenced BEFORE this unit, so repeating
+   *  an intro banner again here would be redundant. (2026-08-28: the
+   *  standalone pages/intro-to-asl.html this used to link out to has
+   *  been merged into index.html's "About American Sign Language"
+   *  section and deleted — see renderUnitInfo below.) */
   function renderBasicCategoryGrid(cat, opts = {}) {
     history.replaceState(null, '', `learn.html?category=${encodeURIComponent(cat.id)}`);
     setContext(cat.title);
     setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Learning Path');
     grid.classList.remove('lesson-grid--categories');
-    grid.classList.remove('course-grid');
+    grid.classList.remove('trail');
 
     const signs = window.LWData.getCategorySigns(cat.level, cat.id);
     const progress = window.LWProgress?.getCategoryProgress?.(cat.level, cat.id) ?? { signs: {}, assessment: null };
@@ -376,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setContext(cat.title);
     setBack(opts.backFn ?? renderTrail, opts.backLabel ?? '← Back to Learning Path');
     grid.classList.add('lesson-grid--categories');
-    grid.classList.remove('course-grid');
+    grid.classList.remove('trail');
 
     const signs = window.LWData.getCategorySigns(cat.level, cat.id);
     const progress = window.LWProgress?.getCategoryProgress?.(cat.level, cat.id) ?? { signs: {}, assessment: null };
@@ -555,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setContext(unit.title);
     setBack(renderTrail, '← Back to Learning Path');
     grid.classList.add('lesson-grid--categories');
-    grid.classList.remove('course-grid');
+    grid.classList.remove('trail');
 
     const isReference = unit.kind === 'reference';
     const allCats = window.LWData.getCategoriesForUnit(unit.order);
@@ -575,20 +546,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /** Opens whatever screen a given unit resolves to: straight into its
-   *  one category (any category-group/reference unit with exactly one
-   *  CATEGORIES entry — Alphabet, Numbers, Everyday Essentials, Basic
-   *  Phrases today), or the multi-category picker (Common Things &
-   *  People, Phrasebook).
+  /** Unit 0 — "Welcome to ASL". First screen that actually renders
+   *  UNIT0_CONTENT (added in Phase 1, unrendered until now — see the
+   *  header comment). Used to also link out to the standalone
+   *  pages/intro-to-asl.html; that page's content now lives in
+   *  index.html's "About American Sign Language" section instead (and
+   *  the page itself is deleted), so this screen no longer links out
+   *  anywhere — it just shows UNIT0_CONTENT and continues to the
+   *  alphabet. */
+  function renderUnitInfo(unit) {
+    history.replaceState(null, '', `learn.html?unit=${encodeURIComponent(unit.id)}`);
+    setContext(unit.title);
+    setBack(renderTrail, '← Back to Learning Path');
+    grid.classList.remove('lesson-grid--categories');
+    grid.classList.remove('trail');
+
+    const sections = (window.LWData.UNIT0_CONTENT ?? []).map(section => `
+      <div class="unit-info__section">
+        <h3>${escapeHtml(section.title)}</h3>
+        <p>${escapeHtml(section.body)}</p>
+      </div>
+    `).join('');
+
+    grid.innerHTML = `
+      <div class="unit-info">
+        ${sections}
+        <button type="button" class="btn btn--primary mt-4" data-continue-to-alphabet>Continue to the Alphabet →</button>
+      </div>
+    `;
+
+    grid.querySelector('[data-continue-to-alphabet]')?.addEventListener('click', () => {
+      const alphabetUnit = window.LWData.getUnits().find(u => u.id === 'alphabet');
+      if (alphabetUnit) renderUnitView(alphabetUnit);
+    });
+  }
+
+  /** Opens whatever screen a given unit resolves to: the info screen
+   *  (kind:'info'), straight into its one category (any
+   *  category-group/reference unit with exactly one CATEGORIES entry
+   *  — Alphabet, Numbers, Everyday Essentials, Basic Phrases today),
+   *  or the multi-category picker (Common Things & People, Phrasebook).
    *  kind:'interactive' isn't handled here — its trail node is a
    *  direct <a> into lesson.html (see renderUnitNode), so clicking it
    *  never calls this function; the branch below is only a safety net
-   *  if something else ever calls renderUnitView('fingerspell_name').
-   *  HOMEPAGE PIVOT (this session) — the old kind==='info' branch
-   *  (renderUnitInfo(), Unit 0) is REMOVED: no UNITS entry has
-   *  kind:'info' anymore, so that branch was genuinely dead. See the
-   *  file header comment. */
+   *  if something else ever calls renderUnitView('fingerspell_name'). */
   function renderUnitView(unit) {
+    if (unit.kind === 'info') { renderUnitInfo(unit); return; }
     if (unit.kind === 'interactive') { renderTrail(); return; }
 
     const allCats = window.LWData.getCategoriesForUnit(unit.order);
@@ -638,10 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  @param {string|null} currentUnitId - from findCurrentUnitId(), the
    *         one unit id (if any) allowed to render as 'current'. */
   function getUnitState(unit, currentUnitId) {
-    // HOMEPAGE PIVOT (this session) — the old kind==='info' branch
-    // ("Start here", Unit 0) is REMOVED: no UNITS entry has kind:'info'
-    // anymore (see data.js) — that content is now pages/homepage.html,
-    // shown before the trail is ever reached, not a trail node.
+    if (unit.kind === 'info')        return { status: 'available', label: 'Start here' };
     // CHANGED (this session) — was unconditionally "Practice drill ·
     // always open". Fingerspell Your Name is now a gated assessment
     // (see data.js's fingerspell_name UNITS entry, `gated: true`,
@@ -708,101 +708,37 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'badge--basic';
   }
 
-  /** REV 2 (this session) — outputs a ".course-card" (thumbnail block +
-   *  title/status body), replacing the old single-row ".trail-node"
-   *  markup. getUnitState()'s status computation below is completely
-   *  unchanged — only this function's returned HTML shape changed. */
   function renderUnitNode(unit, currentUnitId) {
     const state = getUnitState(unit, currentUnitId);
     const icon = state.lockIcon ? '🔒' : (UNIT_ICONS[unit.id] ?? '🔖');
-    const stateClass = state.status === 'locked' ? ' course-card--locked'
-      : state.status === 'done' ? ' course-card--done'
-      : state.status === 'current' ? ' course-card--current' : '';
+    const stateClass = state.status === 'locked' ? ' lesson-card--locked'
+      : state.status === 'done' ? ' lesson-card--done'
+      : state.status === 'current' ? ' lesson-card--current' : '';
 
     const inner = `
-      <div class="course-card__thumb">
-        ${icon}
-        <span class="course-card__badge badge ${badgeClassForStatus(state.status)}">${escapeHtml(state.label)}</span>
-      </div>
-      <div class="course-card__body">
-        <span class="course-card__eyebrow">Unit ${unit.order}</span>
-        <span class="course-card__title">${escapeHtml(unit.title)}</span>
+      <div class="trail-node__num">${icon}</div>
+      <div class="trail-node__body">
+        <span class="trail-node__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</span>
+        <span class="badge ${badgeClassForStatus(state.status)}">${escapeHtml(state.label)}</span>
       </div>
     `;
 
     if (state.href) {
-      return `<a href="${state.href}" class="course-card${stateClass}">${inner}</a>`;
+      return `<a href="${state.href}" class="trail-node${stateClass}">${inner}</a>`;
     }
     if (state.clickable === false) {
-      return `<div class="course-card${stateClass}">${inner}</div>`;
+      return `<div class="trail-node${stateClass}">${inner}</div>`;
     }
-    return `<button type="button" class="course-card${stateClass}" data-open-unit="${escapeHtml(unit.id)}">${inner}</button>`;
+    return `<button type="button" class="trail-node${stateClass}" data-open-unit="${escapeHtml(unit.id)}">${inner}</button>`;
   }
 
-  /** REV 2 (this session) — the right-hand sidebar next to the course
-   *  grid: a compact progress tally + a "Continue Learning" pointer at
-   *  findCurrentUnitId()'s pick. Both computed from data the caller
-   *  (renderTrail()) already has on hand (the same per-unit states it
-   *  just mapped over for the grid, plus `units`/`currentUnitId`) — no
-   *  new window.LWProgress calls, no new data model. No-ops safely if
-   *  the sidebar containers aren't in the DOM (category/word-picker
-   *  sub-views currently reuse the same static markup, so the panels
-   *  just keep showing the trail-level summary underneath them). */
-  function renderSidebar(units, currentUnitId, states) {
-    const progressEl = document.getElementById('learn-sidebar-progress');
-    const continueEl = document.getElementById('learn-sidebar-continue');
-    if (!progressEl && !continueEl) return;
-
-    if (progressEl) {
-      const gradedIdx = units.map((u, i) => (u.kind === 'category-group' ? i : -1)).filter(i => i !== -1);
-      const doneCount = gradedIdx.filter(i => states[i]?.status === 'done').length;
-      progressEl.innerHTML = `
-        <div class="sidebar-progress__ring">
-          <span class="sidebar-progress__number">${doneCount}/${gradedIdx.length}</span>
-          <span class="sidebar-progress__label">Units complete</span>
-        </div>
-      `;
-    }
-
-    if (continueEl) {
-      const unit = units.find(u => u.id === currentUnitId);
-      if (unit) {
-        continueEl.innerHTML = `
-          <p class="sidebar-continue__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</p>
-          <button type="button" class="btn btn--primary btn--sm btn--full" data-open-unit="${escapeHtml(unit.id)}">Continue →</button>
-        `;
-        continueEl.querySelector('[data-open-unit]')?.addEventListener('click', () => renderUnitView(unit));
-      } else {
-        continueEl.innerHTML = `<p class="sidebar-continue__empty">Nothing in progress yet — start with the Alphabet.</p>`;
-      }
-    }
-  }
-
-  /** REV 2 (this session) — client-side text filter over whatever
-   *  cards are currently inside #lesson-grid (course cards on the
-   *  trail, category cards, or word-picker cards — all share enough
-   *  markup shape that .textContent works generically). No new data
-   *  model; purely hides/shows existing DOM nodes. */
-  function wireSearch() {
-    const input = document.getElementById('learn-search-input');
-    if (!input) return;
-    input.addEventListener('input', () => {
-      const q = input.value.trim().toLowerCase();
-      grid.querySelectorAll(':scope > a, :scope > button, :scope > div').forEach(card => {
-        if (!q) { card.style.display = ''; return; }
-        card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
-      });
-    });
-  }
-
-  /** Default / root view — the course grid (REV 2, this session — was
-   *  "the trail"; see renderUnitNode()'s own header comment). */
+  /** Default / root view — the trail itself. */
   function renderTrail() {
     history.replaceState(null, '', 'learn.html');
     setContext('');
     setBack(null);
     grid.classList.remove('lesson-grid--categories');
-    grid.classList.add('course-grid');
+    grid.classList.add('trail');
 
     const units = window.LWData.getUnits();
     const currentUnitId = findCurrentUnitId(units);
@@ -814,25 +750,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (unit) renderUnitView(unit);
       });
     });
-
-    // Sidebar tally recomputes state per unit rather than sharing
-    // renderUnitNode()'s internal computation — getUnitState() is a
-    // cheap pure function (a handful of property/array lookups over
-    // at most 71 units), so a second pass here is simpler and safer
-    // than threading a states array through renderUnitNode() just to
-    // avoid it.
-    const states = units.map(u => getUnitState(u, currentUnitId));
-    renderSidebar(units, currentUnitId, states);
   }
 
   /** Best-effort continuity for old `?level=X` links now that there's
    *  no more per-level screen to send them to (js/quiz.js and
-   *  pages/dashboard.html/intro-to-asl.html still build these — see
-   *  the file header). Scrolls the trail to a representative unit for
-   *  that level instead of just always dropping the learner at the
-   *  very top. Not a perfect mapping (medium/intermediate span
-   *  multiple units) — picks the FIRST unit that level's content
-   *  starts appearing in. */
+   *  pages/dashboard.html still build these — see the file header).
+   *  Scrolls the trail to a representative unit for that level instead
+   *  of just always dropping the learner at the very top. Not a
+   *  perfect mapping (medium/intermediate span multiple units) —
+   *  picks the FIRST unit that level's content starts appearing in. */
   function scrollToLevel(level) {
     const unitIdByLevel = { basic: 'alphabet', medium: 'everyday_essentials', intermediate: 'phrasebook' };
     const targetId = unitIdByLevel[level];
@@ -873,7 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // rendered or blank grid with nothing but a silent console error.
   try {
     boot();
-    wireSearch(); // REV 2 (this session) — attaches once; safe no-op if #learn-search-input isn't in the DOM.
   } catch (e) {
     console.error('[learn.js] rendering failed partway through:', e);
     showLearnUnavailable('render threw: ' + (e && e.message));

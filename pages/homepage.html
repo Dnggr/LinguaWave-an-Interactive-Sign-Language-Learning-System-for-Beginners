@@ -6,7 +6,7 @@
   <script>
     (function () {
       var saved = localStorage.getItem('lw-theme');
-      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      var theme = saved || 'light'; // DESIGN PASS (this session): light is now the app's default identity, not system-preference-based — dark is still available and persists once a user picks it via the toggle.
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
@@ -82,6 +82,34 @@
     /* Page-scoped hero/stats/topic-grid layout only — everything else
        reuses css/style.css (.section/.container/.card/.btn/...) and
        css/learn.css (.unit-info/.lesson-card--intro/...) as-is. */
+
+    /* DESIGN PASS (this session) — hero-zone / quote-zone: full-bleed
+       background washes (not boxed cards) so the hero and quote read
+       as distinct "zones" instead of every section sitting on the same
+       flat background at the same visual weight. Same accent-soft
+       gradient technique css/dashboard.css's `.continue-card` already
+       uses for its own "most important thing on the page" card —
+       applied here to a whole section instead of a card. */
+    .hero-zone {
+      background: radial-gradient(1100px 480px at 15% -20%, var(--clr-accent-soft), transparent 65%);
+    }
+    .quote-zone {
+      background: var(--clr-surface);
+      border-block: 1px solid var(--clr-border);
+    }
+
+    /* Icon badges — inline SVG (currentColor) in the same rounded
+       circle/square "chip" treatment css/learn.css's
+       `.category-card__icon` and css/dashboard.css's
+       `.continue-card__icon` already use elsewhere in the app, instead
+       of a bare emoji glyph. SVG paints identically on every system/
+       browser; nothing here depends on a font's emoji fallback. */
+    .icon-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 auto; color: var(--clr-accent);
+    }
+    .icon-badge svg { width: 55%; height: 55%; }
+
     .hero-banner {
       display: inline-flex; align-items: center; gap: var(--space-2);
       padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill);
@@ -90,9 +118,17 @@
       margin-bottom: var(--space-5);
     }
     .hero-banner:hover { text-decoration: underline; }
+    .hero-banner .icon-badge { width: 18px; height: 18px; }
+    .hero-banner .icon-badge svg { width: 100%; height: 100%; }
     .homepage-hero { max-width: 720px; }
     .homepage-hero h1 {
-      font-size: var(--fs-3xl, 2.75rem); line-height: 1.1; margin: 0;
+      /* --fs-hero is defined in css/style.css's token scale for exactly
+         this job (a page's single biggest headline) but wasn't in use
+         anywhere yet — using it here is what actually makes the hero
+         out-rank the stats/quote/topic-grid below it, rather than the
+         previous --fs-3xl (2.25rem), which is the same size h1 already
+         used lower down for "Browse Topics"/"What is ASL?". */
+      font-size: var(--fs-hero); line-height: 1.05; margin: 0;
     }
     .homepage-hero__actions {
       display: flex; align-items: center; gap: var(--space-3);
@@ -116,14 +152,21 @@
     }
     .stats-bar__label { font-size: var(--fs-xs); color: var(--clr-text-muted); margin-top: var(--space-1); }
 
-    /* Quote block */
+    /* Quote block — REDESIGNED (this session). Was a bare `"` character
+       in a thin 2px-border circle, which read as under-designed/half-
+       finished next to the rest of the page. Now a filled accent-soft
+       badge (same "chip" language as .topic-card__icon/.icon-badge)
+       holding a real quotation-mark glyph drawn as an inline SVG, sized
+       up so it carries actual visual weight as its own small anchor for
+       this section, the way the hero/topic-grid icons do for theirs. */
     .quote-block { max-width: 680px; margin: 0 auto; text-align: center; }
     .quote-block__mark {
-      width: 56px; height: 56px; margin: 0 auto var(--space-4);
-      border: 2px solid var(--clr-accent); border-radius: var(--radius-pill);
+      width: 64px; height: 64px; margin: 0 auto var(--space-5);
+      border-radius: var(--radius-pill); background: var(--clr-accent-soft);
       display: flex; align-items: center; justify-content: center;
-      color: var(--clr-accent); font-size: var(--fs-xl);
+      color: var(--clr-accent);
     }
+    .quote-block__mark svg { width: 42%; height: 42%; }
     .quote-block__text {
       font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.4;
     }
@@ -154,8 +197,11 @@
     .topic-card__icon {
       flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--radius-md);
       background: var(--clr-accent-soft); display: flex; align-items: center;
-      justify-content: center; font-size: var(--fs-xl);
+      justify-content: center; color: var(--clr-accent);
     }
+    .topic-card__icon svg { width: 52%; height: 52%; }
+    .topic-card:hover .topic-card__icon { transform: scale(1.08); }
+    .topic-card__icon { transition: transform var(--dur-base) var(--ease); }
     .topic-card__title { font-weight: 600; font-size: var(--fs-sm, 0.9rem); }
 
     /* Navbar profile link — NEW (this session). Was a plain
@@ -173,6 +219,15 @@
       transition: background var(--dur-base) var(--ease);
     }
     .navbar__profile-link:hover { background: var(--clr-accent-soft); text-decoration: none; }
+
+    /* css/learn.css's `.unit-info` (reused as-is, not modified — it's
+       shared with pages/learn.html) sets max-width but no auto margins,
+       which was fine at its original home inside a full-width grid
+       cell but leaves it flush-left under this page's centered
+       hero/quote/topic-grid sections above it. Centering it here, as a
+       page-scoped override, keeps every section on the same visual
+       "spine" without touching the shared rule other pages still use. */
+    .unit-info { margin-inline: auto; }
   </style>
 </head>
 <body>
@@ -211,9 +266,12 @@
   <!-- ── HERO ─────────────────────────────────────────────────────
        Cisco-homepage-style: banner pill, big two-line headline,
        subtext, two CTA buttons. -->
-  <section class="section">
+  <section class="section hero-zone">
     <div class="container">
-      <a href="learn.html?unit=alphabet" class="hero-banner">🤟 New here? Start with the Alphabet — free &amp; self-paced</a>
+      <a href="learn.html?unit=alphabet" class="hero-banner">
+        <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6L12 3z"/></svg></span>
+        New here? Start with the Alphabet — free &amp; self-paced
+      </a>
       <div class="homepage-hero">
         <h1>Learn to sign.<br>Speak with your hands.</h1>
         <p class="mt-4 text-muted">
@@ -252,10 +310,12 @@
   </section>
 
   <!-- ── QUOTE ────────────────────────────────────────────────────── -->
-  <section class="section section--sm">
+  <section class="section section--sm quote-zone">
     <div class="container">
       <div class="quote-block">
-        <div class="quote-block__mark">"</div>
+        <div class="quote-block__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 8c0-2.2 1.8-4 4-4v2.2c-1 0-1.8.8-1.8 1.8H8v5H4V8zm10 0c0-2.2 1.8-4 4-4v2.2c-1 0-1.8.8-1.8 1.8H18v5h-4V8z"/></svg>
+        </div>
         <p class="quote-block__text">ASL is a complete, natural language — not a signed version of English. LinguaWave teaches it that way, one handshape at a time.</p>
       </div>
     </div>
@@ -264,39 +324,40 @@
   <!-- ── TOPIC GRID ("Subject Areas" equivalent) ─────────────────── -->
   <section class="section section--sm">
     <div class="container">
+      <p class="section__eyebrow text-center">Get Started</p>
       <h2 class="text-center">Browse Topics</h2>
       <p class="text-center text-muted mt-2">Jump straight into any of these to begin your learning path.</p>
       <div class="topic-grid">
         <a href="learn.html?unit=alphabet" class="topic-card">
-          <span class="topic-card__icon">🔤</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20L12 4l6 16M8.5 14h7"/></svg></span>
           <span class="topic-card__title">The Alphabet</span>
         </a>
         <a href="learn.html?unit=fingerspell_name" class="topic-card">
-          <span class="topic-card__icon">🖊️</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16c2-6 4-6 6 0s4-6 6 0 3-4 4-5"/></svg></span>
           <span class="topic-card__title">Fingerspell Your Name</span>
         </a>
         <a href="learn.html?unit=numbers" class="topic-card">
-          <span class="topic-card__icon">🔢</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 4v16M15 4v16M4 9h16M4 15h16"/></svg></span>
           <span class="topic-card__title">Numbers</span>
         </a>
         <a href="learn.html?unit=greetings" class="topic-card">
-          <span class="topic-card__icon">👋</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="11" width="6" height="9" rx="3"/><rect x="6.9" y="6" width="2.2" height="7" rx="1.1"/><rect x="9.9" y="4" width="2.2" height="9" rx="1.1"/><rect x="12.9" y="4" width="2.2" height="9" rx="1.1"/><rect x="15.9" y="6" width="2.2" height="7" rx="1.1"/></svg></span>
           <span class="topic-card__title">Greetings</span>
         </a>
         <a href="learn.html?unit=polite_words" class="topic-card">
-          <span class="topic-card__icon">🙌</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.35-9.5-8.5C1 9 2.5 5.5 6 5.5c2 0 3.5 1.2 4 2.5.5-1.3 2-2.5 4-2.5 3.5 0 5 3.5 3.5 7C19 16.65 12 21 12 21z"/></svg></span>
           <span class="topic-card__title">Polite Words</span>
         </a>
         <a href="learn.html?unit=people" class="topic-card">
-          <span class="topic-card__icon">🧑‍🤝‍🧑</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
           <span class="topic-card__title">People</span>
         </a>
         <a href="learn.html?unit=feelings" class="topic-card">
-          <span class="topic-card__icon">😊</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/><path d="M8 15c1.2 1.3 2.6 2 4 2s2.8-.7 4-2"/></svg></span>
           <span class="topic-card__title">Feelings</span>
         </a>
         <a href="learn.html?unit=needs" class="topic-card">
-          <span class="topic-card__icon">🥤</span>
+          <span class="topic-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h12l-1.2 10.5a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 9z"/><path d="M15 9l1.5-6"/></svg></span>
           <span class="topic-card__title">Needs</span>
         </a>
       </div>
@@ -312,8 +373,10 @@
        (repurposed from the old Unit 0 trail screen). -->
   <section class="section section--sm">
     <div class="container">
-      <h2>What is ASL?</h2>
-      <div class="unit-info mt-4">
+      <p class="section__eyebrow text-center">Before You Start</p>
+      <h2 class="text-center">ASL Basics &amp; Deaf Culture</h2>
+      <p class="text-center text-muted mt-2">A quick primer before you dive into the lessons.</p>
+      <div class="unit-info mt-8">
 
         <div class="unit-info__section">
           <h3>What is ASL?</h3>

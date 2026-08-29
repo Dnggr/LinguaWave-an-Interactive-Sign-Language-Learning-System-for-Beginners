@@ -89,34 +89,17 @@ function initProgressBars() {
 }
 
 
-/* ── LEVEL CARDS: lock / unlock based on user progress ──────────── */
-/*
- * Finds .level-card elements with [data-level] and toggles a
- * .level-card--locked class when the level hasn't been unlocked yet.
- *
- * Basic, Medium, and Intermediate are all open to every learner —
- * only a level in UNLOCKED_LEVELS' complement (i.e. a future
- * "advanced" tier) stays gated behind progress. TODO: read real
- * unlock conditions from Firestore once that tier ships.
- */
-const UNLOCKED_LEVELS = ['basic', 'medium', 'intermediate'];
-
-function initLevelCards() {
-  document.querySelectorAll('.level-card[data-level]').forEach(card => {
-    if (!UNLOCKED_LEVELS.includes(card.dataset.level)) {
-      card.classList.add('level-card--locked');
-      card.querySelector('.btn')?.setAttribute('disabled', 'true');
-    }
-  });
-}
-
-
 /* ── TOAST NOTIFICATIONS ─────────────────────────────────────────── */
 /*
  * showToast(message, type)
  * Programmatically displays a slide-in notification at the bottom
  * of the screen.  type: 'success' | 'error' | 'info'
- * Used by lesson.js and quiz.js to give feedback.
+ * Used by lesson.js to give feedback (e.g. when a locked lesson is
+ * opened directly).
+ * NOTE (2026-08-28 audit): pages/lesson.html does not link
+ * css/toast.css, so this renders unstyled there today. Flagged, not
+ * fixed here — out of this pass's scope (lesson.html wasn't part of
+ * the requested changes) — see this session's BUGS FOUND writeup.
  */
 function showToast(message, type = 'info') {
   // Remove existing toasts
@@ -134,46 +117,6 @@ function showToast(message, type = 'info') {
     toast.classList.remove('toast--visible');
     toast.addEventListener('transitionend', () => toast.remove(), { once: true });
   }, 3000);
-}
-
-
-/* ── MODAL HELPER ────────────────────────────────────────────────── */
-/*
- * openModal(id) / closeModal(id)
- * Shows/hides a <dialog id="…"> element.
- * Used by lesson.js to show video demos.
- * TODO: trap focus inside modal for accessibility.
- */
-function openModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.showModal?.() || modal.setAttribute('open', '');
-}
-function closeModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.close?.() || modal.removeAttribute('open');
-}
-
-
-/* ── SIGN CARD FLIP (alphabet grid) ─────────────────────────────── */
-/*
- * Adds click-to-flip behaviour to .sign-card elements.
- * Front face: the sign image.  Back face: letter + meaning.
- * Used on pages/learn.html and pages/lesson.html.
- */
-function initSignCards() {
-  document.querySelectorAll('.sign-card').forEach(card => {
-    card.addEventListener('click', () => {
-      card.classList.toggle('sign-card--flipped');
-    });
-    // Keyboard accessibility
-    card.setAttribute('tabindex', '0');
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        card.classList.toggle('sign-card--flipped');
-      }
-    });
-  });
 }
 
 
@@ -211,8 +154,6 @@ function initUserDetails() {
 document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
   initProgressBars();
-  initLevelCards();
-  initSignCards();
   initUserDetails();
 });
 
@@ -221,6 +162,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.LinguaWave = {
   getActiveUser,
   showToast,
-  openModal,
-  closeModal,
 };
