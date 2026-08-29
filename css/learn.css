@@ -88,43 +88,98 @@ button.category-card {
 }
 .lesson-card--intro .category-card__icon { font-size: var(--fs-xl); }
 
-/* ── Trail (NEW, Phase 4) ──────────────────────────────────────────
-   The default learn.html view: one node per window.LWData.getUnits()
-   entry, walked top to bottom. Deliberately a single column (not the
-   auto-fill card grid the rest of this file uses) — Rev 4 explicitly
-   asks for a "single scrollable trail", which reads more like a path
-   than a grid of tiles. Reuses the existing .lesson-card--locked /
-   --current / --done modifier classes from above (those rules aren't
-   scoped under .lesson-card, so they apply to .trail-node fine) —
-   only the layout/base look is new. */
-.trail {
-  display: flex; flex-direction: column; gap: var(--space-3);
-  max-width: 640px;
+/* ── Course grid + sidebar ("My Learning"-style, REV 2) ─────────────
+   BUG FIX (this session): pages/learn.html and js/learn.js were
+   rewritten to this "My Learning" shape (a course-card grid + a
+   right-hand progress/continue sidebar + a search box) in a prior
+   session, but the CSS for it was never actually added here — the
+   old single-column `.trail`/`.trail-node` rules (now fully dead;
+   nothing in learn.js/learn.html references them anymore) were left
+   in their place instead. In a real browser this meant the entire
+   Learn page rendered as unstyled buttons/links/divs with no grid,
+   no card shape, no sidebar layout at all. Replaced below with real
+   rules for every class js/learn.js's renderUnitNode()/renderSidebar()
+   and pages/learn.html's markup actually use. */
+.learn-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--space-8);
+  align-items: start;
 }
-.trail-node {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+.learn-main { min-width: 0; }
+.learn-sidebar {
+  display: flex; flex-direction: column; gap: var(--space-4);
+  position: sticky; top: calc(60px + var(--space-6));
+}
+@media (max-width: 900px) {
+  .learn-layout { grid-template-columns: 1fr; }
+  .learn-sidebar { position: static; }
+}
+
+.learn-search { margin-bottom: var(--space-6); }
+.learn-search input {
+  width: 100%; background: var(--clr-surface); color: var(--clr-text);
+  border: 1px solid var(--clr-border); border-radius: var(--radius-pill);
+  padding: var(--space-3) var(--space-5); font-size: var(--fs-sm);
+  font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.learn-search input::placeholder { color: var(--clr-text-muted); }
+.learn-search input:focus {
+  outline: none; border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px var(--clr-accent-soft);
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-4);
+}
+.course-card {
+  display: flex; flex-direction: column; width: 100%;
   background: var(--clr-surface); border: 1px solid var(--clr-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl); overflow: hidden;
   text-align: left; text-decoration: none; color: var(--clr-text);
+  font: inherit; cursor: pointer;
   transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
 }
-.trail-node:hover:not(.lesson-card--locked) {
-  border-color: var(--clr-accent); transform: translateX(4px);
+.course-card:hover:not(.course-card--locked) {
+  border-color: var(--clr-accent); transform: translateY(-3px);
   box-shadow: var(--shadow-card); text-decoration: none;
 }
-/* Reset button chrome — some trail nodes render as <button> (units
-   that open a sub-screen), others as <a> (Unit 2's direct link into
-   lesson.html) or plain <div> (locked/coming-soon units). Same
-   reasoning/pattern as button.category-card above. */
-button.trail-node { font: inherit; width: 100%; cursor: pointer; }
-.trail-node__num {
-  flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--radius-pill);
-  display: flex; align-items: center; justify-content: center;
-  background: var(--clr-accent-soft); font-size: var(--fs-xl); line-height: 1;
+.course-card--locked { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.course-card--current { border-color: var(--clr-accent); border-width: 2px; box-shadow: var(--shadow-card); }
+.course-card--done { border-color: var(--clr-success); }
+.course-card__thumb {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 92px; font-size: var(--fs-3xl); background: var(--clr-accent-soft);
 }
-.trail-node__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.trail-node__title { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 700; }
+.course-card--done .course-card__thumb { background: var(--clr-success-soft); }
+.course-card__badge { position: absolute; top: var(--space-2); right: var(--space-2); }
+.course-card__body { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); }
+.course-card__eyebrow {
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--clr-text-muted); font-weight: 600;
+}
+.course-card__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); line-height: 1.3; }
+
+.sidebar-panel {
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl); padding: var(--space-5);
+}
+.sidebar-panel__title {
+  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--clr-text-muted); margin-bottom: var(--space-3);
+}
+.sidebar-progress__ring {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 96px; height: 96px; margin: 0 auto; text-align: center;
+  border-radius: 50%; border: 6px solid var(--clr-accent-soft); background: var(--clr-surface);
+}
+.sidebar-progress__number { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--clr-accent); }
+.sidebar-progress__label { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.sidebar-continue__title { font-weight: 600; font-size: var(--fs-sm); margin-bottom: var(--space-3); }
+.sidebar-continue__empty { font-size: var(--fs-sm); color: var(--clr-text-muted); }
 
 /* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
    PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
@@ -140,14 +195,13 @@ button.trail-node { font: inherit; width: 100%; cursor: pointer; }
    (always rendered with `class="lesson-card category-card"`) and the
    word/phrase picker (`class="lesson-card word-picker-card"`) — one
    rule, no need to also list `.category-card`/`.word-picker-card`.
-   `.trail-node` is separate since trail nodes never carry
-   `.lesson-card`. Locked tiles (`.lesson-card--locked`,
-   `.course-sidebar__unit--locked`-style) already use
+   `.course-card` (course grid, REV 2) is separate since course cards
+   never carry `.lesson-card`. Locked tiles already use
    `pointer-events:none` and, where rendered as `<div>`, aren't
    focusable in the first place, so nothing extra is needed to exclude
    them here. */
 .lesson-card:focus-visible,
-.trail-node:focus-visible {
+.course-card:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--clr-accent);
 }

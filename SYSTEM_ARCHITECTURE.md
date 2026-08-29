@@ -8,6 +8,11 @@
 Map wholesale — 72 units implementing Omen's uploaded "updated fixed
 lesson.txt" curriculum, one topic per unit, superseding Rev 4/5/6's
 11-unit table below (kept for history, see each Rev's own section).
+**2026-08-26 (Homepage pivot):** Unit 0 ("Welcome to ASL") removed as
+a curriculum unit — 71 units now, order 1–71 unchanged/not renumbered
+— its content moved to new `pages/homepage.html`, shown right after
+login/register, before the trail (which now starts at Unit 1, the
+Alphabet); see "## Homepage (2026-08-26 pivot)" below.
 Code-complete except Phase 7 (content capture/retraining — see
 `PIVOT_CHECKLIST.md`), same caveat every revision here has had:
 restructuring the curriculum's presentation doesn't train any models.
@@ -310,9 +315,16 @@ present) = has a `disabled:true` placeholder waiting on Phase 7 capture,
 yet (the overwhelming majority — this was a curriculum/content
 restructure, not a training session).
 
+**Updated 2026-08-26 (Homepage pivot):** the `Unit 0 — Welcome to ASL`
+row below is REMOVED — Unit 0 is no longer a `UNITS` entry at all (see
+"## Homepage (2026-08-26 pivot)" further down). Its content now lives
+in `pages/homepage.html`, the authenticated landing page shown right
+after login — not a trail unit. Units 1–71 below are UNCHANGED, same
+`order` values as Rev 7 originally gave them (no renumbering to close
+the gap at 0).
+
 | Unit | Title | Category id(s) | Detection status |
 |---|---|---|---|
-| 0 | Welcome to ASL: A Brief History | — | N/A — info screen |
 | 1 | The Alphabet | `alphabet` | ✅ trained |
 | 2 | Fingerspell Your Name | — (interactive) | ✅ reuses trained A–Z model (gated assessment) |
 | 3 | Numbers | `numbers` | ❌ Phase 7 (structurally present, capture-blocked) |
@@ -522,6 +534,104 @@ before/after reasoning per item.
 
 ---
 
+## Homepage (2026-08-26 pivot)
+
+**Status: done.** `PIVOT_CHECKLIST.md`'s "Homepage pivot" section is
+the fuller decision log/regression-check detail; this is the resulting
+structure and responsibility split.
+
+### Why
+
+The authenticated flow used to go straight from Login/Register to the
+Dashboard, with Unit 0 ("Welcome to ASL: A Brief History") sitting as
+the *first curriculum unit* on the Learn trail — an odd fit, since it
+has no camera/sign content and nothing to unlock. Splitting it out into
+its own landing page gives ASL background/Deaf-culture content a home
+that isn't pretending to be a trail unit, and lets the trail start
+where the actual curriculum starts: the Alphabet.
+
+### What changed
+
+- **New authenticated flow:**
+  ```
+  Login / Register
+      ↓
+  pages/homepage.html   ("What is ASL / welcome to LinguaWave?")
+      ├── Dashboard button  → pages/dashboard.html
+      └── Learn button      → pages/learn.html (opens straight into
+                                the Alphabet, Unit 1 — the real start
+                                of the trail)
+  ```
+  An already-authenticated visitor opening `index.html` also lands on
+  `pages/homepage.html` now (was `pages/dashboard.html`).
+- **`UNITS`' `order:0`/`kind:'info'` entry (Unit 0) REMOVED** from
+  `data.js` — see "The Unit Map (Rev 7 — current)" above, its row is
+  gone. Units 1–71 KEPT their existing `order` values — not renumbered,
+  the gap at 0 is intentional (nothing indexes `UNITS` positionally;
+  every lookup is by `.id` or `.order` value).
+- **`UNIT0_CONTENT` REMOVED from `data.js` entirely** (and from its
+  `window.LWData` export) — its five sections moved verbatim into
+  `pages/homepage.html` as static markup (no `homepage.js` — this page
+  needs no progress/data layer, it's pure informational content plus
+  two links).
+- **`js/engine/progress.js` inspected directly, left untouched.** Its
+  `getOrderedLiveCategories()` (see "Progress / unlock model" above)
+  already only walks `kind:'category-group'` units — Unit 0
+  (`kind:'info'`) was already structurally excluded from every
+  unlock/gating computation before this removal, so deleting its
+  `UNITS` entry changes nothing about gating. No second unlock/ordering
+  algorithm was created.
+- **`js/auth.js` untouched** (teammate-owned, out of scope). Only
+  `index.html`'s 3 destination strings changed — `LWAuth.redirectIfLoggedIn(...)`,
+  the login-success redirect, and the register-success redirect, all
+  `pages/dashboard.html` → `pages/homepage.html`. `LWAuth`'s functions
+  already accepted a destination argument.
+- **Dead Unit 0 rendering code removed** (confirmed unreachable before
+  deleting — no UNITS entry has `kind:'info'` anymore): `learn.js`'s
+  `renderUnitInfo()` and its `kind==='info'` branches in
+  `renderUnitView()`/`getUnitState()`; `dashboard.js`'s `kind==='info'`
+  row branch in `renderUnitRow()`; `lesson.js`'s sidebar `kind==='info'`
+  branch (used to link `learn.html?unit=welcome`); the `welcome` icon
+  entry in all three files' `UNIT_ICONS`.
+- **`css/learn.css`'s `.unit-info`/`.unit-info__section`/
+  `.lesson-card--intro` rules REPURPOSED, not deleted** — originally
+  built for the now-removed `renderUnitInfo()` screen,
+  `pages/homepage.html` reuses them as-is for its own intro sections
+  and "Want more? Read the full Introduction to ASL" banner.
+- **`pages/intro-to-asl.html` unchanged** — still the deeper, longer-
+  form reference page (Stokoe's parameters, fuller history, learning
+  tips); `pages/homepage.html` links out to it rather than duplicating
+  it, same ownership split the old Unit 0 screen already had.
+
+### Responsibility boundaries (new)
+
+| Surface | Answers |
+|---|---|
+| `pages/homepage.html` | "What is ASL / welcome to LinguaWave?" |
+| `pages/dashboard.html` | "What should I do next?" |
+| `pages/learn.html` | "Where can I go?" |
+| `pages/lesson.html` | "Teach and practice this." |
+| `pages/quiz.html` | "Can I demonstrate recall?" |
+
+### What's still open
+
+- `pages/intro-to-asl.html` vs. `pages/homepage.html` content overlap
+  (merge vs. keep both, cross-linked) — same open question the old
+  Unit-0-vs-`intro-to-asl.html` item already was, just renamed; see
+  `PIVOT_CHECKLIST.md` → "Open / backlog." Not resolved unilaterally
+  here.
+- Not verified in a real browser — no actual click-through of
+  Login→Homepage→Learn/Dashboard, no real screen-reader/focus-order
+  pass on the new skip link. Verified in Node only: `node --check` on
+  all 5 edited `.js` files; `data.js` evaluated in a sandboxed VM
+  confirming 71 units, unique/contiguous `order` 1–71, no `order:0`/no
+  `id:'welcome'`; HTML tag-balance + CSS brace-balance clean on every
+  touched/new file; grep sweep confirming zero remaining live
+  (non-comment) `kind==='info'`/`UNIT0_CONTENT`/`unit=welcome`
+  references anywhere in the codebase.
+
+---
+
 ## Dashboard design principles
 
 (Realized in code as of the 2026-08-21/22 Priority 0–2 pass — see
@@ -606,7 +716,8 @@ dev team — one user role, no separate access-control layer to build).
 linguawave/
 ├── index.html                  # Log In / Sign Up — only entry point
 ├── pages/
-│   ├── dashboard.html          # Post-login hub
+│   ├── homepage.html           # Post-login welcome/intro (NEW, 2026-08-26)
+│   ├── dashboard.html          # "What should I do next?" hub
 │   ├── learn.html              # Unit trail / category picker
 │   ├── lesson.html             # Sign lesson viewer + course sidebar (Rev 5)
 │   ├── quiz.html               # Assessment
@@ -632,9 +743,15 @@ linguawave/
 
 ## 3. Page-by-Page
 
+- **`pages/homepage.html`** — NEW (2026-08-26). Authenticated welcome/
+  intro page shown right after login/register (and for an already-
+  logged-in visitor opening `index.html`), before Dashboard or Learn.
+  Static — no `homepage.js`. See "## Homepage (2026-08-26 pivot)" above
+  for the full writeup.
 - **`index.html`** — Log In / Sign Up tabs, real Firebase Auth via
   `auth.js`. `LWAuth.redirectIfLoggedIn()` bounces an already-logged-in
-  user straight to the dashboard. No signup-time level picker (Rev 4
+  user straight to `pages/homepage.html` (was the dashboard — changed
+  2026-08-26, Homepage pivot). No signup-time level picker (Rev 4
   Phase 5) — every account gets `level: 'basic'`.
 - **`pages/dashboard.html`** — welcome + Continue Learning hero (primary
   CTA + a secondary "Open Unit N Path" button next to it, straight to

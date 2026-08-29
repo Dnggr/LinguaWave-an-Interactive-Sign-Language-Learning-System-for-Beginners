@@ -1,10 +1,51 @@
 /*
- * auth.css — Login / Register Landing Page Styles
+ * auth.css — Landing Page + Log In / Register Styles
  * ─────────────────────────────────────────────────────────────────
- * CONNECTS : index.html (combined login + register entry point)
+ * CONNECTS : index.html (hero, topic preview, About ASL section, and
+ *            the inline login/register card)
  * ─────────────────────────────────────────────────────────────────
  */
-.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--space-6); }
+
+/* ── HERO ─────────────────────────────────────────────────────── */
+.hero { padding-top: var(--space-8); }
+.hero__grid {
+  display: grid; grid-template-columns: 1.1fr 1fr;
+  gap: var(--space-12); align-items: center;
+}
+.hero__copy h1 { font-size: var(--fs-hero); line-height: 1.1; margin: var(--space-3) 0; }
+.hero__lead { color: var(--clr-text-muted); font-size: var(--fs-lg); max-width: 46ch; }
+.hero__ctas { display: flex; gap: var(--space-3); margin-top: var(--space-6); flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .hero__grid { grid-template-columns: 1fr; }
+}
+
+/* ── TOPIC PREVIEW ────────────────────────────────────────────── */
+.topic-preview {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.topic-chip {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+  text-align: center; cursor: pointer; font-family: var(--font-body);
+  color: var(--clr-text);
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.topic-chip:hover { border-color: var(--clr-accent); transform: translateY(-2px); }
+.topic-chip:focus-visible { outline: 2px solid var(--clr-accent); outline-offset: 2px; }
+.topic-chip__icon { font-size: 1.5rem; }
+.topic-chip__title { font-size: var(--fs-sm); font-weight: 600; }
+.topic-preview__lock { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
+
+@media (max-width: 900px) {
+  .topic-preview { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── ABOUT ASL ────────────────────────────────────────────────── */
+.etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
+.etiquette-list li::marker { color: var(--clr-accent); }
 
 .auth-card {
   width: 100%; max-width: 440px;
@@ -12,7 +53,7 @@
   border-radius: var(--radius-xl); padding: var(--space-8); box-shadow: var(--shadow-card);
 }
 
-.auth-tagline { text-align: center; font-size: var(--fs-sm); color: var(--clr-text-muted); margin-top: var(--space-2); }
+.auth-card__eyebrow { text-align: center; font-size: var(--fs-sm); color: var(--clr-text-muted); font-weight: 600; }
 
 /* ── TAB TOGGLE (Log In / Sign Up) ─────────────────────────────── */
 .auth-tabs {

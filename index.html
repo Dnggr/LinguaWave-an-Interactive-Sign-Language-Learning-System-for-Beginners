@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- NEW: sets data-theme before any CSS loads, so the page never
-       flashes the wrong theme on load. Must stay first in <head>. -->
+  <!-- Sets data-theme before any CSS loads, so the page never flashes
+       the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
       var saved = localStorage.getItem('lw-theme');
@@ -11,31 +11,28 @@
     })();
   </script>
   <!--
-    index.html — Log In / Sign Up (Landing Page)
+    index.html — Landing Page + Log In / Sign Up
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : This is now the ONLY entry point to the app. There is
-               no separate marketing landing page — visitors land
-               directly on Log In, with a Sign Up tab right next to
-               it. Logged-in users are bounced straight to the
-               dashboard before this page even renders.
+    PURPOSE  : The ONLY entry point to the app — one page, not a
+               separate marketing site plus a separate login page.
+               Hero + topic preview + About ASL live here; the auth
+               card sits inline in the hero. Logged-in users are
+               bounced straight to the dashboard before this page
+               renders (see the lwauth-ready listener below).
 
-    CONNECTS : → pages/dashboard.html  (after login/register)
+    CONNECTS : → pages/dashboard.html (after login/register)
 
-    AUTH MODE: js/auth.js's login()/register()/logout() already call
-               real Firebase Auth (createUserWithEmailAndPassword /
-               signInWithEmailAndPassword / signOut) plus a Firestore
-               profile write/read — NOT bypass mode. (CORRECTED
-               2026-08-19: this comment previously claimed bypass
-               mode, which was stale — the commented-out bypass
-               versions of those functions are still in js/auth.js as
-               dead reference code, but the live functions are real
-               Firebase calls today.)
+    AUTH MODE: js/auth.js's login()/register()/logout() call real
+               Firebase Auth + a Firestore profile read/write — not
+               a bypass. auth.js itself is out of scope for this pass
+               and was not modified.
 
-    REV 4 PHASE 5 (2026-08-19): removed the "Starting level" picker
-               from the Sign Up form below — see
-               SYSTEM_ARCHITECTURE.md Rev 4 → "Suggested removals" #1.
-               Every learner now starts at Unit 0 on the single trail;
-               there's no proficiency tier to choose at signup anymore.
+    2026-08-28: Merged in the former pages/intro-to-asl.html content
+               (now deleted) as the "About American Sign Language"
+               section below, and added the hero + topic-preview
+               sections. See WHAT CHANGED in this session's writeup
+               for the full list — not duplicated here to avoid the
+               same comment-bloat this cleanup pass removed elsewhere.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -46,10 +43,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
-  <link rel="stylesheet" href="css/toast.css" />
 
-  <!-- Elfa Auth must load before anything renders so a logged-in user
-       gets redirected immediately instead of seeing the login form. -->
+  <!-- Auth must load before anything renders so a logged-in user gets
+       redirected immediately instead of seeing the landing page. -->
   <script type="module" src="js/auth.js"></script>
   <script src="js/theme.js" defer></script>
   <script>
@@ -58,73 +54,217 @@
    });
   </script>
 </head>
-<body class="auth-page">
+<body>
 
-  <div class="auth-card">
-
-    <a href="index.html" class="navbar__logo" style="display:block;text-align:center;">
-      Lingua<span style="color:var(--clr-text-muted);font-weight:400;">Wave</span>
-    </a>
-    <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
-            style="margin: var(--space-3) auto 0;" aria-label="Toggle light/dark theme">
-      <span class="theme-toggle__thumb"></span>
-    </button>
-    <p class="auth-tagline">Learn ASL — one sign at a time.</p>
-
-    <!-- ── TAB TOGGLE ───────────────────────────────────────────── -->
-    <div class="auth-tabs">
-      <button class="auth-tab auth-tab--active" id="tab-login" onclick="showAuthTab('login')">Log In</button>
-      <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Sign Up</button>
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <div class="navbar__user">
+        <a href="#auth-card" class="btn btn--ghost btn--sm" data-hero-login>Log In</a>
+        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle light/dark theme">
+          <span class="theme-toggle__thumb"></span>
+        </button>
+      </div>
     </div>
+  </nav>
 
-    <!-- ── LOG IN FORM ──────────────────────────────────────────── -->
-    <form class="auth-form" id="login-form" onsubmit="event.preventDefault(); handleLogin();">
-      <div class="form-group">
-        <label for="login-email">Email</label>
-        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+  <!-- ── HERO ─────────────────────────────────────────────────────── -->
+  <section class="section hero">
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <p class="section__eyebrow">Capstone Project 2026</p>
+        <h1>Learn ASL — one sign at a time.</h1>
+        <p class="hero__lead">
+          LinguaWave teaches beginner American Sign Language through one guided path —
+          with real-time camera feedback on your handshape and movement, not just
+          multiple-choice questions.
+        </p>
+        <div class="hero__ctas">
+          <button type="button" class="btn btn--primary btn--lg" data-hero-cta>Get Started Free</button>
+          <a href="#auth-card" class="btn btn--ghost btn--lg" data-hero-login>Log In</a>
+        </div>
       </div>
-      <div class="form-group mt-4">
-        <label for="login-password">Password</label>
-        <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" />
-      </div>
-      <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
-      <p class="auth-switch text-muted">
-        Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
-      </p>
-    </form>
 
-    <!-- ── REGISTER FORM ────────────────────────────────────────── -->
-    <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
-      <div class="form-group">
-        <label for="reg-name">Full name</label>
-        <input type="text" id="reg-name" class="form-input" placeholder="Alex Santos" autocomplete="name" />
-      </div>
-      <div class="form-group mt-4">
-        <label for="reg-email">Email</label>
-        <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
-      </div>
-      <div class="form-group mt-4">
-        <label for="reg-password">Password</label>
-        <input type="password" id="reg-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" />
-      </div>
-      <!-- REV 4 PHASE 5: "Starting level" select removed here — LinguaWave
-           is one continuous path now, not three user-selectable tiers.
-           See SYSTEM_ARCHITECTURE.md Rev 4 → "Suggested removals" #1. -->
-      <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
-      <p class="auth-switch text-muted">
-        Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
-      </p>
-    </form>
+      <div class="auth-card" id="auth-card">
+        <p class="auth-card__eyebrow">Get started</p>
 
-  </div>
-  
+        <!-- ── TAB TOGGLE ───────────────────────────────────────── -->
+        <div class="auth-tabs">
+          <button class="auth-tab auth-tab--active" id="tab-login" onclick="showAuthTab('login')">Log In</button>
+          <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Sign Up</button>
+        </div>
+
+        <!-- ── LOG IN FORM ──────────────────────────────────────── -->
+        <form class="auth-form" id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group mt-4">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" />
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
+          <p class="auth-switch text-muted">
+            Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
+          </p>
+        </form>
+
+        <!-- ── REGISTER FORM ────────────────────────────────────── -->
+        <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
+          <div class="form-group">
+            <label for="reg-name">Full name</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="Alex Santos" autocomplete="name" />
+          </div>
+          <div class="form-group mt-4">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group mt-4">
+            <label for="reg-password">Password</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" />
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
+          <p class="auth-switch text-muted">
+            Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TOPIC PREVIEW ────────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2>A preview of what you'll learn</h2>
+      <p class="text-muted">A preview of what you'll learn — sign up free to jump in.</p>
+
+      <!--
+        These are intentionally NOT links into pages/learn.html. That page
+        requires auth (LWAuth.requireAuth), so a logged-out visitor
+        clicking straight into "?unit=alphabet" etc. was being bounced
+        by the auth guard right back to this page — which looked like a
+        broken "redirects to the top of index" click. Fixing that on the
+        learn.html side would mean loosening its auth guard; fixing it
+        here instead — plain, non-navigating preview chips that open the
+        Sign Up tab — keeps learn.html's guard intact and matches the
+        "sign up free to jump in" copy above.
+      -->
+      <div class="topic-preview" role="list">
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">🔤</span>
+          <span class="topic-chip__title">The Alphabet</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">✍️</span>
+          <span class="topic-chip__title">Fingerspell Your Name</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">🔢</span>
+          <span class="topic-chip__title">Numbers</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">👋</span>
+          <span class="topic-chip__title">Greetings</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">🙏</span>
+          <span class="topic-chip__title">Polite Words</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">🧑‍🤝‍🧑</span>
+          <span class="topic-chip__title">People</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">😊</span>
+          <span class="topic-chip__title">Feelings</span>
+        </button>
+        <button type="button" class="topic-chip" data-hero-cta role="listitem">
+          <span class="topic-chip__icon" aria-hidden="true">🥤</span>
+          <span class="topic-chip__title">Needs</span>
+        </button>
+      </div>
+      <p class="topic-preview__lock text-muted">🔒 Sign up free to unlock these units.</p>
+    </div>
+  </section>
+
+  <!-- ── WHY LINGUAWAVE ───────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container">
+      <h2>Why learn with LinguaWave</h2>
+      <div class="grid-3 mt-4">
+        <div class="card">
+          <h3>Real-time camera feedback</h3>
+          <p class="text-muted">Your camera checks your handshape and motion as you sign — powered by on-device hand tracking, not just multiple choice.</p>
+        </div>
+        <div class="card">
+          <h3>One guided path</h3>
+          <p class="text-muted">Every learner follows the same trail, from the alphabet to full phrases, unlocking each unit as you go.</p>
+        </div>
+        <div class="card">
+          <h3>Learn respectfully</h3>
+          <p class="text-muted">Alongside vocabulary, you'll pick up the etiquette and history behind the language — more on that below.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT ASL (merged from the former pages/intro-to-asl.html) ─── -->
+  <section class="section section--sm" id="about-asl">
+    <div class="container container--narrow">
+      <h2>About American Sign Language</h2>
+      <div class="grid-2 mt-4">
+        <div class="card">
+          <h3>What is ASL?</h3>
+          <p class="text-muted">American Sign Language is a complete, natural language with its own grammar and syntax — it isn't a signed version of English. It's used primarily by Deaf communities across the US and parts of Canada.</p>
+          <p class="text-muted">Its roots trace to 1817, when the American School for the Deaf opened in Hartford, Connecticut, founded by Thomas Gallaudet and Laurent Clerc, a Deaf teacher from France. ASL grew from French Sign Language blending with sign systems already used locally.</p>
+        </div>
+        <div class="card">
+          <h3>Why it matters</h3>
+          <p class="text-muted">In the 1960s, linguist William Stokoe's research proved ASL has the full structure of a real language, a finding that reshaped how it's taught and recognized today.</p>
+          <p class="text-muted">Learning it opens direct communication with the Deaf community, and shows up in fields like education, interpreting, and healthcare.</p>
+        </div>
+        <div class="card">
+          <h3>Deaf awareness &amp; etiquette</h3>
+          <p class="text-muted">Many in the Deaf community see themselves as a linguistic and cultural group — not as having something to "fix." A few habits go a long way:</p>
+          <ul class="etiquette-list text-muted">
+            <li>Keep eye contact — it's how a signed conversation stays connected.</li>
+            <li>Get attention with a wave or a light tap on the shoulder, not shouting.</li>
+            <li>Face the person directly and keep your face visible; facial expression carries grammar, not just emotion.</li>
+            <li>It's fine to ask to write something down instead of guessing — don't fake understanding.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>How a sign works</h3>
+          <p class="text-muted">Stokoe identified that every sign is built from a few parameters: handshape, location, movement, and palm orientation — plus facial expression, which changes meaning the way tone of voice does in speech.</p>
+          <p class="text-muted">That's also why LinguaWave's camera tracks motion and position rather than grading a single still frame.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CLOSING CTA ──────────────────────────────────────────────── -->
+  <section class="section section--sm">
+    <div class="container text-center">
+      <h2>Ready to start signing?</h2>
+      <p class="text-muted mb-4">It's free to join — pick up right where the preview above left off.</p>
+      <button type="button" class="btn btn--primary btn--lg" data-hero-cta>Get Started Free</button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p class="text-muted">LinguaWave — Capstone Project 2026</p>
+    </div>
+  </footer>
+
   <div id="auth-modal" class="auth-modal hidden">
     <div class="auth-modal__box">
       <p id="auth-modal-message" class="auth-modal__message"></p>
       <button id="auth-modal-close" class="btn btn--primary btn--full">OK</button>
     </div>
   </div>
-  
+
   <script src="js/main.js"></script>
   <script>
     'use strict';
@@ -137,7 +277,24 @@
       document.getElementById('tab-register').classList.toggle('auth-tab--active', !isLogin);
     }
 
-    // BYPASS MODE: no validation against a backend yet — see js/auth.js.
+    // Switches to the given auth tab and scrolls the auth card into view.
+    // Shared by the hero CTA, the nav's "Log In" link, and the topic
+    // preview chips, so all three "get started" paths behave the same way.
+    function focusAuth(tab) {
+      showAuthTab(tab);
+      document.getElementById('auth-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    document.querySelectorAll('[data-hero-cta]').forEach((el) => {
+      el.addEventListener('click', () => focusAuth('register'));
+    });
+    document.querySelectorAll('[data-hero-login]').forEach((el) => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        focusAuth('login');
+      });
+    });
+
     async function handleLogin() {
       const email    = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
@@ -145,7 +302,6 @@
         await LWAuth.login(email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        //alert(error.message)
         showAuthModal(error.message)
       }
     }
@@ -161,11 +317,10 @@
         await LWAuth.register(name, email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        //alert(error.message)
         showAuthModal(error.message)
       }
     }
-    
+
      const authModal = document.getElementById('auth-modal');
      const authModalMessage = document.getElementById('auth-modal-message');
      const authModalClose = document.getElementById('auth-modal-close');
