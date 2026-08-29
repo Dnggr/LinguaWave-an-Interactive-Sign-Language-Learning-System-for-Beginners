@@ -158,3 +158,19 @@
 .quick-check__options button.quick-check__option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
 .quick-check__options button.quick-check__option--wrong   { border-color: var(--clr-red);     background: var(--clr-red-soft); }
 @media (max-width: 480px) { .quick-check__options { grid-template-columns: 1fr; } }
+
+/* ── Quick Check picture prompt (NEW — REV 8 teaching-rhythm pass) ───
+   Recall variety: an alternate Quick Check format that shows the
+   sign's own reference image (same field the "Sign image" block above
+   already renders) and asks the learner to pick the matching word,
+   instead of always reading a text description. See
+   buildQuickCheckQuestion()'s promptImage branch in lesson.js. Sized
+   deliberately smaller than .lesson-image (which is the primary
+   teaching image higher up the page) so this reads as "part of a
+   quiz card," not a second full-size hero image. */
+.quick-check__image {
+  display: block; max-width: 220px; max-height: 220px; width: 100%;
+  object-fit: contain; margin: 0 auto var(--space-4);
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+}

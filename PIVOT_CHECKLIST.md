@@ -126,6 +126,16 @@ topics, "already sorted," one ASL-basics topic per line) as the new
 
 ## Rev 8 — Teaching-rhythm pass (2026-08-25) — ✅ done
 
+> **2026-08-26 (personalization removal):** the "Light personalization"
+> item below was removed wholesale this session — see
+> `Rev8_Personalization_Feature_Checklist.md` and
+> `REV8_TEACHING_AUDIT.md`'s updated "Current decision" for the full
+> reasoning. Struck through, not deleted, so this section still
+> accurately reflects what Rev 8 shipped and what happened to it.
+> Everything else in this Rev 8 section (tighter recall cadence,
+> picture-identification Quick Check format) is UNCHANGED and still
+> live — personalization was the only Rev 8 item touched.
+
 Implements the reference-app *teaching method* (PERSONALIZE → TEACH →
 SEE A REAL SIGNER → RECALL → FEEDBACK → OPTIONAL PRACTICE → CONTINUE),
 not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
@@ -166,6 +176,50 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   `renderer.js`, `dictionary.js` — none of these files were opened for
   editing, only referenced by the pre-existing, untouched `import`
   statements at the top of `lesson.js`).
+
+### Audit fixes — 2026-08-26 (see `REV8_TEACHING_AUDIT.md` for full reasoning)
+
+> **Moot as of the 2026-08-26 personalization-removal session** — the
+> feature these fixes patched no longer exists (see the struck-through
+> item above). Left in place, unedited, as the historical record of
+> what shipped and was fixed before removal — nothing below should be
+> read as still-active behavior.
+
+`REV8_TEACHING_AUDIT.md` flagged two concrete bugs in the personalization
+feature above; both fixed this session, `js/lesson.js`/`pages/lesson.html`
+only, nothing else in this section's scope re-touched:
+
+- [x] **Cross-account leak/suppression, fixed.** `lw_personalize_v1`/
+  `lw_personalize_skipped_v1` now store a `uid` and reconcile it against
+  the logged-in learner, mirroring `js/engine/progress.js`'s own
+  `cached.uid === user.uid` pattern (read for reference, not modified).
+  A mismatch — including a pre-fix record with no `uid` field — is
+  treated as "not answered," never auto-adopted. Tradeoff, deliberately
+  accepted: pre-fix locally-saved prefs need re-answering once (same
+  "reset accepted, no migration shim" precedent as Phase 3's
+  `lw_progress_v2→v3` above).
+- [x] **Permanent chrome / skip-link regression, fixed.** The collapsed
+  summary no longer renders on every sign's page load — gated to once
+  per browser session via a new `sessionStorage` flag
+  (`lw_personalize_summary_shown_v1`), chosen over first-sign-of-category
+  gating (rejected: real entry points — Continue Learning, review links,
+  `?sign=` deep-links — don't reliably land on signIdx 0). Also
+  retargeted the skip-link itself (`id="lesson-content"`/`tabindex="-1"`
+  moved from `.lesson-layout` down onto `.lesson-header`) so it lands
+  past personalization on *every* page load, not just the ones where the
+  session-gate happens to suppress it — closes the gap the session-gate
+  alone would have left on the one render-per-session.
+
+**Verification, same rigor as the section above, extended:** `node
+--check` clean; HTML tag-balance 0 errors; no duplicate ids; DOM-hook
+cross-reference clean (same pre-existing `btn-personalize-edit`
+exception); jsdom runtime harness against the real edited HTML/JS — 11
+groups / 46 assertions, all passing (uid isolation both directions,
+User A's own prefs still load post-fix, session-gating across 3
+simulated sign navigations then reopening on a simulated new session,
+Edit still reopens/pre-fills, 3 corrupt/legacy-localStorage shapes fail
+safe, Quick Check/camera/nav hooks unaffected). Not browser-tested — same
+flagged gap as every prior session.
 
 ### Verification this session
 
@@ -855,13 +909,18 @@ find bugs."
   Joshua/Omen rather than made unilaterally here.
 - [ ] Later dashboard stat tiles: current streak, review due, best
   assessment score.
-- [ ] **Content queue continuation (2026-08-25):** after Actions/Hand
-  Actions/Communication (Units 9–11, done this session), the next
-  `comingSoon:true` category in unit order is `body` (Unit 12) — not
-  started. `classroom_actions` (Unit 31) is also flagged as needing a
-  pass despite already being `comingSoon:false` — see the 2026-08-25
-  session log entry in `AI_MEMORY.md` for why (zero real signs despite
-  being live, `words[]` overlaps this session's new Actions/
-  Communication content).
+- [x] **Content queue continuation (2026-08-25):** after Actions/Hand
+  Actions/Communication (Units 9–11, done that session), the next
+  `comingSoon:true` category in unit order was `body` (Unit 12) — done
+  2026-08-26 (16 SIGNS entries, ASLU-checked; see the 2026-08-26 session
+  log entry in `AI_MEMORY.md`). `personal_information` (Unit 13) also
+  done 2026-08-26 (later session) — 6 new SIGNS entries (the other 9
+  words[] reuse existing family/people/places coverage instead of
+  duplicating it; see that session's `AI_MEMORY.md` log entry). Next
+  up: `colors` (Unit 14) — not started. `classroom_actions` (Unit 31)
+  is also flagged as needing a pass despite already being
+  `comingSoon:false` — see the 2026-08-25 session log entry in
+  `AI_MEMORY.md` for why (zero real signs despite being live, `words[]`
+  overlaps this session's new Actions/Communication content).
 
 *(Add new session's tasks here.)*
