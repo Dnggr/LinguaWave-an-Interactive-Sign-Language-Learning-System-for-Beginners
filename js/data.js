@@ -833,7 +833,7 @@ const SIGNS = [
       'Rest your thumb against the side of your index finger',
       'Keep your wrist straight and hand relaxed',
     ],
-    imageUrl: '../assets/images/basic/A.png', videoUrl: '../assets/videos/basic/A.mp4', detectionType: 'static',
+    imageUrl: '../assets/gifs/A.gif', videoUrl: '../assets/videos/basic/A.mp4', detectionType: 'static',
   },
   {
     id: 'basic_B', level: 'basic', signId: 'B', title: 'Letter B', order: 2,
@@ -843,7 +843,7 @@ const SIGNS = [
       'Thumb tucks flat across the palm, not sticking out',
       'Palm faces forward, fingers point up',
     ],
-    imageUrl: '../assets/images/basic/B.png', videoUrl: '../assets/videos/basic/B.mp4', detectionType: 'static',
+    imageUrl: '../assets/gifs/B.gif', videoUrl: '../assets/videos/basic/B.mp4', detectionType: 'static',
   },
   {
     id: 'basic_C', level: 'basic', signId: 'C', title: 'Letter C', order: 3,
@@ -853,7 +853,7 @@ const SIGNS = [
       'Thumb curves inward to match the fingers',
       'Keep the "C" open, not closed into an O',
     ],
-    imageUrl: '../assets/images/basic/C.png', videoUrl: '../assets/videos/basic/C.mp4', detectionType: 'static',
+    imageUrl: '../assets/gifs/C.gif', videoUrl: '../assets/videos/basic/C.mp4', detectionType: 'static',
   },
   {
     id: 'basic_D', level: 'basic', signId: 'D', title: 'Letter D', order: 4,
@@ -863,7 +863,7 @@ const SIGNS = [
       'Thumb and middle finger meet to form a small circle',
       'Ring and pinky curl in gently',
     ],
-    imageUrl: '../assets/images/basic/D.png', videoUrl: '../assets/videos/basic/D.mp4', detectionType: 'static',
+    imageUrl: '../assets/gifs/D.gif', videoUrl: '../assets/videos/basic/D.mp4', detectionType: 'static',
   },
   {
     id: 'basic_E', level: 'basic', signId: 'E', title: 'Letter E', order: 5,
