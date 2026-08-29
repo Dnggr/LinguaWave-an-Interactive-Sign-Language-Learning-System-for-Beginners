@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
   initProgressBars();
   initUserDetails();
+  document.querySelector('.footer p').textContent = `LinguaWave — Capstone Project 2026`; // makes the footer of all pages relative to this text
 });
 
 
