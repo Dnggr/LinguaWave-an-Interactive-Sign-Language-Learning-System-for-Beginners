@@ -276,11 +276,20 @@
       </article>
 
       <div class="text-center mt-8">
-        <a href="learn.html?level=basic" class="btn btn--primary">Continue to the Alphabet →</a>
+        <a href="learn.html?unit=alphabet" class="btn btn--primary">Continue to the Alphabet →</a>
       </div>
 
     </div>
   </section>
 
+  <!-- BUG FIX (this session): this page was the only authenticated
+       page in the app with no <script src="../js/main.js"> at all —
+       main.js is what wires up the "Log out" button's click handler
+       (data-logout) and fills data-user-name from the real session;
+       without it, "Log out" silently did nothing (just followed
+       href="#") and the navbar always showed the static "Learner"
+       placeholder. Every other page (dashboard/feedback/learn/lesson/
+       quiz/index) already loads it. -->
+  <script src="../js/main.js"></script>
 </body>
 </html>

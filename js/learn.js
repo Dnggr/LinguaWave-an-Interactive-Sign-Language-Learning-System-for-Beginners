@@ -304,11 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
    *  "basic" level, so switching between them via the unified back
    *  link + trail is the more honest affordance now. Also drops the
    *  "Module 1 · Introduction to ASL" banner that used to sit above
-   *  this grid — Unit 0 (renderUnitInfo below) is the real intro
-   *  entry point in the trail now, sequenced BEFORE this unit, and
-   *  links to pages/intro-to-asl.html itself (see renderUnitInfo) —
-   *  repeating that link again here would be a second entry point to
-   *  the same page for no reason. */
+   *  this grid — Unit 0 (renderUnitInfo below) is the intro entry
+   *  point in the trail now, sequenced BEFORE this unit, so repeating
+   *  an intro banner again here would be redundant. (2026-08-28: the
+   *  standalone pages/intro-to-asl.html this used to link out to has
+   *  been merged into index.html's "About American Sign Language"
+   *  section and deleted — see renderUnitInfo below.) */
   function renderBasicCategoryGrid(cat, opts = {}) {
     history.replaceState(null, '', `learn.html?category=${encodeURIComponent(cat.id)}`);
     setContext(cat.title);
@@ -547,12 +548,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** Unit 0 — "Welcome to ASL". First screen that actually renders
    *  UNIT0_CONTENT (added in Phase 1, unrendered until now — see the
-   *  header comment). Also links out to the existing, more complete
-   *  pages/intro-to-asl.html (Rev 3 content: ASL history, Stokoe's
-   *  parameters, learning tips) rather than duplicating it — see the
-   *  Phase 4 session log for why both now coexist instead of one
-   *  replacing the other; that overlap is flagged there for Joshua,
-   *  not resolved unilaterally here. */
+   *  header comment). Used to also link out to the standalone
+   *  pages/intro-to-asl.html; that page's content now lives in
+   *  index.html's "About American Sign Language" section instead (and
+   *  the page itself is deleted), so this screen no longer links out
+   *  anywhere — it just shows UNIT0_CONTENT and continues to the
+   *  alphabet. */
   function renderUnitInfo(unit) {
     history.replaceState(null, '', `learn.html?unit=${encodeURIComponent(unit.id)}`);
     setContext(unit.title);
@@ -570,11 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.innerHTML = `
       <div class="unit-info">
         ${sections}
-        <a href="intro-to-asl.html" class="lesson-card category-card lesson-card--intro">
-          <div class="category-card__icon">📖</div>
-          <span class="category-card__title">Want more? Read the full Introduction to ASL</span>
-          <span class="badge badge--basic">History, Deaf culture &amp; etiquette, learning tips</span>
-        </a>
         <button type="button" class="btn btn--primary mt-4" data-continue-to-alphabet>Continue to the Alphabet →</button>
       </div>
     `;
@@ -758,12 +754,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** Best-effort continuity for old `?level=X` links now that there's
    *  no more per-level screen to send them to (js/quiz.js and
-   *  pages/dashboard.html/intro-to-asl.html still build these — see
-   *  the file header). Scrolls the trail to a representative unit for
-   *  that level instead of just always dropping the learner at the
-   *  very top. Not a perfect mapping (medium/intermediate span
-   *  multiple units) — picks the FIRST unit that level's content
-   *  starts appearing in. */
+   *  pages/dashboard.html still build these — see the file header).
+   *  Scrolls the trail to a representative unit for that level instead
+   *  of just always dropping the learner at the very top. Not a
+   *  perfect mapping (medium/intermediate span multiple units) —
+   *  picks the FIRST unit that level's content starts appearing in. */
   function scrollToLevel(level) {
     const unitIdByLevel = { basic: 'alphabet', medium: 'everyday_essentials', intermediate: 'phrasebook' };
     const targetId = unitIdByLevel[level];

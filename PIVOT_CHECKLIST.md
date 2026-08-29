@@ -157,16 +157,13 @@ not its branding/UI/bot. Full reasoning: `SYSTEM_ARCHITECTURE.md` →
   not attempted): word→video matching, phrase completion,
   sign/word-pair matching — D's other bullets. Would extend the same
   function/card again rather than a new mechanism, if picked up later.
-- [x] **Light personalization** — new `initPersonalization()` +
-  `#personalize-card`/`#personalize-summary` (`pages/lesson.html`).
-  Two questions (who you're learning ASL for; how much time per day),
-  optional, shown once, collapsible/editable afterward. **Storage:
-  `localStorage` only** (`lw_personalize_v1` + `lw_personalize_skipped_v1`)
-  — confirmed NOT read by `isCategoryUnlocked()`, `getOrderedLiveCategories()`,
-  or any `js/engine/progress.js` function; confirmed it changes no
-  `js/data.js` UNITS/CATEGORIES ordering. Collected but not yet
-  *applied* anywhere beyond its own summary line — flagged as an open
-  follow-up below, not a bug.
+- [x] ~~**Light personalization**~~ — **REMOVED 2026-08-26, see below.**
+  Was: new `initPersonalization()` + `#personalize-card`/
+  `#personalize-summary` (`pages/lesson.html`). Two questions (who
+  you're learning ASL for; how much time per day), optional, shown
+  once per learner, collapsible/editable afterward. Storage was
+  `localStorage`, uid-scoped as of 2026-08-26's audit fixes —
+  `lw_personalize_v1` + `lw_personalize_skipped_v1`.
 - [x] **No new teaching engine, no duplicated quiz/progress/camera
   logic** — verified by inspection: this session added functions,
   never modified `startAssessment()`/`handleAssessmentFrame()`/
@@ -258,12 +255,116 @@ Differs from prior sessions' Node-syntax-only checks:
 ### What's still open
 
 - D's other recall-variety formats (word/video matching, phrase
-  completion, sign/word matching) — not attempted, see above.
-- Personalization answers aren't used anywhere beyond their own
-  summary line yet (no copy elsewhere adapts to the learner's stated
-  audience/practice-time) — a reasonable next step, deliberately out
-  of this session's edit surface.
-- Real-browser verification, per above.
+  completion, sign/word matching) — not attempted, see above. Still
+  open — unaffected by the personalization removal.
+- ~~Personalization answers aren't used anywhere beyond their own
+  summary line yet...~~ — **moot, feature removed 2026-08-26.**
+- ~~Personalization still lives on `lesson.html`, not the Dashboard...~~
+  — **moot, feature removed 2026-08-26** (removal request was explicit
+  that it not be relocated to the Dashboard either — see
+  `Rev8_Personalization_Feature_Checklist.md`).
+- Real-browser verification for the Quick Check picture-prompt work
+  above (keyboard tab order, screen reader, `.quick-check__image`
+  sizing at narrow viewports) — still open, unaffected by the removal.
+
+### Personalization removal — 2026-08-26
+
+Removed the entire "Light personalization" feature (question card,
+collapsed summary, both storage keys, all supporting JS/CSS/HTML) per
+explicit request — not relocated, not replaced with any other
+onboarding/preference system. Full reasoning, what was deleted, and
+verification: `REV8_TEACHING_AUDIT.md` → "Current decision" and
+`Rev8_Personalization_Feature_Checklist.md` (now marked
+REMOVED/CANCELLED). One-line summary: `js/lesson.js` lost the DOM refs,
+storage helpers (`loadPersonalization`/`savePersonalization`/
+`markPersonalizationSkipped`/`wasPersonalizationSkipped`/
+`getCurrentUid`), UI functions (`openPersonalizeCard`/
+`closePersonalizeCard`/`wirePersonalizeControls`/
+`renderPersonalizeSelection`/`updatePersonalizeSaveEnabled`/
+`personalizeSummaryText`), and `initPersonalization()` plus its call
+site in `boot()`; `pages/lesson.html` lost `#personalize-card`/
+`#personalize-summary` and their block comment; `css/lesson.css` lost
+the `.personalize-card__*`/`.personalize-summary*` rules. Quick Check
+(both this session's cluster-size and picture-prompt work above),
+camera, nav, sidebar, and everything in `js/data.js`/`js/learn.js`/
+`js/engine/progress.js`/`js/auth.js` are unaffected — verified via
+`node --check`, HTML/CSS balance checks, a DOM-hook cross-reference,
+and a jsdom runtime harness executing the real edited files (30
+structural assertions + a full top-to-bottom execution of the real
+`lesson.js` against the real edited `lesson.html` with zero errors).
+Not browser-tested, same flagged gap as every prior session.
+
+---
+
+## Homepage pivot — Unit 0 removed (2026-08-26) — ✅ done
+
+Unit 0 ("Welcome to ASL: A Brief History") is no longer a curriculum
+unit. Full writeup: `AI_MEMORY.md` → "0c. Homepage pivot";
+`SYSTEM_ARCHITECTURE.md` → "Homepage (2026-08-26 pivot)" for the
+updated flow diagram/responsibility table.
+
+- [x] **`pages/homepage.html` created** — new static (no `homepage.js`)
+  authenticated landing page. Content = former `UNIT0_CONTENT`'s 5
+  sections, moved verbatim (Option B: static markup, not a renamed
+  `HOMEPAGE_CONTENT` data array — nothing else would read it). Two
+  CTAs (Dashboard, Learn→Alphabet) in the hero and repeated at the
+  foot of the content, plus the same "Want more? Read the full
+  Introduction to ASL" banner the old Unit 0 screen had, linking to
+  `intro-to-asl.html`.
+- [x] **`UNITS`' `order:0`/`kind:'info'` entry removed** from
+  `data.js`. Alphabet/Fingerspell/Numbers KEPT `order` 1/2/3 unchanged
+  — not renumbered, gap at 0 intentional. Confirmed nothing indexes
+  `UNITS` positionally before removing (every lookup is by `.id` or
+  `.order` value).
+- [x] **`UNIT0_CONTENT` removed** from `data.js` entirely (and from its
+  `window.LWData` export) — moved into `pages/homepage.html`.
+- [x] **`js/engine/progress.js` inspected, confirmed unnecessary to
+  change, left untouched.** `getOrderedLiveCategories()` already only
+  walks `kind:'category-group'` units — Unit 0 (`kind:'info'`) was
+  already structurally excluded from unlock/gating logic before this
+  removal, so removing its `UNITS` entry has zero effect on gating.
+- [x] **`js/auth.js` untouched** (out of scope, teammate's). Only
+  `index.html`'s 3 destination strings changed: `redirectIfLoggedIn(...)`,
+  the login-success redirect, and the register-success redirect — all
+  `pages/dashboard.html` → `pages/homepage.html`. `LWAuth`'s functions
+  already took a destination argument, so no auth.js change needed.
+- [x] **Dead Unit 0 code removed** (confirmed genuinely dead, not
+  speculatively): `learn.js`'s `renderUnitInfo()` + its `kind==='info'`
+  branches in `renderUnitView()`/`getUnitState()`; `dashboard.js`'s
+  `kind==='info'` row branch in `renderUnitRow()`; `lesson.js`'s
+  sidebar `kind==='info'` branch (linked `learn.html?unit=welcome`);
+  the `welcome` icon entry in all three files' `UNIT_ICONS`.
+- [x] **`css/learn.css`'s `.unit-info`/`.lesson-card--intro` rules
+  REPURPOSED, not deleted** — `pages/homepage.html` reuses them
+  directly for its own intro sections/banner, avoiding a duplicate CSS
+  copy for what would otherwise be near-identical rules.
+- [x] **`pages/intro-to-asl.html` left unchanged** — still the deeper,
+  longer-form reference page; no dependency/content-overlap finding
+  that would make it redundant (same open "could merge someday" note
+  as before, see `## Open / backlog` below — unchanged by this
+  session).
+- [x] **No renaming/reordering side effects** — `quiz.js`/`quiz.html`/
+  camera/classifier/dictionary/MediaPipe not touched (not part of this
+  session's targeted file set at all); no second progress/ordering/
+  unlock algorithm created; `learn.html`/`lesson.html`/`dashboard.html`
+  URL scheme for `?unit=`/`?level=`/`?category=` unchanged.
+
+**Regression check performed** (see `AI_MEMORY.md`'s session-log entry
+for the exact verification commands): Alphabet still `order:1`/
+Fingerspell `order:2`/Numbers `order:3`; Fingerspell + Numbers gating
+logic unread/untouched by this session; `getCurrentDestination()`/
+Continue Learning/Review/Previous-Next/quiz-routing code paths in
+`dashboard.js`/`lesson.js` not modified by this session (only their
+now-dead `kind==='info'` branches were removed, confirmed unreachable
+first); zero remaining live (non-comment) `kind==='info'`/
+`UNIT0_CONTENT`/`unit=welcome` references anywhere in the codebase
+(grep sweep); `data.js` evaluated in a sandboxed VM confirming 71
+units, unique/contiguous `order` 1–71; HTML tag-balance + CSS
+brace-balance clean on every touched file; `node --check` clean on all
+5 edited `.js` files. **Not browser-tested** — no real click-through
+of Login→Homepage→Learn/Dashboard, no real screen-reader/focus-order
+pass on the new skip link, flagged same as every prior session's
+Node-only verification.
 
 ---
 
@@ -514,6 +615,10 @@ better data collection for the detection engine.
    `intro-to-asl.html`'s own fuller history section rather than
    duplicating it — see "Open / backlog" below, that overlap decision
    is still open. See `AI_MEMORY.md` Session Log for the full note.
+   **Superseded 2026-08-26:** Unit 0 itself was removed as a curriculum
+   unit entirely (Homepage pivot, see the `## Homepage pivot` section
+   above) — this content now lives in `pages/homepage.html`, not a
+   trail unit. This item's history is kept as-is below, unedited.
 2. Letters (= current Unit 1, unchanged) ✅
 3. Fingerspell — **as an assessment.** ✅ **Confirmed 2026-08-23
    ("Yes, make it graded") and implemented same day** — see
@@ -902,25 +1007,23 @@ find bugs."
 - [ ] Optional placement/skip test for learners who already know some
   ASL.
 - [ ] Sign-variation callouts (e.g. "HOW" has two accepted forms).
-- [ ] `pages/intro-to-asl.html` vs. Unit 0's `UNIT0_CONTENT` overlap —
-  needs a decision (merge, or keep both cross-linked as-is). Slightly
-  more overlap now that Unit 0 has its own `brief_history` section
-  (2026-08-23) — still not resolved, decision deliberately left to
-  Joshua/Omen rather than made unilaterally here.
+- [ ] `pages/intro-to-asl.html` vs. `pages/homepage.html` overlap —
+  needs a decision (merge, or keep both cross-linked as-is), same open
+  question as before, just renamed: `pages/homepage.html` now carries
+  the content `UNIT0_CONTENT` used to (moved verbatim, including its
+  `brief_history` section from 2026-08-23) — still not resolved,
+  decision deliberately left to Joshua/Omen rather than made
+  unilaterally here (Homepage pivot, 2026-08-26 — see the
+  `## Homepage pivot` section above).
 - [ ] Later dashboard stat tiles: current streak, review due, best
   assessment score.
-- [x] **Content queue continuation (2026-08-25):** after Actions/Hand
-  Actions/Communication (Units 9–11, done that session), the next
-  `comingSoon:true` category in unit order was `body` (Unit 12) — done
-  2026-08-26 (16 SIGNS entries, ASLU-checked; see the 2026-08-26 session
-  log entry in `AI_MEMORY.md`). `personal_information` (Unit 13) also
-  done 2026-08-26 (later session) — 6 new SIGNS entries (the other 9
-  words[] reuse existing family/people/places coverage instead of
-  duplicating it; see that session's `AI_MEMORY.md` log entry). Next
-  up: `colors` (Unit 14) — not started. `classroom_actions` (Unit 31)
-  is also flagged as needing a pass despite already being
-  `comingSoon:false` — see the 2026-08-25 session log entry in
-  `AI_MEMORY.md` for why (zero real signs despite being live, `words[]`
-  overlaps this session's new Actions/Communication content).
+- [ ] **Content queue continuation (2026-08-25):** after Actions/Hand
+  Actions/Communication (Units 9–11, done this session), the next
+  `comingSoon:true` category in unit order is `body` (Unit 12) — not
+  started. `classroom_actions` (Unit 31) is also flagged as needing a
+  pass despite already being `comingSoon:false` — see the 2026-08-25
+  session log entry in `AI_MEMORY.md` for why (zero real signs despite
+  being live, `words[]` overlaps this session's new Actions/
+  Communication content).
 
 *(Add new session's tasks here.)*

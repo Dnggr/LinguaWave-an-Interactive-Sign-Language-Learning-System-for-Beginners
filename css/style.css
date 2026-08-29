@@ -1,29 +1,34 @@
 /*
  * style.css — Global Stylesheet
  * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Design tokens, resets, layout utilities, and shared
- *            component styles used across every page of LinguaWave.
- * CONNECTS : Imported by index.html and all pages/*.html files.
- * ─────────────────────────────────────────────────────────────────
+ * Design tokens, resets, layout utilities, and shared component
+ * styles used across every page of LinguaWave (imported by
+ * index.html and every pages/*.html file).
  *
- * THEME SYSTEM (NEW): minimalist two-theme system, toggled by setting
- * data-theme="light" or data-theme="dark" on <html>. See js/theme.js
- * for the toggle control + persistence (localStorage + system
- * preference fallback) — it sets data-theme before first paint to
- * avoid a flash of the wrong theme.
+ * THEME SYSTEM: two themes, toggled by data-theme="light"|"dark" on
+ * <html> — see js/theme.js for the toggle control + persistence.
+ * :root carries the light palette as the pre-JS fallback (this
+ * pass makes LIGHT the app's default identity, not just one of two
+ * equal options); [data-theme="dark"] below is a warm dark variant
+ * of the same palette, kept fully working for anyone who prefers it.
  *
- * DESIGN NOTE: the previous palette used one green (--clr-accent) for
- * BOTH the brand/interactive color (buttons, links, focus rings) AND
- * "success/correct" states (done badges, correct quiz answers, matched
- * detection). A true black/white minimalist theme needs --clr-accent
- * to become ink (black on light, white on dark) for buttons/links to
- * make sense — so success now has its own dedicated --clr-success
- * token instead, kept as a muted, deliberately restrained green even
- * inside an otherwise monochrome UI, since correct/incorrect feedback
- * is functional information, not decoration. Same idea for the "soft"
- * tinted backgrounds: the original had six different opacity values
- * for the same green (.06 to .35) scattered across files — consolidated
- * to one soft variant per color below.
+ * DESIGN PASS (this session) — visual pivot to a warm, light,
+ * rounded look (reference: lingvano.com/asl), replacing the previous
+ * violet/near-black minimalist theme:
+ *   - Backgrounds moved from cool near-black/lavender-white to warm
+ *     cream/terracotta neutrals.
+ *   - Accent moved from violet to a warm coral, the one recurring
+ *     brand color across buttons, links, and highlighted state.
+ *   - The radius scale was raised across the board (10/16/22/30px
+ *     instead of 3/6/10/16) for the "friendly rounded card" language
+ *     the whole component set (`.card`, `.btn`, course/topic cards,
+ *     etc.) already inherits from these tokens — see §6/§7 below for
+ *     the two components that needed an explicit rule change on top
+ *     of the token bump (buttons now use the pill radius outright).
+ *   - Semantic colors (success/red/yellow/orange/blue) were re-tinted
+ *     warmer so nothing reads as a leftover cool-toned accent next to
+ *     the new palette; what each color MEANS (success, error, badge
+ *     tiers) is unchanged.
  */
 
 /* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
@@ -55,12 +60,16 @@
   --space-16: 4rem;
   --space-24: 6rem;
 
-  /* Radius — tightened slightly from the original scale for a
-     crisper, less "app-store default" minimalist feel. */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 16px;
+  /* Radius — raised across the board (this session) for a rounder,
+     friendlier "Lingvano-like" feel. Every shared component below
+     (.card, .btn, badges, form inputs, course/topic cards) reads
+     from these same 4 tokens, so most of the app got rounder simply
+     by this scale changing — see §6/§7 for the two components that
+     needed their OWN rule updated (not just the token). */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
   --radius-pill: 9999px;
 
   /* Transitions */
@@ -71,84 +80,73 @@
 }
 
 /* ── 1a. COLOR TOKENS — theme-aware ──────────────────────────────
-   :root carries the dark palette as the pre-JS fallback, [data-theme]
-   blocks below are what JS actually switches between.
-
-   REVISED: the first pass of this used literal #000/#fff for bg and
-   an ink-only accent, which read as flat and generic rather than
-   "designed." This version uses layered, slightly-tinted neutrals
-   (surfaces are visibly distinct from the page background, not just
-   different by a hairline) plus one real accent hue — a warm violet —
-   instead of relying on grayscale alone to carry the whole UI,
-   similar to how Material-You-style apps (e.g. Mihon) build a dark
-   theme: never pure black, always a few visible layers of elevation,
-   one accent color that shows up consistently rather than "brand =
-   whatever grayscale value is left." */
+   :root/no-attribute = light (the app's default now); [data-theme=
+   "dark"] is the alternate, still fully supported via the toggle. */
 :root,
-[data-theme="dark"] {
-  --clr-bg:          #121316;   /* near-black, warm-neutral tint — not pure black */
-  --clr-surface:     #1b1d22;   /* card surface, one visible step up from bg      */
-  --clr-surface-2:   #24272e;   /* elevated surface (hover, modal, icon chips)    */
-  --clr-border:      #34383f;   /* subtle dividers                                */
+[data-theme="light"] {
+  --clr-bg:          #FFF8F0;   /* warm cream page background            */
+  --clr-surface:     #FFFFFF;   /* cards pop white against the cream bg  */
+  --clr-surface-2:   #FDECDD;   /* soft peach — chips, hover, icon tiles */
+  --clr-border:      #F0DFCB;   /* warm tan divider, not cool gray       */
 
-  --clr-accent:      #9b8cfa;   /* primary — soft violet, the one recurring color */
-  --clr-accent-dim:  #7c6df0;
-  --clr-accent-soft: rgba(155,140,250,.14);
+  --clr-accent:      #F2643C;   /* primary — warm coral/terracotta       */
+  --clr-accent-dim:  #D9502B;
+  --clr-accent-soft: rgba(242,100,60,.10);
 
-  --clr-success:      #4caf6d;
-  --clr-success-soft: rgba(76,175,109,.14);
+  --clr-success:      #3F9142;
+  --clr-success-soft: rgba(63,145,66,.10);
 
-  --clr-red:         #e5534b;
-  --clr-red-soft:    rgba(229,83,75,.14);
+  --clr-red:         #C23616;
+  --clr-red-soft:    rgba(194,54,22,.09);
 
-  --clr-yellow:      #d4a72c;
-  --clr-yellow-soft: rgba(212,167,44,.16);
+  --clr-yellow:      #B98900;
+  --clr-yellow-soft: rgba(185,137,0,.12);
 
-  --clr-orange:      #e08a4b;
-  --clr-orange-soft: rgba(224,138,75,.16);
+  --clr-orange:      #C1650B;
+  --clr-orange-soft: rgba(193,101,11,.10);
 
-  --clr-blue:        #5b9df9;
-  --clr-blue-soft:   rgba(91,157,249,.14);
+  --clr-blue:        #3568B0;
+  --clr-blue-soft:   rgba(53,104,176,.09);
 
-  --clr-text:        #eceef2;
-  --clr-text-muted:  #9498a3;
-  --clr-text-invert: #14151a;
+  --clr-text:        #2B211A;   /* warm near-black, not cool gray-black  */
+  --clr-text-muted:  #8A7A6B;
+  --clr-text-invert: #FFFFFF;
 
-  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.35);
-  --backdrop:    rgba(10,11,14,.85);
+  --shadow-card: 0 1px 2px rgba(43,33,26,.05), 0 10px 28px rgba(43,33,26,.08);
+  --backdrop:    rgba(255,248,240,.85);
 }
 
-[data-theme="light"] {
-  --clr-bg:          #f6f5f9;   /* soft lavender-tinted off-white — not pure white */
-  --clr-surface:     #ffffff;   /* cards pop against the tinted bg                 */
-  --clr-surface-2:   #edebf5;
-  --clr-border:      #e1ddef;
+[data-theme="dark"] {
+  --clr-bg:          #1F1712;   /* warm, brown-tinted near-black          */
+  --clr-surface:     #2A2019;
+  --clr-surface-2:   #362A21;
+  --clr-border:      #47372B;
 
-  --clr-accent:      #6c5ce7;   /* same violet family, deepened for light contrast */
-  --clr-accent-dim:  #5849c9;
-  --clr-accent-soft: rgba(108,92,231,.09);
+  --clr-accent:      #FF8A65;   /* brighter coral, tuned for dark contrast */
+  --clr-accent-dim:  #FF6F45;
+  --clr-accent-soft: rgba(255,138,101,.16);
 
-  --clr-success:      #2f7d4f;
-  --clr-success-soft: rgba(47,125,79,.10);
+  --clr-success:      #7CC576;
+  --clr-success-soft: rgba(124,197,118,.16);
 
-  --clr-red:         #c0392b;
-  --clr-red-soft:    rgba(192,57,43,.09);
+  --clr-red:         #FF7A66;
+  --clr-red-soft:    rgba(255,122,102,.16);
 
-  --clr-yellow:      #a67c00;
-  --clr-yellow-soft: rgba(166,124,0,.10);
+  --clr-yellow:      #E3B341;
+  --clr-yellow-soft: rgba(227,179,65,.16);
 
-  --clr-orange:      #b5601f;
-  --clr-orange-soft: rgba(181,96,31,.10);
+  --clr-orange:      #F0975A;
+  --clr-orange-soft: rgba(240,151,90,.16);
 
-  --clr-blue:        #2f5fa8;
-  --clr-blue-soft:   rgba(47,95,168,.09);
+  --clr-blue:        #6FA0E0;
+  --clr-blue-soft:   rgba(111,160,224,.16);
 
-  --clr-text:        #1c1b22;
-  --clr-text-muted:  #6b6875;
-  --clr-text-invert: #ffffff;
+  --clr-text:        #FBEEE4;
+  --clr-text-muted:  #C8B6A6;
+  --clr-text-invert: #241A14;
 
-  --shadow-card: 0 1px 2px rgba(28,20,50,.04), 0 8px 24px rgba(28,20,50,.07);
-  --backdrop:    rgba(246,245,249,.85);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.3);
+  --backdrop:    rgba(31,23,18,.85);
 }
 
 /* ── 2. RESET ───────────────────────────────────────────────────── */
@@ -291,7 +289,10 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-6);
-  border-radius: var(--radius-md);
+  /* Pill-shaped, not just "rounded" — the biggest single cue that
+     reads as Lingvano/Duolingo-style rather than a generic app;
+     every other component still uses the --radius-lg/xl scale. */
+  border-radius: var(--radius-pill);
   font-size: var(--fs-sm);
   font-weight: 600;
   font-family: var(--font-body);
@@ -337,7 +338,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .card {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-card);
   transition: border-color var(--dur-base) var(--ease),
@@ -395,7 +396,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .form-input {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-4);
   color: var(--clr-text);
   font-size: var(--fs-base);

@@ -6,26 +6,31 @@
   <script>
     (function () {
       var saved = localStorage.getItem('lw-theme');
-      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      var theme = saved || 'light'; // DESIGN PASS (this session): light is now the app's default identity, not system-preference-based — dark is still available and persists once a user picks it via the toggle.
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
   <!--
-    pages/learn.html — Trail / Lesson Selector
+    pages/learn.html — Lesson Selector ("My Learning"-style, REV 2)
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : REV 4 — PHASE 4 (this revision): shows the single
-               continuous "Basic ASL" trail — one node per
-               window.LWData.getUnits() entry, locked/current/done —
-               instead of the old three-tab (basic/medium/intermediate)
-               level switcher + per-level card grid. Clicking an
-               unlocked node opens that unit's screen (an info screen,
-               a "pick a category" list, or straight into the category
+    PURPOSE  : one card per window.LWData.getUnits() entry,
+               locked/current/done, rendered as a "My Learning"-style
+               course-card grid (REV 2, this session — see
+               css/learn.css's ".course-card"/".course-grid" and
+               js/learn.js's file header) with a right-hand progress
+               sidebar and a search box, instead of the old single-
+               column trail-of-rows layout (REV 4 Phase 4). Clicking an
+               unlocked card opens that unit's screen (a "pick a
+               category" list, or straight into the category
                grid/picker), which then link into lesson.html on a
                specific sign. See js/learn.js's own header comment for
                the full breakdown of every view this page can show.
 
     CONNECTS : ← dashboard.html      (via "Continue Learning" + unit rows)
-               ← pages/intro-to-asl.html (Unit 0's screen links back out here)
+               ← ../index.html       (topic-grid cards + hero CTA both
+                                        land here — HOMEPAGE MERGE, this
+                                        session: was pages/homepage.html,
+                                        now merged into index.html itself)
                → pages/lesson.html   (on a sign card click)
                → pages/quiz.html     (via a category's assessment CTA)
 
@@ -94,20 +99,22 @@
     </div>
   </nav>
 
-  <!-- ── TRAIL HEADER ──────────────────────────────────────────── -->
+  <!-- ── PAGE HEADER ──────────────────────────────────────────────── -->
   <!-- REV 4 PHASE 4: the old three-button "level-tabs" switcher lived
        here (basic/medium/intermediate — see git history / AI_MEMORY.md
-       if you need the old markup back). It's gone: js/learn.js now
-       renders one continuous trail below instead of separate
-       per-level screens, so there's nothing left to switch between at
-       this level.
+       if you need the old markup back). It's gone: js/learn.js
+       renders one continuous unlock path below (a "My Learning"-style
+       course-card grid as of REV 2, this session — was a single-
+       column row-per-unit "trail" before that; see js/learn.js's file
+       header) instead of separate per-level screens, so there's
+       nothing left to switch between at this level.
 
        #learn-context and #learn-back-link are NEW — js/learn.js
-       shows/updates them per view: both stay hidden on the trail
+       shows/updates them per view: both stay hidden on the course-grid
        root, and once you're inside a unit or category, #learn-context
        becomes a small breadcrumb (e.g. the unit/category title) and
        #learn-back-link becomes a real, context-aware "back" link
-       (back to the trail, or back to the unit's category list if you
+       (back to the root, or back to the unit's category list if you
        drilled in from one — see js/learn.js's setBack() for exactly
        which). This replaces the old in-grid "← Back to Categories"
        card that renderWordPicker() used to render as its own tile —
@@ -116,7 +123,7 @@
   <section class="section section--sm">
     <div class="container">
       <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
-      <h1 class="mt-4">Your ASL Learning Path</h1>
+      <h1 class="mt-4">📖 Your ASL Learning Path</h1>
       <p class="mt-2 text-muted">
         One path from the alphabet to full phrases — work through it in order, or jump into anything you've already unlocked.
       </p>
@@ -125,14 +132,16 @@
     </div>
   </section>
 
-  <!-- ── TRAIL / UNIT / CATEGORY GRID ──────────────────────────── -->
-  <!-- js/learn.js renders EVERY view (trail, Unit 0 info, a unit's
-       category list, a category's grid/picker) into this same
-       container, toggling the `trail` / `lesson-grid--categories`
-       modifier classes per view. See js/learn.js's file header for
-       the full state breakdown — this container used to only ever
-       hold one level's worth of lesson/category cards; now it holds
-       whatever the current trail position is. -->
+  <!-- ── COURSE GRID + SIDEBAR ("My Learning" redesign, this session) ─
+       js/learn.js renders EVERY view (course grid, a unit's category
+       list, a category's grid/picker) into #lesson-grid (left column),
+       toggling the `lesson-grid--categories` / `course-grid` modifier
+       classes per view — see js/learn.js's file header for the full
+       state breakdown. #learn-search-input filters whatever's
+       currently inside #lesson-grid (wireSearch() in learn.js).
+       #learn-sidebar-progress/#learn-sidebar-continue are populated by
+       renderSidebar() (also learn.js), called from the course-grid
+       root view. -->
   <!-- Design pass, 2026-08-23: `tabindex="-1"` (skip-link target, see
        above) + a static loading placeholder using css/style.css's
        shared `.loading-pulse` (PIVOT_CHECKLIST.md's gap #3 — this grid
@@ -144,14 +153,35 @@
        needs no cleanup code. -->
   <section class="section section--sm">
     <div class="container">
-      <div class="lesson-grid" id="lesson-grid" tabindex="-1">
-        <p class="text-muted loading-pulse" style="grid-column:1/-1;">Loading your learning path…</p>
+      <div class="learn-layout">
+        <div class="learn-main">
+          <div class="learn-search">
+            <input type="search" id="learn-search-input" placeholder="Search this page…" aria-label="Search the current view" />
+          </div>
+          <div class="lesson-grid" id="lesson-grid" tabindex="-1">
+            <p class="text-muted loading-pulse" style="grid-column:1/-1;">Loading your learning path…</p>
+          </div>
+        </div>
+        <aside class="learn-sidebar">
+          <div class="sidebar-panel">
+            <p class="sidebar-panel__title">Your Progress</p>
+            <div id="learn-sidebar-progress">
+              <p class="sidebar-continue__empty">Loading…</p>
+            </div>
+          </div>
+          <div class="sidebar-panel">
+            <p class="sidebar-panel__title">Continue Learning</p>
+            <div id="learn-sidebar-continue">
+              <p class="sidebar-continue__empty">Loading…</p>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   </section>
 
   <footer class="footer">
-    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+    <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
   </footer>
 
   <script src="../js/main.js"></script>

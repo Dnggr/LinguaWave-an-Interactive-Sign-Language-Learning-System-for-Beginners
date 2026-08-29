@@ -491,8 +491,10 @@
 // CHANGED (this session — new lesson-plan pivot) — copied verbatim
 // from js/learn.js's own (also just-updated) UNIT_ICONS, same
 // documented small-duplication call as before this session.
+// HOMEPAGE PIVOT (this session) — 'welcome' entry removed (Unit 0 is
+// no longer a UNITS entry, see data.js). Every other id unchanged.
 const UNIT_ICONS = {
-  welcome: '👋', alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
+  alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
   greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
   needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
   body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
@@ -830,13 +832,11 @@ function renderUnitRow(unit, destination) {
   // spelled three different ways in the accessible name.
   const hereSuffix = isCurrentUnit ? ', you are here' : '';
 
-  if (unit.kind === 'info') {
-    return unitRowHtml(icon, unit, 'Welcome · no assessment', 'learn.html?unit=welcome',
-      isCurrentUnit ? 'current' : null, {
-        current: isCurrentUnit,
-        ariaLabel: `Open Unit ${unit.order}: ${unit.title} — welcome guide, no assessment${hereSuffix}`,
-      });
-  }
+  // HOMEPAGE PIVOT (this session) — the old kind==='info' branch
+  // ("Welcome · no assessment", Unit 0) is REMOVED: no UNITS entry has
+  // kind:'info' anymore (see data.js) — that content is now
+  // pages/homepage.html, shown once right after login, not a unit row
+  // on this dashboard.
 
   if (unit.kind === 'interactive') {
     return unitRowHtml(icon, unit, 'Practice drill · always open',
