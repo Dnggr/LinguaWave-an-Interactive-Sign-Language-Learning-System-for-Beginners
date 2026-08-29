@@ -200,7 +200,7 @@ function buildPhotoMCRound(signs) {
     const options = shuffle([signId, ...buildDistractors(signId, 3)]);
     return {
       type: 'photoMc', signId, options,
-      prompt: `Which image shows the sign for "${signId}"?`,
+      prompt: `Which shows the sign for "${signId}"?`,
       imageUrl: null, // no prompt image — each OPTION has its own image
     };
   });
