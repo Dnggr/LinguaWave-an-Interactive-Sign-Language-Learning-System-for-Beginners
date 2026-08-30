@@ -322,9 +322,12 @@ const CATEGORIES = [
     id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 12,
     words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
   },
-  // 12. Personal Information
+  // 12. Personal Information — unlocked this pass. 9 of these 15 words
+  // (BOY/GIRL/CHILD/PERSON/FRIEND/STUDENT/TEACHER/HOME/SCHOOL) reuse
+  // entries already live under family/people/places — see the
+  // "MEDIUM · PERSONAL_INFORMATION" SIGNS block comment.
   {
-    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: true, unit: 13,
+    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 13,
     words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
   // 13. Colors — unlocked: all 11 words have ASLU-checked SIGNS entries
@@ -348,9 +351,12 @@ const CATEGORIES = [
     id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 16,
     words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
   },
-  // 16. Appearance
+  // 16. Appearance — unlocked this pass. CLEAN reuses the entry already
+  // live under 'actions'. NEAT and CLEAN are the same physical sign in
+  // ASL (context/expression only) — see the "MEDIUM · APPEARANCE" SIGNS
+  // block comment before wiring NEAT into a graded detection quiz.
   {
-    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: true, unit: 17,
+    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 17,
     words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'NEAT', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
   },
   // 17. Touch
@@ -367,9 +373,12 @@ const CATEGORIES = [
     id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 19,
     words: ['SWEET', 'SOUR', 'SALTY', 'BITTER', 'SPICY', 'DELICIOUS', 'FRESH'],
   },
-  // 19. Sound
+  // 19. Sound — unlocked this pass. QUIET and SILENT are the same
+  // physical sign in ASL (context only) — see the "MEDIUM · SOUND"
+  // SIGNS block comment before wiring SILENT into a graded detection
+  // quiz. HIGH/LOW reuse the general elevation signs, applied to pitch.
   {
-    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: true, unit: 20,
+    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: false, unit: 20,
     words: ['LOUD', 'QUIET', 'NOISY', 'SILENT', 'HIGH', 'LOW'],
   },
   // 20. Descriptions
@@ -676,19 +685,21 @@ const CATEGORIES = [
   // unchanged from the pre-existing file.
   // REV 8 (2026-08-25): 'SLEEP' and 'NICE/CLEAN' removed from words[] — their
   // SIGNS entries were relocated to 'actions' (Unit 9, as SLEEP and CLEAN)
-  // since 'actions' words[] already called for both and this category is
-  // still dormant. Don't re-add SIGNS content for them here; if this
-  // category is ever worked, WASH/HURT/BRUSH TEETH are what's left to do.
+  // since 'actions' words[] already called for both.
+  // Unlocked this pass — WASH/HURT/BRUSH TEETH already had complete SIGNS
+  // entries (medium_health_WASH/HURT/BRUSH_TEETH), just never flipped.
   {
-    id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: true, unit: 42,
+    id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: false, unit: 42,
     words: ['WASH', 'HURT', 'BRUSH TEETH'],
   },
   // No topic in the new plan is even a loose fit for Money — placed
   // alongside Personal Items (closest available theme: wallet/cost)
   // rather than invented a 73rd unit for 3 words. Flagging this one
   // for a second look/better home if Omen wants one.
+  // Unlocked this pass — DOLLARS/CENTS/COST already had complete SIGNS
+  // entries, just never flipped.
   {
-    id: 'money', level: 'medium', title: 'Money', order: 2, comingSoon: true, unit: 43,
+    id: 'money', level: 'medium', title: 'Money', order: 2, comingSoon: false, unit: 43,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
 
@@ -3652,6 +3663,418 @@ const SIGNS = [
       'Similar movement family to NEW',
     ],
     imageUrl: '../assets/images/medium/taste/fresh.png', videoUrl: '../assets/videos/medium/taste/fresh.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · PERSONAL_INFORMATION (Unit 13) ── (new this pass —
+  // unlocks Unit 13. NAME/AGE/FAMILY/BIRTHDAY/LIVE/FROM are new
+  // ASLU-checked content (lifeprint.com, cross-checked against
+  // Handspeak/PocketSign). BOY/GIRL/CHILD/PERSON/FRIEND/STUDENT/
+  // TEACHER/HOME/SCHOOL are NOT new signs — they duplicate the entries
+  // already live under 'family'/'people'/'places' (same physical sign,
+  // matching the EAT/FOOD and CLEAN precedents elsewhere in this file)
+  // so this category is self-contained and playable on its own. Flagged
+  // in chat as an assumption — the alternative is stripping these 9
+  // words from personal_information's words[] instead.
+  {
+    id: 'medium_personal_information_NAME', level: 'medium', category: 'personal_information', signId: 'NAME', title: 'Name', order: 1,
+    description: 'Form both hands into an "H" handshape (index and middle fingers together). Tap the fingers of your dominant hand crosswise onto the fingers of your non-dominant hand, twice.',
+    tips: [
+      'Both hands use the two-finger "H" handshape',
+      'Dominant hand taps crosswise on top of the stationary hand',
+      'Two taps for the noun "name" — a single tap means "named/called" instead',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/name.png', videoUrl: '../assets/videos/medium/personal_information/name.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
+  },
+  {
+    id: 'medium_personal_information_AGE', level: 'medium', category: 'personal_information', signId: 'AGE', title: 'Age', order: 2,
+    description: 'Hold your dominant hand in a loose "C" shape at your chin, then close it into an "S" as you move it down, twice.',
+    tips: [
+      'Handshape closes from a "C" into an "S" on the way down',
+      'Two short downward movements from the chin',
+      'Closely related to OLD (Appearance), which uses the same C-to-S handshape but a single, longer pull down',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/age.png', videoUrl: '../assets/videos/medium/personal_information/age.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.handspeak.com/word/2796/',
+  },
+  {
+    // DUPLICATE — same sign as medium_family_BOY. Not a new sign; see
+    // block comment above.
+    id: 'medium_personal_information_BOY', level: 'medium', category: 'personal_information', signId: 'BOY', title: 'Boy', order: 3,
+    description: 'Hold a flat hand near your forehead, then close your fingers toward your thumb in a small grasping motion, as if tipping an imaginary cap.',
+    tips: [
+      'Starting position is near the forehead',
+      'The closing/grasping motion is what makes this a sign and not just a point',
+      'Same sign already used for BOY under Family',
+    ],
+    imageUrl: '../assets/images/medium/family/BOY.png', videoUrl: '../assets/videos/medium/family/BOY.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_family_GIRL.
+    id: 'medium_personal_information_GIRL', level: 'medium', category: 'personal_information', signId: 'GIRL', title: 'Girl', order: 4,
+    description: 'Make an "A" handshape (thumb resting beside a fist) and brush your thumb down along your jaw/cheek.',
+    tips: [
+      'Thumb traces a short downward line near the jawline',
+      'Rest of the hand stays a loose fist',
+      'Same sign already used for GIRL under Family',
+    ],
+    imageUrl: '../assets/images/medium/family/GIRL.png', videoUrl: '../assets/videos/medium/family/GIRL.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_people_CHILD.
+    id: 'medium_personal_information_CHILD', level: 'medium', category: 'personal_information', signId: 'CHILD', title: 'Child', order: 5,
+    description: 'Hold your flat dominant hand palm-down at about hip height, then pat downward once or twice, as if patting the head of a small child.',
+    tips: [
+      'Palm faces down the whole time',
+      'Height stays low, around hip level',
+      'Same sign already used for CHILD under People',
+    ],
+    imageUrl: '../assets/images/medium/people/child.png', videoUrl: '../assets/videos/medium/people/child.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_people_PERSON.
+    id: 'medium_personal_information_PERSON', level: 'medium', category: 'personal_information', signId: 'PERSON', title: 'Person', order: 6,
+    description: 'Hold both flat hands in front of your body, palms facing each other, and move them straight down together, tracing the outline of a standing figure.',
+    tips: [
+      'Both hands move together, palms facing each other',
+      'Motion is a straight downward line',
+      'Same sign already used for PERSON under People',
+    ],
+    imageUrl: '../assets/images/medium/people/person.png', videoUrl: '../assets/videos/medium/people/person.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_personal_information_FAMILY', level: 'medium', category: 'personal_information', signId: 'FAMILY', title: 'Family', order: 7,
+    description: 'Form both hands into an "F" handshape and trace a circle together out to the sides and back, as if representing a family gathered together.',
+    tips: [
+      'Both hands use the "F" handshape (index and thumb touching)',
+      'Hands separate outward then arc back together',
+      'Same base movement as the initialized sign for CLASS, just with an "F" instead of a "C"',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/family.png', videoUrl: '../assets/videos/medium/personal_information/family.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/family.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_people_FRIEND.
+    id: 'medium_personal_information_FRIEND', level: 'medium', category: 'personal_information', signId: 'FRIEND', title: 'Friend', order: 8,
+    description: 'Hook your index fingers together, then reverse and hook them together the other way — like two links of a chain interlocking.',
+    tips: [
+      'Both hands use a hooked index-finger ("X") handshape',
+      'Hook, then flip and hook again the opposite way',
+      'Same sign already used for FRIEND under People',
+    ],
+    imageUrl: '../assets/images/medium/people/friend.png', videoUrl: '../assets/videos/medium/people/friend.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_people_STUDENT.
+    id: 'medium_personal_information_STUDENT', level: 'medium', category: 'personal_information', signId: 'STUDENT', title: 'Student', order: 9,
+    description: 'Sign LEARN — fingertips of a "flat-O" hand pick up information from your non-dominant palm and touch it to your forehead — then add the PERSON suffix by moving both flat hands straight down in front of you.',
+    tips: [
+      'LEARN motion goes from the open palm up to the forehead',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Same sign already used for STUDENT under People',
+    ],
+    imageUrl: '../assets/images/medium/people/student.png', videoUrl: '../assets/videos/medium/people/student.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_people_TEACHER.
+    id: 'medium_personal_information_TEACHER', level: 'medium', category: 'personal_information', signId: 'TEACHER', title: 'Teacher', order: 10,
+    description: 'Sign TEACH — both open "flat-O" hands near the forehead, moving forward and out twice — then add the PERSON suffix by moving both flat hands straight down in front of you.',
+    tips: [
+      'TEACH motion happens near the forehead/temple',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Same sign already used for TEACHER under People',
+    ],
+    imageUrl: '../assets/images/medium/people/teacher.png', videoUrl: '../assets/videos/medium/people/teacher.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_places_SCHOOL.
+    id: 'medium_personal_information_SCHOOL', level: 'medium', category: 'personal_information', signId: 'SCHOOL', title: 'School', order: 11,
+    description: 'Hold both hands flat, palms open and facing up. Clap the fingertips of your top hand down into the palm of your bottom hand twice.',
+    tips: [
+      'Both hands are flat, fingers together',
+      'Top hand does the clapping motion',
+      'Same sign already used for SCHOOL under Places',
+    ],
+    imageUrl: '../assets/images/medium/places/school.png', videoUrl: '../assets/videos/medium/places/school.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_places_HOME.
+    id: 'medium_personal_information_HOME', level: 'medium', category: 'personal_information', signId: 'HOME', title: 'Home', order: 12,
+    description: 'Bring your fingertips and thumb together into a flattened \u2018O\u2019 shape. Touch them to the corner of your mouth, then move your hand back to touch your cheek near your ear.',
+    tips: [
+      'Two touches: mouth corner, then cheek/ear',
+      'Keep the hand shape compact the whole time',
+      'Same sign already used for HOME under Places',
+    ],
+    imageUrl: '../assets/images/medium/places/home.png', videoUrl: '../assets/videos/medium/places/home.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_personal_information_BIRTHDAY', level: 'medium', category: 'personal_information', signId: 'BIRTHDAY', title: 'Birthday', order: 13,
+    description: 'Touch the tip of your middle finger to your chin, then touch it to your chest on the non-dominant side.',
+    tips: [
+      'Two touches: chin, then chest',
+      'Only the middle finger makes contact',
+      'Left-hand-dominant signers can mirror the sign',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/birthday.png', videoUrl: '../assets/videos/medium/personal_information/birthday.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/birthday.htm',
+  },
+  {
+    id: 'medium_personal_information_LIVE', level: 'medium', category: 'personal_information', signId: 'LIVE', title: 'Live', order: 14,
+    description: 'Hold both hands in an "L" handshape at the sides of your torso, palms facing your body, and brush them upward once.',
+    tips: [
+      'Both hands use the "L" handshape',
+      'Single upward brushing motion along the sides of the body',
+      'Many fluent signers use "A" handshapes instead of "L" for this sign — both are seen',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/live.png', videoUrl: '../assets/videos/medium/personal_information/live.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/live.htm',
+  },
+  {
+    id: 'medium_personal_information_FROM', level: 'medium', category: 'personal_information', signId: 'FROM', title: 'From', order: 15,
+    description: 'Hold your non-dominant index finger up, stationary. Touch your dominant index finger to it, then pull your dominant hand back toward your body while changing it into an "X" handshape.',
+    tips: [
+      'Base hand stays a still index finger',
+      'Dominant hand changes from a "1" to an "X" as it pulls away',
+      'Like pulling back the string on a bow',
+    ],
+    imageUrl: '../assets/images/medium/personal_information/from.png', videoUrl: '../assets/videos/medium/personal_information/from.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/from.htm',
+  },
+
+  // ── MEDIUM · APPEARANCE (Unit 17) ── (new this pass — unlocks Unit
+  // 17. CLEAN duplicates the existing medium_actions_CLEAN entry — see
+  // block comment on Personal Information above for why. NEAT is
+  // flagged below: ASLU/PocketSign/Handspeak all describe it, in the
+  // tidy/orderly sense used here, as the SAME physical sign as
+  // CLEAN/NICE — distinguished only by facial expression, which this
+  // project's landmark-based classifier doesn't read. Both entries are
+  // written, but flagging this for a product decision — see chat.
+  {
+    id: 'medium_appearance_BEAUTIFUL', level: 'medium', category: 'appearance', signId: 'BEAUTIFUL', title: 'Beautiful', order: 1,
+    description: 'Hold your dominant hand loosely closed in front of your face, then circle it around your face while opening your fingers outward into a spread hand, like a flower blooming.',
+    tips: [
+      'Circular path traced in front of the face',
+      'Fingers OPEN outward as the circle finishes — the opposite of PRETTY',
+      'Same movement family as PRETTY, distinguished by opening instead of closing',
+    ],
+    imageUrl: '../assets/images/medium/appearance/beautiful.png', videoUrl: '../assets/videos/medium/appearance/beautiful.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pretty.htm',
+  },
+  {
+    id: 'medium_appearance_PRETTY', level: 'medium', category: 'appearance', signId: 'PRETTY', title: 'Pretty', order: 2,
+    description: 'Hold your dominant hand in a relaxed, open handshape in front of your face, then circle it around your face while closing your fingers and thumb together into a flat, pinched shape.',
+    tips: [
+      'Circular path traced in front of the face',
+      'Fingers CLOSE together as the circle finishes — the opposite of BEAUTIFUL',
+      'Same movement family as BEAUTIFUL, distinguished by closing instead of opening',
+    ],
+    imageUrl: '../assets/images/medium/appearance/pretty.png', videoUrl: '../assets/videos/medium/appearance/pretty.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pretty.htm',
+  },
+  {
+    id: 'medium_appearance_UGLY', level: 'medium', category: 'appearance', signId: 'UGLY', title: 'Ugly', order: 3,
+    description: 'Hold your index finger under your nose, palm down, then drag it sideways while bending it into a hooked shape.',
+    tips: [
+      'Starts as a straight index finger, ends bent/hooked',
+      'Short sideways drag just under the nose',
+      'A scrunched, negative facial expression is part of the sign',
+    ],
+    imageUrl: '../assets/images/medium/appearance/ugly.png', videoUrl: '../assets/videos/medium/appearance/ugly.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/u/ugly.htm',
+  },
+  {
+    id: 'medium_appearance_CUTE', level: 'medium', category: 'appearance', signId: 'CUTE', title: 'Cute', order: 4,
+    description: 'Hold a modified "U" handshape (index and middle fingers together, thumb tucked) near your chin and brush it downward once or twice.',
+    tips: [
+      'Same handshape, location, and movement as one version of SUGAR',
+      'A single downward movement leans toward "attractive"; a double, softer movement leans toward "adorable"',
+      'Facial expression carries most of the distinction from SUGAR',
+    ],
+    imageUrl: '../assets/images/medium/appearance/cute.png', videoUrl: '../assets/videos/medium/appearance/cute.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cute.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_CLEAN.
+    id: 'medium_appearance_CLEAN', level: 'medium', category: 'appearance', signId: 'CLEAN', title: 'Clean', order: 5,
+    description: 'Hold your non-dominant hand flat, palm up. Slide your dominant flat hand across the palm from base to fingertips, as if wiping it clean.',
+    tips: [
+      'Base hand stays flat and still',
+      'One smooth sliding motion, base to fingertips',
+      'Same sign already used for CLEAN under Actions',
+    ],
+    imageUrl: '../assets/images/medium/actions/clean.png', videoUrl: '../assets/videos/medium/actions/clean.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_appearance_DIRTY', level: 'medium', category: 'appearance', signId: 'DIRTY', title: 'Dirty', order: 6,
+    description: 'Hold your open, spread hand under your chin, palm down, and wiggle your fingers.',
+    tips: [
+      'Fingers WIGGLE loosely — this is what separates it from PIG, which bends and unbends together',
+      'Handshape stays open (a "5" hand), not closed',
+      'A slightly disgusted facial expression fits the meaning',
+    ],
+    imageUrl: '../assets/images/medium/appearance/dirty.png', videoUrl: '../assets/videos/medium/appearance/dirty.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pig.htm',
+  },
+  {
+    // FLAG — this word's meaning here (tidy/orderly) is, per ASLU/
+    // Handspeak/PocketSign, the SAME physical sign as CLEAN/NICE above —
+    // a flat hand sliding once across the other palm. English splits
+    // "neat" and "clean" into two words; ASL doesn't reliably split them
+    // by handshape/movement, only by context and facial expression. This
+    // entry is written (identical description to CLEAN) so the lesson
+    // content isn't missing, but flagging that the landmark-based
+    // classifier cannot currently tell this apart from CLEAN — see chat
+    // writeup before wiring this into a graded quiz.
+    id: 'medium_appearance_NEAT', level: 'medium', category: 'appearance', signId: 'NEAT', title: 'Neat', order: 7,
+    description: 'Hold your non-dominant hand flat, palm up. Slide your dominant flat hand across the palm from base to fingertips — the same sign as CLEAN.',
+    tips: [
+      'Physically identical to CLEAN/NICE — context and facial expression carry the difference, not handshape',
+      'One smooth sliding motion, base to fingertips',
+      'A repeated back-and-forth rub instead of one slide changes the meaning to "cleaning" (the verb)',
+    ],
+    imageUrl: '../assets/images/medium/actions/clean.png', videoUrl: '../assets/videos/medium/actions/clean.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.pocketsign.org/asl/neat',
+  },
+  {
+    id: 'medium_appearance_MESSY', level: 'medium', category: 'appearance', signId: 'MESSY', title: 'Messy', order: 8,
+    description: 'Hold both open hands in front of your chest, palms facing each other, one hand higher than the other. Rotate both hands in a circle, swapping which hand ends up on top.',
+    tips: [
+      'Both hands stay open and spread the whole time',
+      'The hands swap top/bottom position as they circle',
+      'A bigger, faster circle shows a bigger mess',
+    ],
+    imageUrl: '../assets/images/medium/appearance/messy.png', videoUrl: '../assets/videos/medium/appearance/messy.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.pocketsign.org/asl/messy',
+  },
+  {
+    id: 'medium_appearance_OLD', level: 'medium', category: 'appearance', signId: 'OLD', title: 'Old', order: 9,
+    description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once.',
+    tips: [
+      'Handshape closes from a "C" into an "S" on the way down',
+      'One single pull-down — a repeated or exaggerated version means "very old"',
+      'Closely related to AGE (Personal Information), which uses the same handshape change but two shorter movements',
+    ],
+    imageUrl: '../assets/images/medium/appearance/old.png', videoUrl: '../assets/videos/medium/appearance/old.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
+  },
+  {
+    id: 'medium_appearance_NEW', level: 'medium', category: 'appearance', signId: 'NEW', title: 'New', order: 10,
+    description: 'Hold your non-dominant hand flat, palm up. Brush the back of your dominant hand across the palm in one skimming motion.',
+    tips: [
+      'The BACK of the dominant hand makes contact, not the palm',
+      'One smooth skimming motion',
+      'Same movement family as FRESH (Taste)',
+    ],
+    imageUrl: '../assets/images/medium/appearance/new.png', videoUrl: '../assets/videos/medium/appearance/new.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/new.htm',
+  },
+  {
+    id: 'medium_appearance_BROKEN', level: 'medium', category: 'appearance', signId: 'BROKEN', title: 'Broken', order: 11,
+    description: 'Make two fists with your knuckles touching in the middle, then twist both hands apart in opposite directions, as if snapping a stick in two.',
+    tips: [
+      'Both hands start as fists, knuckles touching',
+      'One sharp twisting-apart motion',
+      'Often paired with a "pah!" mouth movement for emphasis',
+    ],
+    imageUrl: '../assets/images/medium/appearance/broken.png', videoUrl: '../assets/videos/medium/appearance/broken.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/break.htm',
+  },
+  {
+    id: 'medium_appearance_DARK', level: 'medium', category: 'appearance', signId: 'DARK', title: 'Dark', order: 12,
+    description: 'Hold both open hands near the sides of your head, palms facing you, then bring them down and across each other in front of your face, curling your fingers as they cross.',
+    tips: [
+      'Both hands start open, end curled/clawed',
+      'Hands cross at the wrists in front of the face',
+      'Like pulling a curtain closed over your face',
+    ],
+    imageUrl: '../assets/images/medium/appearance/dark.png', videoUrl: '../assets/videos/medium/appearance/dark.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.handspeak.com/word/535/',
+  },
+  {
+    id: 'medium_appearance_BRIGHT', level: 'medium', category: 'appearance', signId: 'BRIGHT', title: 'Bright', order: 13,
+    description: 'Hold your dominant fingers and thumb pinched together near your face, then spring them open into a spread hand as you move it outward and slightly down, like light bursting out.',
+    tips: [
+      'Starts pinched closed, ends open and spread',
+      'Same sign as LIGHT (illuminated) and CLEAR/OBVIOUS — context and expression set "bright" apart',
+      'A bigger, faster opening motion shows more intensity',
+    ],
+    imageUrl: '../assets/images/medium/appearance/bright.png', videoUrl: '../assets/videos/medium/appearance/bright.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/clear.htm',
+  },
+
+  // ── MEDIUM · SOUND (Unit 20) ── (new this pass — unlocks Unit 20.
+  // FLAG: QUIET and SILENT are, per ASLU's own dictionary (which lists
+  // them together as "QUIET/SILENT"), the SAME physical sign — the
+  // "shhh" gesture followed by both hands crossing and pulling apart/
+  // down. Same landmark-classifier caveat as NEAT/CLEAN in Appearance —
+  // see chat writeup.
+  {
+    id: 'medium_sound_LOUD', level: 'medium', category: 'sound', signId: 'LOUD', title: 'Loud', order: 1,
+    description: 'Touch your index finger to your ear, then shake both fists back and forth firmly in front of you.',
+    tips: [
+      'Starts with a touch to the ear',
+      'Both hands close into fists ("S" handshape) for the shaking part',
+      'A firm, sharp shake — bigger and faster reads as "louder"',
+    ],
+    imageUrl: '../assets/images/medium/sound/loud.png', videoUrl: '../assets/videos/medium/sound/loud.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/loud.htm',
+  },
+  {
+    id: 'medium_sound_QUIET', level: 'medium', category: 'sound', signId: 'QUIET', title: 'Quiet', order: 2,
+    description: 'Touch your index finger to your lips ("shhh"), then bring both flat hands up to cross at the wrists in front of your face and pull them apart and down to your sides.',
+    tips: [
+      'Two parts: the "shhh" touch, then both hands crossing and pulling apart',
+      'Hands end up palm-down, out to the sides',
+      'Same physical sign as SILENT below — context carries the difference',
+    ],
+    imageUrl: '../assets/images/medium/sound/quiet.png', videoUrl: '../assets/videos/medium/sound/quiet.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/q/quiet.htm',
+  },
+  {
+    id: 'medium_sound_NOISY', level: 'medium', category: 'sound', signId: 'NOISY', title: 'Noisy', order: 3,
+    description: 'Touch your index finger to your ear, then twist both open hands back and forth in front of you at the same time.',
+    tips: [
+      'Starts with a touch to the ear, same as LOUD',
+      'Both hands stay open ("5" handshape) and twist together — LOUD uses closed fists shaking instead',
+      'A bigger, faster twist reads as "noisier"',
+    ],
+    imageUrl: '../assets/images/medium/sound/noisy.png', videoUrl: '../assets/videos/medium/sound/noisy.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/loud.htm',
+  },
+  {
+    // FLAG — same physical sign as QUIET above; see block comment.
+    id: 'medium_sound_SILENT', level: 'medium', category: 'sound', signId: 'SILENT', title: 'Silent', order: 4,
+    description: 'Touch your index finger to your lips ("shhh"), then bring both flat hands up to cross at the wrists in front of your face and pull them apart and down to your sides — the same sign as QUIET.',
+    tips: [
+      'Physically identical to QUIET — context carries the difference, not handshape',
+      'Two parts: the "shhh" touch, then both hands crossing and pulling apart',
+      'A calm, settled facial expression fits the meaning',
+    ],
+    imageUrl: '../assets/images/medium/sound/quiet.png', videoUrl: '../assets/videos/medium/sound/quiet.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.handspeak.com/word/1759/',
+  },
+  {
+    id: 'medium_sound_HIGH', level: 'medium', category: 'sound', signId: 'HIGH', title: 'High', order: 5,
+    description: 'Hold your dominant hand in an "H" handshape and move it straight upward.',
+    tips: [
+      'Uses the "H" handshape (index and middle fingers together, pointing sideways)',
+      'This is the general elevation sign for HIGH, used here for a high-pitched sound',
+      'The higher and faster the movement, the higher the pitch being described',
+    ],
+    imageUrl: '../assets/images/medium/sound/high.png', videoUrl: '../assets/videos/medium/sound/high.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.pocketsign.org/asl/high',
+  },
+  {
+    id: 'medium_sound_LOW', level: 'medium', category: 'sound', signId: 'LOW', title: 'Low', order: 6,
+    description: 'Hold your dominant hand flat, palm down, and move or hold it at a low level in front of you.',
+    tips: [
+      'Handshape stays flat the whole time',
+      'This is the general elevation sign for LOW, used here for a low-pitched sound',
+      'The lower the hand, the lower the pitch being described',
+    ],
+    imageUrl: '../assets/images/medium/sound/low.png', videoUrl: '../assets/videos/medium/sound/low.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/low.htm',
   },
 
   // ── MEDIUM · DESCRIPTIONS ── (category still comingSoon:true — only

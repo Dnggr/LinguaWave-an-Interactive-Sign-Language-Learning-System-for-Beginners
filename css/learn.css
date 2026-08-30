@@ -1,11 +1,5 @@
 /* learn.css — Trail & Lesson Selector styles | CONNECTS: pages/learn.html */
 
-/* REV 4 PHASE 4: removed the old `.level-tabs`/`.level-tab*` rules
-   (segmented-control tab switcher) — pages/learn.html no longer has
-   that markup, js/learn.js renders a single trail instead. See git
-   history / AI_MEMORY.md's Phase 4 session log if the old styling is
-   ever needed as a reference. */
-
 /* ── Lesson grid: alphabet tiles ───────────────────────────────────── */
 .lesson-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -51,16 +45,15 @@
   color: var(--clr-text); line-height: 1.3;
 }
 
-/* Category cards are rendered as <button> elements now (they open the
+/* Category cards are rendered as <button> elements (they open the
    word/phrase picker instead of navigating directly) — reset button
    chrome so they still look like the rest of the grid. */
 button.category-card {
   font: inherit; width: 100%; cursor: pointer;
 }
 
-/* ── Word/phrase picker (NEW) ─────────────────────────────────────────
-   Shown after tapping a category: one card per word/phrase inside it,
-   plus a "Back to Categories" card in the same grid. */
+/* ── Word/phrase picker ────────────────────────────────────────────
+   Shown after tapping a category: one card per word/phrase inside it. */
 .word-picker-card { align-items: flex-start; text-align: left; gap: var(--space-1); }
 .word-picker-card .lesson-card__title { font-size: var(--fs-base); color: var(--clr-text); font-weight: 600; }
 .word-picker-card__subtitle {
@@ -68,38 +61,7 @@ button.category-card {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
 }
 
-/* REV 4 PHASE 4: removed `.lesson-card--back` (the in-grid "← Back to
-   Categories" tile) and `.module-header`/`.module-section` (pure
-   presentation for the old MODULE_GROUPS-driven grouping) — both are
-   dead now. js/learn.js uses ONE page-level back link
-   (#learn-back-link, styled via the existing .back-link rule in
-   style.css) for every screen instead of an in-grid card, and UNITS
-   in data.js is itself the grouping/ordering layer now, so there's no
-   second module layer left to render headers for. */
-
-/* Introduction to ASL banner (used by Unit 0's info screen to link out
-   to pages/intro-to-asl.html) — a wide, distinct card (reading
-   content, not a camera lesson) so it doesn't look like just another
-   grid tile. */
-.lesson-card--intro {
-  flex-direction: row; text-align: left; justify-content: flex-start;
-  background: linear-gradient(135deg, var(--clr-surface), var(--clr-surface-2));
-  border-color: var(--clr-accent);
-}
-.lesson-card--intro .category-card__icon { font-size: var(--fs-xl); }
-
-/* ── Course grid + sidebar ("My Learning"-style, REV 2) ─────────────
-   BUG FIX (this pass): this comment previously claimed the old
-   `.trail`/`.trail-node` classes were "fully dead" and safe to leave
-   unstyled, on the assumption js/learn.js had already been rewritten
-   to stop using them. It hadn't — renderUnitNode() was still emitting
-   `.trail-node`/`.trail-node__*` markup (mixed with `.lesson-card--*`
-   modifier classes that don't match that base class either), so every
-   unit card on the root Learn page rendered with none of its intended
-   card styling. Fixed at the source: renderUnitNode() now emits
-   `.course-card` markup, matching the classes below, and `.trail` is
-   just the flex column wrapper around the new collapsible unit-group
-   sections (see "Trail groups" below). */
+/* ── Course grid + sidebar ("My Learning"-style) ──────────────────── */
 .learn-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -116,12 +78,23 @@ button.category-card {
   .learn-sidebar { position: static; }
 }
 
-.learn-search { margin-bottom: var(--space-6); }
+/* ── Search box ─────────────────────────────────────────────────────
+   Filters whatever's currently rendered in #lesson-grid (see
+   js/learn.js's applySearchFilter()) — previously wired to nothing at
+   all (js/learn.js had no wireSearch()/input listener despite this
+   file and pages/learn.html's own comments claiming it did), so typing
+   here did nothing. Icon + clear button now give it the same affordance
+   as any other search field instead of a bare unlabeled placeholder. */
+.learn-search { position: relative; margin-bottom: var(--space-4); }
+.learn-search__icon {
+  position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--clr-text-muted); pointer-events: none;
+}
 .learn-search input {
   width: 100%; background: var(--clr-surface); color: var(--clr-text);
   border: 1px solid var(--clr-border); border-radius: var(--radius-pill);
-  padding: var(--space-3) var(--space-5); font-size: var(--fs-sm);
-  font-family: var(--font-body);
+  padding: var(--space-3) var(--space-8) var(--space-3) calc(var(--space-4) * 2 + 18px);
+  font-size: var(--fs-sm); font-family: var(--font-body);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .learn-search input::placeholder { color: var(--clr-text-muted); }
@@ -129,6 +102,20 @@ button.category-card {
   outline: none; border-color: var(--clr-accent);
   box-shadow: 0 0 0 3px var(--clr-accent-soft);
 }
+/* Chrome/Safari draw their own built-in "clear" control on
+   type="search" inputs — suppress it so it doesn't double up with
+   .learn-search__clear below. */
+.learn-search input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.learn-search__clear {
+  position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 50%; border: none; background: transparent;
+  color: var(--clr-text-muted); font-size: var(--fs-sm); line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.learn-search__clear:hover { background: var(--clr-surface-2); color: var(--clr-text); }
+.learn-search-empty { padding: var(--space-2) 0 var(--space-4); }
+.is-search-hidden { display: none !important; }
 
 .course-grid {
   display: grid;
@@ -155,6 +142,18 @@ button.category-card {
   height: 92px; font-size: var(--fs-3xl); background: var(--clr-accent-soft);
 }
 .course-card--done .course-card__thumb { background: var(--clr-success-soft); }
+/* Small checkmark badge on a finished unit's thumb, on top of the
+   status badge text — a done unit previously only differed from an
+   in-progress one by border color, easy to miss at a glance next to
+   the busier "current" cards. */
+.course-card--done .course-card__thumb::after {
+  content: '✓';
+  position: absolute; bottom: 6px; left: 6px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--clr-success); color: var(--clr-text-invert);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; box-shadow: 0 0 0 2px var(--clr-surface);
+}
 .course-card__badge { position: absolute; top: var(--space-2); right: var(--space-2); }
 .course-card__body { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); }
 .course-card__eyebrow {
@@ -163,36 +162,60 @@ button.category-card {
 }
 .course-card__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); line-height: 1.3; }
 
+/* ── Sidebar panels ─────────────────────────────────────────────────
+   .sidebar-panel--continue (new) gives the "Continue Learning" panel
+   the same accent-border + gradient-wash treatment css/dashboard.css's
+   .continue-card already uses for the equivalent "what do you do
+   next" card — this sidebar previously rendered both panels with
+   identical, equally-neutral styling, so nothing on the page signaled
+   which one was the primary action. */
 .sidebar-panel {
   background: var(--clr-surface); border: 1px solid var(--clr-border);
   border-radius: var(--radius-xl); padding: var(--space-5);
+}
+.sidebar-panel--continue {
+  border-color: var(--clr-accent);
+  background: linear-gradient(135deg, var(--clr-accent-soft), transparent 60%);
 }
 .sidebar-panel__title {
   font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--clr-text-muted); margin-bottom: var(--space-3);
 }
+
+/* Progress ring — `--pct` (0–100) is set inline by js/learn.js's
+   renderSidebar() and drives a conic-gradient arc, so the ring's fill
+   is now the actual percentage; before this it was a flat, fixed-width
+   circle that looked identical at 5% and 95% complete. The ::before
+   punches the donut hole so only the arc + number/label show. */
 .sidebar-progress__ring {
+  --pct: 0;
+  position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   width: 96px; height: 96px; margin: 0 auto; text-align: center;
-  border-radius: 50%; border: 6px solid var(--clr-accent-soft); background: var(--clr-surface);
+  border-radius: 50%;
+  background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-accent-soft) 0);
 }
+.sidebar-progress__ring::before {
+  content: ''; position: absolute; inset: 7px; border-radius: 50%;
+  background: var(--clr-surface);
+}
+.sidebar-progress__number, .sidebar-progress__label { position: relative; z-index: 1; }
 .sidebar-progress__number { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--clr-accent); }
 .sidebar-progress__label { font-size: var(--fs-xs); color: var(--clr-text-muted); }
 .sidebar-progress__count { margin-top: var(--space-3); font-size: var(--fs-xs); color: var(--clr-text-muted); text-align: center; }
-.sidebar-continue__title { font-weight: 600; font-size: var(--fs-sm); margin-bottom: var(--space-3); }
-.sidebar-continue__detail { font-size: var(--fs-sm); color: var(--clr-text-muted); margin-bottom: var(--space-3); }
+
+.sidebar-continue { display: flex; align-items: center; gap: var(--space-3); }
+.sidebar-continue__icon {
+  flex: 0 0 auto; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xl); background: var(--clr-surface); border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+}
+.sidebar-continue__text { min-width: 0; }
+.sidebar-continue__title { font-weight: 600; font-size: var(--fs-sm); margin-bottom: var(--space-1); }
+.sidebar-continue__detail { font-size: var(--fs-xs); color: var(--clr-text-muted); overflow-wrap: anywhere; }
 .sidebar-continue__empty { font-size: var(--fs-sm); color: var(--clr-text-muted); }
 
-/* ── Trail groups (collapsible sections by level) ────────────────────
-   BUG FIX (this pass): the full curriculum is 70+ units rendered flat
-   into one grid — the reported "page is way too long" complaint.
-   Grouped into 3 native <details> sections instead (Alphabet & Numbers
-   / Words & Topics / Phrases & Conversations — js/learn.js's
-   getUnitLevel() derives this straight from the `level` data.js
-   already assigns every category, no new taxonomy invented). Native
-   <details>/<summary> gets keyboard support, no custom JS toggle
-   logic, and degrades to "just expanded" with CSS disabled — cheaper
-   and more robust than a hand-rolled accordion widget. */
+/* ── Trail groups (collapsible sections by level) ──────────────────── */
 .trail { display: flex; flex-direction: column; gap: var(--space-4); }
 .trail-group {
   border: 1px solid var(--clr-border);
@@ -223,56 +246,89 @@ button.category-card {
   white-space: nowrap;
 }
 .trail-group__grid { padding: 0 var(--space-5) var(--space-5); }
+/* A search that matches nothing left in this group (see
+   js/learn.js's applySearchFilter()) — dimmed rather than removed, so
+   the layout doesn't jump as the learner keeps typing. */
+.trail-group.is-search-hidden { opacity: .35; }
 
-/* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
-   PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
-   yet matching dashboard": css/dashboard.css already gives
-   a.unit-progress-row a visible keyboard-focus ring
-   (outline:none + inset box-shadow, chosen there because that row sits
-   inside an overflow:hidden list); ported the same substitution here
-   for every interactive tile on this page. Neither `.lesson-grid` nor
-   `.trail` clips overflow, so a normal (non-inset) ring is enough — no
-   need for dashboard's inset variant. `:focus-visible` (not `:focus`)
-   so a mouse click doesn't show a ring meant for keyboard users only.
-   `.lesson-card` alone covers alphabet/number tiles, category cards
-   (always rendered with `class="lesson-card category-card"`) and the
-   word/phrase picker (`class="lesson-card word-picker-card"`) — one
-   rule, no need to also list `.category-card`/`.word-picker-card`.
-   `.course-card` (course grid, REV 2) is separate since course cards
-   never carry `.lesson-card`. Locked tiles already use
-   `pointer-events:none` and, where rendered as `<div>`, aren't
-   focusable in the first place, so nothing extra is needed to exclude
-   them here. */
+/* ── :focus-visible ring ─────────────────────────────────────────────
+   `.lesson-card` covers alphabet/number tiles, category cards, and the
+   word/phrase picker; `.course-card` (course grid) is separate since
+   course cards never carry `.lesson-card`. `:focus-visible` (not
+   `:focus`) so a mouse click doesn't show a ring meant for keyboard use. */
 .lesson-card:focus-visible,
 .course-card:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--clr-accent);
 }
 
-/* ── Loading / error fallback (Design pass, 2026-08-23) ─────────────
-   Same PIVOT_CHECKLIST.md item. The initial "Loading your learning
-   path…" placeholder (pages/learn.html) uses css/style.css's shared
-   `.loading-pulse` directly — no page-specific class needed for that
-   half. `.learn-fallback-alert` below is the one small page-specific
-   adjustment `js/learn.js`'s showLearnUnavailable() needs to nest
-   css/style.css's existing `.alert`/`.alert--error` component cleanly
-   inside `#lesson-grid`, same reuse pattern css/dashboard.css's own
-   `.dash-fallback-alert` already established — not a new error style,
-   just margin/radius/column-span for this specific spot. */
+/* ── Loading / error fallback ─────────────────────────────────────── */
 .learn-fallback-alert {
   grid-column: 1 / -1;
   margin: 0;
   border-radius: var(--radius-md);
 }
 
-/* ── Unit 0 info screen (NEW, Phase 4) ────────────────────────────
+/* ── Unit 0 info screen ────────────────────────────────────────────
    Prose content (window.LWData.UNIT0_CONTENT), not lesson cards — a
-   plain-text block dropped full-width into #lesson-grid, same
-   grid-column: 1 / -1 technique the old .module-header used to escape
-   the grid's auto-fill columns. */
+   plain-text block dropped full-width into #lesson-grid. */
 .unit-info { grid-column: 1 / -1; max-width: 640px; }
 .unit-info__section { margin-bottom: var(--space-6); }
 .unit-info__section h3 { font-family: var(--font-display); margin-bottom: var(--space-2); }
 .unit-info__section p { color: var(--clr-text-muted); line-height: 1.7; }
-.unit-info .lesson-card--intro,
 .unit-info .btn { margin-bottom: var(--space-6); }
+
+/* ── Congrats modal (NEW) ─────────────────────────────────────────────
+   Fires from js/learn.js's checkCompletion(), driven by a real
+   state-change (a category/unit that just flipped to done) rather
+   than a decorative animation — see that file's CONGRATS section.
+   Pure CSS transform/opacity animation (no canvas/particle library),
+   kept cheap on purpose given this session's performance focus. */
+.congrats-modal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+}
+.congrats-modal[hidden] { display: none; }
+.congrats-modal__backdrop {
+  position: absolute; inset: 0;
+  background: rgba(43, 33, 26, .45);
+  animation: lw-fade-in var(--dur-base) var(--ease);
+}
+[data-theme="dark"] .congrats-modal__backdrop { background: rgba(0, 0, 0, .6); }
+.congrats-modal__box {
+  position: relative; width: 100%; max-width: 380px;
+  background: var(--clr-surface); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  text-align: center; overflow: hidden;
+  animation: lw-modal-pop var(--dur-slow) var(--ease);
+}
+.congrats-modal__confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.congrats-modal__confetti span {
+  position: absolute; top: -8%; width: 8px; height: 8px; border-radius: 2px;
+  opacity: 0; animation: lw-confetti-fall 1.5s ease-in forwards;
+}
+.congrats-modal__confetti span:nth-child(1) { left: 10%; background: var(--clr-accent);  animation-delay: .05s; }
+.congrats-modal__confetti span:nth-child(2) { left: 25%; background: var(--clr-success); animation-delay: .15s; }
+.congrats-modal__confetti span:nth-child(3) { left: 45%; background: var(--clr-yellow);  animation-delay: 0s;   }
+.congrats-modal__confetti span:nth-child(4) { left: 62%; background: var(--clr-blue);    animation-delay: .2s;  }
+.congrats-modal__confetti span:nth-child(5) { left: 78%; background: var(--clr-accent);  animation-delay: .1s;  }
+.congrats-modal__confetti span:nth-child(6) { left: 92%; background: var(--clr-success); animation-delay: .25s; }
+.congrats-modal__icon { position: relative; font-size: 56px; line-height: 1; margin-bottom: var(--space-4); }
+.congrats-modal__title { position: relative; font-family: var(--font-display); margin-bottom: var(--space-2); }
+.congrats-modal__body { position: relative; color: var(--clr-text-muted); margin-bottom: var(--space-6); }
+
+@keyframes lw-confetti-fall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(220px) rotate(200deg); }
+}
+@keyframes lw-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lw-modal-pop {
+  0%   { opacity: 0; transform: scale(.9) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .congrats-modal__backdrop, .congrats-modal__box { animation: none; }
+  .congrats-modal__confetti { display: none; }
+}
