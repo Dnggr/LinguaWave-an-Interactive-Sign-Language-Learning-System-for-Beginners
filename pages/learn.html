@@ -1,52 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- NEW: sets data-theme before any CSS loads, so the page never
-       flashes the wrong theme on load. Must stay first in <head>. -->
+  <!-- Sets data-theme before any CSS loads, so the page never flashes
+       the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
       var saved = localStorage.getItem('lw-theme');
-      var theme = saved || 'light'; // DESIGN PASS (this session): light is now the app's default identity, not system-preference-based — dark is still available and persists once a user picks it via the toggle.
+      var theme = saved || 'light'; // Design decision: light is this app's default identity, not system-preference-based — dark is still available and persists once a user picks it via the toggle.
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
   <!--
-    pages/learn.html — Lesson Selector ("My Learning"-style, REV 2)
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE  : one card per window.LWData.getUnits() entry,
-               locked/current/done, rendered as a "My Learning"-style
-               course-card grid (REV 2, this session — see
-               css/learn.css's ".course-card"/".course-grid" and
-               js/learn.js's file header) with a right-hand progress
-               sidebar and a search box, instead of the old single-
-               column trail-of-rows layout (REV 4 Phase 4). Clicking an
-               unlocked card opens that unit's screen (a "pick a
-               category" list, or straight into the category
-               grid/picker), which then link into lesson.html on a
-               specific sign. See js/learn.js's own header comment for
-               the full breakdown of every view this page can show.
+    pages/learn.html — Lesson Selector ("My Learning"-style course-card
+    grid — see css/learn.css's .course-card/.course-grid and
+    js/learn.js's file header for the full view breakdown).
 
-    CONNECTS : ← dashboard.html      (via "Continue Learning" + unit rows)
-               ← ../index.html       (topic-grid cards + hero CTA both
-                                        land here — HOMEPAGE MERGE, this
-                                        session: was pages/homepage.html,
-                                        now merged into index.html itself)
-               → pages/lesson.html   (on a sign card click)
-               → pages/quiz.html     (via a category's assessment CTA)
+    CONNECTS : ← dashboard.html   (via "Continue Learning" + unit rows)
+               ← ../index.html    (topic-preview chips point here once
+                                     signed up)
+               → pages/lesson.html (on a sign card click)
+               → pages/quiz.html   (via a category's assessment CTA)
 
-    URL PARAMS: this page's OWN navigation uses ?unit=<unitId> and
-               ?category=<categoryId> (see js/learn.js's file header
-               for the full scheme). The OLD
-               ?level=basic|medium|intermediate[&category=Y] shape is
-               STILL accepted on load for backward compatibility —
-               js/lesson.js and js/quiz.js (both out of scope this
-               phase) still build links in that shape and were not
-               changed to match.
+    URL PARAMS: own scheme is ?unit=<unitId> / ?category=<categoryId>;
+               the legacy ?level=basic|medium|intermediate[&category=Y]
+               shape is still accepted on load for js/lesson.js and
+               js/quiz.js, which still build links in that shape (both
+               out of scope this pass) — see js/learn.js's file header.
 
-    TODO     : Fetch real lesson metadata (title, locked state, image)
-               from Firestore collection "lessons".  Replace static
-               SIGNS/CATEGORIES data with a dynamic render — UNCHANGED
-               TODO carried over from before this revision.
+    THIS PASS : fixed the <script> load order below (js/engine/progress.js
+               was the only `defer`red tag among 4 non-deferred siblings —
+               see js/learn.js's header for why that was a live footgun,
+               not just untidy); added search icon/clear affordances and
+               a Congrats modal (markup only — all behavior lives in
+               js/learn.js); reordered the two sidebar panels so
+               "Continue Learning" (the primary action) leads, matching
+               dashboard.html's own priority ordering.
+
+    TODO      : Fetch real lesson metadata (title, locked state, image)
+               from Firestore collection "lessons" instead of the
+               static data.js source — unchanged from before this pass.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -67,18 +59,11 @@
 </head>
 <body>
 
-  <!-- ── SKIP LINK (Design pass, 2026-08-23) ─────────────────────────
-       PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
-       not yet matching dashboard": dashboard.html has had a skip link
-       since Priority 2 §13; this page didn't. Jumps straight to the
-       trail/category grid (#lesson-grid), skipping the navbar's 4
-       focusable items (logo, 2 nav links, theme toggle) + "Log out".
-       `tabindex="-1"` on #lesson-grid below is what lets a plain <div>
-       actually receive focus on jump (an <a>/<button> wouldn't need
-       this — dashboard's own skip target, #continue-cta, is an <a> and
-       doesn't have one). Must stay the very first element in <body>
-       to work, same as dashboard.html's. Uses css/style.css's shared
-       `.skip-link` (see that file's §16) rather than a page-local copy. -->
+  <!-- Skip link: jumps straight to the trail/category grid, skipping
+       the navbar's 4 focusable items (logo, 2 nav links, theme toggle)
+       + "Log out". tabindex="-1" on #lesson-grid is what lets that
+       plain <div> actually receive focus on jump. Must stay the very
+       first element in <body>. Uses css/style.css's shared .skip-link. -->
   <a href="#lesson-grid" class="skip-link">Skip to learning path</a>
 
   <nav class="navbar">
@@ -100,26 +85,13 @@
   </nav>
 
   <!-- ── PAGE HEADER ──────────────────────────────────────────────── -->
-  <!-- REV 4 PHASE 4: the old three-button "level-tabs" switcher lived
-       here (basic/medium/intermediate — see git history / AI_MEMORY.md
-       if you need the old markup back). It's gone: js/learn.js
-       renders one continuous unlock path below (a "My Learning"-style
-       course-card grid as of REV 2, this session — was a single-
-       column row-per-unit "trail" before that; see js/learn.js's file
-       header) instead of separate per-level screens, so there's
-       nothing left to switch between at this level.
-
-       #learn-context and #learn-back-link are NEW — js/learn.js
-       shows/updates them per view: both stay hidden on the course-grid
-       root, and once you're inside a unit or category, #learn-context
-       becomes a small breadcrumb (e.g. the unit/category title) and
-       #learn-back-link becomes a real, context-aware "back" link
-       (back to the root, or back to the unit's category list if you
-       drilled in from one — see js/learn.js's setBack() for exactly
-       which). This replaces the old in-grid "← Back to Categories"
-       card that renderWordPicker() used to render as its own tile —
-       one consistent back affordance for every screen instead of a
-       different one depending which screen you're on. -->
+  <!-- #learn-context / #learn-back-link: js/learn.js shows/updates
+       these per view — both stay hidden on the trail root, and once
+       you're inside a unit or category, #learn-context becomes a
+       small breadcrumb and #learn-back-link becomes a context-aware
+       "back" link (to the root, or to the unit's category list if you
+       drilled in from one). One consistent back affordance for every
+       screen instead of a different one per screen. -->
   <section class="section section--sm">
     <div class="container">
       <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
@@ -132,46 +104,48 @@
     </div>
   </section>
 
-  <!-- ── COURSE GRID + SIDEBAR ("My Learning" redesign, this session) ─
-       js/learn.js renders EVERY view (course grid, a unit's category
-       list, a category's grid/picker) into #lesson-grid (left column),
-       toggling the `lesson-grid--categories` / `course-grid` modifier
-       classes per view — see js/learn.js's file header for the full
-       state breakdown. #learn-search-input filters whatever's
-       currently inside #lesson-grid (wireSearch() in learn.js).
-       #learn-sidebar-progress/#learn-sidebar-continue are populated by
-       renderSidebar() (also learn.js), called from the course-grid
-       root view. -->
-  <!-- Design pass, 2026-08-23: `tabindex="-1"` (skip-link target, see
-       above) + a static loading placeholder using css/style.css's
-       shared `.loading-pulse` (PIVOT_CHECKLIST.md's gap #3 — this grid
-       previously just popped in with no transition, indistinguishable
-       from "empty" for the instant before js/learn.js's first render).
-       Every render path in js/learn.js replaces this div's innerHTML
-       wholesale (`grid.innerHTML = ...`) on its first call, so this
-       placeholder is naturally overwritten by the real content and
-       needs no cleanup code. -->
+  <!-- ── COURSE GRID + SIDEBAR ────────────────────────────────────────
+       js/learn.js renders every view (course grid, a unit's category
+       list, a category's grid/picker) into #lesson-grid, toggling the
+       `lesson-grid--categories` / `course-grid` modifier classes per
+       view. #learn-search-input filters whatever's currently inside
+       #lesson-grid (applySearchFilter() in learn.js).
+       #learn-sidebar-progress / #learn-sidebar-continue are populated
+       by renderSidebar() (also learn.js), called from every routing
+       branch in boot() — the sidebar is visible on every learn.html
+       view, not just the root trail. -->
   <section class="section section--sm">
     <div class="container">
       <div class="learn-layout">
         <div class="learn-main">
           <div class="learn-search">
-            <input type="search" id="learn-search-input" placeholder="Search this page…" aria-label="Search the current view" />
+            <svg class="learn-search__icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="search" id="learn-search-input" placeholder="Search this page…" aria-label="Search the current view" autocomplete="off" />
+            <button type="button" class="learn-search__clear" id="learn-search-clear" aria-label="Clear search" hidden>✕</button>
           </div>
+          <p class="text-muted learn-search-empty" id="learn-search-empty" hidden></p>
+          <!-- Static loading placeholder (css/style.css's shared
+               .loading-pulse) — every render path in js/learn.js
+               replaces this div's innerHTML wholesale on its first
+               call, so it's naturally overwritten and needs no
+               cleanup code. tabindex="-1" is the skip-link target. -->
           <div class="lesson-grid" id="lesson-grid" tabindex="-1">
             <p class="text-muted loading-pulse" style="grid-column:1/-1;">Loading your learning path…</p>
           </div>
         </div>
         <aside class="learn-sidebar">
-          <div class="sidebar-panel">
-            <p class="sidebar-panel__title">Your Progress</p>
-            <div id="learn-sidebar-progress">
+          <div class="sidebar-panel sidebar-panel--continue">
+            <p class="sidebar-panel__title">Continue Learning</p>
+            <div id="learn-sidebar-continue">
               <p class="sidebar-continue__empty">Loading…</p>
             </div>
           </div>
           <div class="sidebar-panel">
-            <p class="sidebar-panel__title">Continue Learning</p>
-            <div id="learn-sidebar-continue">
+            <p class="sidebar-panel__title">Your Progress</p>
+            <div id="learn-sidebar-progress">
               <p class="sidebar-continue__empty">Loading…</p>
             </div>
           </div>
@@ -184,9 +158,36 @@
     <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
   </footer>
 
+  <!-- ── CONGRATS MODAL (NEW) ─────────────────────────────────────────
+       Markup only, hidden by default — js/learn.js's checkCompletion()/
+       showCongrats() populate the text and toggle [hidden] when a
+       category or unit assessment has genuinely just been passed. See
+       that file's CONGRATS section for the trigger logic and focus
+       handling. -->
+  <div class="congrats-modal" id="congrats-modal" hidden>
+    <div class="congrats-modal__backdrop" data-congrats-dismiss></div>
+    <div class="congrats-modal__box" role="dialog" aria-modal="true" aria-labelledby="congrats-modal-title" aria-describedby="congrats-modal-body">
+      <div class="congrats-modal__confetti" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="congrats-modal__icon" id="congrats-modal-icon" aria-hidden="true">🎉</div>
+      <h2 class="congrats-modal__title" id="congrats-modal-title">Nice work!</h2>
+      <p class="congrats-modal__body" id="congrats-modal-body"></p>
+      <button type="button" class="btn btn--primary btn--full" id="congrats-modal-dismiss">Keep Going →</button>
+    </div>
+  </div>
+
+  <!-- Load order matters here: main.js/data.js/progress.js/learn.js
+       all run inline (none deferred) so they execute in this exact
+       order, and learn.js — which reads window.LWData and
+       window.LWProgress — is guaranteed both are already defined by
+       the time it runs. (Previously progress.js alone was marked
+       `defer`, which put it LAST regardless of source order — see
+       js/learn.js's file header for why that happened to still work
+       today and why it was fixed anyway.) -->
   <script src="../js/main.js"></script>
   <script src="../js/data.js"></script>
-  <script defer src="../js/engine/progress.js"></script>
+  <script src="../js/engine/progress.js"></script>
   <script src="../js/learn.js"></script>
 </body>
 </html>
