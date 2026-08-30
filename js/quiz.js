@@ -81,7 +81,7 @@ const level     = params.get('level') || 'basic';
 const isFinal   = params.get('final') === '1';
 const categoryId = params.get('category') || null;
 
-const MAX_PER_ROUND  = 10;
+const MAX_PER_ROUND  = 5;
 const PASS_THRESHOLD = window.LWProgress?.PASS_THRESHOLD ?? 0.80;
 
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
@@ -195,10 +195,22 @@ function buildIdRound(signs) {
   });
 }
 
+function buildPhotoMCRound(signs) {
+  return sample(signs, Math.min(MAX_PER_ROUND, signs.length)).map(signId => {
+    const options = shuffle([signId, ...buildDistractors(signId, 3)]);
+    return {
+      type: 'photoMc', signId, options,
+      prompt: `Which shows the sign for "${signId}"?`,
+      imageUrl: null, // no prompt image — each OPTION has its own image
+    };
+  });
+}
+
 /* ── Runner state ───────────────────────────────────────────────── */
 const rounds = [
   { key: 'multipleChoice', label: 'Multiple Choice', questions: [] },
   { key: 'identification',  label: 'Identification',  questions: [] },
+  { key: 'photoMultipleChoice', label: 'Photo Multiple Choice', questions: [] },
 ];
 let roundIdx = 0;
 let qIdx     = 0;
@@ -275,6 +287,7 @@ function boot() {
 
     rounds[0].questions = buildMCRound(scope.signs);
     rounds[1].questions = buildIdRound(scope.signs);
+    rounds[2].questions = buildPhotoMCRound(scope.signs);
     showQuestion();
   } catch (e) {
     console.error('[quiz.js] rendering failed partway through:', e);
@@ -367,9 +380,24 @@ function showQuestion() {
   }
 
   if (qOptionsEl) {
-    qOptionsEl.innerHTML = q.options.map(opt => `
-      <button class="quiz-option" data-option="${escapeHtml(opt)}">${escapeHtml(opt)}</button>
-    `).join('');
+    if (q.type === 'photoMc') {
+      qOptionsEl.innerHTML = q.options.map(opt => {
+        const imgUrl = window.LWData?.getSign?.(level, opt)?.imageUrl ?? null;
+        // TODO: swap in real per-sign photos — falls back to a
+        // labeled placeholder box when missing or broken.
+        return `
+          <button class="quiz-option quiz-option--photo" data-option="${escapeHtml(opt)}">
+            ${imgUrl ? `<img class="quiz-option__img" src="${imgUrl}" alt="${escapeHtml(opt)}"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+            <div class="quiz-option__img-placeholder" style="display:${imgUrl ? 'none' : 'flex'};">📷 ${escapeHtml(opt)}</div>
+            <span class="quiz-option__label">${escapeHtml(opt)}</span>
+          </button>`;
+      }).join('');
+    } else {
+      qOptionsEl.innerHTML = q.options.map(opt => `
+        <button class="quiz-option" data-option="${escapeHtml(opt)}">${escapeHtml(opt)}</button>
+      `).join('');
+    }
     qOptionsEl.querySelectorAll('.quiz-option').forEach(btn => {
       btn.onclick = () => selectAnswer(btn, q);
     });
@@ -704,6 +732,7 @@ function finishAssessment() {
   const breakdown = {
     multipleChoice: roundResults.multipleChoice ?? { correct: 0, total: 0 },
     identification: roundResults.identification ?? { correct: 0, total: 0 },
+    photoMultipleChoice: roundResults.photoMultipleChoice ?? { correct: 0, total: 0 },
     motion: cameraRoundData,
   };
 
@@ -732,14 +761,16 @@ function renderResults(score, passed, breakdown) {
   }
 
   if (resultsBreakdownEl) {
-    const mcPct = breakdown.multipleChoice.total ? Math.round(100 * breakdown.multipleChoice.correct / breakdown.multipleChoice.total) : 0;
-    const idPct = breakdown.identification.total ? Math.round(100 * breakdown.identification.correct / breakdown.identification.total) : 0;
+    const mcPct    = breakdown.multipleChoice.total ? Math.round(100 * breakdown.multipleChoice.correct / breakdown.multipleChoice.total) : 0;
+    const idPct    = breakdown.identification.total ? Math.round(100 * breakdown.identification.correct / breakdown.identification.total) : 0;
+    const photoPct = breakdown.photoMultipleChoice.total ? Math.round(100 * breakdown.photoMultipleChoice.correct / breakdown.photoMultipleChoice.total) : 0; // ← new
     const motionLine = breakdown.motion.skipped
       ? '<li>🎥 Camera check — skipped (optional)</li>'
       : `<li>🎥 Camera check (bonus, not counted) — ${breakdown.motion.correct} / ${breakdown.motion.total}</li>`;
     resultsBreakdownEl.innerHTML = `
       <li>📝 Multiple choice — ${breakdown.multipleChoice.correct} / ${breakdown.multipleChoice.total} (${mcPct}%)</li>
       <li>🔎 Identification — ${breakdown.identification.correct} / ${breakdown.identification.total} (${idPct}%)</li>
+      <li>🖼️ Photo Multiple Choice — ${breakdown.photoMultipleChoice.correct} / ${breakdown.photoMultipleChoice.total} (${photoPct}%)</li>
       ${motionLine}
     `;
   }

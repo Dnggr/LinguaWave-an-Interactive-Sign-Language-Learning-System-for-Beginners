@@ -276,6 +276,7 @@ button.category-card {
 .unit-info__section { margin-bottom: var(--space-6); }
 .unit-info__section h3 { font-family: var(--font-display); margin-bottom: var(--space-2); }
 .unit-info__section p { color: var(--clr-text-muted); line-height: 1.7; }
+.unit-info .lesson-card--intro,
 .unit-info .btn { margin-bottom: var(--space-6); }
 
 /* ── Congrats modal (NEW) ─────────────────────────────────────────────
@@ -304,31 +305,58 @@ button.category-card {
   text-align: center; overflow: hidden;
   animation: lw-modal-pop var(--dur-slow) var(--ease);
 }
-.congrats-modal__confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.congrats-modal__confetti {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
 .congrats-modal__confetti span {
   position: absolute; top: -8%; width: 8px; height: 8px; border-radius: 2px;
   opacity: 0; animation: lw-confetti-fall 1.5s ease-in forwards;
 }
-.congrats-modal__confetti span:nth-child(1) { left: 10%; background: var(--clr-accent);  animation-delay: .05s; }
-.congrats-modal__confetti span:nth-child(2) { left: 25%; background: var(--clr-success); animation-delay: .15s; }
-.congrats-modal__confetti span:nth-child(3) { left: 45%; background: var(--clr-yellow);  animation-delay: 0s;   }
-.congrats-modal__confetti span:nth-child(4) { left: 62%; background: var(--clr-blue);    animation-delay: .2s;  }
-.congrats-modal__confetti span:nth-child(5) { left: 78%; background: var(--clr-accent);  animation-delay: .1s;  }
-.congrats-modal__confetti span:nth-child(6) { left: 92%; background: var(--clr-success); animation-delay: .25s; }
-.congrats-modal__icon { position: relative; font-size: 56px; line-height: 1; margin-bottom: var(--space-4); }
-.congrats-modal__title { position: relative; font-family: var(--font-display); margin-bottom: var(--space-2); }
-.congrats-modal__body { position: relative; color: var(--clr-text-muted); margin-bottom: var(--space-6); }
+.congrats-modal__confetti span:nth-child(1) {
+  left: 10%; background: var(--clr-accent); animation-delay: .05s;
+}
+.congrats-modal__confetti span:nth-child(2) {
+  left: 25%; background: var(--clr-success); animation-delay: .15s;
+}
+.congrats-modal__confetti span:nth-child(3) {
+  left: 45%; background: var(--clr-yellow); animation-delay: 0s;
+}
+.congrats-modal__confetti span:nth-child(4) {
+  left: 62%; background: var(--clr-blue); animation-delay: .2s;
+}
+.congrats-modal__confetti span:nth-child(5) {
+  left: 78%; background: var(--clr-accent); animation-delay: .1s;
+}
+.congrats-modal__confetti span:nth-child(6) {
+  left: 92%; background: var(--clr-success); animation-delay: .25s;
+}
+.congrats-modal__icon {
+  position: relative; font-size: 56px; line-height: 1;
+  margin-bottom: var(--space-4);
+}
+.congrats-modal__title {
+  position: relative; font-family: var(--font-display);
+  margin-bottom: var(--space-2);
+}
+.congrats-modal__body {
+  position: relative; color: var(--clr-text-muted);
+  margin-bottom: var(--space-6);
+}
 
 @keyframes lw-confetti-fall {
   0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
   100% { opacity: 0; transform: translateY(220px) rotate(200deg); }
 }
-@keyframes lw-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lw-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @keyframes lw-modal-pop {
   0%   { opacity: 0; transform: scale(.9) translateY(8px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .congrats-modal__backdrop, .congrats-modal__box { animation: none; }
+  .congrats-modal__backdrop,
+  .congrats-modal__box { animation: none; }
   .congrats-modal__confetti { display: none; }
 }
