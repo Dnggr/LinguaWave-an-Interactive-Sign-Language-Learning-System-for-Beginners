@@ -95,11 +95,9 @@ function initProgressBars() {
  * Programmatically displays a slide-in notification at the bottom
  * of the screen.  type: 'success' | 'error' | 'info'
  * Used by lesson.js to give feedback (e.g. when a locked lesson is
- * opened directly).
- * NOTE (2026-08-28 audit): pages/lesson.html does not link
- * css/toast.css, so this renders unstyled there today. Flagged, not
- * fixed here — out of this pass's scope (lesson.html wasn't part of
- * the requested changes) — see this session's BUGS FOUND writeup.
+ * opened directly). Every page that can call this must link
+ * css/toast.css — confirmed all of them do (pages/lesson.html was
+ * missing it and has been fixed).
  */
 function showToast(message, type = 'info') {
   // Remove existing toasts

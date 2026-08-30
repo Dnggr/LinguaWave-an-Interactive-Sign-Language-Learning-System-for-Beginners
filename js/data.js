@@ -319,7 +319,7 @@ const CATEGORIES = [
   },
   // 11. Body
   {
-    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: true, unit: 12,
+    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 12,
     words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
   },
   // 12. Personal Information
@@ -327,17 +327,17 @@ const CATEGORIES = [
     id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: true, unit: 13,
     words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
-  // 13. Colors
-  // LEGACY id kept (was already comingSoon:true, zero dictionary.js entries) —
-  // words[] replaced wholesale with the new plan's Colors list (GOLD/SILVER
-  // dropped, PURPLE/WHITE/BLACK/GRAY/PINK added).
+  // 13. Colors — unlocked: all 11 words have ASLU-checked SIGNS entries
+  // (see "MEDIUM · COLORS" below). GOLD/SILVER aren't in this list and
+  // were removed rather than kept as unused entries — see BROWN's
+  // detection notes if a metallic color is ever wanted back.
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: true, unit: 14,
+    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: false, unit: 14,
     words: ['RED', 'BLUE', 'YELLOW', 'GREEN', 'ORANGE', 'PURPLE', 'WHITE', 'BLACK', 'GRAY', 'BROWN', 'PINK'],
   },
   // 14. Shapes
   {
-    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: true, unit: 15,
+    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: false, unit: 15,
     words: ['CIRCLE', 'SQUARE', 'TRIANGLE', 'RECTANGLE', 'OVAL', 'STAR', 'HEART', 'DIAMOND'],
   },
   // 15. Size
@@ -345,7 +345,7 @@ const CATEGORIES = [
   // comingSoon:true, zero dictionary.js entries — safe to retire, no
   // detection risk). FULL moved to 'descriptions' per the new plan.
   {
-    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: true, unit: 16,
+    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 16,
     words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
   },
   // 16. Appearance
@@ -364,7 +364,7 @@ const CATEGORIES = [
   },
   // 18. Taste
   {
-    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: true, unit: 19,
+    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 19,
     words: ['SWEET', 'SOUR', 'SALTY', 'BITTER', 'SPICY', 'DELICIOUS', 'FRESH'],
   },
   // 19. Sound
@@ -682,10 +682,6 @@ const CATEGORIES = [
   {
     id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: true, unit: 42,
     words: ['WASH', 'HURT', 'BRUSH TEETH'],
-  },
-  {
-    id: 'amounts', level: 'medium', title: 'Amounts', order: 2, comingSoon: true, unit: 16,
-    words: ['BIG', 'TALL', 'FULL', 'MORE'],
   },
   // No topic in the new plan is even a loose fit for Money — placed
   // alongside Personal Items (closest available theme: wallet/cost)
@@ -2457,6 +2453,16 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
   },
   {
+    id: 'medium_requests_MORE', level: 'medium', category: 'requests', signId: 'MORE', title: 'More', order: 20,
+    description: 'Bring the fingertips of both hands together, bunched into flat ‘O’ shapes, and tap them together twice.',
+    tips: [
+      'Both hands bunch into the same shape',
+      'Fingertips meet in the middle',
+      'Two clear taps',
+    ],
+    imageUrl: '../assets/images/medium/requests/more.png', videoUrl: '../assets/videos/medium/requests/more.mp4', detectionType: 'motion',
+  },
+  {
     id: 'medium_requests_WHO', level: 'medium', category: 'essentials_basic_responses', signId: 'WHO', title: 'Who', order: 5,
     description: 'Hold your index finger near your chin and move it in a small circle, or tap it against your lips.',
     tips: [
@@ -3126,48 +3132,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/essentials_basic_responses/no.png', videoUrl: '../assets/videos/medium/essentials_basic_responses/no.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · AMOUNTS ──
-  {
-    id: 'medium_amounts_BIG', level: 'medium', category: 'amounts', signId: 'BIG', title: 'Big', order: 1,
-    description: 'Hold both hands facing each other in curved ‘L’ shapes close together, then move them apart to show something large.',
-    tips: [
-      'Both hands move outward together',
-      'Distance apart can scale with what you\'re describing',
-      'Keep the curved handshape throughout',
-    ],
-    imageUrl: '../assets/images/medium/amounts/big.png', videoUrl: '../assets/videos/medium/amounts/big.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_amounts_TALL', level: 'medium', category: 'amounts', signId: 'TALL', title: 'Tall', order: 2,
-    description: 'Hold one index finger up as a marker, then move your other extended index finger upward alongside it to show height.',
-    tips: [
-      'One hand acts as a fixed reference point',
-      'The other hand rises past it',
-      'Only the index fingers are extended',
-    ],
-    imageUrl: '../assets/images/medium/amounts/tall.png', videoUrl: '../assets/videos/medium/amounts/tall.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_amounts_FULL', level: 'medium', category: 'amounts', signId: 'FULL', title: 'Full', order: 3,
-    description: 'Hold your non-dominant hand in a fist. Sweep the edge of your dominant flat hand across the top of it, like leveling off a full container.',
-    tips: [
-      'Base hand is a closed fist',
-      'One smooth sweeping motion across the top',
-      'Like scraping a measuring cup level',
-    ],
-    imageUrl: '../assets/images/medium/amounts/full.png', videoUrl: '../assets/videos/medium/amounts/full.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_amounts_MORE', level: 'medium', category: 'amounts', signId: 'MORE', title: 'More', order: 4,
-    description: 'Bring the fingertips of both hands together, bunched into flat ‘O’ shapes, and tap them together twice.',
-    tips: [
-      'Both hands bunch into the same shape',
-      'Fingertips meet in the middle',
-      'Two clear taps',
-    ],
-    imageUrl: '../assets/images/medium/amounts/more.png', videoUrl: '../assets/videos/medium/amounts/more.mp4', detectionType: 'motion',
-  },
-
   // ── MEDIUM · COLORS ──
   {
     id: 'medium_colors_BLUE', level: 'medium', category: 'colors', signId: 'BLUE', title: 'Blue', order: 1,
@@ -3230,24 +3194,480 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/colors/orange.png', videoUrl: '../assets/videos/medium/colors/orange.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_colors_GOLD', level: 'medium', category: 'colors', signId: 'GOLD', title: 'Gold', order: 7,
-    description: 'Touch a ‘G’ handshape near your earlobe and twist your wrist slightly, as if touching a gold earring.',
+    id: 'medium_colors_PURPLE', level: 'medium', category: 'colors', signId: 'PURPLE', title: 'Purple', order: 7,
+    description: 'Form a ‘P’ handshape and shake your hand slightly in place, held out around shoulder height — same family of movement as BLUE, GREEN, and YELLOW.',
     tips: [
-      'Handshape is ‘G’',
-      'Contact point is the earlobe',
-      'Small twisting motion',
+      'Handshape is ‘P’ — middle finger and thumb touching, index pointing down',
+      'Small shaking motion, wrist only',
+      'Held at chest/shoulder height, palm facing out',
     ],
-    imageUrl: '../assets/images/medium/colors/gold.png', videoUrl: '../assets/videos/medium/colors/gold.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/colors/purple.png', videoUrl: '../assets/videos/medium/colors/purple.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_colors_SILVER', level: 'medium', category: 'colors', signId: 'SILVER', title: 'Silver', order: 8,
-    description: 'Many signers fingerspell S-I-L-V-E-R, or touch an ‘S’ handshape near your earlobe with a slight twist, similar to the sign for GOLD.',
+    id: 'medium_colors_WHITE', level: 'medium', category: 'colors', signId: 'WHITE', title: 'White', order: 8,
+    description: 'Rest your open ‘5’ hand on your chest, fingertips touching, then pull it away while closing the fingers into a flat ‘O’.',
     tips: [
-      'Fingerspelling is a common, accepted option',
-      'If signing the concept, keep it close to the ear, like GOLD',
-      'Small twisting motion for the sign version',
+      'Start with all 5 fingers spread, touching the chest',
+      'Pull straight out and away from the body',
+      'Fingers close together as the hand pulls away',
     ],
-    imageUrl: '../assets/images/medium/colors/silver.png', videoUrl: '../assets/videos/medium/colors/silver.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/colors/white.png', videoUrl: '../assets/videos/medium/colors/white.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_colors_BLACK', level: 'medium', category: 'colors', signId: 'BLACK', title: 'Black', order: 9,
+    description: 'Draw your index finger in a straight line across your forehead, from one side to the other, just above the eyebrow.',
+    tips: [
+      'Only the index finger is extended',
+      'One straight, level pass across the forehead',
+      'Stays right along the eyebrow line',
+    ],
+    imageUrl: '../assets/images/medium/colors/black.png', videoUrl: '../assets/videos/medium/colors/black.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_colors_GRAY', level: 'medium', category: 'colors', signId: 'GRAY', title: 'Gray', order: 10,
+    description: 'Hold both open ‘5’ hands in front of you, palms facing your body, fingers loosely interlaced, and move them back and forth so the fingertips brush past each other — like mixing black and white together.',
+    tips: [
+      'Both hands stay in a relaxed open ‘5’',
+      'Fingers mesh loosely, not fully clasped',
+      'Small repeated back-and-forth motion',
+    ],
+    imageUrl: '../assets/images/medium/colors/gray.png', videoUrl: '../assets/videos/medium/colors/gray.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_colors_PINK', level: 'medium', category: 'colors', signId: 'PINK', title: 'Pink', order: 11,
+    description: 'Brush your middle finger down across your lips, once or twice — the same motion as RED, but with a ‘P’ handshape instead of a pointing index finger.',
+    tips: [
+      'Handshape is ‘P’ — middle finger extended, touches the lips',
+      'Short downward brushing motion',
+      'Starts at the lips, like RED',
+    ],
+    imageUrl: '../assets/images/medium/colors/pink.png', videoUrl: '../assets/videos/medium/colors/pink.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · SHAPES ── (new this pass — unlocks Unit 15)
+  {
+    id: 'medium_shapes_CIRCLE', level: 'medium', category: 'shapes', signId: 'CIRCLE', title: 'Circle', order: 1,
+    description: 'Point your index finger and trace a circle in the air in front of you.',
+    tips: [
+      'Only the index finger is extended',
+      'One continuous round loop',
+      'Keep the circle a consistent size as you draw it',
+    ],
+    imageUrl: '../assets/images/medium/shapes/circle.png', videoUrl: '../assets/videos/medium/shapes/circle.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_SQUARE', level: 'medium', category: 'shapes', signId: 'SQUARE', title: 'Square', order: 2,
+    description: 'Use both index fingers to trace a square outline in the air — down, across, up, and across again.',
+    tips: [
+      'Both index fingers move together, mirrored',
+      'Four straight strokes, even corners',
+      'Same sign is also used for a written/printed "sign" or "form" — context tells them apart',
+    ],
+    imageUrl: '../assets/images/medium/shapes/square.png', videoUrl: '../assets/videos/medium/shapes/square.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_TRIANGLE', level: 'medium', category: 'shapes', signId: 'TRIANGLE', title: 'Triangle', order: 3,
+    description: 'Touch both index fingers together at the top to form a peak, then trace down and outward to draw the two slanted sides and the base.',
+    tips: [
+      'Start with fingertips touching at the top',
+      'Both hands trace outward and down evenly',
+      'Finish along the bottom to close the shape',
+    ],
+    imageUrl: '../assets/images/medium/shapes/triangle.png', videoUrl: '../assets/videos/medium/shapes/triangle.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_RECTANGLE', level: 'medium', category: 'shapes', signId: 'RECTANGLE', title: 'Rectangle', order: 4,
+    description: 'Trace a rectangle in the air with both index fingers, the same way as SQUARE but wider than it is tall.',
+    tips: [
+      'Same tracing motion as SQUARE',
+      'Make the horizontal sides longer than the vertical ones',
+      'Both hands move together, mirrored',
+    ],
+    imageUrl: '../assets/images/medium/shapes/rectangle.png', videoUrl: '../assets/videos/medium/shapes/rectangle.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_OVAL', level: 'medium', category: 'shapes', signId: 'OVAL', title: 'Oval', order: 5,
+    description: 'Trace an elongated circle in the air with your index finger, like CIRCLE but stretched longer in one direction.',
+    tips: [
+      'Only the index finger is extended',
+      'The loop is stretched, not perfectly round',
+      'One smooth continuous motion',
+    ],
+    imageUrl: '../assets/images/medium/shapes/oval.png', videoUrl: '../assets/videos/medium/shapes/oval.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_STAR', level: 'medium', category: 'shapes', signId: 'STAR', title: 'Star', order: 6,
+    description: 'Point both index fingers upward in front of you and alternate brushing them up past each other, like a twinkling motion.',
+    tips: [
+      'Both index fingers point straight up',
+      'Fingers alternate — one slides up as the other resets',
+      'Small, quick repeated motion',
+    ],
+    imageUrl: '../assets/images/medium/shapes/star.png', videoUrl: '../assets/videos/medium/shapes/star.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_HEART', level: 'medium', category: 'shapes', signId: 'HEART', title: 'Heart', order: 7,
+    description: 'Use the middle fingers of both hands to trace the outline of a heart shape over your chest, meeting at the bottom.',
+    tips: [
+      'Middle fingers lead the trace',
+      'Both hands move down and inward together',
+      'Finishes at a point in the center of the chest',
+    ],
+    imageUrl: '../assets/images/medium/shapes/heart.png', videoUrl: '../assets/videos/medium/shapes/heart.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_shapes_DIAMOND', level: 'medium', category: 'shapes', signId: 'DIAMOND', title: 'Diamond', order: 8,
+    description: 'Trace a diamond outline in the air with both index fingers — two angled strokes down to a point, then two back up to close it.',
+    tips: [
+      'Both hands move together, mirrored',
+      'Four angled strokes meeting at top and bottom points',
+      'Not the same sign as a diamond ring/gem — this is the shape',
+    ],
+    imageUrl: '../assets/images/medium/shapes/diamond.png', videoUrl: '../assets/videos/medium/shapes/diamond.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · BODY ── (new this pass — unlocks Unit 12)
+  {
+    id: 'medium_body_BODY', level: 'medium', category: 'body', signId: 'BODY', title: 'Body', order: 1,
+    description: 'Place both flat hands on your upper chest, then move them down the front of your torso toward your stomach.',
+    tips: [
+      'Both hands are flat, palms toward you',
+      'Start at the chest, not the shoulders',
+      'One smooth downward pass',
+    ],
+    imageUrl: '../assets/images/medium/body/body.png', videoUrl: '../assets/videos/medium/body/body.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_HEAD', level: 'medium', category: 'body', signId: 'HEAD', title: 'Head', order: 2,
+    description: 'Touch your fingertips to the upper side of your head, then touch down near your jaw or chin.',
+    tips: [
+      'Two touches: upper head, then chin',
+      'Bent fingers, not a flat hand',
+      'Keep the two touch points on the same side',
+    ],
+    imageUrl: '../assets/images/medium/body/head.png', videoUrl: '../assets/videos/medium/body/head.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_HAIR', level: 'medium', category: 'body', signId: 'HAIR', title: 'Hair', order: 3,
+    description: 'Pinch a strand of your hair near the top of your head between your thumb and index finger and give it a small tug.',
+    tips: [
+      'Thumb and index finger pinch together',
+      'Contact point is the top/side of the head',
+      'A light tugging motion, not a pull',
+    ],
+    imageUrl: '../assets/images/medium/body/hair.png', videoUrl: '../assets/videos/medium/body/hair.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_FACE', level: 'medium', category: 'body', signId: 'FACE', title: 'Face', order: 4,
+    description: 'Point your index finger and trace a small circle in front of your face, from forehead to chin.',
+    tips: [
+      'Only the index finger is extended',
+      'The circle traces the outline of the face',
+      'Stays close to the face without touching it',
+    ],
+    imageUrl: '../assets/images/medium/body/face.png', videoUrl: '../assets/videos/medium/body/face.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_EYE', level: 'medium', category: 'body', signId: 'EYE', title: 'Eye', order: 5,
+    description: 'Point your index finger toward your eye, close enough to clearly indicate it.',
+    tips: [
+      'Only the index finger is extended',
+      'Point directly at (not into) the eye',
+      'A brief, clear point is enough',
+    ],
+    imageUrl: '../assets/images/medium/body/eye.png', videoUrl: '../assets/videos/medium/body/eye.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_EAR', level: 'medium', category: 'body', signId: 'EAR', title: 'Ear', order: 6,
+    description: 'Point your index finger toward your ear, or touch your earlobe lightly.',
+    tips: [
+      'Only the index finger is extended',
+      'Point at or lightly touch the ear',
+      'A brief, clear point is enough',
+    ],
+    imageUrl: '../assets/images/medium/body/ear.png', videoUrl: '../assets/videos/medium/body/ear.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_NOSE', level: 'medium', category: 'body', signId: 'NOSE', title: 'Nose', order: 7,
+    description: 'Tap the tip of your nose with your index finger, twice.',
+    tips: [
+      'Only the index finger is extended',
+      'Two light taps on the nose tip',
+      'Keep the motion small and controlled',
+    ],
+    imageUrl: '../assets/images/medium/body/nose.png', videoUrl: '../assets/videos/medium/body/nose.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_MOUTH', level: 'medium', category: 'body', signId: 'MOUTH', title: 'Mouth', order: 8,
+    description: 'Trace a small circle around your mouth with your index finger.',
+    tips: [
+      'Only the index finger is extended',
+      'The circle outlines the mouth/lips',
+      'Stays close to the mouth without touching it',
+    ],
+    imageUrl: '../assets/images/medium/body/mouth.png', videoUrl: '../assets/videos/medium/body/mouth.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_TEETH', level: 'medium', category: 'body', signId: 'TEETH', title: 'Teeth', order: 9,
+    description: 'Brush your index finger along your front teeth, left to right.',
+    tips: [
+      'Only the index finger is extended',
+      'Lips are parted enough to show contact',
+      'One smooth sideways brush',
+    ],
+    imageUrl: '../assets/images/medium/body/teeth.png', videoUrl: '../assets/videos/medium/body/teeth.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_HAND', level: 'medium', category: 'body', signId: 'HAND', title: 'Hand', order: 10,
+    description: 'Brush the fingertips of your dominant hand across the back of your non-dominant hand.',
+    tips: [
+      'Non-dominant hand stays flat and still',
+      'Dominant hand\'s fingertips make the contact',
+      'One brushing motion across the back of the hand',
+    ],
+    imageUrl: '../assets/images/medium/body/hand.png', videoUrl: '../assets/videos/medium/body/hand.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_FINGER', level: 'medium', category: 'body', signId: 'FINGER', title: 'Finger', order: 11,
+    description: 'Point your dominant index finger and touch or tap the index finger of your non-dominant hand.',
+    tips: [
+      'Both hands use an index-finger handshape',
+      'Contact is a light tap, not a grab',
+      'One clear touch',
+    ],
+    imageUrl: '../assets/images/medium/body/finger.png', videoUrl: '../assets/videos/medium/body/finger.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_ARM', level: 'medium', category: 'body', signId: 'ARM', title: 'Arm', order: 12,
+    description: 'Use your dominant flat hand to brush along the length of your non-dominant arm, from the upper arm down to the wrist.',
+    tips: [
+      'Dominant hand is flat, fingers together',
+      'Non-dominant arm stays still as the base',
+      'One smooth pass from bicep to wrist',
+    ],
+    imageUrl: '../assets/images/medium/body/arm.png', videoUrl: '../assets/videos/medium/body/arm.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_LEG', level: 'medium', category: 'body', signId: 'LEG', title: 'Leg', order: 13,
+    description: 'Use both flat hands to trace down the length of your leg, from hip to ankle — or simply point to your leg.',
+    tips: [
+      'Both hands flat, palms facing each other',
+      'Trace downward along one leg',
+      'Pointing to the leg is also accepted',
+    ],
+    imageUrl: '../assets/images/medium/body/leg.png', videoUrl: '../assets/videos/medium/body/leg.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_FOOT', level: 'medium', category: 'body', signId: 'FOOT', title: 'Foot', order: 14,
+    description: 'Point your index finger down toward your foot, or tap the side of your foot lightly.',
+    tips: [
+      'Only the index finger is extended',
+      'Point clearly downward at the foot',
+      'A brief, clear point is enough',
+    ],
+    imageUrl: '../assets/images/medium/body/foot.png', videoUrl: '../assets/videos/medium/body/foot.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_STOMACH', level: 'medium', category: 'body', signId: 'STOMACH', title: 'Stomach', order: 15,
+    description: 'Pat or gently circle your flat hand over your stomach.',
+    tips: [
+      'Hand stays flat',
+      'Small circular or patting motion',
+      'Centered over the stomach',
+    ],
+    imageUrl: '../assets/images/medium/body/stomach.png', videoUrl: '../assets/videos/medium/body/stomach.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_body_BACK', level: 'medium', category: 'body', signId: 'BACK', title: 'Back', order: 16,
+    description: 'Point your thumb back over your shoulder, toward your own back.',
+    tips: [
+      'Thumb does the pointing, hand in a loose fist',
+      'Gesture is aimed behind you',
+      'A brief, clear point is enough',
+    ],
+    imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/medium/body/back.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · SIZE ── (new this pass — unlocks Unit 16. BIG/TALL
+  // description text carried over unchanged from the retired 'amounts'
+  // category — see data.js history — everything else here is new.)
+  {
+    id: 'medium_size_BIG', level: 'medium', category: 'size', signId: 'BIG', title: 'Big', order: 1,
+    description: 'Hold both hands facing each other in curved ‘L’ shapes close together, then move them apart to show something large.',
+    tips: [
+      'Both hands move outward together',
+      'Distance apart can scale with what you\'re describing',
+      'Keep the curved handshape throughout',
+    ],
+    imageUrl: '../assets/images/medium/size/big.png', videoUrl: '../assets/videos/medium/size/big.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_SMALL', level: 'medium', category: 'size', signId: 'SMALL', title: 'Small', order: 2,
+    description: 'Hold both flat hands facing each other with a small gap between them, then move them slightly closer together.',
+    tips: [
+      'Both hands stay flat, palms facing each other',
+      'Gap starts small and shrinks further',
+      'Opposite motion of BIG',
+    ],
+    imageUrl: '../assets/images/medium/size/small.png', videoUrl: '../assets/videos/medium/size/small.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_TALL', level: 'medium', category: 'size', signId: 'TALL', title: 'Tall', order: 3,
+    description: 'Hold one index finger up as a marker, then move your other extended index finger upward alongside it to show height.',
+    tips: [
+      'One hand acts as a fixed reference point',
+      'The other hand rises past it',
+      'Only the index fingers are extended',
+    ],
+    imageUrl: '../assets/images/medium/size/tall.png', videoUrl: '../assets/videos/medium/size/tall.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_SHORT', level: 'medium', category: 'size', signId: 'SHORT', title: 'Short', order: 4,
+    description: 'Hold your bent index and middle fingers ("H" handshape) near waist height and pat downward in a couple of small hops, to show a low height.',
+    tips: [
+      'Handshape is a bent ‘H’ — two fingers, slightly curved',
+      'Small, short downward hops, not one long motion',
+      'Kept low, around waist height',
+    ],
+    imageUrl: '../assets/images/medium/size/short.png', videoUrl: '../assets/videos/medium/size/short.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_LONG', level: 'medium', category: 'size', signId: 'LONG', title: 'Long', order: 5,
+    description: 'Trace your index finger along the length of your other arm, from the shoulder down to the fingertips.',
+    tips: [
+      'Only the index finger is extended',
+      'One slow, continuous trace along the whole arm',
+      'The slower the trace, the longer it reads as being',
+    ],
+    imageUrl: '../assets/images/medium/size/long.png', videoUrl: '../assets/videos/medium/size/long.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_WIDE', level: 'medium', category: 'size', signId: 'WIDE', title: 'Wide', order: 6,
+    description: 'Hold both flat hands facing each other in front of you, then move them apart horizontally to show width.',
+    tips: [
+      'Both hands stay flat, palms facing each other',
+      'Movement is side to side, not forward/back',
+      'Distance apart can scale with what you\'re describing',
+    ],
+    imageUrl: '../assets/images/medium/size/wide.png', videoUrl: '../assets/videos/medium/size/wide.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_THIN', level: 'medium', category: 'size', signId: 'THIN', title: 'Thin', order: 7,
+    description: 'Hold your thumb and index finger close together, showing a very narrow gap between them.',
+    tips: [
+      'Thumb and index finger nearly touch',
+      'Keep the rest of the hand relaxed',
+      'Opposite idea to WIDE',
+    ],
+    imageUrl: '../assets/images/medium/size/thin.png', videoUrl: '../assets/videos/medium/size/thin.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_HEAVY', level: 'medium', category: 'size', signId: 'HEAVY', title: 'Heavy', order: 8,
+    description: 'Hold both hands in loose, bent shapes at waist height, as if holding something, then dip them both down slightly.',
+    tips: [
+      'Both hands bent, like gripping an object',
+      'The dip is small — a drop, not a full lower',
+      'Facial expression (effort) reinforces the weight',
+    ],
+    imageUrl: '../assets/images/medium/size/heavy.png', videoUrl: '../assets/videos/medium/size/heavy.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_size_LIGHT', level: 'medium', category: 'size', signId: 'LIGHT', title: 'Light (weight)', order: 9,
+    description: 'Hold your fingertips together in front of you and flick them upward lightly, as if something weighs almost nothing.',
+    tips: [
+      'Fingertips start bunched together',
+      'A light upward flick, not a big motion',
+      'Opposite idea to HEAVY',
+    ],
+    imageUrl: '../assets/images/medium/size/light.png', videoUrl: '../assets/videos/medium/size/light.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · TASTE ── (new this pass — unlocks Unit 19)
+  {
+    id: 'medium_taste_SWEET', level: 'medium', category: 'taste', signId: 'SWEET', title: 'Sweet', order: 1,
+    description: 'Brush your fingers downward across your chin, once or twice.',
+    tips: [
+      'Fingers stay together, slightly bent',
+      'Short downward brushing motion',
+      'Stays close to the chin',
+    ],
+    imageUrl: '../assets/images/medium/taste/sweet.png', videoUrl: '../assets/videos/medium/taste/sweet.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_SOUR', level: 'medium', category: 'taste', signId: 'SOUR', title: 'Sour', order: 2,
+    description: 'Twist your index finger gently at the corner of your mouth or chin, with a slightly scrunched facial expression.',
+    tips: [
+      'Only the index finger is extended',
+      'Small twisting motion at the mouth corner',
+      'Facial expression carries a lot of the meaning',
+    ],
+    imageUrl: '../assets/images/medium/taste/sour.png', videoUrl: '../assets/videos/medium/taste/sour.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_SALTY', level: 'medium', category: 'taste', signId: 'SALTY', title: 'Salty', order: 3,
+    description: 'Tap your index and middle fingers ("V" handshape) near the corner of your mouth, twice.',
+    tips: [
+      'Handshape is a ‘V’ — index and middle fingers',
+      'Two light taps near the mouth',
+      'Keep the motion small',
+    ],
+    imageUrl: '../assets/images/medium/taste/salty.png', videoUrl: '../assets/videos/medium/taste/salty.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_BITTER', level: 'medium', category: 'taste', signId: 'BITTER', title: 'Bitter', order: 4,
+    description: 'Many signers use the same twisting motion at the mouth corner as SOUR, with a more exaggerated grimace — the two concepts overlap in ASL.',
+    tips: [
+      'Same base movement as SOUR',
+      'A stronger, more pinched facial expression sets it apart',
+      'Context usually makes the exact meaning clear',
+    ],
+    imageUrl: '../assets/images/medium/taste/bitter.png', videoUrl: '../assets/videos/medium/taste/bitter.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_SPICY', level: 'medium', category: 'taste', signId: 'SPICY', title: 'Spicy', order: 5,
+    description: 'Hold both hands loosely open near chest height and shake them quickly, as if your fingers just touched something hot.',
+    tips: [
+      'Fingers loose and slightly spread',
+      'Quick shaking motion, both hands',
+      'An open-mouth facial expression often goes with it',
+    ],
+    imageUrl: '../assets/images/medium/taste/spicy.png', videoUrl: '../assets/videos/medium/taste/spicy.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_DELICIOUS', level: 'medium', category: 'taste', signId: 'DELICIOUS', title: 'Delicious', order: 6,
+    description: 'Touch your fingertips to your lips and pull them away with a smile, like a small kiss of approval.',
+    tips: [
+      'Fingertips bunch together and touch the lips',
+      'Pull away smoothly, not too fast',
+      'A pleased facial expression reinforces the meaning',
+    ],
+    imageUrl: '../assets/images/medium/taste/delicious.png', videoUrl: '../assets/videos/medium/taste/delicious.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_taste_FRESH', level: 'medium', category: 'taste', signId: 'FRESH', title: 'Fresh', order: 7,
+    description: 'Sweep your flat dominant hand upward across your chin and cheek in one smooth motion.',
+    tips: [
+      'Hand stays flat, fingers together',
+      'One upward sweeping motion',
+      'Similar movement family to NEW',
+    ],
+    imageUrl: '../assets/images/medium/taste/fresh.png', videoUrl: '../assets/videos/medium/taste/fresh.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · DESCRIPTIONS ── (category still comingSoon:true — only
+  // FULL is built so far, relocated unchanged from the retired
+  // 'amounts' category rather than left orphaned there. Remaining
+  // words (FAST/SLOW/STRONG/WEAK/GOOD/BAD/EMPTY/OPEN/CLOSED) still
+  // need SIGNS entries before this category can unlock.)
+  {
+    id: 'medium_descriptions_FULL', level: 'medium', category: 'descriptions', signId: 'FULL', title: 'Full', order: 7,
+    description: 'Hold your non-dominant hand in a fist. Sweep the edge of your dominant flat hand across the top of it, like leveling off a full container.',
+    tips: [
+      'Base hand is a closed fist',
+      'One smooth sweeping motion across the top',
+      'Like scraping a measuring cup level',
+    ],
+    imageUrl: '../assets/images/medium/descriptions/full.png', videoUrl: '../assets/videos/medium/descriptions/full.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · MONEY ──
@@ -4305,28 +4725,11 @@ const SIGNS = [
   },
 ];
 
-/* ── QUESTIONS ────────────────────────────────────────────────────
- * Legacy multiple-choice questions — kept for reference only.
- * The live product no longer uses these (assessment now happens via
- * live camera detection inside lesson.html, see js/lesson.js), but
- * the shape is preserved here in case a written-quiz mode returns.
- * ──────────────────────────────────────────────────────────────── */
-const QUESTIONS = [
-  {
-    id: 'q_basic_A',
-    level: 'basic',
-    relatedSign: 'A',
-    prompt: 'Which option shows the correct ASL hand sign for the letter A?',
-    options: [
-      { id: 'A', text: 'Fist, thumb resting on the side' },
-      { id: 'B', text: 'Flat palm facing forward' },
-      { id: 'C', text: 'Index finger pointing up alone' },
-      { id: 'D', text: 'Open hand, fingers spread' },
-    ],
-    correctId: 'A',
-    order: 1,
-  },
-];
+/* NOTE: this file used to also export a `QUESTIONS` array of static
+ * multiple-choice questions. Removed — quiz.js never read it; it
+ * builds every multiple-choice/identification round dynamically from
+ * SIGNS (see buildMCRound()/buildIdRound() there), so QUESTIONS had
+ * been dead weight since that page was written. */
 
 /* ── Category defaults ───────────────────────────────────────────
  * SIGNS entries under level=basic didn't previously have a
@@ -4405,7 +4808,7 @@ function getCategoriesForUnit(unitOrder) {
 // export list (const no longer exists, see the "UNIT 0 CONTENT"
 // comment above). No other export changed.
 window.LWData = {
-  SIGNS, QUESTIONS, CATEGORIES, UNITS,
+  SIGNS, CATEGORIES, UNITS,
   getSign, getCategorySigns, getCategoriesForLevel, getCategory,
   getUnits, getCategoriesForUnit,
 };

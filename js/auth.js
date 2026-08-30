@@ -1,26 +1,27 @@
 /**
- * auth.js — Authentication Layer (BYPASS / MOCK MODE)
+ * auth.js — Authentication Layer (Firebase Auth + Firestore)
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Single source of truth for "is someone logged in" across
- *            every page. Right now it does NOT talk to a backend —
- *            login() / register() accept whatever is typed (or
- *            nothing at all) and just store a session in
- *            localStorage. This lets the rest of the team build pages
- *            against a stable API while Firebase Auth is wired in.
+ *            every page. Wraps Firebase Auth (email/password) for
+ *            login/register/logout, mirrors the signed-in user's
+ *            profile into Firestore (`users/{uid}`), and caches a
+ *            small session object in localStorage so every page can
+ *            read it synchronously via getCurrentUser() without an
+ *            async round-trip.
  *
  * CONNECTS : Loaded by index.html (root) and every pages/*.html file.
  *            index.html calls login()/register().
  *            main.js calls getCurrentUser() to render the navbar.
  *            Every protected page calls requireAuth() on load.
  *
- * HANDOFF  : Whoever wires up real Firebase Auth only needs to edit
- *            the 4 functions marked "REPLACE WITH FIREBASE" below.
- *            Nothing else in the codebase should need to change —
- *            every page calls these functions, never localStorage
- *            directly.
+ * READY STATE: Firebase's onAuthStateChanged() check is async, so
+ *            requireAuth() and whenAuthReady() wait for the
+ *            'lwauth-ready' event (fired once, after the first auth
+ *            check resolves) instead of trusting localStorage alone
+ *            on first paint.
  * ─────────────────────────────────────────────────────────────────
  */
- // Import the functions you need from the SDKs you need
+// Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
 getAuth,
@@ -68,7 +69,6 @@ let authReady = false;
 let hasFiredReady = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log(performance.now());
     if (firebaseUser) {
     const existing = getCurrentUser();
 
@@ -116,28 +116,11 @@ function isLoggedIn() {
 }
 
 /* ── LOG IN ───────────────────────────────────────────────────────
- * REPLACE WITH FIREBASE: firebase.auth().signInWithEmailAndPassword()
- *
- * BYPASS MODE: no credential check happens here at all. Whatever is
- * typed (or left blank) logs the user in immediately. This is
- * intentional for now — remove the bypass once real auth is wired.
+ * Signs in with Firebase Auth, then reads the matching Firestore
+ * profile (falling back to sensible defaults if the document doesn't
+ * exist yet) so the cached session always has a name/level/joined
+ * date to show, not just an email.
  * ──────────────────────────────────────────────────────────────── */
-/*function login(email, password) {
-  const safeEmail = (email || '').trim() || 'guest@linguawave.app';
-  const existing = getCurrentUser();
-
-  const user = {
-    uid: existing?.uid || 'demo-uid',
-    name: existing?.name || safeEmail.split('@')[0] || 'Learner',
-    email: safeEmail,
-    level: existing?.level || 'basic',
-    joined: existing?.joined || new Date().toISOString().slice(0, 10),
-  };
-
-  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
-  return user;
-}*/
-
 async function login(email, password) {
   const result = await signInWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
@@ -160,43 +143,12 @@ async function login(email, password) {
 }
 
 /* ── REGISTER ─────────────────────────────────────────────────────
- * REPLACE WITH FIREBASE: firebase.auth().createUserWithEmailAndPassword()
- *                         + Firestore write to users/{uid}
- *
- * BYPASS MODE: same as login — accepts any input, creates a session.
+ * Creates the Firebase Auth account, then writes a matching Firestore
+ * profile document (`users/{uid}`). `level` has no signup-time picker
+ * in index.html, so every new account is written with a fixed
+ * 'basic' value — kept as a real field (rather than dropped) so
+ * anything downstream that reads `user.level` never sees `undefined`.
  * ──────────────────────────────────────────────────────────────── */
-/* REV 4 PHASE 5: dropped the `level` param here too — kept this
- * reference version in sync with the live Firebase register() below
- * so a future bypass-mode restore doesn't reintroduce the signup-time
- * level picker by copying this stale code. Everyone gets the same
- * fixed 'basic' value (see the live version's comment for why the
- * field itself is kept). */
-/*function register(name, email, password) {
-  const safeEmail = (email || '').trim() || 'guest@linguawave.app';
-  
-  const user = {
-    uid: 'demo-uid',
-    name: (name || '').trim() || safeEmail.split('@')[0] || 'Learner',
-    email: safeEmail,
-    level: 'basic',
-    joined: new Date().toISOString().slice(0, 10),
-  };
-
-  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
-  return user;
-}*/
-// REV 4 PHASE 5 (2026-08-19): dropped the `level` param — the Sign Up
-// form no longer has a proficiency picker (index.html), so there's
-// nothing meaningful to pass in here anymore. `level: 'basic'` is now
-// a fixed constant, not a user choice: every new account gets it, and
-// it's written mainly so nothing downstream that still reads
-// `user.level` (main.js's getActiveUser(), pages/dashboard.html's
-// `data-user-level` "Current Level" field) breaks or shows `undefined`.
-// That display field is now stale/vestigial since there's no more
-// tier to display — flagged in AI_MEMORY.md's Phase 5 session log for
-// a follow-up decision (repurpose to show current Unit, or remove the
-// field), not resolved here to keep this phase's diff to auth.js +
-// index.html as the checklist scopes it.
 async function register(name, email, password) {
   const result = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
@@ -218,12 +170,10 @@ async function register(name, email, password) {
 }
 
 /* ── LOG OUT ──────────────────────────────────────────────────────
- * REPLACE WITH FIREBASE: firebase.auth().signOut()
+ * Signs out of Firebase Auth, then clears both local caches (session
+ * + progress store) so a shared/public computer doesn't leave the
+ * next person able to see this learner's progress.
  * ──────────────────────────────────────────────────────────────── */
-/*function logout(redirectPath) {
-  localStorage.removeItem(LW_SESSION_KEY);
-  window.location.href = redirectPath || '/index.html';
-}*/
 async function logout(redirectPath) {
   await signOut(auth);
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
@@ -237,11 +187,6 @@ async function logout(redirectPath) {
  * Call redirectIfLoggedIn() on index.html so a returning user skips
  * straight past the login form.
  * ──────────────────────────────────────────────────────────────── */
-/*function requireAuth(loginPath) {
-  if (!isLoggedIn()) {
-    window.location.href = loginPath || '/index.html';
-  }
-}*/
 function requireAuth(loginPath) {
   if (authReady) {
     if (!isLoggedIn()) window.location.href = loginPath || '/index.html';
