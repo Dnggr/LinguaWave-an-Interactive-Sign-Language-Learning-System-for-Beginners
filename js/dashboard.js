@@ -1,498 +1,56 @@
 /**
- * js/dashboard.js — Live Progress Rendering
+ * js/dashboard.js — Dashboard Rendering
  * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Replaces the hardcoded numbers in pages/dashboard.html
- *            with real values from window.LWProgress: overall percent
- *            complete, signs practiced, per-unit status, the
- *            "Continue Learning" hero destination, and the
- *            "Signs You've Learned" recap grid.
- * CONNECTS : pages/dashboard.html (after js/data.js + js/engine/progress.js)
- * TODO     : Once Firestore is live, LWProgress itself swaps its
- *            storage backend — this file doesn't need to change.
+ * PURPOSE  : Fills pages/dashboard.html with real values from
+ *            window.LWProgress/window.LWData: the "Continue Learning"
+ *            hero card, Overall Progress, the 4-tile Progress
+ *            Snapshot, the Learning Path unit list, the "Signs You've
+ *            Learned" recap grid, and Review shortcuts.
+ * CONNECTS : pages/dashboard.html, loaded after js/data.js and
+ *            js/engine/progress.js.
  *
- * REV 4 — PHASE 4: `LEVELS` + `renderLevelCard(level)` + the hardcoded
- * `[data-level-card]` markup in dashboard.html are gone. Progress is
- * rendered from window.LWProgress.getOrderedLiveCategories() (the
- * same flat cross-unit chain js/learn.js's trail view walks) and
- * window.LWData.getUnits() — one aggregate card plus one row per
- * unit, both fully data-driven (no unit hardcoded here), matching
- * SYSTEM_ARCHITECTURE.md Rev 4's "Progress / unlock model changes"
- * section. See PIVOT_CHECKLIST.md Phase 4's last item.
+ * SHARED WALKS — read this before adding a new render function:
+ *   - getCurrentDestination() is the ONE walk of the learner's
+ *     progress chain ("what's the next unlocked-but-not-passed
+ *     category"). renderContinueButton(), renderContinueCard(),
+ *     renderCurrentUnit(), renderStatsSnapshot(), and renderUnitList()
+ *     all take its result as a parameter rather than re-walking the
+ *     chain themselves — if you need "where is the learner" for a new
+ *     tile, pass `destination` in, don't recompute it.
+ *   - computeOverallStats() and getCurrentUnitLabel() are the same
+ *     pattern for their own smaller pieces of state (each has exactly
+ *     2 call sites). Keep it that way — a third copy of either walk is
+ *     a sign something should take the existing helper as a param
+ *     instead.
  *
- * DASHBOARD UX REVIEW — PRIORITY 0 #1 (2026-08-21, code session):
- * added the "Continue Learning" hero card (renderContinueCard()) per
- * PIVOT_CHECKLIST.md's "Dashboard UX Review Checklist" → Priority 0
- * item #1 ("Make 'Continue Learning' the primary action").
+ * LOADING / FAILURE HANDLING: window.LWProgress.whenProgressReady()
+ * can hang indefinitely if js/auth.js's Firebase import fails to load
+ * (confirmed with a real Playwright run — root cause lives in
+ * js/auth.js / js/engine/progress.js, neither of which this file
+ * touches). The DOMContentLoaded handler below races that promise
+ * against PROGRESS_READY_TIMEOUT_MS and renders from whatever's
+ * already in localStorage on timeout — every render function reads
+ * synchronously from local storage regardless, so this is safe for
+ * the common case. showProgressUnavailable() is the true empty-state
+ * fallback: window.LWProgress/LWData never loaded, or a render
+ * function threw. No window.LWAuth call, login/logout/redirect, or
+ * session logic exists anywhere in this file — auth stays out of this
+ * page's job on purpose.
  *
- * Factored the "find the learner's current unlocked-but-unpassed
- * category" walk out of renderWelcomeBanner() and renderContinueButton()
- * (previously two separate, nearly-identical copies of the same walk)
- * into one shared getCurrentDestination() helper, now also consumed by
- * renderContinueCard(). This keeps the checklist's own "do not create a
- * second progress/unlock algorithm" rule true for the dashboard's OWN
- * code, too, not just the app-wide progress engine.
- *
- * DASHBOARD UX REVIEW — PRIORITY 0 #2 (2026-08-21, same day, code
- * session): "Replace the dashboard's current 'report' feeling." Three
- * of the four checklist sub-items were pure HTML/CSS (moving/demoting
- * the aggregate section — see pages/dashboard.html and
- * css/dashboard.css). The one JS-level change is here:
- * renderWelcomeBanner() used to restate the exact unit/category name
- * the new hero card (Priority 0 #1) already shows one section below it
- * — two places naming the same destination at effectively equal
- * visual weight, which is precisely the checklist's own "avoid showing
- * the same information...three different ways" rule. Simplified below
- * to a short, generic nudge with no destination-specific text; the
- * hero card is now the single canonical place that names where the
- * learner is. `getCurrentDestination()`'s shape and every other
- * function's behavior are UNCHANGED by this — only
- * renderWelcomeBanner()'s own output text changed.
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §10 (this session): "Reduce
- * dashboard duplication." PIVOT_CHECKLIST.md §10 asks for an audit of
- * three surfaces (Dashboard / Learn trail / Lesson sidebar) that all
- * show overlapping unit/progress concepts, on the premise that overlap
- * is fine as long as each surface has a distinct JOB and the WORDING
- * for shared concepts agrees. `js/learn.js` and `js/lesson.js` were
- * read for comparison but NOT modified — out of this session's scope
- * per PIVOT_CHECKLIST.md §20 ("Explicitly excluded: js/learn.js"; the
- * Rev 5 course-player sidebar in lesson.js isn't in the preferred-files
- * list either, and every prior Priority 1 session has stayed inside
- * pages/dashboard.html / js/dashboard.js / css/dashboard.css only).
- *
- * Audit result — the three surfaces DO have distinct jobs today, so no
- * structural change was needed:
- *   - Dashboard (this file): compact summary + one "next action" CTA.
- *     Never renders individual sign-level navigation.
- *   - Learn (js/learn.js, untouched): the full trail — every unit,
- *     every category picker, every sign grid. The only place a learner
- *     actually BROWSES the whole path.
- *   - Lesson (js/lesson.js's renderCourseSidebar(), untouched): a
- *     course-player sidebar for moving between signs INSIDE a unit
- *     you're already in, shown as icon+percentage, not status prose.
- * Three wording mismatches were found BETWEEN this file and the other
- * two surfaces' existing (unchanged) text, and fixed on this file's
- * side only:
- *   1. The Fingerspell-Your-Name unit row said "Interactive drill";
- *      js/learn.js's equivalent trail-node label has always said
- *      "Practice drill". Changed to match verbatim.
- *   2. The Phrasebook (reference) unit row said "Reference · browse
- *      only, no assessment" — restating "Reference" a SECOND time in
- *      the same row (the `.unit-progress-row__reference-badge` chip
- *      already says it), which is exactly the kind of same-info-twice
- *      duplication this checklist item is about. Shortened to "Browse
- *      only, no assessment yet" — drops the redundant prefix and
- *      matches the *shape* of js/learn.js's "Browse only, no quiz yet"
- *      for the same unit.
- *   3. This file's own two "how many assessments passed" strings
- *      disagreed with EACH OTHER: renderOverallProgress() (Priority 0
- *      #3, locked in and explicitly not to be re-worded — see that
- *      function's comment) says "X / Y category assessments passed";
- *      unitRowHtml()'s per-unit line said "X/Y assessments passed" —
- *      missing "category". Added "category" to the per-unit line so
- *      the same underlying concept reads the same way in both places.
- * RESOLVED (PIVOT_CHECKLIST.md §12 "status vocabulary" session,
- * 2026-08-22): both items flagged directly below as "NOT fixed" were
- * fixed once learn.js/lesson.js were actually in scope. Left the
- * original flag text in place (rather than deleting it) since it's
- * still useful context for why the fix looked the way it did — see
- * js/learn.js's renderWordPicker()/getUnitState() and js/lesson.js's
- * renderCourseSidebar() header comment for the actual changes.
- *   - js/learn.js used "quiz" in learner-facing copy ("Browse only, no
- *     quiz yet", "No quiz or camera check yet") where every dashboard
- *     string and PIVOT_CHECKLIST.md's own §3/§7/§12 vocabulary use
- *     "assessment" for the identical `progress.assessment.passed`
- *     concept. This looked like the real direction of travel (assessment)
- *     with learn.js as the not-yet-updated outlier, not the other way
- *     around — confirmed and changed to "assessment" in both spots,
- *     matching this file's own strings verbatim.
- *   - js/lesson.js's renderCourseSidebar() header comment (the "One
- *     deliberate difference from dashboard.js" note) said dashboard's
- *     unit rows show "X/Y categories passed" — that was true before
- *     Priority 1 §4 changed the wording to "assessments passed"
- *     (and now "category assessments passed" per fix #3 above). The
- *     comment was stale documentation in a file outside that session's
- *     scope; now corrected to match this file's actual current string.
- * No new unit-ordering/unlock logic was added anywhere — confirmed by
- * re-reading this file's own renderUnitList()/renderUnitRow(): both
- * still walk window.LWData.getUnits() in its existing order, exactly
- * as before this session.
- *
- * pages/dashboard.html also gained a new "Learning Path" heading above
- * the unit list (previously it had no heading of its own — it just
- * ran on directly under "Overall Progress", which is arguably its own
- * small duplication/ambiguity, since the unit list is a different
- * thing from the aggregate percentage above it). "Learning Path" is
- * the exact phrase js/learn.js's own <h1> already uses ("Your ASL
- * Learning Path"), and is also PIVOT_CHECKLIST.md §18's own wireframe
- * label for this block — so this is adopting existing, already-decided
- * wording, not inventing new copy. Presentational only; no JS change
- * needed for it.
- *
- * NOT part of Priority 0 #2: renderOverallProgress() itself. Its
- * output (a bare "%") was intentionally untouched that session —
- * relabeling what that number means (vs. mastery) was left as
- * Priority 0 item #3.
- *
- * PIVOT_CHECKLIST.md §17 REVIEW-LIST UPGRADE (2026-08-22, code
- * session): audited §17 ("Recommended learning-site structure")
- * against the current app — every hop except the Review step was
- * already built. renderReviewEntry() below now shows up to
- * REVIEW_ENTRY_LIMIT (3) recently-practiced signs instead of 1; see
- * that function's own doc comment for the full reasoning.
- *
- * DASHBOARD UX REVIEW — PRIORITY 0 #3 (2026-08-21, later same day,
- * code session): "Fix the meaning of the 9% progress number." Turned
- * out to be a markup-only fix — see pages/dashboard.html's Overall
- * Progress section (the badge that read "Your ASL Path" now reads
- * "Practice Progress"; the label under the % was reworded to say
- * "not a mastery score"). renderOverallProgress() below is BYTE-FOR-
- * BYTE UNCHANGED: it already wrote the practice count and the
- * `X / Y category assessments passed` line to two separate elements
- * ([data-overall-count] / [data-overall-status]), which is exactly
- * the "keep practice completion and assessment mastery as two
- * numbers, not one" rule PIVOT_CHECKLIST.md's Priority 0 #3 asks for
- * — that separation already existed, it just wasn't labeled. Nothing
- * here needed to move or combine.
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §4 (2026-08-21, code session):
- * renderUnitRow()/renderUnitList() now turn each unit row into a compact
- * learning-path summary. Graded units expose practiced/total signs,
- * assessment passed/total, and a practice bar; the unit containing the
- * shared getCurrentDestination() is marked "You are here". Locked units
- * remain subdued. Unit 7 stays explicitly reference-only, and Unit 0/2
- * keep descriptive non-graded states because they are excluded from the
- * flat grading chain by Rev 4.
- *
- * CRITICAL BUGFIX (this session — see AI_MEMORY.md session log for the
- * full writeup): the §4 patch that landed the paragraph above ALSO
- * deleted renderRecap(), renderContinueButton(), and renderContinueCard()
- * from this file — while document.addEventListener('DOMContentLoaded', …)
- * below still called all three. Function declarations for all three were
- * simply gone; nothing else in the file redefined them. That's not a
- * syntax error (`node --check` stays clean, since it never proves a
- * called name is declared), it's a runtime ReferenceError — thrown on
- * the very first missing call, which aborted every render() after it in
- * the same DOMContentLoaded handler. In practice that meant: the
- * "Signs You've Learned" recap grid never rendered, the primary
- * "Continue Learning" button never got an href, and the Priority 0 #1
- * hero card (arguably the dashboard's single most important element)
- * never rendered AT ALL on a real page load — while every earlier
- * session's "verification" (node --check + grep + tag-balance) reported
- * clean, because none of those checks execute the script. Restored all
- * three functions below, unchanged from their pre-§4 implementation —
- * this was a restore, not a rewrite; see git history / the diff in this
- * session's patch for confirmation nothing else about them changed.
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §5 (2026-08-21, this session):
- * "Add a 'You are here' state." §4 already added a bare "You are here"
- * badge to the current unit's row. §5 asks for more: the label must
- * name the current Unit AND lesson/sign, using the SAME destination
- * object §4's badge and the hero card already use — no second "current
- * lesson" algorithm. renderUnitRow() now also computes a
- * `currentSignLabel` from destination.cat / destination.nextSign (the
- * identical fields renderContinueCard() already reads) and unitRowHtml()
- * renders it as a `Next: {category} → {sign}` line beneath the "You are
- * here" badge, only for the one row that has it.
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §6 (2026-08-21, this session):
- * "Add a review/repetition entry point." Per PIVOT_CHECKLIST.md §6 and
- * SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum → "Review
- * entry point," this is explicitly NOT a spaced-repetition trainer —
- * no new algorithm was written, and js/engine/progress.js was not
- * modified (renderReviewEntry() below only calls the ALREADY-exported
- * window.LWProgress.getAllLearnedSigns() — the exact same call
- * renderRecap() already makes). The MVP action reuses the existing
- * lesson/camera-practice route by reopening the learner's most
- * recently practiced sign, matching the addendum's own guidance to
- * "reuse the existing detected-sign infrastructure." When a dedicated
- * Review/Trainer route ships later, renderReviewEntry() is the only
- * function that should need to change — see its own doc comment.
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §7 (2026-08-21, this session):
- * "Improve 'Signs You've Learned'." renderRecap() now also writes a
- * "N signs practiced" count into [data-recap-count], and supports
- * revealing more than the RECAP_COLLAPSED_LIMIT (24, same value the
- * old hardcoded `.slice(-24)` used) chips via a "View all" toggle
- * ([data-recap-foot]/[data-recap-toggle], new handleRecapToggle()) that
- * re-renders the SAME grid rather than navigating anywhere — per the
- * checklist's own "do not turn this section into another lesson
- * browser" instruction. The "recently practiced, not mastery" framing
- * the checklist also asked for is a markup/copy change only (a new
- * subtitle line in pages/dashboard.html) — no change needed here, since
- * this function never used the word "mastered"/"learned" in its output
- * to begin with. See PIVOT_CHECKLIST.md §7 for the full sub-item list
- * and SYSTEM_ARCHITECTURE.md's Dashboard UX Review Addendum for why
- * duplicate-sign chips and a spaced-repetition algorithm are explicitly
- * OUT of scope for this item (the former was already fixed in an
- * earlier session — see the BUG FIX comment above renderRecap(); the
- * latter is §6's job, not §7's).
- *
- * DASHBOARD UX REVIEW — PRIORITY 1, §8 (2026-08-21, this session):
- * "Fix the 'Current Level: Basic' product inconsistency" (PIVOT_CHECKLIST.md
- * §8, SYSTEM_ARCHITECTURE.md's "Current Level field" section). `user.level`
- * is a fixed `'basic'` constant written by every account since Phase 5
- * (see js/auth.js's register() — untouched here), so displaying it as
- * "Current Level: Basic" implied a selectable tier that no longer exists.
- * New renderCurrentUnit() reads the SAME shared `destination` object
- * getCurrentDestination() already computes once in DOMContentLoaded below
- * — no second "what unit is the learner on" algorithm — and writes
- * `Unit {order} · {title}` into the account card, matching the checklist's
- * own "Recommended replacement" example exactly.
- *
- * pages/dashboard.html's account card markup changed from
- * `[data-user-level]` (previously filled generically, on every page, by
- * js/main.js's initUserDetails() as `capitalize(user.level)`) to
- * `[data-user-unit]`, filled only here. This was a deliberate RENAME, not
- * an additional attribute layered on top of the old one: `data-user-level`
- * doesn't appear on any other page (confirmed via grep across pages/*.html),
- * so nothing else reads or depends on it, and leaving both attributes in
- * place would have raced two different scripts writing two different
- * strings into the same visible element depending on DOMContentLoaded
- * listener order. js/main.js and js/auth.js are both untouched —
- * `user.level` still exists in the session object for anything else that
- * reads it later (e.g. Firestore).
- *
- * BUGFIX (carried over, unrelated to any session above): the OLD
- * renderContinueButton() looped `LEVELS` in a fixed basic→medium→
- * intermediate order, and *within* a level used `liveCategoriesFor(level)`
- * — sorted by that category's own in-level `order` field, NOT by unit.
- * Phase 1 didn't renumber `order` when it introduced `unit` (see
- * AI_MEMORY.md's Phase 1 session log — the `requests` category still
- * has order:9 even though it's unit:4, ahead of unit:5's `family`/
- * `places`/etc, which have order:1-4). Fixed by walking
- * window.LWProgress.getOrderedLiveCategories() directly — already in
- * the correct flat order and doesn't take a level at all. Still true
- * of getCurrentDestination() below, since it's the same walk.
- *
- * DASHBOARD UX REVIEW — PRIORITY 2, §11 (2026-08-22, this session):
- * "Add learning statistics that actually motivate." Implemented the
- * checklist's own recommended MVP subset — Practice Progress,
- * Assessments Passed, Signs Practiced, Current Unit — as a new 4-tile
- * "Progress Snapshot" grid (renderStatsSnapshot()). The other three
- * bulleted items (streak, review due, best assessment score) are
- * explicitly marked "Later" in PIVOT_CHECKLIST.md §11 and were NOT
- * built — there's no streak/review-due/best-score data source to read
- * yet, and inventing one would be exactly the "new algorithm" §19
- * warns against.
- *
- * Two small refactors made this possible without a second copy of
- * either existing computation (same "one shared helper, not two
- * copies of the same walk" rule getCurrentDestination() already
- * established in this file):
- *   1. renderOverallProgress()'s inline chain-walk (totalSigns /
- *      practicedSigns / passedCategories / pct) is now
- *      computeOverallStats(), called by BOTH renderOverallProgress()
- *      and the new renderStatsSnapshot(). renderOverallProgress()'s
- *      own output is byte-for-byte unchanged — same fields, same
- *      values, same rounding — this is a refactor, not a behavior
- *      change.
- *   2. renderCurrentUnit()'s inline 3-branch label logic is now
- *      getCurrentUnitLabel(destination), called by BOTH
- *      renderCurrentUnit() (Your Account card) and the new "Current
- *      Unit" tile. Output unchanged.
- *
- * DUPLICATION, flagged deliberately (see renderStatsSnapshot()'s own
- * doc comment for the full reasoning): three of these four tiles
- * restate numbers already visible elsewhere (Overall Progress card;
- * Your Account's Current Unit). This is a considered exception to the
- * §10 "don't show the same concept twice" rule, not an oversight —
- * §10's own test is "distinct job + agreeing wording," and a glanceable
- * stat strip vs. a detailed labeled card meets that test. Flagging for
- * a second look rather than declaring it settled, same as every other
- * judgment call in this file gets flagged.
- *
- * Markup: pages/dashboard.html gained a `.stats-grid` of 4
- * `.stat-tile`s, placed inside the EXISTING "Overall Progress"
- * `section--tight` container (between that heading and its
- * progress-card), not a new `<section>` — preserves Priority 1 §9's
- * first-viewport padding budget, same reasoning §10 already used when
- * it added the "Learning Path" heading to this same container instead
- * of a new section. New CSS: `.stats-grid`/`.stat-tile`/
- * `.stat-tile__value`/`.stat-tile__value--text`/`.stat-tile__label` in
- * css/dashboard.css (auto-fit grid, no new media query needed).
- *
- * DASHBOARD UX REVIEW — PRIORITY 2, §13 ("Dashboard accessibility and
- * feedback", 2026-08-22, this session): implements PIVOT_CHECKLIST.md
- * §13's six sub-items, scoped to pages/dashboard.html / js/dashboard.js
- * / css/dashboard.css only, same as every Priority 1/2 session before
- * it. js/auth.js excluded per explicit user instruction, same as always.
- *
- * Audit first, then fixes — three of the six sub-items were already
- * satisfied by earlier sessions and needed no code change (documented
- * here so a future session doesn't re-derive the same audit):
- *   - "Keep text state labels" — already true. Locked rows have always
- *     shown "Locked · finish the previous unit first" as visible text
- *     (unitRowHtml()'s statusText branch), and the current-unit badge
- *     ("You are here") has been text, not a color/icon-only signal,
- *     since Priority 1 §4/§5.
- *   - "Ensure progress percentages remain understandable without
- *     color" — already true everywhere a percentage/fraction appears
- *     on this page: the hero card's within-destination progress
- *     ([data-continue-progress-label], "N/M signs practiced in
- *     {category}"), the Overall Progress card ([data-overall-pct] +
- *     [data-overall-count] + [data-overall-status], all plain text
- *     next to the bar, not color-only), the Priority 2 §11 stat tiles
- *     (plain numbers, no color coding at all), and each unit row's own
- *     "{practiced}/{total} signs practiced" / "{passed}/{total}
- *     category assessment(s) passed" lines. Every one of these pairs
- *     the number with adjacent text; color (where used, e.g. the
- *     assessment line turning `--clr-success` on a done row) is always
- *     a supplement to a number that already says the same thing, never
- *     the only signal. Checked, not changed.
- *   - CTA labels were already mostly action-verb-led ("▶ Start Lesson"
- *     / "▶ Continue" / "↺ Review Your Path" / `↺ Review "{sign}"`),
- *     EXCEPT the hero card's secondary "Open Path" button, which named
- *     an action but not WHICH path — fixed below.
- *
- * Three real changes followed from the audit:
- *
- * 1. "Current/locked/done state must not rely only on border color."
- *    Locked and current rows already had a non-color signal (status
- *    text / "You are here" badge); a fully "done" row (passedCount ===
- *    assessmentTotal) had NONE — only the left border color and
- *    background tint flipping from accent to `--clr-success` told a
- *    learner a unit was finished, exactly the failure mode this bullet
- *    names. renderUnitRow()'s graded branch now also passes a `done`
- *    flag into unitRowHtml(), which renders a third badge —
- *    `.unit-progress-row__done-badge`, "✓ Completed" — alongside the
- *    existing "You are here" / "Reference" badges (same markup/CSS
- *    pattern, see css/dashboard.css). Text + checkmark, not color
- *    alone.
- *
- * 2. "Ensure CTA labels describe the action" (the "Open Path" gap
- *    above). renderContinueCard()'s secondary button now reads
- *    `Open Unit {order} Path` when a specific unit is known (the exact
- *    same `unit` field the eyebrow line above it already names), and
- *    falls back to the previous generic "Open Path" only in the
- *    destination-less edge cases (empty chain / everything passed)
- *    where renderContinueCard() hides the secondary button entirely
- *    anyway — so the fallback string is dead code today, kept only for
- *    defensiveness if that branch ever changes.
- *    Separately, each unit row's own accessible name (its `aria-label`)
- *    is new: previously a screen reader linearized the row's visible
- *    text/nested-aria-label content into one run-on string with no
- *    verb ("Unit 3 · Everyday Essentials You are here Next: Requests →
- *    HELLO 45% practice progress 0/1 category assessment passed" — the
- *    45%/etc. reads oddly out of visual context). Every graded/info/
- *    interactive/reference row now gets an explicit `aria-label`
- *    starting "Open Unit N: {title} — …", built entirely from fields
- *    renderUnitRow() already computes (no new lookup) — see
- *    unitRowHtml()'s own comment. Locked and "coming soon" rows are
- *    plain `<div>`s, not links, so they were never focusable and don't
- *    need one.
- *
- * 3. "Ensure keyboard navigation reaches Continue first." The Continue
- *    Learning button was already the first focusable element in the
- *    page's OWN content (right after the header, per Priority 0 #1's
- *    placement) — but a keyboard user still has to tab through the
- *    entire navbar (logo, 2 nav links, theme toggle, "Log out") first.
- *    Added a standard "skip link" — a visually-hidden-until-focused
- *    `<a href="#continue-cta">Skip to Continue Learning</a>` as the
- *    very first element in `<body>`, jumping straight to the primary
- *    CTA (`id="continue-cta"` added to the SAME `[data-continue-learning]`
- *    anchor — no new element). New CSS only (`.skip-link` in
- *    css/dashboard.css, page-scoped the same way `.section--tight` is —
- *    see that rule's own comment for why page-scoping a class in this
- *    file never leaks to learn.html/lesson.html/etc.). No JS change for
- *    this item.
- *
- * "Ensure interactive unit rows have visible focus states" — the last
- * sub-item — is CSS-only (css/dashboard.css: `a.unit-progress-row:
- * focus-visible`), see that file. Nothing here changed for it. Scoped
- * to unit rows only, per the item's literal wording — other buttons on
- * this page (`.btn`) already show the browser's default focus outline
- * (nothing in css/style.css removes it for `.btn`), so they were left
- * alone; flagging a general `.btn` focus-style pass as a possible
- * future item if a session ever wants one, not something this item
- * asked for.
- *
- * Verification performed this session: node --check (clean),
- * declaration-vs-call-site check (all functions resolve), a Node + vm
- * harness running renderUnitRow() against mocked LWData/LWProgress
- * across locked/current/done/interactive/info/reference states
- * (confirmed the done badge appears only on fully-passed rows, and
- * every linked row's aria-label is present and HTML-escaped — tested
- * with a unit title containing `&`/`<`), and a manual DOM-order trace
- * confirming the skip link is the first element in <body> and
- * `#continue-cta` resolves to exactly one element. See
- * PIVOT_CHECKLIST.md §13 and SYSTEM_ARCHITECTURE.md's matching entry
- * for the full writeup. NOT exercised in a real browser or with an
- * actual screen reader (VoiceOver/NVDA) — flagged same as every
- * session before this one, but called out specifically here since a
- * screen-reader pass is the one check that would most directly confirm
- * an accessibility item actually worked; that's the single biggest
- * follow-up before treating §13 as fully closed.
- *
- * DASHBOARD UX REVIEW — PRIORITY 2, §15 ("Error/loading states",
- * 2026-08-22, this session): PIVOT_CHECKLIST.md §15's four sub-items.
- * Verification surfaced a REAL bug, not just a hypothetical one this
- * item's title implied: `window.LWProgress.whenProgressReady()`
- * (js/engine/progress.js) can hang FOREVER if js/auth.js's Firebase
- * import fails to load — confirmed with a real Playwright run in this
- * sandbox (gstatic.com isn't reachable here, which reproduces the same
- * "Firebase unavailable" failure a learner could hit from an
- * ad-blocker, an outage, or being offline). `window.LWAuth` stays
- * `undefined`; `js/engine/progress.js`'s `hydrateStore()` then throws
- * while destructuring it, BEFORE it ever calls `resolveProgressReady()`
- * — so the promise this page's DOMContentLoaded handler awaits never
- * resolves. See PIVOT_CHECKLIST.md §15 for the full repro/trace. Root
- * cause is entirely inside js/engine/progress.js / js/auth.js, both out
- * of this task's scope (§20) — NEITHER FILE WAS OPENED FOR EDITING.
- * Instead, this session added a dashboard-local safety net:
- *   1. The DOMContentLoaded handler now races `whenProgressReady()`
- *      against a bounded timeout (`PROGRESS_READY_TIMEOUT_MS`, 6s).
- *      Every render function below already reads straight from
- *      localStorage, synchronously, with no dependency on hydration
- *      actually finishing (see progress.js's own "write locally first,
- *      always" comment on saveStore()) — so on timeout, this proceeds
- *      to render from whatever's already local instead of leaving the
- *      learner stuck on the static loading placeholders forever. This
- *      is correct for the common case (same device — the local cache
- *      already matches). It CAN show stale/incomplete progress on a
- *      brand-new device if hydration specifically is what's stuck —
- *      flagged, not solved, since fixing that for real means fixing
- *      hydrateStore() itself, out of scope here.
- *   2. New `showProgressUnavailable()` — the genuine "nothing to
- *      render" case: `window.LWProgress`/`window.LWData` never loaded
- *      at all (their `<script>` tag failed), or a render function
- *      throws. Replaces every section's loading placeholder with
- *      css/style.css's existing `.alert`/`.alert--error` component
- *      (already used the same way by toast.css/quiz.css — no new color
- *      token invented) plus a working "Reload" action and a "Go to
- *      Learn" link, so the learner is never just stuck looking at a
- *      dead page.
- *   3. pages/dashboard.html's `#unit-progress-list` (previously
- *      completely empty until JS ran — the literal "blank unit list"
- *      this item's checklist wording names) and `#recap-empty`
- *      (previously showed the real "nothing practiced yet" copy even
- *      while still loading — indistinguishable from actually having
- *      practiced nothing) both now start with an explicit, neutral
- *      loading message. `renderRecap()`'s zero-signs branch below now
- *      explicitly re-sets `#recap-empty`'s text to the genuine
- *      empty-state copy, rather than relying on static default text
- *      that used to silently mean two different things depending on
- *      timing.
- * No auth handling was added anywhere in this file for this item — no
- * `window.LWAuth` call, no login/logout/redirect/session logic; every
- * change is this page's OWN wait → render → fallback flow. See
- * PIVOT_CHECKLIST.md §15 and SYSTEM_ARCHITECTURE.md's matching entry
- * for the full write-up, including how the hang was verified with a
- * real Playwright run rather than just read out of progress.js's code.
+ * ACCESSIBILITY: unit rows carry real `aria-label`s (built in
+ * unitRowHtml(), not a generic linearized string), there's a skip
+ * link straight to the Continue Learning CTA at the top of
+ * pages/dashboard.html, and interactive rows show a visible
+ * keyboard-focus ring (css/dashboard.css). Not yet verified with an
+ * actual screen reader — flag this for a real accessibility pass.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
 
-// One icon per UNITS entry — same map js/learn.js uses for its trail
-// nodes, kept in sync manually (two small copies were judged simpler
-// and lower-risk than introducing a shared module/global just for an
-// icon lookup — see the Phase 4 session log for the reasoning). Also
-// reused by the Continue Learning hero card below.
-// CHANGED (this session — new lesson-plan pivot) — copied verbatim
-// from js/learn.js's own (also just-updated) UNIT_ICONS, same
-// documented small-duplication call as before this session.
-// HOMEPAGE PIVOT (this session) — 'welcome' entry removed (Unit 0 is
-// no longer a UNITS entry, see data.js). Every other id unchanged.
+// Same map js/learn.js uses for its trail nodes, kept in sync
+// manually — two small copies were judged simpler and lower-risk than
+// a shared module just for an icon lookup. Also reused by the
+// Continue Learning hero card below.
 const UNIT_ICONS = {
   alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
   greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
@@ -521,32 +79,12 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/** Aggregate card in "Overall Progress" — the whole flat chain
- *  combined into one percentage, replacing what used to be three
- *  separate per-level percentages.
- *
- *  NOTE (2026-08-21): this is the "practice progress" number
- *  PIVOT_CHECKLIST.md's Priority 0 item #3 asked to have explicitly
- *  relabeled (not "mastery"). That relabel is DONE, but entirely in
- *  pages/dashboard.html's markup (a badge's text + a supporting <p>'s
- *  text) — this function's own output was not part of the fix and is
- *  unchanged: it still writes a bare "N%" into [data-overall-pct], the
- *  practice count into [data-overall-count], and the separate
- *  "X / Y category assessments passed" mastery signal into
- *  [data-overall-status]. Don't re-derive a "relabel" here — the label
- *  lives in the HTML next to [data-overall-pct], not in this string. */
 /**
- * NEW (Priority 2 §11, 2026-08-22) — factored out of
- * renderOverallProgress()'s own body so a second consumer
- * (renderStatsSnapshot() below) can read the exact same aggregate
- * numbers without re-walking window.LWProgress.getOrderedLiveCategories()
- * a second time with a slightly different loop. Same "one shared
- * helper, not two copies of the same walk" rule getCurrentDestination()
- * already established for the "where's the learner" walk (see this
- * file's header comment). renderOverallProgress() below is now just
- * this helper plus its own DOM writes — its OUTPUT is byte-for-byte
- * unchanged (same fields, same values, same rounding); this is a
- * refactor, not a behavior change.
+ * Aggregate stats for the whole flat live-category chain — one
+ * percentage instead of three separate per-level ones. Factored out
+ * of renderOverallProgress() so renderStatsSnapshot() below can read
+ * the same numbers without a second walk of
+ * window.LWProgress.getOrderedLiveCategories().
  *
  * @returns {null | {
  *   chain: object[],
@@ -595,23 +133,11 @@ function renderOverallProgress() {
 }
 
 /**
- * PIVOT_CHECKLIST.md Priority 0 #1 (2026-08-21).
- *
  * Finds the learner's current destination: the first category in the
  * flat cross-unit chain that's unlocked but not yet passed, plus
  * everything the UI needs to describe it (unit, live signs, practiced
- * count, next unpracticed sign).
- *
- * This is the SAME walk that used to be duplicated between
- * renderWelcomeBanner() and renderContinueButton() — factored out here
- * so there's exactly one place that answers "where is the learner /
- * what's next," consumed by three render functions below. No new
- * unlock/ordering rule was introduced; `getOrderedLiveCategories()` /
- * `getCategoryProgress()` / `isCategoryUnlocked()` are the same
- * window.LWProgress calls both prior functions already made.
- *
- * UNCHANGED by the Priority 0 #2 session — only renderWelcomeBanner()'s
- * own output text changed, not what this helper returns.
+ * count, next unpracticed sign). The single shared "where is the
+ * learner" computation — see this file's header comment.
  *
  * @returns {null | {
  *   chain: object[],
@@ -634,16 +160,10 @@ function getCurrentDestination() {
       const signs = window.LWData.getCategorySigns(cat.level, cat.id);
       const practicedCount = signs.filter(s => !!prog.signs[s]).length;
       const nextSign = signs.find(s => !prog.signs[s]) || signs[0] || null;
-      // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22
-      // screenshot review): a category can be fully practiced (progress
-      // bar full) but still unpassed because the assessment itself
-      // hasn't been taken yet. `nextSign` above silently falls back to
-      // signs[0] in that case — with nothing to flag it, every render
-      // function below read that as "go practice sign #1 again" (the
-      // reported "Continue still points to Alphabet → Letter A" even at
-      // 26/26 practiced). Computed once here, alongside the fields it's
-      // derived from, rather than re-checking practicedCount===signs.length
-      // separately in each of renderContinueCard()/renderContinueButton().
+      // A category can be fully practiced (progress bar full) but
+      // still unpassed if the assessment itself hasn't been taken —
+      // `readyForAssessment` flags that so callers don't send the
+      // learner back to sign #1 at 26/26 practiced.
       const readyForAssessment = signs.length > 0 && practicedCount === signs.length;
       return { chain, cat, unit, signs, prog, practicedCount, nextSign, readyForAssessment };
     }
@@ -654,32 +174,10 @@ function getCurrentDestination() {
 }
 
 /**
- * NEW — PIVOT_CHECKLIST.md Priority 1 §8 (2026-08-21, this session).
- * "Fix the 'Current Level: Basic' product inconsistency." Fills the
- * "Your Account" card's [data-user-unit] field (renamed from
- * [data-user-level] — see this file's header comment for why) with the
- * learner's actual current Unit instead of the stale, always-'basic'
- * `user.level`. Reads the SAME `destination` object every other "where
- * is the learner" render below already consumes — no new lookup.
- *
- * Mirrors renderContinueCard()'s three states so the account card never
- * contradicts the hero card immediately above it on the page:
- *   - chain.length === 0 → nothing trained yet, no unit to name.
- *   - destination.cat === null → every live category already passed.
- *   - otherwise → `Unit {order} · {title}` (falls back to the bare
- *     category title on the rare case a category has no matching UNITS
- *     entry), exactly matching the checklist's own "Recommended
- *     replacement" example.
- *
- * @param {ReturnType<typeof getCurrentDestination>} destination
- */
-/**
- * NEW (Priority 2 §11, 2026-08-22) — factored out of
- * renderCurrentUnit()'s own body so the new "Current Unit" stat tile
- * (renderStatsSnapshot() below) shows the exact same three-state label
- * ("Not started yet" / "All units complete" / "Unit N · Title") instead
- * of a second copy of this branch. renderCurrentUnit() below now just
- * calls this helper — its own output is unchanged.
+ * Three-state label for "where the learner currently is": nothing
+ * started / everything complete / "Unit N · Title". Shared by the
+ * "Your Account" card (renderCurrentUnit()) and the "Current Unit"
+ * stat tile (renderStatsSnapshot()) so they can never disagree.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  * @returns {string}
@@ -698,55 +196,19 @@ function renderCurrentUnit(destination) {
 }
 
 /**
- * NEW — PIVOT_CHECKLIST.md Priority 2 §11 ("Add learning statistics
- * that actually motivate", 2026-08-22 session). Fills the 4-tile
- * "Progress Snapshot" grid: Practice Progress, Assessments Passed,
- * Signs Practiced, Current Unit — the exact MVP subset §11 recommends
- * ("Recommended MVP: only add the first four"; streak / review due /
- * best assessment score are explicitly "Later" items and NOT built
- * here — there's no streak or best-score data source to read yet, and
- * adding one would be exactly the "new algorithm" §19 warns against).
+ * Fills the 4-tile "Progress Snapshot" grid: Practice Progress,
+ * Assessments Passed, Signs Practiced, Current Unit. Reuses
+ * computeOverallStats() and getCurrentUnitLabel() rather than
+ * re-deriving any of these numbers a second way, so this grid can
+ * never drift out of sync with the Overall Progress card or the Your
+ * Account card, which read the same two functions.
  *
- * Deliberately reuses computeOverallStats() and getCurrentUnitLabel()
- * rather than re-deriving any of these four numbers a second way — see
- * this file's header comment for why. Every number here is guaranteed
- * to agree with the Overall Progress card and the Your Account card,
- * because they call the exact same two functions; there's no way for
- * this tile grid to drift out of sync with either one.
- *
- * DUPLICATION NOTE (flagging per this project's own §10 audit
- * precedent, not an oversight): three of these four numbers ARE already
- * visible elsewhere on the page — the Overall Progress card's
- * %/count/status line, and Your Account's Current Unit field. §10's
- * own test for whether overlap is OK is "distinct job + agreeing
- * wording": this grid's job is a single-glance, Cisco/Duolingo-style
- * stat strip read in under a second, sitting directly under the
- * primary CTA; the Overall Progress card's job is the fuller, labeled
- * explanation (progress bar, "not a mastery score" caption) a learner
- * reads once they want more detail. Wording matches exactly ("Practice
- * Progress", the "category assessments passed" pattern, "Current
- * Unit") rather than inventing synonyms. If a future session decides
- * the overlap isn't worth keeping, this function and its markup block
- * (`.stats-grid` in pages/dashboard.html) can be deleted without
- * touching anything else — nothing downstream reads from it.
- *
- * "Signs Practiced" specifically uses computeOverallStats()'s
- * chain-scoped `practicedSigns` (the same number as
- * [data-overall-count]'s numerator) — NOT
- * window.LWProgress.getAllLearnedSigns().length, the number
- * renderRecap() shows via [data-recap-count]. Those two CAN differ in
- * principle: getAllLearnedSigns() returns every sign ever recorded in
- * the store, including any outside the current live grading chain,
- * while computeOverallStats() only counts the live chain — the same
- * scope "Practice Progress" and "Assessments Passed" already use in
- * this same tile row. Picked the chain-scoped number so all four tiles
- * in ONE row stay internally consistent with each other; renderRecap()
- * keeps its own broader number because its job ("everything you've
- * ever practiced") is genuinely different from this row's job
- * ("progress through the current curriculum"). Not verified against
- * real localStorage data whether the two numbers ever actually diverge
- * in practice today — flagging so a future session checks with real
- * data rather than assuming they always match.
+ * "Signs Practiced" uses computeOverallStats()'s chain-scoped count —
+ * NOT window.LWProgress.getAllLearnedSigns().length, the broader
+ * number renderRecap() shows. The two differ in principle
+ * (getAllLearnedSigns() includes signs outside the live grading chain)
+ * but serve different jobs: this row is "progress through the current
+ * curriculum," renderRecap() is "everything you've ever practiced."
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -767,25 +229,10 @@ function renderStatsSnapshot(destination) {
 }
 
 /**
- * CHANGED (Priority 0 #2, 2026-08-21, same day as Priority 0 #1).
- * Previously restated the exact unit/category name here too
- * ("You're making great progress on {unit}"), which duplicated the
- * Continue Learning hero card immediately below at effectively equal
- * visual weight — the checklist's own "avoid showing the same
- * information...three different ways" rule. The hero card
- * (renderContinueCard()) is now the single canonical place that names
- * the destination; this banner stays a short, generic nudge instead of
- * a second copy of the same sentence. Still three states, since a flat
- * "Ready to pick up where you left off?" doesn't honestly cover either
- * end of the chain:
- *   - nothing trained at all (chain.length === 0) — generic opener,
- *     no unit name to reference. (Unchanged from before this session —
- *     this branch never named a specific unit to begin with.)
- *   - a real current category exists — one short, non-specific line,
- *     varied only by whether anything's been practiced yet.
- *   - every trained category passed — says so, instead of repeating
- *     the last unit's name forever. (Unchanged from before this
- *     session — also never unit-specific.)
+ * Short, generic nudge above the Continue Learning hero card.
+ * Deliberately does NOT name the specific unit/category — the hero
+ * card (renderContinueCard()) is the one canonical place that does,
+ * so this banner isn't a second copy of the same sentence.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -808,35 +255,17 @@ function renderWelcomeBanner(destination) {
     : 'Your next lesson is ready when you are.';
 }
 
-/** One compact row per unit — the "no more three level cards"
- *  replacement. Deliberately lighter-weight than js/learn.js's own
- *  trail nodes (no full lesson-card treatment, no separate CSS
- *  component reused from there) since this is a secondary summary,
- *  not the primary navigation surface — that's still the trail on
- *  pages/learn.html itself. Already satisfied Priority 0 #2's "keep
- *  the unit list as a compact summary, not the main feature" item
- *  as-is; no change needed here for that session. */
-/**
- * DASHBOARD UX REVIEW — PRIORITY 1 (2026-08-21)
- *
- * Turns the unit list from a status-only report into a compact learning-path
- * summary. The dashboard still does NOT re-create the Learn trail: it only
- * aggregates the existing unit/category progress APIs into one row per unit.
- */
+/** One compact row per unit, aggregating existing unit/category
+ *  progress APIs — deliberately lighter-weight than js/learn.js's own
+ *  course cards, since this is a secondary summary, not the primary
+ *  navigation surface (that's still pages/learn.html itself). */
 function renderUnitRow(unit, destination) {
   const icon = UNIT_ICONS[unit.id] ?? '🔖';
   const isCurrentUnit = !!destination?.unit && destination.unit.order === unit.order;
-  // NEW (Priority 2 §13, 2026-08-22) — short suffix appended to a row's
-  // aria-label when it's the learner's current unit, shared across the
-  // info/interactive/graded branches below so "you are here" isn't
-  // spelled three different ways in the accessible name.
+  // Short suffix appended to a row's aria-label when it's the
+  // learner's current unit, shared across the branches below so
+  // "you are here" isn't spelled three different ways.
   const hereSuffix = isCurrentUnit ? ', you are here' : '';
-
-  // HOMEPAGE PIVOT (this session) — the old kind==='info' branch
-  // ("Welcome · no assessment", Unit 0) is REMOVED: no UNITS entry has
-  // kind:'info' anymore (see data.js) — that content is now
-  // pages/homepage.html, shown once right after login, not a unit row
-  // on this dashboard.
 
   if (unit.kind === 'interactive') {
     return unitRowHtml(icon, unit, 'Practice drill · always open',
@@ -889,32 +318,25 @@ function renderUnitRow(unit, destination) {
   const state = done ? 'done' : (isCurrentUnit ? 'current' : null);
   const href = `learn.html?unit=${encodeURIComponent(unit.id)}`;
 
-  // PRIORITY 1 §5: "Show the current Unit and lesson/sign." Reuses
-  // destination.cat / destination.nextSign — the exact fields
-  // renderContinueCard() already reads for the hero card's own
-  // "{category} → {sign}" line — instead of deriving a second walk.
-  // isCurrentUnit guarantees destination.cat belongs to THIS unit (see
-  // getCurrentDestination(): unit is looked up from cat.unit), so no
-  // extra matching is needed here.
-  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
-  // review): mirrors the same readyForAssessment branch renderContinueCard()
-  // now has — without it, this row's own "Next: …" detail (and its
-  // aria-label below) would still say "Next: Alphabet → Letter A" at
-  // 26/26 practiced even after the hero card above it correctly says
-  // "Take the assessment," which is exactly the kind of two-surfaces-
-  // disagreeing bug this file's header comment says to avoid.
+  // Reuses destination.cat / destination.nextSign — the same fields
+  // renderContinueCard() reads for the hero card's "{category} →
+  // {sign}" line — instead of a second walk. isCurrentUnit guarantees
+  // destination.cat belongs to THIS unit, so no extra matching needed.
+  // readyForAssessment mirrors getCurrentDestination()'s own flag —
+  // without it, a fully-practiced-but-unassessed unit's "Next: …"
+  // detail would misleadingly point back at sign #1, even though the
+  // hero card above it correctly says "Take the assessment."
   const currentSignLabel = isCurrentUnit && destination.cat
     ? (destination.readyForAssessment
         ? `${destination.cat.title} → Take the assessment`
         : `${destination.cat.title} → ${window.LWData.getSign?.(destination.cat.level, destination.nextSign)?.title ?? destination.nextSign}`)
     : null;
 
-  // NEW (Priority 2 §13, 2026-08-22) — aria-label for the graded case,
-  // built from the exact same numbers the visible row already renders
-  // (no new computation): "completed" when passedCount===assessmentTotal
-  // (matches the new doneBadge in unitRowHtml()), otherwise the
-  // practiced/passed fractions, plus the "you are here"/"next" suffix
-  // on the current row.
+  // aria-label for the graded case, built from the exact numbers the
+  // visible row already renders: "completed" once
+  // passedCount===assessmentTotal (matches doneBadge below), otherwise
+  // the practiced/passed fractions, plus the "you are here"/"next"
+  // suffix on the current row.
   const assessmentWord = `category assessment${assessmentTotal === 1 ? '' : 's'}`;
   const ariaStatus = done
     ? `completed, ${passedCount} of ${assessmentTotal} ${assessmentWord} passed`
@@ -943,19 +365,15 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
   const referenceBadge = metrics.reference
     ? '<span class="unit-progress-row__reference-badge">Reference</span>'
     : '';
-  // NEW (Priority 2 §13, 2026-08-22) — "Current/locked/done state must
-  // not rely only on border color." Locked rows already say so in
-  // `statusText` ("Locked · finish the previous unit first"); current
-  // rows already had `currentBadge` above. A fully-done row
-  // (passedCount === assessmentTotal) had NO non-color signal at all
-  // before this — only the left border/background flipping to
-  // `--clr-success` told a learner a unit was finished. Same
-  // text-badge shape as the two badges above it, see css/dashboard.css.
+  // A fully-done row (passedCount === assessmentTotal) has no
+  // non-color "finished" signal otherwise — only the left
+  // border/background flips to --clr-success. Same badge shape as
+  // currentBadge/referenceBadge, see css/dashboard.css.
   const doneBadge = metrics.done
     ? '<span class="unit-progress-row__done-badge">✓ Completed</span>'
     : '';
-  // PRIORITY 1 §5 — see renderUnitRow()'s own comment for where this
-  // string comes from. Only ever set alongside currentBadge.
+  // Set alongside currentBadge only — see renderUnitRow() for where
+  // this string comes from.
   const currentDetailMarkup = metrics.currentDetail
     ? `<span class="unit-progress-row__current-detail">Next: ${escapeHtml(metrics.currentDetail)}</span>`
     : '';
@@ -986,17 +404,11 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
     </span>
   `;
 
-  // NEW (Priority 2 §13, 2026-08-22) — "Ensure CTA labels describe the
-  // action." Without this, a screen reader linearized a row's visible
-  // text + nested aria-labels into one run-on string with no verb
-  // ("Unit 3 · Everyday Essentials You are here Next: Requests → HELLO
-  // 45% practice progress 0/1 category assessment passed"). Every
-  // linked row now gets an explicit `aria-label` starting "Open Unit
-  // N: {title} — …", built entirely from fields renderUnitRow() already
-  // computed (see that function) — no new lookup. Only applied when
-  // `href` exists: locked/"coming soon" rows render as plain <div>s (no
-  // href), were never focusable, and an aria-label on a non-interactive
-  // div wouldn't help a keyboard/screen-reader user here anyway.
+  // Every linked row gets an explicit aria-label ("Open Unit N:
+  // {title} — …") so a screen reader doesn't linearize the row's
+  // visible text into one run-on string with no verb. Only applied
+  // when `href` exists — locked/"coming soon" rows render as plain
+  // <div>s and were never focusable.
   const ariaAttr = href && metrics.ariaLabel
     ? ` aria-label="${escapeHtml(metrics.ariaLabel)}"`
     : '';
@@ -1006,49 +418,80 @@ function unitRowHtml(icon, unit, statusText, href, state, metrics = {}) {
     : `<div class="unit-progress-row${stateClass}">${inner}</div>`;
 }
 
-function renderUnitList(destination) {
-  const container = document.getElementById('unit-progress-list');
-  if (!container || !window.LWData || !window.LWProgress) return;
-  container.innerHTML = window.LWData.getUnits().map(unit => renderUnitRow(unit, destination)).join('');
+/** Which of the 3 broad levels a unit belongs to — same grouping
+ *  js/learn.js's trail uses, kept as its own small copy here rather
+ *  than a shared import (same call already made for UNIT_ICONS). */
+const LEVEL_GROUPS = [
+  { level: 'basic', label: 'Alphabet & Numbers' },
+  { level: 'medium', label: 'Words & Topics' },
+  { level: 'intermediate', label: 'Phrases & Conversations' },
+];
+function getUnitLevel(unit) {
+  if (unit.kind === 'interactive') return 'basic';
+  const cats = window.LWData.getCategoriesForUnit(unit.order);
+  return cats[0]?.level ?? 'medium';
+}
+
+/** Cheap "is this whole unit finished" check for a group's summary
+ *  count — mirrors renderUnitRow()'s own done logic without
+ *  duplicating its full markup-building work. */
+function isUnitDone(unit) {
+  if (unit.kind === 'interactive') return !!window.LWProgress.getUnitAssessment?.(unit.id)?.passed;
+  if (unit.kind === 'reference') return false;
+  const liveCats = window.LWData.getCategoriesForUnit(unit.order)
+    .filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+  if (liveCats.length === 0) return false;
+  return liveCats.every(c => !!window.LWProgress.getCategoryProgress(c.level, c.id)?.assessment?.passed);
 }
 
 /**
- * RESTORED (2026-08-21 earlier session — see the CRITICAL BUGFIX note
- * in the file header). The chip-rendering logic itself is unchanged
- * from before the §4 session that accidentally deleted it.
- *
- * BUG FIX (2026-08-20, review session): this used to render signId
- * twice per card — once inside .recap-card__img's pill and again in
- * a sibling <span> — showing as "A A" / "Y Y" / "Z Z" etc. The pill
- * was redesigned (see css/dashboard.css's own BUG FIX comment above
- * .recap-card__img) specifically to be a self-contained chip that
- * already shows the full sign text, including multi-word entries
- * like "I AM FINE" — the extra <span> was a leftover from before
- * that redesign. Removed rather than kept-but-hidden, since nothing
- * else in css/dashboard.css targets a bare <span> inside .recap-card.
- *
- * PRIORITY 1 §7 (2026-08-21, this session) — PIVOT_CHECKLIST.md's
- * "Improve 'Signs You've Learned'". Three additions, all still reading
- * the SAME window.LWProgress.getAllLearnedSigns() call as before — no
- * progress.js change, no new store read:
- *   1. [data-recap-count] gets "N signs practiced".
- *   2. The chip grid now supports showing more than RECAP_COLLAPSED_LIMIT
- *      (still 24, same cap the old hardcoded `.slice(-24)` used) via the
- *      recapExpanded toggle below, instead of silently truncating with
- *      no way to see the rest.
- *   3. [data-recap-foot]/[data-recap-toggle] are shown only when there
- *      ARE more than RECAP_COLLAPSED_LIMIT signs to reveal.
- * Deliberately NOT done here, per the checklist's own instructions:
- *   - no navigation to a new "all signs" page (checklist: "do not turn
- *     this section into another lesson browser") — "View all" expands
- *     the SAME grid in place instead;
- *   - no title/category lookup added to each chip — still just the
- *     raw signId, same as before (checklist: "keep the visual chips
- *     lightweight").
+ * BUG FIX (this pass): this list is 71 units rendered flat — the
+ * literal "dashboard is so long because of the Learning Path"
+ * complaint. Grouped into the same 3 collapsible <details> sections
+ * learn.js's trail now uses (LEVEL_GROUPS above), opened to whichever
+ * section contains the learner's current unit. renderUnitRow()/
+ * unitRowHtml() are completely unchanged — this only changes how
+ * their output is grouped and wrapped.
  */
-const RECAP_COLLAPSED_LIMIT = 24; // unchanged value, now a named constant instead of a magic number in .slice(-24)
+function renderUnitList(destination) {
+  const container = document.getElementById('unit-progress-list');
+  if (!container || !window.LWData || !window.LWProgress) return;
 
-// Toggle state for the §7 "View all" control. Module-level (not a
+  const units = window.LWData.getUnits();
+  const openLevel = destination?.unit ? getUnitLevel(destination.unit) : 'basic';
+
+  container.innerHTML = LEVEL_GROUPS.map(({ level, label }) => {
+    const groupUnits = units.filter(u => getUnitLevel(u) === level);
+    if (groupUnits.length === 0) return '';
+    const doneCount = groupUnits.filter(isUnitDone).length;
+    const isOpen = level === openLevel;
+    return `
+      <details class="unit-progress-group"${isOpen ? ' open' : ''}>
+        <summary class="unit-progress-group__summary">
+          <span class="unit-progress-group__label">${escapeHtml(label)}</span>
+          <span class="unit-progress-group__meta">${doneCount}/${groupUnits.length} complete</span>
+        </summary>
+        <div class="unit-progress-group__rows">
+          ${groupUnits.map(unit => renderUnitRow(unit, destination)).join('')}
+        </div>
+      </details>
+    `;
+  }).join('');
+}
+
+/**
+ * Renders the "Signs You've Learned" recap grid from
+ * window.LWProgress.getAllLearnedSigns(). Each chip shows the raw
+ * signId only (no title/category lookup) by design — kept lightweight
+ * rather than a second lesson browser. [data-recap-count] shows a
+ * running total; [data-recap-foot]/[data-recap-toggle] only appear
+ * once there are more than RECAP_COLLAPSED_LIMIT signs to reveal, and
+ * "View all" expands the same grid in place rather than navigating
+ * anywhere.
+ */
+const RECAP_COLLAPSED_LIMIT = 24;
+
+// Toggle state for the "View all" control. Module-level (not a
 // closure-local) because the click handler and renderRecap() both need
 // to read/flip it, and renderRecap() is the one function that already
 // owns re-rendering the grid — simplest to have the toggle just flip
@@ -1067,14 +510,10 @@ function renderRecap() {
   const learned = window.LWProgress.getAllLearnedSigns();
 
   if (learned.length === 0) {
-    // PRIORITY 2 §15 (2026-08-22) — #recap-empty's static default text
-    // is now a neutral "Loading…" message (see pages/dashboard.html),
-    // since this same element used to show the real "nothing practiced
-    // yet" copy from first paint — indistinguishable from actually
-    // having practiced nothing while this was still loading. Once we
-    // genuinely know the learner has zero practiced signs, overwrite it
-    // with the real copy explicitly instead of assuming the static text
-    // still says the right thing.
+    // #recap-empty starts as a neutral "Loading…" placeholder (see
+    // pages/dashboard.html) so it can't be mistaken for the genuine
+    // "nothing practiced yet" state while progress is still loading —
+    // overwrite it with the real empty-state copy here, explicitly.
     if (empty) {
       empty.textContent = 'Nothing practiced yet — open a lesson to get started!';
       empty.classList.remove('dash-loading-pulse');
@@ -1112,8 +551,8 @@ function renderRecap() {
 }
 
 /** Click handler for [data-recap-toggle] — flips recapExpanded and
- *  re-renders the SAME grid (see renderRecap()'s §7 doc comment for
- *  why this expands in place rather than navigating anywhere). Bound
+ *  re-renders the SAME grid (see renderRecap()'s doc comment for why
+ *  this expands in place rather than navigating anywhere). Bound
  *  once in DOMContentLoaded, not inside renderRecap() itself, so it
  *  doesn't get re-attached (and double-fire) on every re-render. */
 function handleRecapToggle() {
@@ -1122,34 +561,15 @@ function handleRecapToggle() {
 }
 
 /**
- * NEW (Priority 1 §6, 2026-08-21; extended 2026-08-22 per
- * PIVOT_CHECKLIST.md §17 "Recommended learning-site structure" — that
- * flow names this step "Review → previously practiced signs" (plural),
- * which the original single-link MVP under-delivered on. Still
- * deliberately NOT a spaced-repetition trainer — no new algorithm, and
- * js/engine/progress.js was not opened this session either.
- *
- * window.LWProgress.getAllLearnedSigns() has no timestamp field, but
- * (same assumption renderRecap()'s own most-recent-first ordering
- * already relies on) it returns signs in the order they were recorded —
- * JS preserves object-key insertion order — so reading from the END of
- * the array gives the most-recently-practiced signs first. Reads only
- * that one existing, already-exported function; no new progress.js
- * code, no new algorithm, no second store read/parse.
- *
- * Walks backward and collects up to REVIEW_ENTRY_LIMIT entries whose
- * level/category resolved (same guard the single-link version already
- * had — see getAllLearnedSigns()'s own comment on why `level` can be
- * null — just applied per-candidate instead of once). No dedupe step
- * is needed: getAllLearnedSigns() already returns at most one entry per
- * signId per category (the underlying store keys signs by id inside
- * each category), so the array itself never repeats a signId within
- * one category.
- *
- * Mirrors the `href ? <a> : <div>` pattern unitRowHtml() already uses
- * for locked units: when there's nothing to review yet, render a
- * non-interactive placeholder instead of a button pointing at a
- * broken link.
+ * "Review" shortcuts: up to REVIEW_ENTRY_LIMIT most-recently-practiced
+ * signs, each linking straight back to that sign in lesson.html. Not a
+ * spaced-repetition trainer — just the last few signs practiced.
+ * window.LWProgress.getAllLearnedSigns() has no timestamp, but JS
+ * preserves object-key insertion order, so reading from the END of the
+ * array gives most-recent-first. Renders a disabled placeholder
+ * instead of a button when nothing's been practiced yet — same
+ * `href ? <a> : <div>` "never link to something broken" pattern
+ * unitRowHtml() uses for locked units.
  */
 const REVIEW_ENTRY_LIMIT = 3;
 
@@ -1177,12 +597,9 @@ function renderReviewEntry() {
   }).join('');
 }
 
-/** RESTORED (this session, unchanged) — "Continue Learning" button —
- *  points at the first category that's unlocked but not yet passed.
- *  Behavior is UNCHANGED by either Priority 0 session (same href
- *  construction); it just reads the shared `destination` object
- *  instead of re-walking the chain itself. See the BUGFIX note in the
- *  file header for why this doesn't loop LEVELS.
+/** Sets the Continue Learning hero button's href: the first unlocked
+ *  but not-yet-passed category, or the assessment once every sign in
+ *  it is practiced.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -1196,33 +613,22 @@ function renderContinueButton(destination) {
   }
 
   const { cat, nextSign, readyForAssessment } = destination;
-  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
-  // review): once every sign in the category is practiced, the real next
-  // step is the assessment (same `quiz.html?level=X&category=Y` URL
-  // learn.js's own "Take Assessment" card and lesson.js's end-of-lesson
-  // CTA already use), not another pass at signs[0].
+  // Once every sign in the category is practiced, the real next step
+  // is the assessment (same quiz.html URL learn.js/lesson.js use),
+  // not another pass at signs[0].
   btn.href = readyForAssessment
     ? `quiz.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}`
     : `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
 }
 
 /**
- * RESTORED (this session, unchanged) — PIVOT_CHECKLIST.md Dashboard UX
- * Review Checklist → Priority 0 item #1 ("Make 'Continue Learning' the
- * primary action", 2026-08-21).
- *
- * Fills in the hero card: exact destination (Unit + category + next
- * sign), progress WITHIN that destination (not the global aggregate
- * % — that's the separate "Overall Progress" card lower on the page;
- * relabeling that one is Priority 0 item #3, out of scope here), a
- * primary CTA whose LABEL changes with state (Start Lesson / Continue
- * / Review Your Path), and a secondary "Open Path" CTA shown only when
- * there's a specific unit worth linking to (checklist: "secondary CTA
- * only when useful").
- *
+ * Fills in the Continue Learning hero card: exact destination (Unit +
+ * category + next sign), progress WITHIN that destination (the
+ * separate "Overall Progress" card lower on the page owns the global
+ * aggregate %), and a primary CTA whose label changes with state
+ * (Start Lesson / Continue / Take Assessment / Review Your Path).
  * Does NOT set the primary button's `href` — renderContinueButton()
- * above already owns that, so the two functions don't race to set the
- * same attribute from two different code paths.
+ * owns that, so the two functions don't race on the same attribute.
  *
  * @param {ReturnType<typeof getCurrentDestination>} destination
  */
@@ -1237,11 +643,10 @@ function renderContinueCard(destination) {
   const secondaryBtn = document.querySelector('[data-continue-secondary]');
   if (!destination) return;
 
-  // PRIORITY 2 §15 (2026-08-22) — the static pre-JS markup carries
-  // `dash-loading-pulse` on the eyebrow so it visibly animates while
-  // this card is waiting (see pages/dashboard.html). Strip it here,
-  // once, regardless of which of the three branches below actually
-  // runs, rather than repeating this line in all three.
+  // The static pre-JS markup carries `dash-loading-pulse` on the
+  // eyebrow so it visibly animates while this card is waiting (see
+  // pages/dashboard.html) — strip it once here rather than in all 3
+  // branches below.
   if (eyebrowEl) eyebrowEl.classList.remove('dash-loading-pulse');
 
   // State: nothing live in the chain at all (defensive — e.g. a
@@ -1273,14 +678,11 @@ function renderContinueCard(destination) {
   const { cat, unit, signs, practicedCount, nextSign, readyForAssessment } = destination;
   const icon = UNIT_ICONS[unit?.id] ?? '🔖';
 
-  // BUGFIX (PIVOT_CHECKLIST.md "Bugs observed" #3, 2026-08-22 screenshot
-  // review): fully-practiced-but-unassessed used to fall straight into
-  // the generic branch below, which reads `nextSign` (silently signs[0])
-  // and shows "Alphabet → Letter A" even at 26/26 practiced — reading as
-  // if nothing had been learned. Distinct state instead: name the
-  // assessment as the next action, same "Unit N · Title" eyebrow so it
-  // doesn't look like a different unit, progress bar left full rather
-  // than hidden so the 26/26 context isn't lost.
+  // A fully-practiced-but-unassessed category gets its own state
+  // rather than falling into the generic branch below (which would
+  // read nextSign as signs[0] and misleadingly show "Alphabet →
+  // Letter A" at 26/26 practiced). Progress bar stays full instead of
+  // hiding, so that context isn't lost.
   if (readyForAssessment) {
     if (iconEl) iconEl.textContent = '📝';
     if (eyebrowEl) eyebrowEl.textContent = unit ? `Unit ${unit.order} · ${unit.title}` : cat.title;
@@ -1318,54 +720,35 @@ function renderContinueCard(destination) {
 
   if (secondaryBtn) {
     secondaryBtn.href = unit ? `learn.html?unit=${encodeURIComponent(unit.id)}` : 'learn.html';
-    // CHANGED (Priority 2 §13, 2026-08-22) — "Ensure CTA labels
-    // describe the action." Previously always read the generic "Open
-    // Path" no matter which unit it opened; now names the unit, same
-    // `unit` field the eyebrow line above already shows. The plain
-    // "Open Path" fallback only survives for the case where this
-    // button is visible with no `unit` — today unreachable, since both
-    // branches above that lack a `unit` (empty chain / everything
-    // passed) already leave `secondaryBtn.style.display` as 'none' —
-    // kept only for defensiveness, not currently exercised.
+    // Names the specific unit rather than a generic "Open Path", same
+    // `unit` field the eyebrow line already shows. The plain "Open
+    // Path" fallback is unreachable today (both no-`unit` branches
+    // above already hide this button) — kept only for defensiveness.
     secondaryBtn.textContent = unit ? `Open Unit ${unit.order} Path` : 'Open Path';
     secondaryBtn.style.display = '';
   }
 }
 
-// PRIORITY 2 §15 (2026-08-22) — see the file header's §15 paragraph for
-// the full story. `whenProgressReady()` has no rejection path and can
-// hang forever (confirmed, not hypothetical — see that paragraph); this
-// bounds how long the DOMContentLoaded handler below will wait on it
-// before giving up and rendering from whatever's already in
-// localStorage instead. 6s is generous for something that's normally
-// near-instant (a synchronous localStorage read plus, at most, one
-// Firebase Auth state check) without making a learner watch a stuck
-// page for an uncomfortably long time first.
+// whenProgressReady() has no rejection path and can hang forever if
+// js/auth.js's Firebase import fails to load (confirmed with a real
+// Playwright run — see this file's header). This bounds how long the
+// DOMContentLoaded handler below waits before giving up and rendering
+// from whatever's already in localStorage instead.
 const PROGRESS_READY_TIMEOUT_MS = 6000;
 
 /**
- * PIVOT_CHECKLIST.md §15 ("Error/loading states"). Called only when the
- * dashboard has no reasonable way to render real progress data:
- * `window.LWProgress`/`window.LWData` themselves never loaded (their
- * `<script>` tag failed/errored), or a render function threw partway
- * through. NOT called just because `whenProgressReady()` was slow — see
- * the DOMContentLoaded handler below for why a slow-but-unresolved
- * hydration instead falls through to rendering from localStorage rather
- * than landing here.
+ * The true "nothing to render" fallback: window.LWProgress/LWData
+ * never loaded at all, or a render function threw partway through.
+ * NOT called just because whenProgressReady() was slow — see the
+ * DOMContentLoaded handler for why a slow-but-unresolved hydration
+ * instead falls through to rendering from localStorage.
  *
  * Reuses css/style.css's existing `.alert`/`.alert--error` component
- * (already loaded on every page; already the pattern toast.css/
- * quiz.css use for the same red/error state) instead of inventing new
- * error styling in css/dashboard.css. Every message keeps the learner
- * able to move — a working "Reload" action, a "Go to Learn" link —
- * rather than a dead end, matching unitRowHtml()'s existing
- * `href ? <a> : <div>` "never link to something broken" instinct.
- *
- * Touches ONLY this page's own presentational state. No
- * `window.LWAuth` call, no login/logout/redirect/session logic
- * anywhere in this function — auth handling stays explicitly out of
- * this task, per PIVOT_CHECKLIST.md §15's own instruction and every
- * session before it.
+ * (same pattern toast.css/quiz.css use) rather than inventing new
+ * error styling. Every message keeps the learner able to move — a
+ * working Reload action, a Go to Learn link — instead of a dead end.
+ * Touches only this page's own presentational state: no
+ * window.LWAuth call, no login/logout/redirect/session logic.
  *
  * @param {string} reason - console-only diagnostic; never shown to the learner.
  */
@@ -1407,19 +790,17 @@ function showProgressUnavailable(reason) {
   // a specific number the way a stale/wrong one would, so it's already
   // a safe fallback, not a blank one.
 
-  // Learning Path (unit list) — was completely blank pre-JS before this
-  // session (the literal "blank unit list" PIVOT_CHECKLIST.md §15 names);
-  // gets an explicit fallback instead of staying empty with no
-  // explanation.
+  // Learning Path (unit list) — was completely blank pre-JS before
+  // this fallback existed; gets an explicit message instead of staying
+  // empty with no explanation.
   const listEl = document.getElementById('unit-progress-list');
   if (listEl) {
     listEl.innerHTML = `<div class="alert alert--error dash-fallback-alert">${FALLBACK_MSG} <a href="learn.html">Go to Learn</a> to keep going, or reload this page to try again.</div>`;
   }
 
-  // Signs You've Learned (recap) — distinct wording from the genuine
-  // "nothing practiced yet" empty state (see renderRecap()'s own §15
-  // update): telling a learner who HAS practiced signs that they have
-  // nothing practiced would be actively wrong, not just unhelpful.
+  // Distinct wording from the genuine "nothing practiced yet" empty
+  // state — telling a learner who HAS practiced signs that they have
+  // nothing would be actively wrong, not just unhelpful.
   const recapGrid   = document.getElementById('recap-grid');
   const recapCountEl = document.querySelector('[data-recap-count]');
   const recapFootEl  = document.querySelector('[data-recap-foot]');
@@ -1442,14 +823,9 @@ function showProgressUnavailable(reason) {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[dashboard.js] waiting for progress...');
 
-  // PRIORITY 2 §15 (2026-08-22) — race whenProgressReady() against a
-  // bounded timeout instead of awaiting it unconditionally. See the
-  // file header's §15 paragraph and PROGRESS_READY_TIMEOUT_MS's own
-  // comment above for the full reasoning: this promise has no
-  // rejection path and can hang forever (confirmed with a real
-  // Playwright run, not assumed), so an unconditional await could leave
-  // this page on its static loading placeholders indefinitely with no
-  // explanation — exactly what this checklist item asks to avoid.
+  // Races whenProgressReady() against a bounded timeout rather than
+  // awaiting it unconditionally — see PROGRESS_READY_TIMEOUT_MS's own
+  // comment for why (it can hang forever, confirmed).
   const readyPromise = window.LWProgress?.whenProgressReady?.();
   let timedOut = false;
 
@@ -1460,35 +836,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
     timedOut = outcome === 'timeout';
     if (timedOut) {
-      // Every render function below reads straight from localStorage
-      // synchronously (see progress.js's "write locally first, always"
-      // comment on saveStore()) — hydration finishing only matters for
-      // pulling in a DIFFERENT device's saved progress, so rendering
-      // now instead of continuing to wait is safe for the common case.
-      // See the file header's §15 paragraph for the one edge case this
-      // doesn't fully cover (a brand-new device where hydration itself
-      // is the thing that's stuck).
+      // Every render function reads straight from localStorage
+      // synchronously — hydration finishing only matters for pulling
+      // in a DIFFERENT device's saved progress, so rendering now
+      // instead of continuing to wait is safe for the common case.
       console.warn(`[dashboard.js] whenProgressReady() did not resolve within ${PROGRESS_READY_TIMEOUT_MS}ms — rendering from local cache instead of waiting indefinitely.`);
     } else {
       console.log('[dashboard.js] progress ready, rendering now');
     }
   } else {
-    // window.LWProgress (or whenProgressReady itself) isn't present at
-    // all — most likely js/engine/progress.js's <script> tag failed to
-    // load. Nothing to wait on; fall through to the LWProgress/LWData
-    // check right below, which will catch this and show the fallback.
+    // window.LWProgress (or whenProgressReady itself) isn't present —
+    // most likely js/engine/progress.js's <script> tag failed to load.
+    // Falls through to the check right below, which catches this.
     console.warn('[dashboard.js] window.LWProgress.whenProgressReady() is unavailable.');
   }
 
-  // The one case none of the render functions can gracefully no-op
-  // their way past: window.LWProgress / window.LWData never loaded at
-  // all. (Every render function below already guards on this — see
-  // e.g. computeOverallStats()/getCurrentDestination()'s own `if
-  // (!window.LWProgress || !window.LWData) return null/`; — so this
-  // check isn't strictly required for THEM not to throw, but without it
-  // the learner would just silently keep seeing the static loading
-  // placeholders forever with no explanation, which is the exact
-  // failure this checklist item exists to prevent.)
+  // The one case no render function can gracefully no-op past: LWData/
+  // LWProgress never loaded at all — without this check the learner
+  // would silently see the static loading placeholders forever.
   if (!window.LWProgress || !window.LWData) {
     showProgressUnavailable('window.LWProgress/window.LWData did not load');
     return;
@@ -1510,21 +875,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderContinueButton(destination);
     renderContinueCard(destination);
 
-    // PRIORITY 1 §7 (2026-08-21) — bound once here, not inside renderRecap()
-    // itself, so re-renders (e.g. from the toggle click) never re-attach
-    // (and double-fire) the same listener. No-op if the button doesn't
-    // exist for some reason (e.g. a future markup change) — same optional
-    // chaining pattern the rest of this handler already uses.
+    // Bound once here, not inside renderRecap() itself, so re-renders
+    // (e.g. from the toggle click) never re-attach and double-fire.
     document.querySelector('[data-recap-toggle]')?.addEventListener('click', handleRecapToggle);
   } catch (e) {
-    // PRIORITY 2 §15 (2026-08-22) — belt-and-suspenders. None of the
-    // render functions above are expected to throw (every one already
-    // guards on missing LWProgress/LWData individually), but if a
-    // future data.js shape change or a corrupt localStorage record ever
-    // makes one throw partway through, this stops the learner from
-    // being stuck on a half-rendered page with nothing but a silent
-    // console error — the same "safe fallback" requirement as the
-    // missing-script case above, just for a different cause.
+    // Belt-and-suspenders: no render function above is expected to
+    // throw, but if a future data.js shape change or a corrupt
+    // localStorage record ever makes one throw partway through, this
+    // stops the learner being stuck on a half-rendered page with
+    // nothing but a silent console error.
     console.error('[dashboard.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
   }

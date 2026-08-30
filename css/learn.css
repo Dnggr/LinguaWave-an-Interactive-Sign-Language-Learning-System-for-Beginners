@@ -89,17 +89,17 @@ button.category-card {
 .lesson-card--intro .category-card__icon { font-size: var(--fs-xl); }
 
 /* ── Course grid + sidebar ("My Learning"-style, REV 2) ─────────────
-   BUG FIX (this session): pages/learn.html and js/learn.js were
-   rewritten to this "My Learning" shape (a course-card grid + a
-   right-hand progress/continue sidebar + a search box) in a prior
-   session, but the CSS for it was never actually added here — the
-   old single-column `.trail`/`.trail-node` rules (now fully dead;
-   nothing in learn.js/learn.html references them anymore) were left
-   in their place instead. In a real browser this meant the entire
-   Learn page rendered as unstyled buttons/links/divs with no grid,
-   no card shape, no sidebar layout at all. Replaced below with real
-   rules for every class js/learn.js's renderUnitNode()/renderSidebar()
-   and pages/learn.html's markup actually use. */
+   BUG FIX (this pass): this comment previously claimed the old
+   `.trail`/`.trail-node` classes were "fully dead" and safe to leave
+   unstyled, on the assumption js/learn.js had already been rewritten
+   to stop using them. It hadn't — renderUnitNode() was still emitting
+   `.trail-node`/`.trail-node__*` markup (mixed with `.lesson-card--*`
+   modifier classes that don't match that base class either), so every
+   unit card on the root Learn page rendered with none of its intended
+   card styling. Fixed at the source: renderUnitNode() now emits
+   `.course-card` markup, matching the classes below, and `.trail` is
+   just the flex column wrapper around the new collapsible unit-group
+   sections (see "Trail groups" below). */
 .learn-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -178,8 +178,51 @@ button.category-card {
 }
 .sidebar-progress__number { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--clr-accent); }
 .sidebar-progress__label { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.sidebar-progress__count { margin-top: var(--space-3); font-size: var(--fs-xs); color: var(--clr-text-muted); text-align: center; }
 .sidebar-continue__title { font-weight: 600; font-size: var(--fs-sm); margin-bottom: var(--space-3); }
+.sidebar-continue__detail { font-size: var(--fs-sm); color: var(--clr-text-muted); margin-bottom: var(--space-3); }
 .sidebar-continue__empty { font-size: var(--fs-sm); color: var(--clr-text-muted); }
+
+/* ── Trail groups (collapsible sections by level) ────────────────────
+   BUG FIX (this pass): the full curriculum is 70+ units rendered flat
+   into one grid — the reported "page is way too long" complaint.
+   Grouped into 3 native <details> sections instead (Alphabet & Numbers
+   / Words & Topics / Phrases & Conversations — js/learn.js's
+   getUnitLevel() derives this straight from the `level` data.js
+   already assigns every category, no new taxonomy invented). Native
+   <details>/<summary> gets keyboard support, no custom JS toggle
+   logic, and degrades to "just expanded" with CSS disabled — cheaper
+   and more robust than a hand-rolled accordion widget. */
+.trail { display: flex; flex-direction: column; gap: var(--space-4); }
+.trail-group {
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  background: var(--clr-surface);
+  overflow: hidden;
+}
+.trail-group__summary {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer; list-style: none; user-select: none;
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg);
+  transition: background var(--dur-fast) var(--ease);
+}
+.trail-group__summary::-webkit-details-marker { display: none; }
+.trail-group__summary::before {
+  content: '▸'; display: inline-block; margin-right: var(--space-3);
+  color: var(--clr-text-muted);
+  transition: transform var(--dur-base) var(--ease);
+}
+.trail-group[open] > .trail-group__summary::before { transform: rotate(90deg); }
+.trail-group__summary:hover { background: var(--clr-surface-2); }
+.trail-group__summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--clr-accent); }
+.trail-group__label { flex: 1; }
+.trail-group__meta {
+  font-family: var(--font-body); font-weight: 600; font-size: var(--fs-xs); color: var(--clr-text-muted);
+  background: var(--clr-surface-2); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.trail-group__grid { padding: 0 var(--space-5) var(--space-5); }
 
 /* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
    PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not

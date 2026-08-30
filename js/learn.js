@@ -84,6 +84,11 @@ const CATEGORY_ICONS = {
   family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
   clothes: '👕', health: '🩹', feelings: '😊', requests: '🙏', amounts: '📏',
   colors: '🎨', money: '💵', animals: '🐾', sequence_demo: '💬',
+  // Greetings/Polite Words/Questions (the real, live medium-level
+  // categories — distinct from their intermediate-level Phrasebook
+  // cousins elsewhere in this map) had no entry here and fell back to
+  // the generic 🔖 in the category picker.
+  essentials_greetings: '👋', essentials_polite_expressions: '🙏', essentials_basic_responses: '❓',
   greetings_intro: '👋', basic_responses: '💬', family_phrases: '👨‍👩‍👧',
   daily_needs: '🥤', asking_questions: '❓', polite_expressions: '🙌',
   affection_feelings: '❤️', describing_things: '🖍️', self_introduction: '🧑',
@@ -711,28 +716,67 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUnitNode(unit, currentUnitId) {
     const state = getUnitState(unit, currentUnitId);
     const icon = state.lockIcon ? '🔒' : (UNIT_ICONS[unit.id] ?? '🔖');
-    const stateClass = state.status === 'locked' ? ' lesson-card--locked'
-      : state.status === 'done' ? ' lesson-card--done'
-      : state.status === 'current' ? ' lesson-card--current' : '';
+    // BUGFIX (this pass): these nodes were being built with a
+    // `trail-node`/`trail-node__*` base class that has NO rules
+    // anywhere in css/learn.css (confirmed — grep for "trail" there
+    // only turns up comments). `.course-card`/`.course-card__*` is the
+    // real, fully-styled component css/learn.css already built for
+    // this exact "My Learning" grid (thumb, badge, eyebrow, title,
+    // hover/focus states) — renderCategoryCard() below already uses
+    // its `.lesson-card`/`.category-card` sibling correctly; this just
+    // brings the unit-level cards in line with it.
+    const stateClass = state.status === 'locked' ? ' course-card--locked'
+      : state.status === 'done' ? ' course-card--done'
+      : state.status === 'current' ? ' course-card--current' : '';
 
     const inner = `
-      <div class="trail-node__num">${icon}</div>
-      <div class="trail-node__body">
-        <span class="trail-node__title">Unit ${unit.order} · ${escapeHtml(unit.title)}</span>
-        <span class="badge ${badgeClassForStatus(state.status)}">${escapeHtml(state.label)}</span>
-      </div>
+      <span class="course-card__thumb" aria-hidden="true">
+        ${icon}
+        <span class="badge ${badgeClassForStatus(state.status)} course-card__badge">${escapeHtml(state.label)}</span>
+      </span>
+      <span class="course-card__body">
+        <span class="course-card__eyebrow">Unit ${unit.order}</span>
+        <span class="course-card__title">${escapeHtml(unit.title)}</span>
+      </span>
     `;
 
     if (state.href) {
-      return `<a href="${state.href}" class="trail-node${stateClass}">${inner}</a>`;
+      return `<a href="${state.href}" class="course-card${stateClass}">${inner}</a>`;
     }
     if (state.clickable === false) {
-      return `<div class="trail-node${stateClass}">${inner}</div>`;
+      return `<div class="course-card${stateClass}">${inner}</div>`;
     }
-    return `<button type="button" class="trail-node${stateClass}" data-open-unit="${escapeHtml(unit.id)}">${inner}</button>`;
+    return `<button type="button" class="course-card${stateClass}" data-open-unit="${escapeHtml(unit.id)}">${inner}</button>`;
   }
 
-  /** Default / root view — the trail itself. */
+  /** Which of the 3 broad levels a unit belongs to, purely for
+   *  grouping the trail into collapsible sections — not a new concept,
+   *  just reading the `level` every one of a unit's own CATEGORIES
+   *  entries already carries (confirmed: every unit's categories share
+   *  one level). 'interactive' units (Fingerspell Your Name) have no
+   *  CATEGORIES entry of their own, so they're pinned to 'basic' by
+   *  position — right after the alphabet, same as the trail already
+   *  orders them. */
+  const LEVEL_GROUPS = [
+    { level: 'basic', label: 'Alphabet & Numbers' },
+    { level: 'medium', label: 'Words & Topics' },
+    { level: 'intermediate', label: 'Phrases & Conversations' },
+  ];
+  function getUnitLevel(unit) {
+    if (unit.kind === 'interactive') return 'basic';
+    const cats = window.LWData.getCategoriesForUnit(unit.order);
+    return cats[0]?.level ?? 'medium';
+  }
+
+  /** Default / root view — the trail itself.
+   *  BUGFIX (this pass): the full curriculum is 70+ units, all
+   *  rendered flat into one page-length grid — this was the literal
+   *  "why is the dashboard/learn page so long" complaint. Grouped into
+   *  3 native <details> sections by level instead (see LEVEL_GROUPS
+   *  above): closed sections cost nothing to scroll past, and native
+   *  <details>/<summary> gets keyboard support and no-JS-toggle-logic
+   *  for free. The section containing the learner's current unit opens
+   *  by default; the rest start collapsed. */
   function renderTrail() {
     history.replaceState(null, '', 'learn.html');
     setContext('');
@@ -742,7 +786,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const units = window.LWData.getUnits();
     const currentUnitId = findCurrentUnitId(units);
-    grid.innerHTML = units.map(u => renderUnitNode(u, currentUnitId)).join('');
+    const currentUnit = units.find(u => u.id === currentUnitId);
+    const openLevel = currentUnit ? getUnitLevel(currentUnit) : 'basic';
+
+    grid.innerHTML = LEVEL_GROUPS.map(({ level, label }) => {
+      const groupUnits = units.filter(u => getUnitLevel(u) === level);
+      if (groupUnits.length === 0) return '';
+      const doneCount = groupUnits.filter(u => getUnitState(u, currentUnitId).status === 'done').length;
+      const isOpen = level === openLevel;
+      return `
+        <details class="trail-group"${isOpen ? ' open' : ''}>
+          <summary class="trail-group__summary">
+            <span class="trail-group__label">${escapeHtml(label)}</span>
+            <span class="trail-group__meta">${doneCount}/${groupUnits.length} complete</span>
+          </summary>
+          <div class="course-grid trail-group__grid">
+            ${groupUnits.map(u => renderUnitNode(u, currentUnitId)).join('')}
+          </div>
+        </details>
+      `;
+    }).join('');
 
     grid.querySelectorAll('[data-open-unit]').forEach(el => {
       el.addEventListener('click', () => {
@@ -760,11 +823,91 @@ document.addEventListener('DOMContentLoaded', () => {
    *  perfect mapping (medium/intermediate span multiple units) —
    *  picks the FIRST unit that level's content starts appearing in. */
   function scrollToLevel(level) {
-    const unitIdByLevel = { basic: 'alphabet', medium: 'everyday_essentials', intermediate: 'phrasebook' };
+    // BUGFIX (this pass): 'everyday_essentials' was a Rev 6 unit id
+    // that no longer exists post-Rev-7 — querySelector found nothing,
+    // so scrollIntoView() silently no-op'd for every legacy
+    // `?level=medium` deep link. 'greetings' is the first medium-level
+    // unit in the current curriculum (order: 4).
+    const unitIdByLevel = { basic: 'alphabet', medium: 'greetings', intermediate: 'phrasebook' };
     const targetId = unitIdByLevel[level];
     if (!targetId) return;
+    // The target unit's card may be inside a collapsed <details> group
+    // now — open it first, or scrollIntoView on a display:none subtree
+    // silently does nothing.
     const el = grid.querySelector(`[data-open-unit="${targetId}"]`);
+    el?.closest('details.trail-group')?.setAttribute('open', '');
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  /**
+   * BUGFIX (this pass): pages/learn.html's own markup comment claimed
+   * "#learn-sidebar-progress/#learn-sidebar-continue are populated by
+   * renderSidebar()" — that function did not exist anywhere in this
+   * file, which is exactly why both panels sat on their static
+   * "Loading…" placeholder forever (visible in the reported
+   * screenshot). Walks window.LWProgress.getOrderedLiveCategories()
+   * the same way js/dashboard.js's getCurrentDestination() does, kept
+   * as its own small copy here rather than a shared import — same
+   * "small per-page copy over a shared module" call this file already
+   * made for UNIT_ICONS (see that const's own comment). Called once
+   * from boot(), after routing, regardless of which view boot() lands
+   * on — the sidebar is visible on every learn.html view, not just the
+   * root trail.
+   */
+  function renderSidebar() {
+    const progressEl = document.getElementById('learn-sidebar-progress');
+    const continueEl = document.getElementById('learn-sidebar-continue');
+    if (!progressEl || !continueEl) return;
+    if (!window.LWProgress || !window.LWData) return;
+
+    const chain = window.LWProgress.getOrderedLiveCategories();
+    let totalSigns = 0, practicedSigns = 0;
+    let destCat = null, destUnit = null, destSigns = [], destNextSign = null, destReady = false;
+    let destPracticed = 0;
+    let foundDestination = false;
+
+    chain.forEach(cat => {
+      const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+      const prog = window.LWProgress.getCategoryProgress(cat.level, cat.id);
+      totalSigns += signs.length;
+      practicedSigns += signs.filter(s => !!prog.signs[s]).length;
+
+      if (!foundDestination && !prog.assessment?.passed) {
+        foundDestination = true;
+        destCat = cat;
+        destUnit = window.LWData.getUnits().find(u => u.order === cat.unit) ?? null;
+        destSigns = signs;
+        destPracticed = signs.filter(s => !!prog.signs[s]).length;
+        destNextSign = signs.find(s => !prog.signs[s]) ?? signs[0] ?? null;
+        destReady = signs.length > 0 && destPracticed === signs.length;
+      }
+    });
+
+    const pct = totalSigns > 0 ? Math.round((practicedSigns / totalSigns) * 100) : 0;
+    progressEl.innerHTML = `
+      <div class="sidebar-progress__ring">
+        <span class="sidebar-progress__number">${pct}%</span>
+        <span class="sidebar-progress__label">practiced</span>
+      </div>
+      <p class="sidebar-progress__count">${practicedSigns} / ${totalSigns || '—'} signs</p>
+    `;
+
+    if (!destCat) {
+      continueEl.innerHTML = `<p class="sidebar-continue__empty">${chain.length === 0 ? 'Nothing unlocked yet — start with the alphabet!' : "You're caught up on everything unlocked so far!"}</p>`;
+      return;
+    }
+
+    const icon = UNIT_ICONS[destUnit?.id] ?? '🔖';
+    const nextTitle = window.LWData.getSign?.(destCat.level, destNextSign)?.title ?? destNextSign;
+    const href = destReady
+      ? `quiz.html?level=${encodeURIComponent(destCat.level)}&category=${encodeURIComponent(destCat.id)}`
+      : `lesson.html?level=${encodeURIComponent(destCat.level)}&category=${encodeURIComponent(destCat.id)}&sign=${encodeURIComponent(destNextSign)}`;
+
+    continueEl.innerHTML = `
+      <p class="sidebar-continue__title">${icon} ${escapeHtml(destUnit ? `Unit ${destUnit.order} · ${destUnit.title}` : destCat.title)}</p>
+      <p class="sidebar-continue__detail">${destReady ? `${escapeHtml(destCat.title)} → Take the assessment` : `${escapeHtml(destCat.title)} → ${escapeHtml(nextTitle)}`}</p>
+      <a href="${href}" class="btn btn--primary btn--sm btn--full">${destReady ? '📝 Take Assessment' : '▶ Continue'}</a>
+    `;
   }
 
   function boot() {
@@ -778,14 +921,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // unique app-wide, `level` isn't needed to resolve it.
     if (categoryParam) {
       const cat = window.LWData.CATEGORIES.find(c => c.id === categoryParam);
-      if (cat) { renderCategoryView(cat); return; }
+      if (cat) { renderCategoryView(cat); renderSidebar(); return; }
     }
     if (unitParam) {
       const unit = window.LWData.getUnits().find(u => u.id === unitParam);
-      if (unit) { renderUnitView(unit); return; }
+      if (unit) { renderUnitView(unit); renderSidebar(); return; }
     }
 
     renderTrail();
+    renderSidebar();
     if (legacyLevel) scrollToLevel(legacyLevel);
   }
 

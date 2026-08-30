@@ -399,6 +399,54 @@
   overflow: hidden;
   background: var(--clr-surface);
 }
+/* ── Unit groups (collapsible sections by level) ─────────────────────
+   BUG FIX (this pass): the Learning Path is 71 units rendered flat —
+   the literal "dashboard is so long" complaint. Grouped into 3 native
+   <details> sections (Alphabet & Numbers / Words & Topics / Phrases &
+   Conversations — js/dashboard.js's getUnitLevel() derives this from
+   the `level` data.js already assigns each category) inside the same
+   bordered .unit-progress-list container, so closed sections cost
+   nothing to scroll past. Mirrors the same fix in css/learn.css's
+   .trail-group for the main Learn page. */
+.unit-progress-group { border-bottom: 1px solid var(--clr-border); }
+.unit-progress-group:last-child { border-bottom: none; }
+.unit-progress-group__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-base);
+  transition: background var(--dur-fast) var(--ease);
+}
+.unit-progress-group__summary::-webkit-details-marker { display: none; }
+.unit-progress-group__summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: var(--space-3);
+  color: var(--clr-text-muted);
+  transition: transform var(--dur-base) var(--ease);
+}
+.unit-progress-group[open] > .unit-progress-group__summary::before { transform: rotate(90deg); }
+.unit-progress-group__summary:hover { background: var(--clr-surface-2); }
+.unit-progress-group__summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--clr-accent); }
+.unit-progress-group__label { flex: 1; }
+.unit-progress-group__meta {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  background: var(--clr-surface-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.unit-progress-group__rows { display: flex; flex-direction: column; }
 .unit-progress-row {
   display: flex;
   align-items: flex-start;
