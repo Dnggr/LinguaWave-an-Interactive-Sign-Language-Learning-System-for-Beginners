@@ -49,7 +49,10 @@ function applyReducedMotion(enabled) {
   document.documentElement.classList.toggle('lw-force-reduced-motion', enabled);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// BUGFIX (this session) — same class of bug as dashboard.js's
+// initDashboard() fix; see its comment for the full reasoning. Same
+// readyState guard applied here for consistency/safety.
+function initSettingsPage() {
   const prefs = loadPrefs();
 
   const notifEl  = document.getElementById('pref-notifications');
@@ -79,4 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // No profile-edit screen exists in this repo yet — see file header.
     console.info('[settings-page.js] Edit Profile has no destination yet.');
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSettingsPage);
+} else {
+  initSettingsPage();
+}

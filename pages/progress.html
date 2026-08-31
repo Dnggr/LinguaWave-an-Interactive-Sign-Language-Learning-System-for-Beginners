@@ -65,7 +65,7 @@
        hero number — everything else reuses css/dashboard.css as-is. */
     .progress-hero { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
     .progress-hero-ring {
-      --pct: 65;
+      --pct: 0;
       position: relative; flex-shrink: 0;
       width: 160px; height: 160px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -128,19 +128,19 @@
 
           <div class="card mt-8 progress-hero">
             <div class="progress-hero-ring" id="progress-hero-pct">
-              <span class="progress-hero-ring__pct">65%</span>
+              <span class="progress-hero-ring__pct">–</span>
             </div>
             <div class="stats-grid" style="flex:1;">
               <div class="stat-tile">
-                <span class="stat-tile__value" id="progress-signs-learned">24</span>
+                <span class="stat-tile__value" id="progress-signs-learned">–</span>
                 <span class="stat-tile__label">Signs Learned</span>
               </div>
               <div class="stat-tile">
-                <span class="stat-tile__value" id="progress-quizzes-done">3</span>
+                <span class="stat-tile__value" id="progress-quizzes-done">–</span>
                 <span class="stat-tile__label">Missions Completed</span>
               </div>
               <div class="stat-tile">
-                <span class="stat-tile__value" id="progress-review-due">4</span>
+                <span class="stat-tile__value" id="progress-review-due">–</span>
                 <span class="stat-tile__label">Review Items Due</span>
               </div>
             </div>

@@ -844,40 +844,31 @@ function showProgressUnavailable(reason) {
   // as Overall Progress above — no guess is safer than a wrong guess.
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[dashboard.js] waiting for progress...');
+document.addEventListener('DOMContentLoaded', () => {
+  // FIX (this session): this used to `await Promise.race([readyPromise,
+  // timeout])` BEFORE calling any render*() function below — so even
+  // in the fast, common case where whenProgressReady() resolves
+  // almost immediately, every render was pushed at least one tick
+  // past the browser's first paint of the static fallback markup
+  // (dashboard.html's "Let's continue your ASL journey.", the
+  // Overall Progress bar sitting at an unset/full width, etc). That
+  // paint-then-immediately-overwrite was the flicker: the fallback
+  // text and full-width bar were visible for a real, user-noticeable
+  // instant before snapping to the actual values.
+  //
+  // Per this file's own LOADING/FAILURE HANDLING doc comment above,
+  // every render function already reads synchronously from
+  // localStorage regardless of whether whenProgressReady() has
+  // resolved — hydration only matters for pulling in a DIFFERENT
+  // device's saved progress, not for the common single-device case
+  // this render pass covers. So there's nothing to actually wait for
+  // before rendering: do the real render immediately, synchronously,
+  // in the same tick as DOMContentLoaded, and run the
+  // whenProgressReady()-vs-timeout race afterward purely as a
+  // background diagnostic (existing console logging), no longer
+  // gating the paint on it.
+  console.log('[dashboard.js] rendering from local cache immediately');
 
-  // Races whenProgressReady() against a bounded timeout rather than
-  // awaiting it unconditionally — see PROGRESS_READY_TIMEOUT_MS's own
-  // comment for why (it can hang forever, confirmed).
-  const readyPromise = window.LWProgress?.whenProgressReady?.();
-  let timedOut = false;
-
-  if (readyPromise && typeof readyPromise.then === 'function') {
-    const outcome = await Promise.race([
-      readyPromise.then(() => 'ready'),
-      new Promise((resolve) => setTimeout(() => resolve('timeout'), PROGRESS_READY_TIMEOUT_MS)),
-    ]);
-    timedOut = outcome === 'timeout';
-    if (timedOut) {
-      // Every render function reads straight from localStorage
-      // synchronously — hydration finishing only matters for pulling
-      // in a DIFFERENT device's saved progress, so rendering now
-      // instead of continuing to wait is safe for the common case.
-      console.warn(`[dashboard.js] whenProgressReady() did not resolve within ${PROGRESS_READY_TIMEOUT_MS}ms — rendering from local cache instead of waiting indefinitely.`);
-    } else {
-      console.log('[dashboard.js] progress ready, rendering now');
-    }
-  } else {
-    // window.LWProgress (or whenProgressReady itself) isn't present —
-    // most likely js/engine/progress.js's <script> tag failed to load.
-    // Falls through to the check right below, which catches this.
-    console.warn('[dashboard.js] window.LWProgress.whenProgressReady() is unavailable.');
-  }
-
-  // The one case no render function can gracefully no-op past: LWData/
-  // LWProgress never loaded at all — without this check the learner
-  // would silently see the static loading placeholders forever.
   if (!window.LWProgress || !window.LWData) {
     showProgressUnavailable('window.LWProgress/window.LWData did not load');
     return;
@@ -910,5 +901,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // nothing but a silent console error.
     console.error('[dashboard.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
+    return;
+  }
+
+  // Background-only from here down: purely diagnostic logging for a
+  // slow/hung whenProgressReady(), same PROGRESS_READY_TIMEOUT_MS
+  // reasoning as before. Deliberately NOT re-running the render
+  // functions on 'ready' — doing so would just reintroduce the exact
+  // flicker this fix removes, snapping already-correct values to...
+  // the same already-correct values, in the common case. If real
+  // cross-device hydration lands later (see this file's TODO about
+  // replacing MOCK_PROGRESS with Firestore), that's the point to
+  // revisit whether a second, quieter render pass is worth it.
+  const readyPromise = window.LWProgress?.whenProgressReady?.();
+  if (readyPromise && typeof readyPromise.then === 'function') {
+    Promise.race([
+      readyPromise.then(() => 'ready'),
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), PROGRESS_READY_TIMEOUT_MS)),
+    ]).then((outcome) => {
+      if (outcome === 'timeout') {
+        console.warn(`[dashboard.js] whenProgressReady() did not resolve within ${PROGRESS_READY_TIMEOUT_MS}ms — already rendered from local cache, nothing further to do.`);
+      } else {
+        console.log('[dashboard.js] progress hydration confirmed ready (page was already rendered from local cache).');
+      }
+    });
+  } else {
+    console.warn('[dashboard.js] window.LWProgress.whenProgressReady() is unavailable.');
   }
 });

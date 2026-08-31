@@ -84,6 +84,7 @@
    "dark"] is the alternate, still fully supported via the toggle. */
 :root,
 [data-theme="light"] {
+  color-scheme: light;
   --clr-bg:          #FFF8F0;   /* warm cream page background            */
   --clr-surface:     #FFFFFF;   /* cards pop white against the cream bg  */
   --clr-surface-2:   #FDECDD;   /* soft peach — chips, hover, icon tiles */
@@ -117,6 +118,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --clr-bg:          #1F1712;   /* warm, brown-tinted near-black          */
   --clr-surface:     #2A2019;
   --clr-surface-2:   #362A21;
@@ -380,6 +382,15 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   overflow: hidden;
 }
 .progress-bar__fill {
+  width: 0%; /* FIX (this session): a block-level div with no explicit
+    width defaults to filling its parent (width:auto), so any
+    .progress-bar__fill without an inline style — pages/dashboard.html's
+    Overall Progress bar, pages/lesson.html's, pages/quiz.html's — was
+    rendering FULL on first paint and visibly snapping down to the real
+    percentage once JS set style.width. Defaulting to 0% here means a
+    bar with no JS-set width yet reads as "not started" instead of
+    "complete", which is the honest state and also the far less jarring
+    one to flash before the real value lands. */
   height: 100%;
   background: var(--clr-accent);
   border-radius: var(--radius-pill);

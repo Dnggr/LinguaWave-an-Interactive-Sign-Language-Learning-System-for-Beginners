@@ -397,9 +397,26 @@ function buildQuickCheckQuestion() {
  * (mockup screen 7). Called only from the correct branch of the
  * options click handler below — a wrong answer never opens this,
  * it just keeps the existing inline red highlight.
+ *
+ * BUGFIX (this session) — reported: the takeover was popping up on
+ * every single correct Quick Check answer across the whole lesson,
+ * which reads as naggy over a session with dozens of signs. Since
+ * every sign is its own full page load (see the COURSE SIDEBAR
+ * comment above boot()), a plain in-memory flag would reset on every
+ * navigation and never actually reduce anything — sessionStorage is
+ * used instead so "already seen this session" persists across pages,
+ * same pattern as this session's course-sidebar scroll fix above.
+ * After the first showing, correct answers keep the inline
+ * "✅ Nice — that's right." feedback (unchanged, still fires before
+ * this function is even called) but skip the full-screen takeover —
+ * still a clear, positive signal, just not a blocking interruption.
  */
+const QUICK_CHECK_MODAL_SHOWN_KEY = 'lw-quick-check-modal-shown';
+
 function showQuickCheckModal(signId) {
   if (!quickCheckModalEl) return;
+  if (sessionStorage.getItem(QUICK_CHECK_MODAL_SHOWN_KEY) === 'true') return;
+  sessionStorage.setItem(QUICK_CHECK_MODAL_SHOWN_KEY, 'true');
   if (quickCheckModalBodyEl) {
     quickCheckModalBodyEl.textContent = `This sign means "${signId}". You're building your first conversation!`;
   }
@@ -1055,7 +1072,56 @@ function renderCourseSidebar() {
     // render shouldn't leave a half-built or stale sidebar up with
     // only a silent console error.
     showSidebarUnavailable(el, 'render threw: ' + (e && e.message));
+    return;
   }
+
+  restoreCourseSidebarScroll(el);
+  bindCourseSidebarScrollSave(el);
+}
+
+// BUGFIX (this session) — reported: "when choosing course from sidebar
+// it refreshed everything and goes to default state... it treats
+// every course as different links and makes the scroll go back from
+// beginning." Root cause: every row in #course-sidebar is a plain
+// <a href="lesson.html?..."> by design (see the COURSE SIDEBAR banner
+// comment above boot() — full page nav, same as Prev/Next, decided
+// on purpose this session) so clicking one is a real navigation, not
+// an in-page state change — the browser has nothing to remember the
+// old scroll position with on its own.
+//
+// Fix keeps that full-navigation design as-is (least risk — the
+// camera lifecycle's beforeunload-based shutdown() still doesn't need
+// to know or care) and instead persists #course-sidebar's scrollTop
+// across the navigation via sessionStorage, keyed generically (not
+// per-URL) since the sidebar's own scroll position is a property of
+// "where the learner was browsing," not of any one lesson page.
+const COURSE_SIDEBAR_SCROLL_KEY = 'lw-course-sidebar-scroll';
+let courseSidebarScrollSaveTimer = null;
+
+function restoreCourseSidebarScroll(el) {
+  const saved = sessionStorage.getItem(COURSE_SIDEBAR_SCROLL_KEY);
+  if (saved !== null) {
+    el.scrollTop = Number(saved) || 0;
+    return;
+  }
+  // First visit this session (nothing saved yet) — bring the current
+  // unit/sign into view instead of leaving the sidebar at the very
+  // top, same intent as the "current" class already computed above.
+  el.querySelector('.course-sidebar__unit--current, .course-sidebar__sign--current')
+    ?.scrollIntoView({ block: 'center' });
+}
+
+function bindCourseSidebarScrollSave(el) {
+  el.addEventListener('scroll', () => {
+    // Debounced — a scroll event fires continuously, and writing to
+    // sessionStorage on every single one is unnecessary churn for a
+    // value that only needs to be current by the time the learner
+    // actually clicks a link and navigates away.
+    clearTimeout(courseSidebarScrollSaveTimer);
+    courseSidebarScrollSaveTimer = setTimeout(() => {
+      sessionStorage.setItem(COURSE_SIDEBAR_SCROLL_KEY, String(el.scrollTop));
+    }, 150);
+  });
 }
 
 
@@ -1216,18 +1282,26 @@ function updateLessonMeta() {
         : `learn.html?level=${encodeURIComponent(level)}`);
   }
 
-  // REV 3: viewing a sign is enough to count as "practiced" — the
-  // graded check now happens in the category assessment, not here.
-  // NEW — Rev4 Phase 2: skip this for the name drill. LWProgress's
-  // unlock/stats model (isCategoryUnlocked, getLevelStats, ...) walks
-  // window.LWData.CATEGORIES, which 'fingerspell_name' deliberately
-  // isn't part of (see computeSignOrder()'s comment) — recording under
-  // it would just create an orphan entry nothing ever reads, and would
-  // surface a raw "MY_NAME" pill in the dashboard's recap grid, which
-  // is more confusing than helpful. Revisit once Phase 3 flattens
-  // progress.js onto UNITS — Unit 2 completion can be tracked properly
-  // there instead of bolted onto the old level/category shape.
-  if (!isNameDrill) window.LWProgress?.recordSignPracticed?.(level, category, sign);
+  // BUGFIX (this session): recordSignPracticed() used to fire right
+  // here, unconditionally, every time updateLessonMeta() ran — which
+  // is the very first thing boot() calls on page load. That meant
+  // clicking a sign card on learn.html was ALL it took to have that
+  // sign show up back there with a ✔ / "done" badge, before the
+  // learner had watched the video, tried the Practice Check, or done
+  // anything at all. Reported bug: "clicking a course topic
+  // automatically checks it off." The REV 3 product decision quoted
+  // above this function ("viewing/opening a sign now calls
+  // recordSignPracticed() immediately") is exactly what caused it —
+  // "viewing" was implemented as "the page finished loading," not
+  // "the learner actually looked at this."
+  //
+  // Fix: record practiced when the learner actually LEAVES the sign
+  // (Next / Prev / Finish → Category Assessment), not when it opens.
+  // That's a real engagement signal — they were on the page — instead
+  // of an artifact of navigation. See setupNavButtons() below, which
+  // now calls markCurrentSignPracticed() in each nav handler before
+  // navigating away. isNameDrill is still exempted, same as before
+  // (see that guard's own comment above).
 
   const stripBadgeEl = document.getElementById('lesson-strip-badge');
   if (stripBadgeEl) {
@@ -1406,11 +1480,21 @@ function setupNavButtons() {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
 
+  // BUGFIX (this session, paired with the removed call in
+  // updateLessonMeta() above): the single place recordSignPracticed()
+  // now fires from. Still skips the name drill for the same reason
+  // the old call site did (see that guard's comment) — this drill has
+  // its own recordUnitAssessment() completion signal elsewhere.
+  function markCurrentSignPracticed() {
+    if (!isNameDrill) window.LWProgress?.recordSignPracticed?.(level, category, sign);
+  }
+
   if (btnPrev) {
     if (signIdx <= 0) {
       btnPrev.setAttribute('disabled', '');
     } else {
       btnPrev.onclick = () => {
+        markCurrentSignPracticed();
         shutdown();
         window.location = navUrl(signOrder[signIdx - 1]);
       };
@@ -1436,12 +1520,14 @@ function setupNavButtons() {
       // not the in-lesson camera quiz (which is optional practice only).
       btnNext.textContent = 'Finish → Category Assessment 📝';
       btnNext.onclick = () => {
+        markCurrentSignPracticed();
         shutdown();
         window.location = `quiz.html?level=${level}&category=${category}`;
       };
     } else {
       btnNext.textContent = 'Next Sign →';
       btnNext.onclick = () => {
+        markCurrentSignPracticed();
         shutdown();
         window.location = navUrl(signOrder[signIdx + 1]);
       };

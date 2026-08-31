@@ -354,49 +354,6 @@ async function hydrateStore() {
   }
 
   /**
-   * BUGFIX (this session) — the sidebar's "Quiz" link (present on
-   * dashboard/learn/progress/feedback/settings, see each page's
-   * `app-sidebar__nav`) has always pointed at plain `quiz.html`, with
-   * no `?level=&category=` — every other route into quiz.js supplies
-   * both (learn.js's category-card CTA, lesson.js's "Finish" button,
-   * dashboard.js's retake link). With neither param, `buildScope()`
-   * resolves `cat` to `null` AND `categoryId` itself to `null`, so the
-   * title/subtitle template literals render the literal string
-   * `"null"` (`${cat?.title ?? categoryId}` — `categoryId` really is
-   * the value `null`, and JS stringifies that as `"null"` inside a
-   * template literal) and `scope.signs` is `[]`, which falls into
-   * showEmptyState()'s "doesn't have trained sign content yet"
-   * message — actively misleading, since the category isn't untrained,
-   * it's just unspecified.
-   *
-   * Fix: give the sidebar link a real destination instead of patching
-   * the symptom. This resolves "the assessment for wherever the
-   * learner actually is" — the same category `getOrderedLiveCategories()`
-   * + `getCategoryProgress()` would call "next" for Continue/dashboard
-   * routing, but assessment-aware: skips anything already passed, and
-   * never returns something the learner can't reach yet (unlock check
-   * mirrors `isCategoryUnlocked()`, not reimplemented ad hoc). quiz.js
-   * calls this once, top-level, before ever building a scope with a
-   * missing categoryId — see its own BUGFIX comment.
-   */
-  function getNextAssessmentTarget() {
-    const chain = getOrderedLiveCategories();
-    for (const cat of chain) {
-      if (!isCategoryUnlocked(cat.level, cat.id)) break; // locked wall — stop, nothing further is reachable either
-      const prog = getCategoryProgress(cat.level, cat.id);
-      if (!prog.assessment?.passed) return { level: cat.level, categoryId: cat.id };
-    }
-    // Every unlocked category so far has already passed — offer a
-    // retake of the most recently unlocked one instead of nothing.
-    for (let i = chain.length - 1; i >= 0; i--) {
-      if (isCategoryUnlocked(chain[i].level, chain[i].id)) {
-        return { level: chain[i].level, categoryId: chain[i].id };
-      }
-    }
-    return null; // no live, unlocked category exists yet (e.g. brand-new account, data.js failed to load)
-  }
-
-  /**
    * NEW (this session) — every 'interactive' unit tagged `gated: true`
    * in data.js's UNITS array (currently just fingerspell_name), in
    * UNITS order. Data-driven per this repo's own convention (see
@@ -521,6 +478,59 @@ async function hydrateStore() {
     return out;
   }
 
+  /**
+   * BUGFIX (this session, ported in) — the sidebar's "Quiz" link
+   * (present on dashboard/learn/progress/feedback/settings, see each
+   * page's `app-sidebar__nav`) has always pointed at plain
+   * `quiz.html`, with no `?level=&category=` — every other route into
+   * quiz.js supplies both (learn.js's category-card CTA, lesson.js's
+   * "Finish" button, dashboard.js's retake link). With neither param,
+   * `buildScope()` resolves `cat` to `null` AND `categoryId` itself to
+   * `null`, so the title/subtitle template literals render the
+   * literal string `"null"` (`${cat?.title ?? categoryId}` —
+   * `categoryId` really is the value `null`, and JS stringifies that
+   * as `"null"` inside a template literal) and `scope.signs` is `[]`,
+   * which falls into showEmptyState()'s "doesn't have trained sign
+   * content yet" message — actively misleading, since the category
+   * isn't untrained, it's just unspecified.
+   *
+   * This function itself was already written correctly, but landed in
+   * an editor artifact at the top-level `js/progress.js` — a file no
+   * page's <script> tag ever actually points at (every page loads
+   * `js/engine/progress.js`) — so `window.LWProgress.
+   * getNextAssessmentTarget` was `undefined` in the live app and
+   * quiz.js's `?.()` call silently no-opped instead of throwing,
+   * which is why the fix looked "done" in that file's own comments
+   * but the sidebar Quiz link kept showing the "null" bug in practice.
+   * Ported here (the file every page actually loads) and the stale
+   * top-level copy removed. See AI_MEMORY.md's session log.
+   *
+   * Resolves "the assessment for wherever the learner actually is" —
+   * the same category `getOrderedLiveCategories()` +
+   * `getCategoryProgress()` would call "next" for Continue/dashboard
+   * routing, but assessment-aware: skips anything already passed, and
+   * never returns something the learner can't reach yet (unlock check
+   * mirrors `isCategoryUnlocked()`, not reimplemented ad hoc). quiz.js
+   * calls this once, top-level, before ever building a scope with a
+   * missing categoryId — see its own BUGFIX comment.
+   */
+  function getNextAssessmentTarget() {
+    const chain = getOrderedLiveCategories();
+    for (const cat of chain) {
+      if (!isCategoryUnlocked(cat.level, cat.id)) break; // locked wall — stop, nothing further is reachable either
+      const prog = getCategoryProgress(cat.level, cat.id);
+      if (!prog.assessment?.passed) return { level: cat.level, categoryId: cat.id };
+    }
+    // Every unlocked category so far has already passed — offer a
+    // retake of the most recently unlocked one instead of nothing.
+    for (let i = chain.length - 1; i >= 0; i--) {
+      if (isCategoryUnlocked(chain[i].level, chain[i].id)) {
+        return { level: chain[i].level, categoryId: chain[i].id };
+      }
+    }
+    return null; // no live, unlocked category exists yet (e.g. brand-new account, data.js failed to load)
+  }
+
   window.LWProgress = {
     PASS_THRESHOLD, LEVEL_ORDER,
     recordSignPracticed, recordCategoryAssessment, recordLevelAssessment,
@@ -530,7 +540,7 @@ async function hydrateStore() {
     isCategoryUnlocked, isLevelUnlocked, isLevelFinalUnlocked,
     liveCategoriesFor, getAllLearnedSigns,
     getOrderedLiveCategories, // NEW — exposed pre-emptively for Phase 4's learn.js trail view; not consumed anywhere yet.
-    getNextAssessmentTarget, // NEW (this session) — see its own doc comment; now consumed by quiz.js's param-less-load bugfix.
+    getNextAssessmentTarget, // BUGFIX (this session) — ported from the unreferenced js/progress.js, see doc comment above.
     whenProgressReady, STORE_KEY,
   };
 })();
