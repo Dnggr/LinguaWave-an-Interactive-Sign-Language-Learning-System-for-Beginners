@@ -153,7 +153,14 @@ const quickCheckImageEl    = document.getElementById('quick-check-image');
 const quickCheckOptionsEl  = document.getElementById('quick-check-options');
 const quickCheckFeedbackEl = document.getElementById('quick-check-feedback');
 const btnQuickCheckSkipEl  = document.getElementById('btn-quick-check-skip');
-
+// NEW — Quick Check correct-answer takeover (mockup screen 7): a
+// standalone "Correct!" confirmation, separate from the small inline
+// feedback line quickCheckFeedbackEl still renders under the options
+// for both outcomes. Only ever shown for a correct answer.
+const quickCheckModalEl        = document.getElementById('quick-check-modal');
+const quickCheckModalBodyEl    = document.getElementById('quick-check-modal-body');
+const quickCheckModalDismissEl = document.getElementById('quick-check-modal-dismiss');
+const quickCheckModalExplainEl = document.getElementById('quick-check-modal-explain');
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
@@ -386,6 +393,41 @@ function buildQuickCheckQuestion() {
 }
 
 /**
+ * Shows the standalone "Correct!" takeover for a Quick Check answer
+ * (mockup screen 7). Called only from the correct branch of the
+ * options click handler below — a wrong answer never opens this,
+ * it just keeps the existing inline red highlight.
+ */
+function showQuickCheckModal(signId) {
+  if (!quickCheckModalEl) return;
+  if (quickCheckModalBodyEl) {
+    quickCheckModalBodyEl.textContent = `This sign means "${signId}". You're building your first conversation!`;
+  }
+  quickCheckModalEl.hidden = false;
+  quickCheckModalDismissEl?.focus();
+}
+function hideQuickCheckModal() {
+  if (!quickCheckModalEl) return;
+  quickCheckModalEl.hidden = true;
+  // Return focus to the card itself rather than a disabled option
+  // button — every option is disabled by this point (see the click
+  // handler below), so there's nothing meaningful to refocus inside it.
+  quickCheckCardEl?.focus?.();
+}
+quickCheckModalDismissEl?.addEventListener('click', hideQuickCheckModal);
+quickCheckModalEl?.querySelector('[data-quick-check-dismiss]')?.addEventListener('click', hideQuickCheckModal);
+quickCheckModalExplainEl?.addEventListener('click', () => {
+  hideQuickCheckModal();
+  // "View Explanation" — scroll back to the "How to perform the
+  // sign" card already on this page, rather than opening yet another
+  // panel with the same content.
+  document.getElementById('lesson-desc')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && quickCheckModalEl && !quickCheckModalEl.hidden) hideQuickCheckModal();
+});
+
+/**
  * Shows (or hides) the Quick Check card for the sign currently on
  * screen. Called once from updateLessonMeta() on every sign load —
  * never mid-page, since navigating away/back is what re-triggers a
@@ -393,6 +435,7 @@ function buildQuickCheckQuestion() {
  */
 function showQuickCheck() {
   if (!quickCheckCardEl) return;
+  hideQuickCheckModal();
 
   if (!shouldShowQuickCheck()) {
     quickCheckCardEl.style.display = 'none';
@@ -448,6 +491,11 @@ function showQuickCheck() {
             : `❌ Not quite — it was "${q.signId}".`;
           quickCheckFeedbackEl.className = `assessment-feedback assessment-feedback--${correct ? 'success' : 'error'}`;
         }
+        // Correct answers get the standalone "Correct!" takeover
+        // (mockup screen 7); wrong answers stay with just the inline
+        // red highlight + feedback line above — no takeover, so a
+        // miss never feels like a bigger event than a hit.
+        if (correct) showQuickCheckModal(q.signId);
         // Purely formative — no LWProgress write, no persisted score.
         // Prev/Next already work regardless of whether this was ever
         // answered (see setupNavButtons(), untouched by this feature).
@@ -1197,7 +1245,7 @@ function updateLessonMeta() {
     if (lessonDescriptionEl) lessonDescriptionEl.textContent = signData.description;
 
     if (lessonTipsEl && Array.isArray(signData.tips)) {
-      lessonTipsEl.innerHTML = signData.tips.map(t => `<li>✦ ${escapeHtml(t)}</li>`).join('');
+      lessonTipsEl.innerHTML = signData.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('');
     }
 
     if (lessonImageEl) {
@@ -1250,7 +1298,7 @@ function updateLessonMeta() {
         'Hold each letter clearly until it registers before moving to the next',
         'A brief pause between letters is fine — you get a fresh countdown for each one',
         'Reuses the same trained A–Z alphabet model — no new signs to learn here',
-      ].map(t => `<li>✦ ${escapeHtml(t)}</li>`).join('');
+      ].map(t => `<li>${escapeHtml(t)}</li>`).join('');
     }
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');

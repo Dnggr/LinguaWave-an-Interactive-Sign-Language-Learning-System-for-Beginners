@@ -66,23 +66,47 @@
        first element in <body>. Uses css/style.css's shared .skip-link. -->
   <a href="#lesson-grid" class="skip-link">Skip to learning path</a>
 
-  <nav class="navbar">
-    <div class="container navbar__inner">
-      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
-      <ul class="navbar__links">
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="learn.html" class="active">Learn</a></li>
-      </ul>
-      <div class="navbar__user">
+  <!-- ── APP SHELL (sidebar nav — see css/style.css §17) ──────
+     Layout shell only: theme-toggle / data-logout ids unchanged
+     from the old navbar, just re-homed here. -->
+<div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link ">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link ">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Quiz
+        </a>
+        <a href="feedback.html" class="app-sidebar__link ">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link ">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
                 aria-label="Toggle light/dark theme">
           <span class="theme-toggle__thumb"></span>
         </button>
-        <span>👋 <span data-user-name>Learner</span></span>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
-    </div>
-  </nav>
+    </aside>
+  <div class="app-main">
 
   <!-- ── PAGE HEADER ──────────────────────────────────────────────── -->
   <!-- #learn-context / #learn-back-link: js/learn.js shows/updates
@@ -95,9 +119,9 @@
   <section class="section section--sm">
     <div class="container">
       <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
-      <h1 class="mt-4">📖 Your ASL Learning Path</h1>
+      <h1 class="mt-4">Learning Path</h1>
       <p class="mt-2 text-muted">
-        One path from the alphabet to full phrases — work through it in order, or jump into anything you've already unlocked.
+        Choose a level to start learning.
       </p>
       <p class="mt-2 text-muted" id="learn-context" style="display:none;"></p>
       <a href="#" class="back-link mt-2" id="learn-back-link" style="display:none;">← Back to Learning Path</a>
@@ -189,5 +213,8 @@
   <script src="../js/data.js"></script>
   <script src="../js/engine/progress.js"></script>
   <script src="../js/learn.js"></script>
+  </div><!-- /.app-main -->
+</div><!-- /.app-shell -->
+
 </body>
 </html>

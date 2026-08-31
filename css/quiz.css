@@ -2,13 +2,16 @@
 .quiz-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); flex-wrap: wrap; }
 .quiz-counter { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700; color: var(--clr-accent); white-space: nowrap; }
 .quiz-question__prompt { font-size: var(--fs-lg); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-6); }
+.quiz-question__img-clue { margin-bottom: var(--space-6); }
 .quiz-question__img-placeholder {
   display: flex; align-items: center; justify-content: center; height: 180px;
   background: var(--clr-surface-2); border: 1px dashed var(--clr-border);
   border-radius: var(--radius-md); color: var(--clr-text-muted); font-size: var(--fs-sm);
-  margin-bottom: var(--space-6);
 }
-.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.quiz-options {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);
+  counter-reset: quiz-option;
+}
 .quiz-option {
   padding: var(--space-4) var(--space-6); background: var(--clr-surface-2);
   border: 2px solid var(--clr-border); border-radius: var(--radius-md);
@@ -22,6 +25,55 @@
 .quiz-results__score { font-family: var(--font-display); font-size: 5rem; font-weight: 700; color: var(--clr-accent); line-height: 1; margin-bottom: var(--space-4); }
 .quiz-actions { }
 @media (max-width: 480px) { .quiz-options { grid-template-columns: 1fr; } }
+
+/* Lettered options (A/B/C/D) — the plain text-choice buttons only;
+   the photo variant (image + label stacked, below) already carries
+   enough visual identity of its own that a letter badge would just
+   be one more thing to parse. */
+.quiz-option:not(.quiz-option--photo) {
+  display: flex; align-items: center; gap: var(--space-3); text-align: left;
+}
+.quiz-option:not(.quiz-option--photo)::before {
+  content: counter(quiz-option, upper-alpha);
+  counter-increment: quiz-option;
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs); color: var(--clr-text-muted);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.quiz-option--correct:not(.quiz-option--photo)::before { background: var(--clr-success); border-color: var(--clr-success); color: var(--clr-text-invert); }
+.quiz-option--wrong:not(.quiz-option--photo)::before    { background: var(--clr-red);     border-color: var(--clr-red);     color: var(--clr-text-invert); }
+
+/* ── Identification questions — sign clue left, answers right ──────
+   Mockup screen 8: a sign demonstration on the left, four large
+   answer buttons on the right, rather than the clue stacked full-
+   width above the options. Only kicks in when quiz.js's showQuestion()
+   marks the card with .quiz-question--has-image (an 'id'-type
+   question) — a plain multiple-choice question (no clue image) keeps
+   the simple stacked layout above. */
+.quiz-question--has-image {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) 1fr;
+  grid-template-areas:
+    "prompt  prompt"
+    "image   options"
+    "feedback feedback";
+  gap: var(--space-3) var(--space-6);
+  align-items: start;
+}
+.quiz-question--has-image .quiz-question__prompt { grid-area: prompt; margin-bottom: 0; }
+.quiz-question--has-image .quiz-question__img-clue { grid-area: image; margin-bottom: 0; }
+.quiz-question--has-image .quiz-question__img-clue img,
+.quiz-question--has-image .quiz-question__img-placeholder { width: 100%; }
+.quiz-question--has-image #q-options { grid-area: options; }
+.quiz-question--has-image #q-feedback { grid-area: feedback; }
+@media (max-width: 640px) {
+  .quiz-question--has-image {
+    grid-template-columns: 1fr;
+    grid-template-areas: "prompt" "image" "options" "feedback";
+  }
+}
 
 /* ── Assessment engine additions (js/quiz.js) ─────────────────────── */
 .quiz-feedback {
@@ -85,3 +137,65 @@
   text-align: center; padding: var(--space-2);
 }
 .quiz-option__label { font-size: var(--fs-sm); font-weight: 600; }
+
+/* ── Quiz Feedback — correct-answer takeover (mockup screen 9) ─────
+   Same visual language as pages/lesson.html's #quick-check-modal;
+   restated here since quiz.html doesn't load lesson.css. Adds a
+   collapsible "View Explanation" paragraph the lesson-page version
+   doesn't need (there it can scroll back to the lesson content
+   itself; here there's no lesson card to scroll to, so the
+   explanation is inline instead). */
+.quiz-modal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+}
+.quiz-modal[hidden] { display: none; }
+.quiz-modal__backdrop {
+  position: absolute; inset: 0;
+  background: rgba(43, 33, 26, .45);
+  animation: quiz-fade-in var(--dur-base) var(--ease);
+}
+[data-theme="dark"] .quiz-modal__backdrop { background: rgba(0, 0, 0, .6); }
+.quiz-modal__box {
+  position: relative; width: 100%; max-width: 360px;
+  background: var(--clr-surface); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  text-align: center;
+  animation: quiz-modal-pop var(--dur-slow) var(--ease);
+}
+.quiz-modal__icon {
+  font-size: 48px; line-height: 1;
+  width: 76px; height: 76px; margin: 0 auto var(--space-4);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--clr-success-soft); border-radius: 50%;
+}
+.quiz-modal__title { font-family: var(--font-display); color: var(--clr-success); margin-bottom: var(--space-2); }
+.quiz-modal__body { color: var(--clr-text-muted); margin-bottom: var(--space-4); }
+.quiz-modal__explanation {
+  text-align: left; font-size: var(--fs-sm); color: var(--clr-text);
+  background: var(--clr-surface-2); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4);
+}
+.quiz-modal__explanation[hidden] { display: none; }
+.quiz-modal__explain {
+  display: block; width: 100%; margin-top: var(--space-3);
+  background: none; border: none; padding: var(--space-1);
+  color: var(--clr-text-muted); font-size: var(--fs-sm); font-family: var(--font-body);
+  text-decoration: underline; cursor: pointer;
+}
+.quiz-modal__explain:hover { color: var(--clr-accent); }
+
+@keyframes quiz-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes quiz-modal-pop {
+  0%   { opacity: 0; transform: scale(.9) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quiz-modal__backdrop,
+  .quiz-modal__box { animation: none; }
+}

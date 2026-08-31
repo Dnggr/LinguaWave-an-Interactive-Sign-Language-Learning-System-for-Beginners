@@ -117,50 +117,54 @@ button.category-card {
 .learn-search-empty { padding: var(--space-2) 0 var(--space-4); }
 .is-search-hidden { display: none !important; }
 
+/* Rows, not tiles — a level's units read top-to-bottom like the
+   mockup's flat, expandable Level list, instead of a card grid you
+   have to scan in two dimensions. Each row: small round icon, unit
+   name, status pill, right-aligned chevron. */
 .course-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 .course-card {
-  display: flex; flex-direction: column; width: 100%;
+  display: flex; align-items: center; gap: var(--space-4); width: 100%;
   background: var(--clr-surface); border: 1px solid var(--clr-border);
-  border-radius: var(--radius-xl); overflow: hidden;
+  border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
   text-align: left; text-decoration: none; color: var(--clr-text);
   font: inherit; cursor: pointer;
-  transition: border-color var(--dur-base) var(--ease), transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+  transition: border-color var(--dur-base) var(--ease), background var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
 }
 .course-card:hover:not(.course-card--locked) {
-  border-color: var(--clr-accent); transform: translateY(-3px);
-  box-shadow: var(--shadow-card); text-decoration: none;
+  border-color: var(--clr-accent); background: var(--clr-accent-soft);
+  text-decoration: none;
 }
 .course-card--locked { opacity: .55; cursor: not-allowed; pointer-events: none; }
 .course-card--current { border-color: var(--clr-accent); border-width: 2px; box-shadow: var(--shadow-card); }
 .course-card--done { border-color: var(--clr-success); }
 .course-card__thumb {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  height: 92px; font-size: var(--fs-3xl); background: var(--clr-accent-soft);
+  position: relative; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--radius-pill);
+  font-size: var(--fs-lg); background: var(--clr-accent-soft);
 }
 .course-card--done .course-card__thumb { background: var(--clr-success-soft); }
-/* Small checkmark badge on a finished unit's thumb, on top of the
-   status badge text — a done unit previously only differed from an
-   in-progress one by border color, easy to miss at a glance next to
-   the busier "current" cards. */
+/* Small checkmark badge on a finished unit's thumb — a done unit
+   previously only differed from an in-progress one by border color,
+   easy to miss at a glance next to the busier "current" rows. */
 .course-card--done .course-card__thumb::after {
   content: '✓';
-  position: absolute; bottom: 6px; left: 6px;
-  width: 22px; height: 22px; border-radius: 50%;
+  position: absolute; bottom: -2px; right: -2px;
+  width: 18px; height: 18px; border-radius: 50%;
   background: var(--clr-success); color: var(--clr-text-invert);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; box-shadow: 0 0 0 2px var(--clr-surface);
+  font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--clr-surface);
 }
-.course-card__badge { position: absolute; top: var(--space-2); right: var(--space-2); }
-.course-card__body { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); }
+.course-card__badge { flex: 0 0 auto; }
+.course-card__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
 .course-card__eyebrow {
   font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
   color: var(--clr-text-muted); font-weight: 600;
 }
-.course-card__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); line-height: 1.3; }
+.course-card__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-base); line-height: 1.3; }
 
 /* ── Sidebar panels ─────────────────────────────────────────────────
    .sidebar-panel--continue (new) gives the "Continue Learning" panel

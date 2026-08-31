@@ -169,6 +169,27 @@
         <div class="score-display mt-3" id="quiz-camera-score">Bonus score: 0 / 0</div>
       </div>
 
+      <!-- ── QUIZ FEEDBACK — CORRECT-ANSWER TAKEOVER ───────────────
+           Mockup screen 9 ("Quiz Feedback"): the same "Correct!"
+           confirmation pattern as pages/lesson.html's Quick Check
+           takeover (#quick-check-modal there), reused here for a
+           graded quiz question. Only ever shown on a correct answer —
+           see selectAnswer() in quiz.js; a wrong answer keeps the
+           existing inline red highlight + auto-advance, unchanged.
+           Markup only; quiz.js populates the text and toggles
+           [hidden]. -->
+      <div class="quiz-modal" id="quiz-modal" hidden>
+        <div class="quiz-modal__backdrop" data-quiz-modal-dismiss></div>
+        <div class="quiz-modal__box" role="dialog" aria-modal="true" aria-labelledby="quiz-modal-title" aria-describedby="quiz-modal-body">
+          <div class="quiz-modal__icon" aria-hidden="true">✅</div>
+          <h2 class="quiz-modal__title" id="quiz-modal-title">Correct!</h2>
+          <p class="quiz-modal__body" id="quiz-modal-body"></p>
+          <p class="quiz-modal__explanation" id="quiz-modal-explanation" hidden></p>
+          <button type="button" class="btn btn--primary btn--full" id="quiz-modal-continue">Continue →</button>
+          <button type="button" class="quiz-modal__explain" id="quiz-modal-explain">View Explanation</button>
+        </div>
+      </div>
+
       <!-- ── RESULTS CARD ──────────────────────────────────────────── -->
       <div class="quiz-results card mt-8" id="results-card" style="display:none;">
         <div class="text-center">

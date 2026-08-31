@@ -129,9 +129,31 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   height: 300px; color: var(--clr-text-muted); gap: var(--space-2); font-size: var(--fs-sm);
 }
-.lesson-desc .lesson-desc__tips { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--fs-sm); color: var(--clr-text-muted); }
+/* Numbered steps, not bullets — "How to perform the sign" reads as a
+   short sequence (this content genuinely is ordered: hand shape, then
+   placement, then movement), so a numbered marker earns its place
+   here. counter-reset/counter-increment do the numbering; the <li>
+   itself carries no list-style so the circled number is the only
+   marker. */
+.lesson-desc .lesson-desc__tips {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  font-size: var(--fs-sm); color: var(--clr-text);
+  list-style: none; counter-reset: step; padding-left: 0;
+}
+.lesson-desc .lesson-desc__tips li {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  counter-increment: step;
+}
+.lesson-desc .lesson-desc__tips li::before {
+  content: counter(step);
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%; margin-top: 1px;
+  background: var(--clr-accent-soft); color: var(--clr-accent);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs);
+}
 .lesson-video { border-radius: var(--radius-lg); overflow: hidden; background: #000; }
 .lesson-video video { width: 100%; max-height: 400px; }
+.lesson-video-tip { margin-bottom: 0; }
 .lesson-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
 
 /* ── Quick Check (REV 4 PIVOT PHASE 6) ──────────────────────────────
@@ -173,4 +195,62 @@
   object-fit: contain; margin: 0 auto var(--space-4);
   background: var(--clr-surface-2); border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
+}
+
+/* ── Quick Check — correct-answer takeover ────────────────────────
+   Same visual language as pages/learn.html's #congrats-modal
+   (fixed backdrop + centered card, pop-in animation) restated here
+   since lesson.html doesn't load learn.css. Deliberately no confetti
+   — screen 7 in the mockup is calm and encouraging, not a big
+   celebration, matching the "avoid excessive gamification" brief. */
+.quick-check-modal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+}
+.quick-check-modal[hidden] { display: none; }
+.quick-check-modal__backdrop {
+  position: absolute; inset: 0;
+  background: rgba(43, 33, 26, .45);
+  animation: qc-fade-in var(--dur-base) var(--ease);
+}
+[data-theme="dark"] .quick-check-modal__backdrop { background: rgba(0, 0, 0, .6); }
+.quick-check-modal__box {
+  position: relative; width: 100%; max-width: 360px;
+  background: var(--clr-surface); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  text-align: center;
+  animation: qc-modal-pop var(--dur-slow) var(--ease);
+}
+.quick-check-modal__icon {
+  font-size: 48px; line-height: 1;
+  width: 76px; height: 76px; margin: 0 auto var(--space-4);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--clr-success-soft); border-radius: 50%;
+}
+.quick-check-modal__title {
+  font-family: var(--font-display); color: var(--clr-success);
+  margin-bottom: var(--space-2);
+}
+.quick-check-modal__body { color: var(--clr-text-muted); margin-bottom: var(--space-6); }
+.quick-check-modal__explain {
+  display: block; width: 100%; margin-top: var(--space-3);
+  background: none; border: none; padding: var(--space-1);
+  color: var(--clr-text-muted); font-size: var(--fs-sm); font-family: var(--font-body);
+  text-decoration: underline; cursor: pointer;
+}
+.quick-check-modal__explain:hover { color: var(--clr-accent); }
+
+@keyframes qc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes qc-modal-pop {
+  0%   { opacity: 0; transform: scale(.9) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-check-modal__backdrop,
+  .quick-check-modal__box { animation: none; }
 }

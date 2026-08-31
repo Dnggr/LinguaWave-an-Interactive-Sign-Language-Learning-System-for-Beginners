@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Sets data-theme before any CSS loads, so the page never flashes
+       the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('lw-theme');
+      var theme = saved || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <!--
+    pages/progress.html — Progress Overview (NEW)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Standalone "Your Progress" screen — reference-board
+               layout pass, panel 10. Pulled out of dashboard.html's
+               existing progress cards / review section into its own
+               dedicated screen reachable from the app sidebar, so
+               Dashboard stays "what do I do right now" and this page
+               is "how am I doing overall."
+
+    REUSES   : css/dashboard.css's .stats-grid/.stat-tile,
+               .unit-progress-list/.unit-progress-group/.unit-progress-row
+               (level-by-level breakdown) and .review-card (dashboard's
+               own "Review recent signs" section) — no new components,
+               same visual language as dashboard.html already
+               established. css/learn.css's conic-gradient ring
+               technique, scaled up via the page-scoped .progress-hero-ring
+               rule below (learn.css's own ring is sidebar-sized/96px;
+               this page's hero number needs a larger one).
+
+    DATA     : Wired to window.LWProgress/window.LWData by
+               js/progress-page.js. See that file's header for two
+               honest deviations from the mockup: this app has no
+               due-date/spaced-repetition data, so "Review Items Due"
+               shows the count of available review shortcuts instead;
+               and no activity timestamps exist, so Recent Activity
+               is a plain most-recent-first list, not "Today"/"2 days
+               ago" labels.
+
+    CONNECTS : ← app sidebar (every authenticated page)
+               → pages/learn.html (per-level "Continue" links)
+               → pages/lesson.html (per-sign review links)
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Progress — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../index.html');
+  });
+  </script>
+  <style>
+    /* Page-scoped: a larger version of css/learn.css's sidebar ring
+       (same conic-gradient technique, different size) for this page's
+       hero number — everything else reuses css/dashboard.css as-is. */
+    .progress-hero { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+    .progress-hero-ring {
+      --pct: 65;
+      position: relative; flex-shrink: 0;
+      width: 160px; height: 160px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-accent-soft) 0);
+    }
+    .progress-hero-ring::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; background: var(--clr-surface); }
+    .progress-hero-ring__pct { position: relative; z-index: 1; font-family: var(--font-display); font-size: var(--fs-3xl); font-weight: 700; color: var(--clr-accent); }
+    @media (max-width: 640px) { .progress-hero { justify-content: center; text-align: center; } }
+  </style>
+</head>
+<body>
+
+  <a href="#progress-by-level" class="skip-link">Skip to progress by level</a>
+
+  <!-- ── APP SHELL (sidebar nav — see css/style.css §17) ────────── -->
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Quiz
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
+                aria-label="Toggle light/dark theme">
+          <span class="theme-toggle__thumb"></span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+
+      <section class="section section--sm">
+        <div class="container">
+          <h1>Your Progress</h1>
+          <p class="text-muted mt-2">A full picture of how far you've come, level by level.</p>
+
+          <div class="card mt-8 progress-hero">
+            <div class="progress-hero-ring" id="progress-hero-pct">
+              <span class="progress-hero-ring__pct">65%</span>
+            </div>
+            <div class="stats-grid" style="flex:1;">
+              <div class="stat-tile">
+                <span class="stat-tile__value" id="progress-signs-learned">24</span>
+                <span class="stat-tile__label">Signs Learned</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-tile__value" id="progress-quizzes-done">3</span>
+                <span class="stat-tile__label">Missions Completed</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-tile__value" id="progress-review-due">4</span>
+                <span class="stat-tile__label">Review Items Due</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── REVIEW TODAY ─────────────────────────────────────────── -->
+      <section class="section section--sm">
+        <div class="container">
+          <div class="card review-card">
+            <h2 class="mb-2">Review Today</h2>
+            <p class="review-card__body">Strengthen what you learned earlier — a few signs due for a quick recall.</p>
+            <div class="review-card__actions" data-review-actions>
+              <span class="btn btn--ghost" aria-disabled="true">Loading…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PROGRESS BY LEVEL ────────────────────────────────────── -->
+      <section class="section section--sm" id="progress-by-level">
+        <div class="container">
+          <h2 class="mb-4">Progress by Level</h2>
+          <div class="card unit-progress-list" id="progress-by-level-list" tabindex="-1">
+            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading your level-by-level progress…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── RECENT ACTIVITY ──────────────────────────────────────── -->
+      <section class="section section--sm">
+        <div class="container">
+          <h2 class="mb-4">Recent Activity</h2>
+          <div class="card" id="progress-recent-activity">
+            <p class="text-muted loading-pulse">Loading recent activity…</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
+      </footer>
+
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
+
+  <script src="../js/main.js"></script>
+  <script src="../js/data.js"></script>
+  <script defer src="../js/engine/progress.js"></script>
+  <script src="../js/progress-page.js"></script>
+</body>
+</html>
