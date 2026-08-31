@@ -398,12 +398,12 @@ const CATEGORIES = [
   },
   // 22. Home
   {
-    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: true, unit: 23,
+    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 23,
     words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'GARDEN', 'YARD'],
   },
   // 23. Furniture
   {
-    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: true, unit: 24,
+    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: false, unit: 24,
     words: ['BED', 'PILLOW', 'BLANKET', 'CHAIR', 'TABLE', 'SOFA', 'DESK', 'SHELF', 'CABINET', 'CLOSET', 'LAMP'],
   },
   // 24. Household
@@ -819,7 +819,7 @@ const SIGNS = [
       'Rest your thumb against the side of your index finger',
       'Keep your wrist straight and hand relaxed',
     ],
-    imageUrl: '../assets/gifs/A.gif', videoUrl: '../assets/videos/basic/A.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/A.png', videoUrl: '../assets/videos/basic/A.mp4', detectionType: 'static',
   },
   {
     id: 'basic_B', level: 'basic', signId: 'B', title: 'Letter B', order: 2,
@@ -829,7 +829,7 @@ const SIGNS = [
       'Thumb tucks flat across the palm, not sticking out',
       'Palm faces forward, fingers point up',
     ],
-    imageUrl: '../assets/gifs/B.gif', videoUrl: '../assets/videos/basic/B.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/B.png', videoUrl: '../assets/videos/basic/B.mp4', detectionType: 'static',
   },
   {
     id: 'basic_C', level: 'basic', signId: 'C', title: 'Letter C', order: 3,
@@ -839,7 +839,7 @@ const SIGNS = [
       'Thumb curves inward to match the fingers',
       'Keep the "C" open, not closed into an O',
     ],
-    imageUrl: '../assets/gifs/C.gif', videoUrl: '../assets/videos/basic/C.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/C.png', videoUrl: '../assets/videos/basic/C.mp4', detectionType: 'static',
   },
   {
     id: 'basic_D', level: 'basic', signId: 'D', title: 'Letter D', order: 4,
@@ -849,7 +849,7 @@ const SIGNS = [
       'Thumb and middle finger meet to form a small circle',
       'Ring and pinky curl in gently',
     ],
-    imageUrl: '../assets/gifs/D.gif', videoUrl: '../assets/videos/basic/D.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/basic/D.png', videoUrl: '../assets/videos/basic/D.mp4', detectionType: 'static',
   },
   {
     id: 'basic_E', level: 'basic', signId: 'E', title: 'Letter E', order: 5,
@@ -3318,11 +3318,11 @@ const SIGNS = [
   },
   {
     id: 'medium_shapes_HEART', level: 'medium', category: 'shapes', signId: 'HEART', title: 'Heart', order: 7,
-    description: 'Use the middle fingers of both hands to trace the outline of a heart shape over your chest, meeting at the bottom.',
+    description: 'Use the index fingers of both hands to trace the outline of a heart shape over your chest, starting at the top center and meeting at the bottom.',
     tips: [
-      'Middle fingers lead the trace',
+      'Index fingers lead the trace, not the middle fingers',
       'Both hands move down and inward together',
-      'Finishes at a point in the center of the chest',
+      'The middle-finger chest-tap is a different sign — that one means the emotional concept of "heart," not the shape',
     ],
     imageUrl: '../assets/images/medium/shapes/heart.png', videoUrl: '../assets/videos/medium/shapes/heart.mp4', detectionType: 'motion',
   },
@@ -4205,6 +4205,252 @@ const SIGNS = [
       'Small twitching motion',
     ],
     imageUrl: '../assets/images/medium/animals/bug.png', videoUrl: '../assets/videos/medium/animals/bug.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · HOME (Unit 23) ── (new this pass — unlocks Unit 23.
+  // HOME and BATHROOM are duplicates of signs already verified
+  // elsewhere in this file (see medium_places_HOME and
+  // medium_health_BATHROOM); the other 8 words are fresh lifeprint.com
+  // (ASLU) research, cross-checked against Handspeak, aslbloom, and
+  // other secondary sources.)
+  {
+    id: 'medium_home_HOUSE', level: 'medium', category: 'home', signId: 'HOUSE', title: 'House', order: 1,
+    description: 'Touch the fingertips of both flat hands together above your head, like the peak of a roof, then pull them apart and angle them down to trace the slanted sides of the house.',
+    tips: [
+      'Both hands stay flat, palms facing each other',
+      'Starts at a peak, then comes down and out on both sides',
+      'Not the same sign as HOME — see below',
+    ],
+    imageUrl: '../assets/images/medium/home/house.png', videoUrl: '../assets/videos/medium/home/house.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/house.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_places_HOME.
+    id: 'medium_home_HOME', level: 'medium', category: 'home', signId: 'HOME', title: 'Home', order: 2,
+    description: 'Bring your fingertips and thumb together into a flattened ‘O’ shape. Touch them to the corner of your mouth, then move your hand back to touch your cheek near your ear.',
+    tips: [
+      'Two touches: mouth corner, then cheek/ear',
+      'Keep the hand shape compact the whole time',
+      'Same sign already used for HOME under Places',
+    ],
+    imageUrl: '../assets/images/medium/places/home.png', videoUrl: '../assets/videos/medium/places/home.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_home_BEDROOM', level: 'medium', category: 'home', signId: 'BEDROOM', title: 'Bedroom', order: 3,
+    description: 'A compound sign: rest the side of your head on your open flat hand at the cheek, like resting on a pillow, then trace the shape of a box in front of you with both flat hands.',
+    tips: [
+      'First part (BED): hand flat, head tilts to rest on it',
+      'Second part (ROOM): hands trace a box — sides, then front/back',
+      'This is BED + ROOM signed together',
+    ],
+    imageUrl: '../assets/images/medium/home/bedroom.png', videoUrl: '../assets/videos/medium/home/bedroom.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bedroom.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_health_BATHROOM.
+    id: 'medium_home_BATHROOM', level: 'medium', category: 'home', signId: 'BATHROOM', title: 'Bathroom', order: 4,
+    description: 'Form a ‘T’ handshape (fist with your thumb tucked between your index and middle fingers) and shake it gently side to side.',
+    tips: [
+      'Thumb pokes out between index and middle finger',
+      'Small, quick side-to-side shake',
+      'Same sign already used for BATHROOM under Needs',
+    ],
+    imageUrl: '../assets/images/medium/health/bathroom.png', videoUrl: '../assets/videos/medium/health/bathroom.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_home_KITCHEN', level: 'medium', category: 'home', signId: 'KITCHEN', title: 'Kitchen', order: 5,
+    description: 'Like the sign for COOK, but flip a ‘K’ handshape (index and middle finger extended, thumb between them) over your other flat palm instead of a flat hand.',
+    tips: [
+      'Base hand stays flat, palm up, the whole time',
+      'Dominant hand is a ‘K’ handshape, not flat like COOK',
+      'One clear flipping motion is enough',
+    ],
+    imageUrl: '../assets/images/medium/home/kitchen.png', videoUrl: '../assets/videos/medium/home/kitchen.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/kitchen.htm',
+  },
+  {
+    id: 'medium_home_LIVING', level: 'medium', category: 'home', signId: 'LIVING', title: 'Living Room', order: 6,
+    description: 'A compound sign: brush the thumb of your open hand upward on your chest twice, then trace the shape of a box in front of you with both flat hands.',
+    tips: [
+      'First part (POLITE): thumb brushes up the chest in a small circle',
+      'Second part (ROOM): hands trace a box shape',
+      'This is POLITE + ROOM — the standard way to sign ‘living room’',
+    ],
+    imageUrl: '../assets/images/medium/home/living.png', videoUrl: '../assets/videos/medium/home/living.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/living-room.htm',
+  },
+  {
+    id: 'medium_home_DINING', level: 'medium', category: 'home', signId: 'DINING', title: 'Dining Room', order: 7,
+    description: 'A compound sign: bring the fingertips of your flat-O hand to your mouth as if eating, then trace the shape of a box in front of you with both flat hands.',
+    tips: [
+      'First part (EAT): fingertips tap toward the mouth',
+      'Second part (ROOM): hands trace a box shape',
+      'This is EAT + ROOM — the standard way to sign ‘dining room’',
+    ],
+    imageUrl: '../assets/images/medium/home/dining.png', videoUrl: '../assets/videos/medium/home/dining.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dining-room.htm',
+  },
+  {
+    id: 'medium_home_GARAGE', level: 'medium', category: 'home', signId: 'GARAGE', title: 'Garage', order: 8,
+    description: 'Hold a horizontal ‘3’ handshape (thumb, index, and middle finger extended) under your other flat hand, and move it forward and back twice, like a car driving in under a roof.',
+    tips: [
+      'Handshape is a horizontal ‘3’ — thumb, index, middle finger',
+      'Top hand stays flat and still, like a ceiling',
+      'Double forward-back motion for the noun ‘garage’',
+    ],
+    imageUrl: '../assets/images/medium/home/garage.png', videoUrl: '../assets/videos/medium/home/garage.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garage.htm',
+  },
+  {
+    id: 'medium_home_GARDEN', level: 'medium', category: 'home', signId: 'GARDEN', title: 'Garden', order: 9,
+    description: 'Start with your dominant flat-O hand, palm up, resting inside your other loosely closed fist. Push it upward while opening the fingers, like a plant sprouting out of the ground, and repeat.',
+    tips: [
+      'Starts closed inside the base hand, like a seed',
+      'Opens into a spread hand as it rises',
+      'Repeated motion — a single motion means GROW instead',
+    ],
+    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/medium/home/garden.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garden.htm',
+  },
+  {
+    id: 'medium_home_YARD', level: 'medium', category: 'home', signId: 'YARD', title: 'Yard', order: 10,
+    description: 'Hold an open ‘5’ hand out in front of you, palm down, and sweep it in a flat, horizontal circle, gesturing at the outdoor space around the house.',
+    tips: [
+      'Handshape is an open ‘5’, moving in a flat horizontal circle',
+      'Same general sign as FIELD/AREA, not a dedicated ‘yard’ sign',
+      'Context (like pointing near HOUSE) shows you mean the yard',
+    ],
+    imageUrl: '../assets/images/medium/home/yard.png', videoUrl: '../assets/videos/medium/home/yard.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/field.htm',
+  },
+
+  // ── MEDIUM · FURNITURE (Unit 24) ── (new this pass — unlocks Unit 24.
+  // All 11 words are fresh lifeprint.com (ASLU) research, cross-checked
+  // against Handspeak, aslbloom, signingsavvy, and other secondary
+  // sources. DESK and CLOSET are duplicates of TABLE and CABINET —
+  // lifeprint documents DESK as literally the same sign as TABLE, and
+  // CLOSET/CABINET/cupboard/locker all share the DOOR sign, with
+  // meaning coming from context rather than handshape.)
+  {
+    id: 'medium_furniture_BED', level: 'medium', category: 'furniture', signId: 'BED', title: 'Bed', order: 1,
+    description: 'Rest the side of your head against your flat hand (or both hands together), like resting on a pillow, tilting your head slightly to the side.',
+    tips: [
+      'Hand(s) rest against the side of the head, not on top',
+      'A brief hold, not a repeated motion',
+      'Most signers do this on their right side',
+    ],
+    imageUrl: '../assets/images/medium/furniture/bed.png', videoUrl: '../assets/videos/medium/furniture/bed.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bed.htm',
+  },
+  {
+    id: 'medium_furniture_PILLOW', level: 'medium', category: 'furniture', signId: 'PILLOW', title: 'Pillow', order: 2,
+    description: 'Hold both open ‘5’ hands, palms facing each other, at the sides of your head — the same position as BED — and gently bend your fingers a few times, like squeezing a pillow.',
+    tips: [
+      'Same head position as BED, but hands stay open and apart',
+      'Fingers bend and flex a few times, not a single motion',
+      'A squeezing motion, like fluffing a pillow',
+    ],
+    imageUrl: '../assets/images/medium/furniture/pillow.png', videoUrl: '../assets/videos/medium/furniture/pillow.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pillow.htm',
+  },
+  {
+    id: 'medium_furniture_BLANKET', level: 'medium', category: 'furniture', signId: 'BLANKET', title: 'Blanket', order: 3,
+    description: 'With both hands slightly bent, thumbs tucked under the fingers, pull your hands up toward your chest in a double movement, like pulling a blanket up over yourself.',
+    tips: [
+      'Thumbs tuck under the fingers, not alongside them',
+      'Double movement — a big pull, then a smaller repeat',
+      'Thumbs alongside (not under) the fingers means SATISFY instead',
+    ],
+    imageUrl: '../assets/images/medium/furniture/blanket.png', videoUrl: '../assets/videos/medium/furniture/blanket.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/blanket.htm',
+  },
+  {
+    id: 'medium_furniture_CHAIR', level: 'medium', category: 'furniture', signId: 'CHAIR', title: 'Chair', order: 4,
+    description: 'Like the sign for SIT, but tap your bent two-finger ‘H’ handshape down on your other hand’s fingers twice instead of once.',
+    tips: [
+      'Same handshape as SIT — bent index and middle fingers',
+      'Two taps make it the noun CHAIR; one tap means the verb SIT',
+      'Base hand stays flat and still underneath',
+    ],
+    imageUrl: '../assets/images/medium/furniture/chair.png', videoUrl: '../assets/videos/medium/furniture/chair.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/chair.htm',
+  },
+  {
+    id: 'medium_furniture_TABLE', level: 'medium', category: 'furniture', signId: 'TABLE', title: 'Table', order: 5,
+    description: 'Hold both forearms horizontal in front of you, one on top of the other, then lower your dominant arm to rest flat on top of the other — showing a flat tabletop.',
+    tips: [
+      'Both arms/hands stay flat and horizontal',
+      'One clean downward landing motion',
+      'Also means DESK — a ‘D’ handshape version exists but isn’t required',
+    ],
+    imageUrl: '../assets/images/medium/furniture/table.png', videoUrl: '../assets/videos/medium/furniture/table.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/table.htm',
+  },
+  {
+    id: 'medium_furniture_SOFA', level: 'medium', category: 'furniture', signId: 'SOFA', title: 'Sofa', order: 6,
+    description: 'Sign SIT (bent two fingers tapping down), then hold both hands in a curved ‘C’ shape and move them outward to show the length of the couch.',
+    tips: [
+      'First part borrows the SIT handshape',
+      'Second part uses curved ‘C’ hands, not flat ones',
+      'Once the topic is established, many signers drop the SIT part',
+    ],
+    imageUrl: '../assets/images/medium/furniture/sofa.png', videoUrl: '../assets/videos/medium/furniture/sofa.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/couch.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_furniture_TABLE (this sign covers both).
+    id: 'medium_furniture_DESK', level: 'medium', category: 'furniture', signId: 'DESK', title: 'Desk', order: 7,
+    description: 'Hold both forearms horizontal in front of you, one on top of the other, then lower your dominant arm to rest flat on top of the other — showing a flat tabletop.',
+    tips: [
+      'Both arms/hands stay flat and horizontal',
+      'One clean downward landing motion',
+      'Same sign already used for TABLE — some signers add a ‘D’ handshape to specify desk',
+    ],
+    imageUrl: '../assets/images/medium/furniture/table.png', videoUrl: '../assets/videos/medium/furniture/table.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_furniture_SHELF', level: 'medium', category: 'furniture', signId: 'SHELF', title: 'Shelf', order: 8,
+    description: 'Hold both flat hands together in front of you, palms down, fingertips touching, then smoothly pull them apart to trace a flat horizontal line at chest height.',
+    tips: [
+      'Hands start together, fingertips touching',
+      'Pull apart in one smooth, level motion',
+      'Done lower and it reads as FLOOR instead',
+    ],
+    imageUrl: '../assets/images/medium/furniture/shelf.png', videoUrl: '../assets/videos/medium/furniture/shelf.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shelf.htm',
+  },
+  {
+    id: 'medium_furniture_CABINET', level: 'medium', category: 'furniture', signId: 'CABINET', title: 'Cabinet', order: 9,
+    description: 'The same sign as DOOR — your dominant flat hand, fingers up, pivots open and then closed, like a hinge at your pinkie. Context makes clear you mean a cabinet, not an actual door.',
+    tips: [
+      'Only the dominant hand moves; the hinge is at the pinkie side',
+      'One open-then-close pivot',
+      'Same sign also covers CLOSET, cupboard, and locker',
+    ],
+    imageUrl: '../assets/images/medium/furniture/cabinet.png', videoUrl: '../assets/videos/medium/furniture/cabinet.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/door.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_furniture_CABINET (both are context-dependent uses of DOOR).
+    id: 'medium_furniture_CLOSET', level: 'medium', category: 'furniture', signId: 'CLOSET', title: 'Closet', order: 10,
+    description: 'The same sign as DOOR — your dominant flat hand, fingers up, pivots open and then closed, like a hinge at your pinkie. Context makes clear you mean a closet, not an actual door.',
+    tips: [
+      'Only the dominant hand moves; the hinge is at the pinkie side',
+      'One open-then-close pivot',
+      'Same sign already used for CABINET above — also covers cupboard and locker',
+    ],
+    imageUrl: '../assets/images/medium/furniture/cabinet.png', videoUrl: '../assets/videos/medium/furniture/cabinet.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_furniture_LAMP', level: 'medium', category: 'furniture', signId: 'LAMP', title: 'Lamp', order: 11,
+    description: 'Hold your non-dominant flat hand out, palm down, as the base. Rest your dominant hand’s fingertips near it, loosely closed together, then open them into a spread hand while moving downward, like light shining down from a lamp.',
+    tips: [
+      'Non-dominant hand stays flat and still, like a tabletop',
+      'Dominant hand opens while moving down and out',
+      'Same general idea as the sign for LIGHT',
+    ],
+    imageUrl: '../assets/images/medium/furniture/lamp.png', videoUrl: '../assets/videos/medium/furniture/lamp.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/light.htm',
   },
 
   /* ── INTERMEDIATE · PHRASES (auto-generated content) ── */
