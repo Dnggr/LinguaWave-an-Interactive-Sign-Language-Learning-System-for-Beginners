@@ -483,6 +483,15 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+/* In-app override — settings.html's Reduced Motion toggle (see
+   js/settings-page.js) for a learner whose OS setting doesn't already
+   request it. Same effect as the media query above, applied manually. */
+html.lw-force-reduced-motion *,
+html.lw-force-reduced-motion *::before,
+html.lw-force-reduced-motion *::after {
+  transition-duration: .01ms !important;
+  animation-duration: .01ms !important;
+}
 
 /* ── 16. SKIP LINK + LOADING PULSE (shared, page-agnostic) ─────────
    Design pass, 2026-08-23 (PIVOT_CHECKLIST.md "Design pass — learn.html
@@ -539,4 +548,112 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 }
 @media (prefers-reduced-motion: reduce) {
   .loading-pulse { animation: none; }
+}
+
+/* ── 17. APP SIDEBAR (shared layout shell) ──────────────────────────
+   Design pass — reference-board layout pass. A left icon sidebar for
+   the app's "home base" screens (Dashboard, Learn, Progress, Feedback,
+   Settings) — everything a learner returns to between lessons — while
+   Lesson/Quiz stay on the existing top .navbar + back-link, since
+   those are focused single-task screens, not places to browse from.
+   This is purely a navigation shell: nothing about a page's existing
+   content, IDs, or scripts changes — pages just render inside
+   <div class="app-main"> instead of directly in <body>.
+
+   MARKUP PATTERN (wrap the existing page content, keep everything
+   else — search, sidebars, cards, scripts — exactly as-is):
+
+     <div class="app-shell">
+       <aside class="app-sidebar">
+         <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+         <nav class="app-sidebar__nav">
+           <a href="dashboard.html" class="app-sidebar__link [active]">
+             <span class="app-sidebar__icon">…svg…</span> Dashboard
+           </a>
+           … Learn / Progress / Quiz / Feedback / Settings …
+         </nav>
+         <div class="app-sidebar__foot">
+           <button class="theme-toggle" id="theme-toggle" …>…</button>
+           <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+         </div>
+       </aside>
+       <div class="app-main">
+         … existing <body> content goes here, unchanged …
+       </div>
+     </div>
+
+   `data-user-name` / theme-toggle / data-logout keep their existing
+   ids/attributes and existing js/main.js + js/theme.js wiring — only
+   their container markup moved, matching js/theme.js's own
+   documented contract ("wires any .theme-toggle button on the page"). */
+.app-shell { display: flex; min-height: 100vh; }
+.app-sidebar {
+  width: 240px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--clr-surface);
+  border-right: 1px solid var(--clr-border);
+  padding: var(--space-6) var(--space-4);
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.app-sidebar__logo {
+  font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700;
+  color: var(--clr-accent); letter-spacing: -.5px; text-decoration: none;
+  padding: 0 var(--space-3); margin-bottom: var(--space-8);
+}
+.app-sidebar__logo span { color: var(--clr-text-muted); font-weight: 400; }
+.app-sidebar__nav { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; }
+.app-sidebar__link {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  color: var(--clr-text-muted); font-size: var(--fs-sm); font-weight: 600;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.app-sidebar__link:hover { background: var(--clr-surface-2); color: var(--clr-text); text-decoration: none; }
+.app-sidebar__link.active { background: var(--clr-accent-soft); color: var(--clr-accent); }
+.app-sidebar__link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
+.app-sidebar__icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; }
+.app-sidebar__icon svg { width: 100%; height: 100%; }
+.app-sidebar__foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding-top: var(--space-4); margin-top: var(--space-4);
+  border-top: 1px solid var(--clr-border);
+}
+.app-main { flex: 1; min-width: 0; }
+
+/* ── 18. TOGGLE SWITCH (shared form control) ────────────────────────
+   Plain checkbox-driven on/off switch — Settings page preferences
+   (Notifications, Sound Effects, etc). Same visual language as
+   .theme-toggle's pill/thumb, but generic (no light/dark icon glyph)
+   and state-driven by a real <input type="checkbox"> for accessible
+   keyboard/AT support, since unlike .theme-toggle this isn't wired by
+   js/theme.js — plain onchange handlers are enough for a preference. */
+.toggle-switch { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input {
+  position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1;
+}
+.toggle-switch__track {
+  position: absolute; inset: 0; border-radius: var(--radius-pill);
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.toggle-switch__thumb {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--clr-text-muted);
+  transition: transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease);
+}
+.toggle-switch input:checked ~ .toggle-switch__track { background: var(--clr-success); border-color: var(--clr-success); }
+.toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(20px); background: #fff; }
+.toggle-switch input:focus-visible ~ .toggle-switch__track { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
+
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; min-height: 0; }
+  .app-sidebar {
+    width: 100%; height: auto; position: static;
+    flex-direction: row; align-items: center; overflow-x: auto;
+    border-right: none; border-bottom: 1px solid var(--clr-border);
+  }
+  .app-sidebar__logo { margin-bottom: 0; margin-right: var(--space-4); }
+  .app-sidebar__nav { flex-direction: row; }
+  .app-sidebar__foot { border-top: none; margin-top: 0; padding-top: 0; margin-left: auto; }
 }

@@ -33,6 +33,28 @@
                sections. See WHAT CHANGED in this session's writeup
                for the full list — not duplicated here to avoid the
                same comment-bloat this cleanup pass removed elsewhere.
+
+    2026-08-31 (mockup alignment pass): reshaped the hero to match the
+               reference "LINGUAWAVE Full UI/UX" mockup's Homepage
+               screen — nav gained Dashboard/Learn/About links plus a
+               dedicated "Sign In" pill (was a bare "Log In" text
+               link), the hero is now copy+illustration only (no
+               inline form — matches the mockup exactly), and the
+               login/register forms moved out of the hero into a
+               `#signin-modal` opened by Sign In / Start Learning /
+               the Dashboard+Learn nav links (all four funnel into the
+               same modal, tab pre-set by which one was clicked). Added
+               a "Why Learn ASL?" 3-card row directly under the hero
+               (Communicate / Easy to Learn / Track Progress) per the
+               mockup — the pre-existing "Why learn with LinguaWave"
+               section further down is a different, longer-form 3-card
+               section and was LEFT AS-IS (not merged/removed), so the
+               page now has both a short mockup-matching row up top and
+               the fuller explainer lower down. Auth logic itself
+               (LWAuth.login/register, error handling) is UNCHANGED —
+               only where the form lives in the DOM and how it's
+               opened changed. See css/auth.css for the new
+               `.hero-illustration`/`.why-row`/`#signin-modal` rules.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -59,8 +81,13 @@
   <nav class="navbar">
     <div class="container navbar__inner">
       <a href="index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <ul class="navbar__links">
+        <li><a href="#" data-hero-login>Dashboard</a></li>
+        <li><a href="#" data-hero-login>Learn</a></li>
+        <li><a href="#about-asl">About</a></li>
+      </ul>
       <div class="navbar__user">
-        <a href="#auth-card" class="btn btn--ghost btn--sm" data-hero-login>Log In</a>
+        <button type="button" class="btn btn--primary btn--sm" data-hero-login>Sign In</button>
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle light/dark theme">
           <span class="theme-toggle__thumb"></span>
         </button>
@@ -73,18 +100,61 @@
     <div class="container hero__grid">
       <div class="hero__copy">
         <p class="section__eyebrow">Capstone Project 2026</p>
-        <h1>Learn ASL — one sign at a time.</h1>
+        <h1>Learn to Sign.<br />Connect. Communicate.</h1>
         <p class="hero__lead">
-          LinguaWave teaches beginner American Sign Language through one guided path —
-          with real-time camera feedback on your handshape and movement, not just
-          multiple-choice questions.
+          Learn American Sign Language (ASL) step-by-step with interactive lessons,
+          quizzes, and real-time practice.
         </p>
         <div class="hero__ctas">
-          <button type="button" class="btn btn--primary btn--lg" data-hero-cta>Get Started Free</button>
-          <a href="#auth-card" class="btn btn--ghost btn--lg" data-hero-login>Log In</a>
+          <button type="button" class="btn btn--primary btn--lg" data-hero-cta>Start Learning</button>
+          <a href="#about-asl" class="btn btn--ghost btn--lg">Explore ASL</a>
         </div>
       </div>
 
+      <div class="hero-illustration" aria-hidden="true">
+        <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="160" cy="160" r="150" fill="var(--clr-accent-soft)" />
+          <path d="M110 220c-6-40-14-70-14-100 0-14 10-24 22-24s20 10 20 24v50" stroke="var(--clr-accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M138 170V90c0-13 9-23 21-23s21 10 21 23v80" stroke="var(--clr-accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M180 170V100c0-13 9-23 21-23s21 10 21 23v90" stroke="var(--clr-accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M222 190v-60c0-12 8-21 19-21s19 9 19 21v70c0 44-30 80-74 80h-14c-38 0-58-20-70-50l-16-40c-5-13 1-24 12-28 9-3 18 1 23 12l14 28" stroke="var(--clr-accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="var(--clr-surface)"/>
+          <path d="M90 250c22 20 46 30 72 30" stroke="var(--clr-accent-dim)" stroke-width="4" stroke-linecap="round" fill="none" opacity=".5"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── WHY LEARN ASL? (mockup's 3-card row directly under the hero) -->
+  <section class="section section--sm">
+    <div class="container">
+      <div class="why-row">
+        <div class="card why-row__item">
+          <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <h3>Communicate</h3>
+          <p class="text-muted">Connect with the Deaf community</p>
+        </div>
+        <div class="card why-row__item">
+          <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          <h3>Easy to Learn</h3>
+          <p class="text-muted">Step-by-step lessons made for beginners</p>
+        </div>
+        <div class="card why-row__item">
+          <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <h3>Track Progress</h3>
+          <p class="text-muted">See your growth as you learn new signs</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SIGN IN / SIGN UP MODAL ──────────────────────────────────────
+       Replaces the old inline hero auth-card — same forms, same
+       LWAuth.login()/register() calls, just opened on demand from the
+       nav's "Sign In", the hero's "Start Learning", and the nav's
+       Dashboard/Learn links (all four via openAuthModal()). -->
+  <div id="signin-modal" class="auth-modal hidden">
+    <div class="auth-modal__box auth-modal__box--form">
+      <button type="button" class="auth-modal__close" id="signin-modal-close" aria-label="Close">&times;</button>
       <div class="auth-card" id="auth-card">
         <p class="auth-card__eyebrow">Get started</p>
 
@@ -131,7 +201,7 @@
         </form>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- ── TOPIC PREVIEW ────────────────────────────────────────────── -->
   <section class="section section--sm">
@@ -277,21 +347,40 @@
       document.getElementById('tab-register').classList.toggle('auth-tab--active', !isLogin);
     }
 
-    // Switches to the given auth tab and scrolls the auth card into view.
-    // Shared by the hero CTA, the nav's "Log In" link, and the topic
-    // preview chips, so all three "get started" paths behave the same way.
-    function focusAuth(tab) {
+    // ── SIGN IN MODAL open/close ────────────────────────────────────
+    // Matches the mockup: the hero has no inline form, so "Start
+    // Learning" (hero), "Sign In" (nav), and "Dashboard"/"Learn" (nav
+    // links, which need an account to actually open) all funnel into
+    // this one modal, just pre-set to the tab that makes sense for
+    // which one was clicked.
+    const signinModal = document.getElementById('signin-modal');
+
+    function openAuthModal(tab) {
       showAuthTab(tab);
-      document.getElementById('auth-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      signinModal.classList.remove('hidden');
+      document.getElementById(tab === 'login' ? 'login-email' : 'reg-name').focus();
+    }
+    function closeAuthModal() {
+      signinModal.classList.add('hidden');
     }
 
+    document.getElementById('signin-modal-close').addEventListener('click', closeAuthModal);
+    signinModal.addEventListener('click', (event) => {
+      if (event.target === signinModal) closeAuthModal(); // click on the backdrop
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !signinModal.classList.contains('hidden')) closeAuthModal();
+    });
+
+    // "Start Learning" / topic-preview chips open the modal on Sign Up;
+    // "Sign In" / Dashboard / Learn nav links open it on Log In.
     document.querySelectorAll('[data-hero-cta]').forEach((el) => {
-      el.addEventListener('click', () => focusAuth('register'));
+      el.addEventListener('click', () => openAuthModal('register'));
     });
     document.querySelectorAll('[data-hero-login]').forEach((el) => {
       el.addEventListener('click', (event) => {
         event.preventDefault();
-        focusAuth('login');
+        openAuthModal('login');
       });
     });
 

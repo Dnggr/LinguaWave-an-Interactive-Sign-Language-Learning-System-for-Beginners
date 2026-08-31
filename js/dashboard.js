@@ -120,6 +120,19 @@ function renderOverallProgress() {
   const barEl    = document.querySelector('[data-overall-progress]');
   const countEl  = document.querySelector('[data-overall-count]');
   const statusEl = document.querySelector('[data-overall-status]');
+
+  // Mockup alignment pass (2026-08-31): the new "Your Progress" hero
+  // card (pages/dashboard.html) has its own ring + pct label, separate
+  // DOM nodes from the ones above — same computeOverallStats() call,
+  // so the two can never disagree. Guarded independently of `pctEl`
+  // below so this still runs on pages that only have one of the two
+  // (there are none today, but keeps this function safe if that
+  // changes later).
+  const heroRingEl = document.querySelector('[data-hero-ring]');
+  const heroPctEl  = document.querySelector('[data-hero-pct]');
+  if (heroRingEl) heroRingEl.style.setProperty('--pct', pct);
+  if (heroPctEl)  heroPctEl.textContent = `${pct}%`;
+
   if (!pctEl) return;
 
   pctEl.textContent = `${pct}%`;
@@ -220,6 +233,17 @@ function renderStatsSnapshot(destination) {
   const assessEl = document.querySelector('[data-stat-assessments]');
   const signsEl  = document.querySelector('[data-stat-signs]');
   const unitEl   = document.querySelector('[data-stat-unit]');
+
+  // Mockup alignment pass (2026-08-31): "Your Progress" hero card's
+  // Signs Learned / Quizzes Completed tiles — same numbers as
+  // data-stat-signs/data-stat-assessments above, written to their own
+  // elements so both the compact hero card and the detailed stats
+  // grid further down the page stay in sync from one computation.
+  const heroSignsEl = document.querySelector('[data-hero-signs]');
+  const heroAssessEl = document.querySelector('[data-hero-assessments]');
+  if (heroSignsEl)  heroSignsEl.textContent = `${stats.practicedSigns}`;
+  if (heroAssessEl) heroAssessEl.textContent = `${stats.passedCategories}`;
+
   if (!pctEl && !assessEl && !signsEl && !unitEl) return;
 
   if (pctEl)    pctEl.textContent = `${stats.pct}%`;

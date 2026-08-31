@@ -607,14 +607,12 @@ document.addEventListener('DOMContentLoaded', () => {
       : state.status === 'current' ? ' course-card--current' : '';
 
     const inner = `
-      <span class="course-card__thumb" aria-hidden="true">
-        ${icon}
-        <span class="badge ${badgeClassForStatus(state.status)} course-card__badge">${escapeHtml(state.label)}</span>
-      </span>
+      <span class="course-card__thumb" aria-hidden="true">${icon}</span>
       <span class="course-card__body">
         <span class="course-card__eyebrow">Unit ${unit.order}</span>
         <span class="course-card__title">${escapeHtml(unit.title)}</span>
       </span>
+      <span class="badge ${badgeClassForStatus(state.status)} course-card__badge">${escapeHtml(state.label)}</span>
     `;
 
     if (state.href) {

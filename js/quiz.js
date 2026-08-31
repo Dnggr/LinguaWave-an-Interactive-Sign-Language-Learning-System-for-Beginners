@@ -81,6 +81,32 @@ const level     = params.get('level') || 'basic';
 const isFinal   = params.get('final') === '1';
 const categoryId = params.get('category') || null;
 
+// BUGFIX (this session): the sidebar "Quiz" nav item (dashboard/learn/
+// progress/feedback/settings) links to plain `quiz.html` — no `?level=`
+// or `?category=` at all, unlike every other route into this page. With
+// `categoryId` null, buildScope() below resolves both `cat` and
+// `categoryId` to null, and the title/subtitle template literals render
+// the literal string "null" ("null — Category Assessment" / "Basic
+// Level · null") while scope.signs is empty, which showEmptyState()
+// then mislabels as "doesn't have trained sign content yet" — wrong on
+// both counts, since nothing about the category is actually untrained,
+// it was just never specified. Redirect to a real target — the
+// learner's next not-yet-passed unlocked category, same category
+// dashboard.js's Continue routing would land on — before buildScope()
+// ever runs on a null categoryId. Only fires for the bare-URL case
+// (`?final=1` and normal `?level=&category=` loads are untouched).
+if (!isFinal && !categoryId) {
+  const target = window.LWProgress?.getNextAssessmentTarget?.();
+  if (target) {
+    window.location.replace(`quiz.html?level=${encodeURIComponent(target.level)}&category=${encodeURIComponent(target.categoryId)}`);
+  }
+  // else: no live/unlocked category exists yet — fall through. boot()'s
+  // existing showEmptyState()/showQuizUnavailable() guards already
+  // handle scope.signs === [] cleanly; buildScope()'s title falls back
+  // to the (still-null) categoryId only in this genuine edge case, so
+  // give it a real label instead of letting "null" leak into the UI.
+}
+
 const MAX_PER_ROUND  = 5;
 const PASS_THRESHOLD = window.LWProgress?.PASS_THRESHOLD ?? 0.80;
 
@@ -100,6 +126,14 @@ const qImageEl       = document.getElementById('q-image');
 const qImageFallbackEl = document.getElementById('q-image-fallback');
 const qOptionsEl     = document.getElementById('q-options');
 const qFeedbackEl    = document.getElementById('q-feedback');
+
+// NEW — Quiz Feedback correct-answer takeover (mockup screen 9),
+// same pattern as pages/lesson.html's Quick Check modal.
+const quizModalEl        = document.getElementById('quiz-modal');
+const quizModalBodyEl    = document.getElementById('quiz-modal-body');
+const quizModalExplanationEl = document.getElementById('quiz-modal-explanation');
+const quizModalContinueEl = document.getElementById('quiz-modal-continue');
+const quizModalExplainEl = document.getElementById('quiz-modal-explain');
 
 const gateCardEl     = document.getElementById('camera-gate-card');
 const gateScoreSoFarEl = document.getElementById('gate-score-so-far');
@@ -159,10 +193,17 @@ function buildScope() {
   }
   const cat   = window.LWData?.getCategory?.(level, categoryId) ?? null;
   const signs = window.LWData?.getCategorySigns?.(level, categoryId) ?? [];
+  // BUGFIX (this session): categoryId can genuinely still be null here
+  // (see the top-level redirect above) if getNextAssessmentTarget()
+  // found no live/unlocked category to send the learner to at all — a
+  // real, if rare, "nothing to assess yet" state, not the same thing
+  // as an untrained category. Label it plainly instead of stringifying
+  // `null` into the title/subtitle.
+  const label = cat?.title ?? categoryId ?? 'No Assessment Available';
   return {
     signs, categories: cat ? [cat] : [],
-    title: `${cat?.title ?? categoryId} — Category Assessment`,
-    subtitle: `${cap(level)} Level · ${cat?.title ?? categoryId}`,
+    title: categoryId ? `${label} — Category Assessment` : label,
+    subtitle: categoryId ? `${cap(level)} Level · ${label}` : 'Check back once a lesson category is unlocked.',
   };
 }
 
@@ -296,10 +337,17 @@ function boot() {
 }
 
 function showEmptyState() {
+  // BUGFIX (this session): a genuinely missing/unresolvable categoryId
+  // (see buildScope()'s label fallback above) isn't "untrained content,"
+  // it's "nothing to assess yet" — different message, so a learner
+  // landing here via a bare quiz.html link with no unlocked category
+  // doesn't get told a real, in-progress category has no content.
+  const message = categoryId
+    ? `This ${isFinal ? 'level' : 'category'} doesn't have trained sign content yet — check back once more lessons are added.`
+    : `There's no assessment available yet — complete a lesson category first, then come back here.`;
   if (questionCardEl) {
     questionCardEl.innerHTML = `
-      <p class="quiz-question__prompt">This ${isFinal ? 'level' : 'category'} doesn't have trained sign
-      content yet — check back once more lessons are added.</p>
+      <p class="quiz-question__prompt">${message}</p>
       <a href="learn.html?level=${level}" class="btn btn--secondary btn--full mt-4">← Back to Lessons</a>
     `;
   }
@@ -331,6 +379,7 @@ if (document.readyState === 'loading') {
 
 /* ── Rendering a question (shared by MC + Identification) ───────── */
 function showQuestion() {
+  if (quizModalEl) quizModalEl.hidden = true;
   if (roundIdx >= rounds.length) {
     showCameraGate();
     return;
@@ -371,12 +420,19 @@ function showQuestion() {
       };
     }
     if (qImageFallbackEl) qImageFallbackEl.style.display = 'none';
+    // NEW — mockup screen 8: an identification question shows its sign
+    // clue and its answer choices side by side (clue left, choices
+    // right) instead of stacked full-width — see the
+    // .quiz-question--has-image grid in quiz.css.
+    questionCardEl?.classList.add('quiz-question--has-image');
   } else if (q.type === 'id') {
     if (qImageWrapEl) qImageWrapEl.style.display = '';
     if (qImageEl) qImageEl.style.display = 'none';
     if (qImageFallbackEl) { qImageFallbackEl.style.display = ''; qImageFallbackEl.textContent = q.fallbackText; }
+    questionCardEl?.classList.add('quiz-question--has-image');
   } else {
     if (qImageWrapEl) qImageWrapEl.style.display = 'none';
+    questionCardEl?.classList.remove('quiz-question--has-image');
   }
 
   if (qOptionsEl) {
@@ -427,8 +483,60 @@ function selectAnswer(btn, q) {
     qFeedbackEl.className = `quiz-feedback quiz-feedback--${correct ? 'success' : 'error'}`;
   }
 
-  setTimeout(() => { qIdx++; showQuestion(); }, 1100);
+  // Correct answers get the standalone "Correct!" takeover (mockup
+  // screen 9) and wait for the learner to hit Continue; a wrong
+  // answer keeps the previous behavior unchanged — inline red
+  // highlight only, auto-advancing on its own timer — so a miss never
+  // turns into a bigger moment than a hit.
+  if (correct) {
+    showQuizModal(q);
+  } else {
+    setTimeout(() => { qIdx++; showQuestion(); }, 1100);
+  }
 }
+
+/** Shows the standalone "Correct!" takeover for a quiz question. */
+function showQuizModal(q) {
+  if (!quizModalEl) return;
+  if (quizModalBodyEl) {
+    quizModalBodyEl.textContent = `This sign means "${q.signId}". Well done!`;
+  }
+  if (quizModalExplanationEl) {
+    const desc = window.LWData?.getSign?.(level, q.signId)?.description;
+    quizModalExplanationEl.textContent = desc || `No extra explanation is available for "${q.signId}" yet.`;
+    quizModalExplanationEl.hidden = true;
+  }
+  if (quizModalExplainEl) quizModalExplainEl.textContent = 'View Explanation';
+  quizModalEl.hidden = false;
+  quizModalContinueEl?.focus();
+}
+function hideQuizModal() {
+  if (!quizModalEl) return;
+  quizModalEl.hidden = true;
+  questionCardEl?.focus?.();
+}
+quizModalContinueEl?.addEventListener('click', () => {
+  hideQuizModal();
+  qIdx++;
+  showQuestion();
+});
+quizModalEl?.querySelector('[data-quiz-modal-dismiss]')?.addEventListener('click', () => {
+  hideQuizModal();
+  qIdx++;
+  showQuestion();
+});
+quizModalExplainEl?.addEventListener('click', () => {
+  if (!quizModalExplanationEl) return;
+  quizModalExplanationEl.hidden = !quizModalExplanationEl.hidden;
+  quizModalExplainEl.textContent = quizModalExplanationEl.hidden ? 'View Explanation' : 'Hide Explanation';
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && quizModalEl && !quizModalEl.hidden) {
+    hideQuizModal();
+    qIdx++;
+    showQuestion();
+  }
+});
 
 /* ── Camera round gate (optional) ────────────────────────────────── */
 // CONFIRMED — REV 4 PHASE 6, PIVOT_CHECKLIST.md Phase 6 item 3:

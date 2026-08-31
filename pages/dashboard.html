@@ -69,78 +69,137 @@
 <body>
 
   <!-- Jumps keyboard focus straight to the Continue Learning button,
-       skipping the navbar. Must stay the first element in <body>. -->
+       skipping the sidebar. Must stay the first element in <body>. -->
   <a href="#continue-cta" class="skip-link">Skip to Continue Learning</a>
 
-  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
-  <nav class="navbar">
-    <div class="container navbar__inner">
-      <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
-      <ul class="navbar__links">
-        <li><a href="dashboard.html" class="active">Dashboard</a></li>
-        <li><a href="learn.html">Learn</a></li>
-      </ul>
-      <div class="navbar__user">
+  <!-- ── APP SHELL (sidebar nav — see css/style.css §17) ──────────
+       Layout shell only: every id/attribute below (theme-toggle,
+       data-user-name, data-logout) is unchanged from the old navbar,
+       just re-homed here, so js/main.js + js/theme.js need no edits. -->
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Quiz
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
                 aria-label="Toggle light/dark theme">
           <span class="theme-toggle__thumb"></span>
         </button>
-        <span>👋 <span data-user-name>Learner</span></span>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
-    </div>
-  </nav>
+    </aside>
+    <div class="app-main">
 
   <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
-  <!-- Kept compact/greeting-only — the concrete "what do I do next"
-       destination lives in the Continue Learning hero card below.
-       renderWelcomeBanner() fills data-welcome-banner; the text here
-       is just the pre-JS fallback. -->
+  <!-- Mockup alignment pass (2026-08-31): folded the old eyebrow+h1
+       ("Welcome back" / "Your Dashboard") into a single greeting
+       headline, matching the mockup's "Welcome back, Learner! 👋"
+       Homepage-style header. renderWelcomeBanner() still fills
+       data-welcome-banner; the text here is just the pre-JS fallback
+       — no JS changes needed, only which static text wraps the hooks. -->
   <section class="section section--sm section--tight">
     <div class="container">
       <div class="dash-header">
         <div>
-          <p class="section__eyebrow">Welcome back</p>
-          <h1>Your Dashboard</h1>
-          <p class="mt-4">Keep going, <span data-user-name>Learner</span>! <span data-welcome-banner>Ready to pick up where you left off?</span></p>
+          <h1>Welcome back, <span data-user-name>Learner</span>! 👋</h1>
+          <p class="mt-2 text-muted"><span data-welcome-banner>Let's continue your ASL journey.</span></p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── CONTINUE LEARNING (hero) ─────────────────────────────────
-       Entirely data-driven by js/dashboard.js's renderContinueCard(),
-       fed by the same getCurrentDestination() helper that also feeds
-       renderWelcomeBanner() and renderContinueButton(). Markup below
-       is just the loading-state / pre-JS fallback. -->
+  <!-- ── CONTINUE LEARNING + YOUR PROGRESS (hero row) ─────────────────
+       Mockup alignment pass (2026-08-31): the mockup's Dashboard
+       screen puts Continue Learning and a compact Your Progress card
+       side by side in one hero row instead of stacked full-width
+       sections — `.dash-hero-row` below is the new 2-col grid wrapper
+       (stacks to 1 col under 900px, same breakpoint `.hero__grid` on
+       index.html uses). Continue Learning's markup/data-hooks are
+       UNCHANGED (still js/dashboard.js's renderContinueCard()). The
+       Your Progress card is NEW markup but reuses EXISTING numbers —
+       `data-hero-pct`/`data-hero-ring` and `data-hero-signs`/
+       `data-hero-assessments` are additional hooks js/dashboard.js
+       now also writes to (see renderOverallProgress()/
+       renderStatsSnapshot()), alongside the original
+       data-overall-pct/data-stat-signs/data-stat-assessments elements
+       further down in "Overall Progress" — same underlying
+       computeOverallStats() call, just rendered to two places so nothing
+       drifts out of sync. Ring uses the same conic-gradient `--pct`
+       technique as css/learn.css's `.sidebar-progress__ring` /
+       pages/progress.html's `.progress-hero-ring`. -->
   <section class="section section--sm section--tight">
     <div class="container">
-      <div class="card continue-card" data-continue-card>
-        <div class="continue-card__main">
-          <span class="continue-card__icon" data-continue-icon aria-hidden="true">🎯</span>
-          <div class="continue-card__text">
-            <p class="continue-card__eyebrow dash-loading-pulse" data-continue-eyebrow>Loading your path…</p>
-            <p class="continue-card__title" data-continue-title>—</p>
-            <!-- Progress WITHIN this destination (e.g. "3/8 signs
-                 practiced in Family") — separate from the global
-                 aggregate % on the Overall Progress card below. -->
-            <div class="continue-card__progress" data-continue-progress-wrap style="display:none;">
-              <div class="progress-bar">
-                <div class="progress-bar__fill" data-continue-progress-fill style="width:0%"></div>
+      <div class="dash-hero-row">
+        <div class="card continue-card" data-continue-card>
+          <div class="continue-card__main">
+            <span class="continue-card__icon" data-continue-icon aria-hidden="true">🎯</span>
+            <div class="continue-card__text">
+              <p class="continue-card__eyebrow dash-loading-pulse" data-continue-eyebrow>Loading your path…</p>
+              <p class="continue-card__title" data-continue-title>—</p>
+              <!-- Progress WITHIN this destination (e.g. "3/8 signs
+                   practiced in Family") — separate from the global
+                   aggregate % on the Your Progress card and the
+                   Overall Progress card below. -->
+              <div class="continue-card__progress" data-continue-progress-wrap style="display:none;">
+                <div class="progress-bar">
+                  <div class="progress-bar__fill" data-continue-progress-fill style="width:0%"></div>
+                </div>
+                <span class="continue-card__progress-label" data-continue-progress-label></span>
               </div>
-              <span class="continue-card__progress-label" data-continue-progress-label></span>
             </div>
           </div>
+          <div class="continue-card__actions">
+            <!-- href AND label are both set by JS: renderContinueButton()
+                 sets href, renderContinueCard() sets the label so it
+                 reads "Start Lesson" / "Continue" / "Review Your Path"
+                 depending on state. -->
+            <a href="learn.html" data-continue-learning id="continue-cta" class="btn btn--primary btn--lg">▶ Continue Learning</a>
+            <!-- Only shown (via JS) when there's a specific unit worth
+                 opening as a secondary action. -->
+            <a href="learn.html" data-continue-secondary class="btn btn--ghost" style="display:none;">Open Path</a>
+          </div>
         </div>
-        <div class="continue-card__actions">
-          <!-- href AND label are both set by JS: renderContinueButton()
-               sets href, renderContinueCard() sets the label so it
-               reads "Start Lesson" / "Continue" / "Review Your Path"
-               depending on state. -->
-          <a href="learn.html" data-continue-learning id="continue-cta" class="btn btn--primary btn--lg">▶ Continue Learning</a>
-          <!-- Only shown (via JS) when there's a specific unit worth
-               opening as a secondary action. -->
-          <a href="learn.html" data-continue-secondary class="btn btn--ghost" style="display:none;">Open Path</a>
+
+        <div class="card dash-progress-card">
+          <p class="dash-progress-card__title">Your Progress</p>
+          <div class="dash-progress-ring" data-hero-ring>
+            <span class="dash-progress-ring__pct" data-hero-pct>–</span>
+          </div>
+          <div class="dash-progress-card__stats">
+            <div class="dash-progress-card__stat">
+              <span class="dash-progress-card__stat-value" data-hero-signs>–</span>
+              <span class="dash-progress-card__stat-label">Signs Learned</span>
+            </div>
+            <div class="dash-progress-card__stat">
+              <span class="dash-progress-card__stat-value" data-hero-assessments>–</span>
+              <span class="dash-progress-card__stat-label">Quizzes Completed</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -298,6 +357,9 @@
       <p>LinguaWave — Capstone Project 2026</p>
     </div>
   </footer>
+
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
 
   <script src="../js/main.js"></script>
   <script src="../js/data.js"></script>

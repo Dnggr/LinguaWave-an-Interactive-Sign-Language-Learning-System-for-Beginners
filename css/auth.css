@@ -20,6 +20,41 @@
   .hero__grid { grid-template-columns: 1fr; }
 }
 
+/* ── HERO ILLUSTRATION (mockup alignment pass, 2026-08-31) ────────
+   Replaces the auth-card that used to occupy the hero's right
+   column — a soft line-art pair of signing hands inside a coral
+   circle wash, matching the mockup's Homepage screen. Pure inline
+   SVG (currentColor-free, uses design-token colors directly) so it
+   themes correctly in both light/dark without a second asset. */
+.hero-illustration {
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-8);
+}
+.hero-illustration svg { width: 100%; max-width: 380px; height: auto; }
+@media (max-width: 900px) {
+  .hero-illustration { padding: var(--space-4); }
+  .hero-illustration svg { max-width: 260px; }
+}
+
+/* ── WHY LEARN ASL? row (mockup's 3-card row directly under hero) ─ */
+.why-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
+}
+.why-row__item { text-align: center; padding: var(--space-6) var(--space-4); }
+.why-row__item .icon-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--radius-md);
+  background: var(--clr-accent-soft); color: var(--clr-accent);
+  margin-bottom: var(--space-3);
+}
+.why-row__item .icon-badge svg { width: 55%; height: 55%; }
+.why-row__item h3 { margin-bottom: var(--space-1); }
+.why-row__item p { margin: 0; font-size: var(--fs-sm); }
+
+@media (max-width: 700px) {
+  .why-row { grid-template-columns: 1fr; }
+}
+
 /* ── TOPIC PREVIEW ────────────────────────────────────────────── */
 .topic-preview {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
@@ -108,3 +143,30 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   font-size: 0.95rem;
   line-height: 1.4;
 }
+
+/* ── SIGN IN MODAL (mockup alignment pass, 2026-08-31) ─────────────
+   `#signin-modal` reuses the same `.auth-modal` backdrop/box pattern
+   as the pre-existing error modal above, just with a wider box that
+   fits the full login/register `.auth-card` instead of a one-line
+   message. `.auth-modal__box--form` overrides the error box's fixed
+   max-width; `.auth-card` itself is unstyled here — it's the exact
+   same component that used to sit in the hero, just relocated. */
+.auth-modal__box--form {
+  max-width: 460px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  position: relative;
+}
+.auth-modal__box--form .auth-card { text-align: left; }
+.auth-modal__close {
+  position: absolute; top: calc(-1 * var(--space-4)); right: calc(-1 * var(--space-4));
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted); font-size: 1.25rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-card);
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.auth-modal__close:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }

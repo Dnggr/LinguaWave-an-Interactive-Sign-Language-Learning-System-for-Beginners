@@ -180,24 +180,24 @@
 
           <!-- Text explanation -->
           <div class="lesson-desc card mt-8" id="lesson-desc">
-            <h3>How to form this sign</h3>
+            <h3>How to perform the sign</h3>
             <p class="mt-4" id="lesson-description">
               Make a fist with your thumb resting against the side of your
               index finger — not tucked underneath. Hold your hand upright
               with your palm facing the person you're signing to.
             </p>
-            <ul class="lesson-desc__tips mt-4" id="lesson-tips">
-              <li>✦ Close all fingers into a firm fist</li>
-              <li>✦ Rest your thumb against the side of your index finger</li>
-              <li>✦ Keep your wrist straight and hand relaxed</li>
-            </ul>
+            <ol class="lesson-desc__tips mt-4" id="lesson-tips">
+              <li>Close all fingers into a firm fist</li>
+              <li>Rest your thumb against the side of your index finger</li>
+              <li>Keep your wrist straight and hand relaxed</li>
+            </ol>
             <!-- NEW: populated by lesson.js from signData.referenceUrl -->
             <p class="mt-4 text-muted" id="lesson-reference-link" style="display:none;"></p>
           </div>
 
           <!-- Video demonstration -->
           <div class="lesson-video-wrap mt-8">
-            <h3>Video Demonstration</h3>
+            <h3>Watch the Sign in Motion</h3>
             <div class="lesson-video mt-4">
               <video
                 id="lesson-video"
@@ -219,6 +219,9 @@
                 referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
               -->
             </div>
+            <p class="alert alert--info lesson-video-tip mt-4">
+              💡 Watch the movement once, then try to remember it before replaying.
+            </p>
           </div>
 
           <!--
@@ -254,7 +257,7 @@
             a sign from a signer image"). See buildQuickCheckQuestion()/
             showQuickCheck() in lesson.js.
           -->
-          <div class="quick-check card mt-8" id="quick-check-card" style="display:none;">
+          <div class="quick-check card mt-8" id="quick-check-card" tabindex="-1" style="display:none;">
             <div class="quick-check__head">
               <span class="section__eyebrow" style="margin-bottom:0;">⚡ Quick Check</span>
               <button class="detection-log__clear" id="btn-quick-check-skip" type="button">Skip</button>
@@ -270,6 +273,27 @@
               Just for practice — this doesn't affect your score. Your graded check happens in the category assessment.
             </p>
           </div><!-- /quick-check-card -->
+
+          <!-- ── QUICK CHECK — CORRECT-ANSWER TAKEOVER ─────────────────
+               Mirrors pages/learn.html's #congrats-modal pattern (same
+               backdrop + centered card + focus-trap-lite approach) but
+               scoped to lesson.css since this page doesn't load
+               learn.css. Only shown on a CORRECT Quick Check answer —
+               see the click handler in lesson.js. A wrong answer stays
+               with the existing inline red highlight only; no takeover,
+               so an incorrect guess never feels like a bigger event
+               than a correct one. Markup only; lesson.js populates the
+               text and toggles [hidden]. -->
+          <div class="quick-check-modal" id="quick-check-modal" hidden>
+            <div class="quick-check-modal__backdrop" data-quick-check-dismiss></div>
+            <div class="quick-check-modal__box" role="dialog" aria-modal="true" aria-labelledby="quick-check-modal-title" aria-describedby="quick-check-modal-body">
+              <div class="quick-check-modal__icon" aria-hidden="true">✅</div>
+              <h2 class="quick-check-modal__title" id="quick-check-modal-title">Correct!</h2>
+              <p class="quick-check-modal__body" id="quick-check-modal-body"></p>
+              <button type="button" class="btn btn--primary btn--full" id="quick-check-modal-dismiss">Continue →</button>
+              <button type="button" class="quick-check-modal__explain" id="quick-check-modal-explain">View Explanation</button>
+            </div>
+          </div>
 
           <!-- PREV / NEXT navigation -->
           <div class="lesson-nav mt-8">

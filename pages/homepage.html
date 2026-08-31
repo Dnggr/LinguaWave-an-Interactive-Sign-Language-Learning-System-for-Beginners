@@ -285,10 +285,39 @@
         </div>
       </div>
 
+      <!-- ── WHY LEARN ASL (NEW — reference-board layout pass, panel 1) ──
+           Three benefit cards right under the hero, ahead of the stats
+           bar — the mockup's own panel-1 shape. Plain reuse of
+           .grid-3/.card/.icon-badge (icon-badge already defined above
+           for the hero banner), no new CSS. -->
+      <div class="grid-3 mt-8">
+        <div class="card text-center">
+          <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <h3>Communicate</h3>
+          <p class="mt-2">Connect with the Deaf community using real, useful signs.</p>
+        </div>
+        <div class="card text-center">
+          <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <h3>Easy to Learn</h3>
+          <p class="mt-2">Short, beginner-friendly lessons that build on each other.</p>
+        </div>
+        <div class="card text-center">
+          <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-4 4"/></svg>
+          </span>
+          <h3>Track Progress</h3>
+          <p class="mt-2">See your growth as you learn new signs, level by level.</p>
+        </div>
+      </div>
+
       <!-- Stats bar — real content counts, not fabricated adoption
            numbers (see file header comment). Update these 4 figures if
            the underlying data.js counts change materially. -->
-      <div class="stats-bar">
+      <div class="stats-bar" style="margin-top: var(--space-8);">
         <div class="card stats-bar__item">
           <span class="stats-bar__number">71</span>
           <span class="stats-bar__label">Units on the learning path</span>
