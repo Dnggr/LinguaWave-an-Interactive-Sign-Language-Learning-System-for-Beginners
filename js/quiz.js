@@ -257,6 +257,15 @@ let roundIdx = 0;
 let qIdx     = 0;
 const roundResults = {}; // key -> {correct, total}
 let answered = false;
+// BUGFIX (this session) — same complaint/fix as lesson.js's Quick
+// Check modal: the "Correct!" takeover was showing on every correct
+// answer across a whole quiz round, which reads as naggy well before
+// the round ends. A quiz round never reloads the page between
+// questions (qIdx just increments — see selectAnswer()/showQuestion()
+// below), so a plain module-level flag is enough here, unlike
+// lesson.js's per-sign-page-load Quick Check which needed
+// sessionStorage instead.
+let quizModalShownThisSession = false;
 
 let cameraRoundData = { attempted: false, correct: 0, total: 0, skipped: true };
 let rafId = null, cameraPromptTimer = null, cameraGetReadyTimer = null;
@@ -484,11 +493,13 @@ function selectAnswer(btn, q) {
   }
 
   // Correct answers get the standalone "Correct!" takeover (mockup
-  // screen 9) and wait for the learner to hit Continue; a wrong
-  // answer keeps the previous behavior unchanged — inline red
-  // highlight only, auto-advancing on its own timer — so a miss never
-  // turns into a bigger moment than a hit.
-  if (correct) {
+  // screen 9) once per quiz session and wait for the learner to hit
+  // Continue; after that (and always for a wrong answer), behavior is
+  // unchanged — inline feedback only, auto-advancing on its own timer
+  // — so the round doesn't keep interrupting itself once the learner
+  // has already seen what a correct answer looks like.
+  if (correct && !quizModalShownThisSession) {
+    quizModalShownThisSession = true;
     showQuizModal(q);
   } else {
     setTimeout(() => { qIdx++; showQuestion(); }, 1100);

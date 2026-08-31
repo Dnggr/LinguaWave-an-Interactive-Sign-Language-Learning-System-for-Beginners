@@ -149,7 +149,11 @@ function showLearnUnavailable(reason) {
     `</div>`;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// BUGFIX (this session) — same class of bug as dashboard.js's
+// initDashboard() fix; see its comment for the full reasoning. Same
+// readyState guard applied here for consistency/safety (reported bug
+// was "page to page", not isolated to one page).
+function initLearnPage() {
   const grid           = document.getElementById('lesson-grid');
   const contextEl       = document.getElementById('learn-context');
   const backLinkEl      = document.getElementById('learn-back-link');
@@ -922,4 +926,10 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('[learn.js] rendering failed partway through:', e);
     showLearnUnavailable('render threw: ' + (e && e.message));
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLearnPage);
+} else {
+  initLearnPage();
+}

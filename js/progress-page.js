@@ -203,7 +203,15 @@ function showProgressUnavailable(reason) {
   if (reviewActionsEl) reviewActionsEl.innerHTML = '<a class="btn btn--ghost" href="learn.html">Go to Learn</a>';
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+// BUGFIX (this session) — same class of bug as dashboard.js's
+// initDashboard() fix (see its own comment for the full reasoning):
+// a bare `document.addEventListener('DOMContentLoaded', ...)` can be
+// registered after that event already fired in some edge cases, which
+// leaves this page stuck on its static loading placeholders forever
+// with neither the real render below nor showProgressUnavailable()'s
+// fallback ever appearing — matching what was reported on this exact
+// page. Same readyState guard js/lesson.js/js/quiz.js already use.
+async function initProgressPage() {
   const readyPromise = window.LWProgress?.whenProgressReady?.();
   if (readyPromise && typeof readyPromise.then === 'function') {
     await Promise.race([
@@ -226,4 +234,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[progress-page.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProgressPage);
+} else {
+  initProgressPage();
+}

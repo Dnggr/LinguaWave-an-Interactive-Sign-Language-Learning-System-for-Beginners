@@ -124,10 +124,10 @@
 
           <!-- ── PROFILE CARD ────────────────────────────────────── -->
           <div class="card mt-8 profile-card">
-            <div class="profile-card__avatar" aria-hidden="true" id="settings-avatar-initial">L</div>
+            <div class="profile-card__avatar" aria-hidden="true" id="settings-avatar-initial" data-user-initial></div>
             <div class="profile-card__info">
-              <div class="fs-lg" style="font-weight:700;" id="settings-user-name" data-user-name>Learner</div>
-              <div class="profile-card__email" id="settings-user-email">learner@email.com</div>
+              <div class="fs-lg" style="font-weight:700;" id="settings-user-name" data-user-name>—</div>
+              <div class="profile-card__email" id="settings-user-email" data-user-email>—</div>
             </div>
             <button class="btn btn--secondary" id="btn-edit-profile">Edit Profile</button>
           </div>
@@ -138,10 +138,19 @@
 
             <div class="pref-row">
               <span class="pref-row__label">Theme</span>
-              <button class="theme-toggle" id="theme-toggle-settings" role="switch" aria-checked="false"
-                      aria-label="Toggle light/dark theme">
-                <span class="theme-toggle__thumb"></span>
-              </button>
+              <!-- CHANGED — was a .theme-toggle switch; the reference
+                   mockup's Settings screen specifically shows a
+                   dropdown (`Theme  [Light \u25be]`), not a binary toggle.
+                   Wired directly to js/theme.js's own global
+                   applyTheme()/getCurrentTheme() (plain top-level
+                   function declarations in that file, not
+                   IIFE-scoped, so they're real window globals) \u2014 same
+                   source of truth as every other page's toggle, not a
+                   second theme mechanism. See js/settings-page.js. -->
+              <select class="form-input" id="theme-select-settings" style="width:auto; padding: var(--space-2) var(--space-3);" aria-label="Theme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
             </div>
 
             <div class="pref-row">
