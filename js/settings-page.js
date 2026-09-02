@@ -53,32 +53,18 @@ function applyReducedMotion(enabled) {
 // initDashboard() fix; see its comment for the full reasoning. Same
 // readyState guard applied here for consistency/safety.
 function initThemeSelect() {
-  // BUGFIX — this <select> shipped with a comment claiming it was
-  // "wired directly to js/theme.js", but no listener existed anywhere
-  // in the repo, so picking Light/Dark here did nothing. theme.js's
-  // applyTheme()/getCurrentTheme() are real top-level `window` globals
-  // (see that file's header), so we reuse them directly rather than
-  // introducing a second theme mechanism.
-  const themeSelectEl = document.getElementById('theme-select-settings');
-  if (!themeSelectEl || typeof getCurrentTheme !== 'function' || typeof applyTheme !== 'function') return;
-
-  themeSelectEl.value = getCurrentTheme();
-
-  themeSelectEl.addEventListener('change', () => {
-    applyTheme(themeSelectEl.value);
-  });
-
-  // Keep the dropdown in sync if the theme changes elsewhere — e.g. the
-  // sidebar's .theme-toggle button on this same page, or another tab
-  // (theme.js already listens for the 'storage' event for that case).
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'lw-theme' && e.newValue) themeSelectEl.value = e.newValue;
-  });
-  document.getElementById('theme-toggle')?.addEventListener('click', () => {
-    // Runs after theme.js's own click handler (listener order), so
-    // getCurrentTheme() already reflects the new value here.
-    themeSelectEl.value = getCurrentTheme();
-  });
+  // The 3-way System/Light/Dark segmented control itself is fully
+  // wired by js/theme.js's own initThemeToggles() — it queries every
+  // .theme-segmented on the page generically, sets each option's
+  // click handler, and keeps it synced (incl. the sidebar's
+  // .theme-switch and other tabs via 'storage') via
+  // syncSegmentedControls(). Nothing page-specific to do here anymore;
+  // this function is kept as a documented no-op so
+  // CLAUDE_TASKS.md-style history of "why isn't settings.html wiring
+  // its own theme control" doesn't get re-litigated by a future pass.
+  if (typeof getThemePreference !== 'function' || typeof applyTheme !== 'function') {
+    console.warn('[settings-page.js] js/theme.js globals not found — theme control will not work on this page.');
+  }
 }
 
 function initSettingsPage() {
@@ -90,10 +76,35 @@ function initSettingsPage() {
   const soundEl  = document.getElementById('pref-sound-effects');
   const motionEl = document.getElementById('pref-reduced-motion');
 
+  // BUGFIX — all three checkboxes ship `checked` hardcoded in the HTML
+  // (see pages/settings.html), and the .checked assignments below
+  // correct each one to its real stored value. .toggle-switch's track/
+  // thumb both have CSS transitions (for nice user-triggered clicks),
+  // so whenever a stored value differed from the hardcoded default,
+  // that correction visibly slid/faded the switch on every single page
+  // load — e.g. Notifications flipping off→on on every refresh even
+  // though nothing had actually changed. Suppressed for this one
+  // initial sync only, same "no-transition" pattern js/theme.js uses
+  // for the theme switch (see its initThemeToggles()).
+  const switchEls = [notifEl, soundEl, motionEl]
+    .filter(Boolean)
+    .map((input) => input.closest('.toggle-switch'))
+    .filter(Boolean);
+  switchEls.forEach((el) => el.classList.add('toggle-switch--no-transition'));
+
   if (notifEl)  notifEl.checked  = prefs.notifications;
   if (soundEl)  soundEl.checked  = prefs.soundEffects;
   if (motionEl) motionEl.checked = prefs.reducedMotion;
   applyReducedMotion(prefs.reducedMotion);
+
+  // Force layout so the class-add above is actually applied by the
+  // time we remove it on the next frame, instead of both changes
+  // getting batched into one paint.
+  void document.body.offsetHeight;
+
+  requestAnimationFrame(() => {
+    switchEls.forEach((el) => el.classList.remove('toggle-switch--no-transition'));
+  });
 
   notifEl?.addEventListener('change', () => {
     prefs.notifications = notifEl.checked;

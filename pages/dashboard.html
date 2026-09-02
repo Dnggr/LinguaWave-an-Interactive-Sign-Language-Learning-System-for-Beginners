@@ -5,9 +5,18 @@
        the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
-      var saved = localStorage.getItem('lw-theme');
-      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      document.documentElement.setAttribute('data-theme', theme);
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      // Paints the correct background INSTANTLY, without waiting on
+      // css/style.css to finish loading/parsing — this is the part
+      // that actually stops the white flash on reload/navigation.
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
     })();
   </script>
   <!--
@@ -106,9 +115,12 @@
         </a>
       </nav>
       <div class="app-sidebar__foot">
-        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
-                aria-label="Toggle light/dark theme">
-          <span class="theme-toggle__thumb"></span>
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
         </button>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>

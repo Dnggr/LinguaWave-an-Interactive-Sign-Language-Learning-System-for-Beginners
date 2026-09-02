@@ -3,9 +3,18 @@
 <head>
   <script>
     (function () {
-      var saved = localStorage.getItem('lw-theme');
-      var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      document.documentElement.setAttribute('data-theme', theme);
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      // Paints the correct background INSTANTLY, without waiting on
+      // css/style.css to finish loading/parsing — this is the part
+      // that actually stops the white flash on reload/navigation.
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
     })();
   </script>
   <!--
@@ -18,7 +27,7 @@
     REUSES   : css/style.css's .card/.form-input/.btn (profile card,
                Edit Profile), the new .toggle-switch component (§18)
                for Notifications/Sound Effects, and the existing
-               .theme-toggle for the Theme row so it stays the single
+               .theme-switch for the Theme row so it stays the single
                source of truth for theme state (no second toggle
                fighting js/theme.js's localStorage-backed one).
 
@@ -107,9 +116,12 @@
         </a>
       </nav>
       <div class="app-sidebar__foot">
-        <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false"
-                aria-label="Toggle light/dark theme">
-          <span class="theme-toggle__thumb"></span>
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
         </button>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
@@ -138,19 +150,29 @@
 
             <div class="pref-row">
               <span class="pref-row__label">Theme</span>
-              <!-- CHANGED — was a .theme-toggle switch; the reference
-                   mockup's Settings screen specifically shows a
-                   dropdown (`Theme  [Light \u25be]`), not a binary toggle.
-                   Wired directly to js/theme.js's own global
-                   applyTheme()/getCurrentTheme() (plain top-level
-                   function declarations in that file, not
-                   IIFE-scoped, so they're real window globals) \u2014 same
-                   source of truth as every other page's toggle, not a
-                   second theme mechanism. See js/settings-page.js. -->
-              <select class="form-input" id="theme-select-settings" style="width:auto; padding: var(--space-2) var(--space-3);" aria-label="Theme">
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
+              <!-- CHANGED — was a Light/Dark-only <select>. Replaced with
+                   a 3-way System/Light/Dark segmented control (same
+                   pattern as Claude's own Settings → Appearance), so
+                   "follow my OS" is a real option again, not just the
+                   unlabeled first-visit fallback. Wired by
+                   js/theme.js's applyTheme()/syncSegmentedControls() —
+                   same single source of truth as the sidebar's quick
+                   .theme-switch switch, not a second theme mechanism.
+                   See js/settings-page.js for the read-on-load half. -->
+              <div class="theme-segmented" id="theme-segmented-settings" role="radiogroup" aria-label="Theme">
+                <button type="button" class="theme-segmented__opt" data-theme-value="system" role="radio" aria-checked="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                  System
+                </button>
+                <button type="button" class="theme-segmented__opt" data-theme-value="light" role="radio" aria-checked="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                  Light
+                </button>
+                <button type="button" class="theme-segmented__opt" data-theme-value="dark" role="radio" aria-checked="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  Dark
+                </button>
+              </div>
             </div>
 
             <div class="pref-row">
