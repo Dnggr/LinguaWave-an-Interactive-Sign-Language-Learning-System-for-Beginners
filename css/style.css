@@ -241,55 +241,137 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   color: var(--clr-text-muted);
 }
 
-/* ── 5a. THEME TOGGLE ───────────────────────────────────────────── */
-/* A plain pill switch — deliberately the only "colorful" moving part
-   in the whole nav, since it's the one control whose entire job is
-   to visually represent "light vs dark." See js/theme.js for wiring. */
-.theme-toggle {
-  --toggle-w: 44px;
-  --toggle-h: 24px;
-  width: var(--toggle-w);
-  height: var(--toggle-h);
+/* ── 5a. THEME SWITCH ───────────────────────────────────────────── */
+/* Sun/moon sliding switch — same interaction pattern as VitePress's
+   appearance toggle (a single circular thumb that slides end-to-end,
+   with the sun/moon icons living INSIDE the thumb and crossfading
+   into each other, rather than a static icon painted on the track).
+   Purely attribute-driven off aria-checked (checked = dark is active)
+   — no JS classList toggling needed for the visual state itself, just
+   for suppressing the transition during the initial load-time sync
+   (see js/theme.js's initThemeToggles()) so the thumb doesn't visibly
+   slide/crossfade on every page refresh when the resolved theme
+   differs from the checked="false" default baked into the markup. */
+.theme-switch {
+  --switch-w: 44px;
+  --switch-h: 24px;
+  --thumb: 18px;
+  width: var(--switch-w);
+  height: var(--switch-h);
   flex-shrink: 0;
-  border-radius: var(--radius-pill);
-  background: var(--clr-surface-2);
-  border: 1px solid var(--clr-border);
   position: relative;
   padding: 0;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-2);
+  transition: border-color var(--dur-fast) var(--ease);
 }
-.theme-toggle__thumb {
+.theme-switch:hover { border-color: var(--clr-accent); }
+.theme-switch__check {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: calc(var(--toggle-h) - 6px);
-  height: calc(var(--toggle-h) - 6px);
+  width: var(--thumb);
+  height: var(--thumb);
   border-radius: 50%;
-  background: var(--clr-text);
-  transition: transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease);
-}
-.theme-toggle__thumb::before {
-  content: '☾';
-  position: absolute;
-  inset: 0;
+  background: var(--clr-surface);
+  box-shadow: 0 1px 2px rgba(43,33,26,.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  color: var(--clr-surface);
+  transition: transform var(--dur-base) var(--ease);
 }
-.theme-toggle--light .theme-toggle__thumb {
-  transform: translateX(calc(var(--toggle-w) - var(--toggle-h)));
+.theme-switch[aria-checked="true"] .theme-switch__check {
+  transform: translateX(calc(var(--switch-w) - var(--thumb) - 4px));
 }
-.theme-toggle--light .theme-toggle__thumb::before { content: '☀'; }
-.theme-toggle:hover { border-color: var(--clr-text-muted); }
+.theme-switch__icon {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  color: var(--clr-accent);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.theme-switch__icon--sun { opacity: 1; transform: scale(1) rotate(0deg); }
+.theme-switch__icon--moon { opacity: 0; transform: scale(.4) rotate(-90deg); color: var(--clr-blue); }
+.theme-switch[aria-checked="true"] .theme-switch__icon--sun { opacity: 0; transform: scale(.4) rotate(90deg); }
+.theme-switch[aria-checked="true"] .theme-switch__icon--moon { opacity: 1; transform: scale(1) rotate(0deg); }
 
 /* BUGFIX — js/theme.js applies this for one frame during its initial,
-   load-time sync so the thumb's already-correct position doesn't
-   visibly animate in on every page refresh. Removed again immediately
-   after, so user-triggered toggles still animate as designed. */
-.theme-toggle--no-transition,
-.theme-toggle--no-transition .theme-toggle__thumb {
+   load-time sync so the thumb's already-correct position + icon
+   crossfade don't visibly animate in on every page refresh. Removed
+   again immediately after, so user-triggered clicks still animate. */
+.theme-switch--no-transition,
+.theme-switch--no-transition .theme-switch__check,
+.theme-switch--no-transition .theme-switch__icon {
+  transition: none !important;
+}
+
+/* ── 5b. THEME SEGMENTED CONTROL (System / Light / Dark) ─────────
+   Same 3-way "Appearance" control pattern Claude's own Settings uses.
+   A pill-shaped track holding 3 equal-width options with a sliding
+   highlight behind whichever is active. Lives in Settings' Theme
+   preference row (see pages/settings.html); wired by js/theme.js's
+   syncSegmentedControls()/applyTheme(). */
+.theme-segmented {
+  --seg-count: 3;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--seg-count), 1fr);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.theme-segmented__opt {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  transition: color var(--dur-fast) var(--ease);
+  white-space: nowrap;
+}
+.theme-segmented__opt svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+/* BUGFIX — this used to be a plain `.theme-segmented__opt:hover` rule,
+   which (having higher specificity than `--active`'s single class)
+   ALSO overrode the active option's text color while hovering it —
+   and since the active pill's background is that same `--clr-text`
+   color, the label became invisible against its own background the
+   moment you hovered the currently-selected option. Scoped to
+   non-active options only now. */
+.theme-segmented__opt:hover:not(.theme-segmented__opt--active) { color: var(--clr-text); }
+.theme-segmented__opt--active {
+  color: var(--clr-text-invert);
+}
+/* The sliding highlight: an absolutely-positioned pill painted behind
+   whichever option is active, drawn on that option's own ::before —
+   each option already owns 1/3 of the grid, so no JS-measured
+   translateX is needed, just a background swap on the active cell. */
+.theme-segmented__opt--active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-pill);
+  background: var(--clr-text);
+  transition: background var(--dur-fast) var(--ease);
+}
+.theme-segmented--no-transition .theme-segmented__opt,
+.theme-segmented--no-transition .theme-segmented__opt::before {
   transition: none !important;
 }
 
@@ -593,7 +675,7 @@ html.lw-force-reduced-motion *::after {
            … Learn / Progress / Quiz / Feedback / Settings …
          </nav>
          <div class="app-sidebar__foot">
-           <button class="theme-toggle" id="theme-toggle" …>…</button>
+           <button class="theme-switch" id="theme-toggle" …>…</button>
            <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
          </div>
        </aside>
@@ -605,7 +687,7 @@ html.lw-force-reduced-motion *::after {
    `data-user-name` / theme-toggle / data-logout keep their existing
    ids/attributes and existing js/main.js + js/theme.js wiring — only
    their container markup moved, matching js/theme.js's own
-   documented contract ("wires any .theme-toggle button on the page"). */
+   documented contract ("wires any .theme-switch button on the page"). */
 .app-shell { display: flex; min-height: 100vh; }
 .app-sidebar {
   width: 240px; flex-shrink: 0;
@@ -644,9 +726,9 @@ html.lw-force-reduced-motion *::after {
 /* ── 18. TOGGLE SWITCH (shared form control) ────────────────────────
    Plain checkbox-driven on/off switch — Settings page preferences
    (Notifications, Sound Effects, etc). Same visual language as
-   .theme-toggle's pill/thumb, but generic (no light/dark icon glyph)
-   and state-driven by a real <input type="checkbox"> for accessible
-   keyboard/AT support, since unlike .theme-toggle this isn't wired by
+   .theme-switch's sliding thumb, but generic (no light/dark icon
+   glyph) and state-driven by a real <input type="checkbox"> for
+   accessible keyboard/AT support, since unlike .theme-switch this isn't wired by
    js/theme.js — plain onchange handlers are enough for a preference. */
 .toggle-switch { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; }
 .toggle-switch input {
@@ -665,6 +747,19 @@ html.lw-force-reduced-motion *::after {
 .toggle-switch input:checked ~ .toggle-switch__track { background: var(--clr-success); border-color: var(--clr-success); }
 .toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(20px); background: #fff; }
 .toggle-switch input:focus-visible ~ .toggle-switch__track { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
+
+/* BUGFIX — the Notifications/Sound Effects/Reduced Motion checkboxes
+   ship `checked` hardcoded in the HTML (see pages/settings.html), then
+   js/settings-page.js corrects each one to its real stored value on
+   load. When a stored value differs from the hardcoded default, that
+   correction used to visibly animate (the CSS transitions above are
+   what make user-triggered flips feel nice) on every single page
+   load. Suppressed for that one initial sync only — same pattern as
+   .theme-switch--no-transition above. */
+.toggle-switch--no-transition .toggle-switch__track,
+.toggle-switch--no-transition .toggle-switch__thumb {
+  transition: none !important;
+}
 
 @media (max-width: 900px) {
   .app-shell { flex-direction: column; min-height: 0; }

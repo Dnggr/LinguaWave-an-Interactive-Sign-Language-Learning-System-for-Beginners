@@ -29,13 +29,27 @@
  * js/auth.js / js/engine/progress.js, neither of which this file
  * touches). The DOMContentLoaded handler below races that promise
  * against PROGRESS_READY_TIMEOUT_MS and renders from whatever's
- * already in localStorage on timeout — every render function reads
- * synchronously from local storage regardless, so this is safe for
- * the common case. showProgressUnavailable() is the true empty-state
+ * already in localStorage immediately, without waiting — every render
+ * function reads synchronously from local storage regardless, so this
+ * is safe and flicker-free for the common case (cache already belongs
+ * to this account). showProgressUnavailable() is the true empty-state
  * fallback: window.LWProgress/LWData never loaded, or a render
  * function threw. No window.LWAuth call, login/logout/redirect, or
  * session logic exists anywhere in this file — auth stays out of this
  * page's job on purpose.
+ *
+ * POST-HYDRATION RE-RENDER: the local cache read above can be stale —
+ * a fresh device/browser, a just-logged-in session with no cache yet,
+ * or a cache left over from a different account. In that case
+ * js/engine/progress.js's hydrateStore() fetches the real progress
+ * from Firestore in the background and whenProgressReady() resolves
+ * once it lands. renderDashboardFromLocalCache() (below) is called a
+ * second time then, but ONLY if the raw localStorage record actually
+ * changed between the first paint and hydration resolving — see the
+ * DOMContentLoaded handler's comments for the snapshot-compare that
+ * guards this. This is what stops progress from only showing up after
+ * a manual refresh, without reintroducing the flicker the
+ * immediate-first-paint fix above was written to remove.
  *
  * ACCESSIBILITY: unit rows carry real `aria-label`s (built in
  * unitRowHtml(), not a generic linearized string), there's a skip
@@ -844,6 +858,39 @@ function showProgressUnavailable(reason) {
   // as Overall Progress above — no guess is safer than a wrong guess.
 }
 
+/**
+ * Runs the full "paint the dashboard from whatever's in localStorage
+ * right now" pass — every render*() call that depends on progress
+ * data. Factored out so both the first, synchronous paint AND the
+ * post-hydration re-render (see DOMContentLoaded handler below) call
+ * the exact same sequence instead of two copies drifting apart.
+ *
+ * Does NOT bind the recap-toggle listener — that's done once, only on
+ * the first pass, so a later re-render never double-attaches it.
+ *
+ * @returns {object|null} the computeOverallStats()-shaped destination
+ *   walk, so callers that already need it (none today) don't have to
+ *   recompute it a second time.
+ */
+function renderDashboardFromLocalCache() {
+  // Computed once, consumed by all three "where's the learner" renders
+  // below — see getCurrentDestination()'s doc comment for why this
+  // replaced two separate copies of the same walk.
+  const destination = getCurrentDestination();
+
+  renderOverallProgress();
+  renderCurrentUnit(destination);
+  renderStatsSnapshot(destination);
+  renderWelcomeBanner(destination);
+  renderUnitList(destination);
+  renderRecap();
+  renderReviewEntry();
+  renderContinueButton(destination);
+  renderContinueCard(destination);
+
+  return destination;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // FIX (this session): this used to `await Promise.race([readyPromise,
   // timeout])` BEFORE calling any render*() function below — so even
@@ -859,14 +906,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // Per this file's own LOADING/FAILURE HANDLING doc comment above,
   // every render function already reads synchronously from
   // localStorage regardless of whether whenProgressReady() has
-  // resolved — hydration only matters for pulling in a DIFFERENT
-  // device's saved progress, not for the common single-device case
-  // this render pass covers. So there's nothing to actually wait for
-  // before rendering: do the real render immediately, synchronously,
-  // in the same tick as DOMContentLoaded, and run the
-  // whenProgressReady()-vs-timeout race afterward purely as a
-  // background diagnostic (existing console logging), no longer
-  // gating the paint on it.
+  // resolved — so there's nothing to wait for on the common,
+  // single-device, already-cached case: do the real render
+  // immediately, synchronously, in the same tick as DOMContentLoaded.
+  //
+  // What that fix left broken (THIS fix): a fresh device/browser, a
+  // just-logged-in session with no local cache yet, or a cache
+  // belonging to a different uid all hit the OTHER branch of
+  // hydrateStore() — the one that actually fetches from Firestore.
+  // That fetch is genuinely async and hasn't resolved yet at this
+  // first paint, so this synchronous render below paints the
+  // empty/default store: 0% progress, fresh-account look. Refreshing
+  // "fixes" it only because that background hydration already
+  // finished and written the real data into localStorage before the
+  // second load's synchronous read — same race, just already won by
+  // the time you refresh.
+  //
+  // Fix: snapshot the raw localStorage record before this first
+  // paint, and once whenProgressReady() actually resolves, compare it
+  // against what's there now. Only re-run the render pass if hydration
+  // changed something — that keeps the fast/common case (cache already
+  // matched the account) exactly as flicker-free as before, while the
+  // stale-cache-then-real-data case gets repainted instead of silently
+  // stuck showing the wrong numbers until a manual refresh.
   console.log('[dashboard.js] rendering from local cache immediately');
 
   if (!window.LWProgress || !window.LWData) {
@@ -874,24 +936,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  try {
-    // Computed once, consumed by all three "where's the learner" renders
-    // below — see getCurrentDestination()'s doc comment for why this
-    // replaced two separate copies of the same walk.
-    const destination = getCurrentDestination();
+  const storeKey = window.LWProgress.STORE_KEY;
+  // Read before the first render call below, so this reflects exactly
+  // what that render painted from — not a moment later.
+  const preRenderSnapshot = storeKey ? localStorage.getItem(storeKey) : null;
 
-    renderOverallProgress();
-    renderCurrentUnit(destination);
-    renderStatsSnapshot(destination);
-    renderWelcomeBanner(destination);
-    renderUnitList(destination);
-    renderRecap();
-    renderReviewEntry();
-    renderContinueButton(destination);
-    renderContinueCard(destination);
+  try {
+    renderDashboardFromLocalCache();
 
     // Bound once here, not inside renderRecap() itself, so re-renders
-    // (e.g. from the toggle click) never re-attach and double-fire.
+    // (e.g. from the toggle click, or the post-hydration repaint
+    // below) never re-attach and double-fire.
     document.querySelector('[data-recap-toggle]')?.addEventListener('click', handleRecapToggle);
   } catch (e) {
     // Belt-and-suspenders: no render function above is expected to
@@ -904,15 +959,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Background-only from here down: purely diagnostic logging for a
-  // slow/hung whenProgressReady(), same PROGRESS_READY_TIMEOUT_MS
-  // reasoning as before. Deliberately NOT re-running the render
-  // functions on 'ready' — doing so would just reintroduce the exact
-  // flicker this fix removes, snapping already-correct values to...
-  // the same already-correct values, in the common case. If real
-  // cross-device hydration lands later (see this file's TODO about
-  // replacing MOCK_PROGRESS with Firestore), that's the point to
-  // revisit whether a second, quieter render pass is worth it.
+  // Background from here down: wait for hydration to actually settle,
+  // then repaint ONLY if it brought in different data than what's
+  // already on screen. This is the fix — see the big comment above.
   const readyPromise = window.LWProgress?.whenProgressReady?.();
   if (readyPromise && typeof readyPromise.then === 'function') {
     Promise.race([
@@ -921,8 +970,39 @@ document.addEventListener('DOMContentLoaded', () => {
     ]).then((outcome) => {
       if (outcome === 'timeout') {
         console.warn(`[dashboard.js] whenProgressReady() did not resolve within ${PROGRESS_READY_TIMEOUT_MS}ms — already rendered from local cache, nothing further to do.`);
-      } else {
-        console.log('[dashboard.js] progress hydration confirmed ready (page was already rendered from local cache).');
+        return;
+      }
+
+      console.log('[dashboard.js] progress hydration confirmed ready.');
+
+      const postHydrationSnapshot = storeKey ? localStorage.getItem(storeKey) : null;
+      if (postHydrationSnapshot === preRenderSnapshot) {
+        // Common case: cache already matched this account (same
+        // device, already logged in before, or genuinely a brand-new
+        // account with nothing to fetch). Nothing changed — repainting
+        // would just snap already-correct values to the same
+        // already-correct values, i.e. exactly the flicker the earlier
+        // fix was written to remove. Skip it.
+        console.log('[dashboard.js] hydrated data matches what was already rendered — no re-render needed.');
+        return;
+      }
+
+      // The uncommon-but-real case this fix exists for: hydration
+      // pulled in different data than the empty/default store this
+      // page first painted from (fresh device, first login on this
+      // browser, or a stale cache from a different account). Repaint
+      // with the same render pass used for the first paint, so the
+      // two can never drift out of sync with each other.
+      console.log('[dashboard.js] hydration brought in different data — re-rendering dashboard.');
+      try {
+        renderDashboardFromLocalCache();
+      } catch (e) {
+        // Don't fall back to showProgressUnavailable() here — the
+        // first render already succeeded and is showing valid (if
+        // stale) data; blowing that away for an error screen because
+        // the *second* pass threw would be worse than just leaving
+        // what's already on screen.
+        console.error('[dashboard.js] post-hydration re-render failed, leaving first render in place:', e);
       }
     });
   } else {
