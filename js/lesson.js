@@ -513,9 +513,20 @@ function showQuickCheck() {
         // red highlight + feedback line above — no takeover, so a
         // miss never feels like a bigger event than a hit.
         if (correct) showQuickCheckModal(q.signId);
-        // Purely formative — no LWProgress write, no persisted score.
-        // Prev/Next already work regardless of whether this was ever
-        // answered (see setupNavButtons(), untouched by this feature).
+        // BUGFIX (this session): a correct Quick Check answer is a real
+        // engagement signal — same bar setupNavButtons()'s
+        // markCurrentSignPracticed() already uses for Prev/Next/Finish
+        // — so record it here too. Previously this handler wrote
+        // nothing, so a learner who answered correctly and then left
+        // via the sidebar's plain <a href> course-nav links (which
+        // navigate directly and never call markCurrentSignPracticed())
+        // lost that progress entirely; it only persisted if they
+        // additionally clicked Prev/Next/Finish first. recordSignPracticed()
+        // just overwrites a practicedAt timestamp, so this can't
+        // double-record or conflict with that later Prev/Next call —
+        // still skips the name drill for the same reason
+        // markCurrentSignPracticed() does (see its comment).
+        if (correct && !isNameDrill) window.LWProgress?.recordSignPracticed?.(level, category, sign);
       };
     });
   }
@@ -2093,7 +2104,7 @@ function startAssessment() {
 
   if (modeBarEl) {
     modeBarEl.textContent  = '🎯 Assessment Mode';
-    modeBarEl.className    = 'mode-bar mode-bar--assessment';
+    modeBarEl.className    = 'mode-bar mode-bar--pill mode-bar--assessment';
   }
 
   showNextPrompt();
@@ -2293,7 +2304,7 @@ function endAssessment() {
 
   if (modeBarEl) {
     modeBarEl.textContent = '📖 Practice Mode';
-    modeBarEl.className   = 'mode-bar mode-bar--practice';
+    modeBarEl.className   = 'mode-bar mode-bar--pill mode-bar--practice';
   }
 
   // BUG 8 FIX: "Review missed signs" — only relevant/shown on fail,
@@ -2501,7 +2512,7 @@ window.retryLesson = function() {
   if (scoreEl)     scoreEl.style.display     = 'none';
   if (modeBarEl) {
     modeBarEl.textContent = '📖 Practice Mode';
-    modeBarEl.className   = 'mode-bar mode-bar--practice';
+    modeBarEl.className   = 'mode-bar mode-bar--pill mode-bar--practice';
   }
   mode = 'practice';
   syncMotionUIForMode();

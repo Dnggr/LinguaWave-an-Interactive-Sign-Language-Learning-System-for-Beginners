@@ -60,7 +60,26 @@ function syncToggleButtons(theme) {
 }
 
 function initThemeToggles() {
+  // BUGFIX — .theme-toggle--light is added by JS here, after the
+  // button has already painted without it, and .theme-toggle__thumb
+  // has a `transform` transition. That combination made the thumb
+  // visibly slide into position on every single page load whenever
+  // the stored theme was light. Suppress the transition for this one,
+  // initial sync only (real user clicks later still animate normally).
+  const toggles = document.querySelectorAll('.theme-toggle');
+  toggles.forEach((btn) => btn.classList.add('theme-toggle--no-transition'));
+
   syncToggleButtons(getCurrentTheme());
+
+  // Force layout so the class-add above is actually applied by the
+  // time we remove the "no transition" class on the next frame,
+  // instead of both changes getting batched into one paint.
+  void document.body.offsetHeight;
+
+  requestAnimationFrame(() => {
+    toggles.forEach((btn) => btn.classList.remove('theme-toggle--no-transition'));
+  });
+
   document.querySelectorAll('.theme-toggle').forEach((btn) => {
     // Idempotent binding (same pattern used elsewhere in this project) —
     // safe even if this ever runs more than once on the same page.

@@ -52,8 +52,39 @@ function applyReducedMotion(enabled) {
 // BUGFIX (this session) — same class of bug as dashboard.js's
 // initDashboard() fix; see its comment for the full reasoning. Same
 // readyState guard applied here for consistency/safety.
+function initThemeSelect() {
+  // BUGFIX — this <select> shipped with a comment claiming it was
+  // "wired directly to js/theme.js", but no listener existed anywhere
+  // in the repo, so picking Light/Dark here did nothing. theme.js's
+  // applyTheme()/getCurrentTheme() are real top-level `window` globals
+  // (see that file's header), so we reuse them directly rather than
+  // introducing a second theme mechanism.
+  const themeSelectEl = document.getElementById('theme-select-settings');
+  if (!themeSelectEl || typeof getCurrentTheme !== 'function' || typeof applyTheme !== 'function') return;
+
+  themeSelectEl.value = getCurrentTheme();
+
+  themeSelectEl.addEventListener('change', () => {
+    applyTheme(themeSelectEl.value);
+  });
+
+  // Keep the dropdown in sync if the theme changes elsewhere — e.g. the
+  // sidebar's .theme-toggle button on this same page, or another tab
+  // (theme.js already listens for the 'storage' event for that case).
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'lw-theme' && e.newValue) themeSelectEl.value = e.newValue;
+  });
+  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    // Runs after theme.js's own click handler (listener order), so
+    // getCurrentTheme() already reflects the new value here.
+    themeSelectEl.value = getCurrentTheme();
+  });
+}
+
 function initSettingsPage() {
   const prefs = loadPrefs();
+
+  initThemeSelect();
 
   const notifEl  = document.getElementById('pref-notifications');
   const soundEl  = document.getElementById('pref-sound-effects');

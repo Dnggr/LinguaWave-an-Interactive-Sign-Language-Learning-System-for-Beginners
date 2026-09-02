@@ -80,7 +80,7 @@
 
   <nav class="navbar">
     <div class="container navbar__inner">
-      <a href="index.html" class="navbar__logo">Lingua<span>Wave</span></a>
+      <a href="#" class="navbar__logo" id="navbar-logo">Lingua<span>Wave</span></a>
       <ul class="navbar__links">
         <li><a href="#" data-hero-login>Dashboard</a></li>
         <li><a href="#" data-hero-login>Learn</a></li>
@@ -89,8 +89,8 @@
       <div class="navbar__user">
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle light/dark theme">
           <span class="theme-toggle__thumb"></span>
-        <button type="button" class="btn btn--primary btn--sm" data-hero-login>Log In</button>
         </button>
+        <button type="button" class="btn btn--primary btn--sm" data-hero-login>Log In</button>
       </div>
     </div>
   </nav>
@@ -363,6 +363,15 @@
     function closeAuthModal() {
       signinModal.classList.add('hidden');
     }
+
+    // Logo click — this is the landing page itself, so clicking the
+    // logo should just take the visitor back to the top of THIS page
+    // (like every other marketing site), not force a full navigation/
+    // reload to "index.html" (which is where they already are).
+    document.getElementById('navbar-logo').addEventListener('click', (event) => {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
     document.getElementById('signin-modal-close').addEventListener('click', closeAuthModal);
     signinModal.addEventListener('click', (event) => {

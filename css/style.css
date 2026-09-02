@@ -284,6 +284,15 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .theme-toggle--light .theme-toggle__thumb::before { content: '☀'; }
 .theme-toggle:hover { border-color: var(--clr-text-muted); }
 
+/* BUGFIX — js/theme.js applies this for one frame during its initial,
+   load-time sync so the thumb's already-correct position doesn't
+   visibly animate in on every page refresh. Removed again immediately
+   after, so user-triggered toggles still animate as designed. */
+.theme-toggle--no-transition,
+.theme-toggle--no-transition .theme-toggle__thumb {
+  transition: none !important;
+}
+
 /* ── 6. BUTTONS ─────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
