@@ -103,20 +103,15 @@
  * unit. `kind`/`gated` mechanics are UNCHANGED from Rev 6 — only the
  * unit COUNT and CONTENT changed, not how units function.
  *
- * Two units are NOT from the source file and were kept from Rev 6 —
- * flagging both for confirmation, not a unilateral removal:
- *   - order:2 'fingerspell_name' (gated assessment) — the source list
- *     has no fingerspelling topic, but this is a working, already-built
- *     gate mechanism (reuses the trained A–Z model). Deleting it would
- *     remove real functionality the lesson plan simply doesn't mention.
- *     Kept in its Rev 6 position, right after the Alphabet.
- *   - order:70/71 'basic_phrases' (sequence_demo) and 'phrasebook' —
- *     the source list is pure vocabulary, no phrase-combination or
- *     reference-sentence topics. Kept at the very END, after every
- *     vocab unit, matching the adviser's own "combine what's already
- *     taught" framing from Rev 4 (see SYSTEM_ARCHITECTURE.md). Both are
- *     UNCHANGED from Rev 6 otherwise (same id, same content, same
- *     kind) — only the `order` number moved to make room.
+ * REV 9 (this session) — the three units that weren't from the source
+ * file ('fingerspell_name' at order:2, 'basic_phrases'/'sequence_demo'
+ * at order:70, and 'phrasebook' at order:71) are REMOVED. The file is
+ * now scoped to exactly the 68 vocabulary topics in the lesson
+ * compilation — no gated assessment, no phrase-combination or
+ * reference-sentence content. Their CATEGORIES and SIGNS entries were
+ * removed with them (see the CATEGORIES array below). Order gaps at
+ * 2, 70, and 71 are left as-is, per this file's existing convention —
+ * nothing reads UNITS as a zero-indexed array.
  *
  * kind meanings unchanged from Rev 6 — see SYSTEM_ARCHITECTURE.md.
  * ──────────────────────────────────────────────────────────────── */
@@ -131,9 +126,11 @@ const UNITS = [
   // every lookup below is by `.id` or `.order` value, confirmed via
   // getUnits()/getCategoriesForUnit()/progress.js's getOrderedLiveCategories()).
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
-  // UNCHANGED from Rev 6 — see file header note above. Not in the
-  // source lesson plan; kept as a working feature.
-  { id: 'fingerspell_name', order: 2, title: 'Fingerspell Your Name', kind: 'interactive', gated: true },
+  // REMOVED (this session) — 'fingerspell_name' (order:2, kind:'interactive')
+  // dropped: it's not one of the 68 topics in the lesson compilation this
+  // file is scoped to. Order gap at 2 left as-is, per this file's existing
+  // convention (see the Homepage-pivot Unit 0 removal note above) —
+  // nothing reads UNITS as a zero-indexed array.
   { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' },
   // ── Topics 3–68 below, one per unit, order matches the source
   // file's own numbering exactly (topic N below = "N. <title>" in
@@ -168,13 +165,11 @@ const UNITS = [
   { id: 'classroom', order: 30, title: 'Classroom', kind: 'category-group' },
   { id: 'classroom_actions', order: 31, title: 'Classroom Actions', kind: 'category-group' },
   { id: 'subjects', order: 32, title: 'Subjects', kind: 'category-group' },
-  // REMOVED (this session) — 'food_unit' (order:33) dropped at the user's
-  // request; the category was still comingSoon:true with a words[]/SIGNS
-  // mismatch (see the removed 'food' CATEGORIES entry's history for detail)
-  // and is no longer wanted. Per this file's existing convention (see the
-  // Homepage-pivot Unit 0 removal note above), the order gap at 33 is left
-  // as-is rather than renumbering every unit after it — nothing reads UNITS
-  // as a zero-indexed array.
+  // RE-ADDED (this session) — 'food_unit' (order:33), topic 32 "Food" from
+  // the 68-topic lesson compilation (Rice/Bread/Egg/Chicken/Fish/Meat/Soup).
+  // comingSoon:true on its CATEGORIES entry below — no SIGNS content has
+  // been authored/verified for these 7 words yet.
+  { id: 'food_unit', order: 33, title: 'Food', kind: 'category-group' },
   { id: 'fruits', order: 34, title: 'Fruits', kind: 'category-group' },
   { id: 'vegetables', order: 35, title: 'Vegetables', kind: 'category-group' },
   { id: 'snacks', order: 36, title: 'Snacks', kind: 'category-group' },
@@ -211,9 +206,10 @@ const UNITS = [
   { id: 'conversation', order: 67, title: 'Conversation', kind: 'category-group' },
   { id: 'requests_unit', order: 68, title: 'Requests', kind: 'category-group' },
   { id: 'answers', order: 69, title: 'Answers', kind: 'category-group' },
-  // UNCHANGED from Rev 6 (id/kind/content) — see file header note above.
-  { id: 'basic_phrases', order: 70, title: 'Basic Phrases', kind: 'category-group' },
-  { id: 'phrasebook', order: 71, title: 'Phrasebook', kind: 'reference' },
+  // REMOVED (this session) — 'basic_phrases' (order:70) and 'phrasebook'
+  // (order:71) dropped: pure vocabulary is all the 68-topic lesson
+  // compilation covers, no phrase-combination or reference-sentence
+  // topics. Order gaps left as-is, same convention as above.
 ];
 
 /* ── UNIT 0 CONTENT — REMOVED this session (Homepage pivot) ─────────
@@ -472,27 +468,13 @@ const CATEGORIES = [
     // ENGLISH removed — no dedicated ASLU sign; fingerspell E-N-G-L-I-S-H (existing Fingerspell feature covers this).
     words: ['MATH', 'SCIENCE', 'MUSIC', 'HISTORY', 'COMPUTER'],
   },
-  // 32. Food — REMOVED (this session) at the user's request. This category
-  // was still comingSoon:true and had an unresolved mismatch between its
-  // words[] (FOOD, RICE, BREAD, EGG, CHICKEN, FISH, MEAT, SOUP, CHEESE,
-  // NOODLES, SANDWICH, PIZZA, PASTA) and its SIGNS coverage — only
-  // EGG/CHEESE/PIZZA overlapped with words[], while MILK/HAMBURGER/HOT
-  // DOG/APPLE/SPOON/FORK/CUP/CEREAL/CANDY/COOKIE had SIGNS entries but
-  // weren't in words[], and 10 words[] items (RICE, BREAD, CHICKEN, FISH,
-  // MEAT, SOUP, NOODLES, SANDWICH, PASTA, FOOD) had no sign at all. Rather
-  // than resolve that mismatch, the category and its dedicated
-  // 'medium_food_*' SIGNS entries were deleted outright. The corresponding
-  // UNITS entry ('food_unit', order:33) was also removed. Two SIGNS entries
-  // that lived in this block (WATER, HUNGRY) were NOT deleted — their
-  // `category` was already 'requests', not 'food', so they still belong to
-  // and are used by the live 'requests' (Needs) category; only their asset
-  // paths still point at .../medium/food/ (cosmetic, not functional — flag
-  // for a future asset-folder rename if desired). A few OTHER categories'
-  // entries (medium_fruits_APPLE, medium_snacks_COOKIE, medium_snacks_CANDY)
-  // are separate, independent duplicate SIGNS entries that merely referenced
-  // "Food" by name in a tip/comment for context — those tips were reworded
-  // since the category they pointed to no longer exists; the entries
-  // themselves are untouched and still fully functional.
+  // 32. Food — RE-ADDED (this session) at the user's request, scoped to
+  // exactly this lesson topic's word list. comingSoon:true — no SIGNS
+  // entries authored/verified yet for any of these 7 words.
+  {
+    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: true, unit: 33,
+    words: ['RICE', 'BREAD', 'EGG', 'CHICKEN', 'FISH', 'MEAT', 'SOUP'],
+  },
   // 33. Fruits
   // UNLOCKED (2026-09-01): researched fresh against lifeprint.com (ASLU),
   // cross-checked against Handspeak/aslbloom/Signing Time/ASL-LEX. APPLE
@@ -832,131 +814,14 @@ const CATEGORIES = [
     words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'KNOW', 'DON\'T', 'UNDERSTAND', 'GOOD'],
   },
 
-  // ── Legacy categories with real SIGNS content that the new plan
-  // doesn't have a topic for. RESTORED here (not dropped) — verified
-  // against the original data.js that each has authored lesson
-  // content (title/description/tips), not just a words[] preview;
-  // dropping the CATEGORIES entry would have made that content
-  // permanently unreachable (getCategorySigns() filters by category,
-  // and learn.js only offers categories it finds in this array) even
-  // though the SIGNS entries themselves would still exist. Folded
-  // into the closest-fit new unit as a SECOND category there (a unit
-  // with >1 category already renders a category-list screen — see
-  // 'family'/'places'/'time' etc. above for the same one-unit-many-
-  // categories pattern from Rev 6). None of these are Phase 7
-  // detection content (comingSoon stays as it was) — this is a
-  // content-placement fix only, id/words/level/comingSoon all
-  // unchanged from the pre-existing file.
-  // REV 8 (2026-08-25): 'SLEEP' and 'NICE/CLEAN' removed from words[] — their
-  // SIGNS entries were relocated to 'actions' (Unit 9, as SLEEP and CLEAN)
-  // since 'actions' words[] already called for both.
-  // Unlocked this pass — WASH/HURT/BRUSH TEETH already had complete SIGNS
-  // entries (medium_health_WASH/HURT/BRUSH_TEETH), just never flipped.
-  {
-    id: 'health', level: 'medium', title: 'Health', order: 2, comingSoon: false, unit: 42,
-    words: ['WASH', 'HURT', 'BRUSH TEETH'],
-  },
-  // No topic in the new plan is even a loose fit for Money — placed
-  // alongside Personal Items (closest available theme: wallet/cost)
-  // rather than invented a 73rd unit for 3 words. Flagging this one
-  // for a second look/better home if Omen wants one.
-  // Unlocked this pass — DOLLARS/CENTS/COST already had complete SIGNS
-  // entries, just never flipped.
-  {
-    id: 'money', level: 'medium', title: 'Money', order: 2, comingSoon: false, unit: 43,
-    words: ['DOLLARS', 'CENTS', 'COST'],
-  },
-
-  // ── Basic Phrases (unit 70) — UNCHANGED from Rev 6, see UNITS header
-  // note. Real TRAINED content, built only from already-trained words.
-  {
-    id: 'sequence_demo', level: 'medium', title: 'Basic Phrases', order: 100, comingSoon: false, unit: 70,
-    words: ['MOM_HOME', 'DAD_WORK', 'TODAY_SCHOOL', 'FINISH_WORK', 'SISTER_STORE', 'TODAY_GRANDMA_HOME'],
-  },
-
-  // ── level=intermediate — Phrasebook (unit 71) — UNCHANGED from Rev 6
-  // other than the unit number (was 10, now 71 — every other field
-  // identical). Read-only reference, not graded, no SIGN_DICTIONARY
-  // entries. See file's original header note (kept below unedited).
-  // Level 2 — Basic (Common Phrases), Modules 1–8
-  {
-    id: 'greetings_intro', level: 'intermediate', title: 'Greetings & Introductions', order: 1, comingSoon: false, unit: 71,
-    words: ['GOOD MORNING', 'GOOD AFTERNOON', 'GOOD EVENING', 'NICE TO MEET YOU', "WHAT'S YOUR NAME?", 'MY NAME IS ___'],
-  },
-  {
-    id: 'basic_responses', level: 'intermediate', title: 'Basic Responses', order: 2, comingSoon: false, unit: 71,
-    words: ['I AM FINE', 'I AM GOOD', 'NOT BAD', 'MAYBE LATER', "I DON'T KNOW"],
-  },
-  {
-    id: 'family_phrases', level: 'intermediate', title: 'Family Phrases', order: 3, comingSoon: false, unit: 71,
-    words: ['MY MOTHER', 'MY FATHER', 'MY BROTHER', 'MY SISTER', 'MY FRIEND'],
-  },
-  {
-    id: 'daily_needs', level: 'intermediate', title: 'Daily Needs', order: 4, comingSoon: false, unit: 71,
-    words: ['I AM HUNGRY', 'I AM THIRSTY', 'I AM TIRED', 'I NEED HELP', 'I NEED WATER', 'I NEED FOOD'],
-  },
-  {
-    id: 'asking_questions', level: 'intermediate', title: 'Asking Questions', order: 5, comingSoon: false, unit: 71,
-    words: ['HOW ARE YOU?', "WHAT'S UP?", 'HOW OLD ARE YOU?', 'WHERE DO YOU LIVE?', 'WHAT TIME?', 'CAN YOU HELP?', 'CAN I GO?'],
-  },
-  {
-    id: 'polite_expressions', level: 'intermediate', title: 'Polite Expressions', order: 6, comingSoon: false, unit: 71,
-    words: ['THANK YOU', "YOU'RE WELCOME", 'EXCUSE ME', 'HAVE A NICE DAY', 'SEE YOU LATER'],
-  },
-  {
-    id: 'affection_feelings', level: 'intermediate', title: 'Affection & Feelings', order: 7, comingSoon: false, unit: 71,
-    words: ['I LOVE YOU', 'I LIKE YOU', 'I MISS YOU', 'HAPPY BIRTHDAY', "I DON'T LIKE IT", "I DON'T LIKE YOU", 'I HATE IT', 'LEAVE ME ALONE'],
-  },
-  {
-    id: 'describing_things', level: 'intermediate', title: 'Describing Things', order: 8, comingSoon: false, unit: 71,
-    words: ['RED CAR', 'BLUE SHIRT', 'GREEN TREE', 'BIG HOUSE', 'SMALL DOG', 'GOOD JOB', 'BAD DAY'],
-  },
-
-  // Level 3 — Intermediate (Everyday Sentences & Conversations), Modules 1–10
-  {
-    id: 'self_introduction', level: 'intermediate', title: 'Self Introduction', order: 9, comingSoon: false, unit: 71,
-    words: ['HELLO, MY NAME IS ___.', 'NICE TO MEET YOU.', 'I AM ___ YEARS OLD.', 'I LIVE IN ___.', 'I AM A STUDENT.'],
-  },
-  {
-    id: 'daily_activities', level: 'intermediate', title: 'Daily Activities', order: 10, comingSoon: false, unit: 71,
-    words: ['I WAKE UP EARLY.', 'I GO TO SCHOOL.', 'I STUDY EVERY DAY.', 'I EAT BREAKFAST.', 'I GO HOME AFTER SCHOOL.', 'I SLEEP AT 10 PM.'],
-  },
-  {
-    id: 'family_conversations', level: 'intermediate', title: 'Family Conversations', order: 11, comingSoon: false, unit: 71,
-    words: ['I HAVE TWO BROTHERS.', 'MY MOTHER WORKS AT HOME.', 'MY FATHER IS A TEACHER.', 'I LOVE MY FAMILY.'],
-  },
-  {
-    id: 'talking_about_feelings', level: 'intermediate', title: 'Talking About Feelings', order: 12, comingSoon: false, unit: 71,
-    words: ['I AM HAPPY TODAY.', 'I AM NERVOUS.', 'I FEEL TIRED.', 'I AM EXCITED FOR TOMORROW.', 'I AM WORRIED ABOUT SCHOOL.'],
-  },
-  {
-    id: 'asking_for_help', level: 'intermediate', title: 'Asking for Help', order: 13, comingSoon: false, unit: 71,
-    words: ['CAN YOU HELP ME?', 'WHERE IS THE RESTROOM?', 'I NEED ASSISTANCE.', 'PLEASE REPEAT THAT.', "I DON'T UNDERSTAND."],
-  },
-  {
-    id: 'school_conversations', level: 'intermediate', title: 'School Conversations', order: 14, comingSoon: false, unit: 71,
-    words: ['WHAT IS YOUR FAVORITE SUBJECT?', 'MY FAVORITE SUBJECT IS ENGLISH.', 'WHEN IS THE EXAM?', 'I FINISHED MY ASSIGNMENT.', 'THE LESSON IS DIFFICULT.'],
-  },
-  {
-    id: 'shopping_ordering', level: 'intermediate', title: 'Shopping & Ordering', order: 15, comingSoon: false, unit: 71,
-    words: ['HOW MUCH IS THIS?', 'I WANT TO BUY THIS.', 'DO YOU HAVE ANOTHER COLOR?', 'WHERE IS THE CASHIER?', 'THANK YOU FOR YOUR HELP.'],
-  },
-  {
-    id: 'social_conversations', level: 'intermediate', title: 'Social Conversations', order: 16, comingSoon: false, unit: 71,
-    words: ['WHAT ARE YOU DOING TODAY?', 'I AM GOING WITH MY FRIENDS.', 'WOULD YOU LIKE TO JOIN US?', "THAT'S A GOOD IDEA.", 'SEE YOU TOMORROW.'],
-  },
-  {
-    id: 'emergency_situations', level: 'intermediate', title: 'Emergency & Important Situations', order: 17, comingSoon: false, unit: 71,
-    words: ['I NEED HELP.', 'CALL THE POLICE.', 'CALL AN AMBULANCE.', 'I AM LOST.', 'WHERE IS THE HOSPITAL?', 'THIS IS AN EMERGENCY.'],
-  },
-  {
-    id: 'everyday_dialogues', level: 'intermediate', title: 'Short Everyday Dialogues', order: 18, comingSoon: false, unit: 71,
-    words: [
-      'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.',
-      'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.',
-      'SHOPPING: HOW MUCH IS THIS? / IT IS TEN DOLLARS. / I WILL BUY IT. / THANK YOU.',
-    ],
-  },
+  // ── 'health' (words: WASH/HURT/BRUSH TEETH), 'money' (words:
+  // DOLLARS/CENTS/COST), 'sequence_demo' (Basic Phrases, unit 70), and
+  // the entire level=intermediate Phrasebook block (18 categories, unit
+  // 71) were REMOVED — none map to a topic in the 68-topic lesson
+  // compilation this file is now scoped to. Their SIGNS content (WASH,
+  // HURT, BRUSH_TEETH, DOLLARS, CENTS, COST, etc.) was removed with
+  // them; BATHROOM, already relocated to 'requests' earlier in this
+  // file, is unaffected and stays live under Needs (unit 8).
 ];
 
 /* ── SIGNS ────────────────────────────────────────────────────────
@@ -1383,26 +1248,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/family/DAD.png', videoUrl: '../assets/videos/medium/family/DAD.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_family_BOY', level: 'medium', category: 'family', signId: 'BOY', title: 'Boy', order: 3,
-    description: 'Hold a flat hand near your forehead, then close your fingers toward your thumb in a small grasping motion, as if tipping an imaginary cap.',
-    tips: [
-      'Starting position is near the forehead, like DAD',
-      'The closing/grasping motion is what makes this different from DAD',
-      'Keep the motion small and close to the forehead',
-    ],
-    imageUrl: '../assets/images/medium/family/BOY.png', videoUrl: '../assets/videos/medium/family/BOY.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_family_GIRL', level: 'medium', category: 'family', signId: 'GIRL', title: 'Girl', order: 4,
-    description: 'Make an "A" handshape (thumb resting beside a fist) and brush your thumb down along your jaw/cheek.',
-    tips: [
-      'Thumb traces a short downward line near the jawline',
-      'Keep the rest of the hand in a loose fist, thumb doing the work',
-      'This is a MOTION sign — the brushing motion matters, not just the pose',
-    ],
-    imageUrl: '../assets/images/medium/family/GIRL.png', videoUrl: '../assets/videos/medium/family/GIRL.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_family_BROTHER', level: 'medium', category: 'family', signId: 'BROTHER', title: 'Brother', order: 5,
     // CHANGED — corrected against ASLU (lifeprint.com/asl101/pages-signs/b/brosis.htm):
     // the old description ("both hands in L, come together, index fingers meet")
@@ -1421,16 +1266,6 @@ const SIGNS = [
       'This is a MOTION sign — the handshape change (L → 1) as it lands is what matters, not two hands meeting in the middle',
     ],
     imageUrl: '../assets/images/medium/family/BROTHER.png', videoUrl: '../assets/videos/medium/family/BROTHER.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_family_MARRIAGE', level: 'medium', category: 'family', signId: 'MARRIAGE', title: 'Marriage', order: 6,
-    description: 'Clasp your hands together in front of your chest, interlocking the fingers, then bring them down slightly — symbolizing two people joining together.',
-    tips: [
-      'Hands fully interlock, not just touch',
-      'The downward motion after clasping matters — this is a MOTION sign',
-      'Keep the motion smooth and centered in front of your chest',
-    ],
-    imageUrl: '../assets/images/medium/family/MARRIAGE.png', videoUrl: '../assets/videos/medium/family/MARRIAGE.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_family_SISTER', level: 'medium', category: 'family', signId: 'SISTER', title: 'Sister', order: 7,
@@ -1495,26 +1330,6 @@ const SIGNS = [
       'Keep the rock small and centered on the chest',
     ],
     imageUrl: '../assets/images/medium/family/BABY.png', videoUrl: '../assets/videos/medium/family/BABY.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_family_SINGLE', level: 'medium', category: 'family', signId: 'SINGLE', title: 'Single', order: 13,
-    description: 'Hold up an "I" handshape (pinky extended, other fingers curled) and trace it along the ring finger of your other hand.',
-    tips: [
-      'Handshape is the letter "I" — pinky up, rest of the hand curled',
-      'The tracing motion along the ring finger is what completes the sign',
-      'This distinguishes SINGLE from a plain pinky-up letter I',
-    ],
-    imageUrl: '../assets/images/medium/family/SINGLE.png', videoUrl: '../assets/videos/medium/family/SINGLE.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_family_DIVORCED', level: 'medium', category: 'family', signId: 'DIVORCED', title: 'Divorced', order: 14,
-    description: 'Hold both hands in flat "D"/bent shapes facing each other, touching, then twist and pull them apart in opposite directions.',
-    tips: [
-      'Hands start touching, then rotate apart — the separation motion is the key part',
-      'Keep the pulling-apart motion deliberate and visible',
-      'This is a MOTION sign — the split matters more than the starting handshape',
-    ],
-    imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/medium/family/DIVORCED.mp4', detectionType: 'motion',
   },
 
   /* ── MEDIUM · SCHOOL GROUP (Units 28–32) ──────────────────────
@@ -1663,16 +1478,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/home.png', videoUrl: '../assets/videos/medium/places/home.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_places_WORK', level: 'medium', category: 'places', signId: 'WORK', title: 'Work', order: 2,
-    description: 'Make two fists (S-handshape). Tap the wrist/heel of your dominant fist on top of your non-dominant fist twice.',
-    tips: [
-      'Both hands stay in a fist the whole time',
-      'Contact point is the wrist/heel of the hand, not the knuckles',
-      'Two clear taps',
-    ],
-    imageUrl: '../assets/images/medium/places/work.png', videoUrl: '../assets/videos/medium/places/work.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_places_SCHOOL', level: 'medium', category: 'places', signId: 'SCHOOL', title: 'School', order: 3,
     description: 'Hold both hands flat, palms open and facing up. Clap the fingertips of your top hand down into the palm of your bottom hand twice.',
     tips: [
@@ -1702,227 +1507,8 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
   },
-  {
-    id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 8,
-    // CHANGED — signId was 'CAR/DRIVE', but the trained model only has
-    // a literal "CAR" label (no separate "DRIVE" motion was recorded).
-    // 'CAR/DRIVE' would never have matched classifyMotion()'s output —
-    // fixed to the string that's actually detectable. Title kept as-is
-    // since the lesson content/description still covers the concept.
-    description: 'Hold both hands as if gripping a steering wheel and move them in a small alternating turning motion, as if driving.',
-    tips: [
-      'Hands stay shoulder-width apart',
-      'Small, natural steering-wheel turns',
-      'Motion sign — keep it continuous while holding',
-    ],
-    imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN', title: 'In', order: 9,
-    // CHANGED — split out of a single combined 'IN/OUT' entry. The
-    // model was trained with IN and OUT as two separate, genuinely
-    // different motions (matching what the old description already
-    // said: "IN moves down and inward; OUT moves up and outward" —
-    // that was always two signs, not one). A single 'IN/OUT' signId
-    // could never have matched either "IN" or "OUT" coming back from
-    // classifyMotion() — see dictionary.js's PLACES block comment.
-    description: 'Bring your fingertips together and dip that hand down into the opening made by your other curved hand.',
-    tips: [
-      'Non-dominant hand forms a loose ‘container’ shape',
-      'Motion goes down and inward',
-      'Fingers stay bunched together the whole time',
-    ],
-    imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/medium/places/in.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_places_OUT', level: 'medium', category: 'places', signId: 'OUT', title: 'Out', order: 10,
-    // CHANGED — the other half of the old combined 'IN/OUT' entry, see
-    // the note on medium_places_IN just above.
-    description: 'Pull your bunched fingers up and out of the curved base hand, opening them as they exit.',
-    tips: [
-      'Non-dominant hand forms a loose ‘container’ shape',
-      'Motion goes up and outward — the reverse of IN',
-      'Fingers open as they exit',
-    ],
-    imageUrl: '../assets/images/medium/places/out.png', videoUrl: '../assets/videos/medium/places/out.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 11,
-    description: 'Make two fists (A-handshape) and bring them together side by side so the knuckles touch, palms facing each other.',
-    tips: [
-      'Both hands are closed fists',
-      'Knuckles meet in the middle',
-      'Hold briefly once they touch',
-    ],
-    imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
-  },
 
-  // ── MEDIUM · SEQUENCE_DEMO (Basic Phrases, curated Phase 7,
-  //    2026-08-20) — every component word below is confirmed present
-  //    in this repo's asl_motion_model/labels.json (grepped directly,
-  //    not assumed). Each entry's top-level `detectionType: 'motion'`
-  //    is NOT what actually drives detection for a phrase — confirmed
-  //    by reading lesson.js's getActiveSignId()/getPhraseSequence():
-  //    the camera step-through resolves detectionType PER STEP via
-  //    getDetectionType(stepSignId) (e.g. 'MOM', then 'HOME'), never
-  //    via this entry's own signId ('MOM_HOME'). The field is required
-  //    schema shape, functionally unused for `sequence`-type entries. ──
-  {
-    id: 'medium_sequence_demo_mom_home', level: 'medium', category: 'sequence_demo', signId: 'MOM_HOME',
-    title: 'Mom Is Home', order: 1,
-    sequence: ['MOM', 'HOME'],
-    description: 'A short topic-comment phrase: MOM, then HOME. Chains two already-trained word-signs — sign each one clearly and hold until it registers before moving to the next.',
-    tips: [
-      'Each word is checked independently, in order',
-      'A brief pause between signs is fine — the countdown gives you time to reset',
-      'Topic first (MOM), then comment (HOME) — standard basic ASL word order',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/mom_home.png', videoUrl: '../assets/videos/medium/sequence_demo/mom_home.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_sequence_demo_dad_work', level: 'medium', category: 'sequence_demo', signId: 'DAD_WORK',
-    title: 'Dad Is At Work', order: 2,
-    sequence: ['DAD', 'WORK'],
-    description: 'DAD, then WORK — same topic-comment pattern as "Mom Is Home", with a different family/place pair.',
-    tips: [
-      'Sign DAD first, hold until it registers',
-      'Then sign WORK — you get a fresh countdown for it',
-      'Topic (DAD) before comment (WORK)',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/dad_work.png', videoUrl: '../assets/videos/medium/sequence_demo/dad_work.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_sequence_demo_today_school', level: 'medium', category: 'sequence_demo', signId: 'TODAY_SCHOOL',
-    title: 'School Today', order: 3,
-    sequence: ['TODAY', 'SCHOOL'],
-    description: 'TODAY, then SCHOOL — time-then-topic, the other standard basic ASL ordering (time markers generally come first in a sentence).',
-    tips: [
-      'Sign TODAY first, hold until it registers',
-      'Then sign SCHOOL',
-      'Time word (TODAY) leads, unlike the topic-first phrases above',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/today_school.png', videoUrl: '../assets/videos/medium/sequence_demo/today_school.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_sequence_demo_finish_work', level: 'medium', category: 'sequence_demo', signId: 'FINISH_WORK',
-    title: 'Done With Work', order: 4,
-    sequence: ['FINISH', 'WORK'],
-    description: 'FINISH, then WORK — FINISH doubling as a completion marker ("done ___") is common in basic ASL phrasing.',
-    tips: [
-      'Sign FINISH first, hold until it registers',
-      'Then sign WORK',
-      'This pairing reuses FINISH the same way a learner will see it again elsewhere in Unit 5 (Time)',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/finish_work.png', videoUrl: '../assets/videos/medium/sequence_demo/finish_work.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_sequence_demo_sister_store', level: 'medium', category: 'sequence_demo', signId: 'SISTER_STORE',
-    title: 'Sister Is At The Store', order: 5,
-    sequence: ['SISTER', 'STORE'],
-    description: 'SISTER, then STORE — another topic-comment pairing, mixing a Family word with a Places word.',
-    tips: [
-      'Sign SISTER first, hold until it registers',
-      'Then sign STORE',
-      'Topic (SISTER) before comment (STORE)',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/sister_store.png', videoUrl: '../assets/videos/medium/sequence_demo/sister_store.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_sequence_demo_today_grandma_home', level: 'medium', category: 'sequence_demo', signId: 'TODAY_GRANDMA_HOME',
-    title: 'Today, Grandma Is Home', order: 6,
-    sequence: ['TODAY', 'GRANDMA', 'HOME'],
-    description: 'A 3-step chain — TIME + TOPIC + COMMENT (TODAY, then GRANDMA, then HOME) — showing the mechanism scales past two words.',
-    tips: [
-      'Sign TODAY first, hold until it registers',
-      'Then GRANDMA, then HOME — each gets its own countdown',
-      'Longest chain in this set — good one to try last',
-    ],
-    imageUrl: '../assets/images/medium/sequence_demo/today_grandma_home.png', videoUrl: '../assets/videos/medium/sequence_demo/today_grandma_home.mp4', detectionType: 'motion',
-  },
 
-  // ── MEDIUM · TIME ──
-  {
-    id: 'medium_time_DAY', level: 'medium', category: 'time', signId: 'DAY', title: 'Day', order: 1,
-    // CHANGED — reformatted into labeled parts (non-dominant hand /
-    // dominant hand / movement) for clarity. Facts unchanged and were
-    // already correct: confirmed against lifeprint.com (Dr. Bill
-    // Vicars), who explicitly recommends an INDEX FINGER handshape here
-    // and specifically warns AGAINST a "D" handshape, calling that
-    // variant Signed English rather than ASL.
-    description: 'Non-dominant hand: hold your arm flat and horizontal in front of you, palm down. Dominant hand: point your index finger straight up (not a "D" handshape — that\'s Signed English, not ASL) and rest your elbow on the back of your non-dominant hand. Movement: swing your dominant arm down in one smooth arc until your forearm rests along your other arm, like the sun crossing the sky.',
-    tips: [
-      'Index finger only — not a "D" handshape',
-      'Elbow stays anchored on the back of your other hand throughout',
-      'One smooth downward sweep, not a bounce',
-    ],
-    imageUrl: '../assets/images/medium/time/day.png', videoUrl: '../assets/videos/medium/time/day.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_NIGHT', level: 'medium', category: 'time', signId: 'NIGHT', title: 'Night', order: 2,
-    // CHANGED — reformatted, and corrected against lifeprint.com
-    // directly: ASLU describes this as a simpler placement than a big
-    // arc — the dominant WRIST rests on the back of the non-dominant
-    // hand, fingers pointing down. No sweeping arc motion is described
-    // on the source page; kept the "sun dipping down" mental image
-    // since it's a reasonable memory aid, but tightened the mechanics
-    // to match ASLU rather than imply a large arcing movement.
-    description: 'Non-dominant hand: hold your arm flat and horizontal in front of you, palm down. Dominant hand: bend your hand down at the wrist so your fingers curve downward. Movement: bring your dominant wrist to rest on the back of your non-dominant hand, fingers pointing down — like the sun dipping below the horizon.',
-    tips: [
-      'Dominant hand bends at the WRIST, fingers pointing down',
-      'The wrist (not the back of the hand) rests on your other hand',
-      'A settled placement, not a wide sweeping arc',
-    ],
-    imageUrl: '../assets/images/medium/time/night.png', videoUrl: '../assets/videos/medium/time/night.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_WEEK', level: 'medium', category: 'time', signId: 'WEEK', title: 'Week', order: 3,
-    // CHANGED — reformatted into labeled parts. Facts unchanged and
-    // already correct, confirmed against lifeprint.com.
-    description: 'Non-dominant hand: hold it flat, palm facing up. Dominant hand: form a "1" handshape (index finger extended). Movement: slide the pinky-side edge of your dominant hand across the non-dominant palm and off the fingertips, in one smooth motion.',
-    tips: [
-      'Dominant hand is a simple "1" — index finger extended',
-      'One continuous sliding motion, not a tap',
-      'Ends past the fingertips of the base hand',
-    ],
-    imageUrl: '../assets/images/medium/time/week.png', videoUrl: '../assets/videos/medium/time/week.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_MONTH', level: 'medium', category: 'time', signId: 'MONTH', title: 'Month', order: 4,
-    // CHANGED — reformatted, content confirmed against lifeprint.com.
-    // Added one detail from the source worth knowing: a "palm down"
-    // version of the dominant hand exists and isn't strictly wrong, but
-    // ASLU specifically doesn't recommend it — capture with the
-    // dominant palm facing back/toward you instead.
-    description: 'Non-dominant hand: point your index finger straight up, palm facing to the side. Dominant hand: point your index finger too, palm facing back toward you (not palm-down). Movement: trace your dominant index finger down the length of your non-dominant finger, from tip to base.',
-    tips: [
-      'Both hands use a "1" handshape',
-      'Dominant palm faces back toward you, not down',
-      'Motion goes top to bottom, tracing the finger',
-    ],
-    imageUrl: '../assets/images/medium/time/month.png', videoUrl: '../assets/videos/medium/time/month.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_YEAR', level: 'medium', category: 'time', signId: 'YEAR', title: 'Year', order: 5,
-    // CHANGED — reformatted into labeled parts. Facts unchanged and
-    // already correct, confirmed against lifeprint.com.
-    description: 'Both hands: make closed fists ("S" handshape). Starting position: rest your dominant fist on top of your non-dominant fist. Movement: circle your dominant fist forward and all the way around the non-dominant one, landing back on top where it started — like a full orbit.',
-    tips: [
-      'Both hands stay closed fists the whole time',
-      'One complete circle, not a partial motion',
-      'Ends exactly where it started, on top',
-    ],
-    imageUrl: '../assets/images/medium/time/year.png', videoUrl: '../assets/videos/medium/time/year.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_WILL', level: 'medium', category: 'time', signId: 'WILL', title: 'Will (future)', order: 6,
-    description: 'Hold your flat hand near the side of your face, palm facing sideways, then move it forward and away from your head.',
-    tips: [
-      'Starts close to the cheek/temple',
-      'One forward push, not a wave',
-      'Also used more generally to mean ‘future’',
-    ],
-    imageUrl: '../assets/images/medium/time/will.png', videoUrl: '../assets/videos/medium/time/will.mp4', detectionType: 'motion',
-  },
   {
     id: 'medium_time_BEFORE', level: 'medium', category: 'time', signId: 'BEFORE', title: 'Before', order: 7,
     description: 'Hold both flat hands in front of you with palms facing your body, fingers touching. Move your dominant hand back toward your shoulder.',
@@ -1963,20 +1549,6 @@ const SIGNS = [
       'Keep both repeats short — this isn\'t a big motion either time',
     ],
     imageUrl: '../assets/images/medium/time/today.png', videoUrl: '../assets/videos/medium/time/today.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_time_FINISH', level: 'medium', category: 'time', signId: 'FINISH', title: 'Finish', order: 9,
-    // CHANGED — reformatted, confirmed against lifeprint.com. Left out
-    // an unverified detail from a non-ASLU source (a "mouth the word
-    // fish" facial cue) — not documented on the source page, so not
-    // included here.
-    description: 'Both hands: open with fingers spread, palms facing your body. Starting position: hold both hands up near shoulder height. Movement: twist both wrists quickly so your palms end up facing forward/outward.',
-    tips: [
-      'Start with palms facing you, end facing forward',
-      'A quick twist, not a slow turn',
-      'Both hands move together, in sync',
-    ],
-    imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/medium/time/finish.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · TEMPERATURE ──
@@ -2019,16 +1591,6 @@ const SIGNS = [
       'Two light taps',
     ],
     imageUrl: '../assets/images/medium/food/water.png', videoUrl: '../assets/videos/medium/food/water.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_food_HUNGRY', level: 'medium', category: 'requests', signId: 'HUNGRY', title: 'Hungry', order: 16,
-    description: 'Form a ‘C’ handshape and move it down the center of your chest, from below your throat toward your stomach.',
-    tips: [
-      'One smooth downward stroke',
-      'Keep the ‘C’ curve consistent as it travels',
-      'A slightly pained facial expression reinforces the meaning',
-    ],
-    imageUrl: '../assets/images/medium/food/hungry.png', videoUrl: '../assets/videos/medium/food/hungry.mp4', detectionType: 'motion',
   },
 
   // ── MEDIUM · CLOTHES ──
@@ -2081,16 +1643,6 @@ const SIGNS = [
       'One smooth downward motion',
     ],
     imageUrl: '../assets/images/medium/clothes/coat.png', videoUrl: '../assets/videos/medium/clothes/coat.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_clothes_UNDERWEAR', level: 'medium', category: 'clothes', signId: 'UNDERWEAR', title: 'Underwear', order: 6,
-    description: 'Form a ‘U’ handshape (index and middle fingers together, extended) and tap it against your hip twice.',
-    tips: [
-      'Handshape is ‘U’ — two fingers together, extended',
-      'Contact point is the hip',
-      'Two light taps',
-    ],
-    imageUrl: '../assets/images/medium/clothes/underwear.png', videoUrl: '../assets/videos/medium/clothes/underwear.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_clothes_SHORTS', level: 'medium', category: 'clothes', signId: 'SHORTS', title: 'Shorts', order: 7,
@@ -2169,27 +1721,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/belt.htm',
   },
 
-  // ── MEDIUM · HEALTH ──
-  {
-    id: 'medium_health_WASH', level: 'medium', category: 'health', signId: 'WASH', title: 'Wash', order: 1,
-    description: 'Make two loose fists and rub them together in a circular motion, like washing your hands.',
-    tips: [
-      'Both hands stay loosely closed',
-      'Circular rubbing motion, not side to side',
-      'Keep the motion at chest/waist height',
-    ],
-    imageUrl: '../assets/images/medium/health/wash.png', videoUrl: '../assets/videos/medium/health/wash.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_health_HURT', level: 'medium', category: 'health', signId: 'HURT', title: 'Hurt', order: 2,
-    description: 'Point both index fingers toward each other and jab them together in short, quick movements near the area that hurts.',
-    tips: [
-      'Only the index fingers are extended',
-      'Short, repeated jabbing motion',
-      'Can be signed near whichever body part hurts',
-    ],
-    imageUrl: '../assets/images/medium/health/hurt.png', videoUrl: '../assets/videos/medium/health/hurt.mp4', detectionType: 'motion',
-  },
   {
     // CHANGED (this session) — moved from `health` (still comingSoon)
     // into `requests`/Everyday Essentials. This IS the "RESTROOM" item
@@ -2210,16 +1741,6 @@ const SIGNS = [
       'Also commonly used for ‘restroom’/‘toilet’',
     ],
     imageUrl: '../assets/images/medium/health/bathroom.png', videoUrl: '../assets/videos/medium/health/bathroom.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_health_BRUSH_TEETH', level: 'medium', category: 'health', signId: 'BRUSH TEETH', title: 'Brush Teeth', order: 4,
-    description: 'Hold your index finger in front of your teeth and brush it back and forth, like brushing your teeth.',
-    tips: [
-      'Only the index finger is extended',
-      'Quick back-and-forth motion',
-      'Keep it right in front of the teeth/mouth',
-    ],
-    imageUrl: '../assets/images/medium/health/brush_teeth.png', videoUrl: '../assets/videos/medium/health/brush_teeth.mp4', detectionType: 'motion',
   },
 
   /* ── MEDIUM · PEOPLE (Unit 6) ─────────────────────────────────
@@ -2383,50 +1904,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/sorry.png', videoUrl: '../assets/videos/medium/feelings/sorry.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_feelings_LIKE', level: 'medium', category: 'feelings', signId: 'LIKE', title: 'Like', order: 6,
-    description: 'Place your thumb and middle finger against your chest as if pinching your shirt, then pull your hand outward while opening your fingers.',
-    tips: [
-      'Starts pinched against the chest',
-      'Pull outward while the fingers open',
-      'One smooth outward motion',
-    ],
-    imageUrl: '../assets/images/medium/feelings/like.png', videoUrl: '../assets/videos/medium/feelings/like.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_feelings_GOOD', level: 'medium', category: 'essentials_basic_responses', signId: 'GOOD', title: 'Good', order: 7,
-    // CHANGED — split out of a combined 'GOOD/BAD' entry, same fix as
-    // IN/OUT and COME/GO above. Both GOOD and BAD are already
-    // separately captured/trained.
-    description: 'Touch your flat fingertips to your chin, then move your hand down to rest on the palm of your other hand.',
-    tips: [
-      'Fingertips start at the chin',
-      'Hand moves down to rest on your other open palm',
-      'This is a MOTION sign',
-    ],
-    imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/medium/feelings/good.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_feelings_BAD', level: 'medium', category: 'essentials_basic_responses', signId: 'BAD', title: 'Bad', order: 8,
-    // CHANGED — the other half of the old combined 'GOOD/BAD' entry.
-    description: 'Touch your fingertips to your chin, then flip your hand downward so the palm faces the floor.',
-    tips: [
-      'Both signs start the same way — fingertips to the chin',
-      'BAD flips the palm down, instead of resting it on your other hand like GOOD',
-      'This is a MOTION sign',
-    ],
-    imageUrl: '../assets/images/medium/feelings/bad.png', videoUrl: '../assets/videos/medium/feelings/bad.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_feelings_LOVE', level: 'medium', category: 'feelings', signId: 'LOVE', title: 'Love', order: 9,
-    description: 'Cross both fists over your chest, one on top of the other, as if hugging yourself.',
-    tips: [
-      'Both hands are closed fists',
-      'Cross at the chest, like a hug',
-      'Hold briefly once crossed',
-    ],
-    imageUrl: '../assets/images/medium/feelings/love.png', videoUrl: '../assets/videos/medium/feelings/love.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_feelings_SCARED', level: 'medium', category: 'feelings', signId: 'SCARED', title: 'Scared', order: 10,
     // ASLU glosses this sign AFRAID.
     description: 'Cross both "S" (fist) hands in front of your chest, then quickly pull them apart and open into "5" hands, with a startled facial expression.',
@@ -2560,16 +2037,6 @@ const SIGNS = [
       'Used for ‘excuse me’ in context',
     ],
     imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/medium/requests/excuse.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_requests_THANK_YOU', level: 'medium', category: 'essentials_polite_expressions', signId: 'THANK YOU', title: 'Thank You', order: 3,
-    description: 'Touch your flat fingertips to your chin, then move your hand forward and down, as if extending your thanks outward.',
-    tips: [
-      'Starts with fingertips at the chin',
-      'Moves outward toward the other person',
-      'Keep the motion smooth, not abrupt',
-    ],
-    imageUrl: '../assets/images/medium/requests/thank_you.png', videoUrl: '../assets/videos/medium/requests/thank_you.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_requests_HELP', level: 'medium', category: 'requests', signId: 'HELP', title: 'Help', order: 4,
@@ -3338,31 +2805,6 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/essentials_greetings/welcome.png', videoUrl: '../assets/videos/medium/essentials_greetings/welcome.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · ESSENTIALS_BASIC_RESPONSES (YES/NO — new content;
-  // WHO/WHAT/WHEN/WHERE/WHY/HOW/GOOD/BAD moved here from `requests`/
-  // `feelings`, see those entries above for their unchanged content) ──
-  {
-    // NEW (this session) — no prior data.js content existed for YES.
-    id: 'medium_essentials_basic_responses_YES', level: 'medium', category: 'essentials_basic_responses', signId: 'YES', title: 'Yes', order: 1,
-    description: 'Make an ‘S’ handshape (a closed fist) and nod it up and down at the wrist, like a small head nod.',
-    tips: [
-      'Handshape is a simple closed fist',
-      'The whole fist bobs up and down from the wrist',
-      'Think of it as your fist "nodding"',
-    ],
-    imageUrl: '../assets/images/medium/essentials_basic_responses/yes.png', videoUrl: '../assets/videos/medium/essentials_basic_responses/yes.mp4', detectionType: 'motion',
-  },
-  {
-    // NEW (this session) — no prior data.js content existed for NO.
-    id: 'medium_essentials_basic_responses_NO', level: 'medium', category: 'essentials_basic_responses', signId: 'NO', title: 'No', order: 2,
-    description: 'Bring your thumb, index, and middle fingers together in front of you, opening and closing them once like a small beak.',
-    tips: [
-      'Thumb + index + middle finger, the rest stay closed',
-      'One quick open-close snap, like a beak',
-      'Not the same handshape as YES — no fist involved',
-    ],
-    imageUrl: '../assets/images/medium/essentials_basic_responses/no.png', videoUrl: '../assets/videos/medium/essentials_basic_responses/no.mp4', detectionType: 'motion',
-  },
 
   // ── MEDIUM · COLORS ──
   {
@@ -4414,37 +3856,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/door.htm',
   },
 
-  // ── MEDIUM · MONEY ──
-  {
-    id: 'medium_money_DOLLARS', level: 'medium', category: 'money', signId: 'DOLLARS', title: 'Dollars', order: 1,
-    description: 'Hold your non-dominant hand flat, palm up. Grasp its fingertips with your dominant hand and pull away with a small twist, as if pulling a dollar bill from your palm.',
-    tips: [
-      'Base hand stays flat, palm up',
-      'Dominant hand grasps and pulls with a twist',
-      'One smooth motion',
-    ],
-    imageUrl: '../assets/images/medium/money/dollars.png', videoUrl: '../assets/videos/medium/money/dollars.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_money_CENTS', level: 'medium', category: 'money', signId: 'CENTS', title: 'Cents', order: 2,
-    description: 'Touch your index finger to your temple, then move it forward while shaping the numbers to represent the amount of cents.',
-    tips: [
-      'Starts at the temple',
-      'Moves forward and away from the head',
-      'Followed by the relevant number handshape for a specific amount',
-    ],
-    imageUrl: '../assets/images/medium/money/cents.png', videoUrl: '../assets/videos/medium/money/cents.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_money_COST', level: 'medium', category: 'money', signId: 'COST', title: 'Cost', order: 3,
-    description: 'Hold your non-dominant hand flat, palm up. Brush your dominant index finger down across the palm in a short striking motion.',
-    tips: [
-      'Base hand stays flat and still',
-      'Short, quick downward brush',
-      'Only the index finger is extended on the dominant hand',
-    ],
-    imageUrl: '../assets/images/medium/money/cost.png', videoUrl: '../assets/videos/medium/money/cost.mp4', detectionType: 'motion',
-  },
 
   // ── MEDIUM · ANIMALS ──
   {
@@ -4516,16 +3927,6 @@ const SIGNS = [
       'Repeat a couple of times',
     ],
     imageUrl: '../assets/images/medium/animals/pig.png', videoUrl: '../assets/videos/medium/animals/pig.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_animals_BUG', level: 'medium', category: 'animals', signId: 'BUG', title: 'Bug', order: 8,
-    description: 'Touch your thumb to the tip of your nose and bend your index and middle fingers, twitching them slightly, like an insect\'s antennae.',
-    tips: [
-      'Thumb anchors at the nose',
-      'Index and middle fingers stay bent, like antennae',
-      'Small twitching motion',
-    ],
-    imageUrl: '../assets/images/medium/animals/bug.png', videoUrl: '../assets/videos/medium/animals/bug.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_animals_BIRD (lifeprint: "the sign BIRD can in context be used to mean chicken").
@@ -5195,943 +4596,23 @@ const SIGNS = [
 
   /* ── INTERMEDIATE · PHRASES (auto-generated content) ── */
 
-  // ── INTERMEDIATE · GREETINGS_INTRO ──
-  {
-    id: 'intermediate_greetings_intro_1_good_morning', level: 'intermediate', category: 'greetings_intro', signId: 'GOOD MORNING', title: 'Good Morning', order: 1,
-    description: 'This means “GOOD MORNING.” In ASL, sign the concepts in this order: GOOD-MORNING (flat hand rises from chin, like FINE, then meets the other arm like MORNING’s sunrise motion). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/good_morning.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_morning.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_greetings_intro_2_good_afternoon', level: 'intermediate', category: 'greetings_intro', signId: 'GOOD AFTERNOON', title: 'Good Afternoon', order: 2,
-    description: 'This means “GOOD AFTERNOON.” In ASL, sign the concepts in this order: GOOD-AFTERNOON (dominant flat hand rests on the back of the other arm, like the sun partway across the sky). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/good_afternoon.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_afternoon.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_greetings_intro_3_good_evening', level: 'intermediate', category: 'greetings_intro', signId: 'GOOD EVENING', title: 'Good Evening', order: 3,
-    description: 'This means “GOOD EVENING.” In ASL, sign the concepts in this order: GOOD-EVENING (similar to NIGHT, dominant hand dips down over the other arm). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/good_evening.png', videoUrl: '../assets/videos/intermediate/greetings_intro/good_evening.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_greetings_intro_4_nice_to_meet_you', level: 'intermediate', category: 'greetings_intro', signId: 'NICE TO MEET YOU', title: 'Nice to Meet You', order: 4,
-    description: 'This means “NICE TO MEET YOU.” In ASL, sign the concepts in this order: NICE MEET-YOU (MEET brings two ‘1’ handshapes together). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/nice_to_meet_you.png', videoUrl: '../assets/videos/intermediate/greetings_intro/nice_to_meet_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_greetings_intro_5_what_s_your_name', level: 'intermediate', category: 'greetings_intro', signId: 'WHAT\'S YOUR NAME?', title: 'What’s Your Name?', order: 5,
-    description: 'This means “WHAT\'S YOUR NAME.” In ASL, sign the concepts in this order: YOUR NAME WHAT (WH-word goes at the end, with furrowed brows through the whole question). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'In ASL, WH-questions often place the question word at the END of the sentence, not the start',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/what_s_your_name.png', videoUrl: '../assets/videos/intermediate/greetings_intro/what_s_your_name.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_greetings_intro_6_my_name_is', level: 'intermediate', category: 'greetings_intro', signId: 'MY NAME IS ___', title: 'My Name Is ___', order: 6,
-    description: 'This means “MY NAME IS ___.” In ASL, sign the concepts in this order: MY NAME [fingerspell your name]. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Names without a common ASL sign are fingerspelled letter by letter',
-    ],
-    imageUrl: '../assets/images/intermediate/greetings_intro/my_name_is.png', videoUrl: '../assets/videos/intermediate/greetings_intro/my_name_is.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · BASIC_RESPONSES ──
-  {
-    id: 'intermediate_basic_responses_1_i_am_fine', level: 'intermediate', category: 'basic_responses', signId: 'I AM FINE', title: 'I Am Fine', order: 1,
-    description: 'This means “I AM FINE.” In ASL, sign the concepts in this order: ME FINE. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/basic_responses/i_am_fine.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_am_fine.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_basic_responses_2_i_am_good', level: 'intermediate', category: 'basic_responses', signId: 'I AM GOOD', title: 'I Am Good', order: 2,
-    description: 'This means “I AM GOOD.” In ASL, sign the concepts in this order: ME GOOD. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/basic_responses/i_am_good.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_am_good.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_basic_responses_3_not_bad', level: 'intermediate', category: 'basic_responses', signId: 'NOT BAD', title: 'Not Bad', order: 3,
-    description: 'This means “NOT BAD.” In ASL, sign the concepts in this order: NOT BAD (headshake over BAD) or the single sign SO-SO (rocking flat hand). Use negation grammar (see tips).',
-    tips: [
-      'Negation is shown with a side-to-side head shake held over the negated sign(s), not a separate \'not\' sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/basic_responses/not_bad.png', videoUrl: '../assets/videos/intermediate/basic_responses/not_bad.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_basic_responses_4_maybe_later', level: 'intermediate', category: 'basic_responses', signId: 'MAYBE LATER', title: 'Maybe Later', order: 4,
-    description: 'This means “MAYBE LATER.” In ASL, sign the concepts in this order: MAYBE LATER (MAYBE alternates open palms up-down; LATER is an ‘L’ hand that swings forward). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/basic_responses/maybe_later.png', videoUrl: '../assets/videos/intermediate/basic_responses/maybe_later.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_basic_responses_5_i_don_t_know', level: 'intermediate', category: 'basic_responses', signId: 'I DON\'T KNOW', title: 'I Don’t Know', order: 5,
-    description: 'This means “I DON\'T KNOW.” In ASL, sign the concepts in this order: ME KNOW-NOT (flick fingers off the forehead, paired with a headshake or a shrug). Use negation grammar (see tips).',
-    tips: [
-      'Negation is shown with a side-to-side head shake held over the negated sign(s), not a separate \'not\' sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/basic_responses/i_don_t_know.png', videoUrl: '../assets/videos/intermediate/basic_responses/i_don_t_know.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · FAMILY_PHRASES ──
-  {
-    id: 'intermediate_family_phrases_1_my_mother', level: 'intermediate', category: 'family_phrases', signId: 'MY MOTHER', title: 'My Mother', order: 1,
-    description: 'This means “MY MOTHER.” In ASL, sign the concepts in this order: MY MOTHER (5-hand, thumb taps chin). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_phrases/my_mother.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_mother.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_phrases_2_my_father', level: 'intermediate', category: 'family_phrases', signId: 'MY FATHER', title: 'My Father', order: 2,
-    description: 'This means “MY FATHER.” In ASL, sign the concepts in this order: MY FATHER (5-hand, thumb taps forehead). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_phrases/my_father.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_father.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_phrases_3_my_brother', level: 'intermediate', category: 'family_phrases', signId: 'MY BROTHER', title: 'My Brother', order: 3,
-    description: 'This means “MY BROTHER.” In ASL, sign the concepts in this order: MY BROTHER (BOY handshape at forehead, then both index fingers meet). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_phrases/my_brother.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_brother.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_phrases_4_my_sister', level: 'intermediate', category: 'family_phrases', signId: 'MY SISTER', title: 'My Sister', order: 4,
-    description: 'This means “MY SISTER.” In ASL, sign the concepts in this order: MY SISTER (GIRL handshape at jaw, then both index fingers meet). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_phrases/my_sister.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_sister.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_phrases_5_my_friend', level: 'intermediate', category: 'family_phrases', signId: 'MY FRIEND', title: 'My Friend', order: 5,
-    description: 'This means “MY FRIEND.” In ASL, sign the concepts in this order: MY FRIEND (hooked index fingers link together, then link the other way). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_phrases/my_friend.png', videoUrl: '../assets/videos/intermediate/family_phrases/my_friend.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · DAILY_NEEDS ──
-  {
-    id: 'intermediate_daily_needs_1_i_am_hungry', level: 'intermediate', category: 'daily_needs', signId: 'I AM HUNGRY', title: 'I Am Hungry', order: 1,
-    description: 'This means “I AM HUNGRY.” In ASL, sign the concepts in this order: ME HUNGRY (‘C’ hand moves down the chest). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_am_hungry.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_hungry.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_needs_2_i_am_thirsty', level: 'intermediate', category: 'daily_needs', signId: 'I AM THIRSTY', title: 'I Am Thirsty', order: 2,
-    description: 'This means “I AM THIRSTY.” In ASL, sign the concepts in this order: ME THIRSTY (index finger traces down the throat). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_am_thirsty.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_thirsty.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_needs_3_i_am_tired', level: 'intermediate', category: 'daily_needs', signId: 'I AM TIRED', title: 'I Am Tired', order: 3,
-    description: 'This means “I AM TIRED.” In ASL, sign the concepts in this order: ME TIRED (bent hands drop down from the chest). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_am_tired.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_am_tired.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_needs_4_i_need_help', level: 'intermediate', category: 'daily_needs', signId: 'I NEED HELP', title: 'I Need Help', order: 4,
-    description: 'This means “I NEED HELP.” In ASL, sign the concepts in this order: ME NEED HELP (NEED is a bent ‘X’ hand pressing down; HELP lifts a thumbs-up fist on the other palm). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_need_help.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_help.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_needs_5_i_need_water', level: 'intermediate', category: 'daily_needs', signId: 'I NEED WATER', title: 'I Need Water', order: 5,
-    description: 'This means “I NEED WATER.” In ASL, sign the concepts in this order: ME NEED WATER (‘W’ hand taps the chin). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_need_water.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_water.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_needs_6_i_need_food', level: 'intermediate', category: 'daily_needs', signId: 'I NEED FOOD', title: 'I Need Food', order: 6,
-    description: 'This means “I NEED FOOD.” In ASL, sign the concepts in this order: ME NEED FOOD (bunched fingers tap toward the mouth, like eating). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_needs/i_need_food.png', videoUrl: '../assets/videos/intermediate/daily_needs/i_need_food.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · ASKING_QUESTIONS ──
-  {
-    id: 'intermediate_asking_questions_1_how_are_you', level: 'intermediate', category: 'asking_questions', signId: 'HOW ARE YOU?', title: 'How Are You?', order: 1,
-    description: 'This means “HOW ARE YOU.” In ASL, sign the concepts in this order: HOW YOU (both bent hands rotate palms-up, brows furrowed). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/how_are_you.png', videoUrl: '../assets/videos/intermediate/asking_questions/how_are_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_2_what_s_up', level: 'intermediate', category: 'asking_questions', signId: 'WHAT\'S UP?', title: 'What’s Up?', order: 2,
-    description: 'This means “WHAT\'S UP.” In ASL, sign the concepts in this order: WHAT-UP / WRONG (index finger and thumb brush up the chest, with a curious expression). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/what_s_up.png', videoUrl: '../assets/videos/intermediate/asking_questions/what_s_up.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_3_how_old_are_you', level: 'intermediate', category: 'asking_questions', signId: 'HOW OLD ARE YOU?', title: 'How Old Are You?', order: 3,
-    description: 'This means “HOW OLD ARE YOU.” In ASL, sign the concepts in this order: YOU OLD HOW-MANY (OLD is a fist pulling down from the chin; the number question goes at the end). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/how_old_are_you.png', videoUrl: '../assets/videos/intermediate/asking_questions/how_old_are_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_4_where_do_you_live', level: 'intermediate', category: 'asking_questions', signId: 'WHERE DO YOU LIVE?', title: 'Where Do You Live?', order: 4,
-    description: 'This means “WHERE DO YOU LIVE.” In ASL, sign the concepts in this order: YOU LIVE WHERE (LIVE is two ‘L’ hands moving up the torso). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/where_do_you_live.png', videoUrl: '../assets/videos/intermediate/asking_questions/where_do_you_live.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_5_what_time', level: 'intermediate', category: 'asking_questions', signId: 'WHAT TIME?', title: 'What Time?', order: 5,
-    description: 'This means “WHAT TIME.” In ASL, sign the concepts in this order: TIME WHAT (tap the wrist where a watch would sit, then ask WHAT). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/what_time.png', videoUrl: '../assets/videos/intermediate/asking_questions/what_time.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_6_can_you_help', level: 'intermediate', category: 'asking_questions', signId: 'CAN YOU HELP?', title: 'Can You Help?', order: 6,
-    description: 'This means “CAN YOU HELP.” In ASL, sign the concepts in this order: YOU CAN HELP YOU (CAN is two ‘S’ hands dropping down like flexing strength; eyebrows raise for the yes/no question). Use a yes/no-question expression (see tips).',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/can_you_help.png', videoUrl: '../assets/videos/intermediate/asking_questions/can_you_help.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_questions_7_can_i_go', level: 'intermediate', category: 'asking_questions', signId: 'CAN I GO?', title: 'Can I Go?', order: 7,
-    description: 'This means “CAN I GO.” In ASL, sign the concepts in this order: ME CAN GO-Q (eyebrows raised through the whole question). Use a yes/no-question expression (see tips).',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_questions/can_i_go.png', videoUrl: '../assets/videos/intermediate/asking_questions/can_i_go.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · POLITE_EXPRESSIONS ──
-  {
-    id: 'intermediate_polite_expressions_1_thank_you', level: 'intermediate', category: 'polite_expressions', signId: 'THANK YOU', title: 'Thank You', order: 1,
-    description: 'This means “THANK YOU.” In ASL, sign the concepts in this order: THANK-YOU (flat hand moves from the chin outward). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/polite_expressions/thank_you.png', videoUrl: '../assets/videos/intermediate/polite_expressions/thank_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_polite_expressions_2_you_re_welcome', level: 'intermediate', category: 'polite_expressions', signId: 'YOU\'RE WELCOME', title: 'You’re Welcome', order: 2,
-    description: 'This means “YOU\'RE WELCOME.” In ASL, sign the concepts in this order: WELCOME (open hand sweeps in, like inviting someone) or simply repeat PLEASE/THANK-YOU back. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/polite_expressions/you_re_welcome.png', videoUrl: '../assets/videos/intermediate/polite_expressions/you_re_welcome.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_polite_expressions_3_excuse_me', level: 'intermediate', category: 'polite_expressions', signId: 'EXCUSE ME', title: 'Excuse Me', order: 3,
-    description: 'This means “EXCUSE ME.” In ASL, sign the concepts in this order: EXCUSE-ME (fingertips brush across the other palm). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/polite_expressions/excuse_me.png', videoUrl: '../assets/videos/intermediate/polite_expressions/excuse_me.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_polite_expressions_4_have_a_nice_day', level: 'intermediate', category: 'polite_expressions', signId: 'HAVE A NICE DAY', title: 'Have a Nice Day', order: 4,
-    description: 'This means “HAVE A NICE DAY.” In ASL, sign the concepts in this order: NICE DAY (NICE slides across the palm; DAY sweeps the arm down like the sun’s arc). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/polite_expressions/have_a_nice_day.png', videoUrl: '../assets/videos/intermediate/polite_expressions/have_a_nice_day.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_polite_expressions_5_see_you_later', level: 'intermediate', category: 'polite_expressions', signId: 'SEE YOU LATER', title: 'See You Later', order: 5,
-    description: 'This means “SEE YOU LATER.” In ASL, sign the concepts in this order: SEE-YOU LATER (V-hand points to eyes then to the person; LATER swings an ‘L’ hand forward). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/polite_expressions/see_you_later.png', videoUrl: '../assets/videos/intermediate/polite_expressions/see_you_later.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · AFFECTION_FEELINGS ──
-  {
-    id: 'intermediate_affection_feelings_1_i_love_you', level: 'intermediate', category: 'affection_feelings', signId: 'I LOVE YOU', title: 'I Love You', order: 1,
-    description: 'This means “I LOVE YOU.” In ASL, sign the concepts in this order: Often shown with the single ILY handshape (thumb, index, and pinky extended) held up, instead of signing each word separately. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_love_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_love_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_2_i_like_you', level: 'intermediate', category: 'affection_feelings', signId: 'I LIKE YOU', title: 'I Like You', order: 2,
-    description: 'This means “I LIKE YOU.” In ASL, sign the concepts in this order: ME LIKE YOU (thumb and middle finger pull outward from the chest). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_like_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_like_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_3_i_miss_you', level: 'intermediate', category: 'affection_feelings', signId: 'I MISS YOU', title: 'I Miss You', order: 3,
-    description: 'This means “I MISS YOU.” In ASL, sign the concepts in this order: ME MISS YOU (middle finger brushes past the lips, tender expression). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_miss_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_miss_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_4_happy_birthday', level: 'intermediate', category: 'affection_feelings', signId: 'HAPPY BIRTHDAY', title: 'Happy Birthday', order: 4,
-    description: 'This means “HAPPY BIRTHDAY.” In ASL, sign the concepts in this order: HAPPY BIRTHDAY (HAPPY brushes up the chest; BIRTHDAY combines BORN and DAY). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/happy_birthday.png', videoUrl: '../assets/videos/intermediate/affection_feelings/happy_birthday.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_5_i_don_t_like_it', level: 'intermediate', category: 'affection_feelings', signId: 'I DON\'T LIKE IT', title: 'I Don’t Like It', order: 5,
-    description: 'This means “I DON\'T LIKE IT.” In ASL, sign the concepts in this order: ME LIKE-NOT IT (headshake through LIKE). Use negation grammar (see tips).',
-    tips: [
-      'Negation is shown with a side-to-side head shake held over the negated sign(s), not a separate \'not\' sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_don_t_like_it.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_don_t_like_it.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_6_i_don_t_like_you', level: 'intermediate', category: 'affection_feelings', signId: 'I DON\'T LIKE YOU', title: 'I Don’t Like You', order: 6,
-    description: 'This means “I DON\'T LIKE YOU.” In ASL, sign the concepts in this order: ME LIKE-NOT YOU (headshake through LIKE). Use negation grammar (see tips).',
-    tips: [
-      'Negation is shown with a side-to-side head shake held over the negated sign(s), not a separate \'not\' sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_don_t_like_you.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_don_t_like_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_7_i_hate_it', level: 'intermediate', category: 'affection_feelings', signId: 'I HATE IT', title: 'I Hate It', order: 7,
-    description: 'This means “I HATE IT.” In ASL, sign the concepts in this order: ME HATE IT (both ‘8’ hands flick outward from a middle-finger-and-thumb snap, with a disgusted expression). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/i_hate_it.png', videoUrl: '../assets/videos/intermediate/affection_feelings/i_hate_it.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_affection_feelings_8_leave_me_alone', level: 'intermediate', category: 'affection_feelings', signId: 'LEAVE ME ALONE', title: 'Leave Me Alone', order: 8,
-    description: 'This means “LEAVE ME ALONE.” In ASL, sign the concepts in this order: ME ALONE (‘A’ hand circles in the air) — often paired with a firm expression and a stop-motion palm-out gesture. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/affection_feelings/leave_me_alone.png', videoUrl: '../assets/videos/intermediate/affection_feelings/leave_me_alone.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · DESCRIBING_THINGS ──
-  {
-    id: 'intermediate_describing_things_1_red_car', level: 'intermediate', category: 'describing_things', signId: 'RED CAR', title: 'Red Car', order: 1,
-    description: 'This means “RED CAR.” In ASL, sign the concepts in this order: CAR RED (ASL usually puts the noun before the describing color). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/red_car.png', videoUrl: '../assets/videos/intermediate/describing_things/red_car.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_2_blue_shirt', level: 'intermediate', category: 'describing_things', signId: 'BLUE SHIRT', title: 'Blue Shirt', order: 2,
-    description: 'This means “BLUE SHIRT.” In ASL, sign the concepts in this order: SHIRT BLUE. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/blue_shirt.png', videoUrl: '../assets/videos/intermediate/describing_things/blue_shirt.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_3_green_tree', level: 'intermediate', category: 'describing_things', signId: 'GREEN TREE', title: 'Green Tree', order: 3,
-    description: 'This means “GREEN TREE.” In ASL, sign the concepts in this order: TREE GREEN. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/green_tree.png', videoUrl: '../assets/videos/intermediate/describing_things/green_tree.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_4_big_house', level: 'intermediate', category: 'describing_things', signId: 'BIG HOUSE', title: 'Big House', order: 4,
-    description: 'This means “BIG HOUSE.” In ASL, sign the concepts in this order: HOUSE BIG. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/big_house.png', videoUrl: '../assets/videos/intermediate/describing_things/big_house.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_5_small_dog', level: 'intermediate', category: 'describing_things', signId: 'SMALL DOG', title: 'Small Dog', order: 5,
-    description: 'This means “SMALL DOG.” In ASL, sign the concepts in this order: DOG SMALL. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/small_dog.png', videoUrl: '../assets/videos/intermediate/describing_things/small_dog.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_6_good_job', level: 'intermediate', category: 'describing_things', signId: 'GOOD JOB', title: 'Good Job', order: 6,
-    description: 'This means “GOOD JOB.” In ASL, sign the concepts in this order: GOOD JOB / GOOD WORK, often with a thumbs-up-style GOOD and an approving expression. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/good_job.png', videoUrl: '../assets/videos/intermediate/describing_things/good_job.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_describing_things_7_bad_day', level: 'intermediate', category: 'describing_things', signId: 'BAD DAY', title: 'Bad Day', order: 7,
-    description: 'This means “BAD DAY.” In ASL, sign the concepts in this order: DAY BAD (noun before description again, with a downturned expression). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/describing_things/bad_day.png', videoUrl: '../assets/videos/intermediate/describing_things/bad_day.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · SELF_INTRODUCTION ──
-  {
-    id: 'intermediate_self_introduction_1_hello_my_name_is', level: 'intermediate', category: 'self_introduction', signId: 'HELLO, MY NAME IS ___.', title: 'Hello, My Name Is ___.', order: 1,
-    description: 'This means “HELLO, MY NAME IS ___.” In ASL, sign the concepts in this order: HELLO MY NAME [fingerspell your name]. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Names without a common ASL sign are fingerspelled letter by letter',
-    ],
-    imageUrl: '../assets/images/intermediate/self_introduction/hello_my_name_is.png', videoUrl: '../assets/videos/intermediate/self_introduction/hello_my_name_is.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_self_introduction_2_nice_to_meet_you', level: 'intermediate', category: 'self_introduction', signId: 'NICE TO MEET YOU.', title: 'Nice to Meet You.', order: 2,
-    description: 'This means “NICE TO MEET YOU.” In ASL, sign the concepts in this order: NICE MEET-YOU. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/self_introduction/nice_to_meet_you.png', videoUrl: '../assets/videos/intermediate/self_introduction/nice_to_meet_you.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_self_introduction_3_i_am_years_old', level: 'intermediate', category: 'self_introduction', signId: 'I AM ___ YEARS OLD.', title: 'I Am ___ Years Old.', order: 3,
-    description: 'This means “I AM ___ YEARS OLD.” In ASL, sign the concepts in this order: ME [number] YEARS-OLD (the number handshape usually touches the chin, combining with OLD). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/self_introduction/i_am_years_old.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_am_years_old.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_self_introduction_4_i_live_in', level: 'intermediate', category: 'self_introduction', signId: 'I LIVE IN ___.', title: 'I Live In ___.', order: 4,
-    description: 'This means “I LIVE IN ___.” In ASL, sign the concepts in this order: ME LIVE [place name/fingerspell]. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/self_introduction/i_live_in.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_live_in.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_self_introduction_5_i_am_a_student', level: 'intermediate', category: 'self_introduction', signId: 'I AM A STUDENT.', title: 'I Am a Student.', order: 5,
-    description: 'This means “I AM A STUDENT.” In ASL, sign the concepts in this order: ME STUDENT (LEARN handshape moves up to the forehead, then PERSON marker). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/self_introduction/i_am_a_student.png', videoUrl: '../assets/videos/intermediate/self_introduction/i_am_a_student.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · DAILY_ACTIVITIES ──
-  {
-    id: 'intermediate_daily_activities_1_i_wake_up_early', level: 'intermediate', category: 'daily_activities', signId: 'I WAKE UP EARLY.', title: 'I Wake Up Early.', order: 1,
-    description: 'This means “I WAKE UP EARLY.” In ASL, sign the concepts in this order: ME WAKE-UP EARLY (WAKE-UP opens the eyes with ‘L’ handshapes at the eyes). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_wake_up_early.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_wake_up_early.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_activities_2_i_go_to_school', level: 'intermediate', category: 'daily_activities', signId: 'I GO TO SCHOOL.', title: 'I Go to School.', order: 2,
-    description: 'This means “I GO TO SCHOOL.” In ASL, sign the concepts in this order: ME SCHOOL GO (topic-comment: name the place, then the action). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_go_to_school.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_go_to_school.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_activities_3_i_study_every_day', level: 'intermediate', category: 'daily_activities', signId: 'I STUDY EVERY DAY.', title: 'I Study Every Day.', order: 3,
-    description: 'This means “I STUDY EVERY DAY.” In ASL, sign the concepts in this order: ME STUDY EVERY-DAY (STUDY wiggles fingers toward an open palm; repeat the DAY sign’s motion for ‘every’). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_study_every_day.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_study_every_day.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_activities_4_i_eat_breakfast', level: 'intermediate', category: 'daily_activities', signId: 'I EAT BREAKFAST.', title: 'I Eat Breakfast.', order: 4,
-    description: 'This means “I EAT BREAKFAST.” In ASL, sign the concepts in this order: ME MORNING EAT (or the combined sign BREAKFAST, bunched fingers to the mouth). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_eat_breakfast.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_eat_breakfast.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_activities_5_i_go_home_after_school', level: 'intermediate', category: 'daily_activities', signId: 'I GO HOME AFTER SCHOOL.', title: 'I Go Home After School.', order: 5,
-    description: 'This means “I GO HOME AFTER SCHOOL.” In ASL, sign the concepts in this order: SCHOOL FINISH, ME HOME GO (ASL often marks sequence with FINISH rather than the word ‘after’). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_go_home_after_school.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_go_home_after_school.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_daily_activities_6_i_sleep_at_10_pm', level: 'intermediate', category: 'daily_activities', signId: 'I SLEEP AT 10 PM.', title: 'I Sleep at 10 PM.', order: 6,
-    description: 'This means “I SLEEP AT 10 PM.” In ASL, sign the concepts in this order: NIGHT TEN-OCLOCK, ME SLEEP (time/setting is often established first). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/daily_activities/i_sleep_at_10_pm.png', videoUrl: '../assets/videos/intermediate/daily_activities/i_sleep_at_10_pm.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · FAMILY_CONVERSATIONS ──
-  {
-    id: 'intermediate_family_conversations_1_i_have_two_brothers', level: 'intermediate', category: 'family_conversations', signId: 'I HAVE TWO BROTHERS.', title: 'I Have Two Brothers.', order: 1,
-    description: 'This means “I HAVE TWO BROTHERS.” In ASL, sign the concepts in this order: ME BROTHER TWO HAVE (numbers can follow the noun they count in ASL). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_conversations/i_have_two_brothers.png', videoUrl: '../assets/videos/intermediate/family_conversations/i_have_two_brothers.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_conversations_2_my_mother_works_at_home', level: 'intermediate', category: 'family_conversations', signId: 'MY MOTHER WORKS AT HOME.', title: 'My Mother Works at Home.', order: 2,
-    description: 'This means “MY MOTHER WORKS AT HOME.” In ASL, sign the concepts in this order: MY MOTHER HOME WORK. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/family_conversations/my_mother_works_at_home.png', videoUrl: '../assets/videos/intermediate/family_conversations/my_mother_works_at_home.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_conversations_3_my_father_is_a_teacher', level: 'intermediate', category: 'family_conversations', signId: 'MY FATHER IS A TEACHER.', title: 'My Father Is a Teacher.', order: 3,
-    description: 'This means “MY FATHER IS A TEACHER.” In ASL, sign the concepts in this order: MY FATHER TEACHER (TEACHER combines the sign for TEACH with the PERSON marker). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_conversations/my_father_is_a_teacher.png', videoUrl: '../assets/videos/intermediate/family_conversations/my_father_is_a_teacher.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_family_conversations_4_i_love_my_family', level: 'intermediate', category: 'family_conversations', signId: 'I LOVE MY FAMILY.', title: 'I Love My Family.', order: 4,
-    description: 'This means “I LOVE MY FAMILY.” In ASL, sign the concepts in this order: ME LOVE MY FAMILY (LOVE crosses both fists over the chest). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/family_conversations/i_love_my_family.png', videoUrl: '../assets/videos/intermediate/family_conversations/i_love_my_family.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · TALKING_ABOUT_FEELINGS ──
-  {
-    id: 'intermediate_talking_about_feelings_1_i_am_happy_today', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM HAPPY TODAY.', title: 'I Am Happy Today.', order: 1,
-    description: 'This means “I AM HAPPY TODAY.” In ASL, sign the concepts in this order: TODAY ME HAPPY. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_happy_today.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_happy_today.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_talking_about_feelings_2_i_am_nervous', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM NERVOUS.', title: 'I Am Nervous.', order: 2,
-    description: 'This means “I AM NERVOUS.” In ASL, sign the concepts in this order: ME NERVOUS (fluttering ‘5’ hands in front of the chest). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_nervous.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_nervous.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_talking_about_feelings_3_i_feel_tired', level: 'intermediate', category: 'talking_about_feelings', signId: 'I FEEL TIRED.', title: 'I Feel Tired.', order: 3,
-    description: 'This means “I FEEL TIRED.” In ASL, sign the concepts in this order: ME TIRED (bent hands drop from the chest, shoulders can slump slightly). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/talking_about_feelings/i_feel_tired.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_feel_tired.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_talking_about_feelings_4_i_am_excited_for_tomorrow', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM EXCITED FOR TOMORROW.', title: 'I Am Excited for Tomorrow.', order: 4,
-    description: 'This means “I AM EXCITED FOR TOMORROW.” In ASL, sign the concepts in this order: TOMORROW ME EXCITED (EXCITED alternates middle fingers brushing up the chest, faster than HAPPY). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_excited_for_tomorrow.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_excited_for_tomorrow.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_talking_about_feelings_5_i_am_worried_about_school', level: 'intermediate', category: 'talking_about_feelings', signId: 'I AM WORRIED ABOUT SCHOOL.', title: 'I Am Worried About School.', order: 5,
-    description: 'This means “I AM WORRIED ABOUT SCHOOL.” In ASL, sign the concepts in this order: SCHOOL ME WORRY (WORRY circles a flat hand near the forehead, brows furrowed). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/talking_about_feelings/i_am_worried_about_school.png', videoUrl: '../assets/videos/intermediate/talking_about_feelings/i_am_worried_about_school.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · ASKING_FOR_HELP ──
-  {
-    id: 'intermediate_asking_for_help_1_can_you_help_me', level: 'intermediate', category: 'asking_for_help', signId: 'CAN YOU HELP ME?', title: 'Can You Help Me?', order: 1,
-    description: 'This means “CAN YOU HELP ME.” In ASL, sign the concepts in this order: YOU CAN HELP ME-Q (eyebrows raised through the question). Use a yes/no-question expression (see tips).',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_for_help/can_you_help_me.png', videoUrl: '../assets/videos/intermediate/asking_for_help/can_you_help_me.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_for_help_2_where_is_the_restroom', level: 'intermediate', category: 'asking_for_help', signId: 'WHERE IS THE RESTROOM?', title: 'Where Is the Restroom?', order: 2,
-    description: 'This means “WHERE IS THE RESTROOM.” In ASL, sign the concepts in this order: RESTROOM WHERE (‘T’ hand shakes for RESTROOM, then WHERE at the end). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_for_help/where_is_the_restroom.png', videoUrl: '../assets/videos/intermediate/asking_for_help/where_is_the_restroom.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_for_help_3_i_need_assistance', level: 'intermediate', category: 'asking_for_help', signId: 'I NEED ASSISTANCE.', title: 'I Need Assistance.', order: 3,
-    description: 'This means “I NEED ASSISTANCE.” In ASL, sign the concepts in this order: ME NEED HELP (same core sign as HELP, with NEED’s firmer downward press). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_for_help/i_need_assistance.png', videoUrl: '../assets/videos/intermediate/asking_for_help/i_need_assistance.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_for_help_4_please_repeat_that', level: 'intermediate', category: 'asking_for_help', signId: 'PLEASE REPEAT THAT.', title: 'Please Repeat That.', order: 4,
-    description: 'This means “PLEASE REPEAT THAT.” In ASL, sign the concepts in this order: PLEASE AGAIN (AGAIN is a bent hand flipping into the other palm). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_for_help/please_repeat_that.png', videoUrl: '../assets/videos/intermediate/asking_for_help/please_repeat_that.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_asking_for_help_5_i_don_t_understand', level: 'intermediate', category: 'asking_for_help', signId: 'I DON\'T UNDERSTAND.', title: 'I Don’t Understand.', order: 5,
-    description: 'This means “I DON\'T UNDERSTAND.” In ASL, sign the concepts in this order: ME UNDERSTAND-NOT (headshake over UNDERSTAND, whose index finger flicks open at the forehead). Use negation grammar (see tips).',
-    tips: [
-      'Negation is shown with a side-to-side head shake held over the negated sign(s), not a separate \'not\' sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/asking_for_help/i_don_t_understand.png', videoUrl: '../assets/videos/intermediate/asking_for_help/i_don_t_understand.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · SCHOOL_CONVERSATIONS ──
-  {
-    id: 'intermediate_school_conversations_1_what_is_your_favorite_subject', level: 'intermediate', category: 'school_conversations', signId: 'WHAT IS YOUR FAVORITE SUBJECT?', title: 'What Is Your Favorite Subject?', order: 1,
-    description: 'This means “WHAT IS YOUR FAVORITE SUBJECT.” In ASL, sign the concepts in this order: YOUR FAVORITE SUBJECT WHAT (WH-word at the end). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/school_conversations/what_is_your_favorite_subject.png', videoUrl: '../assets/videos/intermediate/school_conversations/what_is_your_favorite_subject.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_school_conversations_2_my_favorite_subject_is_english', level: 'intermediate', category: 'school_conversations', signId: 'MY FAVORITE SUBJECT IS ENGLISH.', title: 'My Favorite Subject Is English.', order: 2,
-    description: 'This means “MY FAVORITE SUBJECT IS ENGLISH.” In ASL, sign the concepts in this order: MY FAVORITE SUBJECT ENGLISH. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/school_conversations/my_favorite_subject_is_english.png', videoUrl: '../assets/videos/intermediate/school_conversations/my_favorite_subject_is_english.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_school_conversations_3_when_is_the_exam', level: 'intermediate', category: 'school_conversations', signId: 'WHEN IS THE EXAM?', title: 'When Is the Exam?', order: 3,
-    description: 'This means “WHEN IS THE EXAM.” In ASL, sign the concepts in this order: EXAM WHEN. Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/school_conversations/when_is_the_exam.png', videoUrl: '../assets/videos/intermediate/school_conversations/when_is_the_exam.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_school_conversations_4_i_finished_my_assignment', level: 'intermediate', category: 'school_conversations', signId: 'I FINISHED MY ASSIGNMENT.', title: 'I Finished My Assignment.', order: 4,
-    description: 'This means “I FINISHED MY ASSIGNMENT.” In ASL, sign the concepts in this order: ME ASSIGNMENT FINISH (FINISH after the verb/task marks completed action, like a past tense). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/school_conversations/i_finished_my_assignment.png', videoUrl: '../assets/videos/intermediate/school_conversations/i_finished_my_assignment.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_school_conversations_5_the_lesson_is_difficult', level: 'intermediate', category: 'school_conversations', signId: 'THE LESSON IS DIFFICULT.', title: 'The Lesson Is Difficult.', order: 5,
-    description: 'This means “THE LESSON IS DIFFICULT.” In ASL, sign the concepts in this order: LESSON DIFFICULT (bent ‘V’ hands strike down, brows furrowed). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/school_conversations/the_lesson_is_difficult.png', videoUrl: '../assets/videos/intermediate/school_conversations/the_lesson_is_difficult.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · SHOPPING_ORDERING ──
-  {
-    id: 'intermediate_shopping_ordering_1_how_much_is_this', level: 'intermediate', category: 'shopping_ordering', signId: 'HOW MUCH IS THIS?', title: 'How Much Is This?', order: 1,
-    description: 'This means “HOW MUCH IS THIS.” In ASL, sign the concepts in this order: THIS COST/HOW-MUCH (index finger points down, then the question sign). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/shopping_ordering/how_much_is_this.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/how_much_is_this.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_shopping_ordering_2_i_want_to_buy_this', level: 'intermediate', category: 'shopping_ordering', signId: 'I WANT TO BUY THIS.', title: 'I Want to Buy This.', order: 2,
-    description: 'This means “I WANT TO BUY THIS.” In ASL, sign the concepts in this order: ME WANT BUY THIS (WANT pulls open ‘5’ hands toward the body; BUY scoops from one palm). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/shopping_ordering/i_want_to_buy_this.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/i_want_to_buy_this.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_shopping_ordering_3_do_you_have_another_color', level: 'intermediate', category: 'shopping_ordering', signId: 'DO YOU HAVE ANOTHER COLOR?', title: 'Do You Have Another Color?', order: 3,
-    description: 'This means “DO YOU HAVE ANOTHER COLOR.” In ASL, sign the concepts in this order: OTHER COLOR HAVE YOU-Q (eyebrows raised through the whole question). Use a yes/no-question expression (see tips).',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/shopping_ordering/do_you_have_another_color.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/do_you_have_another_color.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_shopping_ordering_4_where_is_the_cashier', level: 'intermediate', category: 'shopping_ordering', signId: 'WHERE IS THE CASHIER?', title: 'Where Is the Cashier?', order: 4,
-    description: 'This means “WHERE IS THE CASHIER.” In ASL, sign the concepts in this order: CASHIER WHERE (often fingerspelled or paired with PAY + PERSON). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/shopping_ordering/where_is_the_cashier.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/where_is_the_cashier.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_shopping_ordering_5_thank_you_for_your_help', level: 'intermediate', category: 'shopping_ordering', signId: 'THANK YOU FOR YOUR HELP.', title: 'Thank You for Your Help.', order: 5,
-    description: 'This means “THANK YOU FOR YOUR HELP.” In ASL, sign the concepts in this order: YOUR HELP THANK-YOU. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/shopping_ordering/thank_you_for_your_help.png', videoUrl: '../assets/videos/intermediate/shopping_ordering/thank_you_for_your_help.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · SOCIAL_CONVERSATIONS ──
-  {
-    id: 'intermediate_social_conversations_1_what_are_you_doing_today', level: 'intermediate', category: 'social_conversations', signId: 'WHAT ARE YOU DOING TODAY?', title: 'What Are You Doing Today?', order: 1,
-    description: 'This means “WHAT ARE YOU DOING TODAY.” In ASL, sign the concepts in this order: TODAY YOU DO-DO WHAT (WH-word at the end). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/social_conversations/what_are_you_doing_today.png', videoUrl: '../assets/videos/intermediate/social_conversations/what_are_you_doing_today.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_social_conversations_2_i_am_going_with_my_friends', level: 'intermediate', category: 'social_conversations', signId: 'I AM GOING WITH MY FRIENDS.', title: 'I Am Going With My Friends.', order: 2,
-    description: 'This means “I AM GOING WITH MY FRIENDS.” In ASL, sign the concepts in this order: ME FRIEND GROUP-GO-WITH (GO-WITH sweeps both hands forward together). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/social_conversations/i_am_going_with_my_friends.png', videoUrl: '../assets/videos/intermediate/social_conversations/i_am_going_with_my_friends.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_social_conversations_3_would_you_like_to_join_us', level: 'intermediate', category: 'social_conversations', signId: 'WOULD YOU LIKE TO JOIN US?', title: 'Would You Like to Join Us?', order: 3,
-    description: 'This means “WOULD YOU LIKE TO JOIN US.” In ASL, sign the concepts in this order: YOU WANT JOIN-US-Q (eyebrows raised through the question). Use a yes/no-question expression (see tips).',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/social_conversations/would_you_like_to_join_us.png', videoUrl: '../assets/videos/intermediate/social_conversations/would_you_like_to_join_us.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_social_conversations_4_that_s_a_good_idea', level: 'intermediate', category: 'social_conversations', signId: 'THAT\'S A GOOD IDEA.', title: 'That’s a Good Idea.', order: 4,
-    description: 'This means “THAT\'S A GOOD IDEA.” In ASL, sign the concepts in this order: IDEA GOOD (IDEA flicks an ‘I’/bent hand off the forehead). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/social_conversations/that_s_a_good_idea.png', videoUrl: '../assets/videos/intermediate/social_conversations/that_s_a_good_idea.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_social_conversations_5_see_you_tomorrow', level: 'intermediate', category: 'social_conversations', signId: 'SEE YOU TOMORROW.', title: 'See You Tomorrow.', order: 5,
-    description: 'This means “SEE YOU TOMORROW.” In ASL, sign the concepts in this order: TOMORROW SEE-YOU (TOMORROW rolls a ‘T’/thumb hand forward from the cheek). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-      'Longer ideas often lead with the topic, then comment on it (topic-comment order), rather than strict English word order',
-    ],
-    imageUrl: '../assets/images/intermediate/social_conversations/see_you_tomorrow.png', videoUrl: '../assets/videos/intermediate/social_conversations/see_you_tomorrow.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · EMERGENCY_SITUATIONS ──
-  {
-    id: 'intermediate_emergency_situations_1_i_need_help', level: 'intermediate', category: 'emergency_situations', signId: 'I NEED HELP.', title: 'I Need Help.', order: 1,
-    description: 'This means “I NEED HELP.” In ASL, sign the concepts in this order: ME NEED HELP (urgent, larger movement and tense expression). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/i_need_help.png', videoUrl: '../assets/videos/intermediate/emergency_situations/i_need_help.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_emergency_situations_2_call_the_police', level: 'intermediate', category: 'emergency_situations', signId: 'CALL THE POLICE.', title: 'Call the Police.', order: 2,
-    description: 'This means “CALL THE POLICE.” In ASL, sign the concepts in this order: POLICE CALL-(phone handshape) or POLICE + the directional CALL sign. Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/call_the_police.png', videoUrl: '../assets/videos/intermediate/emergency_situations/call_the_police.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_emergency_situations_3_call_an_ambulance', level: 'intermediate', category: 'emergency_situations', signId: 'CALL AN AMBULANCE.', title: 'Call an Ambulance.', order: 3,
-    description: 'This means “CALL AN AMBULANCE.” In ASL, sign the concepts in this order: AMBULANCE CALL (AMBULANCE is often fingerspelled or shown with a siren-light gesture above the head). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/call_an_ambulance.png', videoUrl: '../assets/videos/intermediate/emergency_situations/call_an_ambulance.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_emergency_situations_4_i_am_lost', level: 'intermediate', category: 'emergency_situations', signId: 'I AM LOST.', title: 'I Am Lost.', order: 4,
-    description: 'This means “I AM LOST.” In ASL, sign the concepts in this order: ME LOST (bent ‘V’ hand drops through a loose ‘C’, like disappearing). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/i_am_lost.png', videoUrl: '../assets/videos/intermediate/emergency_situations/i_am_lost.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_emergency_situations_5_where_is_the_hospital', level: 'intermediate', category: 'emergency_situations', signId: 'WHERE IS THE HOSPITAL?', title: 'Where Is the Hospital?', order: 5,
-    description: 'This means “WHERE IS THE HOSPITAL.” In ASL, sign the concepts in this order: HOSPITAL WHERE (HOSPITAL traces an ‘H’ cross shape on the upper arm). Use a WH-question expression (see tips).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/where_is_the_hospital.png', videoUrl: '../assets/videos/intermediate/emergency_situations/where_is_the_hospital.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_emergency_situations_6_this_is_an_emergency', level: 'intermediate', category: 'emergency_situations', signId: 'THIS IS AN EMERGENCY.', title: 'This Is an Emergency.', order: 6,
-    description: 'This means “THIS IS AN EMERGENCY.” In ASL, sign the concepts in this order: EMERGENCY THIS (EMERGENCY shakes an ‘E’ handshape, urgent expression). Use a neutral statement expression.',
-    tips: [
-      'Neutral/statement sentences use relaxed eyebrows — no extra facial question marker needed',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/emergency_situations/this_is_an_emergency.png', videoUrl: '../assets/videos/intermediate/emergency_situations/this_is_an_emergency.mp4', detectionType: 'motion',
-  },
 
-  // ── INTERMEDIATE · EVERYDAY_DIALOGUES ──
-  {
-    id: 'intermediate_everyday_dialogues_1_meeting_someone_hello_hello_what_is_your', level: 'intermediate', category: 'everyday_dialogues', signId: 'MEETING SOMEONE: HELLO. / HELLO. / WHAT IS YOUR NAME? / MY NAME IS JOHN. / NICE TO MEET YOU.', title: 'Dialogue: Meeting Someone', order: 1,
-    description: 'A short back-and-forth: HELLO → HELLO → YOUR NAME WHAT → MY NAME [fingerspell] → NICE MEET-YOU. Each line is a separate mini-phrase — sign one, pause, then the next, the way turns happen in a real conversation.',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'Names without a common ASL sign are fingerspelled letter by letter',
-      'Look up at the other person between lines — eye contact signals whose turn it is to sign',
-    ],
-    imageUrl: '../assets/images/intermediate/everyday_dialogues/meeting_someone_hello_hello_what_is_your.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/meeting_someone_hello_hello_what_is_your.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_everyday_dialogues_2_asking_for_help_excuse_me_can_you_help_m', level: 'intermediate', category: 'everyday_dialogues', signId: 'ASKING FOR HELP: EXCUSE ME. / CAN YOU HELP ME? / YES, WHAT DO YOU NEED? / I AM LOOKING FOR THE RESTROOM.', title: 'Dialogue: Asking for Help', order: 2,
-    description: 'A short back-and-forth: EXCUSE-ME → YOU CAN HELP ME-Q → YES NEED WHAT → ME RESTROOM LOOK-FOR. Sign each line as its own phrase, pausing for the other person\'s turn.',
-    tips: [
-      'Yes/no questions raise your eyebrows and lean your head forward slightly, held until the question ends',
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'LOOK-FOR sweeps a bent ‘V’ hand around, like scanning for something',
-    ],
-    imageUrl: '../assets/images/intermediate/everyday_dialogues/asking_for_help_excuse_me_can_you_help_m.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/asking_for_help_excuse_me_can_you_help_m.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'intermediate_everyday_dialogues_3_shopping_how_much_is_this_it_is_ten_doll', level: 'intermediate', category: 'everyday_dialogues', signId: 'SHOPPING: HOW MUCH IS THIS? / IT IS TEN DOLLARS. / I WILL BUY IT. / THANK YOU.', title: 'Dialogue: Shopping', order: 3,
-    description: 'A short back-and-forth: THIS COST/HOW-MUCH → TEN DOLLARS → ME BUY WILL → THANK-YOU. Money amounts combine a number handshape with the DOLLARS sign (a pulling twist from the palm).',
-    tips: [
-      'WH-questions (who/what/where/when/why/how) use furrowed eyebrows and a slight head tilt, held through the sign',
-      'Numbers combined with DOLLARS often shift into a specific \'money\' handshape — practice plain numbers first',
-      'ASL usually drops ‘am/is/are‘, ‘a/an/the’, and other small English words — sign the meaningful words only',
-    ],
-    imageUrl: '../assets/images/intermediate/everyday_dialogues/shopping_how_much_is_this_it_is_ten_doll.png', videoUrl: '../assets/videos/intermediate/everyday_dialogues/shopping_how_much_is_this_it_is_ten_doll.mp4', detectionType: 'motion',
-  },
 
   // ── MEDIUM · INSECTS ── (new this pass — unlocks Unit 40)
   // Researched on lifeprint.com (ASLU), cross-checked against
@@ -6912,19 +5393,6 @@ const SIGNS = [
       'Same sign already used for PLEASE under Polite Words',
     ],
     imageUrl: '../assets/images/medium/requests/please.png', videoUrl: '../assets/videos/medium/requests/please.mp4', detectionType: 'motion',
-  },
-  {
-    // DUPLICATE — same sign as medium_requests_THANK_YOU. Kept signId
-    // 'THANK YOU' (not 'THANKS') so it still matches the trained sign in
-    // js/engine/dictionary.js.
-    id: 'medium_manners_THANKS', level: 'medium', category: 'manners', signId: 'THANK YOU', title: 'Thanks', order: 2,
-    description: 'Touch your flat fingertips to your chin, then move your hand forward and down, as if extending your thanks outward.',
-    tips: [
-      'Starts with fingertips at the chin',
-      'Moves outward toward the other person',
-      'Same sign already used for Thank You under Polite Words',
-    ],
-    imageUrl: '../assets/images/medium/requests/thank_you.png', videoUrl: '../assets/videos/medium/requests/thank_you.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_essentials_greetings_WELCOME.
@@ -8821,19 +7289,6 @@ const SIGNS = [
       'Same sign already used for Meet under Social',
     ],
     imageUrl: '../assets/images/medium/social/meet.png', videoUrl: '../assets/videos/medium/social/meet.mp4', detectionType: 'motion',
-  },
-  {
-    // DUPLICATE — same sign as medium_requests_THANK_YOU. Kept signId
-    // 'THANK YOU' (not 'THANKS') so it still matches the trained sign in
-    // js/engine/dictionary.js — same precedent as medium_manners_THANKS.
-    id: 'medium_conversation_THANKS', level: 'medium', category: 'conversation', signId: 'THANK YOU', title: 'Thanks', order: 7,
-    description: 'Touch your flat fingertips to your chin, then move your hand forward and down, as if extending your thanks outward.',
-    tips: [
-      'Starts with fingertips at the chin',
-      'Moves outward toward the other person',
-      'Same sign already used for Thank You under Polite Words',
-    ],
-    imageUrl: '../assets/images/medium/requests/thank_you.png', videoUrl: '../assets/videos/medium/requests/thank_you.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_essentials_greetings_WELCOME. ASLU
