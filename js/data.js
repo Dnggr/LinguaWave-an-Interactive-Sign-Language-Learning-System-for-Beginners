@@ -354,12 +354,12 @@ const CATEGORIES = [
     words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
   },
   // 16. Appearance — unlocked this pass. CLEAN reuses the entry already
-  // live under 'actions'. NEAT and CLEAN are the same physical sign in
-  // ASL (context/expression only) — see the "MEDIUM · APPEARANCE" SIGNS
-  // block comment before wiring NEAT into a graded detection quiz.
+  // live under 'actions'. NEAT removed from words[] — physically
+  // identical to CLEAN and can't be told apart by the landmark
+  // classifier (see "MEDIUM · APPEARANCE" SIGNS block comment).
   {
     id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 17,
-    words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'NEAT', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
+    words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
   },
   // 17. Touch
   // LEGACY id/content kept — HOT/COLD have disabled:true dictionary.js
@@ -370,10 +370,12 @@ const CATEGORIES = [
     id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 18,
     words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY', 'SHARP'],
   },
-  // 18. Taste
+  // 18. Taste — BITTER removed from words[]: physically identical to
+  // SOUR and can't be told apart by the landmark classifier (see
+  // "MEDIUM · TASTE" SIGNS block comment).
   {
     id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 19,
-    words: ['SWEET', 'SOUR', 'SALTY', 'BITTER', 'SPICY', 'DELICIOUS', 'FRESH'],
+    words: ['SWEET', 'SOUR', 'SALTY', 'SPICY', 'DELICIOUS', 'FRESH'],
   },
   // 19. Sound — unlocked this pass. QUIET and SILENT are the same
   // physical sign in ASL (context only) — see the "MEDIUM · SOUND"
@@ -419,14 +421,15 @@ const CATEGORIES = [
   },
   // 25. Bathroom
   // UNLOCKED (2026-09-01): researched against lifeprint.com, cross-checked against
-  // Handspeak/PocketSign/StrongASL/SigningSavvy. TOILET reuses medium_home_BATHROOM
-  // (ASLU: same "T"-handshake sign covers both; context distinguishes). TOOTHBRUSH
-  // reuses medium_health_BRUSH_TEETH (SigningSavvy confirms the noun shares the verb's
+  // Handspeak/PocketSign/StrongASL/SigningSavvy. TOOTHBRUSH reuses
+  // medium_health_BRUSH_TEETH (SigningSavvy confirms the noun shares the verb's
   // sign). SINK removed — ASLU has no dedicated sign, Dr. Bill recommends fingerspelling
-  // S-I-N-K (same treatment as PEN/ART/ENGLISH elsewhere in this file).
+  // S-I-N-K (same treatment as PEN/ART/ENGLISH elsewhere in this file). TOILET removed —
+  // physically identical to medium_home_BATHROOM and can't be told apart by the
+  // landmark classifier (see "MEDIUM · BATHROOM" SIGNS block comment).
   {
     id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: false, unit: 26,
-    words: ['TOILET', 'SHOWER', 'BATHTUB', 'SOAP', 'SHAMPOO', 'TOWEL', 'TOOTHBRUSH', 'TOOTHPASTE'],
+    words: ['SHOWER', 'BATHTUB', 'SOAP', 'SHAMPOO', 'TOWEL', 'TOOTHBRUSH', 'TOOTHPASTE'],
   },
   // 26. Kitchen
   // UNLOCKED (2026-09-01): researched against lifeprint.com, cross-checked against
@@ -3288,17 +3291,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/taste/salty.png', videoUrl: '../assets/videos/medium/taste/salty.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_taste_BITTER', level: 'medium', category: 'taste', signId: 'BITTER', title: 'Bitter', order: 4,
-    description: 'Many signers use the same twisting motion at the mouth corner as SOUR, with a more exaggerated grimace — the two concepts overlap in ASL.',
-    tips: [
-      'Same base movement as SOUR',
-      'A stronger, more pinched facial expression sets it apart',
-      'Context usually makes the exact meaning clear',
-    ],
-    imageUrl: '../assets/images/medium/taste/bitter.png', videoUrl: '../assets/videos/medium/taste/bitter.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_taste_SPICY', level: 'medium', category: 'taste', signId: 'SPICY', title: 'Spicy', order: 5,
+    id: 'medium_taste_SPICY', level: 'medium', category: 'taste', signId: 'SPICY', title: 'Spicy', order: 4,
     description: 'Hold both hands loosely open near chest height and shake them quickly, as if your fingers just touched something hot.',
     tips: [
       'Fingers loose and slightly spread',
@@ -3308,7 +3301,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/taste/spicy.png', videoUrl: '../assets/videos/medium/taste/spicy.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_taste_DELICIOUS', level: 'medium', category: 'taste', signId: 'DELICIOUS', title: 'Delicious', order: 6,
+    id: 'medium_taste_DELICIOUS', level: 'medium', category: 'taste', signId: 'DELICIOUS', title: 'Delicious', order: 5,
     description: 'Touch your fingertips to your lips and pull them away with a smile, like a small kiss of approval.',
     tips: [
       'Fingertips bunch together and touch the lips',
@@ -3318,7 +3311,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/taste/delicious.png', videoUrl: '../assets/videos/medium/taste/delicious.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_taste_FRESH', level: 'medium', category: 'taste', signId: 'FRESH', title: 'Fresh', order: 7,
+    id: 'medium_taste_FRESH', level: 'medium', category: 'taste', signId: 'FRESH', title: 'Fresh', order: 6,
     description: 'Sweep your flat dominant hand upward across your chin and cheek in one smooth motion.',
     tips: [
       'Hand stays flat, fingers together',
@@ -3507,12 +3500,11 @@ const SIGNS = [
 
   // ── MEDIUM · APPEARANCE (Unit 17) ── (new this pass — unlocks Unit
   // 17. CLEAN duplicates the existing medium_actions_CLEAN entry — see
-  // block comment on Personal Information above for why. NEAT is
-  // flagged below: ASLU/PocketSign/Handspeak all describe it, in the
-  // tidy/orderly sense used here, as the SAME physical sign as
-  // CLEAN/NICE — distinguished only by facial expression, which this
-  // project's landmark-based classifier doesn't read. Both entries are
-  // written, but flagging this for a product decision — see chat.
+  // block comment on Personal Information above for why. NEAT removed:
+  // ASLU/PocketSign/Handspeak all describe it, in the tidy/orderly
+  // sense used here, as the SAME physical sign as CLEAN/NICE —
+  // distinguished only by facial expression, which this project's
+  // landmark-based classifier doesn't read.
   {
     id: 'medium_appearance_BEAUTIFUL', level: 'medium', category: 'appearance', signId: 'BEAUTIFUL', title: 'Beautiful', order: 1,
     description: 'Hold your dominant hand loosely closed in front of your face, then circle it around your face while opening your fingers outward into a spread hand, like a flower blooming.',
@@ -3580,27 +3572,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pig.htm',
   },
   {
-    // FLAG — this word's meaning here (tidy/orderly) is, per ASLU/
-    // Handspeak/PocketSign, the SAME physical sign as CLEAN/NICE above —
-    // a flat hand sliding once across the other palm. English splits
-    // "neat" and "clean" into two words; ASL doesn't reliably split them
-    // by handshape/movement, only by context and facial expression. This
-    // entry is written (identical description to CLEAN) so the lesson
-    // content isn't missing, but flagging that the landmark-based
-    // classifier cannot currently tell this apart from CLEAN — see chat
-    // writeup before wiring this into a graded quiz.
-    id: 'medium_appearance_NEAT', level: 'medium', category: 'appearance', signId: 'NEAT', title: 'Neat', order: 7,
-    description: 'Hold your non-dominant hand flat, palm up. Slide your dominant flat hand across the palm from base to fingertips — the same sign as CLEAN.',
-    tips: [
-      'Physically identical to CLEAN/NICE — context and facial expression carry the difference, not handshape',
-      'One smooth sliding motion, base to fingertips',
-      'A repeated back-and-forth rub instead of one slide changes the meaning to "cleaning" (the verb)',
-    ],
-    imageUrl: '../assets/images/medium/actions/clean.png', videoUrl: '../assets/videos/medium/actions/clean.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.pocketsign.org/asl/neat',
-  },
-  {
-    id: 'medium_appearance_MESSY', level: 'medium', category: 'appearance', signId: 'MESSY', title: 'Messy', order: 8,
+    id: 'medium_appearance_MESSY', level: 'medium', category: 'appearance', signId: 'MESSY', title: 'Messy', order: 7,
     description: 'Hold both open hands in front of your chest, palms facing each other, one hand higher than the other. Rotate both hands in a circle, swapping which hand ends up on top.',
     tips: [
       'Both hands stay open and spread the whole time',
@@ -3611,7 +3583,7 @@ const SIGNS = [
     referenceUrl: 'https://www.pocketsign.org/asl/messy',
   },
   {
-    id: 'medium_appearance_OLD', level: 'medium', category: 'appearance', signId: 'OLD', title: 'Old', order: 9,
+    id: 'medium_appearance_OLD', level: 'medium', category: 'appearance', signId: 'OLD', title: 'Old', order: 8,
     description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once.',
     tips: [
       'Handshape closes from a "C" into an "S" on the way down',
@@ -3622,7 +3594,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
   },
   {
-    id: 'medium_appearance_NEW', level: 'medium', category: 'appearance', signId: 'NEW', title: 'New', order: 10,
+    id: 'medium_appearance_NEW', level: 'medium', category: 'appearance', signId: 'NEW', title: 'New', order: 9,
     description: 'Hold your non-dominant hand flat, palm up. Brush the back of your dominant hand across the palm in one skimming motion.',
     tips: [
       'The BACK of the dominant hand makes contact, not the palm',
@@ -3633,7 +3605,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/new.htm',
   },
   {
-    id: 'medium_appearance_BROKEN', level: 'medium', category: 'appearance', signId: 'BROKEN', title: 'Broken', order: 11,
+    id: 'medium_appearance_BROKEN', level: 'medium', category: 'appearance', signId: 'BROKEN', title: 'Broken', order: 10,
     description: 'Make two fists with your knuckles touching in the middle, then twist both hands apart in opposite directions, as if snapping a stick in two.',
     tips: [
       'Both hands start as fists, knuckles touching',
@@ -3644,7 +3616,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/break.htm',
   },
   {
-    id: 'medium_appearance_DARK', level: 'medium', category: 'appearance', signId: 'DARK', title: 'Dark', order: 12,
+    id: 'medium_appearance_DARK', level: 'medium', category: 'appearance', signId: 'DARK', title: 'Dark', order: 11,
     description: 'Hold both open hands near the sides of your head, palms facing you, then bring them down and across each other in front of your face, curling your fingers as they cross.',
     tips: [
       'Both hands start open, end curled/clawed',
@@ -3655,7 +3627,7 @@ const SIGNS = [
     referenceUrl: 'https://www.handspeak.com/word/535/',
   },
   {
-    id: 'medium_appearance_BRIGHT', level: 'medium', category: 'appearance', signId: 'BRIGHT', title: 'Bright', order: 13,
+    id: 'medium_appearance_BRIGHT', level: 'medium', category: 'appearance', signId: 'BRIGHT', title: 'Bright', order: 12,
     description: 'Hold your dominant fingers and thumb pinched together near your face, then spring them open into a spread hand as you move it outward and slightly down, like light bursting out.',
     tips: [
       'Starts pinched closed, ends open and spread',
@@ -3670,8 +3642,8 @@ const SIGNS = [
   // FLAG: QUIET and SILENT are, per ASLU's own dictionary (which lists
   // them together as "QUIET/SILENT"), the SAME physical sign — the
   // "shhh" gesture followed by both hands crossing and pulling apart/
-  // down. Same landmark-classifier caveat as NEAT/CLEAN in Appearance —
-  // see chat writeup.
+  // down. Same landmark-classifier caveat that led to removing NEAT
+  // from Appearance — see chat writeup.
   {
     id: 'medium_sound_LOUD', level: 'medium', category: 'sound', signId: 'LOUD', title: 'Loud', order: 1,
     description: 'Touch your index finger to your ear, then shake both fists back and forth firmly in front of you.',
@@ -4231,25 +4203,14 @@ const SIGNS = [
 
   // ── MEDIUM · BATHROOM (Unit 26) ── (UNLOCKED 2026-09-01 — researched
   // against lifeprint.com, cross-checked against Handspeak/PocketSign/
-  // StrongASL/SigningSavvy. TOILET is a duplicate of medium_home_BATHROOM
-  // (ASLU: same "T"-handshake sign covers both BATHROOM and TOILET —
-  // context, and often raised eyebrows, tells them apart). TOOTHBRUSH is a
-  // duplicate of medium_health_BRUSH_TEETH (SigningSavvy: the noun shares
-  // the verb's sign). SINK dropped from words[] — no dedicated ASLU sign,
-  // Dr. Bill recommends fingerspelling S-I-N-K.)
+  // StrongASL/SigningSavvy. TOOTHBRUSH is a duplicate of
+  // medium_health_BRUSH_TEETH (SigningSavvy: the noun shares the verb's
+  // sign). SINK dropped from words[] — no dedicated ASLU sign, Dr. Bill
+  // recommends fingerspelling S-I-N-K. TOILET removed — physically
+  // identical to medium_home_BATHROOM (same "T"-handshake sign) and
+  // can't be told apart by the landmark classifier.)
   {
-    // DUPLICATE — same sign as medium_home_BATHROOM.
-    id: 'medium_bathroom_TOILET', level: 'medium', category: 'bathroom', signId: 'TOILET', title: 'Toilet', order: 1,
-    description: 'Form a \u2018T\u2019 handshape (fist with your thumb tucked between your index and middle fingers) and shake it gently side to side.',
-    tips: [
-      'Thumb pokes out between the index and middle finger',
-      'Small, quick side-to-side shake',
-      'Same physical sign as BATHROOM under Home \u2014 context (and often raised eyebrows) tells them apart',
-    ],
-    imageUrl: '../assets/images/medium/health/bathroom.png', videoUrl: '../assets/videos/medium/health/bathroom.mp4', detectionType: 'motion',
-  },
-  {
-    id: 'medium_bathroom_SHOWER', level: 'medium', category: 'bathroom', signId: 'SHOWER', title: 'Shower', order: 2,
+    id: 'medium_bathroom_SHOWER', level: 'medium', category: 'bathroom', signId: 'SHOWER', title: 'Shower', order: 1,
     description: 'Hold your dominant hand in an \u2018S\u2019 (fist) shape just above your head, then open it into a spread \u20185\u2019 hand as you move it slightly downward, like water spraying down.',
     tips: [
       'Hand stays near/above the head the whole time \u2014 where a showerhead would be',
@@ -4260,7 +4221,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shower.htm',
   },
   {
-    id: 'medium_bathroom_BATHTUB', level: 'medium', category: 'bathroom', signId: 'BATHTUB', title: 'Bathtub', order: 3,
+    id: 'medium_bathroom_BATHTUB', level: 'medium', category: 'bathroom', signId: 'BATHTUB', title: 'Bathtub', order: 2,
     description: 'Sign BATH first \u2014 both hands in \u2018A\u2019 fists, rubbing up and down your chest like scrubbing \u2014 then fingerspell T-U-B.',
     tips: [
       'This is a compound: the BATH motion, then fingerspelling',
@@ -4271,7 +4232,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bathtub.htm',
   },
   {
-    id: 'medium_bathroom_SOAP', level: 'medium', category: 'bathroom', signId: 'SOAP', title: 'Soap', order: 4,
+    id: 'medium_bathroom_SOAP', level: 'medium', category: 'bathroom', signId: 'SOAP', title: 'Soap', order: 3,
     description: 'Hold your non-dominant hand flat, palm up. Brush your dominant hand\u2019s fingertips across the palm twice, like lathering a bar of soap.',
     tips: [
       'Base hand stays flat, palm up, like a bar of soap',
@@ -4282,7 +4243,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/soap.htm',
   },
   {
-    id: 'medium_bathroom_SHAMPOO', level: 'medium', category: 'bathroom', signId: 'SHAMPOO', title: 'Shampoo', order: 5,
+    id: 'medium_bathroom_SHAMPOO', level: 'medium', category: 'bathroom', signId: 'SHAMPOO', title: 'Shampoo', order: 4,
     description: 'Hold both loosely curved \u20185\u2019 hands at the sides of your head and rub them back and forth, like massaging shampoo into your hair.',
     tips: [
       'Both hands work at the sides of the head, not just one',
@@ -4293,7 +4254,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shampoo.htm',
   },
   {
-    id: 'medium_bathroom_TOWEL', level: 'medium', category: 'bathroom', signId: 'TOWEL', title: 'Towel', order: 6,
+    id: 'medium_bathroom_TOWEL', level: 'medium', category: 'bathroom', signId: 'TOWEL', title: 'Towel', order: 5,
     description: 'Mime holding a towel behind your neck with both hands and pull it side to side, like drying your back.',
     tips: [
       'Both hands stay up near the back of the neck/shoulders',
@@ -4305,7 +4266,7 @@ const SIGNS = [
   },
   {
     // DUPLICATE — same sign as medium_health_BRUSH_TEETH.
-    id: 'medium_bathroom_TOOTHBRUSH', level: 'medium', category: 'bathroom', signId: 'TOOTHBRUSH', title: 'Toothbrush', order: 7,
+    id: 'medium_bathroom_TOOTHBRUSH', level: 'medium', category: 'bathroom', signId: 'TOOTHBRUSH', title: 'Toothbrush', order: 6,
     description: 'Hold your index finger in front of your teeth and brush it back and forth, like brushing your teeth.',
     tips: [
       'Only the index finger is extended',
@@ -4315,7 +4276,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/health/brush_teeth.png', videoUrl: '../assets/videos/medium/health/brush_teeth.mp4', detectionType: 'motion',
   },
   {
-    id: 'medium_bathroom_TOOTHPASTE', level: 'medium', category: 'bathroom', signId: 'TOOTHPASTE', title: 'Toothpaste', order: 8,
+    id: 'medium_bathroom_TOOTHPASTE', level: 'medium', category: 'bathroom', signId: 'TOOTHPASTE', title: 'Toothpaste', order: 7,
     description: 'Sign BRUSH TEETH (index finger brushing side to side in front of your teeth), then mime squeezing a tube with your other hand, like squeezing out toothpaste.',
     tips: [
       'First part reuses the BRUSH TEETH motion',

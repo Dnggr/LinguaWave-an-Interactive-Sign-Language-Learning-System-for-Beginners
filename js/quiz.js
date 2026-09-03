@@ -643,7 +643,7 @@ function startCameraLoop() {
     rafId = requestAnimationFrame(loop);
     if (!videoEl || videoEl.readyState < 2) return;
 
-    const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, anyHandPresent } = processFrame(videoEl);
+    const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, poseLandmarks, anyHandPresent } = processFrame(videoEl);
     const hands = [leftHandLandmarks, rightHandLandmarks].filter(Boolean);
     if (hands.length > 0) drawSkeleton(ctx, hands, canvasEl.width, canvasEl.height);
     else clearCanvas(ctx, canvasEl.width, canvasEl.height);
@@ -665,8 +665,8 @@ function startCameraLoop() {
       const stepIsMotion   = getDetectionType(expectedStep) === 'motion';
       const allowedLabels = getAllowedLabelsForSign(expectedStep);
       const result = stepIsMotion
-        ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels)
-        : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels);
+        ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels, poseLandmarks)
+        : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels, poseLandmarks);
 
       if (!result.matched || !result.label) return;
       if (!stepIsMotion) {
@@ -742,8 +742,8 @@ function startCameraLoop() {
     // 6 and W are visually identical handshapes.
     const allowedLabels = getAllowedLabelsForSign(currentSign);
     const result = isMotion
-      ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels)
-      : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels);
+      ? classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels, poseLandmarks)
+      : classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, allowedLabels, poseLandmarks);
 
     if (!result.matched || !result.label) return;
 

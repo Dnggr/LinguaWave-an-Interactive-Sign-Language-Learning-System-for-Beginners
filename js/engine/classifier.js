@@ -13,27 +13,41 @@
   ─────────────────────────────────────────────────────────────────
   FEATURE VECTOR (matches capture.html's buildFeatureVec() exactly)
   ─────────────────────────────────────────────────────────────────
-  Feature vector per frame is now 130 values instead of 65:
+  UPDATE (2026-09-03 — body-relative + palm-orientation features):
+  feature vector per frame is now 138 values instead of 130:
     - 63 : left-hand landmarks (x, y, z), zero-filled if left hand absent
     - 63 : right-hand landmarks (x, y, z), zero-filled if right hand absent
     -  1 : leftPresent  (0/1)
     -  1 : rightPresent (0/1)
-    -  2 : normalized face-relative distances, computed from whichever
+    -  4 : normalized body-relative distances, computed from whichever
            hand is present (right hand preferred if both are present):
-             dist(wrist, chin)     / faceScale
-             dist(wrist, forehead) / faceScale
+             dist(wrist, chin)          / faceScale
+             dist(wrist, forehead)      / faceScale
+             dist(wrist, shoulderCenter)/ torsoScale
+             dist(wrist, hipCenter)     / torsoScale
+    -  6 : palm-orientation unit vectors, 3 per hand (left then right),
+           zero-filled if that hand is absent — see palmOrientation().
   faceScale = dist(forehead, chin) — cancels out camera distance.
+  torsoScale = faceScale, falling back to dist(shoulderCenter, hipCenter)
+  if the face is briefly out of frame — same fallback order as
+  capture.html, since capture and live inference MUST agree on it.
 
   Both asl_static_model and asl_motion_model MUST be retrained with
-  130-wide input for this to work. Training-time (capture.html) and
+  138-wide input for this to work. Training-time (capture.html) and
   inference-time (this file) feature order MUST match exactly —
-  that's handled by computeFaceRelativeFeatures()/buildFeatureVector()
-  below mirroring capture.html's faceRelativeFeatures()/buildFeatureVec().
+  that's handled by computeBodyRelativeFeatures()/palmOrientation()/
+  buildFeatureVector() below mirroring capture.html's
+  faceRelativeFeatures()/palmOrientation()/buildFeatureVec(). See
+  js/tracking/mediapipe.js's matching header comment for the shared
+  rationale — all three files MUST stay in lockstep.
 
   MediaPipe FaceLandmarker point indices used as anchors:
     FOREHEAD_IDX = 10   (top-center of forehead)
     CHIN_IDX     = 152  (bottom-center of chin)
   These are the standard MediaPipe Face Mesh (468-point) indices.
+  BlazePose pose landmark indices used as torso anchors:
+    POSE_LEFT_SHOULDER_IDX  = 11,  POSE_RIGHT_SHOULDER_IDX = 12
+    POSE_LEFT_HIP_IDX       = 23,  POSE_RIGHT_HIP_IDX      = 24
   ─────────────────────────────────────────────────────────────────
   KERAS 3 COMPAT FIX (unchanged, preserved from previous version)
   ─────────────────────────────────────────────────────────────────
@@ -118,13 +132,20 @@ const RUNNERUP_MARGIN_MIN     = 20;   // percentage points the top guess must be
 const MOTION_FRAMES_REQUIRED = 40;   // MUST match capture.html's frame window AND the notebook's MOTION_FRAMES
 
 // ── Feature vector config — MUST mirror capture.html's buildFeatureVec()
-// Layout: [63 left xyz][63 right xyz][leftPresent][rightPresent][handToChin][handToForehead]
+// Layout: [63 left xyz][63 right xyz][leftPresent][rightPresent]
+//         [handToChin][handToForehead][handToShoulder][handToHip]
+//         [leftPalmOrientation x3][rightPalmOrientation x3] = 138
 const FOREHEAD_IDX = 10;
 const CHIN_IDX      = 152;
+const POSE_LEFT_SHOULDER_IDX = 11;   // BlazePose 33-point topology
+const POSE_RIGHT_SHOULDER_IDX= 12;
+const POSE_LEFT_HIP_IDX       = 23;
+const POSE_RIGHT_HIP_IDX      = 24;
 export const HAND_FEATURE_COUNT     = 126; // 63 left + 63 right
 export const PRESENCE_FEATURE_COUNT = 2;   // leftPresent, rightPresent
-export const FACE_FEATURE_COUNT     = 2;   // handToChin, handToForehead
-export const TOTAL_FEATURE_COUNT    = HAND_FEATURE_COUNT + PRESENCE_FEATURE_COUNT + FACE_FEATURE_COUNT; // 130
+export const FACE_FEATURE_COUNT     = 4;   // handToChin, handToForehead, handToShoulder, handToHip
+export const ORIENTATION_FEATURE_COUNT = 6; // leftPalmOrientation x3, rightPalmOrientation x3
+export const TOTAL_FEATURE_COUNT    = HAND_FEATURE_COUNT + PRESENCE_FEATURE_COUNT + FACE_FEATURE_COUNT + ORIENTATION_FEATURE_COUNT; // 138
 
 const HAND_ZERO = new Array(63).fill(0);
 
@@ -137,7 +158,7 @@ let motionModelError = null;   // set if motion model fails to load
 
 export function getMotionModelError() { return motionModelError; }
 
-// Frame buffer for motion detection (MOTION_FRAMES_REQUIRED × 130 values)
+// Frame buffer for motion detection (MOTION_FRAMES_REQUIRED × 138 values)
 let motionBuffer = [];
 // REMOVED: lastFrameFlat used to track the previous frame for the
 // frozen-frame movement filter in classifyMotion() (see that function's
@@ -169,49 +190,105 @@ function dist3(a, b) {
 }
 
 /**
- * Same face-relative distance math as capture.html's faceRelativeFeatures() —
- * uses the dominant present hand's wrist (right hand preferred, matching
- * capture.html's `rightPts || leftPts`). No face => [0,0], never reject.
+ * NEW (body-relative features) — derives shoulder-center/hip-center from
+ * RAW pose landmarks, the same way computeFaceRelativeFeatures() below
+ * derives chin/forehead from raw face landmarks (no ghost-fill on this
+ * side — poseLandmarks is whatever mediapipe.js saw this exact frame).
  *
- * @param {Array<{x,y,z}>|null} dominantHandLm - wrist-bearing hand to measure from
- * @param {Array<{x,y,z}>|null} faceLm - full face landmark set, or null
- * @returns {number[]} 2 values, [0,0] if no face detected
+ * @param {Array<{x,y,z}>|null} poseLm - full pose landmark set, or null
+ * @returns {{shoulderCenter: {x,y,z}|null, hipCenter: {x,y,z}|null}}
  */
-export function computeFaceRelativeFeatures(dominantHandLm, faceLm) {
-  if (!faceLm || !dominantHandLm || !dominantHandLm.length) return [0, 0];
-  const chin     = faceLm[CHIN_IDX];
-  const forehead = faceLm[FOREHEAD_IDX];
-  if (!chin || !forehead) return [0, 0];
+export function computeTorsoCenters(poseLm) {
+  if (!poseLm) return { shoulderCenter: null, hipCenter: null };
+  const ls = poseLm[POSE_LEFT_SHOULDER_IDX], rs = poseLm[POSE_RIGHT_SHOULDER_IDX];
+  if (!ls || !rs) return { shoulderCenter: null, hipCenter: null };
+  const shoulderCenter = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2, z: (ls.z + rs.z) / 2 };
 
-  const faceHeight = dist3(forehead, chin) || 1e-6;
-  const wrist = dominantHandLm[0];
+  const lh = poseLm[POSE_LEFT_HIP_IDX], rh = poseLm[POSE_RIGHT_HIP_IDX];
+  const hipCenter = (lh && rh) ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2, z: (lh.z + rh.z) / 2 } : null;
 
-  return [
-    dist3(wrist, chin)     / faceHeight,
-    dist3(wrist, forehead) / faceHeight,
-  ];
+  return { shoulderCenter, hipCenter };
 }
 
 /**
- * Builds the 130-value feature vector, IDENTICAL layout to
+ * UPDATED (body-relative features) — same face-relative distance math as
+ * capture.html's faceRelativeFeatures(), now returning 4 values instead
+ * of 2: [handToChin, handToForehead, handToShoulder, handToHip]. Uses the
+ * dominant present hand's wrist (right hand preferred, matching
+ * capture.html's `rightPts || leftPts`). Same fallback order as
+ * capture.html: torso distances use faceHeight as their unit when
+ * available, falling back to shoulder-to-hip span otherwise — capture and
+ * live inference MUST agree on this fallback.
+ *
+ * @param {Array<{x,y,z}>|null} dominantHandLm - wrist-bearing hand to measure from
+ * @param {Array<{x,y,z}>|null} faceLm - full face landmark set, or null
+ * @param {Array<{x,y,z}>|null} poseLm - full pose landmark set, or null
+ * @returns {number[]} 4 values, 0-filled per-anchor if that anchor isn't available
+ */
+export function computeFaceRelativeFeatures(dominantHandLm, faceLm, poseLm) {
+  if (!dominantHandLm || !dominantHandLm.length) return [0, 0, 0, 0];
+  const wrist = dominantHandLm[0];
+
+  const chin     = faceLm ? faceLm[CHIN_IDX]     : null;
+  const forehead = faceLm ? faceLm[FOREHEAD_IDX] : null;
+  const faceHeight = (forehead && chin) ? (dist3(forehead, chin) || 1e-6) : null;
+  const handToChin     = (forehead && chin && faceHeight) ? dist3(wrist, chin) / faceHeight : 0;
+  const handToForehead = (forehead && chin && faceHeight) ? dist3(wrist, forehead) / faceHeight : 0;
+
+  const { shoulderCenter, hipCenter } = computeTorsoCenters(poseLm);
+  const torsoUnit = faceHeight || ((shoulderCenter && hipCenter) ? (dist3(shoulderCenter, hipCenter) || 1e-6) : null);
+  const handToShoulder = (shoulderCenter && torsoUnit) ? dist3(wrist, shoulderCenter) / torsoUnit : 0;
+  const handToHip       = (hipCenter && torsoUnit)      ? dist3(wrist, hipCenter) / torsoUnit      : 0;
+
+  return [handToChin, handToForehead, handToShoulder, handToHip];
+}
+
+/**
+ * NEW (palm-orientation feature) — IDENTICAL to capture.html's
+ * palmOrientation(): unit normal of the plane formed by
+ * wrist(0)->index-MCP(5) and wrist(0)->pinky-MCP(17). Returns [0,0,0]
+ * when the hand isn't present, matching HAND_ZERO's zero-fill convention.
+ *
+ * @param {Array<{x,y,z}>|null} handPts - 21 hand landmarks, or null
+ * @returns {number[]} 3 values
+ */
+export function palmOrientation(handPts) {
+  if (!handPts) return [0, 0, 0];
+  const wrist = handPts[0], indexMcp = handPts[5], pinkyMcp = handPts[17];
+  const v1 = { x: indexMcp.x - wrist.x, y: indexMcp.y - wrist.y, z: indexMcp.z - wrist.z };
+  const v2 = { x: pinkyMcp.x - wrist.x, y: pinkyMcp.y - wrist.y, z: pinkyMcp.z - wrist.z };
+  const nx = v1.y * v2.z - v1.z * v2.y;
+  const ny = v1.z * v2.x - v1.x * v2.z;
+  const nz = v1.x * v2.y - v1.y * v2.x;
+  const mag = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1e-6;
+  return [nx / mag, ny / mag, nz / mag];
+}
+
+/**
+ * Builds the 138-value feature vector, IDENTICAL layout to
  * capture.html's buildFeatureVec():
- *   [63 left xyz][63 right xyz][leftPresent][rightPresent][handToChin][handToForehead]
+ *   [63 left xyz][63 right xyz][leftPresent][rightPresent]
+ *   [handToChin][handToForehead][handToShoulder][handToHip]
+ *   [leftPalmOrientation x3][rightPalmOrientation x3]
  *
  * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks, or null
  * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks, or null
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set, or null
- * @returns {number[]|null} 130 values, or null if neither hand is present
+ * @param {Array<{x,y,z}>|null} poseLandmarks - full pose landmark set, or null
+ * @returns {number[]|null} 138 values, or null if neither hand is present
  */
-function buildFeatureVector(leftLm, rightLm, faceLandmarks) {
+function buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks) {
   const leftPresent  = leftLm  ? 1 : 0;
   const rightPresent = rightLm ? 1 : 0;
   if (!leftLm && !rightLm) return null;
 
-  const faceFeat = computeFaceRelativeFeatures(rightLm || leftLm, faceLandmarks);
+  const faceFeat = computeFaceRelativeFeatures(rightLm || leftLm, faceLandmarks, poseLandmarks);
   const leftVec  = leftLm  ? leftLm.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
   const rightVec = rightLm ? rightLm.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
+  const leftOrient  = palmOrientation(leftLm);
+  const rightOrient = palmOrientation(rightLm);
 
-  return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceFeat];
+  return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceFeat, ...leftOrient, ...rightOrient];
 }
 
 // ── Keras 3 compat loader (unchanged) ────────────────────────────
@@ -374,14 +451,14 @@ export function isMotionModelReady() {
 // SIGN_DICTIONARY[label].category) removes the cross-category
 // collision the same way context disambiguates it in real ASL. Pass
 // null (or omit) to keep the old unrestricted behavior.
-export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null) {
+export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null) {
   if (!staticModel || !staticLabels) return { label: null, confidence: 0, matched: false };
   if (!leftLm && !rightLm) return { label: null, confidence: 0, matched: false };
 
-  const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks);
+  const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks);
   if (!flat) return { label: null, confidence: 0, matched: false };
 
-  const input = tf.tensor2d([flat]);   // shape [1, 130]
+  const input = tf.tensor2d([flat]);   // shape [1, 138]
 
   let rawLabel   = null;
   let confidence = 0;
@@ -495,7 +572,7 @@ const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
 // they only exist as motion classes), but here so a future motion-side
 // collision doesn't require re-deriving this fix from scratch.
 function runMotionInference(frameWindow, allowedLabels = null) {
-  const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 130]
+  const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 138]
 
   let rawLabel   = null;
   let confidence = 0;
@@ -632,9 +709,11 @@ function resampleSequence(frames, targetLength) {
  * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks
  * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set
+ * @param {Set<string>|null} [allowedLabels]
+ * @param {Array<{x,y,z}>|null} [poseLandmarks] - full pose landmark set
  * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean }}
  */
-export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null) {
+export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null) {
   if (!motionModel || !motionLabels) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
@@ -642,7 +721,7 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = n
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks);
+  const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks);
   if (!flat) {
     return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0 };
   }
