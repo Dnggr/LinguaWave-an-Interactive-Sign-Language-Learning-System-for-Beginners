@@ -53,6 +53,22 @@
  * was inspected and confirmed to need no change (it already only
  * walks `kind:'category-group'` units, so Unit 0 was structurally
  * excluded from gating even before this removal).
+ *
+ * UNIT RENUMBER (2026-09-03) — the gap at order:2 (leftover from the
+ * removed 'fingerspell_name' unit) is now CLOSED. Every unit from
+ * the old order:3 (Numbers) onward shifted down by 1 (old order:69
+ * "Answers" is now order:68), in both `UNITS[].order` and every
+ * `CATEGORIES[].unit` field, so the two stay linked. Order:0 (the
+ * removed Welcome unit, see Homepage Pivot above) and the never-added
+ * order:70/71 (Basic Phrases/Phrasebook, see Rev 9 note below) aren't
+ * part of this renumber — they don't exist as array entries, there
+ * was nothing to shift. Every "Unit N" comment reference throughout
+ * this file was updated to match, except ones describing history
+ * (Unit 0/Unit 2/Unit 71 as they used to be) which were left as-is on
+ * purpose. Checked: no helper function or `.order`/`.unit` comparison
+ * in this file hardcodes a specific number — everything sorts/filters
+ * generically — but `js/learn.js`/`progress.js` weren't available to
+ * check for hardcoded unit numbers outside this file.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -116,7 +132,7 @@
  * kind meanings unchanged from Rev 6 — see SYSTEM_ARCHITECTURE.md.
  * ──────────────────────────────────────────────────────────────── */
 const UNITS = [
-  // HOMEPAGE PIVOT (this session) — order:0 'welcome' (kind:'info',
+  // HOMEPAGE PIVOT (this session) — order: 0 'welcome' (kind:'info',
   // "Welcome to ASL: A Brief History") REMOVED. That content is now
   // the static pages/homepage.html landing page shown right after
   // login, not a trail unit — see file header comment. Order
@@ -126,88 +142,88 @@ const UNITS = [
   // every lookup below is by `.id` or `.order` value, confirmed via
   // getUnits()/getCategoriesForUnit()/progress.js's getOrderedLiveCategories()).
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
-  // REMOVED (this session) — 'fingerspell_name' (order:2, kind:'interactive')
+  // REMOVED (this session) — 'fingerspell_name' (order: 2, kind:'interactive')
   // dropped: it's not one of the 68 topics in the lesson compilation this
   // file is scoped to. Order gap at 2 left as-is, per this file's existing
   // convention (see the Homepage-pivot Unit 0 removal note above) —
   // nothing reads UNITS as a zero-indexed array.
-  { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' },
+  { id: 'numbers', order: 2, title: 'Numbers', kind: 'category-group' },
   // ── Topics 3–68 below, one per unit, order matches the source
   // file's own numbering exactly (topic N below = "N. <title>" in
   // updated_fixed_lesson.txt) minus the 2-unit offset from Welcome +
   // Fingerspell above.
-  { id: 'greetings', order: 4, title: 'Greetings', kind: 'category-group' },
-  { id: 'polite_words', order: 5, title: 'Polite Words', kind: 'category-group' },
-  { id: 'people', order: 6, title: 'People', kind: 'category-group' },
-  { id: 'feelings', order: 7, title: 'Feelings', kind: 'category-group' },
-  { id: 'needs', order: 8, title: 'Needs', kind: 'category-group' },
-  { id: 'actions', order: 9, title: 'Actions', kind: 'category-group' },
-  { id: 'hand_actions', order: 10, title: 'Hand Actions', kind: 'category-group' },
-  { id: 'communication', order: 11, title: 'Communication', kind: 'category-group' },
-  { id: 'body', order: 12, title: 'Body', kind: 'category-group' },
-  { id: 'personal_information', order: 13, title: 'Personal Information', kind: 'category-group' },
-  { id: 'colors_unit', order: 14, title: 'Colors', kind: 'category-group' },
-  { id: 'shapes', order: 15, title: 'Shapes', kind: 'category-group' },
-  { id: 'size', order: 16, title: 'Size', kind: 'category-group' },
-  { id: 'appearance', order: 17, title: 'Appearance', kind: 'category-group' },
-  { id: 'touch', order: 18, title: 'Touch', kind: 'category-group' },
-  { id: 'taste', order: 19, title: 'Taste', kind: 'category-group' },
-  { id: 'sound', order: 20, title: 'Sound', kind: 'category-group' },
-  { id: 'descriptions', order: 21, title: 'Descriptions', kind: 'category-group' },
-  { id: 'family_unit', order: 22, title: 'Family', kind: 'category-group' },
-  { id: 'home', order: 23, title: 'Home', kind: 'category-group' },
-  { id: 'furniture', order: 24, title: 'Furniture', kind: 'category-group' },
-  { id: 'household', order: 25, title: 'Household', kind: 'category-group' },
-  { id: 'bathroom', order: 26, title: 'Bathroom', kind: 'category-group' },
-  { id: 'kitchen', order: 27, title: 'Kitchen', kind: 'category-group' },
-  { id: 'school', order: 28, title: 'School', kind: 'category-group' },
-  { id: 'school_supplies', order: 29, title: 'School Supplies', kind: 'category-group' },
-  { id: 'classroom', order: 30, title: 'Classroom', kind: 'category-group' },
-  { id: 'classroom_actions', order: 31, title: 'Classroom Actions', kind: 'category-group' },
-  { id: 'subjects', order: 32, title: 'Subjects', kind: 'category-group' },
-  // RE-ADDED (this session) — 'food_unit' (order:33), topic 32 "Food" from
+  { id: 'greetings', order: 3, title: 'Greetings', kind: 'category-group' },
+  { id: 'polite_words', order: 4, title: 'Polite Words', kind: 'category-group' },
+  { id: 'people', order: 5, title: 'People', kind: 'category-group' },
+  { id: 'feelings', order: 6, title: 'Feelings', kind: 'category-group' },
+  { id: 'needs', order: 7, title: 'Needs', kind: 'category-group' },
+  { id: 'actions', order: 8, title: 'Actions', kind: 'category-group' },
+  { id: 'hand_actions', order: 9, title: 'Hand Actions', kind: 'category-group' },
+  { id: 'communication', order: 10, title: 'Communication', kind: 'category-group' },
+  { id: 'body', order: 11, title: 'Body', kind: 'category-group' },
+  { id: 'personal_information', order: 12, title: 'Personal Information', kind: 'category-group' },
+  { id: 'colors_unit', order: 13, title: 'Colors', kind: 'category-group' },
+  { id: 'shapes', order: 14, title: 'Shapes', kind: 'category-group' },
+  { id: 'size', order: 15, title: 'Size', kind: 'category-group' },
+  { id: 'appearance', order: 16, title: 'Appearance', kind: 'category-group' },
+  { id: 'touch', order: 17, title: 'Touch', kind: 'category-group' },
+  { id: 'taste', order: 18, title: 'Taste', kind: 'category-group' },
+  { id: 'sound', order: 19, title: 'Sound', kind: 'category-group' },
+  { id: 'descriptions', order: 20, title: 'Descriptions', kind: 'category-group' },
+  { id: 'family_unit', order: 21, title: 'Family', kind: 'category-group' },
+  { id: 'home', order: 22, title: 'Home', kind: 'category-group' },
+  { id: 'furniture', order: 23, title: 'Furniture', kind: 'category-group' },
+  { id: 'household', order: 24, title: 'Household', kind: 'category-group' },
+  { id: 'bathroom', order: 25, title: 'Bathroom', kind: 'category-group' },
+  { id: 'kitchen', order: 26, title: 'Kitchen', kind: 'category-group' },
+  { id: 'school', order: 27, title: 'School', kind: 'category-group' },
+  { id: 'school_supplies', order: 28, title: 'School Supplies', kind: 'category-group' },
+  { id: 'classroom', order: 29, title: 'Classroom', kind: 'category-group' },
+  { id: 'classroom_actions', order: 30, title: 'Classroom Actions', kind: 'category-group' },
+  { id: 'subjects', order: 31, title: 'Subjects', kind: 'category-group' },
+  // RE-ADDED (this session) — 'food_unit' (order: 32), topic 32 "Food" from
   // the 68-topic lesson compilation (Rice/Bread/Egg/Chicken/Fish/Meat/Soup).
   // comingSoon:true on its CATEGORIES entry below — no SIGNS content has
   // been authored/verified for these 7 words yet.
-  { id: 'food_unit', order: 33, title: 'Food', kind: 'category-group' },
-  { id: 'fruits', order: 34, title: 'Fruits', kind: 'category-group' },
-  { id: 'vegetables', order: 35, title: 'Vegetables', kind: 'category-group' },
-  { id: 'snacks', order: 36, title: 'Snacks', kind: 'category-group' },
-  { id: 'drinks', order: 37, title: 'Drinks', kind: 'category-group' },
-  { id: 'animals_unit', order: 38, title: 'Animals', kind: 'category-group' },
-  { id: 'wild_animals', order: 39, title: 'Wild Animals', kind: 'category-group' },
-  { id: 'insects', order: 40, title: 'Insects', kind: 'category-group' },
-  { id: 'clothes_unit', order: 41, title: 'Clothes', kind: 'category-group' },
-  { id: 'dressing', order: 42, title: 'Dressing', kind: 'category-group' },
-  { id: 'personal_items', order: 43, title: 'Personal Items', kind: 'category-group' },
-  { id: 'nature', order: 44, title: 'Nature', kind: 'category-group' },
-  { id: 'plants', order: 45, title: 'Plants', kind: 'category-group' },
-  { id: 'weather', order: 46, title: 'Weather', kind: 'category-group' },
-  { id: 'seasons', order: 47, title: 'Seasons', kind: 'category-group' },
-  { id: 'places_unit', order: 48, title: 'Places', kind: 'category-group' },
-  { id: 'vehicles', order: 49, title: 'Vehicles', kind: 'category-group' },
-  { id: 'transportation', order: 50, title: 'Transportation', kind: 'category-group' },
-  { id: 'professions', order: 51, title: 'Professions', kind: 'category-group' },
-  { id: 'community', order: 52, title: 'Community', kind: 'category-group' },
-  { id: 'time_unit', order: 53, title: 'Time', kind: 'category-group' },
-  { id: 'daytime', order: 54, title: 'Daytime', kind: 'category-group' },
-  { id: 'days', order: 55, title: 'Days', kind: 'category-group' },
-  { id: 'months', order: 56, title: 'Months', kind: 'category-group' },
-  { id: 'sequence', order: 57, title: 'Sequence', kind: 'category-group' },
-  { id: 'frequency', order: 58, title: 'Frequency', kind: 'category-group' },
-  { id: 'location', order: 59, title: 'Location', kind: 'category-group' },
-  { id: 'distance', order: 60, title: 'Distance', kind: 'category-group' },
-  { id: 'directions', order: 61, title: 'Directions', kind: 'category-group' },
-  { id: 'social', order: 62, title: 'Social', kind: 'category-group' },
-  { id: 'manners', order: 63, title: 'Manners', kind: 'category-group' },
-  { id: 'turn_taking', order: 64, title: 'Turn-Taking', kind: 'category-group' },
-  { id: 'responses', order: 65, title: 'Responses', kind: 'category-group' },
-  { id: 'questions', order: 66, title: 'Questions', kind: 'category-group' },
-  { id: 'conversation', order: 67, title: 'Conversation', kind: 'category-group' },
-  { id: 'requests_unit', order: 68, title: 'Requests', kind: 'category-group' },
-  { id: 'answers', order: 69, title: 'Answers', kind: 'category-group' },
-  // REMOVED (this session) — 'basic_phrases' (order:70) and 'phrasebook'
-  // (order:71) dropped: pure vocabulary is all the 68-topic lesson
+  { id: 'food_unit', order: 32, title: 'Food', kind: 'category-group' },
+  { id: 'fruits', order: 33, title: 'Fruits', kind: 'category-group' },
+  { id: 'vegetables', order: 34, title: 'Vegetables', kind: 'category-group' },
+  { id: 'snacks', order: 35, title: 'Snacks', kind: 'category-group' },
+  { id: 'drinks', order: 36, title: 'Drinks', kind: 'category-group' },
+  { id: 'animals_unit', order: 37, title: 'Animals', kind: 'category-group' },
+  { id: 'wild_animals', order: 38, title: 'Wild Animals', kind: 'category-group' },
+  { id: 'insects', order: 39, title: 'Insects', kind: 'category-group' },
+  { id: 'clothes_unit', order: 40, title: 'Clothes', kind: 'category-group' },
+  { id: 'dressing', order: 41, title: 'Dressing', kind: 'category-group' },
+  { id: 'personal_items', order: 42, title: 'Personal Items', kind: 'category-group' },
+  { id: 'nature', order: 43, title: 'Nature', kind: 'category-group' },
+  { id: 'plants', order: 44, title: 'Plants', kind: 'category-group' },
+  { id: 'weather', order: 45, title: 'Weather', kind: 'category-group' },
+  { id: 'seasons', order: 46, title: 'Seasons', kind: 'category-group' },
+  { id: 'places_unit', order: 47, title: 'Places', kind: 'category-group' },
+  { id: 'vehicles', order: 48, title: 'Vehicles', kind: 'category-group' },
+  { id: 'transportation', order: 49, title: 'Transportation', kind: 'category-group' },
+  { id: 'professions', order: 50, title: 'Professions', kind: 'category-group' },
+  { id: 'community', order: 51, title: 'Community', kind: 'category-group' },
+  { id: 'time_unit', order: 52, title: 'Time', kind: 'category-group' },
+  { id: 'daytime', order: 53, title: 'Daytime', kind: 'category-group' },
+  { id: 'days', order: 54, title: 'Days', kind: 'category-group' },
+  { id: 'months', order: 55, title: 'Months', kind: 'category-group' },
+  { id: 'sequence', order: 56, title: 'Sequence', kind: 'category-group' },
+  { id: 'frequency', order: 57, title: 'Frequency', kind: 'category-group' },
+  { id: 'location', order: 58, title: 'Location', kind: 'category-group' },
+  { id: 'distance', order: 59, title: 'Distance', kind: 'category-group' },
+  { id: 'directions', order: 60, title: 'Directions', kind: 'category-group' },
+  { id: 'social', order: 61, title: 'Social', kind: 'category-group' },
+  { id: 'manners', order: 62, title: 'Manners', kind: 'category-group' },
+  { id: 'turn_taking', order: 63, title: 'Turn-Taking', kind: 'category-group' },
+  { id: 'responses', order: 64, title: 'Responses', kind: 'category-group' },
+  { id: 'questions', order: 65, title: 'Questions', kind: 'category-group' },
+  { id: 'conversation', order: 66, title: 'Conversation', kind: 'category-group' },
+  { id: 'requests_unit', order: 67, title: 'Requests', kind: 'category-group' },
+  { id: 'answers', order: 68, title: 'Answers', kind: 'category-group' },
+  // REMOVED (this session) — 'basic_phrases' (order: 69) and 'phrasebook'
+  // (order: 70) dropped: pure vocabulary is all the 68-topic lesson
   // compilation covers, no phrase-combination or reference-sentence
   // topics. Order gaps left as-is, same convention as above.
 ];
@@ -231,7 +247,7 @@ const UNITS = [
 const CATEGORIES = [
   // ── level=basic — Alphabet & Numbers (topics 1-2, unchanged from Rev 6) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
-  { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 3 },
+  { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 2 },
 
   // ── level=medium — topics 3-68, one category per unit, in the exact
   // order given in Omen's uploaded 'updated fixed lesson.txt' (topic
@@ -241,7 +257,7 @@ const CATEGORIES = [
   // (disabled:true). words[] below is the fuller preview list from the new
   // plan; only HELLO has an actual SIGNS/dictionary entry so far.
   {
-    id: 'essentials_greetings', level: 'medium', title: 'Greetings', order: 1, comingSoon: false, unit: 4,
+    id: 'essentials_greetings', level: 'medium', title: 'Greetings', order: 1, comingSoon: false, unit: 3,
     words: ['HELLO', 'HI', 'MORNING', 'AFTERNOON', 'EVENING', 'NIGHT', 'GOODBYE', 'BYE', 'WELCOME'],
   },
   // 4. Polite Words
@@ -251,7 +267,7 @@ const CATEGORIES = [
   // (YES/NO live under 'essentials_basic_responses'/'questions' instead — see
   // that entry).
   {
-    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Words', order: 1, comingSoon: false, unit: 5,
+    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Words', order: 1, comingSoon: false, unit: 4,
     words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'YES', 'NO'],
   },
   // 5. People
@@ -266,7 +282,7 @@ const CATEGORIES = [
   // exist. Per project convention (see BATHROOM/RESTROOM), we don't invent
   // duplicate physical-sign entries just to hit one-entry-per-word.
   {
-    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: false, unit: 6,
+    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: false, unit: 5,
     words: ['ME', 'MY', 'YOU', 'YOUR', 'BOY', 'GIRL', 'BABY', 'CHILD', 'MAN', 'WOMAN', 'PERSON', 'FRIEND', 'TEACHER', 'STUDENT'],
   },
   // 6. Feelings
@@ -275,7 +291,7 @@ const CATEGORIES = [
   // CRY/LIKE/LOVE from the old list moved to 'actions'/'social' per the new
   // plan, safe since none were ever wired to detection.
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: false, unit: 7,
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: false, unit: 6,
     words: ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'EXCITED', 'TIRED', 'SLEEPY', 'HUNGRY', 'THIRSTY', 'SICK', 'FINE', 'OKAY', 'BORED', 'WORRIED', 'NERVOUS'],
   },
   // 7. Needs
@@ -285,7 +301,7 @@ const CATEGORIES = [
   // SLEEP/MORE/LESS/WANT/NEED/LIKE entry yet) — flagged, not a regression,
   // just the preview text now says more than the app can actually check yet.
   {
-    id: 'requests', level: 'medium', title: 'Needs', order: 1, comingSoon: false, unit: 8,
+    id: 'requests', level: 'medium', title: 'Needs', order: 1, comingSoon: false, unit: 7,
     words: ['FOOD', 'WATER', 'HELP', 'SLEEP', 'BATHROOM', 'HOME', 'SCHOOL', 'MORE', 'LESS', 'WANT', 'NEED', 'LIKE'],
   },
   // 8. Actions
@@ -298,30 +314,30 @@ const CATEGORIES = [
   // regression. CLEAN reuses the old 'health' NICE/CLEAN entry (same physical
   // sign) rather than inventing a duplicate — see that entry's history note.
   {
-    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: false, unit: 9,
+    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: false, unit: 8,
     words: ['GO', 'COME', 'STOP', 'WAIT', 'SIT', 'STAND', 'WALK', 'RUN', 'JUMP', 'EAT', 'DRINK', 'SLEEP', 'WAKE', 'PLAY', 'LOOK', 'SEE', 'LISTEN', 'TALK', 'READ', 'WRITE', 'DRAW', 'SING', 'DANCE', 'COOK', 'CLEAN', 'THINK', 'CRY', 'LAUGH', 'RIDE', 'BATH'],
   },
   // 9. Hand Actions
   // REV 8 (2026-08-25): flipped to comingSoon:false — full ASLU-checked SIGNS
   // coverage added for every word[] below (see "MEDIUM · HAND ACTIONS" block).
   {
-    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: false, unit: 10,
+    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: false, unit: 9,
     words: ['GIVE', 'TAKE', 'PUT', 'GET', 'BRING', 'CARRY', 'PUSH', 'PULL', 'THROW', 'CATCH', 'PICK'],
   },
   // 10. Communication
   // REV 8 (2026-08-25): flipped to comingSoon:false. 'HELP' removed from
-  // words[] — it's already live under 'requests' (Needs, Unit 8) and that
+  // words[] — it's already live under 'requests' (Needs, Unit 7) and that
   // category's own words[] claims it; per project convention we don't
   // duplicate a physical-sign entry across two categories, so it's not
   // repeated here. Every remaining word has real SIGNS coverage (see
   // "MEDIUM · COMMUNICATION" block).
   {
-    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: false, unit: 11,
+    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: false, unit: 10,
     words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'SHARE', 'TEACH', 'SIGN'],
   },
   // 11. Body
   {
-    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 12,
+    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 11,
     words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
   },
   // 12. Personal Information — unlocked this pass. 9 of these 15 words
@@ -329,7 +345,7 @@ const CATEGORIES = [
   // entries already live under family/people/places — see the
   // "MEDIUM · PERSONAL_INFORMATION" SIGNS block comment.
   {
-    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 13,
+    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 12,
     words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
   // 13. Colors — unlocked: all 11 words have ASLU-checked SIGNS entries
@@ -337,12 +353,12 @@ const CATEGORIES = [
   // were removed rather than kept as unused entries — see BROWN's
   // detection notes if a metallic color is ever wanted back.
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: false, unit: 14,
+    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: false, unit: 13,
     words: ['RED', 'BLUE', 'YELLOW', 'GREEN', 'ORANGE', 'PURPLE', 'WHITE', 'BLACK', 'GRAY', 'BROWN', 'PINK'],
   },
   // 14. Shapes
   {
-    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: false, unit: 15,
+    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: false, unit: 14,
     words: ['CIRCLE', 'SQUARE', 'TRIANGLE', 'RECTANGLE', 'OVAL', 'STAR', 'HEART', 'DIAMOND'],
   },
   // 15. Size
@@ -350,7 +366,7 @@ const CATEGORIES = [
   // comingSoon:true, zero dictionary.js entries — safe to retire, no
   // detection risk). FULL moved to 'descriptions' per the new plan.
   {
-    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 16,
+    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 15,
     words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
   },
   // 16. Appearance — unlocked this pass. CLEAN reuses the entry already
@@ -358,7 +374,7 @@ const CATEGORIES = [
   // identical to CLEAN and can't be told apart by the landmark
   // classifier (see "MEDIUM · APPEARANCE" SIGNS block comment).
   {
-    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 17,
+    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 16,
     words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
   },
   // 17. Touch
@@ -367,23 +383,25 @@ const CATEGORIES = [
   // plan's topic 17; words[] below is the fuller Touch list, but only HOT/COLD
   // have any real placeholder so far.
   {
-    id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 18,
+    id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 17,
     words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY', 'SHARP'],
   },
   // 18. Taste — BITTER removed from words[]: physically identical to
   // SOUR and can't be told apart by the landmark classifier (see
   // "MEDIUM · TASTE" SIGNS block comment).
   {
-    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 19,
+    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 18,
     words: ['SWEET', 'SOUR', 'SALTY', 'SPICY', 'DELICIOUS', 'FRESH'],
   },
-  // 19. Sound — unlocked this pass. QUIET and SILENT are the same
-  // physical sign in ASL (context only) — see the "MEDIUM · SOUND"
-  // SIGNS block comment before wiring SILENT into a graded detection
-  // quiz. HIGH/LOW reuse the general elevation signs, applied to pitch.
+  // 19. Sound — unlocked this pass. SILENT removed from words[]/SIGNS
+  // (2026-09-03 classifier conflict audit): QUIET and SILENT are the
+  // same physical sign in ASL (context only), so the landmark classifier
+  // can't tell them apart — QUIET is kept as the trained motion entry.
+  // Same precedent as BITTER/SOUR under Taste. HIGH/LOW reuse the
+  // general elevation signs, applied to pitch.
   {
-    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: false, unit: 20,
-    words: ['LOUD', 'QUIET', 'NOISY', 'SILENT', 'HIGH', 'LOW'],
+    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: false, unit: 19,
+    words: ['LOUD', 'QUIET', 'NOISY', 'HIGH', 'LOW'],
   },
   // 20. Descriptions
   // UNLOCKED (2026-09-01): FAST/SLOW/STRONG/WEAK/EMPTY/OPEN/CLOSED researched fresh
@@ -391,7 +409,7 @@ const CATEGORIES = [
   // SigningSavvy. GOOD/BAD reuse the existing medium_feelings_GOOD/BAD entries
   // (same physical sign, already live under Questions). FULL was already here.
   {
-    id: 'descriptions', level: 'medium', title: 'Descriptions', order: 1, comingSoon: false, unit: 21,
+    id: 'descriptions', level: 'medium', title: 'Descriptions', order: 1, comingSoon: false, unit: 20,
     words: ['FAST', 'SLOW', 'STRONG', 'WEAK', 'GOOD', 'BAD', 'FULL', 'EMPTY', 'OPEN', 'CLOSED'],
   },
   // 21. Family
@@ -401,22 +419,29 @@ const CATEGORIES = [
   // preview; the trained SIGNS set is unchanged and narrower — do not
   // delete/rename any 'family' SIGNS entries to 'match' this list.
   {
-    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 22,
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 21,
     words: ['FAMILY', 'MOTHER', 'MOM', 'FATHER', 'DAD', 'BROTHER', 'SISTER', 'BABY', 'SON', 'DAUGHTER', 'PARENT', 'CHILD', 'GRANDMOTHER', 'GRANDMA', 'GRANDFATHER', 'GRANDPA', 'AUNT', 'UNCLE', 'COUSIN', 'GRANDCHILD'],
   },
   // 22. Home
   {
-    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 23,
+    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 22,
     words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'GARDEN', 'YARD'],
   },
   // 23. Furniture
+  // DESK removed from words[]/SIGNS (2026-09-03 classifier conflict
+  // audit): physically identical to TABLE (same stacked-forearms motion)
+  // and can't be told apart by the landmark classifier. CABINET and
+  // CLOSET also removed for the same reason — both are the literal DOOR
+  // sign (pivoting flat hand, hinge at the pinkie); DOOR (Household) is
+  // kept as the trained motion entry for that gesture. Same precedent as
+  // BITTER/SOUR under Taste.
   {
-    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: false, unit: 24,
-    words: ['BED', 'PILLOW', 'BLANKET', 'CHAIR', 'TABLE', 'SOFA', 'DESK', 'SHELF', 'CABINET', 'CLOSET', 'LAMP'],
+    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: false, unit: 23,
+    words: ['BED', 'PILLOW', 'BLANKET', 'CHAIR', 'TABLE', 'SOFA', 'SHELF', 'LAMP'],
   },
   // 24. Household
   {
-    id: 'household', level: 'medium', title: 'Household', order: 1, comingSoon: false, unit: 25,
+    id: 'household', level: 'medium', title: 'Household', order: 1, comingSoon: false, unit: 24,
     words: ['DOOR', 'WINDOW', 'WALL', 'FLOOR', 'ROOF', 'CLOCK', 'MIRROR', 'FAN', 'TV', 'REMOTE', 'PHONE', 'COMPUTER', 'BOOK', 'KEY'],
   },
   // 25. Bathroom
@@ -428,7 +453,7 @@ const CATEGORIES = [
   // physically identical to medium_home_BATHROOM and can't be told apart by the
   // landmark classifier (see "MEDIUM · BATHROOM" SIGNS block comment).
   {
-    id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: false, unit: 26,
+    id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: false, unit: 25,
     words: ['SHOWER', 'BATHTUB', 'SOAP', 'SHAMPOO', 'TOWEL', 'TOOTHBRUSH', 'TOOTHPASTE'],
   },
   // 26. Kitchen
@@ -440,43 +465,64 @@ const CATEGORIES = [
   // STOVE and OVEN; no clear ASLU-documented sign for FREEZER/POT/PAN as kitchen
   // nouns), same treatment as PEN/ART/ENGLISH elsewhere in this file.
   {
-    id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: false, unit: 27,
+    id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: false, unit: 26,
     words: ['REFRIGERATOR', 'PLATE', 'BOWL', 'CUP', 'GLASS', 'SPOON', 'FORK', 'KNIFE'],
   },
   // 27. School
   {
-    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: false, unit: 28,
+    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: false, unit: 27,
     words: ['TEACHER', 'STUDENT', 'PRINCIPAL', 'FRIEND', 'CLASSMATE', 'BOY', 'GIRL'],
   },
   // 28. School Supplies
   {
-    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 29,
+    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 28,
     // PEN removed — no dedicated ASLU sign; fingerspell P-E-N (existing Fingerspell feature covers this).
     words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'ERASER', 'PAPER', 'CRAYON', 'MARKER', 'RULER', 'SCISSORS', 'GLUE', 'FOLDER', 'BACKPACK'],
   },
   // 29. Classroom
   {
-    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 30,
+    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 29,
     words: ['DESK', 'CHAIR', 'TABLE', 'BOARD', 'DOOR', 'WINDOW', 'CLOCK', 'COMPUTER', 'SHELF', 'TRASH'],
   },
   // 30. Classroom Actions
+  // UNLOCKED (2026-09-03) — see "MEDIUM · CLASSROOM ACTIONS" SIGNS block.
+  // RAISE/LOWER removed from words[] — no dedicated ASLU/Handspeak/
+  // StartASL/SignASL sign exists for "raise/lower your hand" in the
+  // classroom sense; it's taught as a literal gesture, not a distinct
+  // lexical sign (same exclusion category as MANGO/PAPAYA under Fruits).
+  // CLOSE removed from words[]/SIGNS (2026-09-03 classifier conflict
+  // audit): physically identical to medium_descriptions_CLOSED (same
+  // double-hand door-shutting motion) and can't be told apart by the
+  // landmark classifier — CLOSED is kept as the trained motion entry.
+  // Same precedent as BITTER/SOUR under Taste. NOTE: unrelated to this,
+  // signId 'CLOSE' is still separately used by medium_distance_CLOSE
+  // (an entirely different F-handshape sign meaning "near") — that
+  // entry is untouched.
   {
-    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: false, unit: 31,
-    words: ['READ', 'WRITE', 'DRAW', 'COLOR', 'LISTEN', 'LOOK', 'SIT', 'STAND', 'ASK', 'ANSWER', 'OPEN', 'CLOSE', 'RAISE', 'LOWER', 'SHARE', 'HELP'],
+    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: false, unit: 30,
+    words: ['READ', 'WRITE', 'DRAW', 'COLOR', 'LISTEN', 'LOOK', 'SIT', 'STAND', 'ASK', 'ANSWER', 'OPEN', 'SHARE', 'HELP'],
   },
   // 31. Subjects
   {
-    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: false, unit: 32,
+    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: false, unit: 31,
     // ART removed — identical clip to DRAW (ASLU: combine DRAW/ART with the person affix); use DRAW instead.
     // ENGLISH removed — no dedicated ASLU sign; fingerspell E-N-G-L-I-S-H (existing Fingerspell feature covers this).
     words: ['MATH', 'SCIENCE', 'MUSIC', 'HISTORY', 'COMPUTER'],
   },
-  // 32. Food — RE-ADDED (this session) at the user's request, scoped to
-  // exactly this lesson topic's word list. comingSoon:true — no SIGNS
-  // entries authored/verified yet for any of these 7 words.
+  // 32. Food — UNLOCKED (this session): all 7 words researched against
+  // lifeprint.com (ASLU), cross-checked against a second source per word
+  // (three for RICE, since ASLU itself flags that one as not fully
+  // standardized). FISH is a DUPLICATE of the existing
+  // medium_animals_FISH entry (same physical sign) — no new research
+  // needed. CHICKEN removed from words[]/SIGNS (2026-09-03 classifier
+  // conflict audit): physically identical to medium_animals_BIRD (same
+  // thumb-and-index "beak" motion) and can't be told apart by the
+  // landmark classifier — BIRD is kept as the trained motion entry for
+  // this gesture. Same precedent as BITTER/SOUR under Taste. See
+  // "MEDIUM · FOOD" SIGNS block at the end of the file.
   {
-    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: true, unit: 33,
-    words: ['RICE', 'BREAD', 'EGG', 'CHICKEN', 'FISH', 'MEAT', 'SOUP'],
+    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: false, unit: 32,
+    words: ['RICE', 'BREAD', 'EGG', 'FISH', 'MEAT', 'SOUP'],
   },
   // 33. Fruits
   // UNLOCKED (2026-09-01): researched fresh against lifeprint.com (ASLU),
@@ -491,7 +537,7 @@ const CATEGORIES = [
   // (see STOVE/OVEN/PEN/ENGLISH elsewhere) they're left to the Fingerspell
   // feature rather than given an invented "the" sign.
   {
-    id: 'fruits', level: 'medium', title: 'Fruits', order: 1, comingSoon: false, unit: 34,
+    id: 'fruits', level: 'medium', title: 'Fruits', order: 1, comingSoon: false, unit: 33,
     words: ['APPLE', 'BANANA', 'ORANGE', 'GRAPES', 'WATERMELON', 'PINEAPPLE', 'STRAWBERRY', 'PEAR', 'MELON'],
   },
   // 34. Vegetables
@@ -500,7 +546,7 @@ const CATEGORIES = [
   // low-confidence; ASLU lists fingerspelling as a recognized variation, so
   // treated the same as SINK/STOVE/OVEN/TOY/BAG elsewhere in this file.
   {
-    id: 'vegetables', level: 'medium', title: 'Vegetables', order: 1, comingSoon: false, unit: 35,
+    id: 'vegetables', level: 'medium', title: 'Vegetables', order: 1, comingSoon: false, unit: 34,
     words: ['CARROT', 'POTATO', 'TOMATO', 'ONION', 'GARLIC', 'CORN', 'PEA', 'BEAN', 'CABBAGE', 'LETTUCE', 'PUMPKIN', 'BROCCOLI'],
   },
   // 35. Snacks
@@ -509,24 +555,26 @@ const CATEGORIES = [
   // CANDY reuse the existing medium_food_COOKIE/CANDY entries (same
   // physical signs). See "MEDIUM · SNACKS" SIGNS block at the end of the file.
   {
-    id: 'snacks', level: 'medium', title: 'Snacks', order: 1, comingSoon: false, unit: 36,
+    id: 'snacks', level: 'medium', title: 'Snacks', order: 1, comingSoon: false, unit: 35,
     words: ['COOKIE', 'CAKE', 'CANDY', 'CHOCOLATE', 'DONUT', 'PIE', 'POPCORN', 'CHIPS', 'CUPCAKE', 'ICECREAM'],
   },
   // 36. Drinks — unlocked (2026-09-01): all 6 words researched fresh against
   // lifeprint.com and cross-checked against Handspeak/aslbloom/PocketSign/
   // ASL Interactive. See "MEDIUM · DRINKS" SIGNS block at the end of the file.
   {
-    id: 'drinks', level: 'medium', title: 'Drinks', order: 1, comingSoon: false, unit: 37,
+    id: 'drinks', level: 'medium', title: 'Drinks', order: 1, comingSoon: false, unit: 36,
     words: ['WATER', 'MILK', 'JUICE', 'SODA', 'TEA', 'COFFEE'],
   },
   // 37. Animals
-  // FISH/RABBIT/CHICKEN/DUCK/GOAT researched against lifeprint.com,
-  // cross-checked against a second source per word. CHICKEN is a duplicate
-  // of BIRD (lifeprint: "the sign BIRD can in context be used to mean
-  // chicken").
+  // FISH/RABBIT/DUCK/GOAT researched against lifeprint.com, cross-checked
+  // against a second source per word. CHICKEN removed from words[]/SIGNS
+  // (2026-09-03 classifier conflict audit): physically identical to BIRD
+  // (lifeprint: "the sign BIRD can in context be used to mean chicken")
+  // and can't be told apart by the landmark classifier — BIRD is kept as
+  // the trained motion entry. Same precedent as BITTER/SOUR under Taste.
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 1, comingSoon: false, unit: 38,
-    words: ['DOG', 'CAT', 'BIRD', 'FISH', 'RABBIT', 'CHICKEN', 'DUCK', 'COW', 'PIG', 'HORSE', 'GOAT', 'SHEEP'],
+    id: 'animals', level: 'medium', title: 'Animals', order: 1, comingSoon: false, unit: 37,
+    words: ['DOG', 'CAT', 'BIRD', 'FISH', 'RABBIT', 'DUCK', 'COW', 'PIG', 'HORSE', 'GOAT', 'SHEEP'],
   },
   // 38. Wild Animals
   // UNLOCKED (2026-09-02): all 10 words researched against lifeprint.com
@@ -534,22 +582,25 @@ const CATEGORIES = [
   // single dedicated ASLU sign — written as the documented HORSE + STRIPES
   // compound. See "MEDIUM · WILD ANIMALS" SIGNS block at the end of the file.
   {
-    id: 'wild_animals', level: 'medium', title: 'Wild Animals', order: 1, comingSoon: false, unit: 39,
+    id: 'wild_animals', level: 'medium', title: 'Wild Animals', order: 1, comingSoon: false, unit: 38,
     words: ['LION', 'TIGER', 'ELEPHANT', 'MONKEY', 'GIRAFFE', 'BEAR', 'ZEBRA', 'SNAKE', 'FROG', 'TURTLE'],
   },
   // 39. Insects
   {
-    id: 'insects', level: 'medium', title: 'Insects', order: 1, comingSoon: false, unit: 40,
+    id: 'insects', level: 'medium', title: 'Insects', order: 1, comingSoon: false, unit: 39,
     words: ['ANT', 'BUTTERFLY', 'BEE', 'SPIDER'],
   },
   // 40. Clothes
   // SHORTS/DRESS/SKIRT/HAT/JACKET/BELT researched against lifeprint.com,
-  // cross-checked against a second source per word. CAP is a duplicate of
-  // HAT (lifeprint: CAP's page notes it can also mean "putting a hat on" —
-  // same physical sign).
+  // cross-checked against a second source per word. CAP removed from
+  // words[]/SIGNS (2026-09-03 classifier conflict audit): physically
+  // identical to HAT (same handshape + same double-pat motion) and can't
+  // be told apart by the landmark classifier — same precedent as
+  // BITTER/SOUR under Taste. If a distinct CAP sign is sourced later, add
+  // it back with its own SIGNS entry.
   {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 1, comingSoon: false, unit: 41,
-    words: ['SHIRT', 'PANTS', 'SHORTS', 'DRESS', 'SKIRT', 'SHOES', 'SOCKS', 'HAT', 'CAP', 'JACKET', 'COAT', 'BELT'],
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 1, comingSoon: false, unit: 40,
+    words: ['SHIRT', 'PANTS', 'SHORTS', 'DRESS', 'SKIRT', 'SHOES', 'SOCKS', 'HAT', 'JACKET', 'COAT', 'BELT'],
   },
   // 41. Dressing — unlocked (2026-09-01): WEAR/CHANGE/FOLD are new content,
   // researched fresh against lifeprint.com and cross-checked against
@@ -559,7 +610,7 @@ const CATEGORIES = [
   // "MEDIUM · DRESSING" SIGNS block at the end of the file — including a
   // flagged note on the existing WASH entry that I did NOT change.
   {
-    id: 'dressing', level: 'medium', title: 'Dressing', order: 1, comingSoon: false, unit: 42,
+    id: 'dressing', level: 'medium', title: 'Dressing', order: 1, comingSoon: false, unit: 41,
     words: ['WEAR', 'CHANGE', 'WASH', 'FOLD', 'CLEAN', 'DIRTY'],
   },
   // 42. Personal Items
@@ -571,35 +622,59 @@ const CATEGORIES = [
   // single agreed dedicated sign (same precedent as MANGO/PAPAYA elsewhere
   // in this file), so it's left to the Fingerspell feature.
   {
-    id: 'personal_items', level: 'medium', title: 'Personal Items', order: 1, comingSoon: false, unit: 43,
+    id: 'personal_items', level: 'medium', title: 'Personal Items', order: 1, comingSoon: false, unit: 42,
     words: ['WALLET', 'PHONE', 'WATCH', 'GLASSES', 'KEY', 'UMBRELLA', 'BOTTLE'],
   },
-  // 43. Nature
+  // 43. Nature — UNLOCKED (this session): 17 of the 19 words researched
+  // against lifeprint.com (ASLU), cross-checked against a second source
+  // (mainly Handspeak, plus ASLbloom/babysignlanguage where useful) per word.
+  // TREE, FLOWER, GRASS, and LEAF are DUPLICATES of the existing
+  // medium_plants_TREE/FLOWER/GRASS/LEAF entries (same physical signs). STAR
+  // is a DUPLICATE of medium_shapes_STAR.
+  // SKY and LAKE removed from words[] — no lifeprint.com (ASLU) page exists
+  // for either sign (Handspeak and other sites have entries, but per this
+  // file's existing convention — see MARKET/MAY/SEED/ROOT elsewhere — a word
+  // without a citable ASLU page is dropped from the preview list rather than
+  // sourced from a single secondary dictionary). If an ASLU page turns up
+  // later, add them back with a SIGNS entry. See "MEDIUM · NATURE" SIGNS
+  // block at the end of the file.
   {
-    id: 'nature', level: 'medium', title: 'Nature', order: 1, comingSoon: true, unit: 44,
-    words: ['SUN', 'MOON', 'STAR', 'SKY', 'CLOUD', 'RAIN', 'WIND', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROCK', 'SAND', 'MOUNTAIN', 'RIVER', 'LAKE', 'OCEAN', 'BEACH', 'ISLAND'],
+    id: 'nature', level: 'medium', title: 'Nature', order: 1, comingSoon: false, unit: 43,
+    words: ['SUN', 'MOON', 'STAR', 'CLOUD', 'RAIN', 'WIND', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROCK', 'SAND', 'MOUNTAIN', 'RIVER', 'OCEAN', 'BEACH', 'ISLAND'],
   },
-  // 44. Plants
+  // 44. Plants — UNLOCKED (this session): 10 of the 12 words researched
+  // against lifeprint.com (ASLU), cross-checked against a second source
+  // per word. WATER and GARDEN are DUPLICATES of the existing
+  // medium_drinks_WATER and medium_home_GARDEN entries (same physical
+  // signs) — no new research needed for those two.
+  // SEED and ROOT removed from words[] — ASLU's own "seed" page states
+  // the noun is generally fingerspelled S-E-E-D (the sign with rubbed
+  // fingers is specifically the verb "planting seeds," not the noun),
+  // and ASLU's "root" page has no description at all. Per this file's
+  // existing convention for words without a citable dedicated sign (see
+  // MANGO/PAPAYA/CUCUMBER/BAG elsewhere), left to the Fingerspell
+  // feature instead of inventing one. See "MEDIUM · PLANTS" SIGNS block
+  // at the end of the file.
   {
-    id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: true, unit: 45,
-    words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROOT', 'BRANCH', 'SEED', 'GARDEN', 'GROW', 'WATER', 'SOIL'],
+    id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: false, unit: 44,
+    words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'BRANCH', 'GARDEN', 'GROW', 'WATER', 'SOIL'],
   },
   // 45. Weather
   // UNLOCKED (2026-09-02): all 12 words researched against lifeprint.com
   // (ASLU), cross-checked against a second source per word. HOT/COLD reuse
   // the existing medium_temperature_HOT/COLD entries. WARM/COOL are also
-  // listed in 'temperature' (Touch, Unit 18) words[] but that category has
+  // listed in 'temperature' (Touch, Unit 17) words[] but that category has
   // no SIGNS entries for either word yet — flagged separately, not fixed
   // here since 'temperature' wasn't in scope this pass; WARM/COOL below
   // are written fresh under 'weather' so this category stands on its own.
   // See "MEDIUM · WEATHER" SIGNS block at the end of the file.
   {
-    id: 'weather', level: 'medium', title: 'Weather', order: 1, comingSoon: false, unit: 46,
+    id: 'weather', level: 'medium', title: 'Weather', order: 1, comingSoon: false, unit: 45,
     words: ['SUNNY', 'RAINY', 'CLOUDY', 'WINDY', 'STORMY', 'HOT', 'COLD', 'WARM', 'COOL', 'THUNDER', 'LIGHTNING', 'SNOW'],
   },
   // 46. Seasons
   {
-    id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: false, unit: 47,
+    id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: false, unit: 46,
     words: ['SPRING', 'SUMMER', 'FALL', 'WINTER'],
   },
   // 47. Places
@@ -609,7 +684,7 @@ const CATEGORIES = [
   // Places list for the lesson-content preview; the trained SIGNS set is
   // unchanged.
   {
-    id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 48,
+    id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 47,
     words: ['HOME', 'SCHOOL', 'PARK', 'STORE', 'MARKET', 'LIBRARY', 'HOSPITAL', 'RESTAURANT', 'ZOO', 'FARM', 'BEACH', 'CHURCH', 'BANK', 'AIRPORT'],
   },
   // 48. Vehicles — UNLOCKED (this session): all 11 words researched
@@ -617,7 +692,7 @@ const CATEGORIES = [
   // ASLbloom / Signing Savvy. See SIGNS entries for per-word notes
   // (BUS/TRUCK/VAN/TAXI are lexicalized fingerspelling).
   {
-    id: 'vehicles', level: 'medium', title: 'Vehicles', order: 1, comingSoon: false, unit: 49,
+    id: 'vehicles', level: 'medium', title: 'Vehicles', order: 1, comingSoon: false, unit: 48,
     words: ['CAR', 'BUS', 'TRUCK', 'VAN', 'TAXI', 'TRAIN', 'BIKE', 'MOTORCYCLE', 'AIRPLANE', 'BOAT', 'SHIP'],
   },
   // 49. Transportation — unlocked (2026-09-01): DRIVE and FLY are new
@@ -627,13 +702,28 @@ const CATEGORIES = [
   // WASH/CLEAN/DIRTY under 'dressing'). See "MEDIUM · TRANSPORTATION"
   // SIGNS block at the end of the file.
   {
-    id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: false, unit: 50,
+    id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: false, unit: 49,
     words: ['WALK', 'RIDE', 'DRIVE', 'FLY', 'GO', 'STOP', 'WAIT'],
   },
-  // 50. Professions
+  // 50. Professions — UNLOCKED (this session): 18 of the 20 words researched
+  // against lifeprint.com (ASLU), cross-checked against a second source
+  // (mainly Handspeak, plus ASLbloom/aslinteractive/Quizlet flashcards where
+  // useful) per word. TEACHER is a DUPLICATE of medium_people_TEACHER,
+  // POLICE is a DUPLICATE of medium_community_POLICE, and COOK is a
+  // DUPLICATE of medium_actions_COOK (same physical signs). CHEF has no
+  // distinct ASLU sign of its own — Signing Savvy lists CHEF as a synonym of
+  // the same sign used for COOK, so it reuses that sign rather than
+  // inventing a separate one.
+  // ENGINEER and CASHIER removed from words[] — no lifeprint.com (ASLU) page
+  // exists for either sign (Handspeak has entries, but per this file's
+  // existing convention — see MARKET/MAY/SEED/ROOT elsewhere — a word
+  // without a citable ASLU page is dropped from the preview list rather than
+  // sourced from a single secondary dictionary). If an ASLU page turns up
+  // later, add them back with a SIGNS entry. See "MEDIUM · PROFESSIONS"
+  // SIGNS block at the end of the file.
   {
-    id: 'professions', level: 'medium', title: 'Professions', order: 1, comingSoon: true, unit: 51,
-    words: ['TEACHER', 'DOCTOR', 'NURSE', 'POLICE', 'FIREFIGHTER', 'FARMER', 'DRIVER', 'COOK', 'CHEF', 'ENGINEER', 'DENTIST', 'MECHANIC', 'CARPENTER', 'LAWYER', 'SOLDIER', 'CASHIER', 'WAITER', 'ARTIST', 'WORKER', 'OWNER'],
+    id: 'professions', level: 'medium', title: 'Professions', order: 1, comingSoon: false, unit: 50,
+    words: ['TEACHER', 'DOCTOR', 'NURSE', 'POLICE', 'FIREFIGHTER', 'FARMER', 'DRIVER', 'COOK', 'CHEF', 'DENTIST', 'MECHANIC', 'CARPENTER', 'LAWYER', 'SOLDIER', 'WAITER', 'ARTIST', 'WORKER', 'OWNER'],
   },
   // 51. Community — UNLOCKED (this session): all 9 remaining words
   // researched against lifeprint.com (ASLU), cross-checked against a
@@ -645,7 +735,7 @@ const CATEGORIES = [
   // description, drop it from the preview list instead. If a described
   // source turns up later, add it back in and give it a SIGNS entry.
   {
-    id: 'community', level: 'medium', title: 'Community', order: 1, comingSoon: false, unit: 52,
+    id: 'community', level: 'medium', title: 'Community', order: 1, comingSoon: false, unit: 51,
     words: ['SCHOOL', 'HOSPITAL', 'POLICE', 'FIRE', 'LIBRARY', 'BANK', 'STORE', 'RESTAURANT', 'PARK'],
   },
   // 52. Time
@@ -655,17 +745,17 @@ const CATEGORIES = [
   // LATER/SOON/AFTER/EARLY/LATE/TOMORROW/YESTERDAY, none of which are trained
   // yet); the trained SIGNS set is unchanged.
   {
-    id: 'time', level: 'medium', title: 'Time', order: 1, comingSoon: false, unit: 53,
+    id: 'time', level: 'medium', title: 'Time', order: 1, comingSoon: false, unit: 52,
     words: ['TIME', 'NOW', 'LATER', 'SOON', 'BEFORE', 'AFTER', 'EARLY', 'LATE', 'TODAY', 'TOMORROW', 'YESTERDAY'],
   },
   // 53. Daytime
   {
-    id: 'daytime', level: 'medium', title: 'Daytime', order: 1, comingSoon: false, unit: 54,
+    id: 'daytime', level: 'medium', title: 'Daytime', order: 1, comingSoon: false, unit: 53,
     words: ['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT'],
   },
   // 54. Days
   {
-    id: 'days', level: 'medium', title: 'Days', order: 1, comingSoon: false, unit: 55,
+    id: 'days', level: 'medium', title: 'Days', order: 1, comingSoon: false, unit: 54,
     words: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
   },
   // 55. Months
@@ -681,7 +771,7 @@ const CATEGORIES = [
   // detection — same open question likely applies to any other
   // fingerspelled vocabulary elsewhere in this file.
   {
-    id: 'months', level: 'medium', title: 'Months', order: 1, comingSoon: false, unit: 56,
+    id: 'months', level: 'medium', title: 'Months', order: 1, comingSoon: false, unit: 55,
     words: ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'],
   },
   // 56. Sequence
@@ -689,7 +779,7 @@ const CATEGORIES = [
   // (ASLU), cross-checked against Handspeak. FINISHED reuses the existing
   // medium_turn_taking_FINISHED entry (same physical sign).
   {
-    id: 'sequence', level: 'medium', title: 'Sequence', order: 1, comingSoon: false, unit: 57,
+    id: 'sequence', level: 'medium', title: 'Sequence', order: 1, comingSoon: false, unit: 56,
     words: ['FIRST', 'SECOND', 'THIRD', 'NEXT', 'THEN', 'BEGINNING', 'MIDDLE', 'END', 'FINALLY', 'FINISHED'],
   },
   // 57. Frequency
@@ -700,24 +790,40 @@ const CATEGORIES = [
   // notes on those SIGNS entries below). RARELY is ASLU's own documented
   // exaggerated variant of SOMETIMES, not a separate root sign.
   {
-    id: 'frequency', level: 'medium', title: 'Frequency', order: 1, comingSoon: false, unit: 58,
+    id: 'frequency', level: 'medium', title: 'Frequency', order: 1, comingSoon: false, unit: 57,
     words: ['ALWAYS', 'OFTEN', 'SOMETIMES', 'RARELY', 'NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'],
   },
-  // 58. Location
+  // 58. Location — UNLOCKED (this session): IN, OUT, INSIDE, OUTSIDE, and
+  // FRONT researched fresh against lifeprint.com (ASLU), cross-checked
+  // against a second source per word. BACK and BEHIND are DUPLICATES of
+  // the existing medium_body_BACK / medium_directions_BACK entry (same
+  // physical sign — its own tips already describe it as meaning
+  // "behind you"). ON, UNDER, ABOVE, BELOW, BESIDE, BETWEEN, and NEXT
+  // (spatial "next to") were REMOVED from words[] — ASLU's own
+  // preposition-drop article and Handspeak's locatives article both
+  // confirm ASL shows these spatial relationships via classifier
+  // placement that changes with the objects involved, not one fixed,
+  // citable sign. ASLU explicitly recommends against a general-purpose
+  // "ON" sign too ("ask yourself if there's a more appropriate way").
+  // Per this file's existing convention for words without a citable
+  // dedicated sign (see SEED/ROOT under Plants, MARKET under Community,
+  // MAY under Manners), these are left to the Fingerspell feature
+  // instead of inventing fixed signs for context-dependent classifiers.
+  // See "MEDIUM · LOCATION" SIGNS block at the end of the file.
   {
-    id: 'location', level: 'medium', title: 'Location', order: 1, comingSoon: true, unit: 59,
-    words: ['IN', 'OUT', 'INSIDE', 'OUTSIDE', 'ON', 'UNDER', 'ABOVE', 'BELOW', 'FRONT', 'BACK', 'BEHIND', 'BESIDE', 'BETWEEN', 'NEXT'],
+    id: 'location', level: 'medium', title: 'Location', order: 1, comingSoon: false, unit: 58,
+    words: ['IN', 'OUT', 'INSIDE', 'OUTSIDE', 'FRONT', 'BACK', 'BEHIND'],
   },
   // 59. Distance
   {
-    id: 'distance', level: 'medium', title: 'Distance', order: 1, comingSoon: false, unit: 60,
+    id: 'distance', level: 'medium', title: 'Distance', order: 1, comingSoon: false, unit: 59,
     words: ['NEAR', 'FAR', 'HERE', 'THERE', 'CLOSE', 'AWAY'],
   },
   // 60. Directions — UNLOCKED (this session): 5 new words researched
   // against lifeprint.com (ASLU); BACK/TURN/GO/STOP/WAIT reuse existing
   // entries. FORWARD flagged as lower-confidence (no dedicated ASLU page).
   {
-    id: 'directions', level: 'medium', title: 'Directions', order: 1, comingSoon: false, unit: 61,
+    id: 'directions', level: 'medium', title: 'Directions', order: 1, comingSoon: false, unit: 60,
     words: ['LEFT', 'RIGHT', 'UP', 'DOWN', 'FORWARD', 'BACK', 'TURN', 'GO', 'STOP', 'WAIT'],
   },
   // 61. Social — UNLOCKED (this session): 5 new words researched
@@ -725,7 +831,7 @@ const CATEGORIES = [
   // reuse existing entries. CLASSMATE and NEIGHBOR are compound signs,
   // flagged as lower-confidence — see SIGNS entries.
   {
-    id: 'social', level: 'medium', title: 'Social', order: 1, comingSoon: false, unit: 62,
+    id: 'social', level: 'medium', title: 'Social', order: 1, comingSoon: false, unit: 61,
     words: ['FRIEND', 'CLASSMATE', 'NEIGHBOR', 'PLAY', 'TALK', 'SHARE', 'HELP', 'MEET', 'VISIT', 'LIKE', 'LOVE', 'TOGETHER'],
   },
   // 62. Manners
@@ -740,7 +846,7 @@ const CATEGORIES = [
   // typically fingerspelled or covered by CAN); same MANGO/PAPAYA
   // precedent as elsewhere in this file.
   {
-    id: 'manners', level: 'medium', title: 'Manners', order: 1, comingSoon: false, unit: 63,
+    id: 'manners', level: 'medium', title: 'Manners', order: 1, comingSoon: false, unit: 62,
     words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'HELP'],
   },
   // 63. Turn-Taking
@@ -750,20 +856,24 @@ const CATEGORIES = [
   // lifeprint.com (ASLU) and cross-checked against Handspeak/Brainscape
   // ASLU-sourced flashcard sets.
   {
-    id: 'turn_taking', level: 'medium', title: 'Turn-Taking', order: 1, comingSoon: false, unit: 64,
+    id: 'turn_taking', level: 'medium', title: 'Turn-Taking', order: 1, comingSoon: false, unit: 63,
     words: ['MY', 'YOUR', 'TURN', 'WAIT', 'GO', 'STOP', 'AGAIN', 'FINISHED'],
   },
   // 64. Responses
   // UNLOCKED (2026-09-02): YES/NO/OKAY/GOOD reuse existing
   // medium_essentials_basic_responses_*/medium_feelings_GOOD entries.
-  // SURE/REALLY are new content but ASLU documents them as the SAME sign
-  // as TRUE (index finger from the lips moving forward) — see the shared
-  // note on both entries below. MAYBE/UNDERSTAND are new content,
-  // researched fresh against lifeprint.com and cross-checked against
-  // Handspeak/StudoCu ASLU-sourced notes.
+  // SURE is new content but ASLU documents it as the SAME sign as TRUE
+  // (index finger from the lips moving forward). REALLY removed from
+  // words[]/SIGNS (2026-09-03 classifier conflict audit): ASLU treats
+  // SURE/TRUE/REALLY as one sign with several English translations, and
+  // the landmark classifier can't tell REALLY apart from SURE — SURE is
+  // kept as the trained motion entry. Same precedent as BITTER/SOUR
+  // under Taste. MAYBE/UNDERSTAND are new content, researched fresh
+  // against lifeprint.com and cross-checked against Handspeak/StudoCu
+  // ASLU-sourced notes.
   {
-    id: 'responses', level: 'medium', title: 'Responses', order: 1, comingSoon: false, unit: 65,
-    words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'REALLY', 'GOOD', 'UNDERSTAND'],
+    id: 'responses', level: 'medium', title: 'Responses', order: 1, comingSoon: false, unit: 64,
+    words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'GOOD', 'UNDERSTAND'],
   },
   // 65. Questions
   // LEGACY id/content kept, RETITLED 'Basic Responses' -> 'Questions' to match
@@ -775,7 +885,7 @@ const CATEGORIES = [
   // 'responses'/'answers'/'polite_words' categories below for where those 4
   // words sit in the new plan; no SIGNS entries were moved or renamed.
   {
-    id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 66,
+    id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 65,
     words: ['WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW', 'WHICH', 'WHOSE', 'MANY', 'MUCH'],
   },
   // 66. Conversation
@@ -783,11 +893,16 @@ const CATEGORIES = [
   // (HELLO/GOODBYE from essentials_greetings, GOOD/FINE from feelings,
   // NAME from personal_information, MEET from social, THANKS/WELCOME from
   // requests/essentials_greetings — same physical signs, see each entry's
-  // note). NICE and LATER are new content, researched fresh against
-  // lifeprint.com (ASLU), cross-checked against Handspeak/aslbloom.
+  // note). LATER is new content, researched fresh against lifeprint.com
+  // (ASLU), cross-checked against Handspeak/aslbloom. NICE removed from
+  // words[]/SIGNS (2026-09-03 classifier conflict audit): all sources
+  // agree NICE and CLEAN are the identical sign (distinguished only by a
+  // single vs. double stroke, which the landmark classifier can't
+  // reliably tell apart) — CLEAN is kept as the trained motion entry.
+  // Same precedent as BITTER/SOUR under Taste.
   {
-    id: 'conversation', level: 'medium', title: 'Conversation', order: 1, comingSoon: false, unit: 67,
-    words: ['HELLO', 'GOOD', 'FINE', 'NAME', 'NICE', 'MEET', 'THANKS', 'WELCOME', 'LATER', 'GOODBYE'],
+    id: 'conversation', level: 'medium', title: 'Conversation', order: 1, comingSoon: false, unit: 66,
+    words: ['HELLO', 'GOOD', 'FINE', 'NAME', 'MEET', 'THANKS', 'WELCOME', 'LATER', 'GOODBYE'],
   },
   // 67. Requests
   // id deliberately NOT 'requests' -- that id is already used by topic 7
@@ -802,7 +917,7 @@ const CATEGORIES = [
   // against lifeprint.com (ASLU), cross-checked against Handspeak/
   // aslbloom/PocketSign/Brainscape ASLU-sourced flashcard sets.
   {
-    id: 'making_requests', level: 'medium', title: 'Requests', order: 1, comingSoon: false, unit: 68,
+    id: 'making_requests', level: 'medium', title: 'Requests', order: 1, comingSoon: false, unit: 67,
     words: ['HAVE', 'CAN', 'HELP', 'GIVE', 'PLEASE', 'WAIT', 'GO', 'WHERE', 'THIS', 'THAT'],
   },
   // 68. Answers
@@ -813,7 +928,7 @@ const CATEGORIES = [
   // DON'T-KNOW sign (see that entry's notes) — flagging this so it's
   // clear the literal word list item isn't a standalone "don't" sign.
   {
-    id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: false, unit: 69,
+    id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: false, unit: 68,
     words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'KNOW', 'DON\'T', 'UNDERSTAND', 'GOOD'],
   },
 
@@ -1405,8 +1520,9 @@ const SIGNS = [
   },
   {
     id: 'medium_school_supplies_CRAYON', level: 'medium', category: 'school_supplies', signId: 'CRAYON', title: 'Crayon', order: 6,
-    // Compound sign — reuses COLOR + a modified ART/DRAW motion. COLOR (noun/verb) itself
-    // has no SIGNS entry yet either; flag for the team before treating this as fully self-contained.
+    // Compound sign — reuses COLOR + a modified ART/DRAW motion. COLOR now
+    // has its own SIGNS entry (medium_classroom_actions_COLOR, added
+    // 2026-09-03) — this flag is resolved.
     description: 'Sign COLOR first, then modify the sign for ART/DRAW: rub your pinkie finger side-to-side against your non-dominant palm, as if coloring with a small crayon tip.',
     tips: [
       'Start clearly with the COLOR handshape',
@@ -1426,6 +1542,199 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/classroom/TRASH.png', videoUrl: '../assets/videos/medium/classroom/TRASH.mp4', detectionType: 'motion',
   },
+
+  /* ── MEDIUM · CLASSROOM ACTIONS (Unit 30) ──────────────────────────
+   * UNLOCKED (2026-09-03) — comingSoon was already false on this
+   * category but it had ZERO SIGNS entries, which is why it was
+   * showing as "coming soon" in the app regardless of the flag.
+   * READ/WRITE/DRAW/LISTEN/LOOK/SIT/STAND/ASK/ANSWER/SHARE/HELP are
+   * DUPLICATES of existing entries elsewhere in this file (same
+   * physical sign, same precedent as BOY/GIRL under
+   * 'personal_information') — not re-researched. OPEN is likewise a
+   * duplicate of medium_descriptions_OPEN (the general "open," not a
+   * door-specific version).
+   *
+   * CLOSE — words[] originally requested "CLOSE" as an action verb,
+   * but the file's only existing CLOSE entry (medium_distance_CLOSE)
+   * means "near," a different ASL sign entirely. The correct
+   * shut-something sign already exists under signId 'CLOSED'
+   * (medium_descriptions_CLOSED), so this category's entry was
+   * originally added as a relabeled duplicate under signId 'CLOSE'.
+   * REMOVED (2026-09-03 classifier conflict audit): that duplicate put
+   * two different signIds on the exact same shutting-motion, which the
+   * landmark classifier can't tell apart — CLOSED is the trained
+   * motion entry going forward; see medium_descriptions_CLOSED. Same
+   * precedent as BITTER/SOUR under Taste.
+   *
+   * COLOR — no SIGNS entry existed anywhere in the file (school_supplies'
+   * CRAYON entry explicitly flagged this gap already). ASLU only
+   * documents COLOR as a noun (chin-area finger flutter); per ASLU's
+   * own FAQ, the verb sense ("color a picture") is done by following
+   * it with a WRITE-style scribbling motion — same compound-sign
+   * precedent as OWNER (OWN + PERSON) elsewhere in this file, not an
+   * invented sign. Researched on lifeprint.com, cross-checked against
+   * a second source for the base noun handshape/location.
+   *
+   * RAISE and LOWER — REMOVED from words[]. Neither has a dedicated
+   * ASLU/Handspeak/StartASL/SignASL entry for the classroom sense
+   * ("raise/lower your hand") — it's taught as a literal mimetic
+   * gesture (physically raising your hand), not a distinct lexical
+   * sign, same category of exclusion as MANGO/PAPAYA/COCONUT/AVOCADO
+   * under Fruits. Flagging rather than inventing one.
+   */
+  {
+    // DUPLICATE — same sign as medium_actions_READ.
+    id: 'medium_classroom_actions_READ', level: 'medium', category: 'classroom_actions', signId: 'READ', title: 'Read', order: 1,
+    description: 'Hold your non-dominant hand flat, palm up, like an open book. Move the first two fingers of your dominant hand (a \u2018V\u2019 handshape) down across the palm, as if scanning lines of text.',
+    tips: [
+      'Dominant hand uses a \u2018V\u2019 shape, like two eyes',
+      'Motion moves downward across the base palm',
+      'Base hand stays flat and steady',
+    ],
+    imageUrl: '../assets/images/medium/actions/read.png', videoUrl: '../assets/videos/medium/actions/read.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_WRITE.
+    id: 'medium_classroom_actions_WRITE', level: 'medium', category: 'classroom_actions', signId: 'WRITE', title: 'Write', order: 2,
+    description: 'Pinch your thumb and index finger together as if holding a pen, and move your hand across your flat non-dominant palm, as if writing on paper.',
+    tips: [
+      'Dominant hand pinches like holding a small pen',
+      'Base hand stays flat, palm up, like a sheet of paper',
+      'A side-to-side scribbling motion works well',
+    ],
+    imageUrl: '../assets/images/medium/actions/write.png', videoUrl: '../assets/videos/medium/actions/write.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_DRAW.
+    id: 'medium_classroom_actions_DRAW', level: 'medium', category: 'classroom_actions', signId: 'DRAW', title: 'Draw', order: 3,
+    description: 'Extend your pinky finger and trace a wavy, wiggly line across your flat non-dominant palm, as if sketching a picture.',
+    tips: [
+      'Only the pinky finger extends on the dominant hand',
+      'The path is wavy/zig-zag, not straight',
+      'Base hand stays flat and steady',
+    ],
+    imageUrl: '../assets/images/medium/actions/draw.png', videoUrl: '../assets/videos/medium/actions/draw.mp4', detectionType: 'motion',
+  },
+  {
+    // NEW — no SIGNS entry existed for COLOR anywhere in the file. ASLU
+    // documents only the noun form (finger flutter near the chin); per
+    // ASLU's own FAQ page, the verb/action sense is formed by adding a
+    // WRITE-style scribbling motion, same compound-sign precedent as
+    // OWNER (OWN + PERSON) elsewhere in this file.
+    id: 'medium_classroom_actions_COLOR', level: 'medium', category: 'classroom_actions', signId: 'COLOR', title: 'Color', order: 4,
+    description: 'Hold your dominant hand up near your chin with fingers spread and slightly curled, then wiggle your fingertips a couple of times. For the action of coloring a picture, follow it with a small side-to-side scribbling motion of your pinkie against your non-dominant palm, like filling in a coloring book.',
+    tips: [
+      'The chin-area finger flutter is the same base handshape used for individual colors like RED or BLUE',
+      'ASLU only documents this as a noun — the scribbling second part is what turns it into "coloring," not a single standalone verb sign',
+      'A bigger, more energetic flutter can suggest bright or many colors',
+    ],
+    imageUrl: '../assets/images/medium/classroom_actions/color.png', videoUrl: '../assets/videos/medium/classroom_actions/color.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/color.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_LISTEN.
+    id: 'medium_classroom_actions_LISTEN', level: 'medium', category: 'classroom_actions', signId: 'LISTEN', title: 'Listen', order: 5,
+    description: 'Cup your dominant hand and place it just behind your ear, as if trying to hear something better.',
+    tips: [
+      'Hand forms a loose cupped shape',
+      'Rests gently near, not on, the ear',
+      'A slight lean toward the sound can help reinforce it',
+    ],
+    imageUrl: '../assets/images/medium/actions/listen.png', videoUrl: '../assets/videos/medium/actions/listen.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_LOOK.
+    id: 'medium_classroom_actions_LOOK', level: 'medium', category: 'classroom_actions', signId: 'LOOK', title: 'Look', order: 6,
+    description: 'Point the first two fingers of your dominant hand (a \u2018V\u2019 handshape) away from your eyes, aiming them in the direction you\u2019re looking.',
+    tips: [
+      'Fingers start near your own eyes',
+      'The \u2018V\u2019 shape represents your two eyes looking',
+      'Direction can change to show where you\u2019re looking',
+    ],
+    imageUrl: '../assets/images/medium/actions/look.png', videoUrl: '../assets/videos/medium/actions/look.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_SIT.
+    id: 'medium_classroom_actions_SIT', level: 'medium', category: 'classroom_actions', signId: 'SIT', title: 'Sit', order: 7,
+    description: 'Hold both hands in a bent, two-finger \u2018H\u2019 shape (like two bent legs), and rest the fingers of your dominant hand down on top of your non-dominant hand\u2019s fingers.',
+    tips: [
+      'Both hands use the same bent two-finger shape',
+      'The dominant hand lands on top of the stationary hand',
+      'One clear downward landing motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/sit.png', videoUrl: '../assets/videos/medium/actions/sit.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sit.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_STAND.
+    id: 'medium_classroom_actions_STAND', level: 'medium', category: 'classroom_actions', signId: 'STAND', title: 'Stand', order: 8,
+    description: 'Hold your non-dominant hand flat, palm up. Stand the first two fingers of your dominant hand (like two legs, pointing down) upright on your palm.',
+    tips: [
+      'Dominant hand points its fingers downward, like legs',
+      'Base hand stays flat, palm up, the whole time',
+      'The \u2018legs\u2019 rest in place — no walking motion',
+    ],
+    imageUrl: '../assets/images/medium/actions/stand.png', videoUrl: '../assets/videos/medium/actions/stand.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_communication_ASK.
+    id: 'medium_classroom_actions_ASK', level: 'medium', category: 'classroom_actions', signId: 'ASK', title: 'Ask', order: 9,
+    description: 'Start with your index finger extended, palm facing the person you\u2019re asking, then bend it into an \u2018X\u2019 handshape as you move your hand toward them.',
+    tips: [
+      'Handshape changes from a straight index finger to a bent \u2018X\u2019',
+      'Motion moves toward the person you\u2019re asking',
+      'Direction can change depending on who you\u2019re asking',
+    ],
+    imageUrl: '../assets/images/medium/communication/ask.png', videoUrl: '../assets/videos/medium/communication/ask.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/ask.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_communication_ANSWER.
+    id: 'medium_classroom_actions_ANSWER', level: 'medium', category: 'classroom_actions', signId: 'ANSWER', title: 'Answer', order: 10,
+    description: 'Hold both index fingers up near your mouth, then flip them forward and downward, as if words are flowing out toward the other person.',
+    tips: [
+      'Both index fingers start near your mouth/chin',
+      'Motion flips forward and down, away from you',
+      'One smooth flipping motion is enough',
+    ],
+    imageUrl: '../assets/images/medium/communication/answer.png', videoUrl: '../assets/videos/medium/communication/answer.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_descriptions_OPEN (general "open," not the door-specific version).
+    id: 'medium_classroom_actions_OPEN', level: 'medium', category: 'classroom_actions', signId: 'OPEN', title: 'Open', order: 11,
+    description: 'Start with both flat hands together in front of you, palms facing out, then swing them apart and back toward yourself, like pushing open a pair of double doors.',
+    tips: [
+      'Hands start touching, side by side',
+      'Both hands swing outward together — this is the general "open," not the door-specific version',
+      'The opposite motion, hands swinging together, signs CLOSE',
+    ],
+    imageUrl: '../assets/images/medium/descriptions/open.png', videoUrl: '../assets/videos/medium/descriptions/open.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/door.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_communication_SHARE.
+    id: 'medium_classroom_actions_SHARE', level: 'medium', category: 'classroom_actions', signId: 'SHARE', title: 'Share', order: 13,
+    description: 'Hold your non-dominant hand flat with fingers together. Brush the pinky-side edge of your dominant flat hand back and forth along the side of your index finger, from the base to the fingertips.',
+    tips: [
+      'Base hand stays flat and still, fingers together',
+      'Dominant hand\u2019s pinky edge does the brushing',
+      'Motion moves back and forth, not just one direction',
+    ],
+    imageUrl: '../assets/images/medium/communication/share.png', videoUrl: '../assets/videos/medium/communication/share.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/share.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_requests_HELP.
+    id: 'medium_classroom_actions_HELP', level: 'medium', category: 'classroom_actions', signId: 'HELP', title: 'Help', order: 14,
+    description: 'Rest your dominant fist (thumb up) on the palm of your other flat hand, then lift both hands upward together.',
+    tips: [
+      'Base hand stays flat, dominant hand is a thumbs-up fist',
+      'Both hands lift together',
+      'One smooth upward motion',
+    ],
+    imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
+  },
+
   {
     id: 'medium_subjects_MATH', level: 'medium', category: 'subjects', signId: 'MATH', title: 'Math', order: 1,
     description: 'Form both hands into "M" handshapes (thumb tucked under three fingers) and tap or brush them together twice in front of you.',
@@ -1691,17 +2000,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hat.htm',
   },
   {
-    // DUPLICATE — same sign as medium_clothes_HAT (lifeprint: CAP's page notes it can also mean "putting a hat on").
-    id: 'medium_clothes_CAP', level: 'medium', category: 'clothes', signId: 'CAP', title: 'Cap', order: 11,
-    description: 'Hold your dominant hand flat, palm down, and gently pat the top of your head twice.',
-    tips: [
-      'Handshape is flat and open, not a fist',
-      'Two light pats, not one firm one',
-      'Same sign already used for HAT — context tells them apart',
-    ],
-    imageUrl: '../assets/images/medium/clothes/hat.png', videoUrl: '../assets/videos/medium/clothes/hat.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_clothes_JACKET', level: 'medium', category: 'clothes', signId: 'JACKET', title: 'Jacket', order: 12,
     description: 'Form both hands into an \u2018A\u2019 handshape (fist with thumb alongside, not tucked in) near your shoulders, then move them downward and inward, like putting on a jacket.',
     tips: [
@@ -1746,7 +2044,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/health/bathroom.png', videoUrl: '../assets/videos/medium/health/bathroom.mp4', detectionType: 'motion',
   },
 
-  /* ── MEDIUM · PEOPLE (Unit 6) ─────────────────────────────────
+  /* ── MEDIUM · PEOPLE (Unit 5) ─────────────────────────────────
    * BOY/GIRL/BABY already covered under 'family' — not duplicated here.
    * REV 8 (2026-08-25): I/HE/SHE resolved — removed from words[] above
    * rather than given entries here. 'I' is the same physical sign as
@@ -2137,7 +2435,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/requests/food.png', videoUrl: '../assets/videos/medium/requests/food.mp4', detectionType: 'motion',
   },
 
-  /* ── MEDIUM · ACTIONS (Unit 9) ──────────────────────────────────
+  /* ── MEDIUM · ACTIONS (Unit 8) ──────────────────────────────────
    * REV 8 (2026-08-25): new block. GO/COME/STOP/DRINK/SLEEP/CRY are
    * relocated entries (content unchanged from their old category, only
    * id/category/order updated — see each entry's own note for where it
@@ -2480,7 +2778,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bath.htm',
   },
 
-  /* ── MEDIUM · HAND ACTIONS (Unit 10) ────────────────────────────
+  /* ── MEDIUM · HAND ACTIONS (Unit 9) ────────────────────────────
    * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
    * added this session. All entries added with matching disabled:true
    * dictionary.js placeholders — see that file. */
@@ -2609,10 +2907,10 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/hand_actions/pick.png', videoUrl: '../assets/videos/medium/hand_actions/pick.mp4', detectionType: 'motion',
   },
 
-  /* ── MEDIUM · COMMUNICATION (Unit 11) ───────────────────────────
+  /* ── MEDIUM · COMMUNICATION (Unit 10) ───────────────────────────
    * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
    * added this session. 'HELP' is intentionally NOT here — it's already
-   * live under 'requests' (Needs, Unit 8) and that category's words[]
+   * live under 'requests' (Needs, Unit 7) and that category's words[]
    * claims it; see the CATEGORIES entry's comment. All entries added
    * with matching disabled:true dictionary.js placeholders. */
   {
@@ -2921,7 +3219,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/colors/pink.png', videoUrl: '../assets/videos/medium/colors/pink.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · SHAPES ── (new this pass — unlocks Unit 15)
+  // ── MEDIUM · SHAPES ── (new this pass — unlocks Unit 14)
   {
     id: 'medium_shapes_CIRCLE', level: 'medium', category: 'shapes', signId: 'CIRCLE', title: 'Circle', order: 1,
     description: 'Point your index finger and trace a circle in the air in front of you.',
@@ -3003,7 +3301,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/shapes/diamond.png', videoUrl: '../assets/videos/medium/shapes/diamond.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · BODY ── (new this pass — unlocks Unit 12)
+  // ── MEDIUM · BODY ── (new this pass — unlocks Unit 11)
   {
     id: 'medium_body_BODY', level: 'medium', category: 'body', signId: 'BODY', title: 'Body', order: 1,
     description: 'Place both flat hands on your upper chest, then move them down the front of your torso toward your stomach.',
@@ -3165,7 +3463,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/medium/body/back.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · SIZE ── (new this pass — unlocks Unit 16. BIG/TALL
+  // ── MEDIUM · SIZE ── (new this pass — unlocks Unit 15. BIG/TALL
   // description text carried over unchanged from the retired 'amounts'
   // category — see data.js history — everything else here is new.)
   {
@@ -3259,7 +3557,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/size/light.png', videoUrl: '../assets/videos/medium/size/light.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · TASTE ── (new this pass — unlocks Unit 19)
+  // ── MEDIUM · TASTE ── (new this pass — unlocks Unit 18)
   {
     id: 'medium_taste_SWEET', level: 'medium', category: 'taste', signId: 'SWEET', title: 'Sweet', order: 1,
     description: 'Brush your fingers downward across your chin, once or twice.',
@@ -3321,8 +3619,8 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/taste/fresh.png', videoUrl: '../assets/videos/medium/taste/fresh.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · PERSONAL_INFORMATION (Unit 13) ── (new this pass —
-  // unlocks Unit 13. NAME/AGE/FAMILY/BIRTHDAY/LIVE/FROM are new
+  // ── MEDIUM · PERSONAL_INFORMATION (Unit 12) ── (new this pass —
+  // unlocks Unit 12. NAME/AGE/FAMILY/BIRTHDAY/LIVE/FROM are new
   // ASLU-checked content (lifeprint.com, cross-checked against
   // Handspeak/PocketSign). BOY/GIRL/CHILD/PERSON/FRIEND/STUDENT/
   // TEACHER/HOME/SCHOOL are NOT new signs — they duplicate the entries
@@ -3498,7 +3796,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/from.htm',
   },
 
-  // ── MEDIUM · APPEARANCE (Unit 17) ── (new this pass — unlocks Unit
+  // ── MEDIUM · APPEARANCE (Unit 16) ── (new this pass — unlocks Unit
   // 17. CLEAN duplicates the existing medium_actions_CLEAN entry — see
   // block comment on Personal Information above for why. NEAT removed:
   // ASLU/PocketSign/Handspeak all describe it, in the tidy/orderly
@@ -3638,12 +3936,14 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/clear.htm',
   },
 
-  // ── MEDIUM · SOUND (Unit 20) ── (new this pass — unlocks Unit 20.
-  // FLAG: QUIET and SILENT are, per ASLU's own dictionary (which lists
-  // them together as "QUIET/SILENT"), the SAME physical sign — the
-  // "shhh" gesture followed by both hands crossing and pulling apart/
-  // down. Same landmark-classifier caveat that led to removing NEAT
-  // from Appearance — see chat writeup.
+  // ── MEDIUM · SOUND (Unit 19) ── (new this pass — unlocks Unit 19.
+  // QUIET and SILENT are, per ASLU's own dictionary (which lists them
+  // together as "QUIET/SILENT"), the SAME physical sign — the "shhh"
+  // gesture followed by both hands crossing and pulling apart/down.
+  // Same landmark-classifier caveat that led to removing NEAT from
+  // Appearance — see chat writeup. RESOLVED (2026-09-03 classifier
+  // conflict audit): SILENT's SIGNS entry removed; QUIET is the
+  // trained motion entry for this gesture.
   {
     id: 'medium_sound_LOUD', level: 'medium', category: 'sound', signId: 'LOUD', title: 'Loud', order: 1,
     description: 'Touch your index finger to your ear, then shake both fists back and forth firmly in front of you.',
@@ -3661,7 +3961,7 @@ const SIGNS = [
     tips: [
       'Two parts: the "shhh" touch, then both hands crossing and pulling apart',
       'Hands end up palm-down, out to the sides',
-      'Same physical sign as SILENT below — context carries the difference',
+      'This same sign also covers SILENT — context carries the difference',
     ],
     imageUrl: '../assets/images/medium/sound/quiet.png', videoUrl: '../assets/videos/medium/sound/quiet.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/q/quiet.htm',
@@ -3676,18 +3976,6 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/sound/noisy.png', videoUrl: '../assets/videos/medium/sound/noisy.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/loud.htm',
-  },
-  {
-    // FLAG — same physical sign as QUIET above; see block comment.
-    id: 'medium_sound_SILENT', level: 'medium', category: 'sound', signId: 'SILENT', title: 'Silent', order: 4,
-    description: 'Touch your index finger to your lips ("shhh"), then bring both flat hands up to cross at the wrists in front of your face and pull them apart and down to your sides — the same sign as QUIET.',
-    tips: [
-      'Physically identical to QUIET — context carries the difference, not handshape',
-      'Two parts: the "shhh" touch, then both hands crossing and pulling apart',
-      'A calm, settled facial expression fits the meaning',
-    ],
-    imageUrl: '../assets/images/medium/sound/quiet.png', videoUrl: '../assets/videos/medium/sound/quiet.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.handspeak.com/word/1759/',
   },
   {
     id: 'medium_sound_HIGH', level: 'medium', category: 'sound', signId: 'HIGH', title: 'High', order: 5,
@@ -3856,7 +4144,7 @@ const SIGNS = [
     tips: [
       'Handshape is thumb and index pinching together',
       'Opens and closes like a beak',
-      'Held right in front of the mouth',
+      'This same sign also covers CHICKEN — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/animals/bird.png', videoUrl: '../assets/videos/medium/animals/bird.mp4', detectionType: 'motion',
   },
@@ -3899,17 +4187,6 @@ const SIGNS = [
       'Repeat a couple of times',
     ],
     imageUrl: '../assets/images/medium/animals/pig.png', videoUrl: '../assets/videos/medium/animals/pig.mp4', detectionType: 'motion',
-  },
-  {
-    // DUPLICATE — same sign as medium_animals_BIRD (lifeprint: "the sign BIRD can in context be used to mean chicken").
-    id: 'medium_animals_CHICKEN', level: 'medium', category: 'animals', signId: 'CHICKEN', title: 'Chicken', order: 9,
-    description: 'Hold your thumb and index finger together in front of your mouth and open and close them like a beak.',
-    tips: [
-      'Handshape is thumb and index pinching together',
-      'Opens and closes like a beak',
-      'Same sign already used for BIRD — context tells them apart',
-    ],
-    imageUrl: '../assets/images/medium/animals/bird.png', videoUrl: '../assets/videos/medium/animals/bird.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_animals_DUCK', level: 'medium', category: 'animals', signId: 'DUCK', title: 'Duck', order: 10,
@@ -3955,7 +4232,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/animals/goat.png', videoUrl: '../assets/videos/medium/animals/goat.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · HOME (Unit 23) ── (new this pass — unlocks Unit 23.
+  // ── MEDIUM · HOME (Unit 22) ── (new this pass — unlocks Unit 22.
   // HOME and BATHROOM are duplicates of signs already verified
   // elsewhere in this file (see medium_places_HOME and
   // medium_health_BATHROOM); the other 8 words are fresh lifeprint.com
@@ -4072,7 +4349,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/field.htm',
   },
 
-  // ── MEDIUM · FURNITURE (Unit 24) ── (new this pass — unlocks Unit 24.
+  // ── MEDIUM · FURNITURE (Unit 23) ── (new this pass — unlocks Unit 23.
   // All 11 words are fresh lifeprint.com (ASLU) research, cross-checked
   // against Handspeak, aslbloom, signingsavvy, and other secondary
   // sources. DESK and CLOSET are duplicates of TABLE and CABINET —
@@ -4146,17 +4423,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/couch.htm',
   },
   {
-    // DUPLICATE — same sign as medium_furniture_TABLE (this sign covers both).
-    id: 'medium_furniture_DESK', level: 'medium', category: 'furniture', signId: 'DESK', title: 'Desk', order: 7,
-    description: 'Hold both forearms horizontal in front of you, one on top of the other, then lower your dominant arm to rest flat on top of the other — showing a flat tabletop.',
-    tips: [
-      'Both arms/hands stay flat and horizontal',
-      'One clean downward landing motion',
-      'Same sign already used for TABLE — some signers add a ‘D’ handshape to specify desk',
-    ],
-    imageUrl: '../assets/images/medium/furniture/table.png', videoUrl: '../assets/videos/medium/furniture/table.mp4', detectionType: 'motion',
-  },
-  {
     id: 'medium_furniture_SHELF', level: 'medium', category: 'furniture', signId: 'SHELF', title: 'Shelf', order: 8,
     description: 'Hold both flat hands together in front of you, palms down, fingertips touching, then smoothly pull them apart to trace a flat horizontal line at chest height.',
     tips: [
@@ -4166,28 +4432,6 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/furniture/shelf.png', videoUrl: '../assets/videos/medium/furniture/shelf.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shelf.htm',
-  },
-  {
-    id: 'medium_furniture_CABINET', level: 'medium', category: 'furniture', signId: 'CABINET', title: 'Cabinet', order: 9,
-    description: 'The same sign as DOOR — your dominant flat hand, fingers up, pivots open and then closed, like a hinge at your pinkie. Context makes clear you mean a cabinet, not an actual door.',
-    tips: [
-      'Only the dominant hand moves; the hinge is at the pinkie side',
-      'One open-then-close pivot',
-      'Same sign also covers CLOSET, cupboard, and locker',
-    ],
-    imageUrl: '../assets/images/medium/furniture/cabinet.png', videoUrl: '../assets/videos/medium/furniture/cabinet.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/door.htm',
-  },
-  {
-    // DUPLICATE — same sign as medium_furniture_CABINET (both are context-dependent uses of DOOR).
-    id: 'medium_furniture_CLOSET', level: 'medium', category: 'furniture', signId: 'CLOSET', title: 'Closet', order: 10,
-    description: 'The same sign as DOOR — your dominant flat hand, fingers up, pivots open and then closed, like a hinge at your pinkie. Context makes clear you mean a closet, not an actual door.',
-    tips: [
-      'Only the dominant hand moves; the hinge is at the pinkie side',
-      'One open-then-close pivot',
-      'Same sign already used for CABINET above — also covers cupboard and locker',
-    ],
-    imageUrl: '../assets/images/medium/furniture/cabinet.png', videoUrl: '../assets/videos/medium/furniture/cabinet.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_furniture_LAMP', level: 'medium', category: 'furniture', signId: 'LAMP', title: 'Lamp', order: 11,
@@ -4201,7 +4445,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/light.htm',
   },
 
-  // ── MEDIUM · BATHROOM (Unit 26) ── (UNLOCKED 2026-09-01 — researched
+  // ── MEDIUM · BATHROOM (Unit 25) ── (UNLOCKED 2026-09-01 — researched
   // against lifeprint.com, cross-checked against Handspeak/PocketSign/
   // StrongASL/SigningSavvy. TOOTHBRUSH is a duplicate of
   // medium_health_BRUSH_TEETH (SigningSavvy: the noun shares the verb's
@@ -4287,7 +4531,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/toothpaste.htm',
   },
 
-  // ── MEDIUM · KITCHEN (Unit 27) ── (UNLOCKED 2026-09-01 — researched
+  // ── MEDIUM · KITCHEN (Unit 26) ── (UNLOCKED 2026-09-01 — researched
   // against lifeprint.com, cross-checked against Handspeak/PocketSign/
   // StrongASL/SigningSavvy. CUP/SPOON/FORK are duplicates of the existing
   // medium_food_CUP/SPOON/FORK entries. AUDIT NOTE: while verifying CUP
@@ -4394,7 +4638,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/knife.htm',
   },
 
-  // ── MEDIUM · HOUSEHOLD (Unit 25) ── (researched against lifeprint.com,
+  // ── MEDIUM · HOUSEHOLD (Unit 24) ── (researched against lifeprint.com,
   // cross-checked against Handspeak/aslbloom/PocketSign/SigningSavvy.
   // TOY and BAG dropped from words[] — ASLU explicitly recommends
   // fingerspelling both (T-O-Y and B-A-G) rather than using a dedicated
@@ -4575,7 +4819,7 @@ const SIGNS = [
 
 
 
-  // ── MEDIUM · INSECTS ── (new this pass — unlocks Unit 40)
+  // ── MEDIUM · INSECTS ── (new this pass — unlocks Unit 39)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom/pocketsign. ANT note: lifeprint documents that
   // many Deaf signers just use the sign BUG for "ant" or fingerspell
@@ -4627,7 +4871,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/insects/spider.png', videoUrl: '../assets/videos/medium/insects/spider.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · SEASONS ── (new this pass — unlocks Unit 47)
+  // ── MEDIUM · SEASONS ── (new this pass — unlocks Unit 46)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/ava.me/aslbloom. WINTER note: lifeprint documents this
   // as literally the same sign as COLD, disambiguated by context, an
@@ -4674,7 +4918,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/seasons/winter.png', videoUrl: '../assets/videos/medium/seasons/winter.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · DAYTIME ── (new this pass — unlocks Unit 54)
+  // ── MEDIUM · DAYTIME ── (new this pass — unlocks Unit 53)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom. EVENING note: lifeprint documents NIGHT and
   // EVENING as literally the same sign — captured in the tips rather
@@ -4720,7 +4964,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/medium/daytime/night.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · DAYS ── (new this pass — unlocks Unit 55)
+  // ── MEDIUM · DAYS ── (new this pass — unlocks Unit 54)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/ava.me/strongasl. THURSDAY note: lifeprint documents
   // this as using an 'H' handshape specifically because TUESDAY
@@ -4800,7 +5044,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/days/sunday.png', videoUrl: '../assets/videos/medium/days/sunday.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · DISTANCE ── (new this pass — unlocks Unit 60)
+  // ── MEDIUM · DISTANCE ── (new this pass — unlocks Unit 59)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/pocketsign/the indexing.htm reference page. NEAR/CLOSE
   // note: lifeprint explicitly documents NOT-FAR = CLOSE-by = NEAR-by
@@ -4870,7 +5114,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/distance/away.png', videoUrl: '../assets/videos/medium/distance/away.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · DRINKS ── (new this pass — unlocks Unit 37)
+  // ── MEDIUM · DRINKS ── (new this pass — unlocks Unit 36)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom/PocketSign/ASL Interactive. JUICE note: lifeprint's
   // own JUICE entry mostly discusses compound signs (e.g. ORANGE+JUICE);
@@ -4940,7 +5184,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/drinks/coffee.png', videoUrl: '../assets/videos/medium/drinks/coffee.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · FRUITS ── (new this pass — unlocks Unit 34)
+  // ── MEDIUM · FRUITS ── (new this pass — unlocks Unit 33)
   // Researched on lifeprint.com (ASLU), cross-checked against Handspeak/
   // aslbloom/Signing Time/ASL-LEX (ASLU text pages don't include prose
   // descriptions for every entry, only video, so the wording below is my
@@ -5045,7 +5289,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/fruits/melon.png', videoUrl: '../assets/videos/medium/fruits/melon.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · VEGETABLES ── (researched 2026-09-02, unlocks Unit 35)
+  // ── MEDIUM · VEGETABLES ── (researched 2026-09-02, unlocks Unit 34)
   // Researched on lifeprint.com (ASLU), cross-checked against Handspeak
   // and Signing Savvy. CUCUMBER is intentionally NOT included — sources
   // disagreed enough (and Handspeak's own entry was too thin) that a
@@ -5172,7 +5416,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/vegetables/broccoli.png', videoUrl: '../assets/videos/medium/vegetables/broccoli.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · DRESSING ── (new this pass — unlocks Unit 42)
+  // ── MEDIUM · DRESSING ── (new this pass — unlocks Unit 41)
   // WEAR/CHANGE/FOLD researched on lifeprint.com (ASLU), cross-checked
   // against Handspeak/PocketSign/SigningTime. WASH/CLEAN/DIRTY are
   // DUPLICATES of the entries already live under 'health'/'appearance' —
@@ -5259,7 +5503,7 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/appearance/dirty.png', videoUrl: '../assets/videos/medium/appearance/dirty.mp4', detectionType: 'motion',
   },
 
-  // ── MEDIUM · TRANSPORTATION ── (new this pass — unlocks Unit 50)
+  // ── MEDIUM · TRANSPORTATION ── (new this pass — unlocks Unit 49)
   // DRIVE and FLY researched fresh on lifeprint.com (ASLU), cross-checked
   // against Handspeak. WALK, RIDE, GO, STOP, WAIT are DUPLICATES of the
   // entries already live under 'actions' — re-listed here so this
@@ -5753,7 +5997,7 @@ const SIGNS = [
     id: 'medium_responses_SURE', level: 'medium', category: 'responses', signId: 'SURE', title: 'Sure', order: 4,
     description: 'Touch your dominant index finger to your lips, then move it forward and slightly down in one quick, confident motion.',
     tips: [
-      'This is the same sign as TRUE — ASLU treats SURE/TRUE/REALLY as one sign with several English translations',
+      'This is the same sign as TRUE — also covers REALLY, per ASLU',
       'Contact starts right at the lips, not the chin',
       'A quick, decisive forward motion reads as more confident/certain',
     ],
@@ -5771,20 +6015,6 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/responses/maybe.png', videoUrl: '../assets/videos/responses/maybe.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/maybe.htm',
-  },
-  {
-    // NEW — same underlying sign as SURE above (see that entry's notes);
-    // documented as its own entry here since it's a separate word in
-    // this category's word list.
-    id: 'medium_responses_REALLY', level: 'medium', category: 'responses', signId: 'REALLY', title: 'Really', order: 6,
-    description: 'Touch your dominant index finger to your lips, then move it forward and slightly down in one quick motion — the same sign used for TRUE and SURE.',
-    tips: [
-      'Same physical sign as SURE — ASLU treats REALLY/SURE/TRUE as one sign',
-      'Contact starts right at the lips',
-      'A firm, single forward motion; can be repeated for extra emphasis',
-    ],
-    imageUrl: '../assets/images/medium/responses/really.png', videoUrl: '../assets/videos/responses/really.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/true.htm',
   },
   {
     // DUPLICATE — same sign as medium_feelings_GOOD.
@@ -5851,7 +6081,7 @@ const SIGNS = [
     id: 'medium_answers_SURE', level: 'medium', category: 'answers', signId: 'SURE', title: 'Sure', order: 4,
     description: 'Touch your dominant index finger to your lips, then move it forward and slightly down in one quick, confident motion.',
     tips: [
-      'This is the same sign as TRUE and REALLY',
+      'This is the same sign as TRUE',
       'Contact starts right at the lips, not the chin',
       'Same sign already used for SURE under Responses',
     ],
@@ -5919,8 +6149,8 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/feelings/good.mp4', detectionType: 'motion',
   },
 
-  /* ── MEDIUM · WILD ANIMALS (Unit 39) ── (NEW this session — unlocks
-   * Unit 39. All 10 words researched fresh against lifeprint.com (ASLU),
+  /* ── MEDIUM · WILD ANIMALS (Unit 38) ── (NEW this session — unlocks
+   * Unit 38. All 10 words researched fresh against lifeprint.com (ASLU),
    * cross-checked against a second source (Quizlet's lifeprint-sourced
    * flashcard set, aslbloom.com, or Signing Savvy, noted per entry).
    * ZEBRA has no single dedicated ASLU sign — both lifeprint.com's own
@@ -6041,7 +6271,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/turtle.htm',
   },
 
-  /* ── MEDIUM · SNACKS (Unit 36) ── (NEW this session — unlocks Unit
+  /* ── MEDIUM · SNACKS (Unit 35) ── (NEW this session — unlocks Unit
    * 36. COOKIE and CANDY are duplicates of the existing
    * medium_food_COOKIE/medium_food_CANDY entries (same physical signs,
    * matching this file's existing duplicate-entry convention). The
@@ -6171,10 +6401,10 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/icecream.htm',
   },
 
-  /* ── MEDIUM · WEATHER (Unit 46) ── (NEW this session — unlocks Unit
+  /* ── MEDIUM · WEATHER (Unit 45) ── (NEW this session — unlocks Unit
    * 46. HOT and COLD are duplicates of the existing
    * medium_temperature_HOT/COLD entries. WARM and COOL are also listed
-   * in the 'temperature' category's words[] (Unit 18, Touch) but that
+   * in the 'temperature' category's words[] (Unit 17, Touch) but that
    * category currently has NO SIGNS entries for either word — flagged
    * separately in chat, NOT fixed here since 'temperature' wasn't in
    * scope this pass. WARM/COOL below are written fresh under 'weather'
@@ -6263,7 +6493,7 @@ const SIGNS = [
   },
   {
     // NEW — no SIGNS entry existed for WARM anywhere in this file,
-    // despite 'temperature' (Touch, Unit 18) already listing it in
+    // despite 'temperature' (Touch, Unit 17) already listing it in
     // words[] as comingSoon:false. That mismatch is flagged in chat;
     // this entry is written fresh under 'weather' only.
     id: 'medium_weather_WARM', level: 'medium', category: 'weather', signId: 'WARM', title: 'Warm', order: 8,
@@ -6278,7 +6508,7 @@ const SIGNS = [
   },
   {
     // NEW — no SIGNS entry existed for COOL anywhere in this file,
-    // despite 'temperature' (Touch, Unit 18) already listing it in
+    // despite 'temperature' (Touch, Unit 17) already listing it in
     // words[] as comingSoon:false. Same flag as WARM above.
     id: 'medium_weather_COOL', level: 'medium', category: 'weather', signId: 'COOL', title: 'Cool', order: 9,
     description: 'Hold both open hands near your face and wave them back toward you a couple of times, like fanning yourself.',
@@ -6324,7 +6554,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/snow.htm',
   },
 
-  /* ── MEDIUM · MONTHS (Unit 56) ──────────────────────────────────
+  /* ── MEDIUM · MONTHS (Unit 55) ──────────────────────────────────
    * UNLOCKED (2026-09-02): all 12 words are new content, researched
    * against lifeprint.com (ASLU) and cross-checked against StartASL.com
    * and Hearview.ai. All three sources agree on the same rule: ASL
@@ -6469,7 +6699,7 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
 
-  /* ── MEDIUM · SEQUENCE (Unit 57) ─────────────────────────────────
+  /* ── MEDIUM · SEQUENCE (Unit 56) ─────────────────────────────────
    * UNLOCKED (2026-09-02): 9 of 10 words are new content, researched
    * against lifeprint.com (ASLU) and cross-checked against Handspeak.
    * FINISHED reuses the existing medium_turn_taking_FINISHED entry
@@ -7226,21 +7456,6 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
   },
   {
-    // NEW — researched against lifeprint.com's "nice / clean" page, cross-
-    // checked against Handspeak and aslbloom. All three sources agree:
-    // NICE and CLEAN are the identical sign; only a repeated (double)
-    // motion shifts the meaning toward "clean up."
-    id: 'medium_conversation_NICE', level: 'medium', category: 'conversation', signId: 'NICE', title: 'Nice', order: 5,
-    description: 'Hold your non-dominant hand flat in front of you, palm up, and slide the flat palm of your dominant hand across it, from the wrist toward the fingertips.',
-    tips: [
-      'This is the same sign as CLEAN — context tells them apart',
-      'One smooth stroke means "nice"; a repeated double stroke shifts it toward "clean up"',
-      'Both hands stay flat the whole time',
-    ],
-    imageUrl: '../assets/images/medium/conversation/nice.png', videoUrl: '../assets/videos/medium/conversation/nice.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nice.htm',
-  },
-  {
     // DUPLICATE — same sign as medium_social_MEET.
     id: 'medium_conversation_MEET', level: 'medium', category: 'conversation', signId: 'MEET', title: 'Meet', order: 6,
     description: 'Point both index fingers up and bring them together in front of you from opposite directions, stopping just before the tips touch.',
@@ -7423,6 +7638,711 @@ const SIGNS = [
       'A different sign (pointing with a "1" handshape) is used for "that person" specifically',
     ],
     imageUrl: '../assets/images/medium/making_requests/that.png', videoUrl: '../assets/videos/medium/making_requests/that.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · FOOD ── (new this pass — unlocks Unit 32)
+  // Researched on lifeprint.com (ASLU), cross-checked against a second
+  // source per word (aslbloom/babysignlanguage/PocketSign/ASL
+  // Interactive — sources vary by word since not every dictionary
+  // covers every word). Descriptions below are my own wording of what
+  // those sources show, not copied text. FISH is a DUPLICATE of the
+  // existing medium_animals_FISH entry (same physical sign). CHICKEN's
+  // SIGNS entry was removed here (2026-09-03 classifier conflict
+  // audit) — see the "32. Food" CATEGORIES comment above.
+  {
+    // LOWER CONFIDENCE — ASLU's own rice.htm page states there "isn't a
+    // widespread sign for rice" in ASL, though it (and two other
+    // sources, aslbloom and babysignlanguage) independently describe
+    // the same R-handshape scoop. Included per that convergence, but
+    // flagged since the primary source itself hedges on how
+    // standardized it is.
+    id: 'medium_food_RICE', level: 'medium', category: 'food', signId: 'RICE', title: 'Rice', order: 1,
+    description: 'Hold your non-dominant hand loosely cupped like a small bowl. Form your dominant hand into an \u2018R\u2019 handshape (crossed index and middle fingers) and scoop it up out of the "bowl" toward your mouth, as if spooning rice out with your fingers.',
+    tips: [
+      'Handshape is \u2018R\u2019 — index and middle fingers crossed, not spread',
+      'Non-dominant hand stays cupped and still, representing the bowl',
+      'A small, repeated scooping motion toward the mouth, not one big scoop',
+    ],
+    imageUrl: '../assets/images/medium/food/rice.png', videoUrl: '../assets/videos/medium/food/rice.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rice.htm',
+  },
+  {
+    id: 'medium_food_BREAD', level: 'medium', category: 'food', signId: 'BREAD', title: 'Bread', order: 2,
+    description: 'Hold your non-dominant hand flat and upright in front of you, palm facing your body, like the side of a loaf. With your dominant hand, make a downward slicing motion against the back of your non-dominant hand, as if cutting slices off the loaf.',
+    tips: [
+      'Non-dominant hand stays still and upright — it represents the loaf',
+      'Dominant hand slices downward, not side to side',
+      'Repeat the slicing motion two or three times',
+    ],
+    imageUrl: '../assets/images/medium/food/bread.png', videoUrl: '../assets/videos/medium/food/bread.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bread.htm',
+  },
+  {
+    id: 'medium_food_EGG', level: 'medium', category: 'food', signId: 'EGG', title: 'Egg', order: 3,
+    description: 'Form both hands into an \u2018H\u2019 handshape (index and middle fingers extended together). Tap your dominant \u2018H\u2019 hand down against your non-dominant \u2018H\u2019 hand, then pull both hands apart and down, as if cracking an egg and letting the halves fall away.',
+    tips: [
+      'Both hands use the \u2018H\u2019 handshape — index and middle fingers together',
+      'One light tap first, then a clean pull-apart-and-down',
+      'The pulling-apart motion is what reads as "cracking," not the tap alone',
+    ],
+    imageUrl: '../assets/images/medium/food/egg.png', videoUrl: '../assets/videos/medium/food/egg.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/egg.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_animals_FISH.
+    id: 'medium_food_FISH', level: 'medium', category: 'food', signId: 'FISH', title: 'Fish', order: 5,
+    description: 'Hold your dominant hand flat, fingers together, and move it forward while wiggling it side to side, like a fish swimming through water.',
+    tips: [
+      'Hand stays flat the whole time',
+      'The side-to-side wiggle mimics a fish\u2019s tail',
+      'Same sign already used for Fish under Animals',
+    ],
+    imageUrl: '../assets/images/medium/animals/fish.png', videoUrl: '../assets/videos/medium/animals/fish.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_food_MEAT', level: 'medium', category: 'food', signId: 'MEAT', title: 'Meat', order: 6,
+    description: 'Hold your non-dominant hand flat in front of you. With your dominant thumb and index finger, pinch the fleshy web of skin between the thumb and index finger of your non-dominant hand and give it a small wiggle, as if checking a piece of meat.',
+    tips: [
+      'Pinch point is the webbing between the non-dominant thumb and index finger',
+      'A small wiggle or shake after the pinch, not just a static grab',
+      'Non-dominant hand otherwise stays still',
+    ],
+    imageUrl: '../assets/images/medium/food/meat.png', videoUrl: '../assets/videos/medium/food/meat.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/meat.htm',
+  },
+  {
+    id: 'medium_food_SOUP', level: 'medium', category: 'food', signId: 'SOUP', title: 'Soup', order: 7,
+    description: 'Hold your non-dominant hand loosely cupped like a bowl in front of you. Form your dominant hand into a \u2018U\u2019 handshape (index and middle fingers extended together) and scoop it up out of the "bowl" toward your mouth, twice, like spooning soup.',
+    tips: [
+      'Handshape is \u2018U\u2019 — index and middle fingers together, held vertical',
+      'A larger, slower scoop than the sign for SPOON, and it travels closer to the mouth',
+      'Non-dominant "bowl" hand stays in place through both scoops',
+    ],
+    imageUrl: '../assets/images/medium/food/soup.png', videoUrl: '../assets/videos/medium/food/soup.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/soup.htm',
+  },
+
+  // ── MEDIUM · PLANTS ── (new this pass — unlocks Unit 44)
+  // Researched on lifeprint.com (ASLU), cross-checked against a second
+  // source per word (aslbloom/PocketSign/dummies.com ASL guide — varies
+  // by word). WATER and GARDEN are DUPLICATES of the existing
+  // medium_drinks_WATER/medium_home_GARDEN entries. SEED and ROOT are
+  // NOT included — see the CATEGORIES comment on 'plants' above.
+  {
+    id: 'medium_plants_PLANT', level: 'medium', category: 'plants', signId: 'PLANT', title: 'Plant', order: 1,
+    description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height, palm facing up. Push your dominant hand up through it from below, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019 as it emerges, as if a plant were sprouting up out of the ground. Repeat the motion a second time just to the side to show more than one plant.',
+    tips: [
+      'The dominant hand opens from a flattened \u2018O\u2019 into a \u20185\u2019 as it rises through the \u2018C\u2019',
+      'Doing this motion just once instead of twice changes the meaning to GROW rather than "a plant"',
+      'Non-dominant \u2018C\u2019 hand represents the ground the plant is coming up through',
+    ],
+    imageUrl: '../assets/images/medium/plants/plant.png', videoUrl: '../assets/videos/medium/plants/plant.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/plant.htm',
+  },
+  {
+    id: 'medium_plants_TREE', level: 'medium', category: 'plants', signId: 'TREE', title: 'Tree', order: 2,
+    description: 'Rest the elbow of your dominant arm on the back of your flat, horizontal non-dominant hand. Hold your dominant hand upright in a loose \u20185\u2019 shape, fingers spread, and twist it back and forth at the wrist.',
+    tips: [
+      'Non-dominant flat hand represents the ground; dominant forearm is the trunk',
+      'Fingers stay spread — they represent the branches',
+      'Movement is a wrist twist, not a big arm swing',
+    ],
+    imageUrl: '../assets/images/medium/plants/tree.png', videoUrl: '../assets/videos/medium/plants/tree.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tree.htm',
+  },
+  {
+    id: 'medium_plants_FLOWER', level: 'medium', category: 'plants', signId: 'FLOWER', title: 'Flower', order: 3,
+    description: 'Bring the fingertips and thumb of your dominant hand together into a "squished O" shape and touch them to one side of your nose, then to the other side, as if smelling a flower.',
+    tips: [
+      'Handshape is a squished/flattened \u2018O\u2019, fingertips and thumb together',
+      'Touch one nostril, then the other — either side can go first',
+      'A light touch to the cheek/nose area, not a poke',
+    ],
+    imageUrl: '../assets/images/medium/plants/flower.png', videoUrl: '../assets/videos/medium/plants/flower.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/flower.htm',
+  },
+  {
+    id: 'medium_plants_GRASS', level: 'medium', category: 'plants', signId: 'GRASS', title: 'Grass', order: 4,
+    description: 'Hold a loose \u20185\u2019 handshape under your chin, palm facing up and fingers pointing outward. Brush the hand upward against your chin twice in a small circular motion.',
+    tips: [
+      'Handshape is a loose \u20185\u2019 — all fingers spread',
+      'Palm brushes up against the chin, not away from it',
+      'A small circular up-forward-down motion, repeated twice',
+    ],
+    imageUrl: '../assets/images/medium/plants/grass.png', videoUrl: '../assets/videos/medium/plants/grass.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/grass.htm',
+  },
+  {
+    // LOWER CONFIDENCE — sources disagree on this one. ASLU and
+    // PocketSign both describe the "falling leaf" version shown here
+    // (same handshape idea as the TREE/AUTUMN family of signs); aslbloom
+    // describes an unrelated tap-and-wiggle sign instead. Went with the
+    // two-source version.
+    id: 'medium_plants_LEAF', level: 'medium', category: 'plants', signId: 'LEAF', title: 'Leaf', order: 5,
+    description: 'Hold the index finger of your non-dominant hand pointing up, representing a branch. Rest the wrist of your dominant hand, fingers together and open, against the fingertip of that index finger, then gently flutter your dominant hand back and forth as it drifts downward, like a leaf falling and blowing in the wind.',
+    tips: [
+      'Non-dominant index finger stays still — it\u2019s the branch the leaf hangs from',
+      'The flutter comes from the wrist, not the whole arm',
+      'Drifting the hand downward as it flutters is what shows the leaf "falling"',
+    ],
+    imageUrl: '../assets/images/medium/plants/leaf.png', videoUrl: '../assets/videos/medium/plants/leaf.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/leaf.htm',
+  },
+  {
+    // LOWER CONFIDENCE — only two sources found describing this word in
+    // detail (ASLU and PocketSign), both in close agreement, but it
+    // hasn't been cross-checked against a third the way most of this
+    // pass's words were.
+    id: 'medium_plants_BRANCH', level: 'medium', category: 'plants', signId: 'BRANCH', title: 'Branch', order: 6,
+    description: 'Hold your non-dominant arm upright, hand open, representing a tree trunk. Form your dominant hand into a \u20181\u2019 handshape (index finger extended) near the elbow of your non-dominant arm, and move it outward and slightly upward, tracing the line of a branch growing out from the trunk.',
+    tips: [
+      'Non-dominant arm stays upright and still — it\u2019s the tree trunk',
+      'Only the index finger is extended on the dominant hand',
+      'The outward-and-up path is what reads as a "branch" rather than just pointing',
+    ],
+    imageUrl: '../assets/images/medium/plants/branch.png', videoUrl: '../assets/videos/medium/plants/branch.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/branch.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_home_GARDEN.
+    id: 'medium_plants_GARDEN', level: 'medium', category: 'plants', signId: 'GARDEN', title: 'Garden', order: 7,
+    description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height. Push your dominant hand up through it from below, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019, then repeat the motion just to the side to show more than one plant growing.',
+    tips: [
+      'Same base handshape and motion as PLANT, repeated to the side',
+      'The repetition (versus a single motion) is what shows multiple plants rather than one',
+      'Same sign already used for Garden under Home',
+    ],
+    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/medium/home/garden.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_plants_GROW', level: 'medium', category: 'plants', signId: 'GROW', title: 'Grow', order: 8,
+    description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height, palm facing up. Push your dominant hand up through it once, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019 as it emerges.',
+    tips: [
+      'Same handshape family as PLANT, but a single motion instead of a repeated one',
+      'You can make the motion bigger or move it higher to show something growing larger',
+      'Non-dominant \u2018C\u2019 hand represents where the growth is coming from',
+    ],
+    imageUrl: '../assets/images/medium/plants/grow.png', videoUrl: '../assets/videos/medium/plants/grow.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/grow.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_drinks_WATER.
+    id: 'medium_plants_WATER', level: 'medium', category: 'plants', signId: 'WATER', title: 'Water', order: 9,
+    description: 'Tap the fingertip of a \u2018W\u2019 handshape (index, middle, and ring fingers extended) against your chin twice.',
+    tips: [
+      'Handshape is \u2018W\u2019 — three fingers extended, thumb and pinky tucked',
+      'Contact point is the chin, tapped twice',
+      'Same sign already used for Water under Drinks',
+    ],
+    imageUrl: '../assets/images/medium/drinks/water.png', videoUrl: '../assets/videos/medium/drinks/water.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_plants_SOIL', level: 'medium', category: 'plants', signId: 'SOIL', title: 'Soil', order: 10,
+    description: 'Hold both hands in front of you in a flattened \u2018O\u2019 shape, palms facing up, and rub your fingertips against your thumbs, as if feeling grains of soil or sand between your fingers.',
+    tips: [
+      'This is the same sign used for DIRT and SAND — context tells them apart',
+      'Both hands rub at the same time',
+      'A neutral or slightly wrinkled-nose expression is common with this sign',
+    ],
+    imageUrl: '../assets/images/medium/plants/soil.png', videoUrl: '../assets/videos/medium/plants/soil.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dirt.htm',
+  },
+  /* ── MEDIUM · LOCATION (Unit 58) ── (new this session — unlocks Unit
+   * 59). ON, UNDER, ABOVE, BELOW, BESIDE, BETWEEN, and spatial NEXT
+   * were dropped from words[] rather than given invented signs — see
+   * the comment on the 'location' CATEGORIES entry above for why. */
+  {
+    id: 'medium_location_IN', level: 'medium', category: 'location', signId: 'IN', title: 'In', order: 1,
+    description: 'Curl your non-dominant hand into a loose \u2018C\u2019 shape, then tuck the fingertips of your closed dominant hand down into the opening, as if placing something inside a cup.',
+    tips: [
+      'The non-dominant \u2018C\u2019 hand acts like a container',
+      'One dip into the \u2018C\u2019 is enough for the basic sign \u2018in\u2019',
+      'Doing the same movement twice, smaller the second time, shifts the meaning to \u2018inside\u2019 \u2014 see that entry',
+    ],
+    imageUrl: '../assets/images/medium/location/in.png', videoUrl: '../assets/videos/medium/location/in.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/in.htm',
+  },
+  {
+    id: 'medium_location_OUT', level: 'medium', category: 'location', signId: 'OUT', title: 'Out', order: 2,
+    description: 'Hold your dominant hand loosely open in front of you, then move it slightly forward and off to the side while closing it into a squeezed \u2018O\u2019 handshape, as if pulling something out from inside.',
+    tips: [
+      'The handshape closes from open to a squeezed \u2018O\u2019 as the hand moves',
+      'The path angles slightly forward and to the side, not straight out',
+      'This same movement, done bigger and higher, becomes \u2018outside\u2019 \u2014 see that entry',
+    ],
+    imageUrl: '../assets/images/medium/location/out.png', videoUrl: '../assets/videos/medium/location/out.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/outside.htm',
+  },
+  {
+    id: 'medium_location_INSIDE', level: 'medium', category: 'location', signId: 'INSIDE', title: 'Inside', order: 3,
+    description: 'Sign IN, but repeat the motion a second time with a smaller movement \u2014 tuck your closed dominant hand into the non-dominant \u2018C\u2019 hand twice, the second dip noticeably smaller than the first.',
+    tips: [
+      'Built directly on the IN sign, just repeated',
+      'The second movement is deliberately smaller than the first',
+      'Handy for asking what\u2019s inside something, e.g. \u2018What\u2019s inside the box?\u2019',
+    ],
+    imageUrl: '../assets/images/medium/location/inside.png', videoUrl: '../assets/videos/medium/location/inside.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/in.htm',
+  },
+  {
+    id: 'medium_location_OUTSIDE', level: 'medium', category: 'location', signId: 'OUTSIDE', title: 'Outside', order: 4,
+    description: 'Sign \u2018go out\u2019 \u2014 an open hand sweeping up and outward at an angle \u2014 but repeat the movement to turn the one-time verb into the noun \u2018outside.\u2019',
+    tips: [
+      'A single movement means the verb \u2018go out\u2019; repeating it turns it into the noun \u2018outside\u2019',
+      'The path arcs up and away from you, similar to (but bigger and higher than) LEAVE',
+      'Some signers use an even larger, single open-hand sweep as an adjective meaning \u2018exterior\u2019',
+    ],
+    imageUrl: '../assets/images/medium/location/outside.png', videoUrl: '../assets/videos/medium/location/outside.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/outside.htm',
+  },
+  {
+    id: 'medium_location_FRONT', level: 'medium', category: 'location', signId: 'FRONT', title: 'Front', order: 5,
+    description: 'Hold a flat hand a few inches out in front of your forehead, then bring it straight down past your face.',
+    tips: [
+      'The flat hand stays a few inches away from your face the whole way down',
+      'Some signers slide the hand from forehead to chin and finish by pointing forward, to mean \u2018in front of\u2019 a specific thing',
+      'Different motion from BACK, which points backward over the shoulder instead of sliding down the face',
+    ],
+    imageUrl: '../assets/images/medium/location/front.png', videoUrl: '../assets/videos/medium/location/front.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/front.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_body_BACK / medium_directions_BACK.
+    id: 'medium_location_BACK', level: 'medium', category: 'location', signId: 'BACK', title: 'Back', order: 6,
+    description: 'Point your thumb back over your shoulder, toward your own back.',
+    tips: [
+      'Thumb does the pointing, hand in a loose fist',
+      'Gesture is aimed behind you',
+      'Same sign already used for BACK under Body and Directions',
+    ],
+    imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/medium/body/back.mp4', detectionType: 'motion',
+  },
+  {
+    // DUPLICATE — same sign as medium_body_BACK / medium_directions_BACK.
+    // No separate ASLU sign for "behind" turned up in research; ASLU
+    // and Handspeak both treat it as the same backward-pointing concept
+    // as BACK (see the CATEGORIES comment above).
+    id: 'medium_location_BEHIND', level: 'medium', category: 'location', signId: 'BEHIND', title: 'Behind', order: 7,
+    description: 'Point your thumb back over your shoulder, toward your own back.',
+    tips: [
+      'Thumb does the pointing, hand in a loose fist',
+      'Gesture is aimed behind you',
+      'Same sign already used for BACK under Body and Directions',
+    ],
+    imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/medium/body/back.mp4', detectionType: 'motion',
+  },
+
+  // ── MEDIUM · NATURE ── (new this session — unlocks Unit 43. Researched
+  // against lifeprint.com/ASLU, cross-checked against a second source per
+  // word — see the CATEGORIES comment above for which words are duplicates
+  // and which were dropped.)
+  {
+    id: 'medium_nature_SUN', level: 'medium', category: 'nature', signId: 'SUN', title: 'Sun', order: 1,
+    description: 'Circle a flattened \u2018O\u2019 handshape once near your head, then bring it down an inch or two while opening your fingers, as if a ray of sunlight is spilling downward.',
+    tips: [
+      'Keep the motion small \u2014 a bigger downward movement tends to read as SUNLIGHT instead',
+      'The handshape starts closed and opens as it drops',
+      'A second common version circles a full \u2018C\u2019 hand upward near the eye, paired conceptually with MOON',
+    ],
+    imageUrl: '../assets/images/medium/nature/sun.png', videoUrl: '../assets/videos/medium/nature/sun.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sun.htm',
+  },
+  {
+    id: 'medium_nature_MOON', level: 'medium', category: 'nature', signId: 'MOON', title: 'Moon', order: 2,
+    description: 'Form a modified \u2018C\u2019 shape using just your thumb and index finger, and hold it up near the corner of your eye, as if framing a crescent moon in the sky.',
+    tips: [
+      'Only the thumb and index finger are used, unlike SUN\u2019s full hand',
+      'Some signers tap this handshape near the eye twice instead of holding it still',
+      'Can be combined with NIGHT for signing "tonight" or an evening scene',
+    ],
+    imageUrl: '../assets/images/medium/nature/moon.png', videoUrl: '../assets/videos/medium/nature/moon.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/moon.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_shapes_STAR.
+    id: 'medium_nature_STAR', level: 'medium', category: 'nature', signId: 'STAR', title: 'Star', order: 3,
+    description: 'Point both index fingers upward in front of you and alternate brushing them up past each other, like a twinkling motion.',
+    tips: [
+      'Both index fingers point straight up',
+      'Fingers alternate \u2014 one slides up as the other resets',
+      'Small, quick repeated motion',
+    ],
+    imageUrl: '../assets/images/medium/shapes/star.png', videoUrl: '../assets/videos/medium/shapes/star.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_nature_CLOUD', level: 'medium', category: 'nature', signId: 'CLOUD', title: 'Cloud', order: 4,
+    description: 'Hold both hands in a loose, slightly clawed \u20185\u2019 shape above your face, palms down, and move them in small alternating circles, as if clouds are drifting overhead.',
+    tips: [
+      'Both hands stay up near head height, representing the sky',
+      'The circular motion alternates between the two hands',
+      'For a single cloud, sign ONE first and skip the sideways drift',
+    ],
+    imageUrl: '../assets/images/medium/nature/cloud.png', videoUrl: '../assets/videos/medium/nature/cloud.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cloud.htm',
+  },
+  {
+    id: 'medium_nature_RAIN', level: 'medium', category: 'nature', signId: 'RAIN', title: 'Rain', order: 5,
+    description: 'Hold both open hands up near head height, palms down, fingers loosely curled, and drop them downward twice, like raindrops falling from the clouds.',
+    tips: [
+      'Fingertips represent the falling drops',
+      'Keep the motion straight down \u2014 a sideways drop can instead suggest wind-blown rain',
+      'Don\u2019t confuse this with SNOW, which flutters the fingers on the way down',
+    ],
+    imageUrl: '../assets/images/medium/nature/rain.png', videoUrl: '../assets/videos/medium/nature/rain.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rain.htm',
+  },
+  {
+    id: 'medium_nature_WIND', level: 'medium', category: 'nature', signId: 'WIND', title: 'Wind', order: 6,
+    description: 'Hold both open \u20185\u2019 hands apart in front of you, palms facing each other, and sway them side to side together, like a breeze pushing back and forth.',
+    tips: [
+      'Palms face each other the whole time',
+      'Movement is side-to-side, not up-and-down like RAIN or SNOW',
+      'A bigger, faster sway can show a stronger wind',
+    ],
+    imageUrl: '../assets/images/medium/nature/wind.png', videoUrl: '../assets/videos/medium/nature/wind.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wind.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_plants_TREE.
+    id: 'medium_nature_TREE', level: 'medium', category: 'nature', signId: 'TREE', title: 'Tree', order: 7,
+    description: 'Rest the elbow of your dominant arm on the back of your flat, horizontal non-dominant hand. Hold your dominant hand upright in a loose \u20185\u2019 shape, fingers spread, and twist it back and forth at the wrist.',
+    tips: [
+      'Non-dominant flat hand represents the ground; dominant forearm is the trunk',
+      'Fingers stay spread \u2014 they represent the branches',
+      'Movement is a wrist twist, not a big arm swing',
+    ],
+    imageUrl: '../assets/images/medium/plants/tree.png', videoUrl: '../assets/videos/medium/plants/tree.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/tree.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_plants_FLOWER.
+    id: 'medium_nature_FLOWER', level: 'medium', category: 'nature', signId: 'FLOWER', title: 'Flower', order: 8,
+    description: 'Bring the fingertips and thumb of your dominant hand together into a "squished O" shape and touch them to one side of your nose, then to the other side, as if smelling a flower.',
+    tips: [
+      'Handshape is a squished/flattened \u2018O\u2019, fingertips and thumb together',
+      'Touch one nostril, then the other \u2014 either side can go first',
+      'A light touch to the cheek/nose area, not a poke',
+    ],
+    imageUrl: '../assets/images/medium/plants/flower.png', videoUrl: '../assets/videos/medium/plants/flower.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/flower.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_plants_GRASS.
+    id: 'medium_nature_GRASS', level: 'medium', category: 'nature', signId: 'GRASS', title: 'Grass', order: 9,
+    description: 'Hold a loose \u20185\u2019 handshape under your chin, palm facing up and fingers pointing outward. Brush the hand upward against your chin twice in a small circular motion.',
+    tips: [
+      'Handshape is a loose \u20185\u2019 \u2014 all fingers spread',
+      'Palm brushes up against the chin, not away from it',
+      'A small circular up-forward-down motion, repeated twice',
+    ],
+    imageUrl: '../assets/images/medium/plants/grass.png', videoUrl: '../assets/videos/medium/plants/grass.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/grass.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_plants_LEAF.
+    id: 'medium_nature_LEAF', level: 'medium', category: 'nature', signId: 'LEAF', title: 'Leaf', order: 10,
+    description: 'Hold the index finger of your non-dominant hand pointing up, representing a branch. Rest the wrist of your dominant hand, fingers together and open, against the fingertip of that index finger, then gently flutter your dominant hand back and forth as it drifts downward, like a leaf falling and blowing in the wind.',
+    tips: [
+      'Non-dominant index finger stays still \u2014 it\u2019s the branch the leaf hangs from',
+      'The flutter comes from the wrist, not the whole arm',
+      'Drifting the hand downward as it flutters is what shows the leaf "falling"',
+    ],
+    imageUrl: '../assets/images/medium/plants/leaf.png', videoUrl: '../assets/videos/medium/plants/leaf.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/leaf.htm',
+  },
+  {
+    id: 'medium_nature_ROCK', level: 'medium', category: 'nature', signId: 'ROCK', title: 'Rock', order: 11,
+    description: 'Make two loose fists and knock the back of your non-dominant fist with your dominant fist, like striking one rock against another.',
+    tips: [
+      'Both hands are in loose fist (\u2018A\u2019) shapes',
+      'The dominant hand strikes down onto the back of the stationary hand',
+      'A related version taps an \u2018S\u2019 hand under the chin instead, sometimes labeled STONE',
+    ],
+    imageUrl: '../assets/images/medium/nature/rock.png', videoUrl: '../assets/videos/medium/nature/rock.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rock.htm',
+  },
+  {
+    id: 'medium_nature_SAND', level: 'medium', category: 'nature', signId: 'SAND', title: 'Sand', order: 12,
+    description: 'Hold both hands out in front of you and rub your thumbs back and forth across your fingertips, as if letting sand sift through your fingers.',
+    tips: [
+      'The same motion is used for DIRT and SOIL \u2014 context tells them apart',
+      'Keep the rubbing small and continuous',
+      'Often paired with BEACH when describing a shoreline',
+    ],
+    imageUrl: '../assets/images/medium/nature/sand.png', videoUrl: '../assets/videos/medium/nature/sand.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sand.htm',
+  },
+  {
+    id: 'medium_nature_MOUNTAIN', level: 'medium', category: 'nature', signId: 'MOUNTAIN', title: 'Mountain', order: 13,
+    description: 'Sign ROCK first \u2014 knock one fist on the other \u2014 then hold both flat hands out and lift them up at a slant, tracing the rising slope of a mountainside.',
+    tips: [
+      'Starts with the ROCK handshape and motion',
+      'The second part traces an upward slope with flat, open hands',
+      'Related to the sign for "hill," just with more emphasis on the rocky base',
+    ],
+    imageUrl: '../assets/images/medium/nature/mountain.png', videoUrl: '../assets/videos/medium/nature/mountain.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mountain.htm',
+  },
+  {
+    id: 'medium_nature_RIVER', level: 'medium', category: 'nature', signId: 'RIVER', title: 'River', order: 14,
+    description: 'Sign WATER by tapping a \u2018W\u2019 hand near your mouth, then hold both flat hands out and move them forward together in a wavy, side-to-side path, showing water winding along a channel.',
+    tips: [
+      'Begins with the WATER sign',
+      'The wavy path is what turns "water" into "river" \u2014 a straighter path can read as something else',
+      'A bigger, more energetic wave can suggest a fast-moving or flooding river',
+    ],
+    imageUrl: '../assets/images/medium/nature/river.png', videoUrl: '../assets/videos/medium/nature/river.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/river.htm',
+  },
+  {
+    id: 'medium_nature_OCEAN', level: 'medium', category: 'nature', signId: 'OCEAN', title: 'Ocean', order: 15,
+    description: 'Hold both open \u20185\u2019 hands out, palms down, and move them forward in a rolling, up-and-down wave motion, like swells passing under a boat.',
+    tips: [
+      'Palms stay down throughout',
+      'The motion should rock gently up and down as it moves forward, not just side to side',
+      'Often preceded by the WATER sign for extra clarity',
+    ],
+    imageUrl: '../assets/images/medium/nature/ocean.png', videoUrl: '../assets/videos/medium/nature/ocean.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/ocean.htm',
+  },
+  {
+    id: 'medium_nature_BEACH', level: 'medium', category: 'nature', signId: 'BEACH', title: 'Beach', order: 16,
+    description: 'Rest your dominant flat hand on top of your non-dominant flat hand, both palms down, then slide the top hand outward while wiggling your fingers, like water washing up over sand.',
+    tips: [
+      'Fingers wiggle as the top hand slides outward',
+      'Many signers just fingerspell BEACH in everyday conversation',
+      'The sliding motion can be repeated to show waves washing in and out',
+    ],
+    imageUrl: '../assets/images/medium/nature/beach.png', videoUrl: '../assets/videos/medium/nature/beach.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/beach.htm',
+  },
+  {
+    id: 'medium_nature_ISLAND', level: 'medium', category: 'nature', signId: 'ISLAND', title: 'Island', order: 17,
+    description: 'Hold your non-dominant hand in a loose fist, palm down, and circle your dominant hand \u2014 in an \u2018I\u2019 handshape \u2014 on top of it a couple of times.',
+    tips: [
+      'The dominant hand uses the \u2018I\u2019 handshape (pinky extended, other fingers and thumb closed)',
+      'The circling motion happens on top of the stationary base hand',
+      'For a small island or isle, add SMALL before this sign',
+    ],
+    imageUrl: '../assets/images/medium/nature/island.png', videoUrl: '../assets/videos/medium/nature/island.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/island.htm',
+  },
+
+  // ── MEDIUM · PROFESSIONS ── (new this session — unlocks Unit 50.
+  // Researched against lifeprint.com/ASLU, cross-checked against a second
+  // source per word — see the CATEGORIES comment above for which words are
+  // duplicates and which were dropped. Most of these professions are
+  // compound signs — a base verb/noun sign followed by the PERSON suffix
+  // (both flat hands sliding straight down in front of you), the same
+  // pattern already used for medium_people_TEACHER/STUDENT elsewhere in
+  // this file.)
+  {
+    // DUPLICATE — same sign as medium_people_TEACHER.
+    id: 'medium_professions_TEACHER', level: 'medium', category: 'professions', signId: 'TEACHER', title: 'Teacher', order: 1,
+    description: 'Sign TEACH — both open "flat-O" hands near the forehead, moving forward and out twice, as if handing knowledge outward — then add the PERSON suffix by moving both flat hands straight down in front of you.',
+    tips: [
+      'TEACH motion happens near the forehead/temple',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Together they form "teach" + "person" = teacher',
+    ],
+    imageUrl: '../assets/images/medium/people/teacher.png', videoUrl: '../assets/videos/medium/people/teacher.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_professions_DOCTOR', level: 'medium', category: 'professions', signId: 'DOCTOR', title: 'Doctor', order: 2,
+    description: 'Hold your non-dominant hand palm-up like you\u2019re offering your wrist, then tap the fingertips of your dominant bent hand twice on the wrist, like a doctor checking your pulse.',
+    tips: [
+      'The dominant hand is bent at the knuckles, fingers pointing down toward the wrist',
+      'Two light taps on the wrist, not a poke',
+      'Some signers use a \u2018D\u2019 handshape instead of the bent hand \u2014 both are common',
+    ],
+    imageUrl: '../assets/images/medium/professions/doctor.png', videoUrl: '../assets/videos/medium/professions/doctor.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/doctor.htm',
+  },
+  {
+    id: 'medium_professions_NURSE', level: 'medium', category: 'professions', signId: 'NURSE', title: 'Nurse', order: 3,
+    description: 'Nearly identical to DOCTOR, but the tapping hand forms an \u2018N\u2019 handshape instead, tapping twice on the wrist as if checking a pulse.',
+    tips: [
+      'Only the handshape changes from DOCTOR \u2014 everything else stays the same',
+      'The \u2018N\u2019 is formed with the index and middle fingers extended, other fingers tucked, thumb between them',
+      'At fast signing speed you may see just one tap instead of two',
+    ],
+    imageUrl: '../assets/images/medium/professions/nurse.png', videoUrl: '../assets/videos/medium/professions/nurse.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nurse.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_community_POLICE.
+    id: 'medium_professions_POLICE', level: 'medium', category: 'professions', signId: 'POLICE', title: 'Police', order: 4,
+    description: 'Tap a modified \u2018C\u2019 handshape twice on your upper-left chest, as if tapping a badge.',
+    tips: [
+      'Handshape is a loose \u2018C\u2019',
+      'Two clear taps in the same badge-height spot',
+      'Also covers "cop" / "person who wears a badge" generally (ranger, warden, etc.)',
+    ],
+    imageUrl: '../assets/images/medium/community/police.png', videoUrl: '../assets/videos/medium/community/police.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/police.htm',
+  },
+  {
+    id: 'medium_professions_FIREFIGHTER', level: 'medium', category: 'professions', signId: 'FIREFIGHTER', title: 'Firefighter', order: 5,
+    description: 'Hold your dominant hand flat, palm facing out, and tap the back of it twice against your forehead, like tipping the brim of a firefighter\u2019s helmet.',
+    tips: [
+      'The hand stays flat (\u2018B\u2019 handshape) with the palm facing forward',
+      'Two light taps against the forehead',
+      'Some Deaf firefighters instead sign FIRE followed by FIGHT rather than this sign',
+    ],
+    imageUrl: '../assets/images/medium/professions/firefighter.png', videoUrl: '../assets/videos/medium/professions/firefighter.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/firefighter.htm',
+  },
+  {
+    id: 'medium_professions_FARMER', level: 'medium', category: 'professions', signId: 'FARMER', title: 'Farmer', order: 6,
+    description: 'Trace your thumb along your jawline from one side to the other with an open \u20185\u2019 hand, then add the PERSON ending by sliding both flat hands straight down in front of you.',
+    tips: [
+      'The FARM part is the thumb tracing along the jaw',
+      'Follow immediately with the PERSON suffix (downward hands)',
+      'Don\u2019t confuse the jaw-tracing motion with the sign SLOPPY, which ends with a flinging motion',
+    ],
+    imageUrl: '../assets/images/medium/professions/farmer.png', videoUrl: '../assets/videos/medium/professions/farmer.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/farm.htm',
+  },
+  {
+    id: 'medium_professions_DRIVER', level: 'medium', category: 'professions', signId: 'DRIVER', title: 'Driver', order: 7,
+    description: 'Hold both hands in loose fists, palms facing you, and turn them back and forth like gripping a steering wheel, then add the PERSON ending by sliding both flat hands straight down in front of you.',
+    tips: [
+      'The steering-wheel motion is bigger than the small one used for CAR',
+      'Follow immediately with the PERSON suffix',
+      'A single forward movement (without repeating) can instead mean "drive to" a place',
+    ],
+    imageUrl: '../assets/images/medium/professions/driver.png', videoUrl: '../assets/videos/medium/professions/driver.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/drive.htm',
+  },
+  {
+    // DUPLICATE — same sign as medium_actions_COOK.
+    id: 'medium_professions_COOK', level: 'medium', category: 'professions', signId: 'COOK', title: 'Cook', order: 8,
+    description: 'Hold your non-dominant hand flat, palm up, like a pan. Place your dominant flat hand on top and flip it over, like flipping food while cooking.',
+    tips: [
+      'Base hand stays flat, palm up, the whole time',
+      'Dominant hand flips completely over, palm up to palm down',
+      'One clear flipping motion is enough',
+    ],
+    imageUrl: '../assets/images/medium/actions/cook.png', videoUrl: '../assets/videos/medium/actions/cook.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cook.htm',
+  },
+  {
+    // No distinct ASLU sign for "chef" turned up in research — Signing
+    // Savvy lists CHEF as a synonym of the same sign used for COOK, so this
+    // reuses that sign rather than inventing a separate one.
+    id: 'medium_professions_CHEF', level: 'medium', category: 'professions', signId: 'CHEF', title: 'Chef', order: 9,
+    description: 'Hold your non-dominant hand flat, palm up, like a pan. Place your dominant flat hand on top and flip it over, like flipping food while cooking — the same sign used for COOK.',
+    tips: [
+      'Same physical sign as COOK; context makes clear you mean the profession',
+      'Base hand stays flat, palm up, the whole time',
+      'Dominant hand flips completely over, palm up to palm down',
+    ],
+    imageUrl: '../assets/images/medium/actions/cook.png', videoUrl: '../assets/videos/medium/actions/cook.mp4', detectionType: 'motion',
+  },
+  {
+    id: 'medium_professions_DENTIST', level: 'medium', category: 'professions', signId: 'DENTIST', title: 'Dentist', order: 10,
+    description: 'Form an \u2018X\u2019 handshape and tap it near your mouth twice, as if tapping a tooth, then add the PERSON ending by sliding both flat hands straight down in front of you.',
+    tips: [
+      'The tapping doesn\u2019t actually touch a tooth \u2014 it stays just in front of the mouth',
+      'Some signers initialize the whole sign with a \u2018D\u2019 handshape instead and skip the PERSON ending',
+      'In casual conversation, just the tooth-tap sign alone is often enough to mean "go to the dentist"',
+    ],
+    imageUrl: '../assets/images/medium/professions/dentist.png', videoUrl: '../assets/videos/medium/professions/dentist.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dentist.htm',
+  },
+  {
+    id: 'medium_professions_MECHANIC', level: 'medium', category: 'professions', signId: 'MECHANIC', title: 'Mechanic', order: 11,
+    description: 'Hold your non-dominant hand in a \u20181\u2019 handshape, index finger up, and use your dominant hand in a \u2018V\u2019 handshape to grip and twist at the wrist around that finger, like turning a wrench — then add the PERSON ending.',
+    tips: [
+      'This is literally the sign for WRENCH, with or without the PERSON ending',
+      'With enough context, many signers drop the PERSON ending and just sign WRENCH',
+      'The same sign, in the right context, can also mean "plumber"',
+    ],
+    imageUrl: '../assets/images/medium/professions/mechanic.png', videoUrl: '../assets/videos/medium/professions/mechanic.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mechanic.htm',
+  },
+  {
+    id: 'medium_professions_CARPENTER', level: 'medium', category: 'professions', signId: 'CARPENTER', title: 'Carpenter', order: 12,
+    description: 'Slide your dominant hand forward across your flat non-dominant palm, like pushing a carpenter\u2019s hand plane across a board, then add the PERSON ending.',
+    tips: [
+      'The forward-back-forward sliding motion is what represents "planing" wood',
+      'Palm orientation faces to the side, not straight back \u2014 that\u2019s what distinguishes it from CREDIT CARD, which looks similar',
+      'With enough context, "MY DAD CARPENTRY" can stand in without the PERSON ending',
+    ],
+    imageUrl: '../assets/images/medium/professions/carpenter.png', videoUrl: '../assets/videos/medium/professions/carpenter.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/carpenter.htm',
+  },
+  {
+    id: 'medium_professions_LAWYER', level: 'medium', category: 'professions', signId: 'LAWYER', title: 'Lawyer', order: 13,
+    description: 'Tap an \u2018L\u2019 handshape against your open non-dominant palm, then add the PERSON ending by sliding both flat hands straight down in front of you.',
+    tips: [
+      'This is the LAW sign (abbreviated to one tap) plus PERSON',
+      'A single smack of an \u2018L\u2019 hand against the palm without the PERSON ending can instead mean "against the law" or "forbidden"',
+      'The full LAW sign (used on its own) taps twice, moving slightly down the palm each time',
+    ],
+    imageUrl: '../assets/images/medium/professions/lawyer.png', videoUrl: '../assets/videos/medium/professions/lawyer.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/lawyer.htm',
+  },
+  {
+    id: 'medium_professions_SOLDIER', level: 'medium', category: 'professions', signId: 'SOLDIER', title: 'Soldier', order: 14,
+    description: 'Stack both hands in loose fists near the side of your chest, one above the other, and tap them against your body twice, like holding a rifle strap across your torso.',
+    tips: [
+      'Hands stay stacked, not side by side',
+      'The tapping motion is a firm double "thump," not a light touch',
+      'The same sign covers ARMY and "military" more generally',
+    ],
+    imageUrl: '../assets/images/medium/professions/soldier.png', videoUrl: '../assets/videos/medium/professions/soldier.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/army.htm',
+  },
+  {
+    id: 'medium_professions_WAITER', level: 'medium', category: 'professions', signId: 'WAITER', title: 'Waiter', order: 15,
+    description: 'Slide one open hand forward while pulling the other back, alternating as if handing out plates of food, then add the PERSON ending.',
+    tips: [
+      'The alternating forward-and-back motion is the SERVE sign',
+      'In some regions (especially California) a one-handed "circling horns" sign is used instead',
+      'With context, many signers skip the PERSON ending altogether',
+    ],
+    imageUrl: '../assets/images/medium/professions/waiter.png', videoUrl: '../assets/videos/medium/professions/waiter.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/waiter.htm',
+  },
+  {
+    id: 'medium_professions_ARTIST', level: 'medium', category: 'professions', signId: 'ARTIST', title: 'Artist', order: 16,
+    description: 'Trace your dominant pinky (\u2018I\u2019 handshape) down your non-dominant palm a couple of times, like sketching with a pencil, then add the PERSON ending.',
+    tips: [
+      'This is the sign for DRAW/ART with the PERSON ending attached',
+      'The tracing motion happens on the flat non-dominant palm, which acts like a canvas',
+      'The same base sign can shift toward PAINT or DESIGN with small changes in movement',
+    ],
+    imageUrl: '../assets/images/medium/professions/artist.png', videoUrl: '../assets/videos/medium/professions/artist.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/artist.htm',
+  },
+  {
+    id: 'medium_professions_WORKER', level: 'medium', category: 'professions', signId: 'WORKER', title: 'Worker', order: 17,
+    description: 'Tap your dominant fist on top of your non-dominant fist a couple of times, palms facing down, then add the PERSON ending by sliding both flat hands straight down in front of you.',
+    tips: [
+      'This is the WORK sign followed by PERSON',
+      'WORK on its own (without PERSON) is often used to mean "job" in context',
+      'Related signs like PROFESSION or CAREER use a different motion \u2014 don\u2019t mix them up',
+    ],
+    imageUrl: '../assets/images/medium/professions/worker.png', videoUrl: '../assets/videos/medium/professions/worker.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/work.htm',
+  },
+  {
+    // OWNER combines the ASLU-documented OWN sign (own.htm) with the
+    // standard PERSON agent suffix, the same construction pattern used
+    // throughout this file (see TEACHER, FARMER, DRIVER, DENTIST, LAWYER,
+    // ARTIST, WORKER above) — no separate dedicated "owner" page exists on
+    // ASLU, but this is a standard, well-documented compound, not an
+    // invented sign.
+    id: 'medium_professions_OWNER', level: 'medium', category: 'professions', signId: 'OWNER', title: 'Owner', order: 18,
+    description: 'Starting a couple of inches off your chest, bring your dominant hand \u2014 moving from an "unscrewing" shape into a flattened \u2018O\u2019 \u2014 in to touch your chest, then add the PERSON ending.',
+    tips: [
+      'The OWN sign by itself already carries a sense of "belonging to me/you" \u2014 adding PERSON turns it into a title, "the owner"',
+      'MYSELF can substitute for "my own" in casual conversation',
+      'Not to be confused with BOSS, which taps a clawed hand on the shoulder instead',
+    ],
+    imageUrl: '../assets/images/medium/professions/owner.png', videoUrl: '../assets/videos/medium/professions/owner.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/own.htm',
   },
 ];
 
