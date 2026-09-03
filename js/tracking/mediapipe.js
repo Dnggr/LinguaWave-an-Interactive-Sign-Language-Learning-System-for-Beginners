@@ -11,14 +11,26 @@
   FaceLandmarker, and keeps BOTH hands (not a single "dominant" hand)
   so the exported training JSON and this live-inference pipeline stay
   in lockstep. This file mirrors capture.html's buildFeatureVec()
-  exactly — same ghost-frame handling, same 130-value layout:
+  exactly — same ghost-frame handling, same 138-value layout:
 
     [63 left-hand xyz][63 right-hand xyz][leftPresent][rightPresent]
-    [handToChin][handToForehead]  = 130 values total.
+    [handToChin][handToForehead][handToShoulder][handToHip]
+    [leftPalmOrientation x3][rightPalmOrientation x3]  = 138 values total.
+
+  UPDATE (2026-09-03 — body-relative + palm-orientation features):
+  layout grew from 130 -> 138. Added shoulder-center/hip-center
+  tracking (ghost-filled the same way as forehead/chin, fed by
+  Holistic's pose landmarks — indices 11/12 shoulders, 23/24 hips,
+  same BlazePose topology already used for the wrist indices below)
+  and a palmOrientation() helper (cross product of wrist->index-MCP
+  and wrist->pinky-MCP) for telling palm-in from palm-out. See
+  capture.html's FEATURE_LEN comment for the full rationale.
 
   If you ever change this layout, change it in capture.html first,
-  then copy the change here — the two MUST match exactly or the
-  model gets inconsistent input between training and inference.
+  then copy the change here AND into js/engine/classifier.js (which
+  independently rebuilds this same vector from raw landmarks for
+  live inference) — all three MUST match exactly or the model gets
+  inconsistent input between training and inference.
   ─────────────────────────────────────────────────────────────────
 
   ══════════════════════════════════════════════════════════════════
@@ -158,6 +170,15 @@ let lastGoodChin        = null;
 const FOREHEAD_IDX = 10;   // MediaPipe canonical face mesh: top of forehead
 const CHIN_IDX     = 152;  // MediaPipe canonical face mesh: bottom of chin
 
+// NEW (body-relative features) — shoulder-center/hip-center, same
+// ghost-fill pattern as the face anchors above, fed by pose landmarks
+// instead of the face mesh. Mirrors capture.html's TORSO_GHOST_FRAMES
+// block exactly.
+const TORSO_GHOST_FRAMES = 10;
+let torsoGhostCounter     = 0;
+let lastGoodShoulderCenter = null;
+let lastGoodHipCenter      = null;
+
 const HAND_ZERO = new Array(63).fill(0);
 
 let anyHandPresent = false;
@@ -244,6 +265,10 @@ const BONE_LENGTH_EMA_ALPHA  = 0.05; // slow-moving average — calibrates over 
 const POSE_DISAGREEMENT_MAX  = 0.22; // was 0.12 — pose wrist estimates are meaningfully coarser than the hand model's own; expecting sub-0.12 agreement between two independent models was unrealistic
 const POSE_LEFT_WRIST_IDX    = 15;   // BlazePose 33-point topology (anatomical left/right, same convention Holistic uses for leftHandLandmarks/rightHandLandmarks)
 const POSE_RIGHT_WRIST_IDX   = 16;
+const POSE_LEFT_SHOULDER_IDX = 11;   // NEW (body-relative features) — same BlazePose topology
+const POSE_RIGHT_SHOULDER_IDX= 12;
+const POSE_LEFT_HIP_IDX       = 23;
+const POSE_RIGHT_HIP_IDX      = 24;
 
 let leftBoneLengthBaseline  = null;
 let rightBoneLengthBaseline = null;
@@ -321,14 +346,41 @@ function dist2(a, b) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function faceRelativeFeatures(handLandmarks, forehead, chin) {
-  if (!forehead || !chin || !handLandmarks || !handLandmarks.length) return [0, 0];
+// UPDATED (body-relative features): now returns [handToChin, handToForehead,
+// handToShoulder, handToHip] — 4 values instead of 2. IDENTICAL math to
+// capture.html's faceRelativeFeatures(), including the fallback order:
+// torso distances use faceHeight as their unit when available, falling
+// back to shoulder-to-hip span if the face is briefly out of frame.
+// Capture and live inference MUST agree on this fallback, or the model
+// gets inconsistent input between training and use.
+function faceRelativeFeatures(handLandmarks, forehead, chin, shoulderCenter, hipCenter) {
+  if (!handLandmarks || !handLandmarks.length) return [0, 0, 0, 0];
   const wrist = handLandmarks[0];
-  const faceHeight = dist3(forehead, chin) || 1e-6;
-  return [
-    dist3(wrist, chin)     / faceHeight,
-    dist3(wrist, forehead) / faceHeight,
-  ];
+  const faceHeight = (forehead && chin) ? (dist3(forehead, chin) || 1e-6) : null;
+  const handToChin     = (forehead && chin && faceHeight) ? dist3(wrist, chin) / faceHeight : 0;
+  const handToForehead = (forehead && chin && faceHeight) ? dist3(wrist, forehead) / faceHeight : 0;
+  const torsoUnit = faceHeight || ((shoulderCenter && hipCenter) ? (dist3(shoulderCenter, hipCenter) || 1e-6) : null);
+  const handToShoulder = (shoulderCenter && torsoUnit) ? dist3(wrist, shoulderCenter) / torsoUnit : 0;
+  const handToHip       = (hipCenter && torsoUnit)      ? dist3(wrist, hipCenter) / torsoUnit      : 0;
+  return [handToChin, handToForehead, handToShoulder, handToHip];
+}
+
+// NEW (palm-orientation feature) — unit normal of the plane formed by
+// wrist(0)->index-MCP(5) and wrist(0)->pinky-MCP(17), IDENTICAL to
+// capture.html's palmOrientation(). MediaPipe's per-hand z is a
+// relative-depth estimate, not true 3D, so this is an approximation —
+// still useful for telling palm-in from palm-out. Returns [0,0,0] when
+// the hand isn't present, matching HAND_ZERO's zero-fill convention.
+function palmOrientation(handPts) {
+  if (!handPts) return [0, 0, 0];
+  const wrist = handPts[0], indexMcp = handPts[5], pinkyMcp = handPts[17];
+  const v1 = { x: indexMcp.x - wrist.x, y: indexMcp.y - wrist.y, z: indexMcp.z - wrist.z };
+  const v2 = { x: pinkyMcp.x - wrist.x, y: pinkyMcp.y - wrist.y, z: pinkyMcp.z - wrist.z };
+  const nx = v1.y * v2.z - v1.z * v2.y;
+  const ny = v1.z * v2.x - v1.x * v2.z;
+  const nz = v1.x * v2.y - v1.y * v2.x;
+  const mag = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1e-6;
+  return [nx / mag, ny / mag, nz / mag];
 }
 
 /**
@@ -433,21 +485,24 @@ function debounceJump(newPts, lastGoodPts, pendingPts, pendingCount) {
 }
 
 /**
- * Builds the 130-value feature vector, IDENTICAL layout to
+ * Builds the 138-value feature vector, IDENTICAL layout to
  * capture.html's buildFeatureVec():
  *   [63 left xyz][63 right xyz][leftPresent][rightPresent]
- *   [handToChin][handToForehead]
+ *   [handToChin][handToForehead][handToShoulder][handToHip]
+ *   [leftPalmOrientation x3][rightPalmOrientation x3]
  */
-export function buildFeatureVec(leftPts, rightPts, forehead, chin) {
+export function buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter) {
   const leftPresent  = leftPts  ? 1 : 0;
   const rightPresent = rightPts ? 1 : 0;
   if (!leftPts && !rightPts) return null;
 
-  const faceExtra = faceRelativeFeatures(rightPts || leftPts, forehead, chin);
+  const faceExtra = faceRelativeFeatures(rightPts || leftPts, forehead, chin, shoulderCenter, hipCenter);
   const leftVec   = leftPts  ? leftPts.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
   const rightVec  = rightPts ? rightPts.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
+  const leftOrient  = palmOrientation(leftPts);
+  const rightOrient = palmOrientation(rightPts);
 
-  return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceExtra];
+  return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceExtra, ...leftOrient, ...rightOrient];
 }
 
 /**
@@ -458,6 +513,7 @@ export function processFrame(videoElement) {
   if (!holisticLandmarker) {
     return {
       leftHandLandmarks: null, rightHandLandmarks: null, faceLandmarks: null,
+      poseLandmarks: null, shoulderCenter: null, hipCenter: null,
       forehead: null, chin: null, anyHandPresent: false, featureVec: null,
     };
   }
@@ -506,6 +562,35 @@ export function processFrame(videoElement) {
     } else {
       forehead = null; chin = null;
       lastGoodForehead = null; lastGoodChin = null;
+    }
+  }
+
+  // ── Torso (shoulder/hip center) — same ghost-fill pattern as the face
+  // anchors above, fed by pose landmarks instead of the face mesh. Uses
+  // the pose model's OWN detection this frame (poseRaw), independent of
+  // whether the face happened to be picked up. Mirrors capture.html's
+  // buildFeatureVec() torso block exactly.
+  let shoulderCenter, hipCenter;
+  if (poseRaw && poseRaw[POSE_LEFT_SHOULDER_IDX] && poseRaw[POSE_RIGHT_SHOULDER_IDX]) {
+    torsoGhostCounter = 0;
+    const ls = poseRaw[POSE_LEFT_SHOULDER_IDX], rs = poseRaw[POSE_RIGHT_SHOULDER_IDX];
+    shoulderCenter = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2, z: (ls.z + rs.z) / 2 };
+    lastGoodShoulderCenter = shoulderCenter;
+    if (poseRaw[POSE_LEFT_HIP_IDX] && poseRaw[POSE_RIGHT_HIP_IDX]) {
+      const lh = poseRaw[POSE_LEFT_HIP_IDX], rh = poseRaw[POSE_RIGHT_HIP_IDX];
+      hipCenter = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2, z: (lh.z + rh.z) / 2 };
+      lastGoodHipCenter = hipCenter;
+    } else {
+      hipCenter = null; lastGoodHipCenter = null;
+    }
+  } else {
+    torsoGhostCounter++;
+    if (torsoGhostCounter <= TORSO_GHOST_FRAMES && lastGoodShoulderCenter) {
+      shoulderCenter = lastGoodShoulderCenter;
+      hipCenter      = lastGoodHipCenter;
+    } else {
+      shoulderCenter = null; hipCenter = null;
+      lastGoodShoulderCenter = null; lastGoodHipCenter = null;
     }
   }
 
@@ -574,10 +659,19 @@ export function processFrame(videoElement) {
     leftHandLandmarks:  leftPts,
     rightHandLandmarks: rightPts,
     faceLandmarks:      faceRaw ?? null,
+    // NEW (body-relative features): raw (unghosted) pose landmarks for
+    // this frame, plus the ghost-filled torso anchors this module
+    // already computed above. classifier.js takes poseLandmarks and
+    // derives its own shoulder/hip centers from it (same pattern it
+    // already uses for faceLandmarks -> forehead/chin), so it's exposed
+    // here rather than only used internally.
+    poseLandmarks: poseRaw ?? null,
+    shoulderCenter,
+    hipCenter,
     forehead,
     chin,
     anyHandPresent,
-    featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin),
+    featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter),
   };
   return cachedResult;
 }
