@@ -74,108 +74,126 @@
 
 /**
  * ═════════════════════════════════════════════════════════════════
- * TODO — 2026-09-04 DATA AUDIT (unresolved, needs next-session review)
+ * DATA AUDIT LOG — Track A / Track B (updated 2026-09-04, session 2)
  * ═════════════════════════════════════════════════════════════════
- * Programmatic pass only — nothing below was changed or resolved.
- * Sanity check 1 (comingSoon:true scan) PASSED: 0 locked categories
- * found, nothing to report there.
+ * Supersedes the earlier same-day TODO note below the "programmatic
+ * pass only" header — that pass was fuzzy-overlap only and never
+ * read the actual descriptions. This entry reflects a full read.
  *
- * ── TRACK A — candidate motion-classifier conflicts (UNVERIFIED) ──
- * Exact-description match scan across all detectionType:'motion'
- * entries found ZERO different-signId pairs with identical
- * descriptions — the file's already-documented precedent list
- * (BITTER/SOUR, HI/HELLO, BYE/GOODBYE, EVENING/NIGHT, ME/I, CHEF/COOK,
- * BACK/BEHIND, NEAR/CLOSE, CAP/HAT, CLOSE/CLOSED, WINTER/COLD,
- * TOILET/BATHROOM, MELON/PUMPKIN, QUIET/SILENT, NICE/CLEAN,
- * SURE/TRUE/REALLY) appears to cover every exact-text duplicate.
+ * ── TRACK A — motion-classifier conflicts ──────────────────────────
+ * The earlier fuzzy word-overlap candidate list (BLUE/GREEN,
+ * TUESDAY/FRIDAY, months, BROTHER/SISTER, numbers, RICE/SOUP,
+ * VAN/TAXI, BIRD/DUCK, MAN/WOMAN, DENTIST/LAWYER, etc.) was checked
+ * by hand against the actual descriptions: all false positives.
+ * They're distinguished by handshape or by a face-relative location
+ * the file already treats as legitimate elsewhere (same pattern as
+ * MOM/DAD, GRANDMA/GRANDPA). Cleared, not re-flagged.
  *
- * A looser fuzzy pass (word-overlap similarity on descriptions,
- * different signIds, same detectionType:'motion') surfaced pairs
- * below with high overlap. THIS IS NOT PROOF of a real conflict —
- * overlapping wording can just mean two signs are described with
- * similar phrasing (movement type, location) while differing in
- * handshape, which the description text doesn't cleanly separate.
- * Each pair needs a human/AI read of the actual description (and
- * ideally the source images/video) before treating it as real, per
- * the "flag, don't batch-resolve" rule.
+ * Five real conflicts found; all five resolved this session (2026-09-04,
+ * session 3) per Josh's decisions:
+ *   - GROW vs SPRING (medium_plants_GROW / medium_seasons_SPRING) —
+ *     turned out to be a FALSE POSITIVE. Josh checked ASLU directly:
+ *     GROW is a single motion, SPRING is a two-motion sign — they're
+ *     not the same gesture. Both kept as-is; SPRING's description/tips
+ *     corrected to reflect the two-motion form (it had been miswritten
+ *     as single-motion, which is what caused the original false flag).
+ *     Per Josh, SPRING actually shares its two-motion form with PLANT
+ *     instead — both entries kept, with cross-referencing tips added so
+ *     the lesson content itself notes the overlap.
+ *   - CAR vs DRIVE (medium_vehicles_CAR / medium_transportation_DRIVE)
+ *     — RESOLVED: kept CAR (title already read "Car / Drive" and its
+ *     description already covered the driving motion), dropped DRIVE.
+ *   - SAND vs SOIL (medium_nature_SAND / medium_plants_SOIL) — RESOLVED:
+ *     kept SAND, dropped SOIL.
+ *   - CUP vs GLASS vs BOTTLE (medium_kitchen_CUP / _GLASS /
+ *     medium_personal_items_BOTTLE) — RESOLVED: kept CUP and BOTTLE,
+ *     dropped GLASS.
+ *   - PLANT vs GARDEN (medium_plants_PLANT / medium_home_GARDEN) —
+ *     RESOLVED: kept PLANT, dropped GARDEN (both the medium_home_GARDEN
+ *     entry and its medium_plants_GARDEN same-signId reuse).
  *
- * Highest-overlap candidates (>=0.85 word-overlap) — check these first:
- *   - BLUE vs GREEN            (colors)
- *   - TUESDAY vs FRIDAY        (days)
- *   - BROTHER vs SISTER        (family)
- *   - 6 vs 9                   (numbers)
- *   - SECOND vs THIRD          (sequence)
- *   - APRIL vs JUNE, APRIL vs JULY, JUNE vs JULY   (months)
- *
- * Moderate-overlap candidates (0.6–0.85) — check next:
- *   - BANK vs BUS              (places / vehicles)
- *   - GRANDMA vs GRANDPA       (family)
- *   - MONDAY vs SATURDAY       (days)
- *   - UP vs DOWN               (directions)
- *   - BLUE vs YELLOW, GREEN vs YELLOW              (colors)
- *   - OCTOBER vs NOVEMBER, OCTOBER vs DECEMBER,
- *     NOVEMBER vs DECEMBER    (months)
- *   - J vs Z                   (alphabet)
- *   - RICE vs SOUP             (food)
- *   - VAN vs TAXI              (vehicles)
- *   - TUESDAY vs WEDNESDAY, WEDNESDAY vs FRIDAY    (days)
- *   - BIRD vs DUCK             (animals)
- *   - MAN vs WOMAN             (people)
- *   - AUGUST vs OCTOBER, AUGUST vs NOVEMBER, AUGUST vs DECEMBER (months)
- *   - DENTIST vs LAWYER, LAWYER vs WORKER          (professions)
- *
- * Worth noting: several of these clusters (colors, days, months,
- * numbers, alphabet letters) share a pattern where ASL distinguishes
- * them mainly by HANDSHAPE with a near-identical simple movement
- * (e.g. a small shake or twist). If the classifier here really is
- * motion-only (per detectionType:'motion') and doesn't factor in
- * handshape at all, these clusters could be a real, systemic problem
- * bigger than one-off word pairs — worth checking with Josh whether
- * detectionType:'motion' actually means "motion data only" or if
- * handshape is factored in elsewhere, before resolving pair by pair.
+ * WINTER restored (2026-09-04, later same day): previously dropped as
+ * identical to COLD (medium_temperature_COLD / medium_weather_COLD) in
+ * an earlier audit pass. Per Josh, added back as medium_seasons_WINTER
+ * — same treatment as PLANT/SPRING above: kept alongside COLD with
+ * cross-referencing tips (WINTER's own tips note the optional 'W'
+ * handshape that lifeprint documents for disambiguation) rather than
+ * removed.
  *
  * ── TRACK B — words[] entries with no matching SIGNS entry ────────
- * Diffed every CATEGORIES[].words[] list against SIGNS entries
- * matching that category (by word/signId). 45 gaps found, not yet
- * sorted into B1 (exists elsewhere, needs a reused entry) vs B2
- * (needs research or should be dropped) — that sorting needs the
- * per-word ASLU/second-source check the spec calls for.
+ * 28 live gaps confirmed against the actual SIGNS array (the earlier
+ * "45 gaps" note below was stale — THANKS/HUNGRY/LESS/WANT/NEED and
+ * the MOTHER/FATHER/GRANDMOTHER/GRANDFATHER naming mismatches had
+ * already been fixed by the time this session ran). All 28 are B2
+ * (no entry anywhere in the file, not just misplaced).
  *
- * Likely B1 (naming mismatch only — the SIGNS entry exists under a
- * different word than what's in words[], e.g. MOM vs MOTHER):
- *   - family: MOTHER (MOM exists), FATHER (DAD exists),
- *     GRANDMOTHER (GRANDMA exists), GRANDFATHER (GRANDPA exists)
+ * Resolved this session:
+ *   - temperature: SHARP dropped from words[] — no convergent
+ *     citable source (see inline comment on the 'temperature'
+ *     category).
+ *   - family: SON, DAUGHTER, COUSIN, PARENT added as new SIGNS
+ *     entries (ASLU-cited — see referenceUrl on each entry).
+ *   - school_supplies: NOTEBOOK, ERASER added as new SIGNS entries
+ *     (NOTEBOOK: aslbloom-sourced, existence cross-confirmed by
+ *     Signingsavvy/Handspeak; ERASER: ASLU + Signingsavvy convergent,
+ *     object-via-action convention). MARKER, GLUE, FOLDER dropped
+ *     from words[] — no convergent citable source for any of the
+ *     three (see inline comment on the 'school_supplies' category).
+ *   - places: MARKET dropped from words[] — already resolved
+ *     elsewhere in the file as "no citable source" under 'community';
+ *     'places' just hadn't gotten the matching edit until now.
+ *   - classroom: BOARD added as a new SIGNS entry (ASLU-cited,
+ *     SQUARE/BOARD/SIGN/BILLBOARD share one base sign).
+ *   - places: ZOO added as a new SIGNS entry (ASLU + babysignlanguage,
+ *     standard double-letter Z+O convention). FARM added as a new
+ *     SIGNS entry (ASLU + 2 more sources, all convergent) — but
+ *     FLAGGED inline for future Track A review: shares its exact
+ *     thumb-along-jaw motion with the FARM-portion of
+ *     medium_professions_FARMER's compound sign; theoretically
+ *     distinguishable by FARMER's added PERSON suffix, but not
+ *     verified against real capture data. places: AIRPORT dropped
+ *     from words[] — ASLU's own curriculum defines it as literally
+ *     the same physical sign as medium_vehicles_AIRPLANE
+ *     ("airport = AIRPLANE + context"), so adding it would have been
+ *     a fresh, literal duplicate rather than a real B1/B2 case.
  *
- * Everything else below has NO signId or word match anywhere in
- * SIGNS — could be B1 (exists under a name not yet guessed) or B2
- * (never created). Needs the actual research pass:
- *   - essentials_polite_expressions: THANKS
- *   - manners: THANKS
- *   - conversation: THANKS
- *   - feelings: HUNGRY
- *   - requests: LESS, WANT, NEED
- *   - temperature: SOFT, HARD, ROUGH, SMOOTH, WET, DRY, SHARP
- *   - family: SON, DAUGHTER, PARENT, COUSIN, GRANDCHILD
- *   - school_supplies: NOTEBOOK, ERASER, MARKER, GLUE, FOLDER
- *   - classroom: DESK, BOARD
- *   - places: MARKET (already researched+dropped as "no citable
- *     source" under 'community' category per the SEED/ROOT/MAY
- *     precedent — 'places' words[] just never got the same edit,
- *     this one's probably a quick drop, not new research), ZOO,
- *     FARM (note: a FARM *root* sign already exists inside
- *     medium_professions_FARMER's description — thumb traced along
- *     jaw — worth checking if ASLU treats standalone FARM as
- *     citable before assuming B2), AIRPORT
- *   - time: TIME, SOON, AFTER, EARLY, LATE, TOMORROW, YESTERDAY
- *   - essentials_basic_responses: WHICH, WHOSE, MANY, MUCH
+ * Resolved in batch 2 (same day, 2026-09-04):
+ *   - time: TIME, SOON, AFTER, EARLY, LATE, TOMORROW, YESTERDAY all
+ *     researched against ASLU/lifeprint.com (all confident/convergent)
+ *     and added as new SIGNS entries — Josh confirmed keep-all. LATE
+ *     and YESTERDAY carry inline FLAGGED notes (LATE's near-duplicate
+ *     NOT-YET isn't in any word list, no action needed; YESTERDAY vs.
+ *     TOMORROW is a direction-only pair, same precedent as MY/YOUR —
+ *     flagged for a future Track A classifier check, not resolved now).
+ *   - family: GRANDCHILD — sourcing was only moderate-confidence
+ *     (PocketSign + an ASLU cross-reference, not fully cross-checked).
+ *     Josh reviewed and said drop rather than add; removed from
+ *     words[], no SIGNS entry added.
  *
- * NEXT AI SESSION: work Track A highest-overlap list first (max 8
- * per batch per the standing rule), then Track B family naming
- * mismatches (quick, likely just words[] edits), then the unresolved
- * Track B list (research each against ASLU/lifeprint.com + one more
- * source; recommend dropping from words[] if nothing citable, same
- * as MANGO/PAPAYA/MARKET/SEED-ROOT precedent). Don't batch-apply
- * resolutions without confirming with Josh first, same as always.
+ * Resolved in batch 3 (same day, 2026-09-04):
+ *   - essentials_basic_responses: WHICH, MANY, MUCH all researched
+ *     against ASLU/lifeprint.com plus a second convergent source each
+ *     (all confident) and added as new SIGNS entries — Josh confirmed
+ *     keep-all. MUCH carries an inline note: it's not a same-signId
+ *     reuse, since A-LOT (the sign it's identical to per ASLU) isn't a
+ *     word/SIGNS entry anywhere else in this file — it's a fresh entry
+ *     whose description happens to come from ASLU's A-LOT page.
+ *   - essentials_basic_responses: WHOSE — no dedicated citable sign
+ *     found (ASL uses WHO + a possessive pronoun instead, a
+ *     grammatical construction rather than a single sign). Josh
+ *     confirmed drop; removed from words[], no SIGNS entry added.
+ *
+ * Resolved in batch 4 (same day, 2026-09-04):
+ *   - classroom: DESK — Josh confirmed leave it fingerspell-only (kept
+ *     in words[], no SIGNS entry), since DESK has no distinct sign to
+ *     reuse (it was already removed from Furniture as identical to
+ *     TABLE). This closes out Track B — no gaps remain.
+ *
+ * Still open (not yet researched / not yet actioned):
+ *   (none)
+ *
+ * NEXT SESSION: all Track A and Track B items are fully resolved as of
+ * session 3/4 (2026-09-04) — see the resolutions above.
  * ═════════════════════════════════════════════════════════════════
  */
 
@@ -509,9 +527,14 @@ const CATEGORIES = [
   // placeholders (Phase 7). Retitled 'Temperature' -> 'Touch' to match the new
   // plan's topic 17; words[] below is the fuller Touch list, but only HOT/COLD
   // have any real placeholder so far.
+  // SHARP removed from words[] (2026-09-04 Track B audit): sources don't
+  // converge on one sign — lifeprint's own version is reportedly confused
+  // with EMPTY by other sources, and aslbloom gives an unrelated
+  // H-handshape cross-and-thrust with no second source backing it. Same
+  // "no citable/convergent source" convention as MANGO/PAPAYA/MARKET.
   {
     id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 17,
-    words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY', 'SHARP'],
+    words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY'],
   },
   // 18. Taste — BITTER removed from words[]: physically identical to
   // SOUR and can't be told apart by the landmark classifier (see
@@ -557,12 +580,17 @@ const CATEGORIES = [
   // multiple-English-word pairs (see BITTER/SOUR under Taste).
   {
     id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 21,
-    words: ['FAMILY', 'MOM', 'DAD', 'BROTHER', 'SISTER', 'BABY', 'SON', 'DAUGHTER', 'PARENT', 'CHILD', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'COUSIN', 'GRANDCHILD'],
+    // GRANDCHILD dropped from words[] (2026-09-04 Track B audit, batch 2):
+    // sourcing found (PocketSign mechanics + an ASLU granddaughter.htm
+    // cross-reference) was only moderate confidence and not fully
+    // cross-checked at the time. Josh reviewed and said drop rather than
+    // add on that footing \u2014 no SIGNS entry added.
+    words: ['FAMILY', 'MOM', 'DAD', 'BROTHER', 'SISTER', 'BABY', 'SON', 'DAUGHTER', 'PARENT', 'CHILD', 'GRANDMA', 'GRANDPA', 'AUNT', 'UNCLE', 'COUSIN'],
   },
   // 22. Home
   {
     id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 22,
-    words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'GARDEN', 'YARD'],
+    words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'YARD'],
   },
   // 23. Furniture
   // DESK removed from words[]/SIGNS (2026-09-03 classifier conflict
@@ -603,7 +631,7 @@ const CATEGORIES = [
   // nouns), same treatment as PEN/ART/ENGLISH elsewhere in this file.
   {
     id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: false, unit: 26,
-    words: ['REFRIGERATOR', 'PLATE', 'BOWL', 'CUP', 'GLASS', 'SPOON', 'FORK', 'KNIFE'],
+    words: ['REFRIGERATOR', 'PLATE', 'BOWL', 'CUP', 'SPOON', 'FORK', 'KNIFE'],
   },
   // 27. School
   {
@@ -614,9 +642,23 @@ const CATEGORIES = [
   {
     id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 28,
     // PEN removed — no dedicated ASLU sign; fingerspell P-E-N (existing Fingerspell feature covers this).
-    words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'ERASER', 'PAPER', 'CRAYON', 'MARKER', 'RULER', 'SCISSORS', 'GLUE', 'FOLDER', 'BACKPACK'],
+    // MARKER, GLUE, FOLDER removed from words[] (2026-09-04 Track B audit):
+    // no convergent citable source found. MARKER — a real sign exists per
+    // Handspeak but the description is paywalled, no usable second source.
+    // GLUE — sources actively disagree (G-handshape across the face vs.
+    // A-fist circling the palm vs. plain fingerspelling), same
+    // "no citable/convergent source" convention as SHARP/MANGO/PAPAYA.
+    // FOLDER — no source found on ASLU, Handspeak, or aslbloom.
+    words: ['BOOK', 'NOTEBOOK', 'PENCIL', 'ERASER', 'PAPER', 'CRAYON', 'RULER', 'SCISSORS', 'BACKPACK'],
   },
   // 29. Classroom
+  // RESOLVED (2026-09-04 Track B audit): DESK has no SIGNS entry here and
+  // can't be reused from Furniture — DESK was deliberately removed
+  // everywhere in this file (see "23. Furniture" comment) for being
+  // physically identical to TABLE. Josh confirmed leave DESK in words[]
+  // as fingerspell-only (existing Fingerspell feature covers this), same
+  // precedent as BAG/PEN/ENGLISH elsewhere in this file.
+  // BOARD resolved (2026-09-04) — see medium_classroom_BOARD SIGNS entry.
   {
     id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 29,
     words: ['DESK', 'CHAIR', 'TABLE', 'BOARD', 'DOOR', 'WINDOW', 'CLOCK', 'COMPUTER', 'SHELF', 'TRASH'],
@@ -800,7 +842,7 @@ const CATEGORIES = [
   // at the end of the file.
   {
     id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: false, unit: 44,
-    words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'BRANCH', 'GARDEN', 'GROW', 'WATER', 'SOIL'],
+    words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'BRANCH', 'GROW', 'WATER'],
   },
   // 45. Weather
   // UNLOCKED (2026-09-02): all 12 words researched against lifeprint.com
@@ -827,10 +869,11 @@ const CATEGORIES = [
   // 46. Seasons
   {
     id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: false, unit: 46,
-    // WINTER removed from words[]/SIGNS (2026-09-03 classifier conflict
-    // audit): WINTER and COLD (under Weather) are the identical
-    // shivering sign — COLD is kept as the trained motion entry.
-    words: ['SPRING', 'SUMMER', 'FALL'],
+    // WINTER restored (per Josh) — was removed in the 2026-09-03
+    // classifier conflict audit as identical to COLD (under Weather),
+    // then added back as a kept-alongside case, same as PLANT/SPRING.
+    // See medium_seasons_WINTER SIGNS entry.
+    words: ['SPRING', 'SUMMER', 'FALL', 'WINTER'],
   },
   // 47. Places
   // LEGACY id/content kept — this is real, TRAINED detection content for
@@ -840,7 +883,19 @@ const CATEGORIES = [
   // unchanged.
   {
     id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 47,
-    words: ['HOME', 'SCHOOL', 'PARK', 'STORE', 'MARKET', 'LIBRARY', 'HOSPITAL', 'RESTAURANT', 'ZOO', 'FARM', 'BEACH', 'CHURCH', 'BANK', 'AIRPORT'],
+    // MARKET removed from words[] (2026-09-04 Track B audit) — already
+    // researched and dropped elsewhere in this file as "no citable
+    // source" under the 'community' category (see MANGO/PAPAYA/SEED/ROOT
+    // precedent); 'places' words[] just hadn't gotten the matching edit
+    // until now.
+    // AIRPORT removed from words[] (2026-09-04 Track B audit) — ASLU's
+    // own curriculum notes define it as "AIRPORT = AIRPLANE + context":
+    // there's no distinct sign, it's the exact same physical sign as
+    // medium_vehicles_AIRPLANE, disambiguated only by conversational
+    // context. A motion classifier can't tell them apart from movement
+    // alone, so adding a copy under a new signId would just be a fresh,
+    // literal duplicate — same risk class as the Track A conflicts.
+    words: ['HOME', 'SCHOOL', 'PARK', 'STORE', 'LIBRARY', 'HOSPITAL', 'RESTAURANT', 'ZOO', 'FARM', 'BEACH', 'CHURCH', 'BANK'],
   },
   // 48. Vehicles — UNLOCKED (this session): all 11 words researched
   // against lifeprint.com (ASLU), cross-checked against Handspeak /
@@ -860,7 +915,7 @@ const CATEGORIES = [
   // SIGNS block at the end of the file.
   {
     id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: false, unit: 49,
-    words: ['WALK', 'RIDE', 'DRIVE', 'FLY', 'GO', 'STOP', 'WAIT'],
+    words: ['WALK', 'RIDE', 'FLY', 'GO', 'STOP', 'WAIT'],
   },
   // 50. Professions — UNLOCKED (this session): 18 of the 20 words researched
   // against lifeprint.com (ASLU), cross-checked against a second source
@@ -1057,7 +1112,13 @@ const CATEGORIES = [
   // words sit in the new plan; no SIGNS entries were moved or renamed.
   {
     id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 65,
-    words: ['WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW', 'WHICH', 'WHOSE', 'MANY', 'MUCH'],
+    // WHOSE dropped from words[] (2026-09-04 Track B audit, batch 3): no
+    // dedicated citable sign found anywhere \u2014 ASL expresses this as WHO +
+    // a possessive pronoun (a grammatical construction, not a single
+    // lexical sign), per ASLU's own possession/lesson pages. Josh
+    // confirmed drop. Same "no citable dedicated sign" convention as
+    // MANGO/PAPAYA/MARKET/SHARP.
+    words: ['WHO', 'WHAT', 'WHERE', 'WHEN', 'WHY', 'HOW', 'WHICH', 'MANY', 'MUCH'],
   },
   // 66. Conversation
   // UNLOCKED (2026-09-02): 8 of 10 words are DUPLICATES of existing entries
@@ -1537,6 +1598,34 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/family/DAD.png', videoUrl: '../assets/videos/medium/family/DAD.mp4', detectionType: 'motion',
   },
   {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/s/son.htm), a reduced compound of
+    // MALE + BABY.
+    id: 'medium_family_SON', level: 'medium', category: 'family', signId: 'SON', title: 'Son', order: 3,
+    description: 'Touch your dominant hand to your forehead like a quick salute (the MALE part), then bring it straight down into the crook of your bent non-dominant arm (an abbreviated BABY) — one smooth, reduced motion, not two separate signs.',
+    tips: [
+      'Starts at the forehead, like a quick salute — that\u2019s the MALE part',
+      'Lands in the crook of your other elbow — an abbreviated BABY, with no rocking motion',
+      'Distinguished from DAUGHTER only by the starting location: forehead here vs. chin for DAUGHTER',
+    ],
+    imageUrl: '../assets/images/medium/family/SON.png', videoUrl: '../assets/videos/medium/family/SON.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/son.htm',
+  },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/d/daughter.htm), a reduced
+    // compound of GIRL + BABY.
+    id: 'medium_family_DAUGHTER', level: 'medium', category: 'family', signId: 'DAUGHTER', title: 'Daughter', order: 4,
+    description: 'Touch the fingertips of your flat dominant hand to the right side of your chin (the GIRL part), then bring it straight down into the crook of your bent non-dominant arm (an abbreviated BABY) — one smooth, reduced motion, not two separate signs.',
+    tips: [
+      'Starts at the chin/jaw with a flat hand — that\u2019s the GIRL part',
+      'Lands in the crook of your other elbow — an abbreviated BABY, with no rocking motion',
+      'Distinguished from SON only by the starting location: chin here vs. forehead for SON',
+    ],
+    imageUrl: '../assets/images/medium/family/DAUGHTER.png', videoUrl: '../assets/videos/medium/family/DAUGHTER.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/daughter.htm',
+  },
+  {
     id: 'medium_family_BROTHER', level: 'medium', category: 'family', signId: 'BROTHER', title: 'Brother', order: 5,
     // CHANGED — corrected against ASLU (lifeprint.com/asl101/pages-signs/b/brosis.htm):
     // the old description ("both hands in L, come together, index fingers meet")
@@ -1555,6 +1644,19 @@ const SIGNS = [
       'This is a MOTION sign — the handshape change (L → 1) as it lands is what matters, not two hands meeting in the middle',
     ],
     imageUrl: '../assets/images/medium/family/BROTHER.png', videoUrl: '../assets/videos/medium/family/BROTHER.mp4', detectionType: 'motion',
+  },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/c/cousin.htm).
+    id: 'medium_family_COUSIN', level: 'medium', category: 'family', signId: 'COUSIN', title: 'Cousin', order: 6,
+    description: 'Form a "C" handshape with your dominant hand and hold it near the side of your head, then twist/shake it twice.',
+    tips: [
+      'Handshape is a "C" — same initialized-letter family as UNCLE\u2019s "U" and AUNT\u2019s "A"',
+      'Twist near the side of the head, roughly temple height — ASLU notes there\u2019s no separate higher/lower version for a male vs. female cousin, unlike niece/nephew',
+      'A small back-and-forth twist, not a big circular motion',
+    ],
+    imageUrl: '../assets/images/medium/family/COUSIN.png', videoUrl: '../assets/videos/medium/family/COUSIN.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cousin.htm',
   },
   {
     id: 'medium_family_SISTER', level: 'medium', category: 'family', signId: 'SISTER', title: 'Sister', order: 7,
@@ -1643,6 +1745,28 @@ const SIGNS = [
       'A light patting motion, not a big wave',
     ],
     imageUrl: '../assets/images/medium/family/child.png', videoUrl: '../assets/videos/medium/family/child.mp4', detectionType: 'motion',
+  },
+
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU's
+    // gender-morpheme page (lifeprint.com/asl101/topics/gender-morpheme.htm),
+    // which documents this as the established gender-neutral form: same
+    // "5"-handshape family as MOM/DAD, done at a neutral spot between them.
+    // FLAGGED for future Track A review: this puts a THIRD entry in the
+    // MOM(chin)/DAD(forehead)/PARENT(cheekbone) location continuum, which
+    // is tighter spacing than the file's other location-only minimal
+    // pairs (BROTHER/SISTER, GRANDMA/GRANDPA) — worth a classifier check
+    // once real capture data exists, not assumed safe just because the
+    // pattern matches precedent.
+    id: 'medium_family_PARENT', level: 'medium', category: 'family', signId: 'PARENT', title: 'Parent', order: 15,
+    description: 'Open your hand into the same "5" shape used for MOM and DAD, but tap your thumb tip against your cheekbone — a neutral spot midway between the chin and the forehead.',
+    tips: [
+      'Same "5" handshape family as MOM and DAD',
+      'Location is the deciding factor: cheekbone here, versus chin for MOM and forehead for DAD',
+      'A gender-neutral way to say "parent" without specifying MOM or DAD',
+    ],
+    imageUrl: '../assets/images/medium/family/PARENT.png', videoUrl: '../assets/videos/medium/family/PARENT.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/topics/gender-morpheme.htm',
   },
 
   /* ── MEDIUM · SCHOOL GROUP (Units 28–32) ──────────────────────
@@ -1810,6 +1934,36 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/book.htm',
   },
   {
+    // ADDED (2026-09-04 Track B audit) — aslbloom description, existence
+    // cross-confirmed by Handspeak/Signingsavvy (both list NOTEBOOK
+    // alongside LOGBOOK/DIARY/JOURNAL/BOOK as an established headword).
+    id: 'medium_school_supplies_NOTEBOOK', level: 'medium', category: 'school_supplies', signId: 'NOTEBOOK', title: 'Notebook', order: 8,
+    description: 'Scribble with a pinched dominant hand across your open non-dominant palm, as if writing, then open both hands outward like a book opening.',
+    tips: [
+      'Two-part sign: a quick scribbling motion, then the BOOK opening motion',
+      'The scribble is what separates this from plain BOOK — don\u2019t skip it',
+      'Keep the scribble small and centered on the non-dominant palm',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/NOTEBOOK.png', videoUrl: '../assets/videos/medium/school_supplies/NOTEBOOK.mp4', detectionType: 'motion',
+  },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/e/erase.htm), cross-checked
+    // against Signingsavvy. This is the object-via-action convention
+    // already used elsewhere in this file (same idea as DESK/TABLE):
+    // ERASER the noun is signed the same way as the verb ERASE (as in
+    // erasing a pencil mark), not a separate iconic object sign.
+    id: 'medium_school_supplies_ERASER', level: 'medium', category: 'school_supplies', signId: 'ERASER', title: 'Eraser', order: 9,
+    description: 'Form a modified "X" handshape with your dominant hand and rub it back and forth against your open non-dominant palm, as if erasing a pencil mark.',
+    tips: [
+      'Handshape is a modified "X" — representing the eraser tip of a pencil',
+      'A back-and-forth rubbing motion against the flat non-dominant palm',
+      'Different from ERASE-BOARD (a separate wiping motion for whiteboards/chalkboards) — this is specifically the pencil-eraser version',
+    ],
+    imageUrl: '../assets/images/medium/school_supplies/ERASER.png', videoUrl: '../assets/videos/medium/school_supplies/ERASER.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/erase.htm',
+  },
+  {
     id: 'medium_classroom_TRASH', level: 'medium', category: 'classroom', signId: 'TRASH', title: 'Trash', order: 1,
     // ASLU glosses this sign GARBAGE.
     description: 'Lay your non-dominant forearm flat in front of you, palm down, to act like the rim of a bag. Trace the outline of a hanging trash bag underneath it with your dominant hand in a loose fist/"U" shape.',
@@ -1909,6 +2063,22 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/classroom/shelf.png', videoUrl: '../assets/videos/medium/classroom/shelf.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/shelf.htm',
+  },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/s/square.htm): SQUARE/BOARD/SIGN/
+    // BILLBOARD share one base sign; color signs (BLACK, WHITE) are
+    // prefixed to specify blackboard vs. whiteboard. Existence
+    // cross-confirmed by Handspeak's CHALKBOARD/BLACKBOARD entry.
+    id: 'medium_classroom_BOARD', level: 'medium', category: 'classroom', signId: 'BOARD', title: 'Board', order: 9,
+    description: 'Draw a square shape in the air in front of you, tracing each side with your index fingers.',
+    tips: [
+      'Both index fingers trace the four sides of a square',
+      'This is a general sign for anything square-shaped — the same base sign covers SIGN and BILLBOARD',
+      'Add the sign for BLACK or WHITE before it to specify blackboard vs. whiteboard',
+    ],
+    imageUrl: '../assets/images/medium/classroom/BOARD.png', videoUrl: '../assets/videos/medium/classroom/BOARD.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/square.htm',
   },
 
   /* ── MEDIUM · CLASSROOM ACTIONS (Unit 30) ──────────────────────────
@@ -2266,6 +2436,46 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/places/bank.png', videoUrl: '../assets/videos/medium/places/bank.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bank.htm',
   },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (dedicated zoo.htm page confirms this is an established sign, not
+    // just fingerspelling), cross-checked against babysignlanguage for
+    // the actual mechanics. Follows the standard ASL double-letter
+    // convention (the same pattern used for other doubled-letter words):
+    // trace the first letter, then sweep the second letter's handshape
+    // sideways to represent its repetition.
+    id: 'medium_places_ZOO', level: 'medium', category: 'places', signId: 'ZOO', title: 'Zoo', order: 12,
+    description: 'Trace a "Z" in the air with your dominant index finger, then form an "O" handshape (index finger and thumb touching) and sweep it sideways across your body.',
+    tips: [
+      'Two-part sign: trace the "Z" first, then switch to the "O" handshape for the sideways sweep',
+      'The sideways sweep represents the doubled "O" in Z-O-O — a standard ASL convention for double letters',
+      'ASLU notes ZOO is also commonly just fully fingerspelled — either version is acceptable',
+    ],
+    imageUrl: '../assets/images/medium/places/ZOO.png', videoUrl: '../assets/videos/medium/places/ZOO.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/z/zoo.htm',
+  },
+  {
+    // ADDED (2026-09-04 Track B audit) — researched against ASLU
+    // (lifeprint.com/asl101/pages-signs/f/farm.htm), cross-checked
+    // against two independent sources, all converging on the same
+    // handshape/location/movement.
+    // FLAGGED for future Track A review: this is the exact same
+    // thumb-along-the-jaw motion already embedded inside
+    // medium_professions_FARMER (FARM-motion + PERSON suffix). A
+    // full-clip classifier should be able to tell them apart by the
+    // extra suffix motion on FARMER, but this hasn't been verified
+    // against real capture data — worth a check once training clips
+    // exist for both, not assumed safe just because the theory holds.
+    id: 'medium_places_FARM', level: 'medium', category: 'places', signId: 'FARM', title: 'Farm', order: 13,
+    description: 'Open your dominant hand into a "5" shape, palm facing in, and slide your thumb along your jawline from one side to the other.',
+    tips: [
+      'Only the thumb touches the jaw — fingers stay up and don\u2019t make contact with your face',
+      'A smooth, single slide across the jaw, not a bouncing or tapping motion',
+      'ASLU notes this looks similar to SLOPPY/BUM, but SLOPPY ends with a flinging motion this sign doesn\u2019t have',
+    ],
+    imageUrl: '../assets/images/medium/places/FARM.png', videoUrl: '../assets/videos/medium/places/FARM.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/farm.htm',
+  },
 
 
   {
@@ -2314,6 +2524,100 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/later.htm',
   },
 
+  // ADDED (2026-09-04 Track B audit, batch 2) — TIME/SOON/AFTER/EARLY/LATE/
+  // TOMORROW/YESTERDAY researched against ASLU/lifeprint.com, all
+  // confident/convergent. Josh confirmed keep-all for this batch; see
+  // audit log at top of file. GRANDCHILD (also in this batch, family
+  // category) was NOT added — Josh said drop it instead, see 'family'
+  // category comment.
+  {
+    id: 'medium_time_TIME', level: 'medium', category: 'time', signId: 'TIME', title: 'Time', order: 10,
+    description: 'Hold your non-dominant wrist in front of your chest, palm down. Tap the tip of your dominant index finger on your wrist twice, as if pointing to a watch.',
+    tips: [
+      'Tap the spot where a watch would sit, not the back of the hand',
+      'Two quick taps with the index fingertip',
+      'A furrowed brow can turn this into "What time is it?"',
+    ],
+    imageUrl: '../assets/images/medium/time/time.png', videoUrl: '../assets/videos/medium/time/time.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/t/time.htm',
+  },
+  {
+    id: 'medium_time_SOON', level: 'medium', category: 'time', signId: 'SOON', title: 'Soon', order: 11,
+    description: 'Form an "F" handshape with your dominant hand (thumb and index finger touching, other three fingers up) and tap your chin twice.',
+    tips: [
+      'Keep the "F" handshape \u2014 thumb and index finger touch, forming a circle',
+      'Two taps against the chin',
+      'A single, stronger tap with puffed cheeks instead means EXPERT \u2014 don\u2019t confuse the two',
+    ],
+    imageUrl: '../assets/images/medium/time/soon.png', videoUrl: '../assets/videos/medium/time/soon.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/s/soon.htm',
+  },
+  {
+    id: 'medium_time_AFTER', level: 'medium', category: 'time', signId: 'AFTER', title: 'After', order: 12,
+    description: 'Hold your non-dominant hand flat, palm down, staying still. Slide your flat dominant hand (thumb-side up) forward over the top of it.',
+    tips: [
+      'Non-dominant hand doesn\u2019t move \u2014 it\u2019s the reference point',
+      'Dominant hand\u2019s thumb side faces up as it slides across',
+      'This is the same physical sign as ACROSS and the general sense of OVER \u2014 context tells them apart',
+    ],
+    imageUrl: '../assets/images/medium/time/after.png', videoUrl: '../assets/videos/medium/time/after.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/a/after.htm',
+  },
+  {
+    id: 'medium_time_EARLY', level: 'medium', category: 'time', signId: 'EARLY', title: 'Early', order: 13,
+    description: 'Hold your non-dominant hand as a loose fist or flat hand. Slide the middle finger of your dominant hand smoothly across the back of it.',
+    tips: [
+      'A smooth slide, not a flick',
+      'The middle finger makes the contact as it crosses the back of the hand',
+      'Memory aid: the sun\u2019s rays cresting the horizon early in the morning',
+    ],
+    imageUrl: '../assets/images/medium/time/early.png', videoUrl: '../assets/videos/medium/time/early.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/e/early.htm',
+  },
+  {
+    // FLAGGED for reference, not a new Track A conflict: ASLU documents a
+    // near-identical sign NOT-YET (same handshape/location as LATE, plus a
+    // headshake and a tongue-between-the-teeth mouth morpheme). NOT-YET
+    // isn't in this file's word lists, so no action needed \u2014 noted here in
+    // case it's ever added later.
+    id: 'medium_time_LATE', level: 'medium', category: 'time', signId: 'LATE', title: 'Late', order: 14,
+    description: 'Hold your dominant hand near your hip, palm facing back, and flap it backward at the wrist in one quick motion.',
+    tips: [
+      'The motion comes from the wrist, staying near the hip',
+      'A single quick motion is common, though a double motion is also used',
+      'NOT-YET uses this same handshape and location but adds a headshake and tongue-out mouth shape \u2014 don\u2019t confuse the two',
+    ],
+    imageUrl: '../assets/images/medium/time/late.png', videoUrl: '../assets/videos/medium/time/late.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/l/late.htm',
+  },
+  {
+    id: 'medium_time_TOMORROW', level: 'medium', category: 'time', signId: 'TOMORROW', title: 'Tomorrow', order: 15,
+    description: 'Form an "A" handshape with your dominant hand, thumb sticking out. Touch your thumb to your cheek, then arc it forward.',
+    tips: [
+      'Thumb makes contact with the cheek first',
+      'One smooth forward arc',
+      'A repeated version of this same motion means EVERYDAY/DAILY instead',
+    ],
+    imageUrl: '../assets/images/medium/time/tomorrow.png', videoUrl: '../assets/videos/medium/time/tomorrow.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/t/tomorrow.htm',
+  },
+  {
+    // FLAGGED for future Track A review, not resolved now: same "A"
+    // handshape as TOMORROW, distinguished only by direction (forward vs.
+    // backward) \u2014 the file already treats direction-only pairs like this
+    // as legitimate elsewhere (MY/YOUR, UP/DOWN), but worth a classifier
+    // check once real capture data exists for both.
+    id: 'medium_time_YESTERDAY', level: 'medium', category: 'time', signId: 'YESTERDAY', title: 'Yesterday', order: 16,
+    description: 'Form the same "A" handshape as TOMORROW. Touch your thumb to your cheek near your ear, then arc it backward.',
+    tips: [
+      'Same handshape as TOMORROW \u2014 direction is what changes the meaning',
+      'Starts near the ear and arcs backward, the mirror image of TOMORROW\u2019s forward arc',
+      'A separate "Y"-handshape version also exists, but the "A"-handshape version is the more standard ASL form',
+    ],
+    imageUrl: '../assets/images/medium/time/yesterday.png', videoUrl: '../assets/videos/medium/time/yesterday.mp4', detectionType: 'motion',
+    referenceUrl: 'https://lifeprint.com/asl101/pages-signs/y/yesterday.htm',
+  },
+
   // ── MEDIUM · TEMPERATURE ──
   {
     id: 'medium_temperature_HOT', level: 'medium', category: 'temperature', signId: 'HOT', title: 'Hot', order: 1,
@@ -2331,7 +2635,7 @@ const SIGNS = [
     tips: [
       'Small, quick shaking motion',
       'Both fists move together',
-      'This same sign also covers WINTER — context carries the difference',
+      'This same base motion is also used for WINTER (with an optional \u2018W\u2019 handshape) — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/temperature/cold.png', videoUrl: '../assets/videos/medium/temperature/cold.mp4', detectionType: 'motion',
   },
@@ -3086,6 +3390,52 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/requests/how.png', videoUrl: '../assets/videos/medium/requests/how.mp4', detectionType: 'motion',
   },
+
+  // ADDED (2026-09-04 Track B audit, batch 3) — WHICH/MANY/MUCH researched
+  // against ASLU/lifeprint.com plus a second convergent source each, all
+  // confident. Josh confirmed keep-all for this batch. WHOSE (also in this
+  // batch) was NOT added — Josh said drop it, see the
+  // 'essentials_basic_responses' category comment.
+  {
+    id: 'medium_requests_WHICH', level: 'medium', category: 'essentials_basic_responses', signId: 'WHICH', title: 'Which', order: 11,
+    description: 'Hold both hands in loose-thumb "A" handshapes, palms facing each other, and alternate holding one up while the other goes down.',
+    tips: [
+      'Loose-thumb "A" handshapes — thumbs aren\u2019t tucked tight against the fist',
+      'Hands alternate up and down, like weighing two options',
+      'Furrow your eyebrows while signing it as part of the question',
+    ],
+    imageUrl: '../assets/images/medium/requests/which.png', videoUrl: '../assets/videos/medium/requests/which.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/which.htm',
+  },
+  {
+    id: 'medium_requests_MANY', level: 'medium', category: 'essentials_basic_responses', signId: 'MANY', title: 'Many', order: 12,
+    description: 'Start with your dominant hand in a fist, then open it into a spread claw shape. Repeat the open-and-close motion twice.',
+    tips: [
+      'Starts closed, as a fist',
+      'Opens into a spread, slightly clawed "5" handshape',
+      'Repeat the motion twice, not once',
+    ],
+    imageUrl: '../assets/images/medium/requests/many.png', videoUrl: '../assets/videos/medium/requests/many.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/many.htm',
+  },
+  {
+    // ADDED as a fresh entry, not a same-signId reuse: ASLU's own MUCH
+    // page is literally titled "MUCH / 'a lot'" and cross-links both ways
+    // with its A-LOT page \u2014 same physical sign, not two different ones.
+    // A-LOT itself isn't a word/SIGNS entry anywhere else in this file, so
+    // there's no existing entry to reuse from; this description comes
+    // straight from ASLU's A-LOT page (cross-confirmed by aslbloom).
+    id: 'medium_requests_MUCH', level: 'medium', category: 'essentials_basic_responses', signId: 'MUCH', title: 'Much', order: 13,
+    description: 'Hold both hands in loose "5" handshapes, similar to the sign BIG but pointed a bit more upward.',
+    tips: [
+      'A variation of BIG \u2014 loose "5" handshapes on both hands',
+      'Hands point a bit more upward than in BIG',
+      'Used for uncountable amounts (like water or salt) \u2014 MANY is for countable items',
+    ],
+    imageUrl: '../assets/images/medium/requests/much.png', videoUrl: '../assets/videos/medium/requests/much.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/much.htm',
+  },
+
   {
     // NEW (this session) — no prior data.js content existed for this
     // signId (it was only ever a disabled dictionary.js placeholder,
@@ -5041,17 +5391,15 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/home/garage.png', videoUrl: '../assets/videos/medium/home/garage.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garage.htm',
   },
-  {
-    id: 'medium_home_GARDEN', level: 'medium', category: 'home', signId: 'GARDEN', title: 'Garden', order: 9,
-    description: 'Start with your dominant flat-O hand, palm up, resting inside your other loosely closed fist. Push it upward while opening the fingers, like a plant sprouting out of the ground, and repeat.',
-    tips: [
-      'Starts closed inside the base hand, like a seed',
-      'Opens into a spread hand as it rises',
-      'Repeated motion — a single motion means GROW instead',
-    ],
-    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/medium/home/garden.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garden.htm',
-  },
+  // REMOVED (2026-09-04 Track A audit, resolved): GARDEN was physically
+  // identical to medium_plants_PLANT — both a closed hand opening while
+  // pushing up through the other fist, repeated to show growth — and
+  // couldn't be told apart by the landmark classifier. Josh confirmed
+  // keep PLANT, drop GARDEN. Same precedent as BITTER/SOUR under Taste.
+  // Also removed the medium_plants_GARDEN same-signId reuse below, since
+  // it reused this entry. If a distinct GARDEN sign is sourced later,
+  // add it back with its own SIGNS entry and reconsider 'GARDEN' in the
+  // 'home'/'plants' words[] lists.
   {
     id: 'medium_home_YARD', level: 'medium', category: 'home', signId: 'YARD', title: 'Yard', order: 10,
     description: 'Hold an open ‘5’ hand out in front of you, palm down, and sweep it in a flat, horizontal circle, gesturing at the outdoor space around the house.',
@@ -5298,6 +5646,13 @@ const SIGNS = [
   {
     // DUPLICATE — same sign as medium_food_CUP, with a corrected description
     // (see AUDIT NOTE above the KITCHEN section header).
+    // RESOLVED (2026-09-04 Track A audit): CUP / GLASS / BOTTLE were
+    // flagged as a possible three-way size continuum — GLASS only
+    // differed from CUP by motion height, and BOTTLE by an even bigger
+    // version of the same idea. Josh confirmed keep CUP and BOTTLE
+    // (distinguished from each other by a double-tap vs. a continuous
+    // upward trace), drop GLASS — see the removal note left in its
+    // place below.
     id: 'medium_kitchen_CUP', level: 'medium', category: 'kitchen', signId: 'CUP', title: 'Cup', order: 4,
     description: 'Hold your non-dominant hand flat, palm up. Form a \u2018C\u2019 handshape with your dominant hand and tap it down into your upturned palm, as if setting a small cup there.',
     tips: [
@@ -5308,17 +5663,13 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/food/cup.png', videoUrl: '../assets/videos/medium/food/cup.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cup.htm',
   },
-  {
-    id: 'medium_kitchen_GLASS', level: 'medium', category: 'kitchen', signId: 'GLASS', title: 'Glass', order: 5,
-    description: 'Same as CUP \u2014 non-dominant hand flat, palm up, dominant hand in a \u2018C\u2019 shape \u2014 but move the \u2018C\u2019 hand higher, about 3\u20134 inches above the palm, to show a taller container.',
-    tips: [
-      'Same handshape as CUP; only the height of the motion changes',
-      'A noticeably bigger, higher motion than CUP',
-      'An even taller/bigger version of this same motion signs BOTTLE',
-    ],
-    imageUrl: '../assets/images/medium/kitchen/glass.png', videoUrl: '../assets/videos/medium/kitchen/glass.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cup.htm',
-  },
+  // REMOVED (2026-09-04 Track A audit, resolved): GLASS only differed
+  // from medium_kitchen_CUP by motion height (same handshape, "move the
+  // 'C' hand higher") and couldn't be told apart by the landmark
+  // classifier. Josh confirmed keep CUP and BOTTLE, drop GLASS. Same
+  // precedent as BITTER/SOUR under Taste. If a distinct GLASS sign is
+  // sourced later, add it back with its own SIGNS entry and reconsider
+  // 'GLASS' in the 'kitchen' words[] list.
   {
     // DUPLICATE — same sign as medium_food_SPOON.
     id: 'medium_kitchen_SPOON', level: 'medium', category: 'kitchen', signId: 'SPOON', title: 'Spoon', order: 6,
@@ -5590,15 +5941,26 @@ const SIGNS = [
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/ava.me/aslbloom. WINTER note: lifeprint documents this
   // as literally the same sign as COLD, disambiguated by context, an
-  // optional 'W' handshape, or a mouth movement — captured in the tips
-  // rather than treated as a separate, unrelated handshape.
+  // optional 'W' handshape, or a mouth movement. Originally dropped as
+  // a classifier conflict (COLD kept), then RESTORED per Josh — same
+  // treatment as PLANT/SPRING: kept alongside COLD with cross-
+  // referencing tips instead of removed.
   {
+    // CORRECTED + NOTE (2026-09-04 Track A audit): this entry was
+    // originally written as a single motion, which self-flagged as
+    // identical to GROW (medium_plants_GROW). Josh checked ASLU
+    // directly — SPRING is actually a two-motion sign, distinct from
+    // GROW's single motion — so the description/tips below are
+    // corrected to the real two-motion form. That two-motion form does
+    // match medium_plants_PLANT's handshape and repetition; Josh
+    // confirmed keep both entries, with a cross-reference note on each.
     id: 'medium_seasons_SPRING', level: 'medium', category: 'seasons', signId: 'SPRING', title: 'Spring', order: 1,
-    description: 'Pinch your dominant hand\u2019s fingers and thumb together and rest it inside your loosely closed non-dominant fist, then push it up and out while opening your fingers into a spread \u20185\u2019, like a plant sprouting and blooming.',
+    description: 'Pinch your dominant hand\u2019s fingers and thumb together and rest it inside your loosely closed non-dominant fist, then push it up and out while opening your fingers into a spread \u20185\u2019, like a plant sprouting and blooming. Repeat the motion a second time just to the side.',
     tips: [
       'Non-dominant fist represents the ground a plant grows from',
       'Dominant hand opens from a pinched point into a spread ‘5’ as it rises',
-      'This same single-motion handshape change is also used for GROW',
+      'Repeated motion — a single motion instead means GROW',
+      'This same two-motion form is also used for PLANT — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/seasons/spring.png', videoUrl: '../assets/videos/medium/seasons/spring.mp4', detectionType: 'motion',
   },
@@ -5622,9 +5984,20 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/seasons/fall.png', videoUrl: '../assets/videos/medium/seasons/fall.mp4', detectionType: 'motion',
   },
-  // WINTER removed from words[]/SIGNS (2026-09-03 classifier conflict
-  // audit, see CATEGORIES comment above) — COLD under Weather is the
-  // kept trained entry for this sign.
+  {
+    // RESTORED (per Josh, same treatment as PLANT/SPRING): kept alongside
+    // medium_temperature_COLD / medium_weather_COLD despite sharing the
+    // same base shivering motion — see the note above the SEASONS block.
+    id: 'medium_seasons_WINTER', level: 'medium', category: 'seasons', signId: 'WINTER', title: 'Winter', order: 4,
+    description: 'Hold both fists up near your shoulders and shake them slightly, as if shivering from the cold \u2014 the same base motion as COLD. For a version that reads as WINTER specifically rather than relying on context, shape the shaking hands into a \u2018W\u2019 handshape (index, middle, and ring fingers extended) instead of plain fists.',
+    tips: [
+      'Same base shivering motion as COLD — a plain-fist version is usually understood as WINTER from context alone',
+      'An optional \u2018W\u2019 handshape (three fingers extended) makes the sign unambiguous as WINTER specifically',
+      'Some signers add a slight forward mouth movement as an extra cue',
+    ],
+    imageUrl: '../assets/images/medium/seasons/winter.png', videoUrl: '../assets/videos/medium/seasons/winter.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/winter.htm',
+  },
 
   // ── MEDIUM · DAYTIME ── (new this pass — unlocks Unit 53)
   // Researched on lifeprint.com (ASLU), cross-checked against
@@ -6221,16 +6594,13 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/actions/ride.png', videoUrl: '../assets/videos/medium/actions/ride.mp4', detectionType: 'motion',
   },
-  {
-    id: 'medium_transportation_DRIVE', level: 'medium', category: 'transportation', signId: 'DRIVE', title: 'Drive', order: 3,
-    description: 'Form both hands into \u2018S\u2019 fists, palms facing you, held apart in front of you, and move them alternately up and down as if gripping and turning a large steering wheel.',
-    tips: [
-      'Both hands stay in closed \u2018S\u2019 fists',
-      'Use a bigger, more sustained motion than CAR — a smaller version of this same motion means CAR instead of DRIVE',
-      'Hands move as a pair, like turning a wheel back and forth',
-    ],
-    imageUrl: '../assets/images/medium/transportation/drive.png', videoUrl: '../assets/videos/medium/transportation/drive.mp4', detectionType: 'motion',
-  },
+  // REMOVED (2026-09-04 Track A audit, resolved): DRIVE was physically
+  // identical to medium_vehicles_CAR — same 'S'-fist steering-wheel
+  // motion, differing only by size/sustain — and couldn't be told apart
+  // by the landmark classifier. Josh confirmed keep CAR, drop DRIVE; CAR
+  // already covers the driving action (title "Car / Drive", description
+  // already says "as if driving"). Same precedent as BITTER/SOUR under
+  // Taste.
   {
     id: 'medium_transportation_FLY', level: 'medium', category: 'transportation', signId: 'FLY', title: 'Fly', order: 4,
     description: 'Form an \u2018I-Love-You\u2019 handshape (thumb, index finger, and pinky extended, middle and ring fingers curled down), palm facing down, and move your hand forward through the air, like a small airplane cruising along.',
@@ -7493,7 +7863,11 @@ const SIGNS = [
    * physical sign).
    */
   {
-    // DUPLICATE — same sign as medium_places_CAR.
+    // DUPLICATE — same sign as medium_places_CAR. Also doubles as DRIVE
+    // (2026-09-04 Track A audit, resolved): medium_transportation_DRIVE
+    // was dropped as a physically identical duplicate of this sign —
+    // see the removal note left in its place under Transportation. Title
+    // and description already covered the driving action.
     id: 'medium_vehicles_CAR', level: 'medium', category: 'vehicles', signId: 'CAR', title: 'Car / Drive', order: 1,
     description: 'Hold both hands as if gripping a steering wheel and move them in a small alternating turning motion, as if driving.',
     tips: [
@@ -8394,12 +8768,19 @@ const SIGNS = [
   // medium_drinks_WATER/medium_home_GARDEN entries. SEED and ROOT are
   // NOT included — see the CATEGORIES comment on 'plants' above.
   {
+    // NOTE (2026-09-04 Track A audit): this two-motion form is also used
+    // for SPRING (medium_seasons_SPRING) — same handshape and repeated
+    // motion. Josh confirmed keep both entries; see the matching note on
+    // medium_seasons_SPRING. (The earlier flag comparing this to
+    // medium_home_GARDEN no longer applies — GARDEN was dropped in
+    // favor of this entry.)
     id: 'medium_plants_PLANT', level: 'medium', category: 'plants', signId: 'PLANT', title: 'Plant', order: 1,
     description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height, palm facing up. Push your dominant hand up through it from below, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019 as it emerges, as if a plant were sprouting up out of the ground. Repeat the motion a second time just to the side to show more than one plant.',
     tips: [
       'The dominant hand opens from a flattened \u2018O\u2019 into a \u20185\u2019 as it rises through the \u2018C\u2019',
       'Doing this motion just once instead of twice changes the meaning to GROW rather than "a plant"',
       'Non-dominant \u2018C\u2019 hand represents the ground the plant is coming up through',
+      'This same two-motion form is also used for SPRING — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/plants/plant.png', videoUrl: '../assets/videos/medium/plants/plant.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/plant.htm',
@@ -8468,18 +8849,17 @@ const SIGNS = [
     imageUrl: '../assets/images/medium/plants/branch.png', videoUrl: '../assets/videos/medium/plants/branch.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/branch.htm',
   },
+  // REMOVED (2026-09-04 Track A audit, resolved) — see the note on the
+  // (now-removed) medium_home_GARDEN entry above: GARDEN was dropped
+  // in favor of PLANT, so this same-signId reuse goes with it.
   {
-    // DUPLICATE — same sign as medium_home_GARDEN.
-    id: 'medium_plants_GARDEN', level: 'medium', category: 'plants', signId: 'GARDEN', title: 'Garden', order: 7,
-    description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height. Push your dominant hand up through it from below, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019, then repeat the motion just to the side to show more than one plant growing.',
-    tips: [
-      'Same base handshape and motion as PLANT, repeated to the side',
-      'The repetition (versus a single motion) is what shows multiple plants rather than one',
-      'Same sign already used for Garden under Home',
-    ],
-    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/medium/home/garden.mp4', detectionType: 'motion',
-  },
-  {
+    // CLEARED (2026-09-04 Track A audit): originally flagged against
+    // medium_seasons_SPRING as the same single-motion sign. Josh checked
+    // ASLU directly — GROW is a single motion, SPRING is a two-motion
+    // sign, so they're not actually the same gesture. False positive; no
+    // change needed here. (SPRING's description/tips have been corrected
+    // to reflect its real two-motion form, which is what caused the
+    // original false flag.)
     id: 'medium_plants_GROW', level: 'medium', category: 'plants', signId: 'GROW', title: 'Grow', order: 8,
     description: 'Hold your non-dominant hand in a loose \u2018C\u2019 shape at chest height, palm facing up. Push your dominant hand up through it once, starting as a flattened \u2018O\u2019 and opening into a loose \u20185\u2019 as it emerges.',
     tips: [
@@ -8501,17 +8881,11 @@ const SIGNS = [
     ],
     imageUrl: '../assets/images/medium/drinks/water.png', videoUrl: '../assets/videos/medium/drinks/water.mp4', detectionType: 'motion',
   },
-  {
-    id: 'medium_plants_SOIL', level: 'medium', category: 'plants', signId: 'SOIL', title: 'Soil', order: 10,
-    description: 'Hold both hands in front of you in a flattened \u2018O\u2019 shape, palms facing up, and rub your fingertips against your thumbs, as if feeling grains of soil or sand between your fingers.',
-    tips: [
-      'This is the same sign used for DIRT and SAND — context tells them apart',
-      'Both hands rub at the same time',
-      'A neutral or slightly wrinkled-nose expression is common with this sign',
-    ],
-    imageUrl: '../assets/images/medium/plants/soil.png', videoUrl: '../assets/videos/medium/plants/soil.mp4', detectionType: 'motion',
-    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dirt.htm',
-  },
+  // REMOVED (2026-09-04 Track A audit, resolved): SOIL was physically
+  // identical to medium_nature_SAND (and DIRT) — same fingertip-rubbing
+  // motion — and couldn't be told apart by the landmark classifier.
+  // Josh confirmed keep SAND, drop SOIL. Same precedent as BITTER/SOUR
+  // under Taste.
   /* ── MEDIUM · LOCATION (Unit 58) ── (new this session — unlocks Unit
    * 59). ON, UNDER, ABOVE, BELOW, BESIDE, BETWEEN, and spatial NEXT
    * were dropped from words[] rather than given invented signs — see
@@ -8716,6 +9090,10 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rock.htm',
   },
   {
+    // RESOLVED (2026-09-04 Track A audit): was mutually self-flagged
+    // with medium_plants_SOIL — same sign, also covers DIRT. Josh
+    // confirmed keep SAND (more common/foundational), drop SOIL — see
+    // the removal note left in its place under Plants.
     id: 'medium_nature_SAND', level: 'medium', category: 'nature', signId: 'SAND', title: 'Sand', order: 12,
     description: 'Hold both hands out in front of you and rub your thumbs back and forth across your fingertips, as if letting sand sift through your fingers.',
     tips: [
