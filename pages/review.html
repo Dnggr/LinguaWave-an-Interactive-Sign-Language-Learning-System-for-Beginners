@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Sets data-theme before any CSS loads — same inline script as
+       every other authenticated page (progress.html, dashboard.html,
+       etc.), copied verbatim so this page never flashes the wrong
+       theme on load. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    pages/review.html — Review Later (NEW)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Implements the "Review Later" stage of the Learning
+               Philosophy loop (guide §5.5–5.9): Review Today →
+               Review Session → Review Results, plus a Mistake Review
+               view for signs missed in a recent quiz. One page, three
+               view-states toggled by js/review-page.js — same
+               single-page-multi-state pattern pages/lesson.html
+               already uses for its own multi-step flow, so this
+               doesn't introduce a second navigation paradigm.
+
+    REUSES   : css/style.css's .card/.btn/.stat-tile primitives,
+               css/dashboard.css's .review-card, the app-shell sidebar
+               markup from pages/progress.html verbatim (with a new
+               "Review" link added — see INTEGRATION_PATCH.md for the
+               matching change needed on every other authenticated
+               page's sidebar). New review-only pieces (status dot,
+               confidence scale, mistake row) live in css/review.css.
+
+    DATA     : window.LWReview (js/engine/reviewEngine.js) for due/
+               confidence/mistake state, window.LWProgress for the
+               pool of learned signs, window.LWData for sign titles.
+               Never writes to window.LWProgress — Review Later reads
+               progress, it doesn't gate it (see reviewEngine.js's
+               header for why that separation is deliberate).
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review — LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/review.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../index.html');
+  });
+  </script>
+</head>
+<body>
+
+  <a href="#review-main" class="skip-link">Skip to review content</a>
+
+  <!-- ── APP SHELL (sidebar nav — copied from progress.html, "Review"
+       link added and marked active) ─────────────────────────────── -->
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="review.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span>
+          Review
+          <span class="badge badge--basic" id="review-sidebar-count" style="margin-left:auto; display:none;"></span>
+        </a>
+        <a href="quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Quiz
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+
+      <!-- ══════════════════════════════════════════════════════
+           VIEW 1 — REVIEW TODAY (guide §5.5)
+           ══════════════════════════════════════════════════════ -->
+      <section class="section section--sm" id="view-review-today" data-review-view>
+        <div class="container" id="review-main" tabindex="-1">
+          <h1 id="review-today-heading">Review Today</h1>
+          <p class="text-muted mt-2" id="review-today-subtext">Loading your review queue…</p>
+
+          <div class="card mt-6" id="review-today-list">
+            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading…</p>
+          </div>
+
+          <div class="mt-6">
+            <button class="btn btn--primary" id="btn-start-review-session" disabled>Start Review Session</button>
+          </div>
+        </div>
+
+        <!-- ── MISTAKE REVIEW (guide §5.9) — separate card, same page ── -->
+        <div class="container mt-8">
+          <h2>Let's review these signs</h2>
+          <p class="text-muted mt-2" id="mistake-review-subtext">Signs you've missed in a recent quiz.</p>
+          <div class="card mt-4" id="mistake-review-list">
+            <p class="text-muted" style="padding: var(--space-4);">No missed signs right now — nice work.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           VIEW 2 — REVIEW SESSION (guide §5.6)
+           ══════════════════════════════════════════════════════ -->
+      <section class="section section--sm" id="view-review-session" data-review-view hidden>
+        <div class="container container--narrow">
+          <p class="text-muted" id="review-session-counter">Sign – of –</p>
+          <div class="card mt-4">
+            <h1 id="review-session-title">Review: —</h1>
+            <img id="review-session-image" alt="" style="max-width:100%; border-radius: var(--radius-md); margin: var(--space-4) 0; display:none;" />
+            <p class="text-muted" id="review-session-description"></p>
+
+            <p class="mt-6" style="font-weight:600;">How confident were you?</p>
+            <div class="confidence-scale mt-3" id="confidence-scale">
+              <button type="button" class="confidence-scale__btn" data-confidence="1" aria-label="Not at all confident">😟</button>
+              <button type="button" class="confidence-scale__btn" data-confidence="2" aria-label="Somewhat confident">😐</button>
+              <button type="button" class="confidence-scale__btn" data-confidence="3" aria-label="Fairly confident">🙂</button>
+              <button type="button" class="confidence-scale__btn" data-confidence="4" aria-label="Very confident">😄</button>
+            </div>
+            <p class="text-muted mt-4" style="font-size: var(--fs-xs);">Your answers help us show the right signs at the right time.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           VIEW 3 — REVIEW RESULTS (guide §5.7)
+           ══════════════════════════════════════════════════════ -->
+      <section class="section section--sm" id="view-review-results" data-review-view hidden>
+        <div class="container container--narrow" style="text-align:center;">
+          <h1 id="review-results-title">Review Complete!</h1>
+          <p class="text-muted mt-2" id="review-results-subtext">You reviewed 0 signs.</p>
+
+          <div class="stats-grid mt-6">
+            <div class="stat-tile">
+              <span class="stat-tile__value" id="review-results-strong">0</span>
+              <span class="stat-tile__label">Strong</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value" id="review-results-needs-practice">0</span>
+              <span class="stat-tile__label">Needs Practice</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value" id="review-results-not-remembered">0</span>
+              <span class="stat-tile__label">Not Remembered</span>
+            </div>
+          </div>
+
+          <p class="mt-6" style="font-weight:600;">Consistency is key. See you tomorrow!</p>
+          <a href="learn.html" class="btn btn--primary mt-4">Back to Path</a>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
+      </footer>
+
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
+
+  <script src="../js/main.js"></script>
+  <script src="../js/data.js"></script>
+  <script defer src="../js/engine/progress.js"></script>
+  <script defer src="../js/engine/reviewEngine.js"></script>
+  <script src="../js/review-page.js"></script>
+</body>
+</html>

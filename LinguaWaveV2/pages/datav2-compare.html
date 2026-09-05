@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Sets data-theme before any CSS loads, so the page never flashes
+       the wrong theme on load. Must stay first in <head> — same
+       snippet every other page in this repo uses. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    pages/datav2-compare.html — DataV2 Phase 2 Comparison (INTERNAL / DEV ONLY)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Implements "LinguaWave_SoloLearn_Learning_Psychology_
+               DataV2_Integration_Plan.docx" §7 Phase 2 — a same-
+               browser comparison of the current system's completion/
+               drop-off for a category against the dataV2 mission
+               built from that same category. See js/data-v2-compare.js
+               for exactly what "comparison" means here (local
+               observation, not aggregate analytics — this repo has
+               no analytics backend).
+
+    ISOLATION : Loads js/data.js, js/engine/progress.js (READ-ONLY —
+               this page never calls anything that writes to
+               'lw_progress_v3'), and js/data-v2.js/js/data-v2-
+               compare.js. Does not touch js/learn.js, js/lesson.js,
+               or js/quiz.js. Not linked from any nav — reached only
+               from pages/settings.html's hidden ?dev=1 block or a
+               direct URL, same as datav2-preview.html.
+
+    HOW TO USE : complete (some of) the same category in BOTH the real
+               app (Learn → lesson → quiz) and the dataV2 preview
+               page, on this same browser, then open this page and
+               pick that category to see both sides' numbers.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>DataV2 Phase 2 Comparison — LinguaWave (dev)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../css/datav2-preview.css" />
+  <link rel="stylesheet" href="../css/datav2-compare.css" />
+</head>
+<body>
+
+  <div class="dv2-shell">
+
+    <div class="dv2-devbar">
+      <strong>Developer tool</strong> — Phase 2 comparison. Not part of the real learner path.
+      <a href="../../pages/settings.html?dev=1" class="dv2-devbar__link">&larr; Back to Settings</a>
+      <a href="datav2-preview.html" class="dv2-devbar__link">Pilot preview &rarr;</a>
+    </div>
+
+    <div class="container container--narrow section section--sm">
+
+      <h1>Phase 2 — Internal Comparison</h1>
+      <p class="text-muted">
+        Current system vs. dataV2, for one category at a time, on this browser only.
+      </p>
+
+      <div class="dv2c-picker">
+        <label for="dv2c-category-select"><strong>Category:</strong></label>
+        <select id="dv2c-category-select"></select>
+      </div>
+
+      <div class="dv2c-caveat">
+        <strong>What this is (and isn't):</strong> this repo has no analytics
+        backend, so this is a local, single-browser observation — not an
+        aggregate A/B test across real learners. It compares this browser's
+        own <code>lw_progress_v3</code> (current system) against its own
+        <code>lw_datav2_progress_v1</code> (dataV2) for whichever category
+        you pick above.
+      </div>
+
+      <div id="dv2c-root">
+        <!-- filled by js/data-v2-compare-page.js -->
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../../js/data.js"></script>
+  <script src="../../js/engine/progress.js"></script>
+  <script src="../js/data-v2.js"></script>
+  <script src="../js/data-v2-compare.js"></script>
+  <script src="../js/data-v2-compare-page.js"></script>
+</body>
+</html>

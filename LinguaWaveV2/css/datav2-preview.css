@@ -1,0 +1,133 @@
+/**
+ * css/datav2-preview.css — pages/datav2-preview.html only
+ * ─────────────────────────────────────────────────────────────────
+ * Throwaway dev-preview styling, not a designed screen. Reuses this
+ * repo's existing tokens (css/style.css's --clr-*/--space-*/--radius-*
+ * custom properties) so it doesn't look jarringly out of place next
+ * to the real app, but the layout itself (item list, chips, dev bar)
+ * is specific to this one page and isn't meant to be reused elsewhere.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+.dv2-devbar {
+  background: var(--clr-surface-2);
+  border-bottom: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-6);
+  text-align: center;
+}
+.dv2-devbar strong { color: var(--clr-text); }
+.dv2-devbar__link {
+  margin-left: var(--space-4);
+  color: var(--clr-accent);
+  text-decoration: none;
+}
+.dv2-devbar__link:hover { text-decoration: underline; }
+
+.dv2-flagbar { margin-top: var(--space-6); }
+.dv2-flagbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.dv2-flagbar__note { margin-top: var(--space-2); font-size: var(--fs-xs); }
+.dv2-flagbar__note code {
+  background: var(--clr-surface-2);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.dv2-off-notice { margin-top: var(--space-6); }
+
+.dv2-intro {
+  margin-top: var(--space-6);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.dv2-intro__illustration {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.dv2-intro__title { margin: 0 0 var(--space-1); }
+.dv2-intro__pitch { margin-top: var(--space-2); }
+
+.dv2-statrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.dv2-stat {
+  background: var(--clr-surface-2);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.dv2-progress-card { margin-top: var(--space-4); }
+.dv2-progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-1);
+}
+.dv2-progress-row--sub { margin-top: var(--space-4); color: var(--clr-text-muted); }
+.progress-bar--sm { height: 4px; }
+
+.dv2-item-list {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dv2-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.dv2-item--booster { border-style: dashed; }
+.dv2-item--quiz { border-color: var(--clr-accent); }
+.dv2-item--done { background: var(--clr-success-soft); border-color: var(--clr-success); }
+
+.dv2-item__check {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface-2);
+  color: var(--clr-success);
+  font-weight: 700;
+  cursor: pointer;
+}
+.dv2-item--done .dv2-item__check { background: var(--clr-success); color: var(--clr-text-invert); border-color: var(--clr-success); }
+
+.dv2-item__label { font-weight: 700; }
+.dv2-item__scenario { font-style: italic; color: var(--clr-text-muted); font-size: var(--fs-sm); margin-top: var(--space-1); }
+.dv2-item__chips { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.dv2-item__hint { margin-top: var(--space-2); font-size: var(--fs-xs); color: var(--clr-accent); }
+
+.dv2-chip {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+}
+.dv2-chip--bonus { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
+
+.dv2-results { margin-top: var(--space-6); }
+.dv2-results__recap { padding-left: var(--space-6); }
+.dv2-results__teaser { color: var(--clr-text-muted); margin-top: var(--space-2); }

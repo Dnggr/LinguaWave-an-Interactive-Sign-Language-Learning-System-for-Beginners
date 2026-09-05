@@ -1,0 +1,86 @@
+/**
+ * css/datav2-compare.css — pages/datav2-compare.html only
+ * ─────────────────────────────────────────────────────────────────
+ * Throwaway dev-tool styling, same spirit as css/datav2-preview.css
+ * (reuses this repo's existing --clr-*/--space-*/--radius-* tokens).
+ * Adds only what datav2-preview.css doesn't already cover: the
+ * side-by-side comparison columns and the drop-off marker row.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+.dv2c-caveat {
+  margin-top: var(--space-6);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+.dv2c-caveat strong { color: var(--clr-text); }
+
+.dv2c-picker {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.dv2c-picker select {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+}
+
+.dv2c-columns {
+  margin-top: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+@media (max-width: 720px) {
+  .dv2c-columns { grid-template-columns: 1fr; }
+}
+
+.dv2c-col h2 { margin: 0 0 var(--space-2); }
+.dv2c-col .progress-bar { margin: var(--space-2) 0 var(--space-4); }
+
+.dv2c-rowlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.dv2c-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+}
+.dv2c-row--done { border-color: var(--clr-success); }
+.dv2c-row--dropoff {
+  border-color: var(--clr-yellow, #c9a227);
+  background: var(--clr-yellow-soft);
+  font-weight: 700;
+}
+.dv2c-row__time { color: var(--clr-text-muted); font-size: var(--fs-xs); }
+
+.dv2c-stat-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  margin-top: var(--space-1);
+}
+.dv2c-unavailable {
+  margin-top: var(--space-4);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+}

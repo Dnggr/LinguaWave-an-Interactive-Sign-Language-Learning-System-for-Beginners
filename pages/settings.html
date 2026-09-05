@@ -114,6 +114,18 @@
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
           Settings
         </a>
+        <!-- TEMPORARY — dev-phase nav link to the isolated LinguaWaveV2/
+             preview & comparison tools (see LinguaWaveV2/README.md and
+             DataV2_LinguaWave_Progress_Tracker.md §5). Dashed outline +
+             "WIP" badge (css/style.css §8b) mark this as not a finished
+             nav item on purpose. Remove this <a> (the hidden ?dev=1
+             block in pages/settings.html can stay) once the go/no-go
+             decision on dataV2 is made. -->
+        <a href="../LinguaWaveV2/pages/v2-dashboard.html" class="app-sidebar__link app-sidebar__link--dev">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9.5V3"/><path d="M7.5 14h9"/></svg></span>
+          LinguaWave V2
+          <span class="badge badge--dev">WIP</span>
+        </a>
       </nav>
       <div class="app-sidebar__foot">
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
@@ -203,6 +215,48 @@
             </div>
           </div>
 
+          <!-- ── DEVELOPER (dataV2 pilot) ───────────────────────────
+               NEW — hidden by default (`hidden` attribute below), only
+               shown with ?dev=1 in the URL. Per
+               LinguaWave_SoloLearn_Learning_Psychology_DataV2_
+               Integration_Plan.docx §7 Phase 1: "reachable only behind
+               the feature flag ... a hidden dev toggle in Settings,
+               not shown to real learners yet." Wired by
+               js/settings-page.js's initDataV2DevBlock(). Reads/writes
+               the SAME 'lw-datav2-enabled' localStorage key as
+               LinguaWaveV2/js/data-v2.js and
+               LinguaWaveV2/pages/datav2-preview.html — this is not a
+               second flag.
+
+               MOVED (this session) — all dataV2 files now live under
+               the top-level LinguaWaveV2/ folder instead of being
+               interleaved with pages/js/css, so the two links below
+               point there now. This block stays as the quiet,
+               ?dev=1-gated way in; the sidebar's new "LinguaWave V2"
+               item (see the <aside class="app-sidebar"> above) is the
+               loud, temporary way in while the team is actively
+               building this out — remove that sidebar item (this
+               block can stay) once dataV2 either ships or is dropped,
+               per DataV2_LinguaWave_Progress_Tracker.md §5. -->
+          <div class="card mt-6" id="settings-datav2-dev" hidden>
+            <h2 class="mb-2">Developer</h2>
+            <p class="text-muted" style="font-size: var(--fs-sm);">
+              Not shown to real learners. Pilot content layer from the
+              SoloLearn learning-psychology integration plan — additive,
+              does not affect the current learning path either way.
+            </p>
+            <div class="pref-row">
+              <span class="pref-row__label">dataV2 pilot mission</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="pref-datav2-enabled" />
+                <span class="toggle-switch__track"></span>
+                <span class="toggle-switch__thumb"></span>
+              </label>
+            </div>
+            <a href="../LinguaWaveV2/pages/datav2-preview.html" class="btn btn--secondary btn--sm mt-2">Open pilot preview</a>
+            <a href="../LinguaWaveV2/pages/datav2-compare.html" class="btn btn--secondary btn--sm mt-2">Open Phase 2 comparison</a>
+          </div>
+
           <div class="text-center mt-8">
             <a href="#" class="text-muted" data-logout="../index.html" style="font-size: var(--fs-sm);">Log Out</a>
           </div>
@@ -218,6 +272,8 @@
   </div><!-- /.app-shell -->
 
   <script src="../js/main.js"></script>
+  <!-- MOVED (this session): js/data-v2.js -> LinguaWaveV2/js/data-v2.js -->
+  <script src="../LinguaWaveV2/js/data-v2.js"></script>
   <script src="../js/settings-page.js"></script>
 </body>
 </html>
