@@ -6753,9 +6753,9 @@ const SIGNS = [
     tips: [
       'The small circle represents the watch face sitting on your wrist',
       'This is the WRISTWATCH sign, different from WATCH meaning "to look at"',
-      'A brief held position — no repeated motion needed',
+      'RECLASSIFIED (2026-09-06): captured as a motion sign per Joshua — treat as movement, not a single held frame',
     ],
-    imageUrl: '../assets/images/medium/personal_items/watch.png', videoUrl: '../assets/videos/personal_items/watch.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/medium/personal_items/watch.png', videoUrl: '../assets/videos/personal_items/watch.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/watch.htm',
   },
   {
@@ -7175,9 +7175,9 @@ const SIGNS = [
     tips: [
       'Handshape is bent ("bent-B"), not a single index finger — a single finger touching the forehead instead means THINK',
       'Contact point is the side of the forehead, though a casual cheek version is also common',
-      'A brief touch is enough — no repeated motion needed',
+      'RECLASSIFIED (2026-09-06): captured as a motion sign per Joshua — treat as movement, not a single held frame',
     ],
-    imageUrl: '../assets/images/medium/answers/know.png', videoUrl: '../assets/videos/answers/know.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/medium/answers/know.png', videoUrl: '../assets/videos/answers/know.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/know.htm',
   },
   {
