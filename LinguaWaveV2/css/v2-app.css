@@ -14,6 +14,54 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+/* ── Header top spacing + bottom-of-page centering (this session,
+ * consolidated — supersedes all comment blocks from earlier passes at
+ * this same problem; this is round 4, and it's a different bug than
+ * rounds 1-3 solved) ──────────────────────────────────────────────
+ *
+ * `#v2-main` and `.app-main` are the SAME element — `<div
+ * class="app-main" id="v2-main">` — not a nested child. `.app-shell`
+ * is `display:flex` with `min-height: 100vh` (style.css), and
+ * flexbox's default `align-items: stretch` already stretches
+ * `.app-main` to the FULL height of the sidebar column. Its children
+ * (the 3 `<section>`s) are plain blocks, which by default just
+ * top-align inside that already-full-height box, dumping all the
+ * leftover height as dead space at the very bottom. `display:flex;
+ * flex-direction:column; justify-content:center` below centers that
+ * 3-section content block vertically instead — confirmed working on
+ * pages where content is shorter than the viewport.
+ *
+ * `#v2-main`'s own `padding-bottom` (24px) + `:last-child
+ * {padding-bottom:0}` are UNCHANGED from rounds 1-3 — confirmed good,
+ * governs the true bottom-of-page gap, not touched by this round.
+ *
+ * ROUND 4 (this one) is a DIFFERENT bug from rounds 1-3: those were
+ * about the gap between the page edge and the whole 3-section content
+ * block. This one is about symmetry INSIDE the first section itself —
+ * the box containing just "Welcome back, Learner! / Ready for your
+ * next communication goal?". That section's own top padding had been
+ * zeroed (round 2, to stop it stacking with `#v2-main`'s separate
+ * 32px top offset) while its bottom padding was left at its natural
+ * `section--tight` value (16px) — 0px above the heading vs 16px below
+ * the subtitle, a real internal asymmetry independent of whatever the
+ * page-level top gap was doing. Fix: stop giving `#v2-main` ITSELF
+ * any top padding (`padding-top: 0` — was `var(--space-8)`/32px), and
+ * instead give the FIRST SECTION its own explicit, symmetric
+ * `padding-block: var(--space-8)` (32px top AND bottom) — the same
+ * total page-top gap as before (32px, unchanged, still just this one
+ * section owning all of it instead of splitting it across `#v2-main`
+ * + the section), but now genuinely centered around its own text,
+ * since both its own top and bottom are the identical value. */
+#v2-main {
+  padding-bottom: var(--space-6);
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#v2-main > .section:first-child { padding-block: var(--space-8); }
+#v2-main > .section:last-child { padding-bottom: 0; }
+
 /* ── Dashboard: hero row (Continue Mission + Today's Summary) ───── */
 .v2-hero-row {
   display: grid;
@@ -70,6 +118,62 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ── Journey card status colors (this session) ───────────────────────
+ * FIX: js/v2-dashboard.js's renderJourneyRail() was building status
+ * labels correctly ("In Progress" / "Available") but picking the
+ * WRONG badge color class for each — 'current' got badge--basic
+ * (blue) and 'available' got badge--intermediate (orange), backwards
+ * from what those tokens mean everywhere else in this app (see
+ * css/style.css §8's badge--* rules, and js/v2-learn.js's own
+ * statusMeta(), which already had this right). Fixed in the JS; these
+ * card-level rules are NEW — previously .v2-journey-card had no
+ * status styling of its own at all, only the little badge pill did,
+ * so the card itself gave no at-a-glance signal. A colored left
+ * accent bar + a faint matching tint now mirrors the badge it sits
+ * next to, using the SAME soft/solid token pairs the badges use:
+ *   done (Completed)     -> --clr-success / --clr-success-soft (green)
+ *   current (In Progress)-> --clr-orange  / --clr-orange-soft  (orange)
+ *   available             -> --clr-blue    / --clr-blue-soft    (blue)
+ *   locked                -> --clr-red     / --clr-red-soft     (red) —
+ *     matches badge--locked's existing red everywhere else this app
+ *     shows a locked state (js/learn.js, js/v2-learn.js's statusMeta()).
+ * Locked cards also render as a plain <div> (no href), same pattern
+ * js/v2-learn.js's renderRow() already uses for its own locked rows —
+ * there's no real gating/hearts logic yet (guide §10–11), so nothing
+ * to actually navigate a locked mission's overview page. */
+.v2-journey-card--done    { border-left: 4px solid var(--clr-success); background: var(--clr-success-soft); }
+.v2-journey-card--current { border-left: 4px solid var(--clr-orange);  background: var(--clr-orange-soft); }
+.v2-journey-card--available { border-left: 4px solid var(--clr-blue); background: var(--clr-blue-soft); }
+.v2-journey-card--locked {
+  border-left: 4px solid var(--clr-red);
+  background: var(--clr-red-soft);
+  opacity: .6;
+  cursor: not-allowed;
+}
+.v2-journey-card--locked .v2-journey-card__title { color: var(--clr-text-muted); }
+
+/* ── Hover color-mismatch fix (this session, corrected) ──────────────
+ * BUG: style.css's shared `.card:hover { border-color: var(--clr-accent); }`
+ * sets all four border-side colors, overriding the status color
+ * regardless of source order (equal specificity to the rules below,
+ * and style.css loads first). The FIRST attempt at fixing this only
+ * reasserted `border-left-color` on hover — which fixed the 4px
+ * accent bar but left the other three (thin, 1px) sides showing the
+ * shared orange hover accent, i.e. exactly the "blue left, orange
+ * everywhere else" mismatch from the screenshot. Corrected version:
+ * override the full `border-color` shorthand (all four sides) to the
+ * status color on hover, not just the left one — so every side reads
+ * as one consistent color, matching the accent bar's own color,
+ * instead of blending two different hover colors on one card. Left
+ * stays visually thicker (4px vs 1px, from the non-hover rules above)
+ * — only the color changes here, not the widths. This file loads
+ * after style.css on v2-dashboard.html, so at equal specificity
+ * (one class + one pseudo-class each) these declarations win. */
+.v2-journey-card--done:hover      { border-color: var(--clr-success); }
+.v2-journey-card--current:hover   { border-color: var(--clr-orange); }
+.v2-journey-card--available:hover { border-color: var(--clr-blue); }
+.v2-journey-card--locked:hover    { border-color: var(--clr-red); }
 
 /* ── Learning Path list (Learn page) ─────────────────────────────── */
 .v2-path-search {

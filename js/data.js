@@ -267,92 +267,138 @@ const UNITS = [
   // close the gap at 0 — nothing reads UNITS as a zero-indexed array,
   // every lookup below is by `.id` or `.order` value, confirmed via
   // getUnits()/getCategoriesForUnit()/progress.js's getOrderedLiveCategories()).
-  { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' },
+  { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' , categoryGroup: 'asl_foundations' },
   // REMOVED (this session) — 'fingerspell_name' (order: 2, kind:'interactive')
   // dropped: it's not one of the 68 topics in the lesson compilation this
   // file is scoped to. Order gap at 2 left as-is, per this file's existing
   // convention (see the Homepage-pivot Unit 0 removal note above) —
   // nothing reads UNITS as a zero-indexed array.
-  { id: 'numbers', order: 2, title: 'Numbers', kind: 'category-group' },
+  { id: 'numbers', order: 2, title: 'Numbers', kind: 'category-group' , categoryGroup: 'asl_foundations' },
   // ── Topics 3–68 below, one per unit, order matches the source
   // file's own numbering exactly (topic N below = "N. <title>" in
   // updated_fixed_lesson.txt) minus the 2-unit offset from Welcome +
   // Fingerspell above.
-  { id: 'greetings', order: 3, title: 'Greetings', kind: 'category-group' },
-  { id: 'polite_words', order: 4, title: 'Polite Words', kind: 'category-group' },
-  { id: 'people', order: 5, title: 'People', kind: 'category-group' },
-  { id: 'feelings', order: 6, title: 'Feelings', kind: 'category-group' },
-  { id: 'needs', order: 7, title: 'Needs', kind: 'category-group' },
-  { id: 'actions', order: 8, title: 'Actions', kind: 'category-group' },
-  { id: 'hand_actions', order: 9, title: 'Hand Actions', kind: 'category-group' },
-  { id: 'communication', order: 10, title: 'Communication', kind: 'category-group' },
-  { id: 'body', order: 11, title: 'Body', kind: 'category-group' },
-  { id: 'personal_information', order: 12, title: 'Personal Information', kind: 'category-group' },
-  { id: 'colors_unit', order: 13, title: 'Colors', kind: 'category-group' },
-  { id: 'shapes', order: 14, title: 'Shapes', kind: 'category-group' },
-  { id: 'size', order: 15, title: 'Size', kind: 'category-group' },
-  { id: 'appearance', order: 16, title: 'Appearance', kind: 'category-group' },
-  { id: 'touch', order: 17, title: 'Touch', kind: 'category-group' },
-  { id: 'taste', order: 18, title: 'Taste', kind: 'category-group' },
-  { id: 'sound', order: 19, title: 'Sound', kind: 'category-group' },
-  { id: 'descriptions', order: 20, title: 'Descriptions', kind: 'category-group' },
-  { id: 'family_unit', order: 21, title: 'Family', kind: 'category-group' },
-  { id: 'home', order: 22, title: 'Home', kind: 'category-group' },
-  { id: 'furniture', order: 23, title: 'Furniture', kind: 'category-group' },
-  { id: 'household', order: 24, title: 'Household', kind: 'category-group' },
-  { id: 'bathroom', order: 25, title: 'Bathroom', kind: 'category-group' },
-  { id: 'kitchen', order: 26, title: 'Kitchen', kind: 'category-group' },
-  { id: 'school', order: 27, title: 'School', kind: 'category-group' },
-  { id: 'school_supplies', order: 28, title: 'School Supplies', kind: 'category-group' },
-  { id: 'classroom', order: 29, title: 'Classroom', kind: 'category-group' },
-  { id: 'classroom_actions', order: 30, title: 'Classroom Actions', kind: 'category-group' },
-  { id: 'subjects', order: 31, title: 'Subjects', kind: 'category-group' },
+  { id: 'greetings', order: 3, title: 'Greetings', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'polite_words', order: 4, title: 'Polite Words', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'people', order: 5, title: 'People', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'feelings', order: 6, title: 'Feelings', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'needs', order: 7, title: 'Needs', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'actions', order: 8, title: 'Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'hand_actions', order: 9, title: 'Hand Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'communication', order: 10, title: 'Communication', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'body', order: 11, title: 'Body', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'personal_information', order: 12, title: 'Personal Information', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'colors_unit', order: 13, title: 'Colors', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'shapes', order: 14, title: 'Shapes', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'size', order: 15, title: 'Size', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'appearance', order: 16, title: 'Appearance', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'touch', order: 17, title: 'Touch', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'taste', order: 18, title: 'Taste', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'sound', order: 19, title: 'Sound', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'descriptions', order: 20, title: 'Descriptions', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'family_unit', order: 21, title: 'Family', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'home', order: 22, title: 'Home', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'furniture', order: 23, title: 'Furniture', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'household', order: 24, title: 'Household', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'bathroom', order: 25, title: 'Bathroom', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'kitchen', order: 26, title: 'Kitchen', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'school', order: 27, title: 'School', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'school_supplies', order: 28, title: 'School Supplies', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'classroom', order: 29, title: 'Classroom', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'classroom_actions', order: 30, title: 'Classroom Actions', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'subjects', order: 31, title: 'Subjects', kind: 'category-group' , categoryGroup: 'school_life' },
   // RE-ADDED (this session) — 'food_unit' (order: 32), topic 32 "Food" from
   // the 68-topic lesson compilation (Rice/Bread/Egg/Chicken/Fish/Meat/Soup).
   // comingSoon:true on its CATEGORIES entry below — no SIGNS content has
   // been authored/verified for these 7 words yet.
-  { id: 'food_unit', order: 32, title: 'Food', kind: 'category-group' },
-  { id: 'fruits', order: 33, title: 'Fruits', kind: 'category-group' },
-  { id: 'vegetables', order: 34, title: 'Vegetables', kind: 'category-group' },
-  { id: 'snacks', order: 35, title: 'Snacks', kind: 'category-group' },
-  { id: 'drinks', order: 36, title: 'Drinks', kind: 'category-group' },
-  { id: 'animals_unit', order: 37, title: 'Animals', kind: 'category-group' },
-  { id: 'wild_animals', order: 38, title: 'Wild Animals', kind: 'category-group' },
-  { id: 'insects', order: 39, title: 'Insects', kind: 'category-group' },
-  { id: 'clothes_unit', order: 40, title: 'Clothes', kind: 'category-group' },
-  { id: 'dressing', order: 41, title: 'Dressing', kind: 'category-group' },
-  { id: 'personal_items', order: 42, title: 'Personal Items', kind: 'category-group' },
-  { id: 'nature', order: 43, title: 'Nature', kind: 'category-group' },
-  { id: 'plants', order: 44, title: 'Plants', kind: 'category-group' },
-  { id: 'weather', order: 45, title: 'Weather', kind: 'category-group' },
-  { id: 'seasons', order: 46, title: 'Seasons', kind: 'category-group' },
-  { id: 'places_unit', order: 47, title: 'Places', kind: 'category-group' },
-  { id: 'vehicles', order: 48, title: 'Vehicles', kind: 'category-group' },
-  { id: 'transportation', order: 49, title: 'Transportation', kind: 'category-group' },
-  { id: 'professions', order: 50, title: 'Professions', kind: 'category-group' },
-  { id: 'community', order: 51, title: 'Community', kind: 'category-group' },
-  { id: 'time_unit', order: 52, title: 'Time', kind: 'category-group' },
-  { id: 'daytime', order: 53, title: 'Daytime', kind: 'category-group' },
-  { id: 'days', order: 54, title: 'Days', kind: 'category-group' },
-  { id: 'months', order: 55, title: 'Months', kind: 'category-group' },
-  { id: 'sequence', order: 56, title: 'Sequence', kind: 'category-group' },
-  { id: 'frequency', order: 57, title: 'Frequency', kind: 'category-group' },
-  { id: 'location', order: 58, title: 'Location', kind: 'category-group' },
-  { id: 'distance', order: 59, title: 'Distance', kind: 'category-group' },
-  { id: 'directions', order: 60, title: 'Directions', kind: 'category-group' },
-  { id: 'social', order: 61, title: 'Social', kind: 'category-group' },
-  { id: 'manners', order: 62, title: 'Manners', kind: 'category-group' },
-  { id: 'turn_taking', order: 63, title: 'Turn-Taking', kind: 'category-group' },
-  { id: 'responses', order: 64, title: 'Responses', kind: 'category-group' },
-  { id: 'questions', order: 65, title: 'Questions', kind: 'category-group' },
-  { id: 'conversation', order: 66, title: 'Conversation', kind: 'category-group' },
-  { id: 'requests_unit', order: 67, title: 'Requests', kind: 'category-group' },
-  { id: 'answers', order: 68, title: 'Answers', kind: 'category-group' },
+  { id: 'food_unit', order: 32, title: 'Food', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'fruits', order: 33, title: 'Fruits', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'vegetables', order: 34, title: 'Vegetables', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'snacks', order: 35, title: 'Snacks', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'drinks', order: 36, title: 'Drinks', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'animals_unit', order: 37, title: 'Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'wild_animals', order: 38, title: 'Wild Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'insects', order: 39, title: 'Insects', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'clothes_unit', order: 40, title: 'Clothes', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'dressing', order: 41, title: 'Dressing', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'personal_items', order: 42, title: 'Personal Items', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'nature', order: 43, title: 'Nature', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'plants', order: 44, title: 'Plants', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'weather', order: 45, title: 'Weather', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'seasons', order: 46, title: 'Seasons', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'places_unit', order: 47, title: 'Places', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'vehicles', order: 48, title: 'Vehicles', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'transportation', order: 49, title: 'Transportation', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'professions', order: 50, title: 'Professions', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'community', order: 51, title: 'Community', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'time_unit', order: 52, title: 'Time', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'daytime', order: 53, title: 'Daytime', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'days', order: 54, title: 'Days', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'months', order: 55, title: 'Months', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'sequence', order: 56, title: 'Sequence', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'frequency', order: 57, title: 'Frequency', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'location', order: 58, title: 'Location', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'distance', order: 59, title: 'Distance', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'directions', order: 60, title: 'Directions', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'social', order: 61, title: 'Social', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'manners', order: 62, title: 'Manners', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'turn_taking', order: 63, title: 'Turn-Taking', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'responses', order: 64, title: 'Responses', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'questions', order: 65, title: 'Questions', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'conversation', order: 66, title: 'Conversation', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'requests_unit', order: 67, title: 'Requests', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'answers', order: 68, title: 'Answers', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
   // REMOVED (this session) — 'basic_phrases' (order: 69) and 'phrasebook'
   // (order: 70) dropped: pure vocabulary is all the 68-topic lesson
   // compilation covers, no phrase-combination or reference-sentence
   // topics. Order gaps left as-is, same convention as above.
 ];
+
+/**
+ * CATEGORY_GROUPS — purely presentational chapter layer over UNITS.
+ * Twelve named chapters mirroring the syllabus table (same grouping
+ * used by LinguaWaveV2's own UNITS_V2/CATEGORY_GROUPS_V2 fork, minus
+ * the two units V1 doesn't have: 'fingerspell_name' — V1 has no
+ * fingerspelling unit, so 'asl_foundations' is alphabet+numbers only —
+ * and 'basic_phrases'/'phrasebook', both removed from V1's UNITS
+ * above, which is why 'putting_it_together' currently has zero units
+ * (getUnitsForCategoryGroup() returns [] for it; callers already
+ * handle an empty group by not rendering it, e.g. js/learn.js's
+ * renderTrail()). One exception, not a numeric-neighbor default:
+ * 'personal_information' (NAME/AGE/BIRTHDAY/HOME/FROM/LIVE) is tagged
+ * into 'introduce_yourself' rather than 'describing_things', since
+ * its content is clearly "about you," not descriptive vocabulary —
+ * every other unit's group follows its order position contiguously.
+ * `order`/`kind`/`title`/`id` on every UNITS entry above, and
+ * CATEGORIES/SIGNS entirely, are unchanged by this addition.
+ */
+const CATEGORY_GROUPS = [
+  { id: 'asl_foundations', order: 1, title: 'ASL Foundations',
+    blurb: 'The building blocks everything else leans on: the alphabet and numbers.' },
+  { id: 'introduce_yourself', order: 2, title: 'Introduce Yourself',
+    blurb: 'Say hello, and talk about yourself and the people around you.' },
+  { id: 'express_feelings', order: 3, title: 'Express How You Feel',
+    blurb: 'Politeness, emotions, and everyday needs.' },
+  { id: 'daily_actions', order: 4, title: 'Daily Actions & Communication',
+    blurb: 'Verbs for what you do, and how you talk about doing it.' },
+  { id: 'describing_things', order: 5, title: 'Describing People & Things',
+    blurb: 'Colors, shapes, size, and the senses — how to describe anything.' },
+  { id: 'home_family', order: 6, title: 'Home & Family',
+    blurb: 'Family members, and the rooms and things in a home.' },
+  { id: 'school_life', order: 7, title: 'School Life',
+    blurb: 'Classroom vocabulary, supplies, and subjects.' },
+  { id: 'food_nature', order: 8, title: 'Food & Nature',
+    blurb: 'Food, fruits, animals, plants, weather, and the seasons.' },
+  { id: 'clothing_belongings', order: 9, title: 'Clothing & Belongings',
+    blurb: 'What you wear, and the personal items you carry.' },
+  { id: 'people_places_time', order: 10, title: 'People, Places & Time',
+    blurb: 'Professions, places, transportation, and talking about time.' },
+  { id: 'having_a_conversation', order: 11, title: 'Having a Conversation',
+    blurb: 'Turn-taking, questions, requests, and social manners.' },
+  { id: 'putting_it_together', order: 12, title: 'Putting It All Together',
+    blurb: 'Combine everything, one more chapter at a time.' },
+];
+
 
 /* ── UNIT 0 CONTENT — REMOVED this session (Homepage pivot) ─────────
  * `UNIT0_CONTENT` (five sections: "What is ASL?", "A Brief History of
@@ -9446,6 +9492,28 @@ function getCategoriesForUnit(unitOrder) {
   return CATEGORIES.filter(c => c.unit === unitOrder).sort((a, b) => a.order - b.order);
 }
 
+/**
+ * NEW — restores the CATEGORY_GROUPS chapter layer's read API. Returns
+ * all 12 chapters sorted by `order`. See the CATEGORY_GROUPS const
+ * above (declared right after UNITS) for what each chapter contains
+ * and the one documented exception ('personal_information').
+ */
+function getCategoryGroups() {
+  return [...CATEGORY_GROUPS].sort((a, b) => a.order - b.order);
+}
+
+/**
+ * NEW — every UNITS entry tagged with the given chapter id, in their
+ * existing `order`. Returns [] for an unknown id or a chapter with no
+ * units currently assigned (e.g. 'putting_it_together' — see the
+ * CATEGORY_GROUPS comment above) rather than throwing; callers (e.g.
+ * js/learn.js's renderTrail()) already skip empty groups.
+ * @param {string} categoryGroupId
+ */
+function getUnitsForCategoryGroup(categoryGroupId) {
+  return UNITS.filter(u => u.categoryGroup === categoryGroupId).sort((a, b) => a.order - b.order);
+}
+
 /* ── EXPORTS ─────────────────────────────────────────────────────── */
 // HOMEPAGE PIVOT (this session) — UNIT0_CONTENT removed from this
 // export list (const no longer exists, see the "UNIT 0 CONTENT"
@@ -9454,4 +9522,5 @@ window.LWData = {
   SIGNS, CATEGORIES, UNITS,
   getSign, getCategorySigns, getCategoriesForLevel, getCategory,
   getUnits, getCategoriesForUnit,
+  getCategoryGroups, getUnitsForCategoryGroup,
 };

@@ -110,6 +110,33 @@ const UNIT_ICONS = {
   basic_phrases: '💬', phrasebook: '📖',
 };
 
+// Which of the 3 broad levels a unit belongs to — same grouping
+// dashboard.js/progress-page.js each keep their own small copy of
+// (this is the original copy; theirs mirror this one, not the other
+// way around). REVERTED (this session, per explicit request) — a
+// prior session had replaced this trail's grouping with the 12-entry
+// CATEGORY_GROUPS chapter layer, which depended on
+// window.LWData.getCategoryGroups()/getUnitsForCategoryGroup() being
+// added to js/data.js. That data.js change never actually shipped in
+// the version of the repo this session started from, so the trail was
+// throwing on load (TypeError: window.LWData.getCategoryGroups is not
+// a function). Rather than add the missing data.js API — which would
+// make V1 depend on / inherit V2's chapter format — this file is
+// reverted to its own pre-chapter behavior instead, so V1 keeps
+// working exactly as it did before that session, independent of
+// whatever V2 (js/data-v2.js / js/v2-learn.js) does with its own
+// UNITS_V2/CATEGORY_GROUPS_V2 fork.
+const LEVEL_GROUPS = [
+  { level: 'basic', label: 'Alphabet & Numbers' },
+  { level: 'medium', label: 'Words & Topics' },
+  { level: 'intermediate', label: 'Phrases & Conversations' },
+];
+function getUnitLevel(unit) {
+  if (unit.kind === 'interactive') return 'basic';
+  const cats = window.LWData.getCategoriesForUnit(unit.order);
+  return cats[0]?.level ?? 'medium';
+}
+
 // Card-title prefix for each basic-level category's flat single-char
 // grid. Extend this (and FLAT_GRID_CATEGORIES below) if a third flat-
 // grid category is ever added.
@@ -629,17 +656,13 @@ function initLearnPage() {
   }
 
   /** Default / root view — the trail itself, grouped into native
-   *  <details> sections by CURRICULUM CHAPTER (window.LWData
-   *  .getCategoryGroups() / .getUnitsForCategoryGroup(), added to
-   *  data.js this session — see CATEGORY_GROUPS there for the syllabus
-   *  table this mirrors). Replaces the old 3-bucket basic/medium/
-   *  intermediate LEVEL_GROUPS split (still used as-is by
-   *  dashboard.js/progress-page.js, out of scope here) with the 12
-   *  named chapters learners actually see in the syllabus. Closed
-   *  sections cost nothing to scroll past; native <details>/<summary>
-   *  gets keyboard support and a no-JS fallback for free. The chapter
-   *  containing the learner's current unit opens by default; the rest
-   *  start collapsed. */
+   *  <details> sections by the 3 broad LEVEL_GROUPS above (basic /
+   *  medium / intermediate) — REVERTED (this session) back to this
+   *  original grouping; see the LEVEL_GROUPS comment near the top of
+   *  this file for why. Closed sections cost nothing to scroll past;
+   *  native <details>/<summary> gets keyboard support and a no-JS
+   *  fallback for free. The section containing the learner's current
+   *  unit opens by default; the rest start collapsed. */
   function renderTrail() {
     history.replaceState(null, '', 'learn.html');
     setContext('');
@@ -650,21 +673,17 @@ function initLearnPage() {
     const units = window.LWData.getUnits();
     const currentUnitId = findCurrentUnitId(units);
     const currentUnit = units.find(u => u.id === currentUnitId);
-    const chapters = window.LWData.getCategoryGroups();
-    const openChapterId = currentUnit?.categoryGroup ?? chapters[0]?.id;
+    const openLevel = currentUnit ? getUnitLevel(currentUnit) : LEVEL_GROUPS[0].level;
 
-    grid.innerHTML = chapters.map(chapter => {
-      const groupUnits = window.LWData.getUnitsForCategoryGroup(chapter.id);
+    grid.innerHTML = LEVEL_GROUPS.map(({ level, label }) => {
+      const groupUnits = units.filter(u => getUnitLevel(u) === level);
       if (groupUnits.length === 0) return '';
       const doneCount = groupUnits.filter(u => getUnitState(u, currentUnitId).status === 'done').length;
-      const isOpen = chapter.id === openChapterId;
+      const isOpen = level === openLevel;
       return `
         <details class="trail-group"${isOpen ? ' open' : ''}>
           <summary class="trail-group__summary">
-            <span class="trail-group__label">
-              <span class="trail-group__title">Chapter ${chapter.order} · ${escapeHtml(chapter.title)}</span>
-              <span class="trail-group__blurb">${escapeHtml(chapter.blurb)}</span>
-            </span>
+            <span class="trail-group__label">${escapeHtml(label)}</span>
             <span class="trail-group__meta">${doneCount}/${groupUnits.length} complete</span>
           </summary>
           <div class="course-grid trail-group__grid">
