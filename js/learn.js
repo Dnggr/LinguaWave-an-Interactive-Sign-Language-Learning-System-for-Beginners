@@ -628,25 +628,18 @@ function initLearnPage() {
     return `<button type="button" class="course-card${stateClass}" data-open-unit="${escapeHtml(unit.id)}">${inner}</button>`;
   }
 
-  // Which of the 3 broad levels a unit belongs to, purely for grouping
-  // the trail into collapsible sections. 'interactive' units have no
-  // CATEGORIES entry of their own, so they're pinned to 'basic'.
-  const LEVEL_GROUPS = [
-    { level: 'basic', label: 'Alphabet & Numbers' },
-    { level: 'medium', label: 'Words & Topics' },
-    { level: 'intermediate', label: 'Phrases & Conversations' },
-  ];
-  function getUnitLevel(unit) {
-    if (unit.kind === 'interactive') return 'basic';
-    const cats = window.LWData.getCategoriesForUnit(unit.order);
-    return cats[0]?.level ?? 'medium';
-  }
-
-  /** Default / root view — the trail itself, grouped into 3 native
-   *  <details> sections by level (closed sections cost nothing to
-   *  scroll past; native <details>/<summary> gets keyboard support
-   *  and a no-JS fallback for free). The section containing the
-   *  learner's current unit opens by default; the rest start collapsed. */
+  /** Default / root view — the trail itself, grouped into native
+   *  <details> sections by CURRICULUM CHAPTER (window.LWData
+   *  .getCategoryGroups() / .getUnitsForCategoryGroup(), added to
+   *  data.js this session — see CATEGORY_GROUPS there for the syllabus
+   *  table this mirrors). Replaces the old 3-bucket basic/medium/
+   *  intermediate LEVEL_GROUPS split (still used as-is by
+   *  dashboard.js/progress-page.js, out of scope here) with the 12
+   *  named chapters learners actually see in the syllabus. Closed
+   *  sections cost nothing to scroll past; native <details>/<summary>
+   *  gets keyboard support and a no-JS fallback for free. The chapter
+   *  containing the learner's current unit opens by default; the rest
+   *  start collapsed. */
   function renderTrail() {
     history.replaceState(null, '', 'learn.html');
     setContext('');
@@ -657,17 +650,21 @@ function initLearnPage() {
     const units = window.LWData.getUnits();
     const currentUnitId = findCurrentUnitId(units);
     const currentUnit = units.find(u => u.id === currentUnitId);
-    const openLevel = currentUnit ? getUnitLevel(currentUnit) : 'basic';
+    const chapters = window.LWData.getCategoryGroups();
+    const openChapterId = currentUnit?.categoryGroup ?? chapters[0]?.id;
 
-    grid.innerHTML = LEVEL_GROUPS.map(({ level, label }) => {
-      const groupUnits = units.filter(u => getUnitLevel(u) === level);
+    grid.innerHTML = chapters.map(chapter => {
+      const groupUnits = window.LWData.getUnitsForCategoryGroup(chapter.id);
       if (groupUnits.length === 0) return '';
       const doneCount = groupUnits.filter(u => getUnitState(u, currentUnitId).status === 'done').length;
-      const isOpen = level === openLevel;
+      const isOpen = chapter.id === openChapterId;
       return `
         <details class="trail-group"${isOpen ? ' open' : ''}>
           <summary class="trail-group__summary">
-            <span class="trail-group__label">${escapeHtml(label)}</span>
+            <span class="trail-group__label">
+              <span class="trail-group__title">Chapter ${chapter.order} · ${escapeHtml(chapter.title)}</span>
+              <span class="trail-group__blurb">${escapeHtml(chapter.blurb)}</span>
+            </span>
             <span class="trail-group__meta">${doneCount}/${groupUnits.length} complete</span>
           </summary>
           <div class="course-grid trail-group__grid">

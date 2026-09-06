@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    LinguaWaveV2/pages/v2-orientation.html — V2 Orientation
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE : V1's equivalent content (pages/homepage.html "What is
+              ASL? / Deaf Awareness / Benefits / Visual Communication
+              / Learning Tips" + pages/intro-to-asl.html's deeper
+              reading) lives ONLY on the post-login landing page and
+              an optional "read more" — genuinely easy for a learner
+              to skip once and never see again, since neither page is
+              part of the UNITS trail (see js/data.js's UNIT0_CONTENT
+              removal note). This page fixes that FOR V2 specifically
+              by giving Orientation a real row pinned above the 12
+              chapter sections in v2-learn.html's path (see
+              js/v2-learn.js's renderOrientationCard() / js/data-v2.js's
+              getOrientation()) — always visible, never gated, easy to
+              skip in five seconds if a learner already knows this.
+
+    CONTENT : the History section below is a broader, more narrative
+              treatment than V1's two-paragraph "A short history" (see
+              pages/intro-to-asl.html §1) — Martha's Vineyard, the
+              founding of the American School for the Deaf, William
+              Stokoe's linguistics research, and Deaf President Now —
+              written fresh for this page, not copied from intro-to-
+              asl.html. The other four topics (Deaf Awareness,
+              Benefits, Visual Communication, Learning Tips) are kept
+              short here on purpose — intro-to-asl.html already covers
+              them at full length and nothing here should fork into a
+              second copy of that content; the "Read the full guide"
+              link below points there instead of duplicating it.
+
+    VIDEO   : placeholder only (session note: no video exists yet).
+              Swap PLACEHOLDER_VIDEO_ID below for a real one once
+              recorded — see the comment right above the placeholder
+              markup for the two-line change needed to go live.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Orientation — LinguaWave V2 (preview)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../../css/learn.css" />
+  <link rel="stylesheet" href="../css/v2-app.css" />
+  <style>
+    /* Same "narrower measure for reading content" scoping
+       pages/intro-to-asl.html uses — kept local to this page rather
+       than added to v2-app.css since nothing else in V2 reads prose
+       this long yet. */
+    .lesson-article { max-width: 720px; }
+    .lesson-article h2 {
+      margin-top: var(--space-8); margin-bottom: var(--space-3);
+      display: flex; align-items: center; gap: var(--space-3);
+    }
+    .lesson-article h2:first-child { margin-top: 0; }
+    .lesson-article__number {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: var(--radius-md);
+      background: var(--clr-accent); color: #fff;
+      font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700;
+      flex-shrink: 0;
+    }
+    .lesson-article h3 {
+      margin-top: var(--space-4); margin-bottom: var(--space-2);
+      font-size: var(--fs-base); color: var(--clr-text);
+    }
+    .lesson-article p, .lesson-article li { line-height: 1.7; color: var(--clr-text); }
+    .lesson-article ul { padding-left: 1.25rem; margin: var(--space-2) 0; }
+    .lesson-article li { margin-bottom: var(--space-2); }
+    .lesson-article .card { margin-bottom: var(--space-6); }
+
+    /* Video placeholder — a clearly-labeled stand-in, not a fake
+       player. Swap for a real <iframe> once a video exists; see the
+       markup comment below. */
+    .v2-video-placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: var(--space-3); text-align: center;
+      aspect-ratio: 16 / 9; border-radius: var(--radius-lg);
+      background: var(--clr-surface-2); border: 1px dashed var(--clr-border);
+      color: var(--clr-text-muted); padding: var(--space-6);
+    }
+    .v2-video-placeholder__icon {
+      width: 3rem; height: 3rem; border-radius: 50%;
+      background: var(--clr-accent-soft, var(--clr-orange-soft)); color: var(--clr-accent, var(--clr-orange));
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#v2-orientation-main" class="skip-link">Skip to content</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="v2-dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="v2-learn.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="../../pages/progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="../../pages/feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="../../pages/settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+        <a href="../../pages/learn.html" class="app-sidebar__link app-sidebar__link--dev">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+          Back to LinguaWave
+          <span class="badge badge--dev">V1</span>
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main" id="v2-orientation-main">
+
+      <section class="section section--sm section--tight">
+        <div class="container container--narrow">
+          <a href="v2-learn.html" class="v2-back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All missions
+          </a>
+
+          <div class="text-center mb-8">
+            <p class="section__eyebrow">Start here</p>
+            <h1>Orientation</h1>
+            <p class="text-muted mt-4">
+              Before Chapter 1, a quick look at where ASL comes from, why it
+              matters, and how to get the most out of learning it here.
+            </p>
+          </div>
+
+          <!-- VIDEO PLACEHOLDER — no video recorded yet. To go live: replace
+               this whole .v2-video-placeholder <div> with a real embed, e.g.
+               <iframe width="100%" height="100%" style="aspect-ratio:16/9;border-radius:var(--radius-lg);"
+                       src="https://www.youtube.com/embed/REAL_VIDEO_ID"
+                       title="LinguaWave: Introduction to ASL" frameborder="0" allowfullscreen></iframe>
+               Once recorded, this same video belongs on the LinguaWave
+               YouTube channel (youtube.com/@Lingua_Wave) too — one shoot,
+               two placements. -->
+          <div class="v2-video-placeholder mb-8" role="img"
+               aria-label="Video placeholder: an introduction to ASL, recorded by LinguaWave community members, is coming soon.">
+            <span class="v2-video-placeholder__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div>
+              <strong>Video coming soon</strong>
+              <p class="mt-2" style="max-width: 46ch;">
+                An introduction to ASL, recorded by LinguaWave community
+                members — captioned, with a Deaf or hard-of-hearing presenter
+                signing, not just narration. Once it's live here, it'll also
+                go up on our
+                <a href="https://www.youtube.com/@Lingua_Wave" target="_blank" rel="noopener">YouTube channel</a>.
+              </p>
+            </div>
+          </div>
+
+          <article class="lesson-article">
+
+            <div class="card">
+              <h2><span class="lesson-article__number">1</span> The Story of ASL</h2>
+              <p>
+                Long before ASL had a name, there was a place where it didn't
+                need one. On Martha's Vineyard, starting in the 1700s, a
+                hereditary form of deafness ran so deep through the island's
+                population that much of the town — hearing and Deaf alike —
+                grew up signing as a matter of course. Deaf islanders farmed,
+                fished, argued town politics, and told jokes in sign
+                alongside their hearing neighbors, in a community where being
+                Deaf was closer to an ordinary trait than a barrier. Martha's
+                Vineyard Sign Language never became a widely-known language
+                in its own right, but it fed directly into what came next.
+              </p>
+              <p>
+                In 1817, Thomas Hopkins Gallaudet and Laurent Clerc founded
+                the American School for the Deaf in Hartford, Connecticut —
+                the first permanent school for Deaf students in the United
+                States. Clerc was Deaf himself, educated in France, and
+                fluent in French Sign Language (LSF). At the school, LSF
+                mixed with Martha's Vineyard Sign Language and the many home
+                sign systems Deaf students already brought with them from
+                across New England. Out of that mixing, over the generations
+                that followed, American Sign Language took shape — a
+                language born from a community, not designed by any single
+                person.
+              </p>
+              <h3>Proving it was a language at all</h3>
+              <p>
+                For most of the 20th century, sign languages were widely
+                dismissed — even by well-meaning educators — as gesture, or
+                pantomime, or a simplified stand-in for "real" language. That
+                changed in the 1960s, when linguist William Stokoe published
+                research showing ASL has everything a spoken language has:
+                its own phonology (handshape, location, and movement,
+                functioning the way sounds do in speech), its own grammar,
+                its own way of building complex meaning. It was the first
+                rigorous linguistic case that ASL wasn't broken English — it
+                was its own language, and the argument reshaped how
+                linguists, educators, and eventually the public understood
+                sign language everywhere, not only in the U.S.
+              </p>
+              <h3>A community that spoke up for itself</h3>
+              <p>
+                In March 1988, Gallaudet University — the world's only
+                university built specifically for Deaf and hard-of-hearing
+                students — announced a new president. Every finalist for the
+                job was Deaf except the one the board picked. Students shut
+                the campus down in protest for a week, and "Deaf President
+                Now" became a rallying cry that reached national news. The
+                board reversed course, and I. King Jordan became Gallaudet's
+                first Deaf president. The protest is remembered as a turning
+                point for Deaf pride and self-determination — proof that the
+                Deaf community wasn't just the subject of decisions made
+                about it, but a community capable of making its own.
+              </p>
+              <p>
+                Today, ASL is the primary language for a large community of
+                Deaf and hard-of-hearing people across the United States and
+                Canada — estimates commonly range from several hundred
+                thousand to over a million users, though sign language use
+                is notoriously hard to survey precisely. It's taught in
+                thousands of schools and universities, recognized as a
+                foreign language for academic credit in many U.S. states,
+                and — like any living language — still changing.
+              </p>
+            </div>
+
+            <div class="card">
+              <h2><span class="lesson-article__number">2</span> A Few Things Worth Knowing</h2>
+              <ul>
+                <li><strong>Deaf culture is a culture, not just an absence of hearing.</strong> Many Deaf people describe Deafness as an identity and community, not a deficit to be fixed.</li>
+                <li><strong>ASL isn't signed English.</strong> Its grammar and word order are its own — a fluent ASL sentence doesn't map word-for-word onto an English one.</li>
+                <li><strong>Facial expression is grammar, not just emotion.</strong> Eyebrow position and head tilt can be the difference between a statement and a question in ASL.</li>
+                <li><strong>Learning ASL is a long-term skill, like any language</strong> — a little consistent practice beats an occasional long session, which is exactly what the path after this page is built around.</li>
+              </ul>
+              <p class="text-muted mt-4">
+                This is intentionally a short list. For the full walkthrough —
+                Deaf etiquette, why ASL is worth learning, and how visual
+                communication actually works — see
+                <a href="../../pages/intro-to-asl.html">the full Introduction to ASL guide</a>.
+              </p>
+            </div>
+
+          </article>
+
+          <div class="text-center mt-8 mb-8">
+            <a href="v2-learn.html" class="btn btn--primary">Continue to the Learning Path →</a>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="../../js/theme.js" defer></script>
+</body>
+</html>

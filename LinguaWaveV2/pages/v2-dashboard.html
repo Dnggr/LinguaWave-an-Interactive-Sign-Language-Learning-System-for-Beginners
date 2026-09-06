@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    LinguaWaveV2/pages/v2-dashboard.html — V2 Mission-Based Dashboard
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE : First real (non-dev-only) page of the V2 rebuild, per
+              "LinguaWave_V2_Mission_Based_Learning_System_
+              Implementation_Guide.docx" §4.2 (base layout) and its
+              V2 section §13 (Progress Dashboard) / the "Continue Your
+              Mission" + "Today's Summary" + "Your Learning Journey"
+              structure. Uses the SAME app shell (sidebar/header/.card
+              tokens) as pages/dashboard.html so V2 looks like part of
+              LinguaWave, not a separate tool — that's what "replicate
+              the base format" means here, as opposed to the
+              deliberately bare pages/datav2-preview.html /
+              datav2-compare.html dev tools, which stay as-is.
+
+    DATA    : Sourced live from window.LWDataV2.getAllMissions() (real
+              content, all currently-live categories) — no hardcoded
+              names/percentages, per the guide's explicit "do not show
+              hardcoded values... before live data is ready" rule.
+
+    OPEN QUESTION (see DataV2_LinguaWave_Progress_Tracker.md §5): the
+              guide's V2 section asks for exactly 10 numbered missions;
+              dataV2's schema currently has 65 (one per live category).
+              This page does NOT collapse/renumber those 65 into 10 —
+              that's a content decision for the team, not something to
+              guess at silently. It shows all 65, ordered the same way
+              getLiveCategoryList() already orders them.
+
+    SCOPE   : Dashboard + Learn Path (v2-learn.html) only, this pass.
+              Mission Overview / Lesson / Mastery Quiz / Review /
+              Hearts (guide §6–12) are NOT built yet — Continue
+              Learning links out to the existing pages/lesson.html or
+              pages/quiz.html for now, same destinations
+              pages/dashboard.html's own Continue card already uses.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dashboard — LinguaWave V2 (preview)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/v2-app.css" />
+</head>
+<body>
+
+  <a href="#v2-main" class="skip-link">Skip to Dashboard</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="v2-dashboard.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="v2-learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="../../pages/progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="../../pages/feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="../../pages/settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+        <!-- TEMPORARY — mirrors css/style.css §8b's dashed/"WIP" treatment
+             so this reads as unfinished, same convention as the real
+             app's sidebar link into LinguaWaveV2. Points back to v1. -->
+        <a href="../../pages/dashboard.html" class="app-sidebar__link app-sidebar__link--dev">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></span>
+          Back to LinguaWave
+          <span class="badge badge--dev">V1</span>
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main" id="v2-main">
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="dash-header">
+            <div>
+              <h1>Welcome back, <span data-user-name>Learner</span>! 👋</h1>
+              <p class="mt-2 text-muted">Ready for your next communication goal?</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="v2-hero-row">
+            <div class="card v2-continue-card" id="v2-continue-card">
+              <!-- filled by js/v2-dashboard.js -->
+            </div>
+            <div class="card v2-summary-card" id="v2-summary-card">
+              <!-- filled by js/v2-dashboard.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm">
+        <div class="container">
+          <h2 class="mb-4">Your Learning Journey</h2>
+          <div class="v2-journey-rail" id="v2-journey-rail">
+            <!-- filled by js/v2-dashboard.js -->
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="../../js/data.js"></script>
+  <script src="../js/data-v2.js"></script>
+  <script src="../../js/theme.js" defer></script>
+  <script src="../js/v2-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Sets data-theme before any CSS loads, so the page never flashes
+       the wrong theme on load. Must stay first in <head> — same
+       snippet every other page in this repo uses. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    pages/datav2-preview.html — DataV2 Pilot Preview (INTERNAL / DEV ONLY)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : Renders window.LWDataV2's pilot mission (js/data-v2.js)
+               so the "LinguaWave_SoloLearn_Learning_Psychology_
+               DataV2_Integration_Plan" §7 Phase 1 ("reachable only
+               behind the feature flag ... not shown to real learners
+               yet") has somewhere real to be reachable FROM. This
+               page is intentionally NOT linked from any nav/sidebar —
+               the only way in is pages/settings.html's hidden
+               ?dev=1 block, or typing the URL directly.
+
+    ISOLATION : Does not touch js/learn.js, js/lesson.js, js/engine/
+               progress.js, or their pages. Loads js/data.js (for real
+               sign content) and js/data-v2.js (this pilot's own
+               module) only — no other app script. If the dataV2
+               feature flag is off, this page still renders (it's the
+               preview tool itself) but shows a banner saying so,
+               rather than silently doing nothing.
+
+    NOT PRODUCTION UI : layout reuses this repo's existing .card/.btn/
+               .badge/.progress-bar tokens (css/style.css) for visual
+               consistency, but the specific item-list/dual-bar layout
+               here is a throwaway preview shell, not a designed
+               screen — see css/datav2-preview.css's own header.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>DataV2 Pilot Preview — LinguaWave (dev)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../css/datav2-preview.css" />
+  <!-- Reuses the compare page's .dv2c-picker styling for the new
+       mission <select> (Phase 3) — no new CSS needed for that alone. -->
+  <link rel="stylesheet" href="../css/datav2-compare.css" />
+</head>
+<body>
+
+  <div class="dv2-shell">
+
+    <div class="dv2-devbar">
+      <strong>Developer preview</strong> — dataV2 pilot mission. Not part of the real learner path.
+      <a href="../../pages/settings.html?dev=1" class="dv2-devbar__link">&larr; Back to Settings</a>
+    </div>
+
+    <div class="container container--narrow section section--sm">
+
+      <div class="dv2-flagbar card" id="dv2-flagbar">
+        <!-- filled by js/data-v2-preview.js -->
+      </div>
+
+      <!-- NEW (Phase 3) — lets a dev browse any of the now-migrated
+           missions, not just the Phase 1 pilot. Defaults to
+           'essentials_greetings' so existing behavior/links to this
+           page are unaffected if this picker is never touched. -->
+      <div class="dv2c-picker" id="dv2-mission-picker">
+        <label for="dv2-mission-select"><strong>Mission:</strong></label>
+        <select id="dv2-mission-select"></select>
+      </div>
+
+      <div id="dv2-root">
+        <!-- filled by js/data-v2-preview.js -->
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../../js/data.js"></script>
+  <script src="../js/data-v2.js"></script>
+  <script src="../js/data-v2-preview.js"></script>
+</body>
+</html>

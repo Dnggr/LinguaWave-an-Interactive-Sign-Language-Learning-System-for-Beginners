@@ -463,6 +463,25 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .badge--intermediate { background: var(--clr-orange-soft); color: var(--clr-orange); }
 .badge--locked       { background: var(--clr-red-soft);    color: var(--clr-red); }
 .badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
+.badge--dev          { background: var(--clr-orange-soft); color: var(--clr-orange); }
+
+/* ── 8b. TEMPORARY — dataV2 sidebar entry point ─────────────────────
+ * .app-sidebar__link--dev marks the "LinguaWave V2" nav item added
+ * across pages/dashboard.html, learn.html, progress.html, settings.html,
+ * and feedback.html while dataV2 is under active development (see
+ * DataV2_LinguaWave_Progress_Tracker.md §5 and the LinguaWaveV2/
+ * folder's own README.md). It's visually distinct (dashed outline +
+ * .badge--dev "WIP" tag pinned to the right) precisely because it is
+ * NOT meant to look like a finished nav item — pull this rule and the
+ * matching <a> markup once dataV2 either ships for real or is dropped.
+ */
+.app-sidebar__link--dev {
+  border: 1px dashed var(--clr-border);
+}
+.app-sidebar__link--dev .badge { margin-left: auto; }
+@media (max-width: 900px) {
+  .app-sidebar__link--dev .badge { display: none; } /* keeps the row-layout mobile sidebar compact */
+}
 
 /* ── 9. PROGRESS BAR ────────────────────────────────────────────── */
 .progress-bar {

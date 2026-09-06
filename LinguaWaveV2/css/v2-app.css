@@ -1,0 +1,230 @@
+/**
+ * css/v2-app.css — LinguaWave V2 (mission-based rebuild)
+ * ─────────────────────────────────────────────────────────────────
+ * Styling for the REAL V2 product pages (v2-dashboard.html,
+ * v2-learn.html) — NOT the dev-only preview/compare tools (those
+ * keep using datav2-preview.css/datav2-compare.css, unchanged).
+ *
+ * Every rule here builds on the existing shared tokens from
+ * css/style.css (--clr-*, --space-*, --radius-*, .card/.btn/.badge/
+ * .progress-bar) per the implementation guide's §9 Component Library
+ * instruction: "extend the shared components there first when
+ * possible instead of duplicating styles per page." This file only
+ * adds the layout/pieces style.css doesn't already have.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+/* ── Dashboard: hero row (Continue Mission + Today's Summary) ───── */
+.v2-hero-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .v2-hero-row { grid-template-columns: 1fr; }
+}
+
+.v2-continue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.v2-continue-card__icon { font-size: 2rem; line-height: 1; }
+.v2-continue-card__eyebrow { color: var(--clr-text-muted); font-size: var(--fs-sm); margin: 0 0 var(--space-1); }
+.v2-continue-card__title { font-weight: 700; font-size: var(--fs-lg); margin: 0 0 var(--space-2); }
+.v2-continue-card__progress { display: flex; align-items: center; gap: var(--space-3); }
+.v2-continue-card__progress .progress-bar { width: 160px; }
+.v2-continue-card__progress-label { font-size: var(--fs-xs); color: var(--clr-text-muted); white-space: nowrap; }
+
+.v2-summary-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.v2-summary-card__title { font-weight: 700; margin: 0 0 var(--space-1); }
+.v2-summary-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.v2-summary-row__label { display: flex; align-items: center; gap: var(--space-2); color: var(--clr-text-muted); font-size: var(--fs-sm); }
+.v2-summary-row__value { font-weight: 700; font-size: var(--fs-lg); }
+
+/* ── Dashboard: Your Learning Journey mini-rail ──────────────────── */
+.v2-journey-rail {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: thin;
+}
+.v2-journey-card {
+  flex: 0 0 auto;
+  width: 168px;
+  padding: var(--space-4);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.v2-journey-card__num { font-size: var(--fs-xs); font-weight: 700; color: var(--clr-text-muted); }
+.v2-journey-card__title {
+  font-weight: 700;
+  margin: var(--space-1) 0 var(--space-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Learning Path list (Learn page) ─────────────────────────────── */
+.v2-path-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+}
+.v2-path-search input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font: inherit;
+  color: var(--clr-text);
+}
+.v2-path-search svg { flex: none; color: var(--clr-text-muted); }
+
+.v2-path-list { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Chapter grouping (this session) — rows inside a .trail-group
+   (see ../../css/learn.css) need their own flex/gap now that the
+   outer .v2-path-list gap applies between CHAPTERS, not rows. */
+.v2-path-list__group { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-5) var(--space-5); }
+
+.v2-path-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  text-decoration: none;
+  color: inherit;
+}
+.v2-path-row__num {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+}
+.v2-path-row--current .v2-path-row__num { background: var(--clr-accent-soft, var(--clr-orange-soft)); color: var(--clr-accent, var(--clr-orange)); }
+.v2-path-row--done .v2-path-row__num { background: var(--clr-success-soft); color: var(--clr-success); }
+
+.v2-path-row__body { flex: 1; min-width: 0; }
+.v2-path-row__title { font-weight: 700; margin: 0 0 2px; }
+.v2-path-row__goal {
+  margin: 0;
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-path-row__meta { flex: none; display: flex; align-items: center; gap: var(--space-4); }
+.v2-path-row__progress { width: 90px; }
+.v2-path-row__chevron { color: var(--clr-text-muted); flex: none; }
+.v2-path-row--locked { opacity: .6; cursor: not-allowed; }
+.v2-path-row--locked .v2-path-row__title { color: var(--clr-text-muted); }
+/* Orientation row (this session) — sits above the chapter list,
+   never locked, so it gets its own accent instead of borrowing the
+   done/current colors those states already use. */
+.v2-path-row--orientation {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--clr-accent, var(--clr-orange));
+}
+.v2-path-row--orientation .v2-path-row__num {
+  background: var(--clr-accent-soft, var(--clr-orange-soft));
+  color: var(--clr-accent, var(--clr-orange));
+}
+
+/* ── Mission Overview page ───────────────────────────────────────── */
+.v2-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--clr-text-muted);
+  text-decoration: none;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-4);
+}
+.v2-back-link:hover { color: var(--clr-text); }
+
+.v2-mo-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.v2-mo-header__num {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.v2-mo-progress { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-4) 0; }
+.v2-mo-progress .progress-bar { flex: 1; }
+.v2-mo-progress__label { font-size: var(--fs-xs); color: var(--clr-text-muted); white-space: nowrap; }
+
+.v2-sign-chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.v2-sign-chip {
+  padding: var(--space-2) var(--space-4);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.v2-mo-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+}
+@media (max-width: 800px) {
+  .v2-mo-facts { grid-template-columns: 1fr; }
+}
+.v2-mo-fact { padding: var(--space-5); }
+.v2-mo-fact__label { color: var(--clr-text-muted); font-size: var(--fs-sm); margin: 0 0 var(--space-2); }
+.v2-mo-fact__value { font-weight: 700; font-size: var(--fs-lg); margin: 0; }
+
+.v2-hearts__row { display: flex; gap: var(--space-1); }
+.v2-heart--full { color: var(--clr-red); }
+.v2-heart--empty { color: var(--clr-text-muted); opacity: .5; }
+.v2-hearts__count { font-size: var(--fs-sm); font-weight: 600; margin: var(--space-2) 0 0; }
+.v2-hearts__refill { font-size: var(--fs-xs); color: var(--clr-text-muted); margin: var(--space-1) 0 0; }
+
+.v2-mo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.v2-mo-actions .btn[disabled] { opacity: .55; cursor: not-allowed; }
+.v2-mo-actions .btn .badge { margin-left: var(--space-2); vertical-align: middle; }
+
+/* ── Small "V2 in progress" note banner reused on both new pages ─── */
+.v2-note-banner {
+  border: 1px dashed var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  margin-bottom: var(--space-6);
+}
+.v2-note-banner strong { color: var(--clr-text); }
