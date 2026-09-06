@@ -1,346 +1,149 @@
-# Rev 8 Personalization Feature Checklist
+# LinguaWave — Session Notes (2026-09-03)
 
-> **⛔ REMOVED / CANCELLED — 2026-08-26.** The personalization feature
-> this checklist tracks (`#personalize-card`/`#personalize-summary`,
-> `initPersonalization()`) has been deleted from the app entirely, per
-> explicit request — not moved to the Dashboard, not replaced with any
-> other onboarding/preference system. See **Phase 7** below for what
-> was removed and its verification, and `REV8_TEACHING_AUDIT.md` → §12
-> for the full reasoning. Phases 1–5 below are preserved unedited as
-> the historical record of the feature's audit, bug fixes, and
-> verification while it existed — none of that work was wrong, the
-> feature is just gone now. **Phase 6 is cancelled outright** (see its
-> own note) — there's nothing left to move to the Dashboard.
+Paste this file alongside `linguawave.xml` (repo context) and the current
+`capture.html` when starting a new Claude session on this project. It gives
+Claude the "why" behind recent changes without having to re-derive it from
+the diff alone.
 
-> Scope: Rev 8 learner-context personalization.
-> This checklist covers the current personalization feature and its
-> planned follow-up. It does NOT change curriculum ordering, unlocks,
-> progress architecture, or assessment architecture.
+## Context for Claude
+
+This is `capture.html` from the LinguaWave ASL data-capture tool — a
+single-file webcam app (MediaPipe Holistic + TensorFlow.js) used to record
+training data and train the static-sign and motion-sign classifiers. The
+session below made three unrelated rounds of changes to it. Read this before
+touching the file again, especially the feature-vector section — it explains
+constraints that aren't otherwise obvious from the code.
 
 ---
 
-## Phase 1 — Audit ✅
+## 1. Deployment + responsive layout
 
-- [x] Audit current `#personalize-card` implementation.
-- [x] Trace `initPersonalization()` in `js/lesson.js`.
-- [x] Confirm personalization is currently owned by `lesson.html` / `lesson.js`.
-- [x] Confirm preferences are stored in `localStorage`.
-- [x] Confirm personalization does not touch `LWProgress`.
-- [x] Confirm personalization does not affect curriculum ordering.
-- [x] Confirm personalization does not affect unlock logic.
-- [x] Confirm personalization does not affect graded assessment.
-- [x] Confirm Quick Check remains a separate formative interaction.
-- [x] Compare Dashboard / Learn / Lesson / Quiz responsibility boundaries.
-- [x] Determine that Dashboard is the better eventual owner.
-- [x] Decide NOT to move personalization to Dashboard yet.
-- [x] Create `REV8_TEACHING_AUDIT.md`.
-- [x] Create `Rev8_Personalization_Feature_Checklist.md`.
+**Problem:** teammate needed to use the tool without setting up Git/GitHub;
+separately, the layout broke (columns overlapping/clipping) when the browser
+window was narrowed or minimized.
 
+**Fixes in `capture.html`:**
+- `.workspace` used to be `height: calc(100vh - 76px)`, hardcoding the
+  assumption that the top bar is always exactly one line tall. Narrow
+  windows wrap the top bar to two lines, which broke this. Changed `body`
+  to `display:flex; flex-direction:column` and `.workspace` to `flex:1 1
+  auto; min-height:0`, so it always fills whatever space is actually left.
+- Added a `@media (max-width: 860px)` breakpoint: the camera sidebar
+  (`.cam-col`) stacks above content instead of squeezing beside it, and the
+  drag-to-resize handle (`.panel-resizer`) hides since it's meaningless once
+  stacked.
+- Added a `@media (max-width: 520px)` breakpoint that trims the header
+  (drops the subtitle, shrinks tab buttons) so it doesn't wrap awkwardly on
+  very narrow screens.
+- Stripped a stray trailing `</file>` tag that had been present in the
+  uploaded file (harmless to browsers, but not valid markup).
 
----
-
-## Phase 2 — Immediate Bug Fixes ✅ done 2026-08-26
-
-### 2.1 UID-scope personalization storage
-
-- [x] Inspect `js/engine/progress.js`'s existing UID-scoping pattern.
-      (Read via `REV8_TEACHING_AUDIT.md`/`SYSTEM_ARCHITECTURE.md`'s
-      description — `progress.js` itself untouched, per scope —
-      `cached.uid === user.uid` reconciled in `hydrateStore()`.)
-- [x] Apply the same pattern to `lw_personalize_v1`.
-- [x] Apply the same pattern to `lw_personalize_skipped_v1`.
-- [x] Ensure User A's preferences cannot be reused by User B on the
-      same browser/device. (jsdom harness, Group 4.)
-- [x] Ensure malformed/corrupt localStorage still fails safely. (jsdom
-      harness, Group 10 — malformed JSON, pre-fix no-uid record,
-      pre-fix plain-string skip flag, all 3 fail safe.)
-- [x] Ensure existing saved preferences continue loading correctly
-      after the change. (jsdom harness, Group 5 — confirmed for the
-      SAME uid across a simulated new session. Caveat: a record saved
-      before this fix shipped, with no `uid` field, is treated as
-      unanswered rather than auto-adopted — see `REV8_TEACHING_AUDIT.md`
-      §11 for the reasoning. That's a deliberate one-time re-ask, not a
-      loading bug.)
-- [x] Ensure logout/login does not accidentally carry another user's
-      personalization state. (jsdom harness, Groups 4 and 9 — different
-      mocked `uid`s simulate different logged-in accounts on the same
-      browser.)
-
-### 2.2 Stop repeated personalization summary
-
-- [x] Confirm why `initPersonalization()` runs on every lesson page load.
-      (Confirmed: each sign is its own full page load, `boot()` reruns
-      `initPersonalization()` every time — not an SPA route.)
-- [x] Confirm the full personalization card does not reopen unexpectedly.
-      (jsdom harness, Group 6 — card stays closed across 3 simulated
-      sign navigations once already answered.)
-- [x] Prevent `#personalize-summary` from rendering on every sign.
-      (jsdom harness, Group 6.)
-- [x] Choose and document the intended summary behavior:
-      first sign / once per session / another explicit product rule.
-      **Chosen: once per browser session** (`sessionStorage`), rejected
-      first-sign-of-category because real entry points (Continue
-      Learning, review links, `?sign=` deep-links) don't reliably land
-      on signIdx 0. Documented in `js/lesson.js`'s own comments,
-      `REV8_TEACHING_AUDIT.md` §11, and `PIVOT_CHECKLIST.md`.
-- [x] Verify the summary still supports Edit/Personalize when intended.
-      (jsdom harness, Group 8 — Edit reopens the card and pre-fills the
-      previously saved audience.)
-- [x] Verify the skip state still behaves correctly. (jsdom harness,
-      Group 9.)
-- [x] Verify the lesson skip-link no longer forces unnecessary
-      personalization chrome before teaching content. (jsdom harness,
-      Group 1 — confirms `#lesson-content` now sits on `.lesson-header`
-      and `#personalize-card` is not inside it. This confirms DOM
-      structure/`tabindex` placement, not actual screen-reader/keyboard
-      behavior — no real-browser accessibility pass has been done for
-      this feature, before or after this fix.)
+**Deployment:** recommended Vercel's drag-and-drop static deploy (no Git
+needed) — zip `capture.html` renamed to `index.html`, drag onto
+vercel.com's "Deploy without Git" flow. Flagged that captured data /
+trained models live in each user's own browser storage (localStorage +
+IndexedDB) and do **not** sync between people using the deployed URL.
 
 ---
 
-## Phase 3 — Regression Verification ✅ done 2026-08-26 (jsdom-level; not browser-tested)
+## 2. Feature vector expansion: body-relative + palm-orientation features
 
-### Personalization
+**Motivation:** many signs were being confused by the classifier. Diagnosis
+(via the existing per-sign accuracy view) pointed to two likely causes the
+old 130-value feature vector couldn't capture:
+1. Signs distinguished by location relative to the **torso** (chest/waist),
+   not just the face — only 2 face-relative distances (chin, forehead)
+   existed before.
+2. Signs distinguished by **palm orientation** (palm-in vs palm-out),
+   which raw fingertip coordinates only encode indirectly.
 
-- [x] First-time learner with no preferences sees the personalization
-      card at the intended point. (Group 2.)
-- [x] Selecting audience works. (Group 3.)
-- [x] Selecting practice time works. (Group 3.)
-- [x] Saving preferences works. (Group 3.)
-- [x] Skipping works. (Group 9.)
-- [x] Saved preferences reload correctly. (Group 5.)
-- [x] Editing preferences works. (Group 8.)
-- [x] Preferences persist across lesson navigation as intended. (Groups
-      5–7 simulate saved storage carried across full-page navigations.)
-- [x] Preferences are isolated per logged-in user. (Group 4.)
-- [x] Corrupt localStorage does not break the lesson. (Group 10.)
+**What changed — `FEATURE_LEN` went from 130 → 138:**
+- Added shoulder-center / hip-center tracking (`currentShoulderCenter`,
+  `currentHipCenter`), derived from Holistic's pose landmarks (indices
+  11/12 shoulders, 23/24 hips — same BlazePose topology already used for
+  wrist indices 15/16). Same ghost-fill pattern as the existing
+  forehead/chin anchors (`TORSO_GHOST_FRAMES`), so a brief pose dropout
+  doesn't zero these out mid-sign.
+- `faceRelativeFeatures()` now returns 4 values instead of 2:
+  `[handToChin, handToForehead, handToShoulder, handToHip]`, all normalized
+  by face height (falls back to shoulder-to-hip span as the unit if the
+  face is briefly out of frame).
+- New `palmOrientation(handPts)` helper: cross product of
+  wrist→index-MCP and wrist→pinky-MCP gives a unit "which way the palm
+  roughly faces" vector, 3 values per hand (6 total). Zero-filled per
+  hand's existing `HAND_ZERO` convention when that hand isn't present.
+  Caveat documented in the code: MediaPipe's per-hand z is a relative-depth
+  estimate, not true 3D, so this is an approximation — still useful for
+  telling palm-in from palm-out.
+- Vector layout is now: `[63 left xyz][63 right xyz][leftPresent]
+  [rightPresent][handToChin][handToForehead][handToShoulder][handToHip]
+  [leftPalmOrientation x3][rightPalmOrientation x3]` = 138 values.
+- Extended the debug visualization (`drawFacePoints()`) to also draw the
+  shoulder/hip anchors and wrist→shoulder/hip lines, so what's actually
+  being fed to the model is visible on screen, not just the face anchors.
+- **Breaking change, handled safely:** added `modelFeatureLenMatches()` —
+  on load, any previously-trained model whose input shape doesn't match
+  the current `FEATURE_LEN` (i.e. anything trained before this session) is
+  discarded with a console warning instead of being silently reused and
+  then throwing a cryptic tensor-shape error the next time you train or
+  predict. **Both models need retraining from scratch after this change.**
+  Raw captures are unaffected (they're re-derived from video/live
+  detection each time, not stored in the old vector shape).
 
-### Lesson flow
-
-- [x] Sign header still renders. — unmodified by this session's diff;
-      `.lesson-header` gained an `id`/`tabindex` attribute only, no
-      content/logic change.
-- [x] Sign image still renders/falls back correctly. — unmodified.
-- [x] Sign description still renders. — unmodified.
-- [x] Sign tips still render. — unmodified.
-- [x] Signer/reference video still renders. — unmodified.
-- [x] Quick Check still appears correctly. — zero lines of Quick Check
-      logic touched this session (confirmed via diff); jsdom harness
-      Group 11 confirms every Quick Check DOM hook (`#quick-check-card`,
-      `#quick-check-prompt`, `#quick-check-image`, `#quick-check-options`,
-      `#quick-check-feedback`, `#btn-quick-check-skip`) is still present
-      and unrenamed. The deeper click-through/format-variety behavior
-      itself was exercised by the *previous* session's own 14-group
-      harness (see `PIVOT_CHECKLIST.md`'s Rev 8 section) and wasn't
-      re-run here since nothing in that code path changed.
-- [x] Quick Check feedback still works. — see above; logic untouched.
-- [x] Previous / Next still works. — zero navigation logic touched;
-      hook presence confirmed (Group 11, `#btn-prev`/`#btn-next`).
-- [x] Course sidebar still works. — zero sidebar logic touched; hook
-      presence confirmed (Group 11, `#course-sidebar`).
-- [x] Optional camera practice still works. — zero camera/MediaPipe
-      code touched; hook presence confirmed (Group 11, `#lw-webcam`,
-      `#lw-canvas`, `#btn-try-practice`, `#motion-status-label`).
-- [x] Camera practice remains optional. — unchanged, not gated by
-      anything this session touched.
-- [x] Camera practice remains non-gating. — unchanged.
-- [x] Final sign still routes to the graded assessment. — unmodified;
-      this session never touched sign-index/routing logic.
-
-### Architecture
-
-- [x] No changes to unit ordering.
-- [x] No changes to unlock logic.
-- [x] No changes to progress algorithms.
-- [x] No duplicate progress/order/unlock logic introduced.
-- [x] No changes to `auth.js`.
-- [x] No changes to `data.js` unless independently required. (Not
-      touched — not independently required.)
-- [x] No changes to `learn.js` unless independently required. (Not
-      touched — not independently required.)
-- [x] No changes to quiz architecture.
+**Open item flagged but not yet acted on:** whether the webcam framing
+consistently includes shoulders/hips in frame. If it's cropped tight (just
+hands/face), `handToShoulder`/`handToHip` will read 0 most of the time and
+won't help. Framing should be **consistent across all captures**, not
+tightened per-sign — otherwise the model partly learns camera framing as a
+spurious cue instead of the sign itself.
 
 ---
 
-## Phase 4 — Efficiency Review ✅ done 2026-08-26
+## 3. Curriculum fix: three signs merged into their identical twins
 
-- [x] Confirm only the minimum necessary files were changed. Two:
-      `js/lesson.js`, `pages/lesson.html`. The second one was scope
-      creep relative to `REV8_TEACHING_AUDIT.md`'s own original
-      prediction (JS-only) — justified and documented in that file's
-      §9/§11 (the session-gate alone left one page load per session
-      where the skip-link still landed on personalization chrome).
-- [x] Confirm existing personalization functions were reused.
-      `loadPersonalization()`/`savePersonalization()`/
-      `markPersonalizationSkipped()`/`wasPersonalizationSkipped()`/
-      `initPersonalization()` all extended in place, none replaced.
-- [x] Confirm no new personalization subsystem was created.
-- [x] Confirm no new Firestore schema was introduced. Still
-      `localStorage`-only.
-- [x] Confirm no new progress state was introduced.
-- [x] Confirm no duplicate storage logic was created unnecessarily.
-      One genuinely new, minimal piece of state was added — a
-      `sessionStorage` flag (`lw_personalize_summary_shown_v1`) — which
-      is new state, not duplicate logic; it's the smallest primitive
-      that could express "once per session."
-- [x] Confirm no duplicate lesson-navigation logic was created.
-- [x] Confirm no duplicate Quick Check logic was introduced.
-- [x] Confirm implementation remains easy to remove/move later. Still
-      additive, still isolated to the same 2 files, still a single
-      well-commented block — a future Dashboard move remains mechanical
-      per `REV8_TEACHING_AUDIT.md` §6/§9.
+**Problem found:** while reviewing `HOW_TO_SIGN` descriptions for signs that
+depend on facial motion (which none of the current features capture), three
+entries turned out to be **physically identical** to another sign already in
+the list, with facial expression/context as the *only* real-world
+disambiguator — something no amount of hand/torso/orientation features can
+fix:
 
----
+| Removed | Physically identical to | Note in original description |
+|---|---|---|
+| `NEAT` | `CLEAN` (/`NICE`) | "context and facial expression carry the difference, not handshape" |
+| `BITTER` | `SOUR` | "a stronger, more pinched facial expression sets it apart" |
+| `TOILET` | `BATHROOM` | "context (and often raised eyebrows) tells them apart" |
 
-## Phase 5 — Documentation ✅ done 2026-08-26
+**What changed:**
+- Removed `NEAT`, `BITTER`, `TOILET` from `MOTION_SIGNS` and from the
+  Appearance / Taste / Bathroom groups in `MOTION_CATEGORIES`.
+- Removed their entries from the `HOW_TO_SIGN` reference dictionary.
+- Left a dated comment in the code (near the `MOTION_SIGNS` array)
+  explaining the merge and reasoning, so it isn't a mystery later.
+- `CLEAN`, `SOUR`, `BATHROOM` are untouched.
 
-### `REV8_TEACHING_AUDIT.md`
+**Action needed if not already done:** any previously-recorded capture data
+labeled `NEAT`, `BITTER`, or `TOILET` is now orphaned (those labels no
+longer exist in the sign lists). Re-label those clips under the twin
+(`CLEAN`/`SOUR`/`BATHROOM`) or discard them before the next training run.
 
-- [x] Record the UID-scoping fix. (§11.)
-- [x] Record the repeated-summary fix. (§11.)
-- [x] Record verification results. (§11.)
-- [x] Record any newly discovered risks. (§11 — the residual skip-link
-      gap the session-gate alone would have left, and why it was
-      closed too.)
-- [x] Update open questions. (§7 — one resolved, two still genuinely
-      open product calls, left open.)
-- [x] Re-evaluate whether Dashboard ownership should change. (Reaffirmed
-      no change — header + §6 unchanged.)
-
-### `AI_MEMORY.md`
-
-- [x] Add one concise session-log entry.
-- [x] Record changed files.
-- [x] Record any remaining issue. (Not browser-tested, flagged.)
-
-### `PIVOT_CHECKLIST.md`
-
-- [x] Update only directly relevant Rev 8 items. (New "Audit fixes"
-      sub-section under the existing Rev 8 section; "What's still
-      open" list updated to reflect the two resolved items.)
-- [x] Do not mark unrelated curriculum work complete.
-
-### `SYSTEM_ARCHITECTURE.md`
-
-- [x] Update only if the implementation changes the documented
-      architecture. **Reviewed, not updated** — this session's fixes
-      (uid-scoping, session-gating, skip-link retarget) are bug fixes
-      to the existing documented feature, not an architecture change,
-      so nothing here needed editing per this session's own scope
-      instruction. Note for a future pass: Rev 8's section (line ~462)
-      still says the summary is "shown at most once... collapsing to a
-      one-line editable summary afterward," which was already subtly
-      inaccurate before this session (per `REV8_TEACHING_AUDIT.md` §1)
-      and is now further out of date (behavior is "once per session,"
-      not "once ever") — flagged, not fixed, since this file wasn't in
-      this session's edit scope.
-- [x] Preserve Rev 7 as the authoritative curriculum architecture.
-      (Untouched.)
-- [x] Keep the Rev 8 teaching layer clearly additive. (Untouched —
-      no architecture-level change made.)
+**Not yet done:** a systematic pass through the rest of `HOW_TO_SIGN`
+(~480 entries) for other "physically identical, face-only distinction"
+pairs beyond these three — only checked the ones that came up in
+conversation. Worth doing if accuracy issues persist after retraining.
 
 ---
 
-## Phase 6 — Future Decision: Dashboard Ownership 🚫 CANCELLED — 2026-08-26
+## Suggested next steps (not started this session)
 
-> **Cancelled, not deferred.** The 2026-08-26 removal request was
-> explicit that personalization not be relocated to the Dashboard —
-> so this phase's entire premise (deciding *where* it should live) no
-> longer applies. Left unchecked/unedited below as the record of what
-> was being considered before the removal decision superseded it.
+- Retrain both static and motion models (required — old models were
+  invalidated by the `FEATURE_LEN` change).
+- Check webcam framing includes shoulders/hips consistently.
+- Consider a small UI indicator (e.g. "torso: ✓/✗") next to the existing
+  "face ✓/✗" status text, so it's obvious live when torso anchors aren't
+  being captured.
+- Broader pass through `HOW_TO_SIGN` for other same-sign/face-only pairs.
 
-- [ ] Determine whether personalization answers will actually affect
-      learner experience.
-- [ ] Determine whether Dashboard will use the preferences for its
-      "What should I do next?" responsibility.
-- [ ] Re-evaluate Lesson vs Dashboard ownership.
-- [ ] If Dashboard becomes the owner, identify exact migration files.
-- [ ] Preserve the same preference semantics during migration.
-- [ ] Avoid creating a second preference-storage system.
-- [ ] Remove Lesson personalization only after Dashboard replacement
-      is verified.
-- [ ] Re-test first-load, navigation, logout/login, and accessibility.
 
----
-
-## Phase 7 — Removal ✅ done 2026-08-26
-
-> Full reasoning in `REV8_TEACHING_AUDIT.md` → §12. This section is
-> the terse what/verification record, matching this checklist's own
-> style.
-
-- [x] Delete `#personalize-card`, `#personalize-summary`, and the
-      "LIGHT PERSONALIZATION" block comment from `pages/lesson.html`.
-- [x] Delete `initPersonalization()`, its call site in `boot()`, and
-      every personalization storage/UI function from `js/lesson.js`
-      (`getCurrentUid`, `loadPersonalization`, `savePersonalization`,
-      `markPersonalizationSkipped`, `wasPersonalizationSkipped`,
-      `personalizeSummaryText`, `updatePersonalizeSaveEnabled`,
-      `renderPersonalizeSelection`, `openPersonalizeCard`,
-      `closePersonalizeCard`, `wirePersonalizeControls`,
-      `hasShownPersonalizationChromeThisSession`,
-      `markPersonalizationChromeShownThisSession`), plus all
-      `PERSONALIZE_*` constants and the DOM element refs.
-- [x] Delete `.personalize-card__*`/`.personalize-summary*` rules from
-      `css/lesson.css`.
-- [x] Trim the skip-link comment in `lesson.html` (dead reasoning about
-      personalization's former DOM position) — did NOT revert the
-      `tabindex="-1"` retarget itself, since that's a harmless,
-      unrelated accessibility fix from Phase 2.2, not something the
-      removal needed to touch.
-- [x] Grep all three edited files for `personaliz`/`PERSONALIZE_`/
-      `lw_personalize` — zero remaining matches.
-- [x] `node --check` on the edited `lesson.js` — clean.
-- [x] HTML tag-balance parse on the edited `lesson.html` — 0 errors.
-- [x] CSS brace-balance on the edited `lesson.css` — 59/59.
-- [x] DOM-hook cross-reference (`getElementById()` calls vs. real
-      static ids) — clean; the one pre-existing `btn-personalize-edit`
-      dynamic-id exception from Phases 2–3 is gone too (the function
-      that created it no longer exists).
-- [x] jsdom runtime harness against the real edited files — 30
-      structural assertions (every removed id/class confirmed absent,
-      every kept id — Quick Check, camera, nav, sidebar — confirmed
-      present) plus a full top-to-bottom execution of the real edited
-      `lesson.js` against the real edited `lesson.html`, zero runtime
-      errors, plus existence/no-throw checks on the untouched Quick
-      Check/sidebar functions.
-- [x] Confirmed NOT touched: Quick Check (cluster-size + picture-prompt,
-      both from this same Rev 8 session), camera/MediaPipe pipeline,
-      Prev/Next nav, course sidebar, `js/auth.js`, `js/data.js`,
-      `js/engine/progress.js`, `js/learn.js`, curriculum/unlock/progress
-      logic.
-- [ ] Real-browser check (keyboard tab order, screen reader) — **not
-      done**, same flagged gap as every prior Rev 8 session.
-
----
-
-## Definition of Done
-
-> **Superseded 2026-08-26** — this was the Definition of Done for the
-> *feature*, written while it still existed. Preserved unedited below
-> as the historical record of what "done" meant for Phases 1–5. The
-> feature's actual final state is Phase 7 above (removed, verified).
-
-- [x] Personalization is isolated to learner context.
-- [x] User preferences are correctly UID-scoped.
-- [x] Personalization does not appear as unwanted repeated chrome.
-- [x] Lesson teaching remains the primary focus.
-- [x] Accessibility behavior remains correct. **Caveat:** verified at
-      the DOM-structure level (skip-link target moved outside the
-      personalization subtree, confirmed via jsdom) — not verified with
-      a real screen reader or keyboard-only pass. No real-browser
-      accessibility check has ever been done for this feature, before
-      or after this session.
-- [x] Quick Check remains intact. (Zero-diff + hook-presence evidence,
-      see Phase 3 above — not re-exercised at the click-through level
-      this session since nothing in that code path changed.)
-- [x] Camera practice remains optional/non-gating. (Same basis as
-      above.)
-- [x] Quiz/assessment flow remains intact. (`quiz.js`/quiz architecture
-      untouched, confirmed via diff.)
-- [x] No curriculum/order/unlock/progress architecture changed.
-- [x] Documentation is updated.
-- [x] Runtime behavior has been tested beyond syntax checking. (jsdom
-      runtime harness, 11 groups / 46 assertions, real DOM + real
-      `localStorage`/`sessionStorage` + simulated clicks against the
-      real edited files.)
+i want to apply the changes to the linguawave
+give me the modified ready to paste code

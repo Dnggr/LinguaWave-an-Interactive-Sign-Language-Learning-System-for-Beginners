@@ -55,11 +55,14 @@
 
   CAPTURE-FORMAT UPDATE — mediapipe.js now uses HolisticLandmarker and
   tracks BOTH hands (left/right) instead of a single "dominant" hand,
-  to match capturesystem's new 130-value feature vector. processFrame()
-  now returns leftHandLandmarks/rightHandLandmarks/anyHandPresent
-  instead of dominantLandmarks, and isFaceModelReady()/getFaceModelError()
-  were replaced by isModelReady()/getModelError() (one combined model
-  now, not a separate hand + face model).
+  to match capturesystem's feature vector (now 138 values — see
+  js/tracking/mediapipe.js and js/engine/classifier.js). processFrame()
+  now returns leftHandLandmarks/rightHandLandmarks/poseLandmarks/
+  anyHandPresent instead of dominantLandmarks, and isFaceModelReady()/
+  getFaceModelError() were replaced by isModelReady()/getModelError()
+  (one combined model now, not a separate hand + face model).
+  poseLandmarks is threaded through to classifyGesture()/classifyMotion()
+  so they can derive the shoulder/hip body-relative features.
 
   REV 3 — Assessment moved out of the per-sign lesson page
   ─────────────────────────────────────────────────────────────────
@@ -1619,7 +1622,7 @@ function startRenderLoop() {
 
     if (!videoEl || videoEl.readyState < 2) return;
 
-    const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, anyHandPresent } = processFrame(videoEl);
+    const { leftHandLandmarks, rightHandLandmarks, faceLandmarks, poseLandmarks, anyHandPresent } = processFrame(videoEl);
     const handsForDrawing = [leftHandLandmarks, rightHandLandmarks].filter(Boolean);
     const now = Date.now();
 
@@ -1719,7 +1722,7 @@ function startRenderLoop() {
       if (cooldown || !motionArmed) {
         result = { label: null, confidence: 0, matched: false, buffering: false };
       } else {
-        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels());
+        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks);
 
         if (!result.buffering) {
           // A window just finished (matched or rejected) — this is a
@@ -1732,7 +1735,7 @@ function startRenderLoop() {
       }
       updateMotionBuffer();
     } else {
-      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels());
+      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks);
     }
 
     updateConfidenceUI(result);
