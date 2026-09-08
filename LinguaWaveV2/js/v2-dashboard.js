@@ -85,28 +85,54 @@ function renderSummaryCard(missions) {
   `;
 }
 
-function statusForMission(mission, index, currentId) {
+// FIX (this session) — this used to only return 'done' / 'current' /
+// 'available' (no concept of "locked" at all — every not-yet-reached
+// mission showed as plain "Available"), and separately, the color
+// picked for each status in renderJourneyRail() below was WRONG:
+// 'current' got the blue badge and 'available' got the orange one —
+// backwards from what those tokens mean everywhere else in this app.
+// Now mirrors js/v2-learn.js's own statusFor() exactly (same 4
+// states, same rule for what counts as "locked" — anything more than
+// one mission ahead of the current one), so the dashboard's mini-rail
+// and the full Learning Path list always agree on a mission's status.
+function statusForMission(mission, index, currentIndex) {
   const progress = window.LWDataV2.getMissionProgress(mission);
   if (progress >= 1) return 'done';
-  if (mission.category === currentId) return 'current';
-  return 'available';
+  if (index === currentIndex) return 'current';
+  if (index < currentIndex) return 'available'; // completed-adjacent, still open
+  return index === currentIndex + 1 ? 'available' : 'locked';
+}
+
+function statusMeta(status) {
+  // done -> green, current ("In Progress") -> orange, available ->
+  // blue, locked -> red. Matches css/style.css's badge--*/.v2-journey-
+  // card--* tokens 1:1 — see v2-app.css's own comment on this block
+  // for why 'current' and 'available' were swapped before.
+  switch (status) {
+    case 'done': return { label: 'Completed', badge: 'badge--done' };
+    case 'current': return { label: 'In Progress', badge: 'badge--intermediate' };
+    case 'locked': return { label: 'Locked', badge: 'badge--locked' };
+    default: return { label: 'Available', badge: 'badge--basic' };
+  }
 }
 
 function renderJourneyRail(missions) {
   const el = document.getElementById('v2-journey-rail');
   const current = pickCurrentMission(missions);
-  const currentId = current ? current.category : null;
+  const currentIndex = current ? missions.indexOf(current) : -1;
 
   el.innerHTML = missions.map((m, i) => {
-    const status = statusForMission(m, i, currentId);
-    const pill = status === 'done' ? 'badge--done' : status === 'current' ? 'badge--basic' : 'badge--intermediate';
-    const label = status === 'done' ? 'Completed' : status === 'current' ? 'In Progress' : 'Available';
+    const status = statusForMission(m, i, currentIndex);
+    const meta = statusMeta(status);
+    const locked = status === 'locked';
+    const tag = locked ? 'div' : 'a';
+    const hrefAttr = locked ? '' : `href="v2-mission-overview.html?mission=${encodeURIComponent(m.category)}"`;
     return `
-      <a class="card v2-journey-card" href="v2-mission-overview.html?mission=${encodeURIComponent(m.category)}">
+      <${tag} class="card v2-journey-card v2-journey-card--${status}" ${hrefAttr}>
         <span class="v2-journey-card__num">${String(i + 1).padStart(2, '0')}</span>
         <p class="v2-journey-card__title">${m.title}</p>
-        <span class="badge ${pill}">${label}</span>
-      </a>
+        <span class="badge ${meta.badge}">${meta.label}</span>
+      </${tag}>
     `;
   }).join('');
 }

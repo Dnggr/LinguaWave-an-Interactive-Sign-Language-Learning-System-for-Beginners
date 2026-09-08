@@ -61,7 +61,7 @@ function renderRow(mission, index, status) {
 
 // CHAPTERS (this session) — groups the flat mission list into the
 // same 12 named curriculum chapters js/learn.js's trail now uses
-// (window.LWData.getCategoryGroups(), each mission's .categoryGroup
+// (window.LWDataV2.getCategoryGroups(), each mission's .categoryGroup
 // set in data-v2.js's buildMissionForCategory()). Reuses .trail-group
 // / .trail-group__summary etc. from ../../css/learn.css, already
 // linked on this page, rather than inventing parallel V2-only
@@ -117,7 +117,14 @@ function renderList(filterText) {
     }).join('');
   }
 
-  const chapters = (window.LWData && window.LWData.getCategoryGroups) ? window.LWData.getCategoryGroups() : [];
+  // FIX (this session) — this used to read window.LWData.getCategoryGroups(),
+  // but CATEGORY_GROUPS/getCategoryGroups() only ever got added to
+  // js/data-v2.js's own independent content fork (see data-v2.js's
+  // "V2 CONTENT MODEL" header note) — js/data.js (V1) intentionally
+  // never gained this function, so that lookup was always empty and
+  // every mission fell through to "ungrouped" with no chapter headers
+  // rendering at all. Chapters live on window.LWDataV2 now.
+  const chapters = (window.LWDataV2 && window.LWDataV2.getCategoryGroups) ? window.LWDataV2.getCategoryGroups() : [];
   const currentChapterId = allMissions[effectiveCurrent] ? allMissions[effectiveCurrent].categoryGroup : null;
   // While actively searching, open every chapter that still has a
   // match rather than only the "current" one — same reasoning as
