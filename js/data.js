@@ -488,10 +488,13 @@ const CATEGORIES = [
   // "MEDIUM · PERSONAL_INFORMATION" SIGNS block comment.
   {
     id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 12,
-    // AGE removed from words[] (2026-09-04 classifier conflict audit) —
-    // identical sign to OLD under Appearance; see "MEDIUM ·
-    // PERSONAL_INFORMATION" SIGNS block comment.
-    words: ['NAME', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
+    // AGE restored (2026-09-09) — ASLU-confirmed to be the exact same
+    // sign as OLD under Appearance (no repetition-count difference after
+    // all, contra the 2026-09-04 audit's assumption). Re-added as a
+    // DUPLICATE entry pointing at OLD's signId/detection, same pattern
+    // as NAME under Conversation; see "MEDIUM · PERSONAL_INFORMATION"
+    // SIGNS block comment.
+    words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
   // 13. Colors — unlocked: all 11 words have ASLU-checked SIGNS entries
   // (see "MEDIUM · COLORS" below). GOLD/SILVER aren't in this list and
@@ -4709,14 +4712,35 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
   },
   {
-    // AGE removed from words[]/SIGNS (2026-09-04 classifier conflict
-    // audit): AGE and OLD (under Appearance) are the same C-to-S
-    // handshape at the chin, differing only by repetition count (twice
-    // vs. once) — the landmark classifier can't reliably count reps, so
-    // OLD is kept as the trained motion entry. Same precedent as
-    // BITTER/SOUR under Taste. Flagged as lower-confidence than the
-    // other pairs in this pass — AGE is arguably just as foundational a
-    // word as OLD, so revisit if that turns out to matter.
+    // AGE restored (2026-09-09): the 2026-09-04 audit assumed AGE and
+    // OLD differed by repetition count (twice vs. once) and dropped AGE
+    // rather than risk a classifier conflict. ASLU-rechecked — they're
+    // the same single-motion C-to-S handshape at the chin, no rep
+    // difference at all.
+    // NOTE ON signId: unlike this file's other same-sign duplicates
+    // (e.g. NAME under Conversation, which shares its signId because
+    // the title is identical in both places), AGE and OLD have
+    // DIFFERENT titles. getSign(level, signId) matches on signId alone
+    // with no category filter, so two entries sharing a signId but
+    // showing different titles/content would collide — whichever entry
+    // sits first in this array would silently win for BOTH categories'
+    // lookups. Kept as its own signId, 'AGE', to avoid that. This means
+    // js/engine/dictionary.js needs an 'AGE' key wired to the same
+    // trained motion output as 'OLD' (they're the same physical
+    // gesture) for the classifier to actually recognize it — check that
+    // key exists there before flipping this on as functional; it isn't
+    // touched from this file.
+    id: 'medium_personal_information_AGE', level: 'medium', category: 'personal_information', signId: 'AGE', title: 'Age', order: 2,
+    description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once.',
+    tips: [
+      'Handshape closes from a "C" into an "S" on the way down',
+      'This is the exact same physical sign as OLD under Appearance — context tells them apart, not handshape or repetition',
+      'One single pull-down — there\u2019s no separate repeated version for "age"',
+    ],
+    imageUrl: '../assets/images/medium/appearance/old.png', videoUrl: '../assets/videos/medium/appearance/old.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
+  },
+  {
     // DUPLICATE — same sign as medium_family_BOY. Not a new sign; see
     // block comment above.
     id: 'medium_personal_information_BOY', level: 'medium', category: 'personal_information', signId: 'BOY', title: 'Boy', order: 3,
@@ -4951,7 +4975,7 @@ const SIGNS = [
     tips: [
       'Handshape closes from a "C" into an "S" on the way down',
       'One single pull-down — a repeated or exaggerated version means "very old"',
-      'Closely related to AGE (Personal Information), which uses the same handshape change but two shorter movements',
+      'Exact same sign as AGE (Personal Information) — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/appearance/old.png', videoUrl: '../assets/videos/medium/appearance/old.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
