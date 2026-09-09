@@ -24,17 +24,22 @@ folder makes that split physical, not just a naming convention
 ```
 LinguaWaveV2/
 ├── pages/
-│   ├── datav2-preview.html   Dev-only: browse any of the 65 migrated missions, toggle the flag
-│   ├── datav2-compare.html   Dev-only, Phase 2: current system vs. dataV2, one browser/category at a time
-│   ├── v2-dashboard.html     REAL product page — mission-based Dashboard (base app shell + live data)
-│   └── v2-learn.html         REAL product page — mission-based Learning Path (base app shell + live data)
+│   ├── datav2-preview.html    Dev-only: browse any of the 65 migrated missions, toggle the flag
+│   ├── datav2-compare.html    Dev-only, Phase 2: current system vs. dataV2, one browser/category at a time
+│   ├── v2-dashboard.html      REAL product page — mission-based Dashboard (base app shell + live data)
+│   ├── v2-learn.html          REAL product page — mission-based Learning Path (base app shell + live data)
+│   ├── v2-mission-overview.html  REAL product page — per-mission detail + live Mastery Hearts
+│   ├── v2-orientation.html    REAL product page — the single ungated intro row above the chapter list
+│   └── v2-progress.html       REAL product page — mission-based Progress (overall %, chapters, Needs Review)
 ├── js/
-│   ├── data-v2.js            The content layer itself — mission schema, builder, streak calculator
-│   ├── data-v2-preview.js    Renders datav2-preview.html
-│   ├── data-v2-compare.js    Phase 2 comparison logic (reads lw_progress_v3 + lw_datav2_progress_v1)
+│   ├── data-v2.js               The content layer itself — mission schema, builder, streak + Hearts modules
+│   ├── data-v2-preview.js       Renders datav2-preview.html
+│   ├── data-v2-compare.js       Phase 2 comparison logic (reads lw_progress_v3 + lw_datav2_progress_v1)
 │   ├── data-v2-compare-page.js  Renders datav2-compare.html
-│   ├── v2-dashboard.js       Renders v2-dashboard.html
-│   └── v2-learn.js           Renders v2-learn.html
+│   ├── v2-dashboard.js          Renders v2-dashboard.html
+│   ├── v2-learn.js              Renders v2-learn.html
+│   ├── v2-mission-overview.js   Renders v2-mission-overview.html
+│   └── v2-progress.js           Renders v2-progress.html
 └── css/
     ├── datav2-preview.css    Styling for the dev preview page only
     ├── datav2-compare.css    Styling for the dev compare page + the mission/category pickers both use

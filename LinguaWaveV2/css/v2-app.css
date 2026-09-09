@@ -322,6 +322,16 @@
 .v2-mo-actions .btn[disabled] { opacity: .55; cursor: not-allowed; }
 .v2-mo-actions .btn .badge { margin-left: var(--space-2); vertical-align: middle; }
 
+/* ── TEMPORARY: Feedback/Settings sidebar links disabled on all real
+ * V2 pages (not yet built for the V2 shell). Remove this rule and the
+ * matching href/aria-disabled/tabindex/onclick attributes on those
+ * two <a> tags once those pages exist for V2. */
+.app-sidebar__link--disabled {
+  pointer-events: none;
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 /* ── Small "V2 in progress" note banner reused on both new pages ─── */
 .v2-note-banner {
   border: 1px dashed var(--clr-border);
@@ -332,3 +342,153 @@
   margin-bottom: var(--space-6);
 }
 .v2-note-banner strong { color: var(--clr-text); }
+
+/* ── Progress page ────────────────────────────────────────────────
+ * Two-column layout (hero + chapter breakdown on the left, Needs
+ * Review on the right), matching the reference mockup's panel 10
+ * arrangement. Stacks to one column under 900px, same breakpoint
+ * .v2-hero-row already uses on the dashboard. */
+.v2-progress-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .v2-progress-grid { grid-template-columns: 1fr; }
+}
+.v2-progress-grid__main { display: flex; flex-direction: column; min-width: 0; }
+.v2-progress-grid__side { min-width: 0; }
+
+/* Hero ROW (this session — CSS Grid, replacing the flex-row +
+ * `.v2-progress-ring-card` wrapper div this used to need) — per
+ * explicit request to remove that wrapper entirely. Without a
+ * container div to keep the ring stacked above its label while both
+ * sit beside the stats card, plain flexbox can't place 3 independent
+ * items (ring, label, stats card) into an "L-shaped" layout — a
+ * 2-column, 2-row CSS Grid can, with explicit `grid-column`/
+ * `grid-row` on each of the 3 direct children below instead of
+ * relying on source order or a wrapper. Column 1 (ring+label) sizes
+ * to its own content (`auto`); column 2 (stats card) takes the rest. */
+.v2-progress-hero-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-8);
+  row-gap: var(--space-3);
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .v2-progress-hero-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .v2-progress-hero__ring,
+  .v2-progress-ring-label,
+  .v2-progress-stats-card { grid-column: 1; justify-self: center; }
+  .v2-progress-hero__ring   { grid-row: 1; }
+  .v2-progress-ring-label   { grid-row: 2; }
+  .v2-progress-stats-card   { grid-row: 3; width: 100%; }
+}
+
+/* Ring + label: direct grid children now, no wrapper div — placed
+ * into column 1's two rows explicitly. `justify-self: center`
+ * centers each within that column since the column's own width is
+ * `auto` (sized to the wider of the two, i.e. the ring). */
+.v2-progress-hero__ring { grid-column: 1; grid-row: 1; justify-self: center; }
+.v2-progress-ring-label {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+}
+
+/* Stats card: same 5 tiles as before (css/dashboard.css's
+ * .stats-grid/.stat-tile, reused unmodified — see that file's own
+ * auto-fit rule for why 5 tiles reflow cleanly instead of needing a
+ * bespoke grid here). Spans both grid rows in column 2 so its height
+ * is whatever it naturally needs — the ring's OWN size is what reacts
+ * to that (via js/v2-progress.js's syncRingSizeToStatsCard()), not
+ * the other way around. */
+.v2-progress-stats-card {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.v2-progress-stats-card .stats-grid { width: 100%; }
+
+
+/* Ring itself — this 240px is now only the FALLBACK/initial size
+ * (shown briefly before JS measures, and used as a floor/ceiling
+ * guard) — js/v2-progress.js's syncRingSizeToStatsCard() overrides
+ * width/height directly via inline style once it can measure the
+ * real stats card height beside it, per the explicit "only the ring
+ * itself should be proportionate to the card" correction. Same
+ * conic-gradient technique as css/learn.css's sidebar ring /
+ * pages/progress.html's page-scoped one either way. */
+.v2-progress-hero__ring {
+  --pct: 0;
+  position: relative;
+  flex-shrink: 0;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(var(--clr-accent, var(--clr-orange)) calc(var(--pct) * 1%), var(--clr-accent-soft, var(--clr-orange-soft)) 0);
+}
+.v2-progress-hero__ring::before {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: var(--clr-surface);
+}
+.v2-progress-hero__ring-pct {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: 700;
+  color: var(--clr-accent, var(--clr-orange));
+}
+
+/* Needs Review card — richer than css/dashboard.css's .review-card
+ * (chip-link row): a small vertical list of rows, each with an icon,
+ * a sign title, and a real "X days ago" (see js/v2-progress.js's
+ * getItemCompletedAt()-based due rule), plus one primary CTA at the
+ * bottom, matching the mockup's card shape. */
+.v2-needs-review { display: flex; flex-direction: column; }
+.v2-review-list { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-2) 0 var(--space-4); }
+.v2-review-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+}
+.v2-review-row:hover { background: var(--clr-surface-2); }
+.v2-review-row__icon {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Decorative color rotation, not an urgency signal — see
+ * js/v2-progress.js's REVIEW_ICON_TONES comment. */
+.v2-review-row__icon--a { background: var(--clr-red-soft);     color: var(--clr-red); }
+.v2-review-row__icon--b { background: var(--clr-orange-soft);  color: var(--clr-orange); }
+.v2-review-row__icon--c { background: var(--clr-success-soft); color: var(--clr-success); }
+.v2-review-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.v2-review-row__title { font-weight: 600; }
+.v2-review-row__meta { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.v2-review-cta { align-self: flex-start; }
