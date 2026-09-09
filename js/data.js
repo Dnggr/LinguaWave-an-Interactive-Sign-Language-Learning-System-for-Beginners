@@ -4717,21 +4717,20 @@ const SIGNS = [
     // rather than risk a classifier conflict. ASLU-rechecked — they're
     // the same single-motion C-to-S handshape at the chin, no rep
     // difference at all.
-    // NOTE ON signId: unlike this file's other same-sign duplicates
-    // (e.g. NAME under Conversation, which shares its signId because
-    // the title is identical in both places), AGE and OLD have
-    // DIFFERENT titles. getSign(level, signId) matches on signId alone
-    // with no category filter, so two entries sharing a signId but
-    // showing different titles/content would collide — whichever entry
-    // sits first in this array would silently win for BOTH categories'
-    // lookups. Kept as its own signId, 'AGE', to avoid that. This means
-    // js/engine/dictionary.js needs an 'AGE' key wired to the same
-    // trained motion output as 'OLD' (they're the same physical
-    // gesture) for the classifier to actually recognize it — check that
-    // key exists there before flipping this on as functional; it isn't
-    // touched from this file.
+    // TREATMENT: same call as WINTER vs. COLD (medium_seasons_WINTER —
+    // see that entry's comment) and GROW/SPRING/PLANT before that, not
+    // the NEAT/BITTER/TOILET merge. Per that precedent, physically
+    // identical signs that are still distinct, real English words get
+    // kept as their own SIGNS entry with their own signId — not folded
+    // into the other word's label — with cross-referencing tips so the
+    // overlap is visible in the content itself. Unlike WINTER, which
+    // has an optional 'W'-handshape variant that makes it genuinely
+    // distinguishable from COLD, no such disambiguating variant is
+    // documented for AGE vs. OLD — this is a known, accepted classifier
+    // risk (confusable pair), not a solved one; flagging it rather than
+    // implying it's been resolved.
     id: 'medium_personal_information_AGE', level: 'medium', category: 'personal_information', signId: 'AGE', title: 'Age', order: 2,
-    description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once.',
+    description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once — the same motion as OLD.',
     tips: [
       'Handshape closes from a "C" into an "S" on the way down',
       'This is the exact same physical sign as OLD under Appearance — context tells them apart, not handshape or repetition',
@@ -9411,11 +9410,23 @@ SIGNS.forEach(s => {
 
 /**
  * Returns the SIGNS entry for a given level + signId, or null.
+ * Optional `category` disambiguates cases where more than one entry
+ * shares a signId with DIFFERENT display content (e.g. AGE/OLD — same
+ * physical sign, different English word/title per category). Without
+ * it, falls back to the first array match, same as before — existing
+ * callers that don't pass category keep working unchanged, they just
+ * won't get the disambiguation.
  * @param {string} level
  * @param {string} signId
+ * @param {string} [category]
  */
-function getSign(level, signId) {
-  return SIGNS.find(s => s.level === level && s.signId === signId.toUpperCase()) ?? null;
+function getSign(level, signId, category) {
+  const upper = signId.toUpperCase();
+  if (category) {
+    const scoped = SIGNS.find(s => s.level === level && s.signId === upper && s.category === category);
+    if (scoped) return scoped;
+  }
+  return SIGNS.find(s => s.level === level && s.signId === upper) ?? null;
 }
 
 /**
