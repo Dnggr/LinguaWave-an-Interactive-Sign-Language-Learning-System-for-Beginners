@@ -534,10 +534,13 @@ const CATEGORIES = [
   // "MEDIUM · PERSONAL_INFORMATION" SIGNS block comment.
   {
     id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 12,
-    // AGE removed from words[] (2026-09-04 classifier conflict audit) —
-    // identical sign to OLD under Appearance; see "MEDIUM ·
-    // PERSONAL_INFORMATION" SIGNS block comment.
-    words: ['NAME', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
+    // AGE restored (2026-09-09) — ASLU-confirmed to be the exact same
+    // sign as OLD under Appearance (no repetition-count difference after
+    // all, contra the 2026-09-04 audit's assumption). Re-added as a
+    // DUPLICATE entry pointing at OLD's signId/detection, same pattern
+    // as NAME under Conversation; see "MEDIUM · PERSONAL_INFORMATION"
+    // SIGNS block comment.
+    words: ['NAME', 'AGE', 'BOY', 'GIRL', 'CHILD', 'PERSON', 'FAMILY', 'FRIEND', 'STUDENT', 'TEACHER', 'SCHOOL', 'HOME', 'BIRTHDAY', 'LIVE', 'FROM'],
   },
   // 13. Colors — unlocked: all 11 words have ASLU-checked SIGNS entries
   // (see "MEDIUM · COLORS" below). GOLD/SILVER aren't in this list and
@@ -4755,14 +4758,34 @@ const SIGNS = [
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/name.htm',
   },
   {
-    // AGE removed from words[]/SIGNS (2026-09-04 classifier conflict
-    // audit): AGE and OLD (under Appearance) are the same C-to-S
-    // handshape at the chin, differing only by repetition count (twice
-    // vs. once) — the landmark classifier can't reliably count reps, so
-    // OLD is kept as the trained motion entry. Same precedent as
-    // BITTER/SOUR under Taste. Flagged as lower-confidence than the
-    // other pairs in this pass — AGE is arguably just as foundational a
-    // word as OLD, so revisit if that turns out to matter.
+    // AGE restored (2026-09-09): the 2026-09-04 audit assumed AGE and
+    // OLD differed by repetition count (twice vs. once) and dropped AGE
+    // rather than risk a classifier conflict. ASLU-rechecked — they're
+    // the same single-motion C-to-S handshape at the chin, no rep
+    // difference at all.
+    // TREATMENT: same call as WINTER vs. COLD (medium_seasons_WINTER —
+    // see that entry's comment) and GROW/SPRING/PLANT before that, not
+    // the NEAT/BITTER/TOILET merge. Per that precedent, physically
+    // identical signs that are still distinct, real English words get
+    // kept as their own SIGNS entry with their own signId — not folded
+    // into the other word's label — with cross-referencing tips so the
+    // overlap is visible in the content itself. Unlike WINTER, which
+    // has an optional 'W'-handshape variant that makes it genuinely
+    // distinguishable from COLD, no such disambiguating variant is
+    // documented for AGE vs. OLD — this is a known, accepted classifier
+    // risk (confusable pair), not a solved one; flagging it rather than
+    // implying it's been resolved.
+    id: 'medium_personal_information_AGE', level: 'medium', category: 'personal_information', signId: 'AGE', title: 'Age', order: 2,
+    description: 'Hold your dominant hand in a "C" shape at your chin, then close it into an "S" as you pull it down, once — the same motion as OLD.',
+    tips: [
+      'Handshape closes from a "C" into an "S" on the way down',
+      'This is the exact same physical sign as OLD under Appearance — context tells them apart, not handshape or repetition',
+      'One single pull-down — there\u2019s no separate repeated version for "age"',
+    ],
+    imageUrl: '../assets/images/medium/appearance/old.png', videoUrl: '../assets/videos/medium/appearance/old.mp4', detectionType: 'motion',
+    referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
+  },
+  {
     // DUPLICATE — same sign as medium_family_BOY. Not a new sign; see
     // block comment above.
     id: 'medium_personal_information_BOY', level: 'medium', category: 'personal_information', signId: 'BOY', title: 'Boy', order: 3,
@@ -4997,7 +5020,7 @@ const SIGNS = [
     tips: [
       'Handshape closes from a "C" into an "S" on the way down',
       'One single pull-down — a repeated or exaggerated version means "very old"',
-      'Closely related to AGE (Personal Information), which uses the same handshape change but two shorter movements',
+      'Exact same sign as AGE (Personal Information) — context tells them apart',
     ],
     imageUrl: '../assets/images/medium/appearance/old.png', videoUrl: '../assets/videos/medium/appearance/old.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/old.htm',
@@ -9433,11 +9456,23 @@ SIGNS.forEach(s => {
 
 /**
  * Returns the SIGNS entry for a given level + signId, or null.
+ * Optional `category` disambiguates cases where more than one entry
+ * shares a signId with DIFFERENT display content (e.g. AGE/OLD — same
+ * physical sign, different English word/title per category). Without
+ * it, falls back to the first array match, same as before — existing
+ * callers that don't pass category keep working unchanged, they just
+ * won't get the disambiguation.
  * @param {string} level
  * @param {string} signId
+ * @param {string} [category]
  */
-function getSign(level, signId) {
-  return SIGNS.find(s => s.level === level && s.signId === signId.toUpperCase()) ?? null;
+function getSign(level, signId, category) {
+  const upper = signId.toUpperCase();
+  if (category) {
+    const scoped = SIGNS.find(s => s.level === level && s.signId === upper && s.category === category);
+    if (scoped) return scoped;
+  }
+  return SIGNS.find(s => s.level === level && s.signId === upper) ?? null;
 }
 
 /**
