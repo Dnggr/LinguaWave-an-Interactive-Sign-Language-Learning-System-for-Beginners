@@ -140,11 +140,6 @@
                 <p class="text-muted loading-pulse">Loading your progress…</p>
               </div>
 
-              <h2 class="mt-8 mb-4">Progress by Chapter</h2>
-              <div class="card unit-progress-list" id="v2-progress-chapters">
-                <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading chapter-by-chapter progress…</p>
-              </div>
-
             </div>
 
             <!-- ── RIGHT COLUMN ────────────────────────────────────── -->
@@ -158,9 +153,29 @@
         </div>
       </section>
 
-      <footer class="footer">
+      <!-- "Progress by Chapter" (this session — moved OUT of the
+           2-column grid above). It used to live inside
+           .v2-progress-grid__main (the left column), which meant
+           "center it" only centered it within that narrower column —
+           once the right column's "Needs Review" list finished above
+           it, there was a big empty gap beside it instead of it
+           reading as centered on the PAGE. Now a full-width section of
+           its own, so centering (heading via .text-center, card via
+           its own max-width + margin-inline:auto — both already
+           existed, just needed the right container) actually centers
+           it against the page's real width. -->
+      <section class="section section--sm section--tight">
+        <div class="container text-center">
+          <h2 class="mb-4">Progress by Chapter</h2>
+          <div class="card unit-progress-list" id="v2-progress-chapters">
+            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading chapter-by-chapter progress…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- <footer class="footer">
         <div class="container"><p>LinguaWave V2 — Capstone Project 2026 (preview)</p></div>
-      </footer>
+      </footer> -->
 
     </div>
   </div>

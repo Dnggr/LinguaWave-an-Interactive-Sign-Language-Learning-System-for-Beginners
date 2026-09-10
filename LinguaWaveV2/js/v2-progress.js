@@ -190,11 +190,6 @@ function syncRingSizeToStatsCard() {
   }
 }
 
-window.addEventListener('resize', () => {
-  clearTimeout(ringSyncTimer);
-  ringSyncTimer = setTimeout(syncRingSizeToStatsCard, 150);
-});
-
 function dueEntries(learnedSigns) {
   return learnedSigns
     .filter((e) => e.completedAt && daysSince(e.completedAt) >= DUE_AFTER_DAYS)
@@ -283,6 +278,37 @@ function showProgressUnavailable(reason) {
   document.getElementById('v2-needs-review').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
+/* ── Cap "Needs Review"'s growth to match the left column (this
+ * session) — per explicit report: the review list can grow taller
+ * than the hero-row card beside it (more due signs = taller card,
+ * even though NEEDS_REVIEW_LIMIT already caps it at 3 rows — long
+ * sign titles wrapping, or that limit changing later, could still
+ * make it taller than intended). Measures `.v2-progress-hero-row`'s
+ * real rendered height and applies it as `max-height` on the whole
+ * `#v2-needs-review` card — the "Needs Review (N)" heading and
+ * "Start Review" button stay fully visible (fixed flex items,
+ * `.v2-review-list` is the only flexible/scrollable piece, per its
+ * `flex:1 1 auto; min-height:0; overflow-y:auto` in css/v2-app.css),
+ * so a longer list scrolls internally instead of pushing the card
+ * taller than its sibling. Re-run on resize (shares the same
+ * debounce timer as the ring sizing below — both need to react to
+ * the same layout changes). */
+function syncNeedsReviewHeightToHero() {
+  const hero = document.querySelector('.v2-progress-hero-row');
+  const reviewCard = document.getElementById('v2-needs-review');
+  if (!hero || !reviewCard) return;
+  // Two columns only side-by-side above 900px (css/v2-app.css's
+  // `.v2-progress-grid` breakpoint) — below that they stack, and
+  // matching heights isn't meaningful once they're not beside each
+  // other.
+  if (window.innerWidth <= 900) {
+    reviewCard.style.removeProperty('max-height');
+    return;
+  }
+  const heroHeight = hero.getBoundingClientRect().height;
+  if (heroHeight > 0) reviewCard.style.maxHeight = `${Math.round(heroHeight)}px`;
+}
+
 function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     showProgressUnavailable('window.LWData/window.LWDataV2 did not load');
@@ -294,6 +320,7 @@ function initPage() {
     renderHero(missions, learnedSigns);
     renderNeedsReview(learnedSigns);
     renderChapters(missions);
+    syncNeedsReviewHeightToHero();
   } catch (e) {
     console.error('[v2-progress.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
@@ -305,3 +332,11 @@ if (document.readyState === 'loading') {
 } else {
   initPage();
 }
+
+window.addEventListener('resize', () => {
+  clearTimeout(ringSyncTimer);
+  ringSyncTimer = setTimeout(() => {
+    syncRingSizeToStatsCard();
+    syncNeedsReviewHeightToHero();
+  }, 150);
+});
