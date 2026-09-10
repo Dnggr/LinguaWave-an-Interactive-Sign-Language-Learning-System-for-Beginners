@@ -196,6 +196,25 @@
 }
 .v2-path-search svg { flex: none; color: var(--clr-text-muted); }
 
+/* Widen the search bar + mission list together (this session) — per
+ * explicit request, expand the container "alongside the card under
+ * it" to 70% width, the same treatment the Progress page's
+ * #v2-progress-chapters card already uses. Scoped via
+ * :has(#v2-path-list) so it only ever matches v2-learn.html's own
+ * .container--narrow (the only place #v2-path-list lives) — NOT the
+ * several other pages that reuse the shared .container--narrow class,
+ * including two more pages this same v2-app.css loads on
+ * (v2-mission-overview.html, v2-orientation.html), which must keep
+ * their existing narrower width untouched. */
+.container--narrow:has(#v2-path-list) {
+  max-width: none;
+  width: 70%;
+  margin-inline: auto;
+}
+@media (max-width: 900px) {
+  .container--narrow:has(#v2-path-list) { width: 100%; }
+}
+
 .v2-path-list { display: flex; flex-direction: column; gap: var(--space-3); }
 /* Chapter grouping (this session) — rows inside a .trail-group
    (see ../../css/learn.css) need their own flex/gap now that the
@@ -360,6 +379,32 @@
 .v2-progress-grid__main { display: flex; flex-direction: column; min-width: 0; }
 .v2-progress-grid__side { min-width: 0; }
 
+/* Center the "Progress by Chapter" card as a block, per explicit
+ * request ("center the text and the card below"). 70% width (this
+ * session, was a fixed 640px) per explicit follow-up request to
+ * expand it. Scoped to this page's own id, NOT the shared
+ * `.unit-progress-list` class itself (css/dashboard.css, used by V1's
+ * dashboard too) — so V1 keeps that class's normal full-width
+ * behavior untouched. */
+#v2-progress-chapters {
+  width: 70%;
+  margin-inline: auto;
+}
+@media (max-width: 640px) {
+  #v2-progress-chapters { width: 100%; }
+}
+/* Left-justify each chapter row's label (e.g. "Chapter 1 — ASL
+ * Foundations"), per explicit request. dashboard.css's shared
+ * `.unit-progress-group__label` already sets `flex: 1` (used as-is by
+ * V1's dashboard/progress.html, unaffected since neither loads this
+ * file) — this just adds `text-align: left` on top of that existing
+ * flex-grow, scoped to this page's own #v2-progress-chapters id so it
+ * doesn't leak onto anything else that might reuse the shared class
+ * later. */
+#v2-progress-chapters .unit-progress-group__label {
+  text-align: left;
+}
+
 /* Hero ROW (this session — CSS Grid, replacing the flex-row +
  * `.v2-progress-ring-card` wrapper div this used to need) — per
  * explicit request to remove that wrapper entirely. Without a
@@ -462,8 +507,16 @@
  * a sign title, and a real "X days ago" (see js/v2-progress.js's
  * getItemCompletedAt()-based due rule), plus one primary CTA at the
  * bottom, matching the mockup's card shape. */
-.v2-needs-review { display: flex; flex-direction: column; }
-.v2-review-list { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-2) 0 var(--space-4); }
+.v2-needs-review { display: flex; flex-direction: column; overflow: hidden; }
+.v2-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 var(--space-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
 .v2-review-row {
   display: flex;
   align-items: center;
