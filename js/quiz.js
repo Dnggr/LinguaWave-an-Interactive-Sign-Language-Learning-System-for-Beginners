@@ -81,6 +81,18 @@ const level     = params.get('level') || 'basic';
 const isFinal   = params.get('final') === '1';
 const categoryId = params.get('category') || null;
 
+// NEW (Task 2) — set only when a V2 Mission Overview / V2 Lesson
+// screen linked here for its Mastery Quiz (see
+// LinguaWaveV2/js/v2-mission-overview.js, LinguaWaveV2/js/v2-lesson.js
+// — both now append `&v2=1`). When true, selectAnswer() below spends
+// one window.LWDataV2 Mastery Heart per WRONG graded answer instead of
+// a heart being spent just for starting the quiz (the old behavior,
+// now removed from those two files). Entering the quiz never costs a
+// heart either way. This is the ONLY place js/quiz.js ever touches
+// window.LWDataV2 — a plain V1 quiz link (no `&v2=1`) never reaches
+// this branch, so V1's own quiz scoring/flow is completely unchanged.
+const isV2Mastery = params.get('v2') === '1';
+
 // BUGFIX (this session): the sidebar "Quiz" nav item (dashboard/learn/
 // progress/feedback/settings) links to plain `quiz.html` — no `?level=`
 // or `?category=` at all, unlike every other route into this page. With
@@ -478,7 +490,16 @@ function selectAnswer(btn, q) {
   roundResults[round.key].total++;
 
   const correct = btn.dataset.option === q.signId;
-  if (correct) roundResults[round.key].correct++;
+  if (correct) {
+    roundResults[round.key].correct++;
+  } else if (isV2Mastery && window.LWDataV2?.consumeHeartForIncorrectAnswer) {
+    // Task 2 — 1 incorrect answer = 1 heart, only for a V2 Mastery
+    // Quiz attempt (`&v2=1`). Floors at 0 (see data-v2.js), so
+    // repeated wrong answers after hearts hit zero are harmless — the
+    // real gate is on ENTRY, where the "Start Mastery Quiz" button is
+    // already disabled once getHeartsState().hearts is 0.
+    window.LWDataV2.consumeHeartForIncorrectAnswer();
+  }
 
   qOptionsEl.querySelectorAll('.quiz-option').forEach(b => {
     b.disabled = true;

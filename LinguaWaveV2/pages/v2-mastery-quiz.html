@@ -17,44 +17,53 @@
     })();
   </script>
   <!--
-    LinguaWaveV2/pages/v2-mission-overview.html — V2 Mission Overview
+    LinguaWaveV2/pages/v2-mastery-quiz.html — V2 Mastery Quiz (NEW)
     ─────────────────────────────────────────────────────────────────
-    PURPOSE : Per the implementation guide's §6 (Mission Overview) /
-              §5.1: mission number + title, goal, the signs you'll
-              practice, an explicitly-labeled EFFORT ESTIMATE (never
-              shown as if it were exact), the mastery requirement, and
-              a live Mastery Hearts display — all sourced from
-              window.LWDataV2 / window.LWData, no hardcoded copy.
+    PURPOSE : A real V2-native Mastery Quiz screen, replacing the
+              hand-off to V1's pages/quiz.html — but only for the two
+              chapters this sample build covers (see SCOPE below).
+              Reuses the SAME mission.items QUIZ concept js/data-v2.js
+              already builds (unchanged shape); this page just walks
+              it as its own dedicated screen instead of leaving the
+              Mastery Quiz on the untouched V1 engine.
 
-    ENTRY   : ?mission=<categoryId> — matches the query param
-              v2-dashboard.html's Continue card / journey rail and
-              v2-learn.html's path rows already link with.
+    SCOPE (this sample) : gated in js/v2-mastery-quiz.js to Chapter 1
+              (ASL Foundations) and Chapter 2 (Introduce Yourself)
+              only — the same two chapters js/v2-lesson-loop.js
+              already curates NEAR_NEIGHBORS/discrimination data for.
+              Any other mission's "Start Mastery Quiz" still hands off
+              to the V1 pages/quiz.html, same "degrade, don't throw"
+              discipline as the rest of dataV2 — see this file's own
+              js for the exact gate and how to widen it later.
 
-    HEARTS  : reads window.LWDataV2.getHeartsState() live. Guide §10's
-              rule — "keep all learning activities available, gate
-              only the next Mastery Quiz attempt" — is respected here:
-              hitting 0 hearts disables ONLY the Start Mastery Quiz
-              button. Start Mission (lesson/practice) always stays
-              enabled regardless of heart count.
+    ENTRY   : ?mission=<categoryId> — same param convention every
+              other V2 page uses.
 
-    HEARTS TIMING (fixed — Task 2, this revision) : the guide specifies
-              consuming a heart on WRONG ANSWERS, not on Mastery Quiz
-              entry. That's now correct: entering the quiz is free, and
-              one heart is spent per incorrect graded answer inside
-              js/quiz.js itself, gated behind the `&v2=1` this page adds
-              to the quiz URL — see js/data-v2.js's file header
-              ("HEART TIMING FIX") and js/quiz.js's `isV2Mastery` for
-              the full note.
+    CLOSES TWO STANDING GAPS (see DataV2_LinguaWave_Progress_Tracker.md
+              §5 open question 7, and AI_MEMORY.md's Lesson-engine
+              session note):
+                1. Hearts are now spent on quiz SUBMIT, not attempt
+                   START (every other chapter's Start Mastery Quiz
+                   button, in v2-mission-overview.js/v2-lesson.js,
+                   still spends on start — untouched, out of this
+                   sample's scope).
+                2. Passing now actually calls markItemComplete() on
+                   the mission's QUIZ item, so mission %/chapter
+                   progress/the Missions Completed stat on
+                   v2-progress.html can finally reach 100% for a
+                   sampled chapter's mission.
 
-    NOT BUILT HERE : the guide §6 "Know some already?" diagnostic
-              challenge is shown as a disabled "Coming soon" button
-              rather than faked with placeholder behavior.
+    NOT BUILT HERE : the Optional Camera Check V1's quiz.html has is a
+              deliberate, explicit omission — it was never part of the
+              original mockup spec for the Quiz screen (flagged as
+              V1-only "extra" in LinguaWave_Mockup_Visual_Audit.md
+              §8) and this build keeps V2's Mastery Quiz MC-only.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Mission Overview — LinguaWave V2 (preview)</title>
+  <title>Mastery Quiz — LinguaWave V2 (preview)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -65,7 +74,7 @@
 </head>
 <body>
 
-  <a href="#v2-mo-main" class="skip-link">Skip to Mission Overview</a>
+  <a href="#v2-mq-main" class="skip-link">Skip to Mastery Quiz</a>
 
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -109,7 +118,7 @@
       </div>
     </aside>
 
-    <div class="app-main" id="v2-mo-main">
+    <div class="app-main" id="v2-mq-main">
 
       <section class="section section--sm section--tight">
         <div class="container container--narrow">
@@ -117,9 +126,9 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             All missions
           </a>
-          <div id="v2-mo-content">
-            <!-- filled by js/v2-mission-overview.js -->
-            <p class="text-muted">Loading mission…</p>
+          <div id="v2-mq-content">
+            <!-- filled by js/v2-mastery-quiz.js -->
+            <p class="text-muted">Loading quiz…</p>
           </div>
         </div>
       </section>
@@ -129,7 +138,8 @@
 
   <script src="../../js/data.js"></script>
   <script src="../js/data-v2.js"></script>
+  <script src="../js/v2-lesson-loop.js"></script>
   <script src="../../js/theme.js" defer></script>
-  <script src="../js/v2-mission-overview.js"></script>
+  <script src="../js/v2-mastery-quiz.js"></script>
 </body>
 </html>

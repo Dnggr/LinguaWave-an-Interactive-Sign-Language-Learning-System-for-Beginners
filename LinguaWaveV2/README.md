@@ -30,7 +30,8 @@ LinguaWaveV2/
 │   ├── v2-learn.html          REAL product page — mission-based Learning Path (base app shell + live data)
 │   ├── v2-mission-overview.html  REAL product page — per-mission detail + live Mastery Hearts
 │   ├── v2-orientation.html    REAL product page — the single ungated intro row above the chapter list
-│   └── v2-progress.html       REAL product page — mission-based Progress (overall %, chapters, Needs Review)
+│   ├── v2-progress.html       REAL product page — mission-based Progress (overall %, chapters, Needs Review)
+│   └── v2-lesson.html         REAL product page — walks one mission's items via the Sign Learning Loop
 ├── js/
 │   ├── data-v2.js               The content layer itself — mission schema, builder, streak + Hearts modules
 │   ├── data-v2-preview.js       Renders datav2-preview.html
@@ -39,11 +40,14 @@ LinguaWaveV2/
 │   ├── v2-dashboard.js          Renders v2-dashboard.html
 │   ├── v2-learn.js              Renders v2-learn.html
 │   ├── v2-mission-overview.js   Renders v2-mission-overview.html
-│   └── v2-progress.js           Renders v2-progress.html
+│   ├── v2-progress.js           Renders v2-progress.html
+│   ├── v2-lesson-loop.js        Sign Learning Loop engine — near-neighbor pairs, duplicate-sign detection, planForItem()
+│   ├── v2-lesson.js             Renders v2-lesson.html using v2-lesson-loop.js's plan
+│   └── _test_v2-lesson-loop.node.js   Node test harness for v2-lesson-loop.js (not loaded by any page)
 └── css/
     ├── datav2-preview.css    Styling for the dev preview page only
     ├── datav2-compare.css    Styling for the dev compare page + the mission/category pickers both use
-    └── v2-app.css            Styling for the real V2 pages — extends css/style.css tokens, doesn't replace them
+    └── v2-app.css            Styling for the real V2 pages, including v2-lesson.html — extends css/style.css tokens, doesn't replace them
 ```
 
 **Two different kinds of page in this folder, on purpose:** `datav2-preview.html`/

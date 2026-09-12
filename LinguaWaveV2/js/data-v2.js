@@ -99,18 +99,27 @@
  *            `lw_datav2_hearts_v1` key — see HEARTS_KEY below) backing
  *            the new pages/v2-mission-overview.html per the guide's
  *            §10 rule: "keep all learning activities available, gate
- *            only the next Mastery Quiz attempt." A 3-heart pool, one
- *            heart lost per Mastery Quiz attempt, each lost heart
- *            refills independently 4 hours after it was lost — see
- *            HEART_REFILL_MS. KNOWN LIMITATION: the guide's spec is
- *            "consume a heart on submit"; pages/quiz.js is still
- *            deliberately untouched (see isolation rule above), so
- *            v2-mission-overview.js currently calls
- *            consumeHeartForMastery() when the Start Mastery Quiz
- *            button is clicked (attempt START), not on submit. Fixing
- *            that properly needs a small submit-time hook added to
- *            pages/quiz.js — out of scope here, tracked in the
- *            progress tracker's open questions.
+ *            only the next Mastery Quiz attempt." A 3-heart pool, each
+ *            lost heart refilling independently 4 hours after it was
+ *            lost — see HEART_REFILL_MS.
+ *
+ * HEART TIMING FIX, V2-NATIVE QUIZ ONLY (this revision, Task 2) :
+ *            `consumeHeartForMastery()` still spends one heart on
+ *            Mastery Quiz attempt START — that call is UNCHANGED and
+ *            still used by v2-mission-overview.js/v2-lesson.js for
+ *            every chapter that still hands off to V1's pages/quiz.js
+ *            (pages/quiz.js remains deliberately untouched, per the
+ *            isolation rule above — that fallback path is intentionally
+ *            left alone this revision). For the chapters that have a
+ *            real V2-native Mastery Quiz instead (pages/v2-mastery-
+ *            quiz.html / js/v2-mastery-quiz.js — see that file's own
+ *            SAMPLE_CATEGORY_GROUPS), a NEW, ADDITIVE function,
+ *            consumeHeartForIncorrectAnswer(), is used there instead:
+ *            entering that quiz costs nothing, and a heart is spent
+ *            per WRONG graded answer (1 incorrect answer = 1 heart),
+ *            not once at the end. Both functions share the exact same
+ *            floor-at-zero mechanics — see consumeHeartForIncorrectAnswer()
+ *            itself, right after consumeHeartForMastery() below.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -9182,6 +9191,32 @@ function getCategoriesForUnitV2(unitOrder) {
   const STREAK_KEY = 'lw_datav2_streak_v1';
   const HEARTS_KEY = 'lw_datav2_hearts_v1';
 
+  // PER-ACCOUNT SCOPING (NEW) — mirrors js/lesson.js's 2026-08-26
+  // personalization uid-scoping fix and js/engine/progress.js's own
+  // `cached.uid === user.uid` reconcile pattern: these 3 keys are
+  // still plain localStorage (no Firestore sync like
+  // js/engine/progress.js's `userProgress/{uid}` — out of scope here,
+  // same "own namespace" isolation this file already keeps from
+  // lw_progress_v3), but every record now carries the uid of whoever
+  // saved it, and a mismatch — including a pre-fix record with no
+  // `uid` field at all — is treated as "nothing saved yet" for the
+  // CURRENTLY logged-in account rather than silently adopted. Same
+  // disclosed tradeoff as that earlier fix: anyone with pre-fix
+  // locally-saved dataV2 progress sees it reset once, post-fix, on
+  // whichever account first loads it — chosen over silent adoption
+  // because that would leave a real cross-account leak window on a
+  // shared device, which is the actual bug this closes. `null` (no
+  // one logged in / js/auth.js not loaded on this page, e.g. the dev
+  // preview pages) is its own consistent "account," so nothing here
+  // breaks when LWAuth isn't present — it just doesn't get scoped.
+  function getCurrentUidV2() {
+    try {
+      return window.LWAuth?.getCurrentUser?.()?.uid || null;
+    } catch {
+      return null;
+    }
+  }
+
   /* ── Feature flag ────────────────────────────────────────────── */
 
   function isEnabled() {
@@ -9398,21 +9433,30 @@ function getCategoriesForUnitV2(unitOrder) {
    */
 
   function loadProgressState() {
+    const uid = getCurrentUidV2();
     try {
       const raw = localStorage.getItem(PROGRESS_KEY);
-      const state = raw ? JSON.parse(raw) : { completedItemIds: [] };
+      const state = raw ? JSON.parse(raw) : null;
+      // Per-account scoping — see the block comment above
+      // getCurrentUidV2(). A missing/mismatched uid means this saved
+      // record belongs to a different account (or predates this fix)
+      // — treat it as empty rather than adopt someone else's progress.
+      if (!state || state.uid !== uid) {
+        return { uid, completedItemIds: [], completedAt: {} };
+      }
       // Phase 2 addition — additive: old saved state from Phase 1
       // (before `completedAt` existed) has no such key, so backfill
       // an empty map rather than requiring a migration/reset.
       if (!state.completedAt) state.completedAt = {};
       return state;
     } catch {
-      return { completedItemIds: [], completedAt: {} };
+      return { uid, completedItemIds: [], completedAt: {} };
     }
   }
 
   function saveProgressState(state) {
     try {
+      state.uid = getCurrentUidV2();
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 progress:', e);
@@ -9444,6 +9488,35 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (changed) saveProgressState(state);
     recordActivityToday();
+    return getMissionProgress(mission);
+  }
+
+  // NEW, ADDITIVE (Priority 1, Task 1 — "Mastery Quiz Completes the
+  // Mission") — marks EVERY item in `mission` complete in one go
+  // (LESSON/BOOSTER/PRACTICE for every sign, plus QUIZ), not just the
+  // one item a caller happens to be looking at. Before this existed,
+  // js/v2-mastery-quiz.js's finishQuiz() called markItemComplete()
+  // ONLY for the mission's QUIZ item on a pass — technically true
+  // ("the quiz is done") but getMissionProgress() is done/total across
+  // ALL items, so a mission with e.g. 10 lesson/booster/practice items
+  // plus 1 quiz item only ever reached ~9% after a pass, never the
+  // 100% ("done") that isChapterUnlocked()/getMissionStatus() and every
+  // page reading them (dashboard, learn, mission overview, progress)
+  // require to unlock the next chapter or count the mission as
+  // Completed. That defeated the Mastery Quiz's whole purpose as an
+  // advanced-user skip path per the product rule: "they should not
+  // need to complete every lesson after passing it." This reuses
+  // markItemComplete() per item (so completedAt/activity-streak
+  // bookkeeping stays in exactly one place) rather than writing
+  // completedItemIds directly — no separate/parallel completion logic.
+  // Idempotent: items already complete are simply left as they are
+  // (markItemComplete() itself already no-ops on an already-completed
+  // id). Returns the resulting getMissionProgress(mission) (will be 1
+  // once every item has SOME real content — see buildItemsForCategory,
+  // which always includes a QUIZ item, so this is never called against
+  // an empty items array in practice).
+  function markMissionComplete(mission) {
+    mission.items.forEach((item, i) => markItemComplete(mission, i, item));
     return getMissionProgress(mission);
   }
 
@@ -9479,6 +9552,63 @@ function getCategoriesForUnitV2(unitOrder) {
     return done / signItems.length;
   }
 
+  /* ── Chapter gating (Task 1, this revision) ──────────────────────
+   * A learner must finish EVERY mission in a chapter (100% each)
+   * before the NEXT chapter (by CATEGORY_GROUPS_V2 `.order`) unlocks.
+   * Once a chapter is unlocked, every mission inside it is available
+   * at once, in whatever order the learner wants — there is no
+   * per-mission position lock *within* an unlocked chapter anymore
+   * (that old rule lived in v2-learn.js/v2-dashboard.js/
+   * v2-mission-overview.js's own, now-removed, duplicated statusFor()
+   * functions — this is the single, shared replacement all three now
+   * call). A mission with no categoryGroup (data gap) is never gated,
+   * same "a data gap can't hide/lock a mission" rule
+   * buildMissionForCategory() already documents for that case.
+   */
+
+  function isChapterUnlocked(categoryGroupId, allMissions) {
+    if (!categoryGroupId) return true;
+    const chapters = getCategoryGroupsV2();
+    const chapter = chapters.find((c) => c.id === categoryGroupId);
+    if (!chapter) return true; // unknown/unlisted chapter id — don't hide it
+    return chapters
+      .filter((c) => c.order < chapter.order)
+      .every((earlier) => {
+        const missionsInEarlier = allMissions.filter((m) => m.categoryGroup === earlier.id);
+        // A chapter with no live missions yet can't block anything.
+        return missionsInEarlier.every((m) => getMissionProgress(m) >= 1);
+      });
+  }
+
+  // A mission's real, chapter-aware status:
+  //  - 'done'      the mission itself is 100% complete
+  //  - 'locked'    the mission's chapter isn't unlocked yet (above)
+  //  - 'current'   chapter is open, mission started but not finished
+  //  - 'available' chapter is open, mission not started yet
+  // `allMissions` should be the same array (usually getAllMissions())
+  // the caller is already rendering, so chapter-completion is checked
+  // against the live, current progress every time — nothing cached.
+  function getMissionStatus(mission, allMissions) {
+    const progress = getMissionProgress(mission);
+    if (progress >= 1) return 'done';
+    if (!isChapterUnlocked(mission.categoryGroup, allMissions)) return 'locked';
+    return progress > 0 ? 'current' : 'available';
+  }
+
+  // Which chapter should read as "the one you're working on" for UI
+  // purposes (e.g. which chapter section starts open on v2-learn.html)
+  // — the first chapter, in order, that isn't yet 100% complete.
+  // Falls back to the last chapter once every chapter is done.
+  function getCurrentChapterId(allMissions) {
+    const chapters = getCategoryGroupsV2();
+    for (const ch of chapters) {
+      const missionsInCh = allMissions.filter((m) => m.categoryGroup === ch.id);
+      if (!missionsInCh.length) continue; // nothing live in this chapter yet
+      if (!missionsInCh.every((m) => getMissionProgress(m) >= 1)) return ch.id;
+    }
+    return chapters.length ? chapters[chapters.length - 1].id : null;
+  }
+
   function getRecap(mission) {
     // §3.8 — recap bullets, generated from whichever LESSON items are
     // actually complete, not a hardcoded list (so it's accurate for
@@ -9498,16 +9628,23 @@ function getCategoriesForUnitV2(unitOrder) {
   }
 
   function loadStreakState() {
+    const uid = getCurrentUidV2();
     try {
       const raw = localStorage.getItem(STREAK_KEY);
-      return raw ? JSON.parse(raw) : { days: [], forgivenessUsedThisWeek: 0 };
+      const state = raw ? JSON.parse(raw) : null;
+      // Per-account scoping — see getCurrentUidV2()'s block comment.
+      if (!state || state.uid !== uid) {
+        return { uid, days: [], forgivenessUsedThisWeek: 0 };
+      }
+      return state;
     } catch {
-      return { days: [], forgivenessUsedThisWeek: 0 };
+      return { uid, days: [], forgivenessUsedThisWeek: 0 };
     }
   }
 
   function saveStreakState(state) {
     try {
+      state.uid = getCurrentUidV2();
       localStorage.setItem(STREAK_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 streak:', e);
@@ -9582,7 +9719,7 @@ function getCategoriesForUnitV2(unitOrder) {
    * hearts, per §10's "gate only the next Mastery Quiz attempt" rule.
    * Storage holds just the timestamps of currently-lost hearts
    * (`lostAt`), not a raw counter, so each lost heart can refill
-   * independently on its own 4-hour timer instead of one shared timer
+   * independently on its own 1-hour timer instead of one shared timer
    * for the whole pool. Entries older than HEART_REFILL_MS are treated
    * as refilled and trimmed out on the next read/write — no cron/
    * background timer needed, same lazy-evaluation style as the streak
@@ -9590,21 +9727,27 @@ function getCategoriesForUnitV2(unitOrder) {
    */
 
   const MAX_HEARTS = 3;
-  const HEART_REFILL_MS = 4 * 60 * 60 * 1000; // 4 hours per lost heart
+  const HEART_REFILL_MS = 1 * 60 * 60 * 1000; // 1 hour per lost heart
 
   function loadHeartsState() {
+    const uid = getCurrentUidV2();
     try {
       const raw = localStorage.getItem(HEARTS_KEY);
-      const state = raw ? JSON.parse(raw) : { lostAt: [] };
+      const state = raw ? JSON.parse(raw) : null;
+      // Per-account scoping — see getCurrentUidV2()'s block comment.
+      if (!state || state.uid !== uid) {
+        return { uid, lostAt: [] };
+      }
       if (!Array.isArray(state.lostAt)) state.lostAt = [];
       return state;
     } catch {
-      return { lostAt: [] };
+      return { uid, lostAt: [] };
     }
   }
 
   function saveHeartsState(state) {
     try {
+      state.uid = getCurrentUidV2();
       localStorage.setItem(HEARTS_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 hearts:', e);
@@ -9641,7 +9784,31 @@ function getCategoriesForUnitV2(unitOrder) {
   // negative) if already at zero hearts — callers should check
   // getHeartsState().hearts > 0 before offering the action at all, this
   // is just a safe floor. Returns the resulting getHeartsState().
+  //
+  // STILL USED (unchanged, Task 2) by v2-mission-overview.js /
+  // v2-lesson.js for every chapter that still hands off to V1's
+  // pages/quiz.js — that fallback path is deliberately left alone this
+  // revision (see file header "HEART TIMING FIX, V2-NATIVE QUIZ ONLY").
   function consumeHeartForMastery() {
+    const stillLost = trimRefilledHearts(loadHeartsState());
+    if (stillLost.length < MAX_HEARTS) {
+      stillLost.push(new Date().toISOString());
+      saveHeartsState({ lostAt: stillLost });
+    }
+    return getHeartsState();
+  }
+
+  // NEW, ADDITIVE (Task 2, this revision) — same floor-at-zero
+  // mechanics as consumeHeartForMastery() above, just spent for a
+  // different reason: one WRONG graded answer inside a real, V2-native
+  // Mastery Quiz attempt (js/v2-mastery-quiz.js's handleAnswer()),
+  // rather than once for the whole attempt. Entering that quiz never
+  // calls this — only a wrong answer does. Does not touch, replace, or
+  // remove consumeHeartForMastery() above; both read/write the exact
+  // same `lw_datav2_hearts_v1` heart pool, they just get called from
+  // different quiz screens depending on which one a mission's chapter
+  // currently uses (see js/v2-mastery-quiz.js's SAMPLE_CATEGORY_GROUPS).
+  function consumeHeartForIncorrectAnswer() {
     const stillLost = trimRefilledHearts(loadHeartsState());
     if (stillLost.length < MAX_HEARTS) {
       stillLost.push(new Date().toISOString());
@@ -9699,6 +9866,7 @@ function getCategoriesForUnitV2(unitOrder) {
     getMissionProgress,
     getLessonProgress,
     markItemComplete,
+    markMissionComplete,     // NEW (Priority 1, Task 1) — marks every item in a mission complete at once, for the Mastery Quiz skip-path (js/v2-mastery-quiz.js's finishQuiz())
     isItemComplete,
     getItemCompletedAt,      // NEW — Phase 2
     getDropOffIndex,         // NEW — Phase 2
@@ -9706,8 +9874,12 @@ function getCategoriesForUnitV2(unitOrder) {
     getStreakSummary,
     recordActivityToday,
     getHeartsState,          // NEW — Mission Overview + Hearts module
-    consumeHeartForMastery,  // NEW — Mission Overview + Hearts module
+    consumeHeartForMastery,          // Mission Overview + Hearts module (unchanged — still used by the V1-quiz.js fallback path, see file header)
+    consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the V2-native Mastery Quiz (js/v2-mastery-quiz.js)
     getOrientation,          // NEW — Orientation row above the chapters
+    isChapterUnlocked,       // NEW (Task 1) — chapter gating
+    getMissionStatus,        // NEW (Task 1) — single shared 'done'/'locked'/'current'/'available' rule
+    getCurrentChapterId,     // NEW (Task 1) — which chapter section should default-open
     ui: UI_CONFIG,
     // NEW (this revision) — V2's own independent content model and its
     // accessors, forked from js/data.js's latest content. Purely

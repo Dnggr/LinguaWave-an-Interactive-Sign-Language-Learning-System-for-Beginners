@@ -131,11 +131,30 @@
 
       <section class="section section--sm">
         <div class="container">
+          <!-- Grid now holds ONLY the hero row (ring + stats) beside
+               Needs Review — "Progress by Chapter" used to live inside
+               .v2-progress-grid__main too, which meant its "70% width,
+               centered" rules below were 70% of this narrow 1.7fr
+               column, not 70% of the page, and left it sitting
+               visibly left-shifted rather than centered. Moved below,
+               outside the grid, so it centers/sizes against the same
+               full-width .container as the grid itself. This also
+               makes "cap Needs Review's height to the left card
+               group" (js/v2-progress.js's syncReviewCardHeight(), see
+               css/v2-app.css's .v2-needs-review comment) literally
+               true now — the left column IS the hero row, no chapter
+               list hanging off the bottom of it to be ignored. -->
           <div class="v2-progress-grid">
 
             <!-- ── LEFT COLUMN ─────────────────────────────────────── -->
             <div class="v2-progress-grid__main">
 
+              <!-- No "card" class here on purpose — the ring itself
+                   sits outside any card background/border, matching
+                   the reference mockup. js/v2-progress.js's
+                   renderHero() puts the actual .card on the stats
+                   tiles only (#v2-progress-stats-card), not on this
+                   outer grid wrapper. -->
               <div class="v2-progress-hero-row" id="v2-progress-hero">
                 <p class="text-muted loading-pulse">Loading your progress…</p>
               </div>
@@ -150,32 +169,21 @@
             </div>
 
           </div>
-        </div>
-      </section>
 
-      <!-- "Progress by Chapter" (this session — moved OUT of the
-           2-column grid above). It used to live inside
-           .v2-progress-grid__main (the left column), which meant
-           "center it" only centered it within that narrower column —
-           once the right column's "Needs Review" list finished above
-           it, there was a big empty gap beside it instead of it
-           reading as centered on the PAGE. Now a full-width section of
-           its own, so centering (heading via .text-center, card via
-           its own max-width + margin-inline:auto — both already
-           existed, just needed the right container) actually centers
-           it against the page's real width. -->
-      <section class="section section--sm section--tight">
-        <div class="container text-center">
-          <h2 class="mb-4">Progress by Chapter</h2>
+          <!-- ── FULL-WIDTH ROW, below both columns ─────────────────
+               #v2-progress-chapters's own "width: 70%; margin-inline:
+               auto" (css/v2-app.css) now resolves against .container
+               above, not the old narrow grid column. -->
+          <h2 class="mt-8 mb-4 v2-progress-chapters-heading">Progress by Chapter</h2>
           <div class="card unit-progress-list" id="v2-progress-chapters">
             <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading chapter-by-chapter progress…</p>
           </div>
         </div>
       </section>
 
-      <!-- <footer class="footer">
+      <footer class="footer">
         <div class="container"><p>LinguaWave V2 — Capstone Project 2026 (preview)</p></div>
-      </footer> -->
+      </footer>
 
     </div>
   </div>

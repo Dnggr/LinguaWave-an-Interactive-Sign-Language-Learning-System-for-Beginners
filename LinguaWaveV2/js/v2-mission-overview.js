@@ -6,25 +6,24 @@
  * (sign titles for the "You'll practice" chips). Nothing here touches
  * js/engine/progress.js's real progress store or pages/quiz.js.
  *
- * "Locked" uses the exact same position-based rule v2-learn.js's
- * statusFor() already uses (there is no real gating/hearts-based
- * unlock logic yet, guide §10–11) — re-derived here rather than
- * imported, since this file has no dependency on v2-learn.js.
+ * CHAPTER GATING (Task 1, this revision) : "Locked" now comes straight
+ * from the single shared window.LWDataV2.getMissionStatus() in
+ * js/data-v2.js (chapter-based: locked only while the previous chapter
+ * isn't 100% complete) — the old locally-duplicated position-based
+ * statusFor() is gone.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
 
+// NEW — see pages/v2-mastery-quiz.html's file header for the full
+// scope note. Kept as a small local const (not imported) same as this
+// file's own existing pattern of re-deriving small pieces of logic
+// per file rather than sharing them.
+const SAMPLE_MASTERY_QUIZ_CHAPTERS = ['asl_foundations', 'introduce_yourself'];
+
 function getMissionParam() {
   const params = new URLSearchParams(window.location.search);
   return params.get('mission');
-}
-
-function statusFor(mission, index, currentIndex) {
-  const progress = window.LWDataV2.getMissionProgress(mission);
-  if (progress >= 1) return 'done';
-  if (index === currentIndex) return 'current';
-  if (index < currentIndex) return 'available';
-  return index === currentIndex + 1 ? 'available' : 'locked';
 }
 
 function statusMeta(status) {
@@ -56,6 +55,19 @@ function signTitle(mission, signId) {
     ? window.LWData.getSign(mission.level, signId)
     : null;
   return (sign && sign.title) || signId;
+}
+
+// Per-sign completion, for the "You'll practice" chips' green/hover
+// states. A sign counts as learned once its own LESSON item (from the
+// Watch→Recognize→Discriminate loop, js/v2-lesson.js) has been marked
+// complete — the SAME window.LWDataV2.isItemComplete() the mission
+// progress bar already reads from, just checked for one specific
+// sign's item instead of tallying the whole mission. Returns false
+// (not an error) if this mission has no LESSON item for that sign.
+function isSignLearned(mission, signId) {
+  const index = mission.items.findIndex((item) => item.kind === 'LESSON' && item.signId === signId);
+  if (index === -1) return false;
+  return window.LWDataV2.isItemComplete(mission, index, mission.items[index]);
 }
 
 // EXPLICITLY an estimate, never shown as an exact figure — per the
@@ -103,10 +115,16 @@ function renderHearts() {
   const refillNote = state.hearts < state.maxHearts
     ? `<p class="v2-hearts__refill">Next heart in ${formatCountdown(state.nextRefillAt)}</p>`
     : '';
+  // Wording (Task 2) — "remaining", not "attempts available": for
+  // Chapters 1–2's real v2-mastery-quiz.html, one heart no longer
+  // equals one whole attempt (it's spent per wrong answer instead), so
+  // this card — shown for every chapter regardless of which quiz it
+  // uses — needs neutral wording that's still accurate for the
+  // unchanged, per-attempt V1 quiz.js fallback chapters too.
   return `
     <div class="v2-hearts">
       <div class="v2-hearts__row">${hearts}</div>
-      <p class="v2-hearts__count">${state.hearts} of ${state.maxHearts} Mastery Quiz attempts available</p>
+      <p class="v2-hearts__count">${state.hearts} of ${state.maxHearts} Mastery Hearts remaining</p>
       ${refillNote}
     </div>
   `;
@@ -117,13 +135,43 @@ function render(mission, status) {
   const meta = statusMeta(status);
   const locked = status === 'locked';
   const chips = signsInMission(mission)
-    .map((id) => `<span class="v2-sign-chip">${signTitle(mission, id)}</span>`)
+    .map((id) => {
+      const learned = isSignLearned(mission, id);
+      // Deliberately a <span>, not <a> — no link/click behavior yet,
+      // per explicit instruction that linking a chip to jump straight
+      // to that one sign is a future feature, not part of this pass.
+      return `<span class="v2-sign-chip${learned ? ' v2-sign-chip--learned' : ''}">${signTitle(mission, id)}</span>`;
+    })
     .join('');
-  const lessonUrl = `../../pages/lesson.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
-  const quizUrl = `../../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+  // CHANGED — used to link straight to ../../pages/lesson.html (V1).
+  // Now routes to the new v2-lesson.html, which walks this mission's
+  // own items through the six-stage Sign Learning Loop from
+  // LinguaWaveV2_Learning_Psychology_Analysis.docx (see that file's
+  // header comment for the full integration note). pages/lesson.html
+  // is still reachable from inside v2-lesson.html itself, as the
+  // explicit "Practice with your camera" link on each Watch stage.
+  const lessonUrl = `v2-lesson.html?mission=${encodeURIComponent(mission.category)}`;
+  // NEW — Chapters 1 & 2 (asl_foundations / introduce_yourself) now
+  // route to the real v2-mastery-quiz.html sample instead of V1's
+  // pages/quiz.html; see that page's own file header for the exact
+  // scope and how to widen it. Every other chapter is UNCHANGED,
+  // still V1's pages/quiz.html, still spending the heart on attempt
+  // START (deliberately left alone this revision — see
+  // js/data-v2.js's file header "HEART TIMING FIX, V2-NATIVE QUIZ ONLY").
+  const usesV2Quiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
+  const quizUrl = usesV2Quiz
+    ? `v2-mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
+    : `../../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
   const pct = Math.round(window.LWDataV2.getMissionProgress(mission) * 100);
   const heartsState = window.LWDataV2.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;
+  // Priority 2, item 5/6 — label-only: a 'done' mission's own lesson
+  // page now shows a Go to Start/Go to End review nav bar (see
+  // js/v2-lesson.js), so this entry point is relabeled to match what
+  // the learner is actually about to do. Same lessonUrl/href either
+  // way — no behavior change, review safety is enforced in
+  // v2-lesson.js itself, not by this label.
+  const startLabel = status === 'done' ? '🔁 Review Mission' : '▶ Start Mission';
 
   el.innerHTML = `
     <div class="v2-mo-header">
@@ -139,7 +187,7 @@ function render(mission, status) {
         <span class="v2-mo-progress__label">${pct}% complete</span>
       </div>
     ` : `
-      <div class="v2-note-banner">This mission is locked — complete earlier missions first.</div>
+      <div class="v2-note-banner">This mission is locked — finish every mission in the current chapter 100% to unlock the next chapter.</div>
     `}
 
     <h2 class="mt-6 mb-3">You'll practice</h2>
@@ -161,7 +209,7 @@ function render(mission, status) {
     </div>
 
     <div class="v2-mo-actions">
-      ${locked ? '' : `<a href="${lessonUrl}" class="btn btn--primary btn--lg">▶ Start Mission</a>`}
+      ${locked ? '' : `<a href="${lessonUrl}" class="btn btn--primary btn--lg">${startLabel}</a>`}
       ${locked ? '' : `
         <button type="button" class="btn btn--secondary btn--lg" id="v2-mo-start-quiz"
                 data-quiz-url="${quizUrl}" ${outOfHearts ? 'disabled' : ''}>
@@ -177,9 +225,17 @@ function render(mission, status) {
   const quizBtn = document.getElementById('v2-mo-start-quiz');
   if (quizBtn) {
     quizBtn.addEventListener('click', () => {
-      // KNOWN LIMITATION (see js/data-v2.js file header + tracker §5
-      // open question 7): this spends the heart on attempt START, not
-      // on submit, because pages/quiz.js is still untouched.
+      if (usesV2Quiz) {
+        // Task 2 — entering v2-mastery-quiz.html costs nothing; it
+        // spends a heart per WRONG answer instead (see that page's
+        // js/v2-mastery-quiz.js), not once here and not once on submit.
+        window.location.href = quizBtn.dataset.quizUrl;
+        return;
+      }
+      // UNCHANGED, non-sampled chapters only (still V1's pages/quiz.js,
+      // deliberately left untouched this revision — see js/data-v2.js's
+      // file header "HEART TIMING FIX, V2-NATIVE QUIZ ONLY"): this
+      // still spends the heart on attempt START, not per wrong answer.
       window.LWDataV2.consumeHeartForMastery();
       window.location.href = quizBtn.dataset.quizUrl;
     });
@@ -204,9 +260,7 @@ function initPage() {
 
   mission._index = allMissions.findIndex((m) => m.category === mission.category);
 
-  const currentIndex = allMissions.findIndex((m) => window.LWDataV2.getMissionProgress(m) < 1);
-  const effectiveCurrent = currentIndex === -1 ? allMissions.length - 1 : currentIndex;
-  const status = statusFor(mission, mission._index, effectiveCurrent);
+  const status = window.LWDataV2.getMissionStatus(mission, allMissions);
 
   document.title = `${mission.title} — LinguaWave V2 (preview)`;
   render(mission, status);
