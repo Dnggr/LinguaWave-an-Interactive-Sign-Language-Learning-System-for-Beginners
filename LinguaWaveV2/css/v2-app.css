@@ -687,6 +687,50 @@
   color: var(--clr-text-muted);
   text-align: right;
 }
+/* Task 2 — dot marker inside the lesson progress bar, on both Start
+ * Mission (in-progress) and Review Mission (already-complete). Scoped
+ * to .v2-lesson-track__bar specifically, not the bare .progress-bar
+ * rule in css/style.css, since that shared class is also used by
+ * unrelated bars elsewhere (Mission Overview's mission-list rows,
+ * .v2-continue-card__progress, .v2-quiz-progress-bar) that this
+ * change should not touch. js/v2-lesson.js's updateTrack() sets both
+ * this dot's `left` and the sibling .progress-bar__fill's `width` on
+ * every render — the dot always marks the CURRENT item, while the
+ * fill is either the same value (Start Mission) or pinned to 100%
+ * (Review Mission, since the whole mission is already done). */
+.v2-lesson-track__bar { position: relative; }
+.v2-lesson-track__dot {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--clr-surface);
+  border: 2px solid var(--clr-text);
+  transform: translate(-50%, -50%);
+  transition: left var(--dur-slow) var(--ease);
+  pointer-events: none;
+}
+
+/* Task 1 — mission intro slide (js/v2-lesson.js's renderMissionIntro()),
+ * shown once before a mission's real first item. Reuses
+ * .v2-lesson-callout/.v2-lesson-actions from the rest of this page —
+ * only the icon/goal layout below is genuinely new. */
+.v2-lesson-intro { max-width: 480px; margin: 0 auto; text-align: center; }
+.v2-lesson-intro__icon {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--space-4);
+  padding: var(--space-4);
+  border-radius: 50%;
+  background: var(--clr-accent-soft);
+  color: var(--clr-accent);
+}
+.v2-lesson-intro__icon svg { width: 100%; height: 100%; }
+.v2-lesson-intro__goal { font-size: var(--fs-lg); color: var(--clr-text-muted); margin: 0 0 var(--space-4); }
+.v2-lesson-intro__pitch { text-align: left; }
+.v2-lesson-intro .v2-lesson-actions { justify-content: center; }
 
 .v2-lesson-stage-label {
   font-size: var(--fs-xs);

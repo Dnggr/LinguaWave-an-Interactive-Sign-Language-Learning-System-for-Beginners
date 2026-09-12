@@ -15,11 +15,29 @@
  */
 'use strict';
 
-// NEW — see pages/v2-mastery-quiz.html's file header for the full
-// scope note. Kept as a small local const (not imported) same as this
+// WIDENED (merged revision) — now covers ALL 12 chapters. Started as
+// just Chapters 1-2, then three separate widenings each added a
+// different slice (3-5 express_feelings/daily_actions/
+// describing_things; 6-8 home_family/school_life/food_nature; 9-12
+// clothing_belongings/people_places_time/having_a_conversation/
+// putting_it_together) — merged here into one full-coverage list
+// rather than keeping any of them partial. With every chapter
+// sampled, the V1 pages/quiz.html handoff below is currently
+// unreachable for any real mission — it stays as a defensive
+// fallback only. See js/v2-mastery-quiz.js's own
+// SAMPLE_CATEGORY_GROUPS header note for the full scope note and
+// verification. Must stay in sync with js/v2-mastery-quiz.js's own
+// SAMPLE_CATEGORY_GROUPS and js/v2-lesson.js's own copy of this same
+// const — see either file's header for why there are 3 separate
+// copies. Kept as a small local const (not imported) same as this
 // file's own existing pattern of re-deriving small pieces of logic
 // per file rather than sharing them.
-const SAMPLE_MASTERY_QUIZ_CHAPTERS = ['asl_foundations', 'introduce_yourself'];
+const SAMPLE_MASTERY_QUIZ_CHAPTERS = [
+  'asl_foundations', 'introduce_yourself',
+  'express_feelings', 'daily_actions', 'describing_things',
+  'home_family', 'school_life', 'food_nature',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+];
 
 function getMissionParam() {
   const params = new URLSearchParams(window.location.search);
@@ -115,9 +133,10 @@ function renderHearts() {
   const refillNote = state.hearts < state.maxHearts
     ? `<p class="v2-hearts__refill">Next heart in ${formatCountdown(state.nextRefillAt)}</p>`
     : '';
-  // Wording (Task 2) — "remaining", not "attempts available": for
-  // Chapters 1–2's real v2-mastery-quiz.html, one heart no longer
-  // equals one whole attempt (it's spent per wrong answer instead), so
+  // Wording (Task 2) — "remaining", not "attempts available": for the
+  // sampled chapters' (SAMPLE_MASTERY_QUIZ_CHAPTERS, above) real
+  // v2-mastery-quiz.html, one heart no longer equals one whole attempt
+  // (it's spent per wrong answer instead), so
   // this card — shown for every chapter regardless of which quiz it
   // uses — needs neutral wording that's still accurate for the
   // unchanged, per-attempt V1 quiz.js fallback chapters too.
@@ -151,13 +170,15 @@ function render(mission, status) {
   // is still reachable from inside v2-lesson.html itself, as the
   // explicit "Practice with your camera" link on each Watch stage.
   const lessonUrl = `v2-lesson.html?mission=${encodeURIComponent(mission.category)}`;
-  // NEW — Chapters 1 & 2 (asl_foundations / introduce_yourself) now
-  // route to the real v2-mastery-quiz.html sample instead of V1's
+  // NEW — ALL 12 chapters (see SAMPLE_MASTERY_QUIZ_CHAPTERS above)
+  // now route to the real v2-mastery-quiz.html sample instead of V1's
   // pages/quiz.html; see that page's own file header for the exact
-  // scope and how to widen it. Every other chapter is UNCHANGED,
-  // still V1's pages/quiz.html, still spending the heart on attempt
-  // START (deliberately left alone this revision — see
-  // js/data-v2.js's file header "HEART TIMING FIX, V2-NATIVE QUIZ ONLY").
+  // scope and how to widen it. The V1 pages/quiz.html branch below is
+  // now a defensive fallback only — every real mission's
+  // categoryGroup is in the sample — still spending the heart on
+  // attempt START if it's ever reached (deliberately left alone this
+  // revision — see js/data-v2.js's file header "HEART TIMING FIX,
+  // V2-NATIVE QUIZ ONLY").
   const usesV2Quiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
   const quizUrl = usesV2Quiz
     ? `v2-mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`

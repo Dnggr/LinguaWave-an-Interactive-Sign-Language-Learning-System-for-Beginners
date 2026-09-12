@@ -31,7 +31,8 @@ LinguaWaveV2/
 │   ├── v2-mission-overview.html  REAL product page — per-mission detail + live Mastery Hearts
 │   ├── v2-orientation.html    REAL product page — the single ungated intro row above the chapter list
 │   ├── v2-progress.html       REAL product page — mission-based Progress (overall %, chapters, Needs Review)
-│   └── v2-lesson.html         REAL product page — walks one mission's items via the Sign Learning Loop
+│   ├── v2-lesson.html         REAL product page — walks one mission's items via the Sign Learning Loop
+│   └── v2-mastery-quiz.html   REAL product page — V2-native Mastery Quiz, sampled to all 12 chapters (see js/v2-mastery-quiz.js)
 ├── js/
 │   ├── data-v2.js               The content layer itself — mission schema, builder, streak + Hearts modules
 │   ├── data-v2-preview.js       Renders datav2-preview.html
@@ -43,6 +44,7 @@ LinguaWaveV2/
 │   ├── v2-progress.js           Renders v2-progress.html
 │   ├── v2-lesson-loop.js        Sign Learning Loop engine — near-neighbor pairs, duplicate-sign detection, planForItem()
 │   ├── v2-lesson.js             Renders v2-lesson.html using v2-lesson-loop.js's plan
+│   ├── v2-mastery-quiz.js       Renders v2-mastery-quiz.html — sampled to all 12 chapters (SAMPLE_CATEGORY_GROUPS); V1 pages/quiz.html kept only as a defensive fallback
 │   └── _test_v2-lesson-loop.node.js   Node test harness for v2-lesson-loop.js (not loaded by any page)
 └── css/
     ├── datav2-preview.css    Styling for the dev preview page only

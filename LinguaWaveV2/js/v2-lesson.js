@@ -9,16 +9,26 @@
  * getHeartsState/consumeHeartForMastery) — it has no progress logic
  * of its own.
  *
- * QUIZ HANDOFF (this revision, consistency fix) : mirrors
+ * QUIZ HANDOFF (consistency fix, widened this session) : mirrors
  * v2-mission-overview.js's own SAMPLE_MASTERY_QUIZ_CHAPTERS split —
- * Chapters 1–2 (asl_foundations/introduce_yourself) now hand off to
- * the real v2-mastery-quiz.html (which spends a heart per wrong
- * answer, not on entry) instead of always going to V1's
- * pages/quiz.html. Every other chapter is unchanged. Without this,
- * the SAME mission's Mastery Quiz button would launch a completely
- * different quiz experience depending on whether the learner clicked
- * it from Mission Overview or from here — see that file's own header
- * for the full scope note.
+ * ALL 12 chapters (asl_foundations/introduce_yourself/
+ * express_feelings/daily_actions/describing_things/home_family/
+ * school_life/food_nature/clothing_belongings/people_places_time/
+ * having_a_conversation/putting_it_together) now hand off to the real
+ * v2-mastery-quiz.html (which spends a heart per wrong answer, not on
+ * entry) instead of always going to V1's pages/quiz.html. With every
+ * chapter now sampled, the V1 pages/quiz.html fallback path is
+ * currently unreachable from a real mission link — it stays in place
+ * as a defensive fallback only (e.g. a stale/typed URL for a
+ * mission outside this list). Without this, the SAME mission's
+ * Mastery Quiz button would launch a completely different quiz
+ * experience depending on whether the learner clicked it from Mission
+ * Overview or from here — see that file's own header for the full
+ * scope note. WIDENED this revision (merged from three parallel
+ * widenings — was Chapters 1-2, then +3-5, +6-8, and +9-12
+ * separately) — keep this array in sync with
+ * v2-mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
+ * v2-mastery-quiz.js's SAMPLE_CATEGORY_GROUPS.
  *
  * Same data-source discipline as every other v2-*.js file: reads only
  * window.LWData / window.LWDataV2 / window.LWDataV2Loop.
@@ -29,7 +39,12 @@
 // Mirrors v2-mission-overview.js's own const of the same name — kept
 // as a small local re-derivation, same as this file's own existing
 // pattern (see its file-header note above).
-const SAMPLE_MASTERY_QUIZ_CHAPTERS = ['asl_foundations', 'introduce_yourself'];
+const SAMPLE_MASTERY_QUIZ_CHAPTERS = [
+  'asl_foundations', 'introduce_yourself',
+  'express_feelings', 'daily_actions', 'describing_things',
+  'home_family', 'school_life', 'food_nature',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+];
 
 function getMissionParam() {
   const params = new URLSearchParams(window.location.search);
@@ -298,8 +313,8 @@ function renderQuizHandoff(mission) {
   const heartsState = window.LWDataV2.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;
   // Consistency fix (this revision) — same split as
-  // v2-mission-overview.js's usesV2Quiz: Chapters 1–2 go to the real
-  // V2-native Mastery Quiz; every other chapter is unchanged.
+  // v2-mission-overview.js's usesV2Quiz: ALL 12 chapters go to the
+  // real V2-native Mastery Quiz now.
   const usesV2Quiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
   const quizUrl = usesV2Quiz
     ? `v2-mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
@@ -353,6 +368,77 @@ function renderUnknown(mission, index, item) {
   document.getElementById('v2-lesson-continue').addEventListener('click', () => completeAndAdvance(mission, index, item));
 }
 
+/* ── Task 1 — mission intro slide ─────────────────────────────────
+ * Duolingo-style "here's what this mission teaches" screen, shown
+ * ONCE before a mission's real first item. NOT a mission.items entry
+ * — it never calls markItemComplete()/getDropOffIndex(), so it can't
+ * affect progress, chapter unlocks, or the recap either way.
+ *
+ * Content is real, not invented for this screen: mission.goal (what
+ * you'll learn) and mission.introMoment.pitch (where/why it's used)
+ * are both already built by every buildMissionForCategory() call in
+ * js/data-v2.js (§3.7) — they just had no renderer anywhere in the UI
+ * until now. Only the curated Greetings pilot has a hand-written
+ * pitch; every other mission falls back to data-v2.js's own generic
+ * one-liner ("A focused set of N signs, one mission at a time."), so
+ * this never shows blank text.
+ *
+ * mission.introMoment.illustration is a per-mission asset id (only
+ * set for Greetings) but no illustration files exist anywhere in this
+ * repo yet — rather than pointing an <img> at a path guaranteed to
+ * 404, this always shows the same generic decorative icon, same
+ * "honest, no invented assets" convention as mediaBlockHtml()'s own
+ * fallback above.
+ *
+ * Called only from initPage() when the learner is about to land on
+ * item 0 (see that function) — a genuinely fresh mission, or a review
+ * that resets to the start. Resuming mid-mission (getDropOffIndex > 0)
+ * skips straight to renderItem(), since "here's what this mission
+ * teaches" doesn't make sense to repeat once already underway. */
+function renderMissionIntro(mission, startIndex) {
+  // Task 3 fix — this screen is a real, counted slide now ("Item 1 of
+  // N+1", see updateTrack()'s own header note), and Review Mission's
+  // "always looks fully progressed" rule (Task 2) applies here too —
+  // a learner reviewing a finished mission should see the bar already
+  // full on the intro card, not just once they reach a real item.
+  // Review nav (per later follow-up) is no longer forced hidden here
+  // either — index -1 identifies this as the intro slide to
+  // updateReviewNav()/renderSlide(), so Review Mission's ‹/› buttons
+  // (and the arrow-key listener that delegates to them) can step onto
+  // and off of the intro slide the same way they already step between
+  // real items.
+  const isMissionComplete = window.LWDataV2.getMissionProgress(mission) >= 1;
+  updateTrack(mission, -1, isMissionComplete);
+  updateReviewNav(mission, -1, isMissionComplete);
+
+  const el = document.getElementById('v2-lesson-content');
+  const introMoment = mission.introMoment || {};
+  el.innerHTML = `
+    <div class="v2-lesson-intro">
+      <div class="v2-lesson-intro__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 11.5V6a2 2 0 0 0-4 0v5.5"/>
+          <path d="M14 10.5V4a2 2 0 0 0-4 0v6.5"/>
+          <path d="M10 10.5V6a2 2 0 0 0-4 0v9"/>
+          <path d="M6 12.5v-2a2 2 0 0 0-4 0v3.5a8 8 0 0 0 8 8h1.5c2.7 0 4.3-.8 5.8-2.6l3.1-3.7a1.7 1.7 0 0 0-2.4-2.4L15 15.5"/>
+        </svg>
+      </div>
+      <div class="v2-lesson-stage-label">Mission intro</div>
+      <h1>${escapeHtml(mission.title)}</h1>
+      <p class="v2-lesson-intro__goal">${escapeHtml(mission.goal || '')}</p>
+      <div class="v2-lesson-callout v2-lesson-intro__pitch">
+        <strong>Where you'll use it:</strong> ${escapeHtml(introMoment.pitch || '')}
+      </div>
+      <div class="v2-lesson-actions">
+        <button type="button" class="btn btn--primary btn--lg" id="v2-lesson-intro-continue">Continue</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('v2-lesson-intro-continue').addEventListener('click', () => {
+    renderItem(mission, startIndex);
+  });
+}
+
 /* ── small inline "Celebrate" confirmation — per the analysis docs'
  * own recommendation ("small in-lesson confirmation, not a full
  * mascot interstitial" — the bigger celebration is the mission-end
@@ -367,11 +453,40 @@ function celebrateInline(message) {
 
 /* ── sequencing ────────────────────────────────────────────────── */
 
-function updateTrack(mission, index) {
+// Task 2 — dot marker + Review-Mission "always looks fully progressed"
+// behavior, applied to Start Mission too per explicit follow-up.
+//
+// Task 3 fix — the intro slide (Task 1) now counts as a real, numbered
+// slide instead of being invisible to the counter: "Item 1 of N+1" for
+// an N-item mission, not "Item 1 of N" (which silently reused item 0's
+// own slot/number). `index` is the underlying mission.items index
+// (0-based), with -1 meaning the intro slide. displayTotal adds 1 for
+// the intro; displayPos is `index + 2` uniformly for every index — it
+// happens to map -1 → 1 (intro, "Item 1"), 0 → 2 (first real item,
+// "Item 2"), ... last real item → displayTotal ("Item N+1 of N+1",
+// i.e. the last slide), with no separate intro-vs-item branch needed.
+//
+// dotPct is always (displayPos / displayTotal) — this is what moves,
+// on EVERY render (including the intro slide itself now), marking
+// where the learner currently is. fillPct is the two different
+// behaviors: for an in-progress mission (Start Mission) it's the SAME
+// value as dotPct, so the bar fills up incrementally — a small sliver
+// on the intro slide, growing item by item, reaching 100% (full)
+// exactly on the last item. For an already-complete mission (Review
+// Mission), fillPct is pinned to 100 regardless of index — including
+// the intro slide, per explicit follow-up ("that attached picture is
+// from Review Mission, the progress should be full at that intro
+// too") — only the dot moves to show the CURRENTLY-viewed slide.
+function updateTrack(mission, index, isMissionComplete) {
   const total = mission.items.length;
-  const pct = Math.round((index / total) * 100);
-  document.getElementById('v2-lesson-track-fill').style.width = `${pct}%`;
-  document.getElementById('v2-lesson-track-label').textContent = `Item ${Math.min(index + 1, total)} of ${total}`;
+  const displayTotal = total + 1;
+  const displayPos = Math.min(index + 2, displayTotal);
+  const dotPct = Math.round((displayPos / displayTotal) * 100);
+  const fillPct = isMissionComplete ? 100 : dotPct;
+  document.getElementById('v2-lesson-track-fill').style.width = `${fillPct}%`;
+  const dot = document.getElementById('v2-lesson-track-dot');
+  if (dot) dot.style.left = `${dotPct}%`;
+  document.getElementById('v2-lesson-track-label').textContent = `Item ${displayPos} of ${displayTotal}`;
 }
 
 function renderItem(mission, index) {
@@ -381,7 +496,6 @@ function renderItem(mission, index) {
     // unreachable in practice.
     index = mission.items.length - 1;
   }
-  updateTrack(mission, index);
   // Priority 2, item 5/6 — recomputed fresh on every render (cheap;
   // same "nothing cached" convention js/data-v2.js's own
   // getMissionStatus() documents) rather than threaded through as a
@@ -389,7 +503,10 @@ function renderItem(mission, index) {
   // this file already passes through (initial load, completeAndAdvance,
   // the quiz handoff, and the prev/next buttons below), so the bar
   // always reflects the CURRENT item, not just where the page started.
+  // Task 2's updateTrack() also needs this same flag now (Review
+  // Mission's always-full bar vs Start Mission's incremental one).
   const isMissionComplete = window.LWDataV2.getMissionProgress(mission) >= 1;
+  updateTrack(mission, index, isMissionComplete);
   updateReviewNav(mission, index, isMissionComplete);
   const item = mission.items[index];
   const plan = window.LWDataV2Loop.planForItem(mission, index, item);
@@ -415,6 +532,21 @@ function completeAndAdvance(mission, index, item) {
   }
 }
 
+// Per explicit follow-up — "treat [the intro slide] the same as other
+// slides, where a user can use Right & Left button": Review Mission's
+// ‹/› nav (and the arrow-key listener that delegates to it, below)
+// needs one shared way to render "whichever slide is at this position"
+// that includes the intro slide, not just real mission.items entries.
+// index === -1 is the intro slide; anything >= 0 is a real item index
+// — same convention updateTrack()/renderMissionIntro() already use.
+function renderSlide(mission, index) {
+  if (index < 0) {
+    renderMissionIntro(mission, 0);
+  } else {
+    renderItem(mission, index);
+  }
+}
+
 // Priority 2, item 5 — "Navigation for Completed Missions," per
 // explicit follow-up: step one item at a time (‹ Previous / Next ›)
 // instead of jumping straight to the very first/last item, so a
@@ -429,17 +561,25 @@ function completeAndAdvance(mission, index, item) {
 // CURRENTLY on screen, not just wherever the learner started.
 //
 // Priority 2, item 6 — "Review Completed Missions Safely." Both
-// buttons call renderItem() directly (a pure re-render of whatever
-// index is passed) rather than completeAndAdvance(), so stepping
-// through never itself calls markItemComplete(); nothing is written to
-// progress just by looking at an item. If the learner clicks a stage's
-// own "Continue"/answer button while reviewing, completeAndAdvance()
-// does run markItemComplete() as normal — but that function is already
-// idempotent (it only pushes an id / sets a completedAt timestamp the
-// first time), so re-completing an already-complete item is a safe
-// no-op: it can't un-complete, re-order, or change the timestamp of
-// anything, so mission completion / chapter unlocks / progress % are
-// unaffected by review.
+// buttons call renderSlide() (a pure re-render of whatever position is
+// passed, intro included) rather than completeAndAdvance(), so
+// stepping through never itself calls markItemComplete(); nothing is
+// written to progress just by looking at a slide. If the learner
+// clicks a stage's own "Continue"/answer button while reviewing,
+// completeAndAdvance() does run markItemComplete() as normal — but
+// that function is already idempotent (it only pushes an id / sets a
+// completedAt timestamp the first time), so re-completing an
+// already-complete item is a safe no-op: it can't un-complete,
+// re-order, or change the timestamp of anything, so mission
+// completion / chapter unlocks / progress % are unaffected by review.
+//
+// Follow-up (intro slide included in the sequence) — index can now be
+// -1 (the intro slide, called from renderMissionIntro() itself, not
+// just from renderItem()). Previous disables at -1 (nothing before
+// the intro); Next still disables at the mission's last item. From
+// the intro, Next steps to item 0; from item 0, Previous steps back
+// to the intro — the same one-position-at-a-time stepping the rest of
+// this bar already does, just extended to cover the intro slide too.
 function updateReviewNav(mission, index, isMissionComplete) {
   const bar = document.getElementById('v2-lesson-review-nav');
   if (!bar) return;
@@ -451,12 +591,12 @@ function updateReviewNav(mission, index, isMissionComplete) {
   const prevBtn = document.getElementById('v2-lesson-nav-prev');
   const nextBtn = document.getElementById('v2-lesson-nav-next');
   if (prevBtn) {
-    prevBtn.disabled = index <= 0;
-    prevBtn.onclick = () => renderItem(mission, index - 1);
+    prevBtn.disabled = index <= -1;
+    prevBtn.onclick = () => renderSlide(mission, index - 1);
   }
   if (nextBtn) {
     nextBtn.disabled = index >= mission.items.length - 1;
-    nextBtn.onclick = () => renderItem(mission, index + 1);
+    nextBtn.onclick = () => renderSlide(mission, index + 1);
   }
 }
 
@@ -481,11 +621,50 @@ function initPage() {
   // Resume support — getDropOffIndex already exists in js/data-v2.js
   // specifically for "how far did the learner get", just unused by
   // any UI until now.
-  let startIndex = window.LWDataV2.getDropOffIndex(mission);
+  //
+  // Review-from-the-start (explicit follow-up) — a learner entering a
+  // FINISHED mission (getMissionProgress(mission) >= 1, same 'done'
+  // definition used everywhere else in this file) always starts back
+  // at item 0, not wherever getDropOffIndex() last left off. Resume
+  // (getDropOffIndex) still applies to an in-progress mission, since
+  // that's a genuinely different use case ("pick up where I left
+  // off," not "review what I already finished").
+  const isMissionComplete = window.LWDataV2.getMissionProgress(mission) >= 1;
+  let startIndex = isMissionComplete ? 0 : window.LWDataV2.getDropOffIndex(mission);
   if (startIndex >= mission.items.length) startIndex = mission.items.length - 1;
 
-  renderItem(mission, startIndex);
+  // Task 1 — the intro slide only makes sense right before item 0
+  // (a genuinely fresh mission, or a review that resets to the
+  // start per the fix above); resuming mid-mission skips straight to
+  // the real item, same as before this task existed.
+  if (startIndex === 0) {
+    renderMissionIntro(mission, startIndex);
+  } else {
+    renderItem(mission, startIndex);
+  }
 }
+
+// Review-nav keyboard support (explicit follow-up) — ArrowLeft/
+// ArrowRight step through a completed mission the same as clicking
+// the ‹ Previous / Next › buttons themselves. Delegates to the real
+// buttons' own .click() (not a duplicate renderItem() call) so a
+// disabled button (first/last item) is a no-op here too, same as a
+// mouse click on it would be, with zero extra boundary logic to keep
+// in sync. Bound once at load, not re-bound per render — updateReviewNav()
+// already keeps the buttons' onclick/disabled state current on every
+// renderItem() call, so this only needs to find whichever button
+// exists right now. Safe to leave listening even when the bar is
+// hidden (in-progress mission): bar.hidden short-circuits every key
+// press to a no-op.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const bar = document.getElementById('v2-lesson-review-nav');
+  if (!bar || bar.hidden) return;
+  const btn = document.getElementById(e.key === 'ArrowLeft' ? 'v2-lesson-nav-prev' : 'v2-lesson-nav-next');
+  if (!btn || btn.disabled) return;
+  e.preventDefault();
+  btn.click();
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPage);
