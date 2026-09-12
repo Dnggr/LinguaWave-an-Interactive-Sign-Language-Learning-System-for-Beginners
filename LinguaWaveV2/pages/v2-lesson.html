@@ -144,7 +144,22 @@
               <button type="button" class="btn btn--ghost btn--sm v2-lesson-review-nav__btn" id="v2-lesson-nav-next" aria-label="Next item">&rsaquo;</button>
             </div>
             <div class="v2-lesson-track">
-              <div class="progress-bar"><div class="progress-bar__fill" id="v2-lesson-track-fill" style="width:0%"></div></div>
+              <!--
+                Task 2 — dot marker + Review-Mission full-bar behavior.
+                .v2-lesson-track__bar is a scoping class only (adds
+                position:relative for the dot below) — the shared
+                .progress-bar/.progress-bar__fill rules in
+                css/style.css are untouched, so nowhere else that
+                reuses them (Mission Overview's list rows, the Mastery
+                Quiz's own .v2-quiz-progress-bar) is affected. See
+                js/v2-lesson.js's updateTrack() for the fill%/dot%
+                math (js/v2-lesson.js is the single place that decides
+                both).
+              -->
+              <div class="progress-bar v2-lesson-track__bar">
+                <div class="progress-bar__fill" id="v2-lesson-track-fill" style="width:0%"></div>
+                <div class="v2-lesson-track__dot" id="v2-lesson-track-dot" style="left:0%"></div>
+              </div>
               <span class="v2-lesson-track__label" id="v2-lesson-track-label">Item 1 of 1</span>
             </div>
           </div>

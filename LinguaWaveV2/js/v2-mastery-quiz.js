@@ -36,18 +36,34 @@
  *     content area, so no quiz option/button remains interactive.
  * See handleAnswer() below for all three.
  *
- * SAMPLE SCOPE : only missions whose categoryGroup is 'asl_foundations'
- * (Chapter 1) or 'introduce_yourself' (Chapter 2) are served here —
- * see SAMPLE_CATEGORY_GROUPS below. Every other mission's Mastery
- * Quiz link (v2-mission-overview.js / v2-lesson.js) still points at
- * the V1 pages/quiz.html; if this page is reached directly for an
- * unsampled mission (typed URL, old link), it says so and offers the
- * V1 quiz as a fallback rather than silently failing. To widen the
- * sample later, add the new chapter's id to SAMPLE_CATEGORY_GROUPS —
- * nothing else here is chapter-specific; buildQuizQuestions() already
- * degrades to generic (non-curated) distractors for any chapter
- * js/v2-lesson-loop.js hasn't hand-curated yet, same as that file's
- * own "degrade, don't throw" rule.
+ * SAMPLE SCOPE (widened this revision — merged from three parallel
+ * widenings) : ALL 12 chapters are now served here — 'asl_foundations'
+ * (Ch.1), 'introduce_yourself' (Ch.2), 'express_feelings' (Ch.3),
+ * 'daily_actions' (Ch.4), 'describing_things' (Ch.5), 'home_family'
+ * (Ch.6), 'school_life' (Ch.7), 'food_nature' (Ch.8),
+ * 'clothing_belongings' (Ch.9), 'people_places_time' (Ch.10),
+ * 'having_a_conversation' (Ch.11), and 'putting_it_together' (Ch.12)
+ * — see SAMPLE_CATEGORY_GROUPS below, originally just Chapters 1-2.
+ * Chapters 3-12 have no hand-curated NEAR_NEIGHBORS/SAME_SIGN_AS
+ * entries in js/v2-lesson-loop.js (same as every other uncurated
+ * chapter) — they run on that file's existing generic (non-curated)
+ * distractor fallback, the same "degrade, don't throw" path the
+ * lesson flow already uses for those chapters. Verified via a Node
+ * harness against every real mission in the newly sampled chapters:
+ * buildQuizQuestions() produces a valid option set (2+ options,
+ * correct answer included) with zero throws for every one of them.
+ * With every chapter now in SAMPLE_CATEGORY_GROUPS, the V1
+ * pages/quiz.html fallback below (v2-mission-overview.js /
+ * v2-lesson.js) is currently unreachable for any real mission — it
+ * stays in place only as a defensive fallback for an unsampled
+ * mission (typed URL, stale link, or a future new chapter not yet
+ * added here), in which case this page still says so and offers the
+ * V1 quiz rather than silently failing. To widen the sample further
+ * (e.g. a future 13th chapter), add the new chapter's id to
+ * SAMPLE_CATEGORY_GROUPS — nothing else here is chapter-specific.
+ * SAMPLE_CATEGORY_GROUPS must stay in sync with
+ * v2-mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
+ * v2-lesson.js's own copy of that same const.
  *
  * Same data-source discipline as every other v2-*.js file: reads only
  * window.LWData / window.LWDataV2 / window.LWDataV2Loop. Does not
@@ -56,7 +72,12 @@
  */
 'use strict';
 
-const SAMPLE_CATEGORY_GROUPS = ['asl_foundations', 'introduce_yourself'];
+const SAMPLE_CATEGORY_GROUPS = [
+  'asl_foundations', 'introduce_yourself',
+  'express_feelings', 'daily_actions', 'describing_things',
+  'home_family', 'school_life', 'food_nature',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+];
 const MAX_QUESTIONS = 12;
 const PASS_THRESHOLD = 0.8; // unchanged from V1's pages/quiz.js — same mastery bar, new screen
 // Priority 1, Task 3 — "wait about 1-2 seconds" for the auto-continue
@@ -200,9 +221,9 @@ function renderNotSampledYet(mission) {
   const v1Url = `../../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
   document.getElementById('v2-mq-content').innerHTML = `
     <div class="v2-note-banner">
-      This sample build of the V2 Mastery Quiz currently covers <strong>Chapter 1 (ASL Foundations)</strong>
-      and <strong>Chapter 2 (Introduce Yourself)</strong> only. "${escapeHtml(mission.title)}" isn't part of
-      that sample yet.
+      This sample build of the V2 Mastery Quiz now covers all 12 chapters. "${escapeHtml(mission.title)}"
+      isn't part of it — this can happen with a stale link, a typed URL, or a category not yet added to
+      SAMPLE_CATEGORY_GROUPS.
     </div>
     <div class="v2-lesson-actions">
       <a href="${v1Url}" class="btn btn--primary btn--lg">Take the classic Mastery Quiz instead</a>

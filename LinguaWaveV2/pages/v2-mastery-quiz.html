@@ -20,21 +20,37 @@
     LinguaWaveV2/pages/v2-mastery-quiz.html — V2 Mastery Quiz (NEW)
     ─────────────────────────────────────────────────────────────────
     PURPOSE : A real V2-native Mastery Quiz screen, replacing the
-              hand-off to V1's pages/quiz.html — but only for the two
-              chapters this sample build covers (see SCOPE below).
-              Reuses the SAME mission.items QUIZ concept js/data-v2.js
-              already builds (unchanged shape); this page just walks
-              it as its own dedicated screen instead of leaving the
-              Mastery Quiz on the untouched V1 engine.
+              hand-off to V1's pages/quiz.html — now covering all 12
+              chapters (see SCOPE below). Reuses the SAME mission.items
+              QUIZ concept js/data-v2.js already builds (unchanged
+              shape); this page just walks it as its own dedicated
+              screen instead of leaving the Mastery Quiz on the
+              untouched V1 engine.
 
-    SCOPE (this sample) : gated in js/v2-mastery-quiz.js to Chapter 1
-              (ASL Foundations) and Chapter 2 (Introduce Yourself)
-              only — the same two chapters js/v2-lesson-loop.js
-              already curates NEAR_NEIGHBORS/discrimination data for.
-              Any other mission's "Start Mastery Quiz" still hands off
-              to the V1 pages/quiz.html, same "degrade, don't throw"
-              discipline as the rest of dataV2 — see this file's own
-              js for the exact gate and how to widen it later.
+    SCOPE (widened this revision — merged from three parallel
+              widenings) : gated in js/v2-mastery-quiz.js, now covering
+              ALL 12 chapters — Chapter 1 (ASL Foundations), Chapter 2
+              (Introduce Yourself), Chapter 3 (Express How You Feel),
+              Chapter 4 (Daily Actions & Communication), Chapter 5
+              (Describing People & Things), Chapter 6 (Home & Family),
+              Chapter 7 (School Life), Chapter 8 (Food & Nature),
+              Chapter 9 (Clothing & Belongings), Chapter 10 (People,
+              Places & Time), Chapter 11 (Having a Conversation), and
+              Chapter 12 (Putting It All Together) — WIDENED this
+              revision from the original Chapters 1-2, merging three
+              separate widenings (3-5, 6-8, and 9-12) rather than
+              keeping any of them partial. Only Chapters 1-2 have
+              hand-curated NEAR_NEIGHBORS/discrimination data in
+              js/v2-lesson-loop.js — Chapters 3-12 run on that file's
+              existing generic (non-curated) distractor fallback, same
+              as every other uncurated chapter's lesson flow already
+              does. With every chapter now sampled, the V1
+              pages/quiz.html hand-off is currently unreachable from
+              any real mission link — it remains only as a defensive
+              fallback (stale link, typed URL, or a future new chapter
+              not yet added to the gate), same "degrade, don't throw"
+              discipline as the rest of dataV2 — see this file's own js
+              for the exact gate and how to widen it further.
 
     ENTRY   : ?mission=<categoryId> — same param convention every
               other V2 page uses.
