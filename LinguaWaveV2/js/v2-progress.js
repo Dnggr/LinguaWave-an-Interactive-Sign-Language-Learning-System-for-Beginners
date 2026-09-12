@@ -75,6 +75,12 @@ function collectLearnedSigns(missions) {
   return out;
 }
 
+/* Ring size, in px, is clamped to this range by syncRingSizeToStatsCard()
+ * below — a floor so it never shrinks illegibly small next to a short
+ * stats card, and a ceiling so it never dwarfs a tall one. */
+const RING_MIN_PX = 160;
+const RING_MAX_PX = 280;
+
 function renderHero(missions, learnedSigns) {
   const el = document.getElementById('v2-progress-hero');
   const items = tallyItems(missions);
@@ -82,12 +88,20 @@ function renderHero(missions, learnedSigns) {
   const streak = window.LWDataV2.getStreakSummary();
   const hearts = window.LWDataV2.getHeartsState();
 
+  // Grid layout (see css/v2-app.css's .v2-progress-hero-row) — ring
+  // and its label are two independent grid children stacked in
+  // column 1, the stats tile spans both rows in column 2.
+  // #v2-progress-hero itself IS the grid (the class lives on it in
+  // the HTML now, not on a wrapper here), so this innerHTML is just
+  // its 3 direct children. Only the stats tile gets the shared
+  // `.card` class — the ring stays uncarded/separated on purpose, per
+  // the reference mockup, instead of both sharing one big card.
   el.innerHTML = `
     <div class="v2-progress-hero__ring" id="v2-progress-ring">
       <span class="v2-progress-hero__ring-pct">${items.pct}%</span>
     </div>
-    <p class="v2-progress-ring-label">Overall Progress</p>
-    <div class="card v2-progress-stats-card">
+    <span class="v2-progress-ring-label">Overall Progress</span>
+    <div class="card v2-progress-stats-card" id="v2-progress-stats-card">
       <div class="stats-grid">
         <div class="stat-tile">
           <span class="stat-tile__value">${learnedSigns.length}</span>
@@ -117,77 +131,55 @@ function renderHero(missions, learnedSigns) {
   syncRingSizeToStatsCard();
 }
 
-/* ── Ring sizing: measured, not guessed (this session) ─────────────
- * Per explicit correction: only `.v2-progress-hero__ring` itself
- * should be sized proportionate to the stats card beside it — and
- * the `.v2-progress-ring-card` wrapper div that used to group the
- * ring+label has been REMOVED entirely (see css/v2-app.css's
- * `.v2-progress-hero-row` — now a CSS Grid placing the ring/label/
- * stats-card directly, no container div needed to keep the ring
- * stacked above its label). Measures the REAL rendered height of
- * `.v2-progress-stats-card` and sets the ring's width/height (a
- * circle, so both together) to that height minus the label's own
- * rendered height and the grid's row-gap between them — i.e. the
- * ring circle's diameter is exactly the space left over for it, not
- * a static breakpoint-driven number. Re-run on window resize
- * (debounced) since the row can reflow/stack under 640px, where the
- * two are no longer side-by-side and this sizing isn't meaningful —
- * the CSS fallback size below handles that stacked case instead.
- *
- * BUG FIXED THIS ROUND (minimizing the browser window): the
- * height-based calculation above had no corresponding WIDTH check.
- * css/dashboard.css's `.stats-grid` reflows its 5 tiles into more
- * rows as the window narrows, which makes `.v2-progress-stats-card`
- * TALLER — and this function was feeding that larger height straight
- * into the ring's size with nothing capping it against how much
- * WIDTH the ring's own grid column actually had left at that
- * narrower size, so the ring grew past its column and visibly
- * overlapped the sidebar "Needs Review" card (reported: 314px ring
- * at a narrowed window). Fixed by also computing a width-based cap
- * from the row's own rendered width and using the SMALLER of the two
- * — the ring now can't outgrow its column just because its sibling
- * got taller from wrapping. */
-let ringSyncTimer = null;
+/* Only the ring reacts to the stats card's height — not the other
+ * way around (css/v2-app.css's .v2-progress-hero__ring comment). The
+ * card's own height is whatever its 5 stat tiles naturally need; this
+ * just measures that after render and sizes the ring to match, so the
+ * two never look mismatched at a random viewport width. Re-run on
+ * resize (debounced) since the stats-grid's own auto-fit can reflow
+ * the card's height as the window narrows. */
 function syncRingSizeToStatsCard() {
   const ring = document.getElementById('v2-progress-ring');
-  const row = ring && ring.closest('.v2-progress-hero-row');
-  const label = row && row.querySelector('.v2-progress-ring-label');
-  const statsCard = document.querySelector('.v2-progress-stats-card');
-  if (!ring || !row || !label || !statsCard) return;
+  const card = document.getElementById('v2-progress-stats-card');
+  if (!ring || !card) return;
+  const target = Math.max(RING_MIN_PX, Math.min(RING_MAX_PX, card.offsetHeight));
+  ring.style.width = `${target}px`;
+  ring.style.height = `${target}px`;
+}
 
-  // Side-by-side only below the row's own stacking breakpoint —
-  // matches css/v2-app.css's `.v2-progress-hero-row` 640px rule
-  // exactly, so this never fights the CSS fallback size on mobile.
-  if (window.innerWidth <= 640) {
-    ring.style.removeProperty('width');
-    ring.style.removeProperty('height');
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    syncRingSizeToStatsCard();
+    syncReviewCardHeight();
+  }, 120);
+});
+
+/* Below this width css/v2-app.css's own .v2-progress-grid breakpoint
+ * stacks the two columns, so Needs Review sits BELOW the hero row
+ * instead of beside it — nothing to cap its height against there. */
+const GRID_STACK_BREAKPOINT_PX = 900;
+
+/* Caps the Needs Review card's height to match the hero row beside
+ * it (ring + stats tile — now the ONLY thing in `.v2-progress-grid__
+ * main`, since "Progress by Chapter" was moved below the grid in
+ * v2-progress.html so its own 70%/centered sizing resolves against
+ * the full page instead of that narrow column), instead of letting a
+ * long due-list push the card taller than its neighbor. The card
+ * itself has `overflow: hidden` and its list has `overflow-y: auto`/
+ * `min-height: 0` (css/v2-app.css) — this just supplies the actual
+ * max-height those rules need to have anything to clip against; a
+ * long list scrolls internally rather than growing the card. */
+function syncReviewCardHeight() {
+  const hero = document.getElementById('v2-progress-hero');
+  const review = document.getElementById('v2-needs-review');
+  if (!hero || !review) return;
+  if (window.innerWidth <= GRID_STACK_BREAKPOINT_PX) {
+    review.style.maxHeight = '';
     return;
   }
-
-  const cardHeight = statsCard.getBoundingClientRect().height;
-  const labelHeight = label.getBoundingClientRect().height;
-  const gap = parseFloat(getComputedStyle(row).rowGap || '0') || 0;
-  const availableByHeight = cardHeight - labelHeight - gap;
-
-  // Width cap: the ring's own grid column is `auto`-sized (it sizes
-  // to whatever the ring ends up being — see css/v2-app.css), so
-  // there's no pre-existing "column width" to read back. Instead cap
-  // the ring to a fraction of the ROW's total rendered width, leaving
-  // room for the column-gap + stats card next to it, so a taller
-  // (narrower-reflowed) stats card can never force the ring wider
-  // than the row can actually fit beside it.
-  const rowWidth = row.getBoundingClientRect().width;
-  const availableByWidth = rowWidth * 0.4;
-
-  const available = Math.round(Math.min(availableByHeight, availableByWidth));
-  // Sanity floor/ceiling so a not-yet-laid-out measurement (0/negative
-  // on first paint) or an unusually short stats card never produces a
-  // collapsed or absurdly huge circle — the CSS rule's own 240px stays
-  // the fallback outside this range.
-  if (available >= 140 && available <= 480) {
-    ring.style.width = `${available}px`;
-    ring.style.height = `${available}px`;
-  }
+  review.style.maxHeight = `${hero.offsetHeight}px`;
 }
 
 function dueEntries(learnedSigns) {
@@ -278,37 +270,6 @@ function showProgressUnavailable(reason) {
   document.getElementById('v2-needs-review').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
-/* ── Cap "Needs Review"'s growth to match the left column (this
- * session) — per explicit report: the review list can grow taller
- * than the hero-row card beside it (more due signs = taller card,
- * even though NEEDS_REVIEW_LIMIT already caps it at 3 rows — long
- * sign titles wrapping, or that limit changing later, could still
- * make it taller than intended). Measures `.v2-progress-hero-row`'s
- * real rendered height and applies it as `max-height` on the whole
- * `#v2-needs-review` card — the "Needs Review (N)" heading and
- * "Start Review" button stay fully visible (fixed flex items,
- * `.v2-review-list` is the only flexible/scrollable piece, per its
- * `flex:1 1 auto; min-height:0; overflow-y:auto` in css/v2-app.css),
- * so a longer list scrolls internally instead of pushing the card
- * taller than its sibling. Re-run on resize (shares the same
- * debounce timer as the ring sizing below — both need to react to
- * the same layout changes). */
-function syncNeedsReviewHeightToHero() {
-  const hero = document.querySelector('.v2-progress-hero-row');
-  const reviewCard = document.getElementById('v2-needs-review');
-  if (!hero || !reviewCard) return;
-  // Two columns only side-by-side above 900px (css/v2-app.css's
-  // `.v2-progress-grid` breakpoint) — below that they stack, and
-  // matching heights isn't meaningful once they're not beside each
-  // other.
-  if (window.innerWidth <= 900) {
-    reviewCard.style.removeProperty('max-height');
-    return;
-  }
-  const heroHeight = hero.getBoundingClientRect().height;
-  if (heroHeight > 0) reviewCard.style.maxHeight = `${Math.round(heroHeight)}px`;
-}
-
 function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     showProgressUnavailable('window.LWData/window.LWDataV2 did not load');
@@ -320,7 +281,7 @@ function initPage() {
     renderHero(missions, learnedSigns);
     renderNeedsReview(learnedSigns);
     renderChapters(missions);
-    syncNeedsReviewHeightToHero();
+    syncReviewCardHeight();
   } catch (e) {
     console.error('[v2-progress.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
@@ -332,11 +293,3 @@ if (document.readyState === 'loading') {
 } else {
   initPage();
 }
-
-window.addEventListener('resize', () => {
-  clearTimeout(ringSyncTimer);
-  ringSyncTimer = setTimeout(() => {
-    syncRingSizeToStatsCard();
-    syncNeedsReviewHeightToHero();
-  }, 150);
-});

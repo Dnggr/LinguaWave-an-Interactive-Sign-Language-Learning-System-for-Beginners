@@ -258,13 +258,6 @@
 .v2-path-row__meta { flex: none; display: flex; align-items: center; gap: var(--space-4); }
 .v2-path-row__progress { width: 90px; }
 .v2-path-row__chevron { color: var(--clr-text-muted); flex: none; }
-/* Same fix as .trail-group__lock-badge (css/learn.css) and for the
- * same reason: a locked row hides both the progress bar and the
- * chevron (see renderRow()'s hideBar/!locked checks), so the Locked
- * badge ends up the last/only child in .v2-path-row__meta, sitting
- * flush against the row's edge — a little margin gives it the same
- * breathing room the chapter-level Locked badge already got. */
-.v2-path-row__lock-badge { margin-right: var(--space-2); }
 .v2-path-row--locked { opacity: .6; cursor: not-allowed; }
 .v2-path-row--locked .v2-path-row__title { color: var(--clr-text-muted); }
 /* Orientation row (this session) — sits above the chapter list,
@@ -643,15 +636,6 @@
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-/* The bug the screenshot caught: a plain class selector setting its
- * own `display` always wins over the browser's built-in
- * `[hidden] { display: none }` rule (author CSS beats the UA
- * stylesheet regardless of specificity/order), so js/v2-lesson.js
- * setting `bar.hidden = true` was doing nothing visually — the bar
- * stayed flex-displayed, and thus visible, even for an in-progress
- * mission. This higher-specificity override (class + attribute) is
- * what actually makes the `hidden` attribute hide it again. */
-.v2-lesson-review-nav[hidden] { display: none; }
 .v2-lesson-review-nav__label {
   font-size: var(--fs-xs);
   font-weight: 600;

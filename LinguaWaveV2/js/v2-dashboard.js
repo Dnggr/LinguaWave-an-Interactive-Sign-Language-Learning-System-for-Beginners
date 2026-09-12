@@ -19,9 +19,15 @@
 'use strict';
 
 function pickCurrentMission(missions) {
-  // "Continue Your Mission" = first not-yet-complete mission, in the
-  // same live-category order data-v2.js already returns them in.
-  return missions.find((m) => window.LWDataV2.getMissionProgress(m) < 1) || missions[0] || null;
+  // "Continue Your Mission" = first not-yet-complete, UNLOCKED mission
+  // (Task 1 — chapter gating means the first incomplete mission in
+  // list order could theoretically sit in a not-yet-unlocked chapter;
+  // never point "Continue" at a mission the learner can't open yet).
+  const reachable = missions.filter((m) => window.LWDataV2.getMissionStatus(m, missions) !== 'locked');
+  return reachable.find((m) => window.LWDataV2.getMissionProgress(m) < 1)
+    || reachable[reachable.length - 1]
+    || missions[0]
+    || null;
 }
 
 function currentSignInProgress(mission) {
@@ -85,24 +91,14 @@ function renderSummaryCard(missions) {
   `;
 }
 
-// FIX (this session) — this used to only return 'done' / 'current' /
-// 'available' (no concept of "locked" at all — every not-yet-reached
-// mission showed as plain "Available"), and separately, the color
-// picked for each status in renderJourneyRail() below was WRONG:
-// 'current' got the blue badge and 'available' got the orange one —
-// backwards from what those tokens mean everywhere else in this app.
-// Now mirrors js/v2-learn.js's own statusFor() exactly (same 4
-// states, same rule for what counts as "locked" — anything more than
-// one mission ahead of the current one), so the dashboard's mini-rail
-// and the full Learning Path list always agree on a mission's status.
-function statusForMission(mission, index, currentIndex) {
-  const progress = window.LWDataV2.getMissionProgress(mission);
-  if (progress >= 1) return 'done';
-  if (index === currentIndex) return 'current';
-  if (index < currentIndex) return 'available'; // completed-adjacent, still open
-  return index === currentIndex + 1 ? 'available' : 'locked';
-}
-
+// CHAPTER GATING (Task 1, this revision) — status is no longer
+// computed here at all. It now comes straight from the single shared
+// window.LWDataV2.getMissionStatus() in js/data-v2.js, so the
+// dashboard's mini-rail, the full Learning Path list (v2-learn.js),
+// and Mission Overview (v2-mission-overview.js) always agree: a
+// mission is 'locked' only while its whole chapter is locked (the
+// previous chapter isn't 100% complete yet), never because of its
+// position relative to a single "current" mission.
 function statusMeta(status) {
   // done -> green, current ("In Progress") -> orange, available ->
   // blue, locked -> red. Matches css/style.css's badge--*/.v2-journey-
@@ -118,11 +114,9 @@ function statusMeta(status) {
 
 function renderJourneyRail(missions) {
   const el = document.getElementById('v2-journey-rail');
-  const current = pickCurrentMission(missions);
-  const currentIndex = current ? missions.indexOf(current) : -1;
 
   el.innerHTML = missions.map((m, i) => {
-    const status = statusForMission(m, i, currentIndex);
+    const status = window.LWDataV2.getMissionStatus(m, missions);
     const meta = statusMeta(status);
     const locked = status === 'locked';
     const tag = locked ? 'div' : 'a';

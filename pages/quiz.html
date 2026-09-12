@@ -38,6 +38,18 @@
 
     URL PARAMS: ?level=basic&category=alphabet   (category assessment)
                 ?level=basic&final=1              (level assessment)
+                &v2=1                              NEW (Task 2) — added
+                (on top of the above) whenever a V2 Mission Overview /
+                V2 Lesson screen links here for its Mastery Quiz (see
+                LinguaWaveV2/js/v2-mission-overview.js,
+                LinguaWaveV2/js/v2-lesson.js). Marks this attempt as a
+                V2 Mastery Quiz so js/quiz.js spends one Mastery Heart
+                per WRONG graded answer via window.LWDataV2 (see
+                js/quiz.js's `isV2Mastery` for the actual hook).
+                Entering the quiz itself never costs a heart. Without
+                `&v2=1` (every V1 link into this page), none of that
+                runs — js/quiz.js never touches window.LWDataV2 at all,
+                so V1's own quiz behavior is unchanged.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -223,6 +235,13 @@
   <script src="../js/main.js"></script>
   <script src="../js/data.js"></script>
   <script src="../js/engine/progress.js"></script>
+  <!-- NEW (Task 2) — needed only so js/quiz.js can reach
+       window.LWDataV2.consumeHeartForIncorrectAnswer()/getHeartsState()
+       when this attempt has `&v2=1` on the URL (a V2 Mastery Quiz).
+       Isolated file, per its own header comment: never required by,
+       and never modifies, js/data.js or js/engine/progress.js above —
+       loading it here has zero effect on the plain V1 quiz flow. -->
+  <script src="../LinguaWaveV2/js/data-v2.js"></script>
   <script type="module" src="../js/quiz.js"></script>
 </body>
 </html>

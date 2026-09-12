@@ -254,6 +254,20 @@ button.category-card {
   background: var(--clr-surface-2); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
   white-space: nowrap;
 }
+/* Chapter 100% done (js/v2-learn.js adds .trail-group--complete once
+   doneCount === missionsInChapter.length) — border and the "x/x
+   complete" pill switch to the same success color .badge--done and
+   .v2-path-row--done already use elsewhere in this app. */
+.trail-group--complete { border-color: var(--clr-success); }
+.trail-group--complete > .trail-group__summary > .trail-group__meta {
+  background: var(--clr-success-soft); color: var(--clr-success);
+}
+/* Chapter-level "Locked" badge (js/v2-learn.js) sat flush against the
+   summary's right edge — .badge has no margin of its own, unlike
+   .trail-group__meta's pill which reads the same padding but this is
+   a plain .badge reused from elsewhere in the app. A little margin
+   gives it the same breathing room the meta pill has. */
+.trail-group__lock-badge { margin-right: var(--space-2); }
 .trail-group__grid { padding: 0 var(--space-5) var(--space-5); }
 /* A search that matches nothing left in this group (see
    js/learn.js's applySearchFilter()) — dimmed rather than removed, so
