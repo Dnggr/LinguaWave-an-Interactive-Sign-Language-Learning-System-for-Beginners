@@ -1015,12 +1015,12 @@ function buildActionButtons(passed) {
     // insert a "🏁 Take Level Final Assessment" CTA here whenever
     // window.LWProgress.isLevelFinalUnlocked(level) was true.
     if (next) {
-      cta = `<a href="lesson.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
+      cta = `<a href="../LinguaWaveV2/pages/lesson.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
     }
     return `${cta} <a href="dashboard.html" class="btn btn--ghost">Dashboard</a>`;
   }
   return `
     <button class="btn btn--primary btn--lg" onclick="location.reload()">Retry Assessment</button>
-    <a href="lesson.html?level=${level}&category=${categoryId}" class="btn btn--ghost">Review Lesson</a>
+    <a href="../LinguaWaveV2/pages/lesson.html?level=${level}&category=${categoryId}" class="btn btn--ghost">Review Lesson</a>
   `;
 }

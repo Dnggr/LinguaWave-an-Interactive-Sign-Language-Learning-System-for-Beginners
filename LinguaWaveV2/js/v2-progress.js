@@ -215,7 +215,7 @@ function renderNeedsReview(learnedSigns) {
     const title = signTitleFor(entry.mission, entry.signId);
     const days = daysSince(entry.completedAt);
     const tone = REVIEW_ICON_TONES[i % REVIEW_ICON_TONES.length];
-    const href = `../../pages/lesson.html?level=${encodeURIComponent(entry.mission.level)}&category=${encodeURIComponent(entry.mission.category)}&sign=${encodeURIComponent(entry.signId)}`;
+    const href = `lesson.html?level=${encodeURIComponent(entry.mission.level)}&category=${encodeURIComponent(entry.mission.category)}&sign=${encodeURIComponent(entry.signId)}`;
     return `
       <a class="v2-review-row" href="${href}">
         <span class="v2-review-row__icon ${tone}" aria-hidden="true">
@@ -229,7 +229,7 @@ function renderNeedsReview(learnedSigns) {
     `;
   }).join('');
 
-  const startHref = `../../pages/lesson.html?level=${encodeURIComponent(due[0].mission.level)}&category=${encodeURIComponent(due[0].mission.category)}&sign=${encodeURIComponent(due[0].signId)}`;
+  const startHref = `lesson.html?level=${encodeURIComponent(due[0].mission.level)}&category=${encodeURIComponent(due[0].mission.category)}&sign=${encodeURIComponent(due[0].signId)}`;
 
   el.innerHTML = `
     <h2 class="mb-2">Needs Review (${due.length})</h2>
@@ -270,12 +270,14 @@ function showProgressUnavailable(reason) {
   document.getElementById('v2-needs-review').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
-function initPage() {
+async function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     showProgressUnavailable('window.LWData/window.LWDataV2 did not load');
     return;
   }
   try {
+    // Reconcile cross-device Firestore progress before rendering.
+    await window.LWDataV2.whenDataV2SyncReady();
     const missions = window.LWDataV2.getAllMissions();
     const learnedSigns = collectLearnedSigns(missions);
     renderHero(missions, learnedSigns);

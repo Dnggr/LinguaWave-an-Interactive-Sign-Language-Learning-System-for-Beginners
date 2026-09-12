@@ -9191,6 +9191,146 @@ function getCategoriesForUnitV2(unitOrder) {
   const STREAK_KEY = 'lw_datav2_streak_v1';
   const HEARTS_KEY = 'lw_datav2_hearts_v1';
 
+  // ── Cross-device Firestore sync (NEW, this revision) ────────────
+  // The 3 keys above were previously local-only (see comment below
+  // at PER-ACCOUNT SCOPING). This adds a `userProgressV2/{uid}`
+  // Firestore doc, written through via window.LWAuth (js/auth.js's
+  // doc/getDoc/setDoc/db), with a one-time reconcile on load:
+  //   - no user logged in            -> untouched, stays local-only
+  //   - user logged in, no remote doc -> migration: push local UP
+  //   - user logged in, remote exists -> union-merge (see
+  //     reconcileDataV2State below), merged result saved back to
+  //     BOTH localStorage and Firestore so every device converges
+  //   - window.LWAuth missing entirely (dev preview pages with
+  //     js/auth.js not loaded) -> local-only, never throws
+  // Every save*State() below also write-throughs its own field
+  // (fire-and-forget — never blocks a local save on network).
+  const FIRESTORE_COLLECTION_V2 = 'userProgressV2';
+
+  function getLWAuthV2() {
+    try {
+      return (window && window.LWAuth) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Fire-and-forget: pushes ONE field (progress/streak/hearts) to the
+  // signed-in user's Firestore doc. No-ops silently (never throws
+  // into the caller) when nobody's logged in or LWAuth isn't loaded.
+  function pushFieldToFirestoreV2(field, state) {
+    const auth = getLWAuthV2();
+    if (!auth) return;
+    let user = null;
+    try {
+      user = auth.getCurrentUser ? auth.getCurrentUser() : null;
+    } catch {
+      user = null;
+    }
+    if (!user || !user.uid) return;
+    try {
+      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
+      Promise.resolve(auth.setDoc(ref, { [field]: state }, { merge: true })).catch((e) => {
+        console.warn('[data-v2.js] dataV2 Firestore write-through failed for', field, e);
+      });
+    } catch (e) {
+      console.warn('[data-v2.js] dataV2 Firestore write-through failed for', field, e);
+    }
+  }
+
+  // Union-merges local + remote. completedItemIds/streak days are
+  // unioned (nothing from either device is lost); forgivenessUsedThisWeek
+  // and hearts.lostAt are taken ENTIRELY from remote (authoritative —
+  // both are "state as of last write," not accumulating history, so
+  // merging them field-by-field like the id/day lists would would
+  // resurrect stale local values a newer remote write already
+  // superseded).
+  function reconcileDataV2State(local, remote) {
+    const remoteProgress = (remote && remote.progress) || { completedItemIds: [], completedAt: {} };
+    const remoteStreak = (remote && remote.streak) || { days: [], forgivenessUsedThisWeek: 0 };
+    const remoteHearts = (remote && remote.hearts) || { lostAt: [] };
+
+    const mergedIds = Array.from(new Set([
+      ...(local.progress.completedItemIds || []),
+      ...(remoteProgress.completedItemIds || []),
+    ]));
+    const mergedCompletedAt = {
+      ...(local.progress.completedAt || {}),
+      ...(remoteProgress.completedAt || {}),
+    };
+    const mergedDays = Array.from(new Set([
+      ...(local.streak.days || []),
+      ...(remoteStreak.days || []),
+    ])).sort();
+
+    return {
+      progress: { ...local.progress, completedItemIds: mergedIds, completedAt: mergedCompletedAt },
+      streak: { ...local.streak, days: mergedDays, forgivenessUsedThisWeek: remoteStreak.forgivenessUsedThisWeek },
+      hearts: { ...local.hearts, lostAt: (remoteHearts.lostAt || []).slice() },
+    };
+  }
+
+  let dataV2SyncPromise = null;
+
+  async function performDataV2Sync() {
+    const auth = getLWAuthV2();
+    if (!auth) return; // js/auth.js not loaded (dev preview pages) — local-only.
+
+    try {
+      if (auth.whenAuthReady) await auth.whenAuthReady();
+    } catch (e) {
+      console.warn('[data-v2.js] dataV2 sync: whenAuthReady failed, staying local-only:', e);
+      return;
+    }
+
+    let user = null;
+    try {
+      user = auth.getCurrentUser ? auth.getCurrentUser() : null;
+    } catch {
+      user = null;
+    }
+    if (!user || !user.uid) return; // nobody logged in — Firestore untouched.
+
+    try {
+      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
+      const snap = await auth.getDoc(ref);
+
+      const localState = {
+        progress: loadProgressState(),
+        streak: loadStreakState(),
+        hearts: loadHeartsState(),
+      };
+
+      if (!snap || !snap.exists()) {
+        // Returning/new user, nothing in Firestore yet — migration:
+        // push whatever real local data exists UP, rather than
+        // discarding it in favor of an empty remote doc.
+        await auth.setDoc(ref, localState);
+        return;
+      }
+
+      const merged = reconcileDataV2State(localState, snap.data() || {});
+      saveProgressState(merged.progress, { skipPush: true });
+      saveStreakState(merged.streak, { skipPush: true });
+      saveHeartsState(merged.hearts, { skipPush: true });
+
+      // Push the merged (superset) result back so any OTHER device
+      // that only had, say, the local-only half of the union also
+      // converges next time it syncs.
+      await auth.setDoc(ref, merged, { merge: true });
+    } catch (e) {
+      console.warn('[data-v2.js] dataV2 Firestore sync failed, staying local-only:', e);
+    }
+  }
+
+  // Call once per page load before trusting/writing dataV2 state that
+  // needs to be cross-device-accurate. Cached so a page calling it
+  // from multiple places only ever runs the reconcile once.
+  function whenDataV2SyncReady() {
+    if (!dataV2SyncPromise) dataV2SyncPromise = performDataV2Sync();
+    return dataV2SyncPromise;
+  }
+
   // PER-ACCOUNT SCOPING (NEW) — mirrors js/lesson.js's 2026-08-26
   // personalization uid-scoping fix and js/engine/progress.js's own
   // `cached.uid === user.uid` reconcile pattern: these 3 keys are
@@ -9454,13 +9594,14 @@ function getCategoriesForUnitV2(unitOrder) {
     }
   }
 
-  function saveProgressState(state) {
+  function saveProgressState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 progress:', e);
     }
+    if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('progress', state);
   }
 
   function itemId(mission, index, item) {
@@ -9642,13 +9783,14 @@ function getCategoriesForUnitV2(unitOrder) {
     }
   }
 
-  function saveStreakState(state) {
+  function saveStreakState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
       localStorage.setItem(STREAK_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 streak:', e);
     }
+    if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('streak', state);
   }
 
   function recordActivityToday() {
@@ -9745,13 +9887,14 @@ function getCategoriesForUnitV2(unitOrder) {
     }
   }
 
-  function saveHeartsState(state) {
+  function saveHeartsState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
       localStorage.setItem(HEARTS_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('[data-v2.js] could not persist dataV2 hearts:', e);
     }
+    if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('hearts', state);
   }
 
   // Drops any lostAt entries whose 4-hour refill window has already
@@ -9877,6 +10020,7 @@ function getCategoriesForUnitV2(unitOrder) {
     consumeHeartForMastery,          // Mission Overview + Hearts module (unchanged — still used by the V1-quiz.js fallback path, see file header)
     consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the V2-native Mastery Quiz (js/v2-mastery-quiz.js)
     getOrientation,          // NEW — Orientation row above the chapters
+    whenDataV2SyncReady,     // NEW — cross-device Firestore sync (call once per page load)
     isChapterUnlocked,       // NEW (Task 1) — chapter gating
     getMissionStatus,        // NEW (Task 1) — single shared 'done'/'locked'/'current'/'available' rule
     getCurrentChapterId,     // NEW (Task 1) — which chapter section should default-open

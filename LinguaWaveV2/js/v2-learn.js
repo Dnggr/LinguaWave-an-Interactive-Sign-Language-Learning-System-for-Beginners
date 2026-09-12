@@ -185,12 +185,17 @@ function renderList(filterText) {
   listEl.innerHTML = chapterSections.join('') + rowsFor(ungrouped);
 }
 
-function initPage() {
+async function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     document.getElementById('v2-path-list').innerHTML =
       `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
     return;
   }
+
+  // Reconcile cross-device Firestore progress before rendering, so a
+  // returning user on a new device sees their real merged progress,
+  // not a fresh/empty local state. No-ops for a logged-out visitor.
+  await window.LWDataV2.whenDataV2SyncReady();
 
   allMissions = window.LWDataV2.getAllMissions();
   const orientationSlot = document.getElementById('v2-orientation-slot');

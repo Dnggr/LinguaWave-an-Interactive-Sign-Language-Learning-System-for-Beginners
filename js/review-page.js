@@ -123,7 +123,7 @@ function renderMistakeReview() {
     const title = entry ? (window.LWData?.getSign?.(entry.level, signId)?.title ?? signId) : signId;
     const count = window.LWReview.getSignRecord(signId)?.incorrectCount || 0;
     const href = entry
-      ? `lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(signId)}`
+      ? `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(signId)}`
       : '#';
     return `
       <div class="mistake-row">

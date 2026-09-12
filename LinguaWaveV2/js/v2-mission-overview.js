@@ -153,13 +153,21 @@ function render(mission, status) {
   const el = document.getElementById('v2-mo-content');
   const meta = statusMeta(status);
   const locked = status === 'locked';
+  // DICTIONARY LINK — chips link straight to lesson.html (now V2-owned,
+  // moved from pages/lesson.html into LinguaWaveV2/pages/), which IS
+  // the V2 Dictionary Section — no separate v2-dictionary.html page.
+  // Every chip links, learned or not: lesson.html is what decides
+  // lock/unlock (same isSignLearned() check this chip row already
+  // uses for its own green "learned" state), so clicking a still-
+  // locked chip just takes the learner to that sign showing it
+  // locked. `level`+`category`+`sign` together (not sign alone) let
+  // lesson.html find the exact entry even if a signId is reused
+  // across missions/categories.
   const chips = signsInMission(mission)
     .map((id) => {
       const learned = isSignLearned(mission, id);
-      // Deliberately a <span>, not <a> — no link/click behavior yet,
-      // per explicit instruction that linking a chip to jump straight
-      // to that one sign is a future feature, not part of this pass.
-      return `<span class="v2-sign-chip${learned ? ' v2-sign-chip--learned' : ''}">${signTitle(mission, id)}</span>`;
+      const dictUrl = `lesson.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}&sign=${encodeURIComponent(id)}`;
+      return `<a href="${dictUrl}" class="v2-sign-chip${learned ? ' v2-sign-chip--learned' : ''}">${signTitle(mission, id)}</a>`;
     })
     .join('');
   // CHANGED — used to link straight to ../../pages/lesson.html (V1).
@@ -263,12 +271,15 @@ function render(mission, status) {
   }
 }
 
-function initPage() {
+async function initPage() {
   const el = document.getElementById('v2-mo-content');
   if (!window.LWData || !window.LWDataV2) {
     el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
     return;
   }
+
+  // Reconcile cross-device Firestore progress before rendering status.
+  await window.LWDataV2.whenDataV2SyncReady();
 
   const categoryId = getMissionParam();
   const allMissions = window.LWDataV2.getAllMissions();
@@ -292,3 +303,4 @@ if (document.readyState === 'loading') {
 } else {
   initPage();
 }
+

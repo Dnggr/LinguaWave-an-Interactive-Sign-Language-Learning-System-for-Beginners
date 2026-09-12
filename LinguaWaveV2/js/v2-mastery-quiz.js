@@ -442,12 +442,17 @@ function renderSummary(state, result) {
 
 /* ── Entry ─────────────────────────────────────────────────────── */
 
-function initPage() {
+async function initPage() {
   const el = document.getElementById('v2-mq-content');
   if (!window.LWData || !window.LWDataV2) {
     el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
     return;
   }
+
+  // Reconcile cross-device Firestore progress before checking hearts
+  // — otherwise a stale local hearts count could wrongly gate/allow
+  // the quiz attempt.
+  await window.LWDataV2.whenDataV2SyncReady();
 
   const categoryId = getMissionParam();
   const mission = categoryId ? window.LWDataV2.getMissionForCategory(categoryId) : null;

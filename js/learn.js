@@ -344,7 +344,7 @@ function initLearnPage() {
     grid.innerHTML = signs.map(signId => {
       const done = !!progress.signs[signId];
       return `
-        <a href="lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}" class="lesson-card${done ? ' lesson-card--done' : ''}">
+        <a href="../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}" class="lesson-card${done ? ' lesson-card--done' : ''}">
           <div class="lesson-card__letter">${escapeHtml(signId)}${done ? ' ✔' : ''}</div>
           <span class="lesson-card__title">${labelPrefix ? `${labelPrefix} ${escapeHtml(signId)}` : escapeHtml(signId)}</span>
         </a>
@@ -370,7 +370,7 @@ function initLearnPage() {
       const done = !!progress.signs[signId];
       const label = signData?.title ?? signId;
       return `
-        <a href="lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}"
+        <a href="../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}"
            class="lesson-card word-picker-card${done ? ' lesson-card--done' : ''}">
           <span class="lesson-card__title">${escapeHtml(label)}${done ? ' ✔' : ''}</span>
           <span class="word-picker-card__subtitle">${escapeHtml(signId)}</span>
@@ -590,7 +590,7 @@ function initLearnPage() {
     if (unit.kind === 'info') return { status: 'available', label: 'Start here' };
 
     if (unit.kind === 'interactive') {
-      const href = 'lesson.html?level=basic&category=fingerspell_name';
+      const href = '../LinguaWaveV2/pages/lesson.html?level=basic&category=fingerspell_name';
       if (!unit.gated) return { status: 'available', label: 'Practice drill · always open', href };
       const passed = !!window.LWProgress?.getUnitAssessment?.(unit.id)?.passed;
       return passed
@@ -771,7 +771,7 @@ function initLearnPage() {
     const nextTitle = window.LWData.getSign?.(destCat.level, destNextSign)?.title ?? destNextSign;
     const href = destReady
       ? `quiz.html?level=${encodeURIComponent(destCat.level)}&category=${encodeURIComponent(destCat.id)}`
-      : `lesson.html?level=${encodeURIComponent(destCat.level)}&category=${encodeURIComponent(destCat.id)}&sign=${encodeURIComponent(destNextSign)}`;
+      : `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(destCat.level)}&category=${encodeURIComponent(destCat.id)}&sign=${encodeURIComponent(destNextSign)}`;
 
     // Same icon-chip + text layout dashboard.css's .continue-card uses
     // (the surrounding .sidebar-panel--continue in pages/learn.html
