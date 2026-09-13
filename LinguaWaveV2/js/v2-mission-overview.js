@@ -2,8 +2,10 @@
  * js/v2-mission-overview.js — Renderer for pages/v2-mission-overview.html
  * ─────────────────────────────────────────────────────────────────
  * Same data source discipline as v2-dashboard.js/v2-learn.js: reads
- * only window.LWDataV2 (missions, progress, hearts) and window.LWData
- * (sign titles for the "You'll practice" chips). Nothing here touches
+ * only window.LWDataV2 (missions, progress, hearts, and — as of the
+ * migration-analysis pass — sign titles for the "You'll practice"
+ * chips too, since SIGNS_V2 already carries its own title; V1's
+ * window.LWData is no longer read here). Nothing here touches
  * js/engine/progress.js's real progress store or pages/quiz.js.
  *
  * CHAPTER GATING (Task 1, this revision) : "Locked" now comes straight
@@ -69,8 +71,14 @@ function signsInMission(mission) {
 }
 
 function signTitle(mission, signId) {
-  const sign = (window.LWData && typeof window.LWData.getSign === 'function')
-    ? window.LWData.getSign(mission.level, signId)
+  // FIX (migration-analysis pass) — was falling back to V1's
+  // window.LWData.getSign() for the display title, but data-v2.js's
+  // SIGNS_V2 already forks its own `title` field (see getSign there),
+  // so this can read window.LWDataV2 directly and drop the V1
+  // dependency entirely. Keeps the same signId fallback if V2 somehow
+  // doesn't have the sign either.
+  const sign = (window.LWDataV2 && typeof window.LWDataV2.getSign === 'function')
+    ? window.LWDataV2.getSign(mission.level, signId)
     : null;
   return (sign && sign.title) || signId;
 }
@@ -271,16 +279,8 @@ function render(mission, status) {
   }
 }
 
-async function initPage() {
+function renderMissionOverview() {
   const el = document.getElementById('v2-mo-content');
-  if (!window.LWData || !window.LWDataV2) {
-    el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
-    return;
-  }
-
-  // Reconcile cross-device Firestore progress before rendering status.
-  await window.LWDataV2.whenDataV2SyncReady();
-
   const categoryId = getMissionParam();
   const allMissions = window.LWDataV2.getAllMissions();
   const mission = categoryId ? window.LWDataV2.getMissionForCategory(categoryId) : null;
@@ -298,9 +298,26 @@ async function initPage() {
   render(mission, status);
 }
 
+function initPage() {
+  if (!window.LWDataV2) {
+    // FIX (migration-analysis pass) — was also requiring window.LWData
+    // (js/data.js), which this page no longer reads (see signTitle()).
+    document.getElementById('v2-mo-content').innerHTML =
+      `<p class="text-muted">Loading real content failed — check that js/data-v2.js loaded.</p>`;
+    return;
+  }
+
+  // Render immediately from local state (getAllMissions() /
+  // getMissionForCategory() read straight off localStorage) instead
+  // of blocking first paint on a Firestore round-trip. Reconcile
+  // cross-device progress status in the background and re-render
+  // once it resolves.
+  renderMissionOverview();
+  window.LWDataV2.whenDataV2SyncReady().then(renderMissionOverview);
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPage);
 } else {
   initPage();
 }
-

@@ -529,7 +529,13 @@ function showQuickCheck() {
         // double-record or conflict with that later Prev/Next call —
         // still skips the name drill for the same reason
         // markCurrentSignPracticed() does (see its comment).
-        if (correct && !isNameDrill) window.LWProgress?.recordSignPracticed?.(level, category, sign);
+        if (correct && !isNameDrill) {
+          window.LWProgress?.recordSignPracticed?.(level, category, sign);
+          // BRIDGE — also move the matching V2 mission's own LESSON
+          // item, if this category has a live V2 mission. See the
+          // block comment on markSignPracticedBridge() in data-v2.js.
+          window.LWDataV2?.markSignPracticedBridge?.(category, sign);
+        }
       };
     });
   }
@@ -973,7 +979,10 @@ function sidebarCategoryBlock(cat, opts) {
 // sizing tweak, not a new error style.
 function showSidebarUnavailable(el, reason) {
   console.error('[lesson.js] course sidebar cannot render. Reason:', reason);
-  el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="../../pages/learn.html">Go to Learn</a> or reload.</div>`;
+  // FIX (V1-removal pass) — was "../../pages/learn.html" (V1's page,
+  // now deleted); this page now lives in the same folder as
+  // v2-learn.html, so the link is same-folder.
+  el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="v2-learn.html">Go to Learn</a> or reload.</div>`;
 }
 
 function renderCourseSidebar() {
@@ -1169,11 +1178,16 @@ async function boot() {
       "That lesson isn't unlocked yet — finish the one before it first.",
       'error'
     );
-    // learn.html?category=X already re-checks the same lock (see its
-    // renderCategoryView()) and falls back to the trail itself if it's
-    // still locked by the time it loads — so this redirect can't ever
-    // land somewhere that silently re-opens the same locked content.
-    window.location.replace(`../../pages/learn.html?category=${encodeURIComponent(category)}`);
+    // FIX (V1-removal pass) — v2-learn.html now lives in the same
+    // folder as this page (was "../../pages/learn.html", V1's page,
+    // now deleted). Verified safe: v2-learn.js doesn't read the
+    // ?category= param (it's inert here, same as other legacy query
+    // params passed around this codebase), and it has its own
+    // independent, stricter lock model (window.LWDataV2.
+    // isChapterUnlocked() — locked rows aren't even rendered as
+    // links) — so this can't land anywhere that re-opens locked
+    // content.
+    window.location.replace(`v2-learn.html?category=${encodeURIComponent(category)}`);
     return;
   }
 
@@ -1496,7 +1510,11 @@ function setupNavButtons() {
   // the old call site did (see that guard's comment) — this drill has
   // its own recordUnitAssessment() completion signal elsewhere.
   function markCurrentSignPracticed() {
-    if (!isNameDrill) window.LWProgress?.recordSignPracticed?.(level, category, sign);
+    if (!isNameDrill) {
+      window.LWProgress?.recordSignPracticed?.(level, category, sign);
+      // BRIDGE — see markSignPracticedBridge() comment in data-v2.js.
+      window.LWDataV2?.markSignPracticedBridge?.(category, sign);
+    }
   }
 
   if (btnPrev) {
@@ -1523,7 +1541,9 @@ function setupNavButtons() {
       btnNext.textContent = 'Back to Dashboard →';
       btnNext.onclick = () => {
         shutdown();
-        window.location = '../../pages/dashboard.html';
+        // FIX (V1-removal pass) — was "../../pages/dashboard.html"
+        // (V1's page, now deleted); same-folder now.
+        window.location = 'v2-dashboard.html';
       };
     } else if (isLast) {
       // REV 3: the graded check is now the category assessment page,
@@ -2343,7 +2363,11 @@ function endAssessment() {
 
     overlayEl.style.display = 'flex';
 
-    quizSigns.forEach(s => window.LWProgress?.recordSignPracticed?.(level, category, s));
+    quizSigns.forEach(s => {
+      window.LWProgress?.recordSignPracticed?.(level, category, s);
+      // BRIDGE — see markSignPracticedBridge() comment in data-v2.js.
+      window.LWDataV2?.markSignPracticedBridge?.(category, s);
+    });
   }
 
   if (startBtnEl) {

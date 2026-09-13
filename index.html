@@ -29,7 +29,7 @@
                bounced straight to the dashboard before this page
                renders (see the lwauth-ready listener below).
 
-    CONNECTS : → pages/dashboard.html (after login/register)
+    CONNECTS : → LinguaWaveV2/pages/v2-dashboard.html (after login/register)
 
     AUTH MODE: js/auth.js's login()/register()/logout() call real
                Firebase Auth + a Firestore profile read/write — not
@@ -81,7 +81,7 @@
   <script src="js/theme.js" defer></script>
   <script>
     window.addEventListener('lwauth-ready', () => {
-    LWAuth.redirectIfLoggedIn('pages/dashboard.html');
+    LWAuth.redirectIfLoggedIn('LinguaWaveV2/pages/v2-dashboard.html');
    });
   </script>
 </head>
@@ -411,7 +411,7 @@
       const password = document.getElementById('login-password').value;
       try {
         await LWAuth.login(email, password);
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = 'LinguaWaveV2/pages/v2-dashboard.html';
       } catch (error) {
         showAuthModal(error.message)
       }
@@ -426,7 +426,7 @@
       const password = document.getElementById('reg-password').value;
       try {
         await LWAuth.register(name, email, password);
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = 'LinguaWaveV2/pages/v2-dashboard.html';
       } catch (error) {
         showAuthModal(error.message)
       }

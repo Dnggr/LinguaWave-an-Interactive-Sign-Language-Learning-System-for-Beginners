@@ -25,8 +25,10 @@
  *
  * CONNECTS : Loaded as a plain <script> (not a module) on every page
  *            that needs it, AFTER js/data.js:
- *              pages/lesson.html, pages/learn.html, pages/quiz.html,
- *              pages/dashboard.html
+ *              LinguaWaveV2/pages/lesson.html, pages/quiz.html
+ *              (V1 pages/learn.html, pages/dashboard.html removed —
+ *              see the V1-removal pass; V2 equivalents don't use
+ *              window.LWProgress)
  *            Read by: js/lesson.js (records practice), js/quiz.js
  *            (records assessment results, computes lock state),
  *            js/learn.js (lock icons / CTA), js/dashboard.js (stats).
