@@ -131,12 +131,14 @@ function renderJourneyRail(missions) {
   }).join('');
 }
 
-function initPage() {
+async function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     document.getElementById('v2-continue-card').innerHTML =
       `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
     return;
   }
+  // Reconcile cross-device Firestore progress before rendering.
+  await window.LWDataV2.whenDataV2SyncReady();
   const missions = window.LWDataV2.getAllMissions();
   renderContinueCard(missions);
   renderSummaryCard(missions);

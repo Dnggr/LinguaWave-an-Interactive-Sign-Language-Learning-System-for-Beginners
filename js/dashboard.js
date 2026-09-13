@@ -307,7 +307,7 @@ function renderUnitRow(unit, destination) {
 
   if (unit.kind === 'interactive') {
     return unitRowHtml(icon, unit, 'Practice drill · always open',
-      'lesson.html?level=basic&category=fingerspell_name',
+      '../LinguaWaveV2/pages/lesson.html?level=basic&category=fingerspell_name',
       isCurrentUnit ? 'current' : null, {
         current: isCurrentUnit,
         ariaLabel: `Open Unit ${unit.order}: ${unit.title} — practice drill, always open${hereSuffix}`,
@@ -630,7 +630,7 @@ function renderReviewEntry() {
 
   actionsEl.innerHTML = recent.map(entry => {
     const signTitle = window.LWData?.getSign?.(entry.level, entry.signId)?.title ?? entry.signId;
-    const href = `lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
+    const href = `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
     return `<a class="btn btn--secondary btn--sm" href="${href}" data-review-link>↺ ${escapeHtml(signTitle)}</a>`;
   }).join('');
 }
@@ -656,7 +656,7 @@ function renderContinueButton(destination) {
   // not another pass at signs[0].
   btn.href = readyForAssessment
     ? `quiz.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}`
-    : `lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
+    : `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(nextSign)}`;
 }
 
 /**

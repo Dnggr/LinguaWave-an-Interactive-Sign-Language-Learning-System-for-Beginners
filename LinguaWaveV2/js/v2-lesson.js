@@ -101,10 +101,13 @@ function descriptionHtml(sign) {
 }
 
 function cameraPracticeLinkHtml(mission) {
-  const url = `../../pages/lesson.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+  // lesson.html now lives at LinguaWaveV2/pages/lesson.html (moved from
+  // V1's pages/ this pass) — same directory as this page, so no more
+  // ../../pages/ hop.
+  const url = `lesson.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
   return `
     <a class="v2-lesson-camera-link" href="${url}" target="_blank" rel="noopener">
-      🎥 Practice with your camera <span class="text-muted">(opens in LinguaWave V1, new tab)</span>
+      🎥 Practice with your camera <span class="text-muted">(new tab)</span>
     </a>
   `;
 }
@@ -600,12 +603,17 @@ function updateReviewNav(mission, index, isMissionComplete) {
   }
 }
 
-function initPage() {
+async function initPage() {
   const el = document.getElementById('v2-lesson-content');
   if (!window.LWData || !window.LWDataV2 || !window.LWDataV2Loop) {
     el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js, js/data-v2.js, and js/v2-lesson-loop.js all loaded.</p>`;
     return;
   }
+
+  // Reconcile cross-device Firestore progress before computing resume
+  // position (getDropOffIndex) — otherwise a lesson could resume from
+  // stale pre-sync local progress.
+  await window.LWDataV2.whenDataV2SyncReady();
 
   const categoryId = getMissionParam();
   const mission = categoryId ? window.LWDataV2.getMissionForCategory(categoryId) : null;

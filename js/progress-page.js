@@ -135,7 +135,7 @@ function renderReviewEntry() {
 
   actionsEl.innerHTML = recent.map(entry => {
     const signTitle = window.LWData?.getSign?.(entry.level, entry.signId)?.title ?? entry.signId;
-    const href = `lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
+    const href = `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
     return `<a class="btn btn--secondary btn--sm" href="${href}" data-review-link>↺ ${escapeHtml(signTitle)}</a>`;
   }).join('');
 }
