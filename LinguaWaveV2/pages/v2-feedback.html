@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- NEW: sets data-theme before any CSS loads, so the page never
+  <!-- Sets data-theme before any CSS loads, so the page never
        flashes the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
@@ -13,93 +13,71 @@
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
       root.style.colorScheme = resolved;
-      // Paints the correct background INSTANTLY, without waiting on
-      // css/style.css to finish loading/parsing — this is the part
-      // that actually stops the white flash on reload/navigation.
       root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
     })();
   </script>
   <!--
-    pages/feedback.html — Survey-Based Feedback & Evaluation
+    LinguaWaveV2/pages/v2-feedback.html — Survey-Based Feedback
     ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Short survey shown after a learner completes an entire
-               level.  Collects qualitative feedback about content
-               quality, difficulty, and learning experience.
-               Within scope: "Survey-based feedback and evaluation system."
+    MOVED (V1-removal pass) from pages/feedback.html so V2 is a
+    complete, standalone app shell. Content/logic UNCHANGED — still
+    js/feedback.js (V1 controller, reused as-is per the plan's
+    "reuse existing V1 feedback & settings" decision). Only the
+    surrounding chrome changed: V2 sidebar (Dashboard/Learn/Progress/
+    Feedback/Settings, no more Quiz/dev-link items), paths adjusted
+    one level deeper (../../ instead of ../), and the post-submit /
+    skip redirects now point at v2-dashboard.html instead of
+    pages/dashboard.html. js/quiz.js's post-level-complete link was
+    updated to point here (see CHANGELOG for this pass).
 
-    CONNECTS : ← pages/quiz.html  (redirected here after level complete)
-               → pages/dashboard.html  (on survey submit)
+    CONNECTS : ← pages/quiz.html (redirected here after level complete)
+               → v2-dashboard.html (on survey submit / skip)
 
     URL PARAMS: ?level=basic | medium | intermediate
-                JS uses this to label the survey correctly.
-
-    DONE (this session) : js/feedback.js now reads ?level= for the
-               header, validates Q1–Q4 are answered before submit, and
-               writes {userId, level, answers, submittedAt} to the
-               Firestore "surveys" collection. Results are still
-               reviewed directly in Firestore (no admin UI).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Feedback — LinguaWave</title>
+  <title>Feedback — LinguaWave V2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/style.css" />
-  <link rel="stylesheet" href="../css/feedback.css" />
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../../css/feedback.css" />
+  <link rel="stylesheet" href="../css/v2-app.css" />
 
-  <script type="module" src="../js/auth.js"></script>
-  <script src="../js/theme.js" defer></script>
+  <script type="module" src="../../js/auth.js"></script>
+  <script src="../../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
-    LWAuth.requireAuth('../index.html');
+    LWAuth.requireAuth('../../index.html');
   });
   </script>
 </head>
 <body>
 
-  <!-- ── APP SHELL (sidebar nav — see css/style.css §17) ──────
-     Layout shell only: theme-toggle / data-logout ids unchanged
-     from the old navbar, just re-homed here. -->
 <div class="app-shell">
     <aside class="app-sidebar">
-      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>WaveV2</span></a>
       <nav class="app-sidebar__nav">
-        <a href="dashboard.html" class="app-sidebar__link ">
+        <a href="v2-dashboard.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
           Dashboard
         </a>
-        <a href="learn.html" class="app-sidebar__link ">
+        <a href="v2-learn.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
           Learn
         </a>
-        <a href="progress.html" class="app-sidebar__link ">
+        <a href="v2-progress.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
           Progress
         </a>
-        <a href="quiz.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
-          Quiz
-        </a>
-        <a href="feedback.html" class="app-sidebar__link active">
+        <a href="v2-feedback.html" class="app-sidebar__link active">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
           Feedback
         </a>
-        <a href="settings.html" class="app-sidebar__link ">
+        <a href="v2-settings.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
           Settings
-        </a>
-        <!-- TEMPORARY — dev-phase nav link to the isolated LinguaWaveV2/
-             preview & comparison tools (see LinguaWaveV2/README.md and
-             DataV2_LinguaWave_Progress_Tracker.md §5). Dashed outline +
-             "WIP" badge (css/style.css §8b) mark this as not a finished
-             nav item on purpose. Remove this <a> (the hidden ?dev=1
-             block in pages/settings.html can stay) once the go/no-go
-             decision on dataV2 is made. -->
-        <a href="../LinguaWaveV2/pages/v2-dashboard.html" class="app-sidebar__link app-sidebar__link--dev">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.5L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9.5V3"/><path d="M7.5 14h9"/></svg></span>
-          LinguaWave V2
-          <span class="badge badge--dev">WIP</span>
         </a>
       </nav>
       <div class="app-sidebar__foot">
@@ -110,7 +88,7 @@
             <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </span>
         </button>
-        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
       </div>
     </aside>
   <div class="app-main">
@@ -129,11 +107,6 @@
       </div>
 
       <!-- Survey form -->
-      <!--
-        All inputs are plain HTML; no library needed.
-        js/feedback.js handles submit (validates, writes to Firestore,
-        redirects) — no <form>/action, just the button's onclick below.
-      -->
       <div class="survey card">
 
         <!-- Q1: Overall satisfaction -->
@@ -217,7 +190,7 @@
 
         <!-- Skip option -->
         <div class="text-center mt-4">
-          <a href="dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
+          <a href="v2-dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
             Skip for now →
           </a>
         </div>
@@ -230,8 +203,8 @@
     <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
   </footer>
 
-  <script src="../js/main.js"></script>
-  <script src="../js/feedback.js"></script>
+  <script src="../../js/main.js"></script>
+  <script src="../../js/feedback.js"></script>
   </div><!-- /.app-main -->
 </div><!-- /.app-shell -->
 

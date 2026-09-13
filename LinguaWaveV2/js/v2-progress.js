@@ -3,8 +3,10 @@
  * ─────────────────────────────────────────────────────────────────
  * Same data-source discipline as v2-dashboard.js / v2-mission-
  * overview.js: reads only window.LWDataV2 (missions, item progress,
- * streak, hearts, chapters) and window.LWData (sign titles). Nothing
- * here touches js/engine/progress.js's real progress store — this is
+ * streak, hearts, chapters, and — as of the migration-analysis pass —
+ * sign titles too, via SIGNS_V2's own title field; V1's window.LWData
+ * is no longer read here). Nothing here touches
+ * js/engine/progress.js's real progress store — this is
  * a parallel read of the same dataV2 store the rest of V2 already
  * uses (`lw_datav2_progress_v1` / `lw_datav2_streak_v1` /
  * `lw_datav2_hearts_v1`).
@@ -35,8 +37,12 @@ function daysSince(iso) {
 }
 
 function signTitleFor(mission, signId) {
-  const sign = (window.LWData && typeof window.LWData.getSign === 'function')
-    ? window.LWData.getSign(mission.level, signId)
+  // FIX (migration-analysis pass) — same fix as v2-mission-overview.js's
+  // signTitle(): read the title straight off window.LWDataV2 instead of
+  // falling back to V1's window.LWData, since data-v2.js's SIGNS_V2
+  // already carries its own `title` field.
+  const sign = (window.LWDataV2 && typeof window.LWDataV2.getSign === 'function')
+    ? window.LWDataV2.getSign(mission.level, signId)
     : null;
   return (sign && sign.title) || signId;
 }
@@ -270,14 +276,8 @@ function showProgressUnavailable(reason) {
   document.getElementById('v2-needs-review').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
-async function initPage() {
-  if (!window.LWData || !window.LWDataV2) {
-    showProgressUnavailable('window.LWData/window.LWDataV2 did not load');
-    return;
-  }
+function renderProgressPage() {
   try {
-    // Reconcile cross-device Firestore progress before rendering.
-    await window.LWDataV2.whenDataV2SyncReady();
     const missions = window.LWDataV2.getAllMissions();
     const learnedSigns = collectLearnedSigns(missions);
     renderHero(missions, learnedSigns);
@@ -288,6 +288,22 @@ async function initPage() {
     console.error('[v2-progress.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
   }
+}
+
+function initPage() {
+  if (!window.LWDataV2) {
+    // FIX (migration-analysis pass) — was also requiring window.LWData
+    // (js/data.js), which this page no longer reads (see signTitleFor()).
+    showProgressUnavailable('window.LWDataV2 did not load');
+    return;
+  }
+
+  // Render immediately from local state (getAllMissions() reads
+  // straight off localStorage) rather than blocking first paint on a
+  // Firestore round-trip. Reconcile cross-device progress in the
+  // background and re-render once it resolves.
+  renderProgressPage();
+  window.LWDataV2.whenDataV2SyncReady().then(renderProgressPage);
 }
 
 if (document.readyState === 'loading') {
