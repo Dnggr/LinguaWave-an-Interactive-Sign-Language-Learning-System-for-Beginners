@@ -312,7 +312,7 @@ function showQuizUnavailable(reason) {
   if (questionCardEl) {
     questionCardEl.innerHTML = `<div class="alert alert--error quiz-fallback-alert">` +
       `We couldn't load this assessment right now. ` +
-      `<a href="learn.html?level=${encodeURIComponent(level)}">Back to Lessons</a>, or reload this page to try again.` +
+      `<a href="../LinguaWaveV2/pages/v2-learn.html?level=${encodeURIComponent(level)}">Back to Lessons</a>, or reload this page to try again.` +
       `</div>`;
   }
   if (gateCardEl)   gateCardEl.style.display   = 'none';
@@ -369,7 +369,7 @@ function showEmptyState() {
   if (questionCardEl) {
     questionCardEl.innerHTML = `
       <p class="quiz-question__prompt">${message}</p>
-      <a href="learn.html?level=${level}" class="btn btn--secondary btn--full mt-4">← Back to Lessons</a>
+      <a href="../LinguaWaveV2/pages/v2-learn.html?level=${level}" class="btn btn--secondary btn--full mt-4">← Back to Lessons</a>
     `;
   }
 }
@@ -973,17 +973,17 @@ function buildActionButtons(passed) {
       const idx = window.LWProgress.LEVEL_ORDER.indexOf(level);
       const nextLevel = window.LWProgress.LEVEL_ORDER[idx + 1];
       const nextLine = nextLevel
-        ? `<a href="learn.html?level=${nextLevel}" class="btn btn--primary btn--lg">Next Level: ${cap(nextLevel)} →</a>`
+        ? `<a href="../LinguaWaveV2/pages/v2-learn.html?level=${nextLevel}" class="btn btn--primary btn--lg">Next Level: ${cap(nextLevel)} →</a>`
         : `<span class="badge badge--basic">🏆 All levels complete!</span>`;
       return `
-        <a href="feedback.html?level=${level}" class="btn btn--secondary btn--lg">Give Feedback →</a>
+        <a href="../LinguaWaveV2/pages/v2-feedback.html?level=${level}" class="btn btn--secondary btn--lg">Give Feedback →</a>
         ${nextLine}
-        <a href="dashboard.html" class="btn btn--ghost">Back to Dashboard</a>
+        <a href="../LinguaWaveV2/pages/v2-dashboard.html" class="btn btn--ghost">Back to Dashboard</a>
       `;
     }
     return `
       <button class="btn btn--primary btn--lg" onclick="location.reload()">Retry Level Assessment</button>
-      <a href="learn.html?level=${level}" class="btn btn--ghost">Review Categories</a>
+      <a href="../LinguaWaveV2/pages/v2-learn.html?level=${level}" class="btn btn--ghost">Review Categories</a>
     `;
   }
 
@@ -1009,7 +1009,7 @@ function buildActionButtons(passed) {
     const idx   = chain.findIndex(c => c.id === categoryId);
     const next  = chain[idx + 1];
 
-    let cta = `<a href="learn.html?level=${level}" class="btn btn--secondary btn--lg">Back to Lessons</a>`;
+    let cta = `<a href="../LinguaWaveV2/pages/v2-learn.html?level=${level}" class="btn btn--secondary btn--lg">Back to Lessons</a>`;
     // REMOVED — see the REV 4 PHASE 6 — LEVEL FINAL ASSESSMENT: DECIDED
     // block comment above buildActionButtons(): this branch used to
     // insert a "🏁 Take Level Final Assessment" CTA here whenever
@@ -1017,7 +1017,7 @@ function buildActionButtons(passed) {
     if (next) {
       cta = `<a href="../LinguaWaveV2/pages/lesson.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
     }
-    return `${cta} <a href="dashboard.html" class="btn btn--ghost">Dashboard</a>`;
+    return `${cta} <a href="../LinguaWaveV2/pages/v2-dashboard.html" class="btn btn--ghost">Dashboard</a>`;
   }
   return `
     <button class="btn btn--primary btn--lg" onclick="location.reload()">Retry Assessment</button>

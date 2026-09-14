@@ -541,6 +541,15 @@
   <!-- Progress engine: tracks practiced signs / category & level assessments. -->
   <script defer src="../../js/engine/progress.js"></script>
   <!--
+    BRIDGE (migration-analysis pass) — this page still records
+    practice through V1's window.LWProgress above, but it's reached
+    from V2's Mission Overview dictionary chips, so it also needs
+    window.LWDataV2 loaded to mark the matching V2 mission item
+    complete (see markSignPracticedBridge() in data-v2.js and its call
+    sites in lesson.js). Must load before lesson.js, same as data.js.
+  -->
+  <script src="../js/data-v2.js"></script>
+  <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).
     All other page scripts are plain <script> tags — no conflict.

@@ -185,25 +185,33 @@ function renderList(filterText) {
   listEl.innerHTML = chapterSections.join('') + rowsFor(ungrouped);
 }
 
-async function initPage() {
+function initPage() {
   if (!window.LWData || !window.LWDataV2) {
     document.getElementById('v2-path-list').innerHTML =
       `<p class="text-muted">Loading real content failed — check that js/data.js and js/data-v2.js both loaded.</p>`;
     return;
   }
 
-  // Reconcile cross-device Firestore progress before rendering, so a
-  // returning user on a new device sees their real merged progress,
-  // not a fresh/empty local state. No-ops for a logged-out visitor.
-  await window.LWDataV2.whenDataV2SyncReady();
+  const searchInput = document.getElementById('v2-path-search-input');
 
+  // Render immediately from local state (getAllMissions() reads
+  // straight off localStorage) instead of blocking first paint on a
+  // Firestore round-trip. Reconcile cross-device progress in the
+  // background and re-render — preserving whatever's currently typed
+  // in search — once it resolves, so a returning user on a new
+  // device still ends up seeing their real merged progress.
   allMissions = window.LWDataV2.getAllMissions();
   const orientationSlot = document.getElementById('v2-orientation-slot');
   if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
   renderList('');
 
-  const searchInput = document.getElementById('v2-path-search-input');
   searchInput.addEventListener('input', () => renderList(searchInput.value));
+
+  window.LWDataV2.whenDataV2SyncReady().then(() => {
+    allMissions = window.LWDataV2.getAllMissions();
+    if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
+    renderList(searchInput.value);
+  });
 }
 
 if (document.readyState === 'loading') {

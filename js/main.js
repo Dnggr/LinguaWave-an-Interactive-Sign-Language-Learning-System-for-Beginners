@@ -153,7 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
   initProgressBars();
   initUserDetails();
-  document.querySelector('.footer p').textContent = `LinguaWave — Capstone Project 2026`; // makes the footer of all pages relative to this text
+  // FIX (migration-analysis pass) — guarded null check added since
+  // this now also runs on LinguaWaveV2 pages, several of which have
+  // no <footer class="footer"> element at all; querySelector() would
+  // otherwise throw here and silently abort whatever ran after it.
+  const footerP = document.querySelector('.footer p');
+  if (footerP) footerP.textContent = `LinguaWave — Capstone Project 2026`; // makes the footer of all pages relative to this text
 });
 
 
