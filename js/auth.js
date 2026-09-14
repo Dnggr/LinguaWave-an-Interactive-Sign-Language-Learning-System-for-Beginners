@@ -199,10 +199,21 @@ function requireAuth(loginPath) {
 
 function redirectIfLoggedIn(dashboardPath) {
   if (isLoggedIn()) {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
     // Every actual caller already passes an explicit path (index.html
     // passes 'pages/dashboard.html'); this fallback just mirrors that
     // same default in case a future caller omits the argument.
     window.location.href = dashboardPath || 'pages/dashboard.html';
+=======
+    // FIX (V1-removal pass) — fallback default updated; every actual
+    // caller already passes an explicit path (index.html passes
+    // 'LinguaWaveV2/pages/v2-dashboard.html'), but pages/dashboard.html
+    // no longer exists so this default shouldn't point there either.
+    window.location.href = dashboardPath || 'LinguaWaveV2/pages/v2-dashboard.html';
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4
   }
 }
 

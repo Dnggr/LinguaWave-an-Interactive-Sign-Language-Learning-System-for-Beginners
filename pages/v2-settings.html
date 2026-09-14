@@ -15,6 +15,10 @@
     })();
   </script>
   <!--
+<<<<<<< HEAD:pages/settings.html
+=======
+<<<<<<< HEAD:pages/settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
     pages/settings.html — Profile & Preferences
     ─────────────────────────────────────────────────────────────────
     MOVED (V1-removal pass) from pages/settings.html so is a
@@ -27,6 +31,23 @@
     sense), and the hidden ?dev=1 Missions dev block's two links are now
     same-folder (missions-preview.html / missions-compare.html) instead of
     reaching out of pages/ into ../pages/.
+<<<<<<< HEAD:pages/settings.html
+=======
+=======
+    LinguaWaveV2/pages/v2-settings.html — Profile & Preferences
+    ─────────────────────────────────────────────────────────────────
+    MOVED (V1-removal pass) from pages/settings.html so V2 is a
+    complete, standalone app shell. Content/logic UNCHANGED — still
+    js/settings-page.js (V1 controller, reused as-is per the plan's
+    "reuse existing V1 feedback & settings" decision). Only the
+    surrounding chrome changed: V2 sidebar (no more Quiz item, no more
+    the old dashed "LinguaWave V2 (WIP)" escape-hatch link — this PAGE
+    now lives inside LinguaWaveV2/ so that link no longer makes
+    sense), and the hidden ?dev=1 DataV2 dev block's two links are now
+    same-folder (datav2-preview.html / datav2-compare.html) instead of
+    reaching out of pages/ into ../LinguaWaveV2/pages/.
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
 
     DATA     : same as before — #settings-user-name/-email/-initial via
                js/main.js's data-user-* attributes; theme via the
@@ -34,24 +55,44 @@
                (js/theme.js); Notifications/Sound Effects/Reduced
                Motion via localStorage (js/settings-page.js); the
                hidden dev block still reads/writes the SAME
+<<<<<<< HEAD:pages/settings.html
                'lw-missions-enabled' key as js/missions.js.
 
     CONNECTS : ← app sidebar (every page)
+=======
+<<<<<<< HEAD:pages/settings.html
+               'lw-missions-enabled' key as js/missions.js.
+
+    CONNECTS : ← app sidebar (every page)
+=======
+               'lw-datav2-enabled' key as LinguaWaveV2/js/data-v2.js.
+
+    CONNECTS : ← app sidebar (every V2 page)
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings — LinguaWave</title>
+  <title>Settings — LinguaWave V2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<<<<<<< HEAD:pages/settings.html
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/app.css" />
+<<<<<<< HEAD:pages/settings.html
+=======
+=======
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../css/v2-app.css" />
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
 
-  <script type="module" src="../js/auth.js"></script>
-  <script src="../js/theme.js" defer></script>
+  <script type="module" src="../../js/auth.js"></script>
+  <script src="../../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
-    LWAuth.requireAuth('../index.html');
+    LWAuth.requireAuth('../../index.html');
   });
   </script>
   <style>
@@ -80,25 +121,32 @@
 
   <div class="app-shell">
     <aside class="app-sidebar">
-      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>WaveV2</span></a>
       <nav class="app-sidebar__nav">
-        <a href="dashboard.html" class="app-sidebar__link">
+        <a href="v2-dashboard.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
           Dashboard
         </a>
-        <a href="learn.html" class="app-sidebar__link">
+        <a href="v2-learn.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
           Learn
         </a>
-        <a href="progress.html" class="app-sidebar__link">
+        <a href="v2-progress.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
           Progress
         </a>
+<<<<<<< HEAD:pages/settings.html
+=======
+<<<<<<< HEAD:pages/settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
         <a href="feedback.html" class="app-sidebar__link">
+=======
+        <a href="v2-feedback.html" class="app-sidebar__link">
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
           Feedback
         </a>
-        <a href="settings.html" class="app-sidebar__link active">
+        <a href="v2-settings.html" class="app-sidebar__link active">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
           Settings
         </a>
@@ -111,7 +159,7 @@
             <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </span>
         </button>
-        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
       </div>
     </aside>
 
@@ -182,6 +230,10 @@
             </div>
           </div>
 
+<<<<<<< HEAD:pages/settings.html
+=======
+<<<<<<< HEAD:pages/settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
           <!-- ── DEVELOPER (Missions pilot) ───────────────────────────
                Hidden by default, only shown with ?dev=1 in the URL.
                Wired by js/settings-page.js's initMissionsDevBlock().
@@ -191,6 +243,20 @@
                same-folder links since this page moved into
                pages/ too. -->
           <div class="card mt-6" id="settings-missions-dev" hidden>
+<<<<<<< HEAD:pages/settings.html
+=======
+=======
+          <!-- ── DEVELOPER (dataV2 pilot) ───────────────────────────
+               Hidden by default, only shown with ?dev=1 in the URL.
+               Wired by js/settings-page.js's initDataV2DevBlock().
+               Reads/writes the SAME 'lw-datav2-enabled' localStorage
+               key as LinguaWaveV2/js/data-v2.js and
+               datav2-preview.html/datav2-compare.html — both now
+               same-folder links since this page moved into
+               LinguaWaveV2/pages/ too. -->
+          <div class="card mt-6" id="settings-datav2-dev" hidden>
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
             <h2 class="mb-2">Developer</h2>
             <p class="text-muted" style="font-size: var(--fs-sm);">
               Not shown to real learners. Pilot content layer from the
@@ -205,12 +271,22 @@
                 <span class="toggle-switch__thumb"></span>
               </label>
             </div>
+<<<<<<< HEAD:pages/settings.html
             <a href="missions-preview.html" class="btn btn--secondary btn--sm mt-2">Open pilot preview</a>
             <a href="missions-compare.html" class="btn btn--secondary btn--sm mt-2">Open Phase 2 comparison</a>
+=======
+<<<<<<< HEAD:pages/settings.html
+            <a href="missions-preview.html" class="btn btn--secondary btn--sm mt-2">Open pilot preview</a>
+            <a href="missions-compare.html" class="btn btn--secondary btn--sm mt-2">Open Phase 2 comparison</a>
+=======
+            <a href="datav2-preview.html" class="btn btn--secondary btn--sm mt-2">Open pilot preview</a>
+            <a href="datav2-compare.html" class="btn btn--secondary btn--sm mt-2">Open Phase 2 comparison</a>
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0:pages/v2-settings.html
           </div>
 
           <div class="text-center mt-8">
-            <a href="#" class="text-muted" data-logout="../index.html" style="font-size: var(--fs-sm);">Log Out</a>
+            <a href="#" class="text-muted" data-logout="../../index.html" style="font-size: var(--fs-sm);">Log Out</a>
           </div>
 
         </div>
@@ -223,8 +299,14 @@
     </div><!-- /.app-main -->
   </div><!-- /.app-shell -->
 
+<<<<<<< HEAD:pages/settings.html
   <script src="../js/main.js"></script>
   <script src="../js/missions.js"></script>
   <script src="../js/settings-page.js"></script>
+=======
+  <script src="../../js/main.js"></script>
+  <script src="../js/data-v2.js"></script>
+  <script src="../../js/settings-page.js"></script>
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/pages/v2-settings.html
 </body>
 </html>

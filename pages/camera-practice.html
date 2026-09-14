@@ -549,6 +549,18 @@
     sites in lesson.js). Must load before lesson.js, same as data.js.
   -->
   <script src="../js/missions.js"></script>
+<<<<<<< HEAD
+=======
+  <!--
+    BRIDGE (migration-analysis pass) — this page still records
+    practice through V1's window.LWProgress above, but it's reached
+    from V2's Mission Overview dictionary chips, so it also needs
+    window.LWDataV2 loaded to mark the matching V2 mission item
+    complete (see markSignPracticedBridge() in data-v2.js and its call
+    sites in lesson.js). Must load before lesson.js, same as data.js.
+  -->
+  <script src="../js/data-v2.js"></script>
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).

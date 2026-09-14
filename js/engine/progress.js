@@ -25,11 +25,25 @@
  *
  * CONNECTS : Loaded as a plain <script> (not a module) on every page
  *            that needs it, AFTER js/data.js:
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
  *              pages/camera-practice.html, pages/quiz.html
  *              (V1 pages/learn.html, pages/dashboard.html removed —
  *              see the V1-removal pass; equivalents don't use
  *              window.LWProgress)
  *            Read by: js/camera-practice.js (records practice), js/quiz.js
+<<<<<<< HEAD
+=======
+=======
+ *              LinguaWaveV2/pages/lesson.html, pages/quiz.html
+ *              (V1 pages/learn.html, pages/dashboard.html removed —
+ *              see the V1-removal pass; V2 equivalents don't use
+ *              window.LWProgress)
+ *            Read by: js/lesson.js (records practice), js/quiz.js
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
  *            (records assessment results, computes lock state),
  *            js/learn.js (lock icons / CTA), js/dashboard.js (stats).
  *            PUBLIC API SHAPE IS UNCHANGED from pre-Phase-3 — every

@@ -1,8 +1,18 @@
 /**
  * js/mission-overview.js — Renderer for pages/mission-overview.html
  * ─────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
  * Same data source discipline as dashboard.js/learn.js: reads
  * only window.LWMissions (missions, progress, hearts, and — as of the
+=======
+<<<<<<< HEAD:js/mission-overview.js
+ * Same data source discipline as dashboard.js/learn.js: reads
+ * only window.LWMissions (missions, progress, hearts, and — as of the
+=======
+ * Same data source discipline as v2-dashboard.js/v2-learn.js: reads
+ * only window.LWDataV2 (missions, progress, hearts, and — as of the
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/v2-mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
  * migration-analysis pass — sign titles for the "You'll practice"
  * chips too, since SIGNS_V2 already carries its own title; V1's
  * window.LWData is no longer read here). Nothing here touches
@@ -72,6 +82,10 @@ function signsInMission(mission) {
 
 function signTitle(mission, signId) {
   // FIX (migration-analysis pass) — was falling back to V1's
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD:js/mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
   // window.LWData.getSign() for the display title, but missions.js's
   // SIGNS_V2 already forks its own `title` field (see getSign there),
   // so this can read window.LWMissions directly and drop the V1
@@ -79,6 +93,18 @@ function signTitle(mission, signId) {
   // doesn't have the sign either.
   const sign = (window.LWMissions && typeof window.LWMissions.getSign === 'function')
     ? window.LWMissions.getSign(mission.level, signId)
+<<<<<<< HEAD
+=======
+=======
+  // window.LWData.getSign() for the display title, but data-v2.js's
+  // SIGNS_V2 already forks its own `title` field (see getSign there),
+  // so this can read window.LWDataV2 directly and drop the V1
+  // dependency entirely. Keeps the same signId fallback if V2 somehow
+  // doesn't have the sign either.
+  const sign = (window.LWDataV2 && typeof window.LWDataV2.getSign === 'function')
+    ? window.LWDataV2.getSign(mission.level, signId)
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/v2-mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
     : null;
   return (sign && sign.title) || signId;
 }
@@ -280,7 +306,15 @@ function render(mission, status) {
 }
 
 function renderMissionOverview() {
+<<<<<<< HEAD
   const el = document.getElementById('mo-content');
+=======
+<<<<<<< HEAD:js/mission-overview.js
+  const el = document.getElementById('mo-content');
+=======
+  const el = document.getElementById('v2-mo-content');
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/v2-mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
   const categoryId = getMissionParam();
   const allMissions = window.LWMissions.getAllMissions();
   const mission = categoryId ? window.LWMissions.getMissionForCategory(categoryId) : null;
@@ -299,11 +333,25 @@ function renderMissionOverview() {
 }
 
 function initPage() {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD:js/mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
   if (!window.LWMissions) {
     // FIX (migration-analysis pass) — was also requiring window.LWData
     // (js/data.js), which this page no longer reads (see signTitle()).
     document.getElementById('mo-content').innerHTML =
       `<p class="text-muted">Loading real content failed — check that js/missions.js loaded.</p>`;
+<<<<<<< HEAD
+=======
+=======
+  if (!window.LWDataV2) {
+    // FIX (migration-analysis pass) — was also requiring window.LWData
+    // (js/data.js), which this page no longer reads (see signTitle()).
+    document.getElementById('v2-mo-content').innerHTML =
+      `<p class="text-muted">Loading real content failed — check that js/data-v2.js loaded.</p>`;
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/v2-mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
     return;
   }
 
@@ -313,7 +361,15 @@ function initPage() {
   // cross-device progress status in the background and re-render
   // once it resolves.
   renderMissionOverview();
+<<<<<<< HEAD
   window.LWMissions.whenMissionsSyncReady().then(renderMissionOverview);
+=======
+<<<<<<< HEAD:js/mission-overview.js
+  window.LWMissions.whenMissionsSyncReady().then(renderMissionOverview);
+=======
+  window.LWDataV2.whenDataV2SyncReady().then(renderMissionOverview);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/v2-mission-overview.js
+>>>>>>> a7789c6905bc339a12289de1c2c296e1f689d6e0
 }
 
 if (document.readyState === 'loading') {
