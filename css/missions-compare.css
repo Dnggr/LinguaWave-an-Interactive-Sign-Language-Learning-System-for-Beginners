@@ -1,0 +1,86 @@
+/**
+ * css/missions-compare.css — pages/missions-compare.html only
+ * ─────────────────────────────────────────────────────────────────
+ * Throwaway dev-tool styling, same spirit as css/missions-preview.css
+ * (reuses this repo's existing --clr-*/--space-*/--radius-* tokens).
+ * Adds only what missions-preview.css doesn't already cover: the
+ * side-by-side comparison columns and the drop-off marker row.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+.devcmp-caveat {
+  margin-top: var(--space-6);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+.devcmp-caveat strong { color: var(--clr-text); }
+
+.devcmp-picker {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.devcmp-picker select {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+}
+
+.devcmp-columns {
+  margin-top: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+@media (max-width: 720px) {
+  .devcmp-columns { grid-template-columns: 1fr; }
+}
+
+.devcmp-col h2 { margin: 0 0 var(--space-2); }
+.devcmp-col .progress-bar { margin: var(--space-2) 0 var(--space-4); }
+
+.devcmp-rowlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.devcmp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+}
+.devcmp-row--done { border-color: var(--clr-success); }
+.devcmp-row--dropoff {
+  border-color: var(--clr-yellow, #c9a227);
+  background: var(--clr-yellow-soft);
+  font-weight: 700;
+}
+.devcmp-row__time { color: var(--clr-text-muted); font-size: var(--fs-xs); }
+
+.devcmp-stat-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  margin-top: var(--space-1);
+}
+.devcmp-unavailable {
+  margin-top: var(--space-4);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+}

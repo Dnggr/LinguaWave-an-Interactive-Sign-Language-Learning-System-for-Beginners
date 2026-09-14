@@ -3,7 +3,7 @@
   ─────────────────────────────────────────────────────────────────
   PURPOSE  : Requests webcam access, pipes stream into a <video> element,
              syncs the <canvas> overlay dimensions. No MediaPipe knowledge here.
-  CONNECTS : Imported by js/lesson.js (the lesson-page orchestrator).
+  CONNECTS : Imported by js/camera-practice.js (the lesson-page orchestrator).
   MIGRATED : Ported from system_with_motion_detection/js/camera/cameraUtils.js
              with error-display ID updated to match LinguaWave's lesson.html DOM.
 

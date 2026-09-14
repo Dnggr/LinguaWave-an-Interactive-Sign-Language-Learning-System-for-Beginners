@@ -4,7 +4,7 @@
   PURPOSE  : Loads MediaPipe HolisticLandmarker and extracts left-hand,
              right-hand, and face landmark data from each webcam frame.
              Returns raw landmark data ONLY — no drawing, no classification.
-  CONNECTS : Imported by js/lesson.js.
+  CONNECTS : Imported by js/camera-practice.js.
 
   UPDATE (holistic switch — matches capture.html): capturesystem now
   uses ONE HolisticLandmarker instead of separate HandLandmarker +

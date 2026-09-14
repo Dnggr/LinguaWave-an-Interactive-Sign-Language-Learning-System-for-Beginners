@@ -67,14 +67,14 @@ function initThemeSelect() {
   }
 }
 
-// NEW — dataV2 pilot dev toggle (pages/settings.html's hidden
-// #settings-datav2-dev block). Only reveals the block when the page
+// NEW — Missions pilot dev toggle (pages/settings.html's hidden
+// #settings-missions-dev block). Only reveals the block when the page
 // is loaded with ?dev=1; the checkbox itself just mirrors
-// window.LWDataV2's own isEnabled()/setEnabled() — no separate state
-// lives here. See LinguaWave_SoloLearn_Learning_Psychology_DataV2_
+// window.LWMissions's own isEnabled()/setEnabled() — no separate state
+// lives here. See LinguaWave_SoloLearn_Learning_Psychology_Missions_
 // Integration_Plan.docx §7 Phase 1.
-function initDataV2DevBlock() {
-  const block = document.getElementById('settings-datav2-dev');
+function initMissionsDevBlock() {
+  const block = document.getElementById('settings-missions-dev');
   if (!block) return;
 
   const isDev = new URLSearchParams(window.location.search).get('dev') === '1';
@@ -82,18 +82,18 @@ function initDataV2DevBlock() {
 
   block.hidden = false;
 
-  const toggle = document.getElementById('pref-datav2-enabled');
+  const toggle = document.getElementById('pref-missions-enabled');
   if (!toggle) return;
 
-  if (typeof window.LWDataV2 === 'undefined') {
-    console.warn('[settings-page.js] js/data-v2.js not loaded — dataV2 dev toggle will not work.');
+  if (typeof window.LWMissions === 'undefined') {
+    console.warn('[settings-page.js] js/missions.js not loaded — Missions dev toggle will not work.');
     toggle.disabled = true;
     return;
   }
 
-  toggle.checked = window.LWDataV2.isEnabled();
+  toggle.checked = window.LWMissions.isEnabled();
   toggle.addEventListener('change', () => {
-    window.LWDataV2.setEnabled(toggle.checked);
+    window.LWMissions.setEnabled(toggle.checked);
   });
 }
 
@@ -101,7 +101,7 @@ function initSettingsPage() {
   const prefs = loadPrefs();
 
   initThemeSelect();
-  initDataV2DevBlock();
+  initMissionsDevBlock();
 
   const notifEl  = document.getElementById('pref-notifications');
   const soundEl  = document.getElementById('pref-sound-effects');

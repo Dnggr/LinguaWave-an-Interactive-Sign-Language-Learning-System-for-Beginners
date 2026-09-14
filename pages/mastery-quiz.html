@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -15,26 +17,69 @@
     })();
   </script>
   <!--
-    pages/learn.html — Learning Path
+    pages/mastery-quiz.html — Mastery Quiz (NEW)
     ─────────────────────────────────────────────────────────────────
-    PURPOSE : "Your Learning Journey" list per the implementation
-              guide's §4.3/§5 — heading, subtext, search field, then
-              one ordered row per mission (number, title, one-line
-              goal, status pill, progress, chevron). Sourced from
-              window.LWMissions.getAllMissions() — see dashboard.html's
-              header comment for the 65-vs-10-missions open question;
-              this page shows all 65 live missions, not a hardcoded 10.
+    PURPOSE : A real-native Mastery Quiz screen, replacing the
+              hand-off to V1's pages/quiz.html — now covering all 12
+              chapters (see SCOPE below). Reuses the SAME mission.items
+              QUIZ concept js/missions.js already builds (unchanged
+              shape); this page just walks it as its own dedicated
+              screen instead of leaving the Mastery Quiz on the
+              untouched V1 engine.
 
-    ROW CLICK : each unlocked row currently links to the mission's
-              existing quiz entry point (pages/quiz.html) as a
-              stand-in "open this mission" destination — a real
-              Mission Overview screen (guide §6) doesn't exist yet.
+    SCOPE (widened this revision — merged from three parallel
+              widenings) : gated in js/mastery-quiz.js, now covering
+              ALL 12 chapters — Chapter 1 (ASL Foundations), Chapter 2
+              (Introduce Yourself), Chapter 3 (Express How You Feel),
+              Chapter 4 (Daily Actions & Communication), Chapter 5
+              (Describing People & Things), Chapter 6 (Home & Family),
+              Chapter 7 (School Life), Chapter 8 (Food & Nature),
+              Chapter 9 (Clothing & Belongings), Chapter 10 (People,
+              Places & Time), Chapter 11 (Having a Conversation), and
+              Chapter 12 (Putting It All Together) — WIDENED this
+              revision from the original Chapters 1-2, merging three
+              separate widenings (3-5, 6-8, and 9-12) rather than
+              keeping any of them partial. Only Chapters 1-2 have
+              hand-curated NEAR_NEIGHBORS/discrimination data in
+              js/lesson-loop.js — Chapters 3-12 run on that file's
+              existing generic (non-curated) distractor fallback, same
+              as every other uncurated chapter's lesson flow already
+              does. With every chapter now sampled, the V1
+              pages/quiz.html hand-off is currently unreachable from
+              any real mission link — it remains only as a defensive
+              fallback (stale link, typed URL, or a future new chapter
+              not yet added to the gate), same "degrade, don't throw"
+              discipline as the rest of Missions — see this file's own js
+              for the exact gate and how to widen it further.
+
+    ENTRY   : ?mission=<categoryId> — same param convention every
+              other page uses.
+
+    CLOSES TWO STANDING GAPS (see Missions_LinguaWave_Progress_Tracker.md
+              §5 open question 7, and AI_MEMORY.md's Lesson-engine
+              session note):
+                1. Hearts are now spent on quiz SUBMIT, not attempt
+                   START (every other chapter's Start Mastery Quiz
+                   button, in mission-overview.js/lesson.js,
+                   still spends on start — untouched, out of this
+                   sample's scope).
+                2. Passing now actually calls markItemComplete() on
+                   the mission's QUIZ item, so mission %/chapter
+                   progress/the Missions Completed stat on
+                   progress.html can finally reach 100% for a
+                   sampled chapter's mission.
+
+    NOT BUILT HERE : the Optional Camera Check V1's quiz.html has is a
+              deliberate, explicit omission — it was never part of the
+              original mockup spec for the Quiz screen (flagged as
+              V1-only "extra" in LinguaWave_Mockup_Visual_Audit.md
+              §8) and this build keeps's Mastery Quiz MC-only.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Learn — LinguaWave</title>
+  <title>Mastery Quiz — LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -45,7 +90,7 @@
 </head>
 <body>
 
-  <a href="#path-list" class="skip-link">Skip to learning path</a>
+  <a href="#mq-main" class="skip-link">Skip to Mastery Quiz</a>
 
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -84,28 +129,17 @@
       </div>
     </aside>
 
-    <div class="app-main">
+    <div class="app-main" id="mq-main">
 
       <section class="section section--sm section--tight">
-        <div class="container">
-          <h1>Your Learning Journey</h1>
-          <p class="mt-2 text-muted">Complete small communication goals and build your skills.</p>
-        </div>
-      </section>
-
-      <section class="section section--sm">
         <div class="container container--narrow">
-          <div class="path-search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="path-search-input" placeholder="Search missions or topics" aria-label="Search missions or topics" />
-          </div>
-
-          <div id="orientation-slot">
-            <!-- filled by js/learn.js — always visible, unaffected by search -->
-          </div>
-
-          <div class="path-list" id="path-list">
-            <!-- filled by js/learn.js -->
+          <a href="learn.html" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All missions
+          </a>
+          <div id="mq-content">
+            <!-- filled by js/mastery-quiz.js -->
+            <p class="text-muted">Loading quiz…</p>
           </div>
         </div>
       </section>
@@ -116,11 +150,12 @@
   <script type="module" src="../js/auth.js"></script>
   <script src="../js/data.js"></script>
   <script src="../js/missions.js"></script>
+  <script src="../js/lesson-loop.js"></script>
   <script src="../js/theme.js" defer></script>
   <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
        and, critically, wires up every [data-logout] button (the sidebar's
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
-  <script src="../js/learn.js"></script>
+  <script src="../js/mastery-quiz.js"></script>
 </body>
 </html>
