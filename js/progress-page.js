@@ -1,52 +1,28 @@
 /**
  * js/progress-page.js — Data wiring for pages/progress.html
  * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Fills the static placeholders in pages/progress.html
- *            with real values from window.LWProgress/window.LWData.
+ * Same data-source discipline as dashboard.js / mission-
+ * overview.js: reads only window.LWMissions (missions, item progress,
+ * streak, hearts, chapters, and — as of the migration-analysis pass —
+ * sign titles too, via SIGNS_V2's own title field; V1's window.LWData
+ * is no longer read here). Nothing here touches
+ * js/engine/progress.js's real progress store — this is
+ * a parallel read of the same Missions store the rest of already
+ * uses (`lw_missions_progress_v1` / `lw_missions_streak_v1` /
+ * `lw_missions_hearts_v1`).
  *
- * REUSES THE SAME WALKS js/dashboard.js ALREADY ESTABLISHED:
- *   - computeOverallStats() below is a duplicate of dashboard.js's own
- *     function (same body) — dashboard.js doesn't expose it on
- *     `window`, and this repo's own precedent (UNIT_ICONS/LEVEL_GROUPS
- *     being copied into js/learn.js rather than shared) is "a second
- *     small copy is lower-risk than a shared module," so this follows
- *     that same call rather than editing dashboard.js to export one.
- *   - renderReviewEntry() below targets the exact same
- *     [data-review-actions] hook dashboard.js's own renderReviewEntry()
- *     does — pages/progress.html reuses that markup verbatim, so this
- *     is the same function, not a reimplementation of new behavior.
- *
- * HONEST DEVIATIONS FROM THE REFERENCE MOCKUP (flagging on purpose
- * rather than fabricating data that doesn't exist):
- *   - "Review Items Due": the mockup implies a spaced-repetition due
- *     count. This app has no due-date/spaced-repetition data
- *     (window.LWProgress.getAllLearnedSigns() has no timestamp — see
- *     dashboard.js's own renderReviewEntry() comment). Shown instead
- *     as "signs available to review" (up to REVIEW_ENTRY_LIMIT), same
- *     number dashboard.html's Review section already offers.
- *   - "Recent Activity" timestamps ("Today", "Yesterday"): no
- *     timestamps exist in the data, for the same reason above. Shown
- *     as a plain most-recent-first list without invented relative
- *     dates, rather than fabricating "Today"/"2 days ago" labels.
- *
- * LOADING / FAILURE HANDLING: same whenProgressReady() race +
- * timeout + showProgressUnavailable() fallback pattern as
- * js/dashboard.js — see that file's header comment for why the race
- * exists (whenProgressReady() can hang forever if js/auth.js's
- * Firebase import fails to load).
+ * "Needs Review" due rule (see progress.html's header comment for
+ * why this is honest, not fabricated): a sign counts as due once its
+ * LESSON item's real getItemCompletedAt() timestamp is at least
+ * DUE_AFTER_DAYS old. This is a simple SRS-lite, not a claim of real
+ * spaced-repetition scheduling — labeled as such in the UI copy.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
 
-const PROGRESS_READY_TIMEOUT_MS = 6000;
-const REVIEW_ENTRY_LIMIT = 3;
-const RECENT_ACTIVITY_LIMIT = 5;
-
-const LEVEL_GROUPS = [
-  { level: 'basic', label: 'Level 1 — Alphabet & Numbers' },
-  { level: 'medium', label: 'Level 2 — Words & Topics' },
-  { level: 'intermediate', label: 'Level 3 — Phrases & Conversations' },
-];
+const DUE_AFTER_DAYS = 2;
+const NEEDS_REVIEW_LIMIT = 3;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function escapeHtml(str) {
   return String(str)
@@ -54,190 +30,284 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function getUnitLevel(unit) {
-  if (unit.kind === 'interactive') return 'basic';
-  const cats = window.LWData.getCategoriesForUnit(unit.order);
-  return cats[0]?.level ?? 'medium';
+function daysSince(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / MS_PER_DAY));
 }
 
-function isUnitDone(unit) {
-  if (unit.kind === 'interactive') return !!window.LWProgress.getUnitAssessment?.(unit.id)?.passed;
-  if (unit.kind === 'reference') return false;
-  const liveCats = window.LWData.getCategoriesForUnit(unit.order)
-    .filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
-  if (liveCats.length === 0) return false;
-  return liveCats.every(c => !!window.LWProgress.getCategoryProgress(c.level, c.id)?.assessment?.passed);
+function signTitleFor(mission, signId) {
+  // FIX (migration-analysis pass) — same fix as mission-overview.js's
+  // signTitle(): read the title straight off window.LWMissions instead of
+  // falling back to V1's window.LWData, since missions.js's SIGNS_V2
+  // already carries its own `title` field.
+  const sign = (window.LWMissions && typeof window.LWMissions.getSign === 'function')
+    ? window.LWMissions.getSign(mission.level, signId)
+    : null;
+  return (sign && sign.title) || signId;
 }
 
-/** Same body as js/dashboard.js's computeOverallStats() — see this
- *  file's header comment for why it's duplicated rather than shared. */
-function computeOverallStats() {
-  if (!window.LWProgress || !window.LWData) return null;
-  const chain = window.LWProgress.getOrderedLiveCategories();
-
-  let totalSigns = 0, practicedSigns = 0, passedCategories = 0;
-  chain.forEach(cat => {
-    const signs = window.LWData.getCategorySigns(cat.level, cat.id);
-    const prog  = window.LWProgress.getCategoryProgress(cat.level, cat.id);
-    totalSigns     += signs.length;
-    practicedSigns += signs.filter(s => !!prog.signs[s]).length;
-    if (prog.assessment?.passed) passedCategories++;
+/* ── Item-level roll-up, shared by the hero stats and the chapter
+ * breakdown so "65% overall" and the sum of the chapter bars are
+ * always counting the exact same underlying items. ─────────────── */
+function tallyItems(missions) {
+  let total = 0, done = 0;
+  missions.forEach((m) => {
+    m.items.forEach((item, i) => {
+      total++;
+      if (window.LWMissions.isItemComplete(m, i, item)) done++;
+    });
   });
-
-  const pct = totalSigns > 0 ? Math.round((practicedSigns / totalSigns) * 100) : 0;
-  return { chain, totalSigns, practicedSigns, passedCategories, pct };
+  return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
 }
 
-function renderHero() {
-  const stats = computeOverallStats();
-  if (!stats) return;
-  const ring = document.getElementById('progress-hero-pct');
-  if (ring) {
-    ring.style.setProperty('--pct', stats.pct);
-    const label = ring.querySelector('.progress-hero-ring__pct');
-    if (label) label.textContent = `${stats.pct}%`;
-  }
-
-  const learned = window.LWProgress.getAllLearnedSigns();
-  const signsEl = document.getElementById('progress-signs-learned');
-  if (signsEl) signsEl.textContent = learned.length;
-
-  const quizzesEl = document.getElementById('progress-quizzes-done');
-  if (quizzesEl) quizzesEl.textContent = stats.passedCategories;
-
-  // See header comment — no real "due" concept exists in the data;
-  // this is "how many review shortcuts are currently available."
-  const recent = [];
-  for (let i = learned.length - 1; i >= 0 && recent.length < REVIEW_ENTRY_LIMIT; i--) {
-    if (learned[i]?.level) recent.push(learned[i]);
-  }
-  const reviewEl = document.getElementById('progress-review-due');
-  if (reviewEl) reviewEl.textContent = recent.length;
+/* Every LESSON item that's actually complete, across every mission —
+ * this is "a sign has genuinely been taught," the same moment
+ * js/missions.js's own getRecap() uses. One entry per sign per
+ * mission (categories don't currently share signIds). */
+function collectLearnedSigns(missions) {
+  const out = [];
+  missions.forEach((m) => {
+    m.items.forEach((item, i) => {
+      if (item.kind === 'LESSON' && window.LWMissions.isItemComplete(m, i, item)) {
+        out.push({
+          mission: m,
+          signId: item.signId,
+          completedAt: window.LWMissions.getItemCompletedAt(m, i, item),
+        });
+      }
+    });
+  });
+  return out;
 }
 
-/** Same [data-review-actions] hook + logic as js/dashboard.js's own
- *  renderReviewEntry() — pages/progress.html's "Review Today" card
- *  reuses that exact markup. */
-function renderReviewEntry() {
-  const actionsEl = document.querySelector('[data-review-actions]');
-  if (!actionsEl || !window.LWProgress) return;
+/* Ring size, in px, is clamped to this range by syncRingSizeToStatsCard()
+ * below — a floor so it never shrinks illegibly small next to a short
+ * stats card, and a ceiling so it never dwarfs a tall one. */
+const RING_MIN_PX = 160;
+const RING_MAX_PX = 280;
 
-  const learned = window.LWProgress.getAllLearnedSigns();
-  const recent = [];
-  for (let i = learned.length - 1; i >= 0 && recent.length < REVIEW_ENTRY_LIMIT; i--) {
-    if (learned[i]?.level) recent.push(learned[i]);
+function renderHero(missions, learnedSigns) {
+  const el = document.getElementById('progress-hero');
+  const items = tallyItems(missions);
+  const missionsCompleted = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
+  const streak = window.LWMissions.getStreakSummary();
+  const hearts = window.LWMissions.getHeartsState();
+
+  // Grid layout (see css/app.css's .progress-hero-row) — ring
+  // and its label are two independent grid children stacked in
+  // column 1, the stats tile spans both rows in column 2.
+  // #progress-hero itself IS the grid (the class lives on it in
+  // the HTML now, not on a wrapper here), so this innerHTML is just
+  // its 3 direct children. Only the stats tile gets the shared
+  // `.card` class — the ring stays uncarded/separated on purpose, per
+  // the reference mockup, instead of both sharing one big card.
+  el.innerHTML = `
+    <div class="progress-hero__ring" id="progress-ring">
+      <span class="progress-hero__ring-pct">${items.pct}%</span>
+    </div>
+    <span class="progress-ring-label">Overall Progress</span>
+    <div class="card progress-stats-card" id="progress-stats-card">
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <span class="stat-tile__value">${learnedSigns.length}</span>
+          <span class="stat-tile__label">Signs Learned</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">${missionsCompleted}/${missions.length}</span>
+          <span class="stat-tile__label">Missions Completed</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">${countDue(learnedSigns)}</span>
+          <span class="stat-tile__label">Signs to Review</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">${streak.currentStreak}d</span>
+          <span class="stat-tile__label">Day Streak</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">${hearts.hearts}/${hearts.maxHearts}</span>
+          <span class="stat-tile__label">Mastery Hearts</span>
+        </div>
+      </div>
+    </div>
+  `;
+  const ring = document.getElementById('progress-ring');
+  if (ring) ring.style.setProperty('--pct', items.pct);
+  syncRingSizeToStatsCard();
+}
+
+/* Only the ring reacts to the stats card's height — not the other
+ * way around (css/app.css's .progress-hero__ring comment). The
+ * card's own height is whatever its 5 stat tiles naturally need; this
+ * just measures that after render and sizes the ring to match, so the
+ * two never look mismatched at a random viewport width. Re-run on
+ * resize (debounced) since the stats-grid's own auto-fit can reflow
+ * the card's height as the window narrows. */
+function syncRingSizeToStatsCard() {
+  const ring = document.getElementById('progress-ring');
+  const card = document.getElementById('progress-stats-card');
+  if (!ring || !card) return;
+  const target = Math.max(RING_MIN_PX, Math.min(RING_MAX_PX, card.offsetHeight));
+  ring.style.width = `${target}px`;
+  ring.style.height = `${target}px`;
+}
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    syncRingSizeToStatsCard();
+    syncReviewCardHeight();
+  }, 120);
+});
+
+/* Below this width css/app.css's own .progress-grid breakpoint
+ * stacks the two columns, so Needs Review sits BELOW the hero row
+ * instead of beside it — nothing to cap its height against there. */
+const GRID_STACK_BREAKPOINT_PX = 900;
+
+/* Caps the Needs Review card's height to match the hero row beside
+ * it (ring + stats tile — now the ONLY thing in `.progress-grid__
+ * main`, since "Progress by Chapter" was moved below the grid in
+ * progress.html so its own 70%/centered sizing resolves against
+ * the full page instead of that narrow column), instead of letting a
+ * long due-list push the card taller than its neighbor. The card
+ * itself has `overflow: hidden` and its list has `overflow-y: auto`/
+ * `min-height: 0` (css/app.css) — this just supplies the actual
+ * max-height those rules need to have anything to clip against; a
+ * long list scrolls internally rather than growing the card. */
+function syncReviewCardHeight() {
+  const hero = document.getElementById('progress-hero');
+  const review = document.getElementById('needs-review');
+  if (!hero || !review) return;
+  if (window.innerWidth <= GRID_STACK_BREAKPOINT_PX) {
+    review.style.maxHeight = '';
+    return;
   }
+  review.style.maxHeight = `${hero.offsetHeight}px`;
+}
 
-  if (recent.length === 0) {
-    actionsEl.innerHTML = '<span class="btn btn--ghost" aria-disabled="true">Practice a sign to unlock Review</span>';
+function dueEntries(learnedSigns) {
+  return learnedSigns
+    .filter((e) => e.completedAt && daysSince(e.completedAt) >= DUE_AFTER_DAYS)
+    .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt)); // oldest (most overdue) first
+}
+
+function countDue(learnedSigns) {
+  return dueEntries(learnedSigns).length;
+}
+
+// Purely decorative rotation (red/orange/green), not a claim about
+// urgency — see progress.html's header comment. Gives the list the
+// same at-a-glance visual variety the reference mockup has.
+const REVIEW_ICON_TONES = ['review-row__icon--a', 'review-row__icon--b', 'review-row__icon--c'];
+
+function renderNeedsReview(learnedSigns) {
+  const el = document.getElementById('needs-review');
+  const due = dueEntries(learnedSigns).slice(0, NEEDS_REVIEW_LIMIT);
+
+  if (due.length === 0) {
+    el.innerHTML = `
+      <h2 class="mb-2">Needs Review</h2>
+      <p class="text-muted" style="font-size: var(--fs-sm);">
+        Nothing's due yet — signs show up here once it's been a couple of days since you first learned them.
+      </p>
+    `;
     return;
   }
 
-  actionsEl.innerHTML = recent.map(entry => {
-    const signTitle = window.LWData?.getSign?.(entry.level, entry.signId)?.title ?? entry.signId;
-    const href = `../LinguaWaveV2/pages/lesson.html?level=${encodeURIComponent(entry.level)}&category=${encodeURIComponent(entry.category)}&sign=${encodeURIComponent(entry.signId)}`;
-    return `<a class="btn btn--secondary btn--sm" href="${href}" data-review-link>↺ ${escapeHtml(signTitle)}</a>`;
+  const rows = due.map((entry, i) => {
+    const title = signTitleFor(entry.mission, entry.signId);
+    const days = daysSince(entry.completedAt);
+    const tone = REVIEW_ICON_TONES[i % REVIEW_ICON_TONES.length];
+    const href = `camera-practice.html?level=${encodeURIComponent(entry.mission.level)}&category=${encodeURIComponent(entry.mission.category)}&sign=${encodeURIComponent(entry.signId)}`;
+    return `
+      <a class="review-row" href="${href}">
+        <span class="review-row__icon ${tone}" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </span>
+        <span class="review-row__body">
+          <span class="review-row__title">${escapeHtml(title)}</span>
+          <span class="review-row__meta">Last practiced ${days} day${days === 1 ? '' : 's'} ago</span>
+        </span>
+      </a>
+    `;
   }).join('');
+
+  const startHref = `camera-practice.html?level=${encodeURIComponent(due[0].mission.level)}&category=${encodeURIComponent(due[0].mission.category)}&sign=${encodeURIComponent(due[0].signId)}`;
+
+  el.innerHTML = `
+    <h2 class="mb-2">Needs Review (${due.length})</h2>
+    <div class="review-list">${rows}</div>
+    <a class="btn btn--primary review-cta" href="${startHref}">Start Review →</a>
+  `;
 }
 
-function renderProgressByLevel() {
-  const container = document.getElementById('progress-by-level-list');
-  if (!container || !window.LWData || !window.LWProgress) return;
+function renderChapters(missions) {
+  const el = document.getElementById('progress-chapters');
+  const chapters = window.LWMissions.getCategoryGroups();
 
-  const units = window.LWData.getUnits();
-
-  container.innerHTML = LEVEL_GROUPS.map(({ level, label }) => {
-    const groupUnits = units.filter(u => getUnitLevel(u) === level);
-    if (groupUnits.length === 0) return '';
-    const doneCount = groupUnits.filter(isUnitDone).length;
-    const pct = groupUnits.length > 0 ? Math.round((doneCount / groupUnits.length) * 100) : 0;
+  const rowsHtml = chapters.map((chapter) => {
+    const chapterMissions = missions.filter((m) => m.categoryGroup === chapter.id);
+    if (chapterMissions.length === 0) return ''; // no live missions in this chapter yet
+    const items = tallyItems(chapterMissions);
     return `
       <div class="unit-progress-group" style="padding: var(--space-4) var(--space-2);">
         <div class="flex" style="justify-content: space-between; margin-bottom: var(--space-2);">
-          <span class="unit-progress-group__label">${escapeHtml(label)}</span>
-          <span class="unit-progress-group__meta">${pct}%</span>
+          <span class="unit-progress-group__label">Chapter ${chapter.order} — ${escapeHtml(chapter.title)}</span>
+          <span class="unit-progress-group__meta">${items.pct}%</span>
         </div>
         <div class="progress-bar">
-          <div class="progress-bar__fill" style="width:${pct}%;" data-progress="${pct}"></div>
+          <div class="progress-bar__fill" style="width:${items.pct}%;" data-progress="${items.pct}"></div>
         </div>
       </div>
     `;
   }).join('');
-}
 
-function renderRecentActivity() {
-  const container = document.getElementById('progress-recent-activity');
-  if (!container || !window.LWProgress) return;
-
-  const learned = window.LWProgress.getAllLearnedSigns();
-  if (learned.length === 0) {
-    container.innerHTML = '<p class="text-muted">Nothing practiced yet — open a lesson to get started!</p>';
-    return;
-  }
-
-  // Most-recent-first (see file header — no real timestamps exist).
-  const ordered = learned.slice().reverse().slice(0, RECENT_ACTIVITY_LIMIT);
-  container.innerHTML = `
-    <ul style="list-style:none; display:flex; flex-direction:column; gap: var(--space-3);">
-      ${ordered.map(entry => {
-        const signTitle = window.LWData?.getSign?.(entry.level, entry.signId)?.title ?? entry.signId;
-        return `<li class="flex" style="justify-content:space-between; gap: var(--space-4);">
-          <span>Practiced <strong>${escapeHtml(signTitle)}</strong></span>
-        </li>`;
-      }).join('')}
-    </ul>
-  `;
+  el.innerHTML = rowsHtml || '<p class="text-muted" style="padding: var(--space-4);">No live chapters found.</p>';
 }
 
 function showProgressUnavailable(reason) {
-  console.error('[progress-page.js] progress data unavailable, showing fallback UI. Reason:', reason);
+  console.error('[progress-page.js] Missions unavailable, showing fallback UI. Reason:', reason);
   const FALLBACK_MSG = "We couldn't load your progress right now.";
-
-  document.getElementById('progress-by-level-list')?.insertAdjacentHTML('beforeend',
-    `<div class="alert alert--error">${FALLBACK_MSG} <a href="learn.html">Go to Learn</a> or reload to try again.</div>`);
-
-  const recentEl = document.getElementById('progress-recent-activity');
-  if (recentEl) recentEl.innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
-
-  const reviewActionsEl = document.querySelector('[data-review-actions]');
-  if (reviewActionsEl) reviewActionsEl.innerHTML = '<a class="btn btn--ghost" href="learn.html">Go to Learn</a>';
+  document.getElementById('progress-hero').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
+  document.getElementById('progress-chapters').innerHTML = `<p class="text-muted" style="padding: var(--space-4);">${FALLBACK_MSG}</p>`;
+  document.getElementById('needs-review').innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
-// BUGFIX (this session) — same class of bug as dashboard.js's
-// initDashboard() fix (see its own comment for the full reasoning):
-// a bare `document.addEventListener('DOMContentLoaded', ...)` can be
-// registered after that event already fired in some edge cases, which
-// leaves this page stuck on its static loading placeholders forever
-// with neither the real render below nor showProgressUnavailable()'s
-// fallback ever appearing — matching what was reported on this exact
-// page. Same readyState guard js/lesson.js/js/quiz.js already use.
-async function initProgressPage() {
-  const readyPromise = window.LWProgress?.whenProgressReady?.();
-  if (readyPromise && typeof readyPromise.then === 'function') {
-    await Promise.race([
-      readyPromise,
-      new Promise((resolve) => setTimeout(resolve, PROGRESS_READY_TIMEOUT_MS)),
-    ]);
-  }
-
-  if (!window.LWProgress || !window.LWData) {
-    showProgressUnavailable('window.LWProgress/window.LWData did not load');
-    return;
-  }
-
+function renderProgressPage() {
   try {
-    renderHero();
-    renderReviewEntry();
-    renderProgressByLevel();
-    renderRecentActivity();
+    const missions = window.LWMissions.getAllMissions();
+    const learnedSigns = collectLearnedSigns(missions);
+    renderHero(missions, learnedSigns);
+    renderNeedsReview(learnedSigns);
+    renderChapters(missions);
+    syncReviewCardHeight();
   } catch (e) {
     console.error('[progress-page.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));
   }
 }
 
+function initPage() {
+  if (!window.LWMissions) {
+    // FIX (migration-analysis pass) — was also requiring window.LWData
+    // (js/data.js), which this page no longer reads (see signTitleFor()).
+    showProgressUnavailable('window.LWMissions did not load');
+    return;
+  }
+
+  // Render immediately from local state (getAllMissions() reads
+  // straight off localStorage) rather than blocking first paint on a
+  // Firestore round-trip. Reconcile cross-device progress in the
+  // background and re-render once it resolves.
+  renderProgressPage();
+  window.LWMissions.whenMissionsSyncReady().then(renderProgressPage);
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initProgressPage);
+  document.addEventListener('DOMContentLoaded', initPage);
 } else {
-  initProgressPage();
+  initPage();
 }

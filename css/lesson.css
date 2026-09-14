@@ -1,11 +1,11 @@
-/* lesson.css — Lesson Viewer styles | CONNECTS: pages/lesson.html */
+/* lesson.css — Lesson Viewer styles | CONNECTS: pages/camera-practice.html */
 
 /* ── COURSE SIDEBAR (NEW — "course player" merge, this session) ─────
    Persistent left-hand course outline: every UNIT, collapsible, with
    per-unit progress — merges js/learn.js's trail browsing directly
    into this page so Learn + Lesson read as one continuous screen
    instead of a learn.html -> lesson.html click-through. Populated by
-   js/lesson.js's renderCourseSidebar() from the exact same
+   js/camera-practice.js's renderCourseSidebar() from the exact same
    window.LWData / window.LWProgress calls js/learn.js's trail and
    js/dashboard.js's unit rows already use, so locked/current/done
    here can't drift out of sync with either of those screens.
@@ -99,7 +99,7 @@
 }
 
 /* ── Error fallback (Design pass, 2026-08-23) ────────────────────────
-   Same item, gap #4. js/lesson.js's renderCourseSidebar() used to
+   Same item, gap #4. js/camera-practice.js's renderCourseSidebar() used to
    silently `return` and leave the sidebar however it last looked
    (including this session's new static loading placeholder, forever)
    if window.LWData wasn't available, or leave a half-built list if it

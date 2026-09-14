@@ -199,6 +199,9 @@ function requireAuth(loginPath) {
 
 function redirectIfLoggedIn(dashboardPath) {
   if (isLoggedIn()) {
+    // Every actual caller already passes an explicit path (index.html
+    // passes 'pages/dashboard.html'); this fallback just mirrors that
+    // same default in case a future caller omits the argument.
     window.location.href = dashboardPath || 'pages/dashboard.html';
   }
 }

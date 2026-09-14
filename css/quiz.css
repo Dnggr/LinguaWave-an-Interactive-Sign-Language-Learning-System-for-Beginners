@@ -139,7 +139,7 @@
 .quiz-option__label { font-size: var(--fs-sm); font-weight: 600; }
 
 /* ── Quiz Feedback — correct-answer takeover (mockup screen 9) ─────
-   Same visual language as pages/lesson.html's #quick-check-modal;
+   Same visual language as pages/camera-practice.html's #quick-check-modal;
    restated here since quiz.html doesn't load lesson.css. Adds a
    collapsible "View Explanation" paragraph the lesson-page version
    doesn't need (there it can scroll back to the lesson content

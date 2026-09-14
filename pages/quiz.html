@@ -29,9 +29,9 @@
                (MediaPipe motion/gesture detection — bonus only, never
                blocks passing, since webcam accuracy has real limits).
 
-    CONNECTS : ← pages/lesson.html   (Finish button on last sign)
+    CONNECTS : ← pages/camera-practice.html   (Finish button on last sign)
                ← pages/learn.html    (category / level assessment CTAs)
-               → pages/lesson.html   (retry / review on fail)
+               → pages/camera-practice.html   (retry / review on fail)
                → pages/quiz.html     (?final=1 once every category passes)
                → pages/feedback.html (after a level assessment passes)
                → pages/dashboard.html
@@ -39,16 +39,16 @@
     URL PARAMS: ?level=basic&category=alphabet   (category assessment)
                 ?level=basic&final=1              (level assessment)
                 &v2=1                              NEW (Task 2) — added
-                (on top of the above) whenever a V2 Mission Overview /
-                V2 Lesson screen links here for its Mastery Quiz (see
-                LinguaWaveV2/js/v2-mission-overview.js,
-                LinguaWaveV2/js/v2-lesson.js). Marks this attempt as a
-                V2 Mastery Quiz so js/quiz.js spends one Mastery Heart
-                per WRONG graded answer via window.LWDataV2 (see
-                js/quiz.js's `isV2Mastery` for the actual hook).
+                (on top of the above) whenever a Mission Overview /
+                Lesson screen links here for its Mastery Quiz (see
+                js/mission-overview.js,
+                js/lesson.js). Marks this attempt as a
+                Mastery Quiz so js/quiz.js spends one Mastery Heart
+                per WRONG graded answer via window.LWMissions (see
+                js/quiz.js's `isMissionMastery` for the actual hook).
                 Entering the quiz itself never costs a heart. Without
                 `&v2=1` (every V1 link into this page), none of that
-                runs — js/quiz.js never touches window.LWDataV2 at all,
+                runs — js/quiz.js never touches window.LWMissions at all,
                 so V1's own quiz behavior is unchanged.
     ─────────────────────────────────────────────────────────────────
   -->
@@ -195,7 +195,7 @@
 
       <!-- ── QUIZ FEEDBACK — CORRECT-ANSWER TAKEOVER ───────────────
            Mockup screen 9 ("Quiz Feedback"): the same "Correct!"
-           confirmation pattern as pages/lesson.html's Quick Check
+           confirmation pattern as pages/camera-practice.html's Quick Check
            takeover (#quick-check-modal there), reused here for a
            graded quiz question. Only ever shown on a correct answer —
            see selectAnswer() in quiz.js; a wrong answer keeps the
@@ -236,12 +236,12 @@
   <script src="../js/data.js"></script>
   <script src="../js/engine/progress.js"></script>
   <!-- NEW (Task 2) — needed only so js/quiz.js can reach
-       window.LWDataV2.consumeHeartForIncorrectAnswer()/getHeartsState()
-       when this attempt has `&v2=1` on the URL (a V2 Mastery Quiz).
+       window.LWMissions.consumeHeartForIncorrectAnswer()/getHeartsState()
+       when this attempt has `&v2=1` on the URL (a Mastery Quiz).
        Isolated file, per its own header comment: never required by,
        and never modifies, js/data.js or js/engine/progress.js above —
        loading it here has zero effect on the plain V1 quiz flow. -->
-  <script src="../LinguaWaveV2/js/data-v2.js"></script>
+  <script src="../js/missions.js"></script>
   <script type="module" src="../js/quiz.js"></script>
 </body>
 </html>

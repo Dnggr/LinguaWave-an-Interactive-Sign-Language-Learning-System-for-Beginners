@@ -39,14 +39,14 @@
  * Per PIVOT_CHECKLIST.md Phase 6 / SYSTEM_ARCHITECTURE.md's matching
  * section:
  *  1. Lightweight non-blocking mini-checks after each sign/cluster —
- *     implemented in js/lesson.js (this file is the GRADED assessment,
+ *     implemented in js/camera-practice.js (this file is the GRADED assessment,
  *     out of scope for that item) — see lesson.js's Phase 6 header.
  *  2. NEW — sign-ordering/fingerspelling-challenge question type for
  *     phrase-type signs (any SIGNS entry with a `sequence` array —
  *     today that's Unit 6 / category:'sequence_demo', see data.js).
  *     The existing optional camera round now detects each component
  *     of the sequence in order (reusing the exact phraseSteps/
- *     phraseStepIdx pattern js/lesson.js already uses for graded
+ *     phraseStepIdx pattern js/camera-practice.js already uses for graded
  *     per-sign phrase assessment — see getCameraPhraseSequence() and
  *     the cameraPhraseSteps branch inside startCameraLoop()'s loop()
  *     below) instead of a single atomic classifyMotion/classifyGesture
@@ -81,17 +81,17 @@ const level     = params.get('level') || 'basic';
 const isFinal   = params.get('final') === '1';
 const categoryId = params.get('category') || null;
 
-// NEW (Task 2) — set only when a V2 Mission Overview / V2 Lesson
+// NEW (Task 2) — set only when a Mission Overview / Lesson
 // screen linked here for its Mastery Quiz (see
-// LinguaWaveV2/js/v2-mission-overview.js, LinguaWaveV2/js/v2-lesson.js
+// js/mission-overview.js, js/lesson.js
 // — both now append `&v2=1`). When true, selectAnswer() below spends
-// one window.LWDataV2 Mastery Heart per WRONG graded answer instead of
+// one window.LWMissions Mastery Heart per WRONG graded answer instead of
 // a heart being spent just for starting the quiz (the old behavior,
 // now removed from those two files). Entering the quiz never costs a
 // heart either way. This is the ONLY place js/quiz.js ever touches
-// window.LWDataV2 — a plain V1 quiz link (no `&v2=1`) never reaches
+// window.LWMissions — a plain V1 quiz link (no `&v2=1`) never reaches
 // this branch, so V1's own quiz scoring/flow is completely unchanged.
-const isV2Mastery = params.get('v2') === '1';
+const isMissionMastery = params.get('v2') === '1';
 
 // BUGFIX (this session): the sidebar "Quiz" nav item (dashboard/learn/
 // progress/feedback/settings) links to plain `quiz.html` — no `?level=`
@@ -140,7 +140,7 @@ const qOptionsEl     = document.getElementById('q-options');
 const qFeedbackEl    = document.getElementById('q-feedback');
 
 // NEW — Quiz Feedback correct-answer takeover (mockup screen 9),
-// same pattern as pages/lesson.html's Quick Check modal.
+// same pattern as pages/camera-practice.html's Quick Check modal.
 const quizModalEl        = document.getElementById('quiz-modal');
 const quizModalBodyEl    = document.getElementById('quiz-modal-body');
 const quizModalExplanationEl = document.getElementById('quiz-modal-explanation');
@@ -293,7 +293,7 @@ function questionsAnsweredSoFar() {
 // Design pass, 2026-08-23 (later, seventh session) — see
 // PIVOT_CHECKLIST.md's "Design pass" item, css/quiz.css's matching
 // comment, and pages/quiz.html's #question-card. Mirrors js/learn.js's
-// showLearnUnavailable()/js/lesson.js's showSidebarUnavailable(): a
+// showLearnUnavailable()/js/camera-practice.js's showSidebarUnavailable(): a
 // real "couldn't load" state, distinct from showEmptyState() below
 // (which means something different — a genuinely untrained/comingSoon
 // category, not a load failure). Narrower than either of those two
@@ -325,7 +325,7 @@ function boot() {
   // scope.signs === [] (buildScope()'s optional chaining) and fell
   // into showEmptyState() below with a misleading "no trained content"
   // message. Same failure mode + same fix as js/learn.js's/
-  // js/lesson.js's matching guards this design pass ported here.
+  // js/camera-practice.js's matching guards this design pass ported here.
   if (!window.LWData) {
     showQuizUnavailable('window.LWData did not load');
     return;
@@ -378,7 +378,7 @@ function showEmptyState() {
 // itself): this used to be
 //   document.addEventListener('DOMContentLoaded', boot);
 //   if (document.readyState !== 'loading') boot();
-// which — unlike js/lesson.js's already-fixed "BUG 3" version of this
+// which — unlike js/camera-practice.js's already-fixed "BUG 3" version of this
 // exact idiom — calls boot() TWICE in the common case. A `type="module"`
 // script (this file) runs after the document is parsed but before
 // DOMContentLoaded fires, so `document.readyState` is normally
@@ -391,7 +391,7 @@ function showEmptyState() {
 // that first instant, but a real double-execution of everything boot()
 // does, including now showQuizUnavailable()'s console.error firing twice
 // on a genuine load failure. Switched to the same mutually-exclusive
-// if/else js/lesson.js already uses.
+// if/else js/camera-practice.js already uses.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
 } else {
@@ -492,13 +492,13 @@ function selectAnswer(btn, q) {
   const correct = btn.dataset.option === q.signId;
   if (correct) {
     roundResults[round.key].correct++;
-  } else if (isV2Mastery && window.LWDataV2?.consumeHeartForIncorrectAnswer) {
-    // Task 2 — 1 incorrect answer = 1 heart, only for a V2 Mastery
-    // Quiz attempt (`&v2=1`). Floors at 0 (see data-v2.js), so
+  } else if (isMissionMastery && window.LWMissions?.consumeHeartForIncorrectAnswer) {
+    // Task 2 — 1 incorrect answer = 1 heart, only for a Mastery
+    // Quiz attempt (`&v2=1`). Floors at 0 (see missions.js), so
     // repeated wrong answers after hearts hit zero are harmless — the
     // real gate is on ENTRY, where the "Start Mastery Quiz" button is
     // already disabled once getHeartsState().hearts is 0.
-    window.LWDataV2.consumeHeartForIncorrectAnswer();
+    window.LWMissions.consumeHeartForIncorrectAnswer();
   }
 
   qOptionsEl.querySelectorAll('.quiz-option').forEach(b => {
@@ -623,7 +623,7 @@ window.skipCameraRound = function () {
 let cameraSignQueue = [], cameraQIdx = 0, cameraScore = 0;
 
 // NEW — REV 4 PHASE 6: sign-ordering/fingerspelling-challenge state.
-// Mirrors js/lesson.js's phraseSteps/phraseStepIdx (see that file's
+// Mirrors js/camera-practice.js's phraseSteps/phraseStepIdx (see that file's
 // block comment near phraseSteps for the original mechanism this was
 // ported from) — same idea, reused here for this optional bonus round
 // instead of a graded per-sign assessment.
@@ -633,7 +633,7 @@ let cameraPhraseStepIdx = 0;
 /**
  * Returns a phrase's component signId sequence for the camera round's
  * CURRENT queue item, or null if it's a plain atomic sign. Same
- * lookup js/lesson.js's getPhraseSequence() does (data.js's
+ * lookup js/camera-practice.js's getPhraseSequence() does (data.js's
  * SIGNS.sequence field) — not imported from there since lesson.js's
  * version also special-cases the Unit 2 name drill, which is
  * irrelevant here (the name drill has no CATEGORIES entry and is
@@ -688,7 +688,7 @@ function startCameraLoop() {
     // branch. currentSign is a phrase (e.g. Unit 6's 'CAR_SPELL') —
     // check against the CURRENT STEP's expected component instead of
     // a single atomic detection. Same per-step mechanics as
-    // js/lesson.js's handleAssessmentFrame() phrase branch (strict:
+    // js/camera-practice.js's handleAssessmentFrame() phrase branch (strict:
     // any wrong step ends THIS item's attempt immediately), reused
     // here for this optional bonus round — see that file for the
     // pattern this was ported from.
@@ -850,7 +850,7 @@ function endCameraRound() {
 
 window.addEventListener('beforeunload', () => { if (rafId) cancelAnimationFrame(rafId); stopCamera(videoEl); });
 
-// BUGFIX (PIVOT_CHECKLIST.md Phase C) — js/lesson.js already stops the
+// BUGFIX (PIVOT_CHECKLIST.md Phase C) — js/camera-practice.js already stops the
 // camera when the tab is backgrounded (visibilitychange → document.hidden);
 // quiz.js only had the beforeunload handler above, so tabbing away mid
 // camera-round assessment left the webcam indicator light on until the
@@ -997,7 +997,7 @@ function buildActionButtons(passed) {
     // renumbered `order` when it added `unit`, so in-level order and
     // trail order can disagree) but quiz.js was untouched at the time —
     // SYSTEM_ARCHITECTURE.md's Progress/unlock model changes section
-    // explicitly notes "quiz.js/lesson.js remain fully untouched"
+    // explicitly notes "quiz.js/camera-practice.js remain fully untouched"
     // through Phase 4. Same bug, same fix: walk the flat cross-unit
     // chain instead. Concretely, this used to mean finishing the LAST
     // basic-level category (Numbers) would look for a next category
@@ -1015,12 +1015,12 @@ function buildActionButtons(passed) {
     // insert a "🏁 Take Level Final Assessment" CTA here whenever
     // window.LWProgress.isLevelFinalUnlocked(level) was true.
     if (next) {
-      cta = `<a href="../LinguaWaveV2/pages/lesson.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
+      cta = `<a href="camera-practice.html?level=${next.level}&category=${next.id}" class="btn btn--primary btn--lg">Next: ${next.title} →</a> ` + cta;
     }
     return `${cta} <a href="dashboard.html" class="btn btn--ghost">Dashboard</a>`;
   }
   return `
     <button class="btn btn--primary btn--lg" onclick="location.reload()">Retry Assessment</button>
-    <a href="../LinguaWaveV2/pages/lesson.html?level=${level}&category=${categoryId}" class="btn btn--ghost">Review Lesson</a>
+    <a href="camera-practice.html?level=${level}&category=${categoryId}" class="btn btn--ghost">Review Lesson</a>
   `;
 }
