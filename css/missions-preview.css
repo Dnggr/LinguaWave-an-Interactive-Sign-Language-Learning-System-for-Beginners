@@ -128,6 +128,12 @@
 }
 .dev-chip--bonus { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
 
+<<<<<<< HEAD:css/missions-preview.css
 .dev-results { margin-top: var(--space-6); }
 .dev-results__recap { padding-left: var(--space-6); }
 .dev-results__teaser { color: var(--clr-text-muted); margin-top: var(--space-2); }
+=======
+.dv2-results { margin-top: var(--space-6); }
+.dv2-results__recap { padding-left: var(--space-6); }
+.dv2-results__teaser { color: var(--clr-text-muted); margin-top: var(--space-2); }
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/css/datav2-preview.css

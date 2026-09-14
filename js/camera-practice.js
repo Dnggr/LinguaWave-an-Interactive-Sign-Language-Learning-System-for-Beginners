@@ -531,10 +531,17 @@ function showQuickCheck() {
         // markCurrentSignPracticed() does (see its comment).
         if (correct && !isNameDrill) {
           window.LWProgress?.recordSignPracticed?.(level, category, sign);
+<<<<<<< HEAD:js/camera-practice.js
           // BRIDGE — also move the matching mission's own LESSON
           // item, if this category has a live mission. See the
           // block comment on markSignPracticedBridge() in missions.js.
           window.LWMissions?.markSignPracticedBridge?.(category, sign);
+=======
+          // BRIDGE — also move the matching V2 mission's own LESSON
+          // item, if this category has a live V2 mission. See the
+          // block comment on markSignPracticedBridge() in data-v2.js.
+          window.LWDataV2?.markSignPracticedBridge?.(category, sign);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
         }
       };
     });
@@ -979,10 +986,17 @@ function sidebarCategoryBlock(cat, opts) {
 // sizing tweak, not a new error style.
 function showSidebarUnavailable(el, reason) {
   console.error('[lesson.js] course sidebar cannot render. Reason:', reason);
+<<<<<<< HEAD:js/camera-practice.js
   // FIX (V1-removal pass) — was "../pages/learn.html" (V1's page,
   // now deleted); this page now lives in the same folder as
   // learn.html, so the link is same-folder.
   el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="learn.html">Go to Learn</a> or reload.</div>`;
+=======
+  // FIX (V1-removal pass) — was "../../pages/learn.html" (V1's page,
+  // now deleted); this page now lives in the same folder as
+  // v2-learn.html, so the link is same-folder.
+  el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="v2-learn.html">Go to Learn</a> or reload.</div>`;
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
 }
 
 function renderCourseSidebar() {
@@ -1178,6 +1192,7 @@ async function boot() {
       "That lesson isn't unlocked yet — finish the one before it first.",
       'error'
     );
+<<<<<<< HEAD:js/camera-practice.js
     // FIX (V1-removal pass) — learn.html now lives in the same
     // folder as this page (was "../pages/learn.html", V1's page,
     // now deleted). Verified safe: learn.js doesn't read the
@@ -1188,6 +1203,18 @@ async function boot() {
     // links) — so this can't land anywhere that re-opens locked
     // content.
     window.location.replace(`learn.html?category=${encodeURIComponent(category)}`);
+=======
+    // FIX (V1-removal pass) — v2-learn.html now lives in the same
+    // folder as this page (was "../../pages/learn.html", V1's page,
+    // now deleted). Verified safe: v2-learn.js doesn't read the
+    // ?category= param (it's inert here, same as other legacy query
+    // params passed around this codebase), and it has its own
+    // independent, stricter lock model (window.LWDataV2.
+    // isChapterUnlocked() — locked rows aren't even rendered as
+    // links) — so this can't land anywhere that re-opens locked
+    // content.
+    window.location.replace(`v2-learn.html?category=${encodeURIComponent(category)}`);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
     return;
   }
 
@@ -1512,8 +1539,13 @@ function setupNavButtons() {
   function markCurrentSignPracticed() {
     if (!isNameDrill) {
       window.LWProgress?.recordSignPracticed?.(level, category, sign);
+<<<<<<< HEAD:js/camera-practice.js
       // BRIDGE — see markSignPracticedBridge() comment in missions.js.
       window.LWMissions?.markSignPracticedBridge?.(category, sign);
+=======
+      // BRIDGE — see markSignPracticedBridge() comment in data-v2.js.
+      window.LWDataV2?.markSignPracticedBridge?.(category, sign);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
     }
   }
 
@@ -1541,9 +1573,15 @@ function setupNavButtons() {
       btnNext.textContent = 'Back to Dashboard →';
       btnNext.onclick = () => {
         shutdown();
+<<<<<<< HEAD:js/camera-practice.js
         // FIX (V1-removal pass) — was "../pages/dashboard.html"
         // (V1's page, now deleted); same-folder now.
         window.location = 'dashboard.html';
+=======
+        // FIX (V1-removal pass) — was "../../pages/dashboard.html"
+        // (V1's page, now deleted); same-folder now.
+        window.location = 'v2-dashboard.html';
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
       };
     } else if (isLast) {
       // REV 3: the graded check is now the category assessment page,
@@ -2365,8 +2403,13 @@ function endAssessment() {
 
     quizSigns.forEach(s => {
       window.LWProgress?.recordSignPracticed?.(level, category, s);
+<<<<<<< HEAD:js/camera-practice.js
       // BRIDGE — see markSignPracticedBridge() comment in missions.js.
       window.LWMissions?.markSignPracticedBridge?.(category, s);
+=======
+      // BRIDGE — see markSignPracticedBridge() comment in data-v2.js.
+      window.LWDataV2?.markSignPracticedBridge?.(category, s);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/lesson.js
     });
   }
 

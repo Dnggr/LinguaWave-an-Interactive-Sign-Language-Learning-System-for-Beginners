@@ -154,7 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initProgressBars();
   initUserDetails();
   // FIX (migration-analysis pass) — guarded null check added since
+<<<<<<< HEAD
   // this now also runs on LinguaWave pages, several of which have
+=======
+  // this now also runs on LinguaWaveV2 pages, several of which have
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4
   // no <footer class="footer"> element at all; querySelector() would
   // otherwise throw here and silently abort whatever ran after it.
   const footerP = document.querySelector('.footer p');

@@ -9661,6 +9661,7 @@ function getCategoriesForUnitV2(unitOrder) {
     return getMissionProgress(mission);
   }
 
+<<<<<<< HEAD:js/missions.js
   // BRIDGE (migration-analysis pass) — pages/camera-practice.html
   // (the moved-but-still-V1 camera practice page) only ever calls
   // window.LWProgress.recordSignPracticed(level, category, signId); it
@@ -9676,6 +9677,23 @@ function getCategoriesForUnitV2(unitOrder) {
   // exists. Safe no-op (returns null) for categories with no live
   // mission yet, or when window.LWMissions isn't loaded on the page at
   // all (this file is always loaded before js/camera-practice.js on both
+=======
+  // BRIDGE (migration-analysis pass) — LinguaWaveV2/pages/lesson.html
+  // (the moved-but-still-V1 camera practice page) only ever calls
+  // window.LWProgress.recordSignPracticed(level, category, signId); it
+  // has no idea window.LWDataV2/missions exist. That left a real gap:
+  // practicing a sign via a Mission Overview dictionary chip updated
+  // V1's lw_progress_v3 but never moved that mission's own progress
+  // bar/hearts, since nothing ever called markItemComplete() for the
+  // V2 side. This is a narrow, additive bridge — NOT a replacement for
+  // rebuilding the camera lesson V2-native (still a real gap for signs
+  // reached any way OTHER than via a mission's LESSON item, and for
+  // BOOSTER/PRACTICE/QUIZ items, which this does not touch) — it only
+  // marks the ONE LESSON item for this exact category+signId, if one
+  // exists. Safe no-op (returns null) for categories with no live V2
+  // mission yet, or when window.LWDataV2 isn't loaded on the page at
+  // all (this file is always loaded before js/lesson.js on both
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/data-v2.js
   // lesson.html variants per their <script> order, but this guards
   // against that changing).
   function markSignPracticedBridge(categoryId, signId) {
@@ -10034,7 +10052,11 @@ function getCategoriesForUnitV2(unitOrder) {
     getMissionProgress,
     getLessonProgress,
     markItemComplete,
+<<<<<<< HEAD:js/missions.js
     markMissionComplete,     // NEW (Priority 1, Task 1) — marks every item in a mission complete at once, for the Mastery Quiz skip-path (js/mastery-quiz.js's finishQuiz())
+=======
+    markMissionComplete,     // NEW (Priority 1, Task 1) — marks every item in a mission complete at once, for the Mastery Quiz skip-path (js/v2-mastery-quiz.js's finishQuiz())
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4:LinguaWaveV2/js/data-v2.js
     markSignPracticedBridge, // NEW (migration-analysis pass) — see block comment above its definition
     isItemComplete,
     getItemCompletedAt,      // NEW — Phase 2

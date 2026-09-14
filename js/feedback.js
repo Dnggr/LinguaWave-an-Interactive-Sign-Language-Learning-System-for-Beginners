@@ -110,10 +110,17 @@ window.submitSurvey = async function () {
   }
 
   // FIX (V1-removal pass) — feedback.js now only runs from
+<<<<<<< HEAD
   // pages/feedback.html (pages/feedback.html was
   // deleted), so the post-submit redirect target is dashboard.html,
   // in the same directory.
   setTimeout(() => { window.location = 'dashboard.html'; }, 900);
+=======
+  // LinguaWaveV2/pages/v2-feedback.html (pages/feedback.html was
+  // deleted), so the post-submit redirect target is v2-dashboard.html,
+  // in the same directory.
+  setTimeout(() => { window.location = 'v2-dashboard.html'; }, 900);
+>>>>>>> 64b88ed4ad5f0d341a35150d292750e2e011dbf4
 };
 
 document.addEventListener('DOMContentLoaded', initLevelName);
