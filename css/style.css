@@ -465,15 +465,15 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
 .badge--dev          { background: var(--clr-orange-soft); color: var(--clr-orange); }
 
-/* ── 8b. TEMPORARY — dataV2 sidebar entry point ─────────────────────
- * .app-sidebar__link--dev marks the "LinguaWave V2" nav item added
+/* ── 8b. TEMPORARY — Missions sidebar entry point ─────────────────────
+ * .app-sidebar__link--dev marks the "LinguaWave" nav item added
  * across pages/dashboard.html, learn.html, progress.html, settings.html,
- * and feedback.html while dataV2 is under active development (see
- * DataV2_LinguaWave_Progress_Tracker.md §5 and the LinguaWaveV2/
+ * and feedback.html while Missions is under active development (see
+ * Missions_LinguaWave_Progress_Tracker.md §5 and the LinguaWave/
  * folder's own README.md). It's visually distinct (dashed outline +
  * .badge--dev "WIP" tag pinned to the right) precisely because it is
  * NOT meant to look like a finished nav item — pull this rule and the
- * matching <a> markup once dataV2 either ships for real or is dropped.
+ * matching <a> markup once Missions either ships for real or is dropped.
  */
 .app-sidebar__link--dev {
   border: 1px dashed var(--clr-border);
@@ -495,7 +495,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   width: 0%; /* FIX (this session): a block-level div with no explicit
     width defaults to filling its parent (width:auto), so any
     .progress-bar__fill without an inline style — pages/dashboard.html's
-    Overall Progress bar, pages/lesson.html's, pages/quiz.html's — was
+    Overall Progress bar, pages/camera-practice.html's, pages/quiz.html's — was
     rendering FULL on first paint and visibly snapping down to the real
     percentage once JS set style.width. Defaulting to 0% here means a
     bar with no JS-set width yet reads as "not started" instead of

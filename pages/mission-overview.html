@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -15,26 +17,44 @@
     })();
   </script>
   <!--
-    pages/learn.html — Learning Path
+    pages/mission-overview.html — Mission Overview
     ─────────────────────────────────────────────────────────────────
-    PURPOSE : "Your Learning Journey" list per the implementation
-              guide's §4.3/§5 — heading, subtext, search field, then
-              one ordered row per mission (number, title, one-line
-              goal, status pill, progress, chevron). Sourced from
-              window.LWMissions.getAllMissions() — see dashboard.html's
-              header comment for the 65-vs-10-missions open question;
-              this page shows all 65 live missions, not a hardcoded 10.
+    PURPOSE : Per the implementation guide's §6 (Mission Overview) /
+              §5.1: mission number + title, goal, the signs you'll
+              practice, an explicitly-labeled EFFORT ESTIMATE (never
+              shown as if it were exact), the mastery requirement, and
+              a live Mastery Hearts display — all sourced from
+              window.LWMissions / window.LWData, no hardcoded copy.
 
-    ROW CLICK : each unlocked row currently links to the mission's
-              existing quiz entry point (pages/quiz.html) as a
-              stand-in "open this mission" destination — a real
-              Mission Overview screen (guide §6) doesn't exist yet.
+    ENTRY   : ?mission=<categoryId> — matches the query param
+              dashboard.html's Continue card / journey rail and
+              learn.html's path rows already link with.
+
+    HEARTS  : reads window.LWMissions.getHeartsState() live. Guide §10's
+              rule — "keep all learning activities available, gate
+              only the next Mastery Quiz attempt" — is respected here:
+              hitting 0 hearts disables ONLY the Start Mastery Quiz
+              button. Start Mission (lesson/practice) always stays
+              enabled regardless of heart count.
+
+    HEARTS TIMING (fixed — Task 2, this revision) : the guide specifies
+              consuming a heart on WRONG ANSWERS, not on Mastery Quiz
+              entry. That's now correct: entering the quiz is free, and
+              one heart is spent per incorrect graded answer inside
+              js/quiz.js itself, gated behind the `&v2=1` this page adds
+              to the quiz URL — see js/missions.js's file header
+              ("HEART TIMING FIX") and js/quiz.js's `isMissionMastery` for
+              the full note.
+
+    NOT BUILT HERE : the guide §6 "Know some already?" diagnostic
+              challenge is shown as a disabled "Coming soon" button
+              rather than faked with placeholder behavior.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Learn — LinguaWave</title>
+  <title>Mission Overview — LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -45,7 +65,7 @@
 </head>
 <body>
 
-  <a href="#path-list" class="skip-link">Skip to learning path</a>
+  <a href="#mo-main" class="skip-link">Skip to Mission Overview</a>
 
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -84,28 +104,17 @@
       </div>
     </aside>
 
-    <div class="app-main">
+    <div class="app-main" id="mo-main">
 
       <section class="section section--sm section--tight">
-        <div class="container">
-          <h1>Your Learning Journey</h1>
-          <p class="mt-2 text-muted">Complete small communication goals and build your skills.</p>
-        </div>
-      </section>
-
-      <section class="section section--sm">
         <div class="container container--narrow">
-          <div class="path-search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="path-search-input" placeholder="Search missions or topics" aria-label="Search missions or topics" />
-          </div>
-
-          <div id="orientation-slot">
-            <!-- filled by js/learn.js — always visible, unaffected by search -->
-          </div>
-
-          <div class="path-list" id="path-list">
-            <!-- filled by js/learn.js -->
+          <a href="learn.html" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All missions
+          </a>
+          <div id="mo-content">
+            <!-- filled by js/mission-overview.js -->
+            <p class="text-muted">Loading mission…</p>
           </div>
         </div>
       </section>
@@ -114,13 +123,18 @@
   </div>
 
   <script type="module" src="../js/auth.js"></script>
-  <script src="../js/data.js"></script>
+  <!--
+    js/data.js dropped (migration-analysis pass) — this page's only
+    use of window.LWData was a sign-title fallback in
+    mission-overview.js's signTitle(), which now reads
+    window.LWMissions directly (SIGNS_V2 already carries its own title).
+  -->
   <script src="../js/missions.js"></script>
   <script src="../js/theme.js" defer></script>
   <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
        and, critically, wires up every [data-logout] button (the sidebar's
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
-  <script src="../js/learn.js"></script>
+  <script src="../js/mission-overview.js"></script>
 </body>
 </html>

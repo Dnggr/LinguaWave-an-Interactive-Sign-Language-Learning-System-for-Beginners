@@ -109,6 +109,10 @@ window.submitSurvey = async function () {
     return;
   }
 
+  // FIX (V1-removal pass) — feedback.js now only runs from
+  // pages/feedback.html (pages/feedback.html was
+  // deleted), so the post-submit redirect target is dashboard.html,
+  // in the same directory.
   setTimeout(() => { window.location = 'dashboard.html'; }, 900);
 };
 

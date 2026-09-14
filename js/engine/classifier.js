@@ -4,7 +4,7 @@
   PURPOSE  : Loads the trained asl_static_model / asl_motion_model and
              classifies hand landmarks (+ face-relative features) into
              a sign label with a confidence %.
-  CONNECTS : Imported by js/lesson.js.
+  CONNECTS : Imported by js/camera-practice.js.
 
   MODEL PATHS (relative to the project root served by your HTTP server):
     Static model:   /asl_static_model/model.json

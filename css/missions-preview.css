@@ -1,0 +1,133 @@
+/**
+ * css/missions-preview.css — pages/missions-preview.html only
+ * ─────────────────────────────────────────────────────────────────
+ * Throwaway dev-preview styling, not a designed screen. Reuses this
+ * repo's existing tokens (css/style.css's --clr-*/--space-*/--radius-*
+ * custom properties) so it doesn't look jarringly out of place next
+ * to the real app, but the layout itself (item list, chips, dev bar)
+ * is specific to this one page and isn't meant to be reused elsewhere.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+.dev-devbar {
+  background: var(--clr-surface-2);
+  border-bottom: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-6);
+  text-align: center;
+}
+.dev-devbar strong { color: var(--clr-text); }
+.dev-devbar__link {
+  margin-left: var(--space-4);
+  color: var(--clr-accent);
+  text-decoration: none;
+}
+.dev-devbar__link:hover { text-decoration: underline; }
+
+.dev-flagbar { margin-top: var(--space-6); }
+.dev-flagbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.dev-flagbar__note { margin-top: var(--space-2); font-size: var(--fs-xs); }
+.dev-flagbar__note code {
+  background: var(--clr-surface-2);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.dev-off-notice { margin-top: var(--space-6); }
+
+.dev-intro {
+  margin-top: var(--space-6);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.dev-intro__illustration {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.dev-intro__title { margin: 0 0 var(--space-1); }
+.dev-intro__pitch { margin-top: var(--space-2); }
+
+.dev-statrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.dev-stat {
+  background: var(--clr-surface-2);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.dev-progress-card { margin-top: var(--space-4); }
+.dev-progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-1);
+}
+.dev-progress-row--sub { margin-top: var(--space-4); color: var(--clr-text-muted); }
+.progress-bar--sm { height: 4px; }
+
+.dev-item-list {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dev-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.dev-item--booster { border-style: dashed; }
+.dev-item--quiz { border-color: var(--clr-accent); }
+.dev-item--done { background: var(--clr-success-soft); border-color: var(--clr-success); }
+
+.dev-item__check {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface-2);
+  color: var(--clr-success);
+  font-weight: 700;
+  cursor: pointer;
+}
+.dev-item--done .dev-item__check { background: var(--clr-success); color: var(--clr-text-invert); border-color: var(--clr-success); }
+
+.dev-item__label { font-weight: 700; }
+.dev-item__scenario { font-style: italic; color: var(--clr-text-muted); font-size: var(--fs-sm); margin-top: var(--space-1); }
+.dev-item__chips { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.dev-item__hint { margin-top: var(--space-2); font-size: var(--fs-xs); color: var(--clr-accent); }
+
+.dev-chip {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+}
+.dev-chip--bonus { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
+
+.dev-results { margin-top: var(--space-6); }
+.dev-results__recap { padding-left: var(--space-6); }
+.dev-results__teaser { color: var(--clr-text-muted); margin-top: var(--space-2); }
