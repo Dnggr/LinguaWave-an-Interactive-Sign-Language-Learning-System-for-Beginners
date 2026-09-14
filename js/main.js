@@ -96,7 +96,7 @@ function initProgressBars() {
  * of the screen.  type: 'success' | 'error' | 'info'
  * Used by lesson.js to give feedback (e.g. when a locked lesson is
  * opened directly). Every page that can call this must link
- * css/toast.css — confirmed all of them do (pages/lesson.html was
+ * css/toast.css — confirmed all of them do (pages/camera-practice.html was
  * missing it and has been fixed).
  */
 function showToast(message, type = 'info') {
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initProgressBars();
   initUserDetails();
   // FIX (migration-analysis pass) — guarded null check added since
-  // this now also runs on LinguaWaveV2 pages, several of which have
+  // this now also runs on LinguaWave pages, several of which have
   // no <footer class="footer"> element at all; querySelector() would
   // otherwise throw here and silently abort whatever ran after it.
   const footerP = document.querySelector('.footer p');

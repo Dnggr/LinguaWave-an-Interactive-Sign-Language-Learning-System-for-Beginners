@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Sets data-theme before any CSS loads, so the page never
+       flashes the wrong theme on load. Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+    })();
+  </script>
+  <!--
+    pages/feedback.html — Survey-Based Feedback
+    ─────────────────────────────────────────────────────────────────
+    MOVED (V1-removal pass) from pages/feedback.html so is a
+    complete, standalone app shell. Content/logic UNCHANGED — still
+    js/feedback.js (V1 controller, reused as-is per the plan's
+    "reuse existing V1 feedback & settings" decision). Only the
+    surrounding chrome changed: sidebar (Dashboard/Learn/Progress/
+    Feedback/Settings, no more Quiz/dev-link items), paths adjusted
+    one level deeper (../ instead of ../), and the post-submit /
+    skip redirects now point at dashboard.html instead of
+    pages/dashboard.html. js/quiz.js's post-level-complete link was
+    updated to point here (see CHANGELOG for this pass).
+
+    CONNECTS : ← pages/quiz.html (redirected here after level complete)
+               → dashboard.html (on survey submit / skip)
+
+    URL PARAMS: ?level=basic | medium | intermediate
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback — LinguaWave V2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/feedback.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+
+  <script type="module" src="../../js/auth.js"></script>
+  <script src="../../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../../index.html');
+  });
+  </script>
+</head>
+<body>
+
+<div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>WaveV2</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          Progress
+        </a>
+        <a href="feedback.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
+      </div>
+    </aside>
+  <div class="app-main">
+
+  <section class="section">
+    <div class="container container--narrow">
+
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <p class="section__eyebrow">Level Complete 🎉</p>
+        <h1>How was your experience?</h1>
+        <p class="text-muted mt-4">
+          You've completed <strong id="level-name">this level</strong>!
+          Please take a moment to share your feedback — it helps us improve.
+        </p>
+      </div>
+
+      <!-- Survey form -->
+      <div class="survey card">
+
+        <!-- Q1: Overall satisfaction -->
+        <div class="survey__question">
+          <p class="survey__q-text">1. How satisfied are you with this level overall?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Satisfaction rating">
+            <label class="rating-option">
+              <input type="radio" name="q1" value="1" /> 1 — Poor
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="2" /> 2 — Fair
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="3" /> 3 — Good
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="4" /> 4 — Very Good
+            </label>
+            <label class="rating-option">
+              <input type="radio" name="q1" value="5" /> 5 — Excellent
+            </label>
+          </div>
+        </div>
+
+        <!-- Q2: Content clarity -->
+        <div class="survey__question">
+          <p class="survey__q-text">2. How clear were the sign images and video demonstrations?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Content clarity rating">
+            <label class="rating-option"><input type="radio" name="q2" value="1" /> 1 — Very Unclear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="2" /> 2 — Unclear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="3" /> 3 — Neutral</label>
+            <label class="rating-option"><input type="radio" name="q2" value="4" /> 4 — Clear</label>
+            <label class="rating-option"><input type="radio" name="q2" value="5" /> 5 — Very Clear</label>
+          </div>
+        </div>
+
+        <!-- Q3: Difficulty -->
+        <div class="survey__question">
+          <p class="survey__q-text">3. How would you rate the difficulty of this level?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Difficulty rating">
+            <label class="rating-option"><input type="radio" name="q3" value="too_easy" /> Too Easy</label>
+            <label class="rating-option"><input type="radio" name="q3" value="just_right" /> Just Right</label>
+            <label class="rating-option"><input type="radio" name="q3" value="too_hard" /> Too Hard</label>
+          </div>
+        </div>
+
+        <!-- Q4: Would recommend -->
+        <div class="survey__question">
+          <p class="survey__q-text">4. Would you recommend LinguaWave to someone learning ASL?</p>
+          <div class="rating-group" role="radiogroup" aria-label="Recommend rating">
+            <label class="rating-option"><input type="radio" name="q4" value="yes" /> Yes</label>
+            <label class="rating-option"><input type="radio" name="q4" value="maybe" /> Maybe</label>
+            <label class="rating-option"><input type="radio" name="q4" value="no" /> No</label>
+          </div>
+        </div>
+
+        <!-- Q5: Open text -->
+        <div class="survey__question">
+          <label class="survey__q-text" for="q5-text">
+            5. Any additional comments or suggestions? (optional)
+          </label>
+          <textarea
+            id="q5-text"
+            name="q5"
+            class="form-input"
+            rows="4"
+            placeholder="Share your thoughts…"
+          ></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-8">
+          <button
+            class="btn btn--primary btn--full btn--lg"
+            id="btn-submit-survey"
+            onclick="submitSurvey()"
+          >
+            Submit Feedback & Continue
+          </button>
+        </div>
+
+        <!-- Skip option -->
+        <div class="text-center mt-4">
+          <a href="v2-dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
+            Skip for now →
+          </a>
+        </div>
+
+      </div><!-- /survey card -->
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
+  </footer>
+
+  <script src="../../js/main.js"></script>
+  <script src="../../js/feedback.js"></script>
+  </div><!-- /.app-main -->
+</div><!-- /.app-shell -->
+
+</body>
+</html>

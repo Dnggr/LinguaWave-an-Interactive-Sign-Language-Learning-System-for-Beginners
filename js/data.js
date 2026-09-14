@@ -8,7 +8,7 @@
  *            this file for real Firestore reads later is a drop-in
  *            replacement, not a rewrite.
  *
- * CONNECTS : js/lesson.js reads SIGNS (via window.LWData.getSign) to
+ * CONNECTS : js/camera-practice.js reads SIGNS (via window.LWData.getSign) to
  *            populate the left-hand content panel (title, description,
  *            tips, image) for whichever letter is in the ?sign= param,
  *            and reads CATEGORIES (via getCategorySigns / getCategory)
@@ -357,7 +357,7 @@ const UNITS = [
 /**
  * CATEGORY_GROUPS — purely presentational chapter layer over UNITS.
  * Twelve named chapters mirroring the syllabus table (same grouping
- * used by LinguaWaveV2's own UNITS_V2/CATEGORY_GROUPS_V2 fork, minus
+ * used by LinguaWave's own UNITS_V2/CATEGORY_GROUPS_V2 fork, minus
  * the two units V1 doesn't have: 'fingerspell_name' — V1 has no
  * fingerspelling unit, so 'asl_foundations' is alphabet+numbers only —
  * and 'basic_phrases'/'phrasebook', both removed from V1's UNITS

@@ -25,17 +25,17 @@
  *
  * CONNECTS : Loaded as a plain <script> (not a module) on every page
  *            that needs it, AFTER js/data.js:
- *              LinguaWaveV2/pages/lesson.html, pages/quiz.html
+ *              pages/camera-practice.html, pages/quiz.html
  *              (V1 pages/learn.html, pages/dashboard.html removed —
- *              see the V1-removal pass; V2 equivalents don't use
+ *              see the V1-removal pass; equivalents don't use
  *              window.LWProgress)
- *            Read by: js/lesson.js (records practice), js/quiz.js
+ *            Read by: js/camera-practice.js (records practice), js/quiz.js
  *            (records assessment results, computes lock state),
  *            js/learn.js (lock icons / CTA), js/dashboard.js (stats).
  *            PUBLIC API SHAPE IS UNCHANGED from pre-Phase-3 — every
  *            function name/signature below is identical to before,
  *            so js/learn.js, js/quiz.js, js/dashboard.js, and
- *            js/lesson.js all keep working with zero edits (Phase 4/5/6
+ *            js/camera-practice.js all keep working with zero edits (Phase 4/5/6
  *            haven't touched those files yet — see AI_MEMORY.md /
  *            PIVOT_CHECKLIST.md header rule about not touching them
  *            out of turn). Only the internals changed.
@@ -214,7 +214,7 @@ async function hydrateStore() {
   /** Mark a sign as practiced (viewed / attempted in lesson.html). */
   function recordSignPracticed(level, category, signId) {
     // NOTE: `level` is accepted (unused internally) purely so every
-    // existing call site — js/lesson.js's recordSignPracticed(level,
+    // existing call site — js/camera-practice.js's recordSignPracticed(level,
     // category, sign) — keeps working unchanged. Category ids are
     // unique app-wide (confirmed via data.js CATEGORIES), so storage
     // itself no longer needs the level layer. See file header.

@@ -3,8 +3,8 @@
   ─────────────────────────────────────────────────────────────────
   PURPOSE  : Styles for the live camera feed, skeleton canvas overlay,
              detection readout, assessment prompt, and completion overlay
-             added to pages/lesson.html during the motion-detection migration.
-  CONNECTS : pages/lesson.html (loaded alongside css/lesson.css)
+             added to pages/camera-practice.html during the motion-detection migration.
+  CONNECTS : pages/camera-practice.html (loaded alongside css/lesson.css)
   ─────────────────────────────────────────────────────────────────
 
   FIX — Camera zoom:

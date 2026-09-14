@@ -3,7 +3,7 @@
   ─────────────────────────────────────────────────────────────────
   PURPOSE  : Draws the hand skeleton overlay on the <canvas> element
              in lesson.html. Only handles drawing — no detection logic.
-  CONNECTS : Imported by js/lesson.js.
+  CONNECTS : Imported by js/camera-practice.js.
   MIGRATED : Ported from system_with_motion_detection/js/ui/renderer.js
   ─────────────────────────────────────────────────────────────────
 
