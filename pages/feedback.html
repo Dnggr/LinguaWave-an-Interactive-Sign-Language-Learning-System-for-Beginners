@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,18 +39,18 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Feedback — LinguaWave V2</title>
+  <title>Feedback — LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/feedback.css" />
   <link rel="stylesheet" href="../css/app.css" />
 
-  <script type="module" src="../../js/auth.js"></script>
-  <script src="../../js/theme.js" defer></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
-    LWAuth.requireAuth('../../index.html');
+    LWAuth.requireAuth('../index.html');
   });
   </script>
 </head>
@@ -57,7 +58,7 @@
 
 <div class="app-shell">
     <aside class="app-sidebar">
-      <a href="v2-dashboard.html" class="app-sidebar__logo">Lingua<span>WaveV2</span></a>
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
       <nav class="app-sidebar__nav">
         <a href="dashboard.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
@@ -88,7 +89,7 @@
             <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </span>
         </button>
-        <a href="#" class="btn btn--ghost btn--sm" data-logout="../../index.html">Log out</a>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
     </aside>
   <div class="app-main">
@@ -190,7 +191,7 @@
 
         <!-- Skip option -->
         <div class="text-center mt-4">
-          <a href="v2-dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
+          <a href="dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
             Skip for now →
           </a>
         </div>
@@ -203,8 +204,8 @@
     <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
   </footer>
 
-  <script src="../../js/main.js"></script>
-  <script src="../../js/feedback.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/feedback.js"></script>
   </div><!-- /.app-main -->
 </div><!-- /.app-shell -->
 

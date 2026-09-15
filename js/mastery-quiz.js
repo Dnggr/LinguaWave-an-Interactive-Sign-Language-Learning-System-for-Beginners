@@ -84,6 +84,14 @@ const PASS_THRESHOLD = 0.8; // unchanged from V1's pages/quiz.js — same master
 // after a correct answer. Sits inside that stated range.
 const AUTO_ADVANCE_DELAY_MS = 1500;
 
+// OPTIMISTIC-PAINT FIX — set true the moment the learner submits their
+// first real answer (see handleAnswer()). initPage() reads this after
+// the background Firestore sync resolves to decide whether it's still
+// safe to reconcile a possibly-different hearts count into a
+// re-render — see that function's own comment for why "mid-attempt"
+// specifically has to be guarded against here, unlike js/lesson.js.
+let quizAnswerStarted = false;
+
 function getMissionParam() {
   const params = new URLSearchParams(window.location.search);
   return params.get('mission');
@@ -218,7 +226,10 @@ function renderNotFound() {
 }
 
 function renderNotSampledYet(mission) {
-  const v1Url = `../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+  // V1-removal pass: pages/quiz.html (the "classic" fallback this screen
+  // used to offer) is deleted — every real categoryGroup is now in
+  // SAMPLE_CATEGORY_GROUPS, so this branch is defensive-only in practice.
+  // No V1 link to fall back to anymore; just send them back to the mission.
   document.getElementById('mq-content').innerHTML = `
     <div class="note-banner">
       This sample build of the Mastery Quiz now covers all 12 chapters. "${escapeHtml(mission.title)}"
@@ -226,7 +237,6 @@ function renderNotSampledYet(mission) {
       SAMPLE_CATEGORY_GROUPS.
     </div>
     <div class="lesson-actions">
-      <a href="${v1Url}" class="btn btn--primary btn--lg">Take the classic Mastery Quiz instead</a>
       <a href="mission-overview.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
     </div>
   `;
@@ -305,6 +315,16 @@ function renderQuestion(state) {
 // no incorrect-feedback card, no Continue, no next question — and
 // the same out-of-hearts screen used by the pre-quiz gate takes over.
 function handleAnswer(state, chosenSignId) {
+  // OPTIMISTIC-PAINT FIX — flips true on the FIRST real answer of this
+  // attempt. initPage() below checks this before reconciling a delayed
+  // Firestore sync into a re-render: once an answer's in and a heart
+  // may already be spent for real, re-rendering the entry screen out
+  // from under the learner would be actively destructive (wrong
+  // question index, a hearts count that forgets what was just spent),
+  // not just a cosmetic flicker. Never reset back to false — one
+  // sync-triggered reconcile check per page load is all that's needed.
+  quizAnswerStarted = true;
+
   const q = state.questions[state.currentIndex];
   const correct = chosenSignId === q.correct;
 
@@ -442,17 +462,36 @@ function renderSummary(state, result) {
 
 /* ── Entry ─────────────────────────────────────────────────────── */
 
+// Renders whichever pre-quiz-or-quiz screen the CURRENT (possibly not
+// yet synced) hearts count calls for: out-of-hearts, "no signs to
+// quiz," or question 1. Split out of initPage() so it can be called
+// twice — once optimistically, once again after sync if that turns
+// out to disagree — without duplicating the hearts-gate logic.
+// buildQuizQuestions() shuffles deterministically off mission/sign
+// data (not off anything sync-sensitive), so calling it again after
+// sync produces the identical question set/order, not a different one.
+function renderQuizEntry(mission) {
+  const heartsState = window.LWMissions.getHeartsState();
+  if (heartsState.hearts <= 0) {
+    renderOutOfHearts(mission, heartsState);
+    return;
+  }
+
+  const questions = buildQuizQuestions(mission);
+  if (!questions.length) {
+    document.getElementById('mq-content').innerHTML = `<p class="text-muted">No signs found to quiz for this mission.</p>`;
+    return;
+  }
+
+  renderQuestion({ mission, questions, currentIndex: 0, numCorrect: 0 });
+}
+
 async function initPage() {
   const el = document.getElementById('mq-content');
   if (!window.LWData || !window.LWMissions) {
     el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js and js/missions.js both loaded.</p>`;
     return;
   }
-
-  // Reconcile cross-device Firestore progress before checking hearts
-  // — otherwise a stale local hearts count could wrongly gate/allow
-  // the quiz attempt.
-  await window.LWMissions.whenMissionsSyncReady();
 
   const categoryId = getMissionParam();
   const mission = categoryId ? window.LWMissions.getMissionForCategory(categoryId) : null;
@@ -463,24 +502,31 @@ async function initPage() {
 
   document.title = `Mastery Quiz — ${mission.title} — LinguaWave (preview)`;
 
+  // Not sync-sensitive — categoryGroup is static mission data, not
+  // progress — so this gate is checked once, before the optimistic
+  // paint below, same as before this fix.
   if (SAMPLE_CATEGORY_GROUPS.indexOf(mission.categoryGroup) === -1) {
     renderNotSampledYet(mission);
     return;
   }
 
-  const heartsState = window.LWMissions.getHeartsState();
-  if (heartsState.hearts <= 0) {
-    renderOutOfHearts(mission, heartsState);
-    return;
-  }
+  // OPTIMISTIC-PAINT FIX (replaces the old "Loading your Mastery
+  // Quiz…" blocking-await placeholder) — paints immediately from
+  // whatever hearts count is in localStorage right now, then
+  // reconciles the cross-device Firestore sync in the background.
+  // Narrower than js/lesson.js's equivalent fix on purpose: this page
+  // has one real destructive edge this file's own prior comment
+  // already called out — once the learner submits an answer, a heart
+  // may already be spent for real, and re-rendering the entry screen
+  // out from under that would be actively wrong (not just a flicker).
+  // quizAnswerStarted (flipped in handleAnswer()) guards exactly that
+  // case: reconcile only fires if the learner hasn't answered anything
+  // yet on this attempt. If the optimistic and synced hearts counts
+  // agree — the common case — the second render is skipped entirely.
+  renderQuizEntry(mission);
 
-  const questions = buildQuizQuestions(mission);
-  if (!questions.length) {
-    el.innerHTML = `<p class="text-muted">No signs found to quiz for this mission.</p>`;
-    return;
-  }
-
-  renderQuestion({ mission, questions, currentIndex: 0, numCorrect: 0 });
+  await window.LWMissions.whenMissionsSyncReady();
+  if (!quizAnswerStarted) renderQuizEntry(mission);
 }
 
 if (document.readyState === 'loading') {

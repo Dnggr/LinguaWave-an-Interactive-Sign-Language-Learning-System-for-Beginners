@@ -96,6 +96,28 @@ function isSignLearned(mission, signId) {
   return window.LWMissions.isItemComplete(mission, index, mission.items[index]);
 }
 
+// SEQUENTIAL SIGN GATING (this revision) — a mission being unlocked
+// (chapter-wise) doesn't mean every one of its signs is reachable yet:
+// a sign only opens up once every EARLIER sign in this same mission's
+// own item order (the exact list `signs` — signsInMission(mission)'s
+// output — walks) has itself been learned. Already-learned signs are
+// always accessible (so revisiting a finished sign to review it never
+// gets blocked by this), and the very first sign — or any signId this
+// mission doesn't actually track an order position for (idx === -1,
+// shouldn't happen in practice but not worth a hard failure over) —
+// is never gated, since there's nothing earlier to require.
+// js/camera-practice.js's own isSignAccessible() applies this same
+// rule against the identical mission.items order (not a re-derived
+// approximation of it), so a chip here and that page's own
+// boot()/course-sidebar guard never disagree about which signs count
+// as "pending".
+function isSignAccessible(mission, signs, signId) {
+  if (isSignLearned(mission, signId)) return true;
+  const idx = signs.indexOf(signId);
+  if (idx <= 0) return true;
+  return signs.slice(0, idx).every((prevId) => isSignLearned(mission, prevId));
+}
+
 // EXPLICITLY an estimate, never shown as an exact figure — per the
 // guide's Mission Overview spec. Rough per-item-kind time budget:
 // LESSON ~1 min (new content), BOOSTER ~0.5 min (quick reinforcement),
@@ -161,21 +183,59 @@ function render(mission, status) {
   const el = document.getElementById('mo-content');
   const meta = statusMeta(status);
   const locked = status === 'locked';
-  // DICTIONARY LINK — chips link straight to lesson.html (now-owned,
-  // moved from pages/camera-practice.html into pages/), which IS
-  // the Dictionary Section — no separate dictionary.html page.
-  // Every chip links, learned or not: lesson.html is what decides
-  // lock/unlock (same isSignLearned() check this chip row already
-  // uses for its own green "learned" state), so clicking a still-
-  // locked chip just takes the learner to that sign showing it
-  // locked. `level`+`category`+`sign` together (not sign alone) let
-  // lesson.html find the exact entry even if a signId is reused
-  // across missions/categories.
-  const chips = signsInMission(mission)
+  // DICTIONARY LINK — chips link straight to camera-practice.html,
+  // which is what actually decides the per-sign learned/hover state
+  // (isSignLearned() below, the same check camera-practice.html's own
+  // sync back into window.LWMissions relies on — see
+  // markSignPracticedBridge() in js/missions.js). `level`+`category`+
+  // `sign` together (not sign alone) let camera-practice.html find the
+  // exact entry even if a signId is reused across missions/categories.
+  //
+  // MISSION LOCK SYNC (this revision) — a chip only gets a real
+  // `href` when `!locked`. While the whole mission is locked (this
+  // function's own `locked` const, from window.LWMissions.getMissionStatus()
+  // — chapter gating, see js/missions.js's "Chapter gating" block
+  // comment), every one of its chips renders as a plain, non-
+  // navigable <span> instead of an <a>. That's deliberate, not an
+  // oversight: previously EVERY chip linked out regardless of lock
+  // state, so a learner could reach a still-locked mission's camera
+  // practice simply by clicking its dictionary chips, well before the
+  // mission's own "Start Mission" button (already correctly hidden
+  // while locked, a few lines below) would ever let them in.
+  //
+  // PENDING SIGN GATING (this revision) — even once the mission
+  // itself is unlocked, a chip for a sign the learner hasn't reached
+  // yet (isSignAccessible() above — every earlier sign in this
+  // mission's own order must be learned first) ALSO renders as a
+  // non-navigable <span>, distinguished from a fully-locked chip by
+  // its own `sign-chip--pending` class/title so the two read
+  // differently at a glance (css/app.css) while behaving identically:
+  // hoverable, not clickable.
+  //
+  // Either <span> case still picks up `.sign-chip`/`.sign-chip--locked`/
+  // `.sign-chip--pending`'s :hover styling in css/app.css — so the
+  // chip stays visibly hoverable — but has no href to navigate to and
+  // isn't focusable/clickable at all, which is the actual enforcement
+  // here (not just a cursor change). The cursor itself is handled in
+  // CSS too: both locked variants override the base chip's pointer
+  // cursor back to the plain arrow, so hovering one never visually
+  // promises a click that wouldn't do anything.
+  // camera-practice.html's own boot() guard (window.LWMissions.getMissionStatus()
+  // AND isSignAccessible()) is the second line of defense against a
+  // direct URL bypassing either of these chip-level blocks.
+  const signs = signsInMission(mission);
+  const chips = signs
     .map((id) => {
       const learned = isSignLearned(mission, id);
+      const label = signTitle(mission, id);
+      if (locked) {
+        return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked — finish every mission in the current chapter to unlock this one">${label}</span>`;
+      }
+      if (!isSignAccessible(mission, signs, id)) {
+        return `<span class="sign-chip sign-chip--pending" aria-disabled="true" title="Locked — finish the earlier signs in this mission first">${label}</span>`;
+      }
       const dictUrl = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}&sign=${encodeURIComponent(id)}`;
-      return `<a href="${dictUrl}" class="sign-chip${learned ? ' sign-chip--learned' : ''}">${signTitle(mission, id)}</a>`;
+      return `<a href="${dictUrl}" class="sign-chip${learned ? ' sign-chip--learned' : ''}">${label}</a>`;
     })
     .join('');
   // CHANGED — used to link straight to ../pages/camera-practice.html (V1).
@@ -187,18 +247,15 @@ function render(mission, status) {
   // explicit "Practice with your camera" link on each Watch stage.
   const lessonUrl = `lesson.html?mission=${encodeURIComponent(mission.category)}`;
   // NEW — ALL 12 chapters (see SAMPLE_MASTERY_QUIZ_CHAPTERS above)
-  // now route to the real mastery-quiz.html sample instead of V1's
-  // pages/quiz.html; see that page's own file header for the exact
-  // scope and how to widen it. The V1 pages/quiz.html branch below is
-  // now a defensive fallback only — every real mission's
-  // categoryGroup is in the sample — still spending the heart on
-  // attempt START if it's ever reached (deliberately left alone this
-  // revision — see js/missions.js's file header "HEART TIMING FIX,
-  //-NATIVE QUIZ ONLY").
+  // now route to the real mastery-quiz.html sample.
+  // V1-removal pass: pages/quiz.html is deleted. The `false` branch
+  // below is unreachable in practice (every real mission's categoryGroup
+  // is in the sample) but kept defensive rather than removing
+  // usesNativeQuiz, which other logic in this function still reads.
   const usesNativeQuiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
   const quizUrl = usesNativeQuiz
     ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
-    : `../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`;
   const pct = Math.round(window.LWMissions.getMissionProgress(mission) * 100);
   const heartsState = window.LWMissions.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;

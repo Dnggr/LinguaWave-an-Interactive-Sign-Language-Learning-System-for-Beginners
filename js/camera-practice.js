@@ -516,26 +516,25 @@ function showQuickCheck() {
         // red highlight + feedback line above — no takeover, so a
         // miss never feels like a bigger event than a hit.
         if (correct) showQuickCheckModal(q.signId);
-        // BUGFIX (this session): a correct Quick Check answer is a real
-        // engagement signal — same bar setupNavButtons()'s
-        // markCurrentSignPracticed() already uses for Prev/Next/Finish
-        // — so record it here too. Previously this handler wrote
-        // nothing, so a learner who answered correctly and then left
-        // via the sidebar's plain <a href> course-nav links (which
-        // navigate directly and never call markCurrentSignPracticed())
-        // lost that progress entirely; it only persisted if they
-        // additionally clicked Prev/Next/Finish first. recordSignPracticed()
-        // just overwrites a practicedAt timestamp, so this can't
-        // double-record or conflict with that later Prev/Next call —
-        // still skips the name drill for the same reason
-        // markCurrentSignPracticed() does (see its comment).
-        if (correct && !isNameDrill) {
-          window.LWProgress?.recordSignPracticed?.(level, category, sign);
-          // BRIDGE — also move the matching mission's own LESSON
-          // item, if this category has a live mission. See the
-          // block comment on markSignPracticedBridge() in missions.js.
-          window.LWMissions?.markSignPracticedBridge?.(category, sign);
-        }
+        // REVERTED (this session) — the previous "BUGFIX" here called
+        // recordSignPracticed()/markSignPracticedBridge() directly from
+        // this click handler, so a correct answer wrote mission
+        // progress the instant it was clicked — while the learner was
+        // still sitting on this sign's slide, before Prev/Next/Finish.
+        // That gave the app two independent writers for the same
+        // progress (this handler AND markCurrentSignPracticed() in
+        // setupNavButtons()), so the stored progress could advance
+        // ahead of what the page itself was showing (sidebar
+        // checkmarks, mission %) until the next navigation caught up.
+        // Quick Check is meant to be a non-blocking, zero-stakes recall
+        // check (see the block comment above buildQuickCheckQuestion())
+        // — it no longer writes progress at all. The real gap this was
+        // patching (leaving via a sidebar <a href> link never recorded
+        // the sign as practiced) is fixed properly below instead: a
+        // single delegated listener on #course-sidebar now calls the
+        // SAME markCurrentSignPracticed() Prev/Next/Finish use, right
+        // before any sidebar link is followed. See setupNavButtons()
+        // and wireSidebarProgressCapture() near renderCourseSidebar().
       };
     });
   }
@@ -833,28 +832,28 @@ let lastHandCount  = 0;
 // regardless of which link the learner clicks, so this needed zero
 // new cleanup wiring.
 //
-// Read-only: never calls any window.LWProgress record*() function.
-// Locked/current/done here is computed with the exact same
-// window.LWData / window.LWProgress calls js/learn.js's trail and
-// js/dashboard.js's unit rows already use (getUnits, getCategoriesForUnit,
-// isCategoryUnlocked, getCategoryProgress, getCategorySigns) — copied
-// call-for-call rather than re-derived, specifically so this can't
-// silently disagree with either of those screens about what's locked.
+// Read-only: never calls any window.LWProgress/window.LWMissions
+// record/mark*() function. Locked (unit-level) is still computed with
+// the same window.LWProgress.isCategoryUnlocked() call js/learn.js's
+// trail and js/dashboard.js's unit rows use — unchanged.
 //
-// One deliberate difference from dashboard.js's per-unit percentage:
-// dashboard.js's unit rows show "X/Y category assessments passed"
-// (assessment-gated — STALENESS FIX, PIVOT_CHECKLIST.md §12 session:
-// this comment previously said "X/Y categories passed", which was
-// already out of date by the time the §10 dashboard session flagged
-// it as stale documentation in a file outside its own scope; now
-// corrected to match dashboard.js's actual current string verbatim).
-// This sidebar instead shows practiced-signs / total-signs
-// within the unit (same finer-grained formula renderOverallProgress()
-// uses for the single dashboard-wide percentage) — a smoother number
-// that updates sign-by-sign instead of jumping only when a whole
-// category's assessment is passed. Flagging this as its own metric,
-// not a copy of dashboard's unit-row percentage, in case a literal
-// match to that number is wanted instead.
+// MISSION PROGRESS SYNC (this revision) — done/percentage, on the
+// other hand, used to come from that same window.LWProgress store
+// (getCategoryProgress()'s own "signs practiced via camera" record),
+// which is a DIFFERENT store from the one mission-overview.html reads
+// (window.LWMissions — chapter-gated LESSON/BOOSTER/PRACTICE/QUIZ
+// items actually marked complete). The two could and did disagree —
+// e.g. this sidebar showing "86%" for a category whose own Mission
+// Overview page reported "24% complete". Every ✔/count/percentage in
+// this sidebar now reads window.LWMissions instead (see
+// missionForSidebarCategory()/isSignLearnedInMission(), just below),
+// specifically so it can't silently disagree with the mission page a
+// learner just came from. The per-unit "X%" badge sums
+// doneItems/totalItems across every live category's own mission —
+// the EXACT same fraction mission-overview.js's getMissionProgress()
+// computes for a single-category unit, not a re-derived sign-only
+// approximation of it — so a single-category unit's badge here and
+// that category's own mission page always show the identical number.
 
 // CHANGED (this session — new lesson-plan pivot) — copied verbatim
 // from js/learn.js's own (also just-updated) UNIT_ICONS/CATEGORY_ICONS,
@@ -918,11 +917,111 @@ function currentUnitOrder() {
   return window.LWData?.getCategory?.(level, category)?.unit ?? null;
 }
 
-function sidebarSignRow(cat, signId, progress) {
+// MISSION PROGRESS SYNC (this revision) — the course sidebar used to
+// compute every checkmark and every X%/X-of-Y count from V1's
+// window.LWProgress (recordSignPracticed()'s own separate store,
+// "every sign ever practiced via camera"). That's a real, different
+// number from the SAME category's Mission Overview page, which reads
+// window.LWMissions (getMissionProgress() — chapter-gated LESSON/
+// BOOSTER/PRACTICE/QUIZ items actually marked complete). The two
+// stores were tracking genuinely different things, so a category
+// could show e.g. "86%" here while mission-overview.html reported
+// "24% complete" for that identical mission. The sidebar now reads
+// window.LWMissions instead, so its numbers agree with the mission
+// page a learner just came from (or is about to jump to).
+//
+// missionForSidebarCategory() returns null for any categoryId with
+// no live mission yet (comingSoon ids, 'fingerspell_name', Phrasebook's
+// reference categories) — every caller below already treats a null
+// mission the same as "nothing done", matching the sidebar's old
+// zero-progress fallback for those same ids.
+function missionForSidebarCategory(categoryId) {
+  return window.LWMissions?.getMissionForCategory?.(categoryId) ?? null;
+}
+
+// A sign counts as "done" in the sidebar once its own LESSON item is
+// complete — the exact same rule mission-overview.js's isSignLearned()
+// uses for a chip's green state, so a ✔ here and a green chip there
+// never disagree about the same sign.
+function isSignLearnedInMission(mission, signId) {
+  if (!mission) return false;
+  const index = mission.items.findIndex((item) => item.kind === 'LESSON' && item.signId === signId);
+  if (index === -1) return false;
+  return window.LWMissions.isItemComplete(mission, index, mission.items[index]);
+}
+
+// Unique sign ids, in the order they first appear in the mission's
+// own item sequence — the exact same walk mission-overview.js's
+// signsInMission() does, kept as its own small local copy per this
+// file's existing pattern of re-deriving small pieces of shared logic
+// (see e.g. SAMPLE_MASTERY_QUIZ_CHAPTERS's own header note elsewhere
+// in this codebase for why). This is deliberately NOT the same array
+// as this page's own `signOrder` (window.LWData.getCategorySigns() —
+// V1 content) — gating below needs the identical order the mission's
+// own completedItemIds/isItemComplete() actually track against, not
+// V1's, so it can't silently disagree with mission-overview.js about
+// which sign comes "before" which.
+function missionSignOrder(mission) {
+  if (!mission) return [];
+  const seen = new Set();
+  const out = [];
+  mission.items.forEach((item) => {
+    if (item.signId && !seen.has(item.signId)) {
+      seen.add(item.signId);
+      out.push(item.signId);
+    }
+  });
+  return out;
+}
+
+// SEQUENTIAL SIGN GATING (this revision) — mirrors mission-overview.js's
+// own isSignAccessible() call-for-call, against the identical
+// mission.items order (missionSignOrder() above), so this page's own
+// boot()-guard/course-sidebar and that page's chips never disagree
+// about which signs count as "pending". A sign already learned is
+// always accessible; the mission's first sign (or any signId this
+// mission doesn't track an order position for) is never gated.
+function isSignAccessible(mission, signId) {
+  if (!mission) return true; // no live mission for this category -> nothing to gate
+  if (isSignLearnedInMission(mission, signId)) return true;
+  const order = missionSignOrder(mission);
+  const idx = order.indexOf(signId);
+  if (idx <= 0) return true;
+  return order.slice(0, idx).every((prevId) => isSignLearnedInMission(mission, prevId));
+}
+
+function sidebarSignRow(cat, signId, mission, missionLocked) {
   const signData = window.LWData?.getSign?.(cat.level, signId);
   const label = signData?.title ?? signId;
-  const done = !!progress.signs[signId];
+  const done = isSignLearnedInMission(mission, signId);
   const isCurrent = !isNameDrill && cat.id === category && signId === sign;
+
+  // LOCKED/PENDING SIGN GATING (this revision) — a row only renders
+  // as a real `<a href>` once BOTH gates below pass: the category's
+  // own mission isn't chapter-locked (`missionLocked`, passed down
+  // from sidebarCategoryBlock()), AND this specific sign is reachable
+  // in the mission's own order (isSignAccessible() above). Either
+  // failure renders a plain, non-navigable <span> instead — same
+  // "hoverable, not clickable" split as mission-overview.js's own
+  // `.sign-chip--locked`/`.sign-chip--pending` chips, and deliberately
+  // labeled with the same two distinct reasons/classes so the two
+  // pages read consistently. This is what actually stops a locked/
+  // pending sign from being reachable via the sidebar — this page's
+  // own boot() guard (window.LWMissions.getMissionStatus() +
+  // isSignAccessible()) is the matching direct-URL backstop.
+  const accessible = !missionLocked && isSignAccessible(mission, signId);
+  if (!accessible) {
+    const pending = !missionLocked; // mission is open, just this sign isn't reached yet
+    const reason = pending
+      ? 'Locked — finish the earlier signs in this mission first'
+      : 'Locked — finish every mission in the current chapter to unlock this one';
+    const stateClass = pending ? ' course-sidebar__sign--pending' : ' course-sidebar__sign--locked';
+    return `<span class="course-sidebar__sign${stateClass}" aria-disabled="true" title="${reason}">` +
+      `<span class="course-sidebar__sign-icon">🔒</span>` +
+      `<span class="course-sidebar__sign-label">${escapeHtml(label)}</span>` +
+    `</span>`;
+  }
+
   const href = `camera-practice.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}`;
   const stateClass = isCurrent ? ' course-sidebar__sign--current' : (done ? ' course-sidebar__sign--done' : '');
   const icon = isCurrent ? '▶' : (done ? '✔' : '○');
@@ -945,18 +1044,40 @@ function sidebarSignRow(cat, signId, progress) {
 function sidebarCategoryBlock(cat, opts) {
   const signs = window.LWData.getCategorySigns(cat.level, cat.id);
   if (signs.length === 0) return '';
-  const progress = window.LWProgress?.getCategoryProgress?.(cat.level, cat.id) ?? { signs: {}, assessment: null };
+  const mission = missionForSidebarCategory(cat.id);
+  const missionLocked = !!mission
+    && window.LWMissions.getMissionStatus(mission, window.LWMissions.getAllMissions()) === 'locked';
 
   if (!opts.multiCategory) {
-    return signs.map(s => sidebarSignRow(cat, s, progress)).join('');
+    return signs.map(s => sidebarSignRow(cat, s, mission, missionLocked)).join('');
   }
 
-  const doneCount = signs.filter(s => !!progress.signs[s]).length;
+  // A chapter-locked category's head also shouldn't jump straight
+  // into a sign the way the normal `<a>` below does — render it the
+  // same non-navigable way the individual rows render while
+  // `missionLocked`, rather than linking to a sign boot() would just
+  // bounce the learner straight back out of anyway.
+  if (missionLocked) {
+    const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
+    return `<div class="course-sidebar__cat">` +
+      `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked — finish every mission in the current chapter to unlock this one">` +
+        `<span class="course-sidebar__cat-icon">${icon}</span>` +
+        `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
+        `<span class="course-sidebar__cat-count">🔒</span>` +
+      `</span>` +
+    `</div>`;
+  }
+
+  const doneCount = signs.filter(s => isSignLearnedInMission(mission, s)).length;
   const isCurrentCat = !isNameDrill && cat.id === category;
   const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
-  const targetSign = signs.find(s => !progress.signs[s]) || signs[0];
+  // Jump target is the first sign that's both unlearned AND actually
+  // reachable — not just the first unlearned one — so this link never
+  // lands on a sign this same render pass would itself show as
+  // pending underneath it.
+  const targetSign = signs.find(s => !isSignLearnedInMission(mission, s) && isSignAccessible(mission, s)) || signs[0];
   const catHref = `camera-practice.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(targetSign)}`;
-  const rows = isCurrentCat ? signs.map(s => sidebarSignRow(cat, s, progress)).join('') : '';
+  const rows = isCurrentCat ? signs.map(s => sidebarSignRow(cat, s, mission, missionLocked)).join('') : '';
 
   return `<div class="course-sidebar__cat${isCurrentCat ? ' course-sidebar__cat--open' : ''}">` +
     `<a class="course-sidebar__cat-head" href="${catHref}">` +
@@ -985,9 +1106,40 @@ function showSidebarUnavailable(el, reason) {
   el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="learn.html">Go to Learn</a> or reload.</div>`;
 }
 
+// NEW (this session) — single delegated listener that makes
+// markCurrentSignPracticed() (setupNavButtons(), module scope above)
+// fire for EVERY way a learner can leave the current sign, not just
+// the Prev/Next/Finish buttons. #course-sidebar's rows are plain
+// `<a href>` navigations (sidebarSignRow()/renderCourseSidebar()
+// above) — clicking one leaves this page directly without ever
+// touching btnPrev/btnNext, so without this, a sign a learner only
+// reached via a sidebar link (never clicked Next on) never got
+// recorded. This replaces the old fix for that same gap, which lived
+// in the Quick Check click handler instead (see the "REVERTED" block
+// comment above buildQuickCheckQuestion()'s handler) — that let Quick
+// Check race ahead of the visible page state; this doesn't, since it
+// only ever writes at the moment the learner actually clicks away.
+// Attached once per page load (guarded by the dataset flag below) —
+// #course-sidebar itself is never replaced, only its innerHTML is
+// re-rendered, so a listener on the container survives every
+// renderCourseSidebar() re-render via normal event delegation.
+function wireSidebarProgressCapture(el) {
+  if (!el || el.dataset.progressCaptureWired === 'true') return;
+  el.dataset.progressCaptureWired = 'true';
+  el.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (!link) return;
+    // Fires synchronously before the browser follows the link's
+    // normal href navigation — no preventDefault, nothing async, so
+    // it can't delay or interfere with the click itself.
+    markCurrentSignPracticed();
+  });
+}
+
 function renderCourseSidebar() {
   const el = document.getElementById('course-sidebar');
   if (!el) return;
+  wireSidebarProgressCapture(el);
   // Design pass, 2026-08-23: previously `if (!el || !window.LWData)
   // return;` — a missing LWData silently left whatever was already in
   // #course-sidebar (this session's new static "Loading course
@@ -1045,14 +1197,22 @@ function renderCourseSidebar() {
         `</div>`;
       }
 
-      let totalSigns = 0, doneSigns = 0;
+      // ITEM-based (not sign-based) on purpose — mission-overview.html's
+      // own "X% complete" is doneItems/totalItems across the mission's
+      // FULL item list (every sign's LESSON, plus BOOSTER/PRACTICE/QUIZ
+      // items, not just one LESSON item per sign). Summing the exact
+      // same numbers here, across every live category/mission in this
+      // unit, is what makes this badge agree with that page's own
+      // percentage instead of landing on some other, sign-only number
+      // that happens to be close but not equal.
+      let totalItems = 0, doneItems = 0;
       liveCats.forEach(c => {
-        const s = window.LWData.getCategorySigns(c.level, c.id);
-        const p = window.LWProgress?.getCategoryProgress?.(c.level, c.id) ?? { signs: {} };
-        totalSigns += s.length;
-        doneSigns  += s.filter(id => !!p.signs[id]).length;
+        const m = missionForSidebarCategory(c.id);
+        if (!m || !m.items.length) return;
+        totalItems += m.items.length;
+        doneItems  += m.items.filter((item, i) => window.LWMissions.isItemComplete(m, i, item)).length;
       });
-      const pct = totalSigns > 0 ? Math.round((doneSigns / totalSigns) * 100) : 0;
+      const pct = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
       const open = isCurrentUnit; // only the unit the learner is inside starts expanded
       const body = liveCats.map(c => sidebarCategoryBlock(c, { multiCategory: liveCats.length > 1 })).join('');
 
@@ -1189,6 +1349,58 @@ async function boot() {
     // content.
     window.location.replace(`learn.html?category=${encodeURIComponent(category)}`);
     return;
+  }
+
+  // MISSION LOCK SYNC (this revision) — the check above only knows
+  // V1's own, looser isCategoryUnlocked() model. It says nothing
+  // about window.LWMissions's real, chapter-based lock
+  // (isChapterUnlocked()/getMissionStatus() — see js/missions.js's
+  // "Chapter gating" block comment): a category can pass the check
+  // above while its Mission is still 'locked' because an earlier
+  // chapter isn't 100% done yet. Before this, that gap meant a
+  // learner could reach a still-locked mission's camera practice
+  // directly — either by typing the URL, or (before this revision)
+  // by clicking one of mission-overview.html's dictionary chips,
+  // which used to link out regardless of the mission's own lock
+  // state. mission-overview.js's chips for a locked mission no
+  // longer render as links at all (see render()'s `locked` branch
+  // there), so this is now purely the direct-URL backstop — same
+  // "closes the UI-level gap, not a security boundary" caveat as the
+  // check above. Guarded so a page with window.LWMissions absent (or
+  // a category/name-drill with no live mission at all — getMissionForCategory()
+  // returns null for those) simply skips this and falls through.
+  const lockedMission = window.LWMissions?.getMissionForCategory?.(category);
+  if (lockedMission) {
+    const allMissions = window.LWMissions.getAllMissions();
+    if (window.LWMissions.getMissionStatus(lockedMission, allMissions) === 'locked') {
+      window.LinguaWave?.showToast?.(
+        'This mission is locked — finish every mission in the current chapter first.',
+        'error'
+      );
+      window.location.replace(`mission-overview.html?mission=${encodeURIComponent(category)}`);
+      return;
+    }
+
+    // PENDING SIGN GUARD (this revision) — the mission can be
+    // unlocked as a whole while THIS particular sign still isn't
+    // reachable yet: isSignAccessible() (above) requires every
+    // earlier sign in the mission's own order to be learned first,
+    // the same rule mission-overview.js's chips (and this page's own
+    // course-sidebar rows, see renderCourseSidebar()) already enforce
+    // by simply not rendering a working link for a still-pending
+    // sign. This is the direct-URL backstop for that — same "closes
+    // the UI-level gap, not a security boundary" caveat as the two
+    // checks above it. The name drill is exempt: computeSignOrder()
+    // always gives it exactly one synthetic 'MY_NAME' entry, so it's
+    // never anything but the mission's own first (and only) sign.
+    if (!isNameDrill && !isSignAccessible(lockedMission, sign)) {
+      window.LinguaWave?.showToast?.(
+        "That sign isn't unlocked yet — finish the earlier ones in this mission first.",
+        'error'
+      );
+      window.location.replace(`mission-overview.html?mission=${encodeURIComponent(category)}`);
+      return;
+    }
   }
 
   // NEW — Rev4 Phase 2: totalSigns is always 1 for the name drill (see
@@ -1500,29 +1712,41 @@ function navUrl(targetSign) {
   return `camera-practice.html?level=${encodeURIComponent(level)}&category=${encodeURIComponent(category)}&sign=${encodeURIComponent(targetSign)}`;
 }
 
+// BUGFIX (this session, paired with the removed call in
+// updateLessonMeta() above): the single place recordSignPracticed()
+// now fires from. Still skips the name drill for the same reason
+// the old call site did (see that guard's comment) — this drill has
+// its own recordUnitAssessment() completion signal elsewhere.
+//
+// MOVED to module scope (this session) — was a closure private to
+// setupNavButtons(), so only Prev/Next/Finish could call it. Now
+// wireSidebarProgressCapture() (near renderCourseSidebar()) shares
+// this exact same function for sidebar-link exits, instead of a
+// second, independent write living in the Quick Check click handler.
+// One function, one behavior, every real exit path from a sign calls
+// it — no more risk of two writers disagreeing about when a sign
+// counts as "practiced."
+function markCurrentSignPracticed() {
+  if (!isNameDrill) {
+    window.LWProgress?.recordSignPracticed?.(level, category, sign);
+    // BRIDGE — see markSignPracticedBridge() comment in missions.js.
+    window.LWMissions?.markSignPracticedBridge?.(category, sign);
+  }
+}
+
 function setupNavButtons() {
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
-
-  // BUGFIX (this session, paired with the removed call in
-  // updateLessonMeta() above): the single place recordSignPracticed()
-  // now fires from. Still skips the name drill for the same reason
-  // the old call site did (see that guard's comment) — this drill has
-  // its own recordUnitAssessment() completion signal elsewhere.
-  function markCurrentSignPracticed() {
-    if (!isNameDrill) {
-      window.LWProgress?.recordSignPracticed?.(level, category, sign);
-      // BRIDGE — see markSignPracticedBridge() comment in missions.js.
-      window.LWMissions?.markSignPracticedBridge?.(category, sign);
-    }
-  }
 
   if (btnPrev) {
     if (signIdx <= 0) {
       btnPrev.setAttribute('disabled', '');
     } else {
+      // Pure navigation — no markCurrentSignPracticed() here. Moving
+      // to an adjacent, already-available sign shouldn't itself write
+      // progress; see the matching note on the "Next Sign" branch
+      // below for why.
       btnPrev.onclick = () => {
-        markCurrentSignPracticed();
         shutdown();
         window.location = navUrl(signOrder[signIdx - 1]);
       };
@@ -1548,19 +1772,89 @@ function setupNavButtons() {
     } else if (isLast) {
       // REV 3: the graded check is now the category assessment page,
       // not the in-lesson camera quiz (which is optional practice only).
+      // V1-removal pass: pages/quiz.html is deleted (all 12 chapters
+      // now use the native Mastery Quiz — see lesson.js/mission-overview.js's
+      // SAMPLE_MASTERY_QUIZ_CHAPTERS); route there instead, same-folder.
       btnNext.textContent = 'Finish → Category Assessment 📝';
       btnNext.onclick = () => {
         markCurrentSignPracticed();
         shutdown();
-        window.location = `../pages/quiz.html?level=${level}&category=${category}`;
+        window.location = `mastery-quiz.html?mission=${encodeURIComponent(category)}`;
       };
     } else {
-      btnNext.textContent = 'Next Sign →';
-      btnNext.onclick = () => {
-        markCurrentSignPracticed();
-        shutdown();
-        window.location = navUrl(signOrder[signIdx + 1]);
-      };
+      // CHANGED (this session) — two things changed on this branch:
+      //
+      // 1. Pure navigation — neither outcome below calls
+      //    markCurrentSignPracticed() any more. It used to fire
+      //    unconditionally, so a learner could rack up "practiced"
+      //    progress just by clicking through without watching or
+      //    engaging with a sign at all. Real progress is now only
+      //    recorded by an actual engagement signal — the Practice
+      //    Check camera round (see the quizSigns.forEach() block later
+      //    in this file) — or by "Finish → Category Assessment" above,
+      //    a genuine milestone (leaving the lesson for the graded
+      //    quiz), not just paging between signs.
+      //
+      // 2. "Next Sign →" only stays pure navigation when signOrder[signIdx+1]
+      //    is actually reachable in THIS mission right now. Two
+      //    separate ways that can fail, both checked below:
+      //
+      //    a) NOT TRACKED — the next sign in this page's own signOrder
+      //       (window.LWData.getCategorySigns() — data.js's full
+      //       content list) isn't in missionSignOrder(mission) at all
+      //       (missions.js's own, independently forked sign list —
+      //       see the block comment on missionSignOrder() above). E.g.
+      //       data.js's 'people' category has 14 signs (…, Boy, Girl,
+      //       Baby) while missions.js's copy only tracks 11 (…,
+      //       Student) — advancing signIdx+1 past Student would walk a
+      //       learner into content the mission has no LESSON item for
+      //       at all: no chip, no progress credit, a dead end.
+      //
+      //    b) PENDING — the next sign IS tracked, but isSignAccessible()
+      //       (the same sequential gate boot()'s own guard enforces,
+      //       and the exact thing (1) above just stopped auto-
+      //       satisfying) says it isn't reachable yet, because an
+      //       earlier sign in the mission's own order isn't marked
+      //       learned. This is now a REAL, common case post-(1): a
+      //       learner who pages through with plain Next/Next/Next and
+      //       never does a Practice Check never marks any LESSON item
+      //       complete, so the very next sign can be "pending" on the
+      //       very next click. Before this fix, clicking through
+      //       anyway would silently hand off to boot()'s own guard,
+      //       which redirects to Mission Overview with a toast — a
+      //       confusing dead end reached by clicking the button
+      //       literally labeled "Next." Caught here instead, before
+      //       the click ever fires a doomed navigation.
+      //
+      //    Either way, swap the button for a way back INTO the mission
+      //    instead of a navigation that can't actually succeed.
+      const nextSignId = signOrder[signIdx + 1];
+      const mission = missionForSidebarCategory(category);
+      const nextAvailable = !mission || (
+        missionSignOrder(mission).includes(nextSignId) &&
+        isSignAccessible(mission, nextSignId)
+      );
+      if (!nextAvailable) {
+        // lesson.html resumes at window.LWMissions.getDropOffIndex(mission)
+        // — the learner's real next incomplete step in the mission —
+        // not from scratch, so this genuinely continues them, it
+        // doesn't restart them. In the (b) PENDING case, that drop-off
+        // point is very likely the CURRENT sign itself (its own LESSON
+        // item is exactly what's missing) — so this hands them
+        // straight back into the guided lesson flow for the content
+        // they were just looking at, not somewhere random.
+        btnNext.textContent = '↻ Continue Mission';
+        btnNext.onclick = () => {
+          shutdown();
+          window.location = `lesson.html?mission=${encodeURIComponent(category)}`;
+        };
+      } else {
+        btnNext.textContent = 'Next Sign →';
+        btnNext.onclick = () => {
+          shutdown();
+          window.location = navUrl(nextSignId);
+        };
+      }
     }
   }
 }
@@ -2549,6 +2843,8 @@ window.continueToNext = function() {
   } else {
     // REV 3: last sign in the category → the graded category assessment,
     // not straight to the dashboard.
-    window.location = `../pages/quiz.html?level=${level}&category=${category}`;
+    // V1-removal pass: pages/quiz.html is deleted — route to the native
+    // Mastery Quiz instead (see the other continueToNext-style handler above).
+    window.location = `mastery-quiz.html?mission=${encodeURIComponent(category)}`;
   }
 };

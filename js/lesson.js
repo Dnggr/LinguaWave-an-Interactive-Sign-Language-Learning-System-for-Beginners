@@ -100,11 +100,21 @@ function descriptionHtml(sign) {
   `;
 }
 
-function cameraPracticeLinkHtml(mission) {
+function cameraPracticeLinkHtml(mission, signId) {
   // lesson.html now lives at pages/camera-practice.html (moved from
   // V1's pages/ this pass) — same directory as this page, so no more
   // ../pages/ hop.
-  const url = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+  //
+  // FIX (this session) — was missing &sign=, so this always landed on
+  // camera-practice.html's FIRST sign in the category (signOrder[0])
+  // regardless of which sign the learner was actually looking at on
+  // this Watch stage — e.g. clicking this link from "Girl" (item 9 of
+  // 40) opened the category's first sign instead of Girl itself.
+  // camera-practice.html's own `sign` param already falls back to
+  // signOrder[0] when absent/invalid (see its computeSignOrder()/
+  // `sign` const), so this is purely additive — nothing regresses if
+  // signId is ever missing.
+  const url = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}${signId ? `&sign=${encodeURIComponent(signId)}` : ''}`;
   return `
     <a class="lesson-camera-link" href="${url}" target="_blank" rel="noopener">
       🎥 Practice with your camera <span class="text-muted">(new tab)</span>
@@ -123,7 +133,7 @@ function renderLessonWatch(mission, index, item, plan, ctx) {
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
     ${mediaBlockHtml(sign)}
     ${descriptionHtml(sign)}
-    ${cameraPracticeLinkHtml(mission)}
+    ${cameraPracticeLinkHtml(mission, item.signId)}
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Got it — continue</button>
     </div>
@@ -319,9 +329,13 @@ function renderQuizHandoff(mission) {
   // mission-overview.js's usesNativeQuiz: ALL 12 chapters go to the
   // real-native Mastery Quiz now.
   const usesNativeQuiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
+  // V1-removal pass: pages/quiz.html is deleted. The `false` branch below
+  // is unreachable in practice (every real categoryGroup is in
+  // SAMPLE_MASTERY_QUIZ_CHAPTERS) but kept defensive rather than removing
+  // usesNativeQuiz, which other logic in this function still reads.
   const quizUrl = usesNativeQuiz
     ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
-    : `../pages/quiz.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}`;
+    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`;
 
   el.innerHTML = `
     <div class="lesson-stage-label">Mission recap</div>
@@ -603,17 +617,50 @@ function updateReviewNav(mission, index, isMissionComplete) {
   }
 }
 
+// Resume support — getDropOffIndex already exists in js/missions.js
+// specifically for "how far did the learner get", just unused by any
+// UI until now.
+//
+// Review-from-the-start (explicit follow-up) — a learner entering a
+// FINISHED mission (getMissionProgress(mission) >= 1, same 'done'
+// definition used everywhere else in this file) always starts back at
+// item 0, not wherever getDropOffIndex() last left off. Resume
+// (getDropOffIndex) still applies to an in-progress mission, since
+// that's a genuinely different use case ("pick up where I left off,"
+// not "review what I already finished").
+//
+// Split out to its own function (OPTIMISTIC-PAINT FIX, below) so
+// initPage() can compute it twice — once against whatever's in
+// localStorage right now, once again after cross-device sync — and
+// compare the two without duplicating this logic.
+function computeResumeIndex(mission) {
+  const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
+  let startIndex = isMissionComplete ? 0 : window.LWMissions.getDropOffIndex(mission);
+  if (startIndex >= mission.items.length) startIndex = mission.items.length - 1;
+  return startIndex;
+}
+
+// Renders whichever slide computeResumeIndex() currently resolves to
+// — the mission intro (Task 1: only makes sense right before item 0,
+// a genuinely fresh mission or a start-of-mission review) or the real
+// item. Returns the index it rendered so the caller can tell later
+// whether a second call would render something different.
+function renderResumePoint(mission) {
+  const startIndex = computeResumeIndex(mission);
+  if (startIndex === 0) {
+    renderMissionIntro(mission, startIndex);
+  } else {
+    renderItem(mission, startIndex);
+  }
+  return startIndex;
+}
+
 async function initPage() {
   const el = document.getElementById('lesson-content');
   if (!window.LWData || !window.LWMissions || !window.LWMissionsLoop) {
     el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js, js/missions.js, and js/lesson-loop.js all loaded.</p>`;
     return;
   }
-
-  // Reconcile cross-device Firestore progress before computing resume
-  // position (getDropOffIndex) — otherwise a lesson could resume from
-  // stale pre-sync local progress.
-  await window.LWMissions.whenMissionsSyncReady();
 
   const categoryId = getMissionParam();
   const mission = categoryId ? window.LWMissions.getMissionForCategory(categoryId) : null;
@@ -626,29 +673,31 @@ async function initPage() {
   document.getElementById('lesson-exit').href = `mission-overview.html?mission=${encodeURIComponent(mission.category)}`;
   document.title = `${mission.title} — LinguaWave (preview)`;
 
-  // Resume support — getDropOffIndex already exists in js/missions.js
-  // specifically for "how far did the learner get", just unused by
-  // any UI until now.
-  //
-  // Review-from-the-start (explicit follow-up) — a learner entering a
-  // FINISHED mission (getMissionProgress(mission) >= 1, same 'done'
-  // definition used everywhere else in this file) always starts back
-  // at item 0, not wherever getDropOffIndex() last left off. Resume
-  // (getDropOffIndex) still applies to an in-progress mission, since
-  // that's a genuinely different use case ("pick up where I left
-  // off," not "review what I already finished").
-  const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
-  let startIndex = isMissionComplete ? 0 : window.LWMissions.getDropOffIndex(mission);
-  if (startIndex >= mission.items.length) startIndex = mission.items.length - 1;
+  // OPTIMISTIC-PAINT FIX (replaces the old "Loading your lesson…"
+  // blocking-await placeholder) — mirrors js/mission-overview.js's own
+  // render-then-reconcile-then-re-render pattern, which this function
+  // previously couldn't use because computeResumeIndex() needs synced
+  // data to be TRUSTED. It can still be rendered from OPTIMISTICALLY
+  // though: renderResumePoint()/renderItem()/renderMissionIntro() are
+  // pure render functions with no progress-writing side effects, so
+  // painting from whatever's in localStorage right now and swapping to
+  // the synced position afterward — only if the two actually disagree
+  // — costs nothing when they match (the common case) and is no worse
+  // than the old blocking wait when they don't. This is safe here in a
+  // way it explicitly isn't in js/mastery-quiz.js: nothing on this page
+  // is destructive or hearts-spending, so there's no "mid-attempt"
+  // state a second render could clobber.
+  const renderedIndex = renderResumePoint(mission);
 
-  // Task 1 — the intro slide only makes sense right before item 0
-  // (a genuinely fresh mission, or a review that resets to the
-  // start per the fix above); resuming mid-mission skips straight to
-  // the real item, same as before this task existed.
-  if (startIndex === 0) {
-    renderMissionIntro(mission, startIndex);
-  } else {
-    renderItem(mission, startIndex);
+  // Reconcile cross-device Firestore progress in the background: if it
+  // turns out the learner's real resume position differs (e.g. more
+  // progress was made on another device since this device's local
+  // storage last synced), re-render into the correct one. If it
+  // matches — the common case — this is a no-op re-render is skipped
+  // entirely, so the optimistic paint above stands unchanged.
+  await window.LWMissions.whenMissionsSyncReady();
+  if (computeResumeIndex(mission) !== renderedIndex) {
+    renderResumePoint(mission);
   }
 }
 

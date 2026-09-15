@@ -317,7 +317,14 @@
   border-radius: var(--radius-pill);
   font-size: var(--fs-sm);
   font-weight: 600;
-  cursor: default; /* plain span, not a link yet — see mission-overview.js's own comment on this */
+  display: inline-block;
+  /* CHANGED — mission-overview.js's chips are real `<a href>` links
+   * now (not "a plain span, not a link yet" — that was true once,
+   * it isn't anymore), so the pointer cursor here matches that:
+   * anything actually clickable gets the hand. `.sign-chip--locked`
+   * below overrides this back to the plain arrow for the one case
+   * that ISN'T clickable — see its own comment. */
+  cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease),
               background var(--dur-fast) var(--ease),
               transform var(--dur-fast) var(--ease),
@@ -347,6 +354,46 @@
 .sign-chip--learned:hover {
   border-color: var(--clr-success);
   background: var(--clr-success-soft);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+/* NEW — locked chips (mission-overview.js renders these as a plain
+ * `<span>`, not an `<a>`, while the mission's chapter is still
+ * locked — see render()'s `locked` branch there). Still hoverable —
+ * the lift/shadow motion below matches `.sign-chip:hover` exactly —
+ * so hovering still reads as "this is a real chip", just not one you
+ * can click into right now. `cursor: default` (not `not-allowed`,
+ * which would read as an active block on something normally
+ * clickable) undoes the base `.sign-chip`'s pointer cursor, and the
+ * reduced opacity gives a locked-at-a-glance signal even before
+ * hovering. There's no href to navigate to regardless, so this is a
+ * visual cue, not the actual enforcement. */
+.sign-chip--locked {
+  cursor: default;
+  opacity: .6;
+}
+.sign-chip--locked:hover {
+  border-color: var(--clr-text-muted);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+/* NEW — pending chips (this revision): the mission itself is
+ * unlocked, but this particular sign hasn't been reached yet —
+ * render()'s isSignAccessible() check, also a plain non-navigable
+ * `<span>`. Same non-clickable/hoverable/default-cursor split as
+ * `.sign-chip--locked` immediately above (deliberately identical
+ * rules, just kept as its own selector so the two states can be
+ * told apart at a glance via the dashed border below and each one's
+ * own `title` tooltip, without duplicating the whole ruleset). */
+.sign-chip--pending {
+  cursor: default;
+  opacity: .6;
+  border-style: dashed;
+}
+.sign-chip--pending:hover {
+  border-color: var(--clr-text-muted);
   transform: translateY(-2px);
   box-shadow: var(--shadow-card);
 }

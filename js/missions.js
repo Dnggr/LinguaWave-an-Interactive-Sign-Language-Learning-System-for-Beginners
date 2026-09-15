@@ -1,3 +1,4 @@
+
 /**
  * js/missions.js — Missions Content Layer (PILOT — Phase 0 + Phase 1)
  * ─────────────────────────────────────────────────────────────────
@@ -9272,6 +9273,46 @@ function getCategoriesForUnitV2(unitOrder) {
 
   let MissionsSyncPromise = null;
 
+  // PERF FIX — this is a traditional multi-page site (no client-side
+  // routing/cache), so whenMissionsSyncReady()'s per-page-load
+  // MissionsSyncPromise cache below only ever helped a SINGLE page
+  // that called it more than once; every new page load (Mission
+  // Overview → Start Mission → Mastery Quiz, three hops in quick
+  // succession) re-ran a full real Firestore getDoc/setDoc round trip
+  // from zero, even though the previous hop's sync had already merged
+  // and saved the authoritative result to localStorage moments
+  // earlier. SESSION_SYNC_TTL_MS lets a page skip that redundant
+  // network round trip (not the function's per-user auth check, which
+  // always still runs) when the SAME uid already completed a real
+  // sync within the last minute — localStorage already holds that
+  // sync's merged output, so there's nothing stale to reconcile yet.
+  // sessionStorage (not localStorage) so the cache never survives a
+  // closed tab, and it's keyed by uid so a stale entry from a
+  // previous logged-in user on this device is never trusted for a
+  // different one. Only written on a CONFIRMED successful sync — a
+  // failed attempt below leaves no cache entry, so the next page
+  // still retries the real thing rather than silently trusting a sync
+  // that never actually happened.
+  const SESSION_SYNC_CACHE_KEY = 'lw_missions_last_sync_v1';
+  const SESSION_SYNC_TTL_MS = 60 * 1000;
+
+  function readSessionSyncCache() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_SYNC_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null; // sessionStorage unavailable (private mode, etc.) — just means no cache hit, sync still runs for real below.
+    }
+  }
+
+  function writeSessionSyncCache(uid) {
+    try {
+      sessionStorage.setItem(SESSION_SYNC_CACHE_KEY, JSON.stringify({ uid, at: Date.now() }));
+    } catch {
+      // Nothing to do — worst case the next page just re-syncs for real.
+    }
+  }
+
   async function performMissionsSync() {
     const auth = getLWAuthV2();
     if (!auth) return; // js/auth.js not loaded (dev preview pages) — local-only.
@@ -9291,6 +9332,11 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (!user || !user.uid) return; // nobody logged in — Firestore untouched.
 
+    const cached = readSessionSyncCache();
+    if (cached && cached.uid === user.uid && Date.now() - cached.at < SESSION_SYNC_TTL_MS) {
+      return; // synced this uid moments ago in this tab — localStorage is already the merged result.
+    }
+
     try {
       const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
       const snap = await auth.getDoc(ref);
@@ -9306,6 +9352,7 @@ function getCategoriesForUnitV2(unitOrder) {
         // push whatever real local data exists UP, rather than
         // discarding it in favor of an empty remote doc.
         await auth.setDoc(ref, localState);
+        writeSessionSyncCache(user.uid);
         return;
       }
 
@@ -9318,8 +9365,12 @@ function getCategoriesForUnitV2(unitOrder) {
       // that only had, say, the local-only half of the union also
       // converges next time it syncs.
       await auth.setDoc(ref, merged, { merge: true });
+      writeSessionSyncCache(user.uid);
     } catch (e) {
       console.warn('[missions.js] Missions Firestore sync failed, staying local-only:', e);
+      // Deliberately NOT caching on failure — the next page should
+      // still attempt a real sync rather than trust one that never
+      // actually completed.
     }
   }
 

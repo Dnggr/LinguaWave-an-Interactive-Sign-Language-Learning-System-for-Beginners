@@ -74,6 +74,40 @@
 .course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600; }
 .course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent); }
 
+/* NEW — locked/pending sign rows (this revision) — js/camera-practice.js's
+ * sidebarSignRow() renders BOTH states as a plain <span>, not an
+ * <a>, so there's no href to navigate to regardless of these rules;
+ * this is the visual half only (same split as css/app.css's
+ * `.sign-chip--locked`/`.sign-chip--pending` on mission-overview.html
+ * — hoverable for the "this is a real row" feedback, default cursor
+ * so it never promises a click that wouldn't do anything). `--pending`
+ * (mission open, this sign just not reached yet) gets a dashed left
+ * edge instead of `--locked`'s (whole mission chapter-locked) solid
+ * dim, so the two read apart at a glance the same way their two
+ * `title` tooltips already read apart on hover. */
+.course-sidebar__sign--locked,
+.course-sidebar__sign--pending {
+  cursor: default;
+  opacity: .55;
+}
+.course-sidebar__sign--locked:hover,
+.course-sidebar__sign--pending:hover {
+  background: var(--clr-surface-2);
+}
+.course-sidebar__sign--pending {
+  border-left: 2px dashed var(--clr-text-muted);
+  padding-left: calc(var(--space-3) - 2px);
+}
+
+/* NEW — a chapter-locked category head (sidebarCategoryBlock()'s own
+ * `missionLocked` branch): same plain-<span>, non-navigable, dimmed
+ * treatment as `.course-sidebar__unit--locked` above, just scoped to
+ * one category's head row instead of a whole unit. */
+.course-sidebar__cat-head--locked {
+  cursor: default;
+  opacity: .55;
+}
+
 /* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
    PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
    yet matching dashboard". Same outline:none + box-shadow-ring
