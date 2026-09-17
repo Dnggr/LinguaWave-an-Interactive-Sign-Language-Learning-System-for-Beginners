@@ -16,7 +16,7 @@
       // Paints the correct background INSTANTLY, without waiting on
       // css/style.css to finish loading/parsing — this is the part
       // that actually stops the white flash on reload/navigation.
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
@@ -62,6 +62,11 @@
   <link rel="stylesheet" href="../css/toast.css" />
 
   <script type="module" src="../js/auth.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
@@ -108,12 +113,12 @@
         <li><a href="learn.html" class="active">Learn</a></li>
       </ul>
       <div class="navbar__user">
-        <span>👋 <span data-user-name>Learner</span></span>
+        <span><span aria-hidden="true" data-lw-icon="user" data-lw-icon-size="sm"></span> <span data-user-name>Learner</span></span>
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                 aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
           <span class="theme-switch__check">
-            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
           </span>
         </button>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
@@ -180,7 +185,7 @@
               onerror="this.style.display='none'; document.getElementById('lesson-img-placeholder').style.display='flex';"
             />
             <div class="lesson-img-placeholder" id="lesson-img-placeholder">
-              <span>📷 Sign reference image</span>
+              <span><span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Sign reference image</span>
               <small id="lesson-img-placeholder-hint">Add image to assets/images/basic/A.png</small>
             </div>
           </div>
@@ -227,7 +232,7 @@
               -->
             </div>
             <p class="alert alert--info lesson-video-tip mt-4">
-              💡 Watch the movement once, then try to remember it before replaying.
+              <span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Watch the movement once, then try to remember it before replaying.
             </p>
           </div>
 
@@ -266,7 +271,7 @@
           -->
           <div class="quick-check card mt-8" id="quick-check-card" tabindex="-1" style="display:none;">
             <div class="quick-check__head">
-              <span class="section__eyebrow" style="margin-bottom:0;">⚡ Quick Check</span>
+              <span class="section__eyebrow" style="margin-bottom:0;"><span aria-hidden="true" data-lw-icon="info" data-lw-icon-size="sm"></span> Quick Check</span>
               <button class="detection-log__clear" id="btn-quick-check-skip" type="button">Skip</button>
             </div>
             <p class="quick-check__prompt" id="quick-check-prompt" style="white-space: pre-line;"></p>
@@ -294,7 +299,7 @@
           <div class="quick-check-modal" id="quick-check-modal" hidden>
             <div class="quick-check-modal__backdrop" data-quick-check-dismiss></div>
             <div class="quick-check-modal__box" role="dialog" aria-modal="true" aria-labelledby="quick-check-modal-title" aria-describedby="quick-check-modal-body">
-              <div class="quick-check-modal__icon" aria-hidden="true">✅</div>
+              <div class="quick-check-modal__icon" aria-hidden="true" data-lw-icon="success"></div>
               <h2 class="quick-check-modal__title" id="quick-check-modal-title">Correct!</h2>
               <p class="quick-check-modal__body" id="quick-check-modal-body"></p>
               <button type="button" class="btn btn--primary btn--full" id="quick-check-modal-dismiss">Continue →</button>
@@ -396,7 +401,7 @@
             <div class="motion-buffer-wrap mt-3" id="motion-buffer-wrap">
               <div class="motion-buffer-wrap__head">
                 <span class="detection-label" id="motion-status-label">Collecting frames</span>
-                <button class="motion-try-btn" id="btn-try-practice" type="button">▶ Try it</button>
+                <button class="motion-try-btn" id="btn-try-practice" type="button"><span aria-hidden="true" data-lw-icon="current" data-lw-icon-size="sm"></span> Try it</button>
               </div>
               <div class="confidence-track">
                 <div class="confidence-bar-fill confidence-bar-fill--motion" id="motion-buffer-bar"></div>
@@ -457,7 +462,7 @@
             <!-- Start button — triggers get-ready, then (for motion
                  signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
-              🎥 Practice Check (optional)
+              <span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Practice Check (optional)
             </button>
 
             <!-- Assessment prompt (shown during assessment only) -->
@@ -477,7 +482,7 @@
 
           <!-- Tips box -->
           <div class="camera-tips card mt-4">
-            <p class="camera-tips__title">📸 Camera Tips</p>
+            <p class="camera-tips__title"><span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Camera Tips</p>
             <ul class="camera-tips__list">
               <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
               <li>Motion signs: click "Practice Check" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
@@ -499,7 +504,7 @@
   <div class="completion-overlay" id="completion-overlay" style="display:none;" role="dialog" aria-modal="true">
     <div class="completion-card">
       <div class="completion-score" id="final-score">80%</div>
-      <h2 id="overlay-result-title">🎉 Lesson Passed!</h2>
+      <h2 id="overlay-result-title"><span aria-hidden="true" data-lw-icon="celebration" data-lw-icon-size="sm"></span> Lesson Passed!</h2>
 
       <!--
       BUG 8 FIX: Missed-signs review list. lesson.js fills this in on a

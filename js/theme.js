@@ -40,7 +40,7 @@
  *       // Paints the correct background INSTANTLY, without waiting on
  *       // css/style.css to finish loading/parsing — this is the part
  *       // that actually stops the white flash between page loads.
- *       root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+ *       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
  *     })();
  *   </script>
  *
@@ -69,7 +69,11 @@
  */
 
 const THEME_STORAGE_KEY = 'lw-theme';
-const THEME_BG = { light: '#FFF8F0', dark: '#1F1712' };
+// Kept in sync with css/style.css's --clr-bg for light/dark (this
+// session's blue/teal repaint — was '#FFF8F0'/'#1F1712' under the
+// previous cream/near-black-brown palette) — see that file's token
+// block for the source of truth these two values mirror.
+const THEME_BG = { light: '#F8FAFC', dark: '#0F172A' };
 const systemSchemeQuery = matchMedia('(prefers-color-scheme: light)');
 
 // The raw preference — what the user actually picked: 'system', 'light',

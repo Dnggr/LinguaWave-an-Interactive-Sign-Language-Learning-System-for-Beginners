@@ -13,43 +13,32 @@
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
       root.style.colorScheme = resolved;
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
     pages/dashboard.html — Mission-Based Dashboard
     ─────────────────────────────────────────────────────────────────
-    PURPOSE : First real (non-dev-only) page of the rebuild, per
-              "LinguaWave_V2_Mission_Based_Learning_System_
-              Implementation_Guide.docx" §4.2 (base layout) and its
-              section §13 (Progress Dashboard) / the "Continue Your
-              Mission" + "Today's Summary" + "Your Learning Journey"
-              structure. Uses the SAME app shell (sidebar/header/.card
-              tokens) as pages/dashboard.html so looks like part of
-              LinguaWave, not a separate tool — that's what "replicate
-              the base format" means here, as opposed to the
-              deliberately bare pages/missions-preview.html /
-              missions-compare.html dev tools, which stay as-is.
+    REBUILD (blue-teal mockup alignment pass) — this page used to be a
+    "Continue Your Mission" hero-row + a flat mission "journey rail"
+    (see git history for that version). Rebuilt to match the reference
+    mockup's Dashboard screen: greeting header, a big "Today's Mission"
+    banner, a "Your Progress" ring card, a "Learning Path" icon-tile
+    grid, and a "Recommended for You" quick-link grid. Same app shell
+    (sidebar/header/.card tokens) as pages/learn.html and
+    pages/progress.html, and the same underlying data source
+    (window.LWMissions) those two pages already use — nothing here is
+    a new/parallel progress store.
 
-    DATA    : Sourced live from window.LWMissions.getAllMissions() (real
-              content, all currently-live categories) — no hardcoded
-              names/percentages, per the guide's explicit "do not show
-              hardcoded values... before live data is ready" rule.
-
-    OPEN QUESTION (see Missions_LinguaWave_Progress_Tracker.md §5): the
-              guide's section asks for exactly 10 numbered missions;
-              Missions's schema currently has 65 (one per live category).
-              This page does NOT collapse/renumber those 65 into 10 —
-              that's a content decision for the team, not something to
-              guess at silently. It shows all 65, ordered the same way
-              getLiveCategoryList() already orders them.
-
-    SCOPE   : Dashboard + Learn Path (learn.html) only, this pass.
-              Mission Overview / Lesson / Mastery Quiz / Review /
-              Hearts (guide §6–12) are NOT built yet — Continue
-              Learning links out to the existing pages/camera-practice.html or
-              pages/quiz.html for now, same destinations
-              pages/dashboard.html's own Continue card already uses.
+    DATA    : Every number on this page (mission title/goal, ring %,
+              chapter, missions-complete count, streak, hearts,
+              per-tile fraction/status) comes from
+              window.LWMissions.getAllMissions() and its related
+              accessors — no hardcoded values. See js/dashboard.js's
+              file header for the one exception (Recommended for You's
+              static copy/icons, same treatment index.html's own
+              feature cards already get) and why every one of ITS
+              links is still a real, built destination.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -73,23 +62,23 @@
       <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
       <nav class="app-sidebar__nav">
         <a href="dashboard.html" class="app-sidebar__link active">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
           Dashboard
         </a>
         <a href="learn.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
           Learn
         </a>
         <a href="progress.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
           Progress
         </a>
         <a href="feedback.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
           Feedback
         </a>
         <a href="settings.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>
           Settings
         </a>
       </nav>
@@ -97,8 +86,8 @@
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                 aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
           <span class="theme-switch__check">
-            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
           </span>
         </button>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
@@ -107,34 +96,50 @@
 
     <div class="app-main" id="main">
 
+      <!-- ── Greeting ─────────────────────────────────────────────── -->
       <section class="section section--sm section--tight">
         <div class="container">
-          <div class="dash-header">
-            <div>
-              <h1>Welcome back, <span data-user-name>Learner</span>! 👋</h1>
-              <p class="mt-2 text-muted">Ready for your next communication goal?</p>
+          <div class="dash-greeting">
+            <h1><span id="dash-greeting-word">Good morning,</span><span data-user-name>Learner</span>! <span class="dash-greeting__wave" aria-hidden="true">👋</span></h1>
+            <p class="mt-2 text-muted">Small steps make big progress. Keep going!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Today's Mission + Your Progress ─────────────────────── -->
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="dash-hero-grid">
+            <div class="mission-banner" id="mission-banner">
+              <!-- filled by js/dashboard.js -->
+            </div>
+            <div class="card progress-card" id="progress-card">
+              <!-- filled by js/dashboard.js -->
             </div>
           </div>
         </div>
       </section>
 
+      <!-- ── Learning Path ────────────────────────────────────────── -->
       <section class="section section--sm section--tight">
         <div class="container">
-          <div class="hero-row">
-            <div class="card continue-card" id="continue-card">
-              <!-- filled by js/dashboard.js -->
-            </div>
-            <div class="card summary-card" id="summary-card">
-              <!-- filled by js/dashboard.js -->
-            </div>
+          <div class="section-heading-row">
+            <h2>Learning Path</h2>
+            <a href="learn.html" class="section-heading-row__link">View All</a>
+          </div>
+          <div class="learning-path-grid" id="learning-path-grid">
+            <!-- filled by js/dashboard.js -->
           </div>
         </div>
       </section>
 
+      <!-- ── Recommended for You ──────────────────────────────────── -->
       <section class="section section--sm">
         <div class="container">
-          <h2 class="mb-4">Your Learning Journey</h2>
-          <div class="journey-rail" id="journey-rail">
+          <div class="section-heading-row">
+            <h2>Recommended for You</h2>
+          </div>
+          <div class="recommended-grid" id="recommended-grid">
             <!-- filled by js/dashboard.js -->
           </div>
         </div>
@@ -144,8 +149,12 @@
   </div>
 
   <script type="module" src="../js/auth.js"></script>
-  <script src="../js/data.js"></script>
   <script src="../js/missions.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
        and, critically, wires up every [data-logout] button (the sidebar's

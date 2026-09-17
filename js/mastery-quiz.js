@@ -203,9 +203,32 @@ function questionOptionCount(mission, signId) {
   return hasRamp ? 3 : 4;
 }
 
+// PER-ATTEMPT RESHUFFLE (this session) — buildQuizQuestions() used to
+// seed shuffleDeterministic() off `mission.id` alone, so a retake
+// after a fail showed the exact same question set in the exact same
+// order every time (memorizable after 2-3 attempts, not a real
+// re-test of the content). getQuizAttemptSeed() adds one random
+// component, generated once and memoized for the lifetime of this
+// page load — so it still varies ACROSS attempts (each fresh load of
+// mastery-quiz.html, i.e. each real retake) but stays IDENTICAL
+// across the optimistic-paint double-render WITHIN one attempt
+// (initPage() can call renderQuizEntry() → buildQuizQuestions() twice
+// — once immediately, once again after the Firestore sync reconciles
+// — and those two calls must agree, or the question order would
+// visibly jump mid-load). Not persisted anywhere on purpose: a page
+// reload before answering is a fresh attempt and is allowed to
+// reshuffle again.
+let quizAttemptSeed = null;
+function getQuizAttemptSeed() {
+  if (quizAttemptSeed === null) {
+    quizAttemptSeed = Math.random().toString(36).slice(2);
+  }
+  return quizAttemptSeed;
+}
+
 function buildQuizQuestions(mission) {
   const allSignIds = uniqueSignIds(mission);
-  const ordered = shuffleDeterministic(allSignIds, `${mission.id}_mastery_quiz`);
+  const ordered = shuffleDeterministic(allSignIds, `${mission.id}_mastery_quiz_${getQuizAttemptSeed()}`);
   const picked = ordered.slice(0, Math.min(MAX_QUESTIONS, ordered.length));
   const categorySignIds = window.LWMissions.getCategorySigns(mission.level, mission.category);
 
@@ -371,7 +394,7 @@ function handleAnswer(state, chosenSignId) {
   if (correct) {
     // Task 3 — correct: feedback only, no Continue button, auto-move on.
     document.getElementById('mq-feedback').innerHTML = `
-      <div class="lesson-feedback lesson-feedback--correct">Correct! ✓</div>
+      <div class="lesson-feedback lesson-feedback--correct">${window.LWIcons.markup('complete', { size: 'sm', className: 'lw-icon--tone-success' })}<span class="lw-icon-label">Correct!</span></div>
     `;
     window.setTimeout(advance, AUTO_ADVANCE_DELAY_MS);
   } else {
@@ -446,7 +469,7 @@ function renderSummary(state, result) {
   el.innerHTML = `
     <div class="quiz-summary">
       <div class="quiz-summary__score ${result.passed ? 'quiz-summary__score--pass' : 'quiz-summary__score--fail'}">${pct}%</div>
-      <h1>${result.passed ? 'Mission mastered! 🎉' : 'Not quite there yet'}</h1>
+      <h1>${result.passed ? `${window.LWIcons.markup('celebration', { size: 'sm' })}<span class="lw-icon-label">Mission mastered!</span>` : 'Not quite there yet'}</h1>
       <p class="text-muted">${state.numCorrect} of ${state.questions.length} correct.</p>
       ${result.passed ? recapLine : ''}
       ${failNote}
@@ -467,9 +490,12 @@ function renderSummary(state, result) {
 // quiz," or question 1. Split out of initPage() so it can be called
 // twice — once optimistically, once again after sync if that turns
 // out to disagree — without duplicating the hearts-gate logic.
-// buildQuizQuestions() shuffles deterministically off mission/sign
-// data (not off anything sync-sensitive), so calling it again after
-// sync produces the identical question set/order, not a different one.
+// buildQuizQuestions() shuffles off mission/sign data plus one random
+// per-attempt seed that's memoized for this page load (see
+// getQuizAttemptSeed() above) — neither input is sync-sensitive, so
+// calling it again after sync still produces the identical question
+// set/order as the first call, not a different one. The seed only
+// changes on the NEXT full page load (i.e. the next real retake).
 function renderQuizEntry(mission) {
   const heartsState = window.LWMissions.getHeartsState();
   if (heartsState.hearts <= 0) {

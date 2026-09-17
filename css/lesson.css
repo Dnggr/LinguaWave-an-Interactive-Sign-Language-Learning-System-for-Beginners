@@ -212,7 +212,12 @@
 .quick-check__options button:hover:not(:disabled) { border-color: var(--clr-accent); background: var(--clr-accent-soft); }
 .quick-check__options button:disabled { cursor: default; opacity: .85; }
 .quick-check__options button.quick-check__option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
-.quick-check__options button.quick-check__option--wrong   { border-color: var(--clr-red);     background: var(--clr-red-soft); }
+/* Interactive Locked-State Feedback pattern (css/style.css §19) —
+   same shake @keyframes as .lw-shake-invalid, applied directly since
+   this class is freshly added per-question (see the options click
+   handler in js/camera-practice.js), same as .lesson-option--incorrect
+   in css/app.css. */
+.quick-check__options button.quick-check__option--wrong   { border-color: var(--clr-red);     background: var(--clr-red-soft); animation: lw-shake-invalid 420ms var(--ease); }
 @media (max-width: 480px) { .quick-check__options { grid-template-columns: 1fr; } }
 
 /* ── Quick Check picture prompt (NEW — REV 8 teaching-rhythm pass) ───

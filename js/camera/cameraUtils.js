@@ -218,7 +218,7 @@ function handleCameraError(err) {
 function showCameraError(message) {
   const el = document.getElementById('camera-status');
   if (el) {
-    el.innerHTML = `<p style="color:var(--clr-red);font-size:var(--fs-sm);text-align:center;padding:1rem;">⚠️ ${message}</p>`;
+    el.innerHTML = `<p style="color:var(--clr-red);font-size:var(--fs-sm);text-align:center;padding:1rem;">${window.LWIcons.markup('warning', { size: 'sm' })}<span class="lw-icon-label">${message}</span></p>`;
     el.style.display = 'flex';
     el.style.alignItems = 'center';
     el.style.justifyContent = 'center';

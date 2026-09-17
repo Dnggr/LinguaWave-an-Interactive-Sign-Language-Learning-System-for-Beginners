@@ -13,7 +13,7 @@
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
       root.style.colorScheme = resolved;
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
@@ -97,23 +97,23 @@
       <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
       <nav class="app-sidebar__nav">
         <a href="dashboard.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
           Dashboard
         </a>
         <a href="learn.html" class="app-sidebar__link active">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
           Learn
         </a>
         <a href="progress.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
           Progress
         </a>
         <a href="feedback.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4.2-1.1L3 20l1.1-5.3A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
           Feedback
         </a>
         <a href="settings.html" class="app-sidebar__link">
-          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>
           Settings
         </a>
       </nav>
@@ -121,8 +121,8 @@
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                 aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
           <span class="theme-switch__check">
-            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
           </span>
         </button>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
@@ -151,6 +151,11 @@
   <script src="../js/data.js"></script>
   <script src="../js/missions.js"></script>
   <script src="../js/lesson-loop.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
        and, critically, wires up every [data-logout] button (the sidebar's

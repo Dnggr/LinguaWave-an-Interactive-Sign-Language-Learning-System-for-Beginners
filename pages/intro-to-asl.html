@@ -17,7 +17,7 @@
       // Paints the correct background INSTANTLY, without waiting on
       // css/style.css to finish loading/parsing — this is the part
       // that actually stops the white flash on reload/navigation.
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
@@ -60,6 +60,11 @@
   <link rel="stylesheet" href="../css/learn.css" />
 
   <script type="module" src="../js/auth.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script>
   window.addEventListener('lwauth-ready', () => {
@@ -106,11 +111,11 @@
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                 aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
           <span class="theme-switch__check">
-            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
           </span>
         </button>
-        <span>👋 <span data-user-name>Learner</span></span>
+        <span><span aria-hidden="true" data-lw-icon="user" data-lw-icon-size="sm"></span> <span data-user-name>Learner</span></span>
         <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
       </div>
     </div>

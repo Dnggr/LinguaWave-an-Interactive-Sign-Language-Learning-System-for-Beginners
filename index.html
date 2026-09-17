@@ -16,7 +16,7 @@
       // Paints the correct background INSTANTLY, without waiting on
       // css/style.css to finish loading/parsing — this is the part
       // that actually stops the white flash on reload/navigation.
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
@@ -64,6 +64,22 @@
                only where the form lives in the DOM and how it's
                opened changed. See css/auth.css for the new
                `.hero-illustration`/`.why-row`/`#signin-modal` rules.
+
+    2026-09-16: three small requested tweaks. (1) The hero sky's cloud
+               SVG is commented out (not deleted) below — "for now",
+               so it's a one-line uncomment to bring back; the sun and
+               night stars are untouched. (2) `.navbar--hero`'s
+               background now uses the new `--backdrop-hero` token
+               (see css/style.css §1 and css/auth.css's NAVBAR — HERO
+               VARIANT block) instead of the shared `--backdrop` —
+               same hue per theme, alpha dropped way down so the bar
+               reads as almost transparent over the hero. (3) The
+               "Dashboard" nav link is now "Home" and dropped its
+               `data-hero-login` (it used to require an account and
+               open the sign-in modal); it's `#navbar-home` and shares
+               the logo's click handler, so both just smooth-scroll to
+               the top of this page. See the nav markup and the script
+               block near the bottom for both.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -78,7 +94,17 @@
   <!-- Auth must load before anything renders so a logged-in user gets
        redirected immediately instead of seeing the landing page. -->
   <script type="module" src="js/auth.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="js/icons.js"></script>
   <script src="js/theme.js" defer></script>
+  <script src="js/hero-decor.js" defer></script>
+  <!-- Generates the homepage TOPIC PREVIEW marquee's chips at runtime
+       (all 70 units) — depends on window.LWIcons for hydration, so it
+       must load after js/icons.js. See js/topic-marquee.js. -->
+  <script src="js/topic-marquee.js" defer></script>
   <script>
     window.addEventListener('lwauth-ready', () => {
     LWAuth.redirectIfLoggedIn('pages/dashboard.html');
@@ -87,11 +113,28 @@
 </head>
 <body>
 
-  <nav class="navbar">
+  <!-- navbar--hero: permanent dark-glass bar (not just "while over the
+       hero") — see css/auth.css's NAVBAR — HERO VARIANT comment for why
+       it doesn't flip styles on scroll. Logo gained a small gradient
+       wave mark; the single "Log In" button split into a ghost "Log In"
+       + filled "Get Started" pair, matching the reference mockup. -->
+  <nav class="navbar navbar--hero">
     <div class="container navbar__inner">
-      <a href="#" class="navbar__logo" id="navbar-logo">Lingua<span>Wave</span></a>
+      <a href="#" class="navbar__logo" id="navbar-logo">
+        <!-- 2026-09-16: icon mark commented out (see matching CSS
+             comment in auth.css) — no permanent logo yet, so this
+             placeholder badge is pulled for now. Text-only until then.
+        <span class="navbar__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 15c2-3 4-3 6 0s4 3 6 0 4-3 6 0" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M2 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+          </svg>
+        </span>
+        -->
+        Lingua<span>Wave</span>
+      </a>
       <ul class="navbar__links">
-        <li><a href="#" data-hero-login>Dashboard</a></li>
+        <li><a href="#" id="navbar-home">Home</a></li>
         <li><a href="#" data-hero-login>Learn</a></li>
         <li><a href="#about-asl">About</a></li>
       </ul>
@@ -99,17 +142,21 @@
         <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                 aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
           <span class="theme-switch__check">
-            <svg class="theme-switch__icon theme-switch__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg class="theme-switch__icon theme-switch__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
           </span>
         </button>
-        <button type="button" class="btn btn--primary btn--sm" data-hero-login>Log In</button>
+        <button type="button" class="btn btn--ghost btn--sm" data-hero-login>Log In</button>
+        <button type="button" class="btn btn--primary btn--sm" data-hero-cta>Get Started</button>
       </div>
     </div>
   </nav>
 
   <!-- ── HERO ─────────────────────────────────────────────────────── -->
-  <section class="section hero">
+  <!-- hero--wave: dark navy→teal gradient identity + the animated wave
+       divider (.hero-waves below) — see css/auth.css's HERO — WAVE
+       BACKGROUND comment for how the two SVG layers loop seamlessly. -->
+  <section class="section hero hero--wave">
     <div class="container hero__grid">
       <div class="hero__copy">
         <p class="section__eyebrow">Capstone Project 2026</p>
@@ -124,6 +171,10 @@
         </div>
       </div>
 
+      <!-- Sky decor: sun (light) or scattered stars (dark) — pure
+           CSS [data-theme] toggle, see auth.css's HERO SKY DECOR
+           comment. Spans the whole hero, not just this column, so
+           it's placed as the grid's sibling below. -->
       <div class="hero-illustration" aria-hidden="true">
         <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="160" cy="160" r="150" fill="var(--clr-accent-soft)" />
@@ -134,6 +185,56 @@
           <path d="M90 250c22 20 46 30 72 30" stroke="var(--clr-accent-dim)" stroke-width="4" stroke-linecap="round" fill="none" opacity=".5"/>
         </svg>
       </div>
+    </div>
+
+    <div class="hero-decor hero-decor--day" aria-hidden="true">
+      <svg class="hero-decor__sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="5" fill="currentColor"/>
+        <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <line x1="12" y1="1" x2="12" y2="3.5"/>
+          <line x1="12" y1="20.5" x2="12" y2="23"/>
+          <line x1="1" y1="12" x2="3.5" y2="12"/>
+          <line x1="20.5" y1="12" x2="23" y2="12"/>
+          <line x1="4.2" y1="4.2" x2="6" y2="6"/>
+          <line x1="18" y1="18" x2="19.8" y2="19.8"/>
+          <line x1="4.2" y1="19.8" x2="6" y2="18"/>
+          <line x1="18" y1="6" x2="19.8" y2="4.2"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="hero-decor hero-decor--night" aria-hidden="true">
+      <!-- Populated at runtime by js/hero-decor.js — see that file
+           for why the stars aren't hard-coded here anymore (a real
+           scattered/randomized field needs actual math, not more
+           hand-placed percentages). -->
+    </div>
+
+    <!-- Animated wave divider — three looping SVG layers (deepest→
+         frontmost), see css/auth.css's .hero-waves rules for how the
+         loop is built and how each layer's speed/direction/opacity
+         is set. Each path is a proper sine curve, not an eyeballed
+         bezier hump: every half-period (600 units, for a 1200-unit
+         full period) is one cubic-Bezier "C" command with BOTH
+         control points held at the peak/trough height and placed at
+         the 1/4 and 3/4 marks of that half-period — the standard SVG
+         trick for a smooth, symmetric crest or trough, matching the
+         reference sine-wave diagram (low frequency / long
+         wavelength) rather than a single stretched S-curve per full
+         period. The front (topmost, most opaque) layer is the "main"
+         wave and animates right-to-left; see the comment on
+         .hero-waves__layer in auth.css for why that's the direction
+         translateX(0 → -50%) produces. -->
+    <div class="hero-waves" aria-hidden="true">
+      <svg class="hero-waves__layer hero-waves__layer--deep" viewBox="0 0 2400 300" preserveAspectRatio="none">
+        <path d="M0,40 C150,15 450,15 600,40 C750,65 1050,65 1200,40 C1350,15 1650,15 1800,40 C1950,65 2250,65 2400,40 L2400,300 L0,300 Z"/>
+      </svg>
+      <svg class="hero-waves__layer hero-waves__layer--back" viewBox="0 0 2400 300" preserveAspectRatio="none">
+        <path d="M0,70 C150,35 450,35 600,70 C750,105 1050,105 1200,70 C1350,35 1650,35 1800,70 C1950,105 2250,105 2400,70 L2400,300 L0,300 Z"/>
+      </svg>
+      <svg class="hero-waves__layer hero-waves__layer--front" viewBox="0 0 2400 300" preserveAspectRatio="none">
+        <path d="M0,110 C150,145 450,145 600,110 C750,75 1050,75 1200,110 C1350,145 1650,145 1800,110 C1950,75 2250,75 2400,110 L2400,300 L0,300 Z"/>
+      </svg>
     </div>
   </section>
 
@@ -164,7 +265,9 @@
        Replaces the old inline hero auth-card — same forms, same
        LWAuth.login()/register() calls, just opened on demand from the
        nav's "Sign In", the hero's "Start Learning", and the nav's
-       Dashboard/Learn links (all four via openAuthModal()). -->
+       "Learn" link (all via openAuthModal()). The nav's "Home" link
+       (formerly "Dashboard") no longer opens this — see scrollToTop()
+       near the bottom. -->
   <div id="signin-modal" class="auth-modal hidden">
     <div class="auth-modal__box auth-modal__box--form">
       <button type="button" class="auth-modal__close" id="signin-modal-close" aria-label="Close">&times;</button>
@@ -223,51 +326,39 @@
       <p class="text-muted">A preview of what you'll learn — sign up free to jump in.</p>
 
       <!--
-        These are intentionally NOT links into pages/learn.html. That page
-        requires auth (LWAuth.requireAuth), so a logged-out visitor
-        clicking straight into "?unit=alphabet" etc. was being bounced
-        by the auth guard right back to this page — which looked like a
-        broken "redirects to the top of index" click. Fixing that on the
-        learn.html side would mean loosening its auth guard; fixing it
-        here instead — plain, non-navigating preview chips that open the
-        Sign Up tab — keeps learn.html's guard intact and matches the
-        "sign up free to jump in" copy above.
+        Plain <div> chips, not links or buttons — these are intentionally
+        non-interactive now (2026-09-17: previously opened the Sign Up
+        tab via data-hero-cta; removed at the user's request so the row
+        is preview-only — hover for the lift/border feedback, no click
+        action, nothing to navigate to). They were never links into
+        pages/learn.html either way: that page requires auth
+        (LWAuth.requireAuth), so a logged-out visitor clicking straight
+        into "?unit=alphabet" etc. would've been bounced by the auth
+        guard right back to this page.
+
+        Two-row marquee, scrolling opposite directions (see auth.css's
+        TOPIC MARQUEE comment for the seamless-loop mechanics, including
+        why it no longer pauses on hover). The chips themselves are NOT
+        hard-coded here — js/topic-marquee.js fills these two empty
+        tracks at runtime with all 70 curriculum units, each row
+        repeating the full list twice for the loop. Only row 1's first
+        copy ends up in the accessibility tree (role="list", no
+        aria-hidden) — the other three copies are aria-hidden since
+        they're the same 70 topics repeated purely for the scroll
+        illusion.
       -->
-      <div class="topic-preview" role="list">
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">🔤</span>
-          <span class="topic-chip__title">The Alphabet</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">✍️</span>
-          <span class="topic-chip__title">Fingerspell Your Name</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">🔢</span>
-          <span class="topic-chip__title">Numbers</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">👋</span>
-          <span class="topic-chip__title">Greetings</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">🙏</span>
-          <span class="topic-chip__title">Polite Words</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">🧑‍🤝‍🧑</span>
-          <span class="topic-chip__title">People</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">😊</span>
-          <span class="topic-chip__title">Feelings</span>
-        </button>
-        <button type="button" class="topic-chip" data-hero-cta role="listitem">
-          <span class="topic-chip__icon" aria-hidden="true">🥤</span>
-          <span class="topic-chip__title">Needs</span>
-        </button>
+      <div class="topic-marquee">
+        <div class="topic-marquee__row topic-marquee__row--rtl">
+          <ul class="topic-marquee__track" role="list"></ul>
+        </div>
+        <div class="topic-marquee__row topic-marquee__row--ltr">
+          <ul class="topic-marquee__track"></ul>
+        </div>
       </div>
-      <p class="topic-preview__lock text-muted">🔒 Sign up free to unlock these units.</p>
+      <p class="topic-preview__lock text-muted">
+        <span aria-hidden="true" data-lw-icon="locked" data-lw-icon-size="sm"></span>
+        Sign up free to unlock these units.
+      </p>
     </div>
   </section>
 
@@ -362,10 +453,11 @@
 
     // ── SIGN IN MODAL open/close ────────────────────────────────────
     // Matches the mockup: the hero has no inline form, so "Start
-    // Learning" (hero), "Sign In" (nav), and "Dashboard"/"Learn" (nav
-    // links, which need an account to actually open) all funnel into
-    // this one modal, just pre-set to the tab that makes sense for
-    // which one was clicked.
+    // Learning" (hero), "Sign In" (nav), and "Learn" (nav link, which
+    // needs an account to actually open) all funnel into this one
+    // modal, pre-set to the tab that makes sense for which one was
+    // clicked. "Home" (formerly "Dashboard") no longer funnels here —
+    // see the scrollToTop() binding below.
     const signinModal = document.getElementById('signin-modal');
 
     function openAuthModal(tab) {
@@ -377,14 +469,19 @@
       signinModal.classList.add('hidden');
     }
 
-    // Logo click — this is the landing page itself, so clicking the
-    // logo should just take the visitor back to the top of THIS page
-    // (like every other marketing site), not force a full navigation/
-    // reload to "index.html" (which is where they already are).
-    document.getElementById('navbar-logo').addEventListener('click', (event) => {
+    // Logo + "Home" nav link click — this is the landing page itself,
+    // so clicking either should just take the visitor back to the top
+    // of THIS page (like every other marketing site), not force a
+    // full navigation/reload to "index.html" (which is where they
+    // already are). "Home" replaces the old "Dashboard" link, which
+    // required an account and opened the sign-in modal via
+    // data-hero-login; it now just mirrors the logo instead.
+    function scrollToTop(event) {
       event.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    }
+    document.getElementById('navbar-logo').addEventListener('click', scrollToTop);
+    document.getElementById('navbar-home').addEventListener('click', scrollToTop);
 
     document.getElementById('signin-modal-close').addEventListener('click', closeAuthModal);
     signinModal.addEventListener('click', (event) => {
@@ -395,7 +492,8 @@
     });
 
     // "Start Learning" / topic-preview chips open the modal on Sign Up;
-    // "Sign In" / Dashboard / Learn nav links open it on Log In.
+    // "Sign In" / Learn nav link open it on Log In. ("Home" is bound
+    // separately, above, to scrollToTop instead.)
     document.querySelectorAll('[data-hero-cta]').forEach((el) => {
       el.addEventListener('click', () => openAuthModal('register'));
     });

@@ -114,16 +114,79 @@ function cameraPracticeLinkHtml(mission, signId) {
   // signOrder[0] when absent/invalid (see its computeSignOrder()/
   // `sign` const), so this is purely additive — nothing regresses if
   // signId is ever missing.
+  // TAB-SPAM FIX — this link is re-rendered on EVERY Watch stage (up
+  // to ~40 times per mission), and target="_blank" opens a brand-new
+  // tab on every single click. A learner clicking it from a few
+  // different items in the same session — the exact way this link is
+  // meant to be used — quietly accumulated a new camera-practice tab
+  // each time, with no way to tell the old ones apart.
+  // Using a fixed, named target instead of "_blank" is the browser's
+  // own built-in fix for this: a name reuses the SAME tab across
+  // clicks (any browsing context already open under that name gets
+  // re-navigated) and only opens a fresh one if that tab was closed
+  // or never existed. No click-tracking/debounce JS needed, and
+  // clicking from a different sign correctly updates the existing
+  // tab to that sign instead of leaving a stale one open elsewhere.
+  //
+  // CORRECTNESS FIX (this pass) — the first version of this kept
+  // rel="noopener" alongside the named target, which silently
+  // defeats the whole thing: per spec/MDN, noopener forces every
+  // non-special target name to be "treated like _blank ... when
+  // deciding whether to open a new window/tab" — so every click was
+  // STILL opening a brand-new tab, just one that happened to share a
+  // name none of them ever looked up. noopener only matters for
+  // isolating untrusted/external destinations from window.opener;
+  // camera-practice.html is our own same-origin page in this same
+  // app, so there's nothing to isolate it from — dropping noopener
+  // here is what actually lets the name-based reuse take effect.
   const url = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}${signId ? `&sign=${encodeURIComponent(signId)}` : ''}`;
   return `
-    <a class="lesson-camera-link" href="${url}" target="_blank" rel="noopener">
-      🎥 Practice with your camera <span class="text-muted">(new tab)</span>
+    <a class="lesson-camera-link" href="${url}" target="lw-camera-practice">
+      ${window.LWIcons.markup('camera', { size: 'sm' })}<span class="lw-icon-label">Practice with your camera</span> <span class="text-muted">(same tab)</span>
     </a>
   `;
 }
 
 /* ── stage renderers — each fills #lesson-content and wires its
  * own "continue" action, which always ends by calling completeAndAdvance() */
+
+// REFLECTION-ON-WRONG-ANSWER FIX — every quick-check/practice answer
+// below used to setTimeout() straight into the next slide regardless
+// of whether the learner got it right or wrong (1.1–1.4s, just long
+// enough to read the feedback label, not long enough to actually
+// think about it). For a wrong answer that's a real problem: the
+// screen changes out from under the learner right as they're reading
+// why they were wrong. Shared by every answer handler in this file so
+// the "wait, no — let them read it" behavior is identical everywhere
+// (Watch's register check, Quick Check recognize, Practice's
+// discriminate-pair and recognize branches) rather than four separate
+// copies that could drift.
+//
+// Correct answers keep the old fast, low-friction auto-advance — the
+// learner already knows they're right, there's nothing there to
+// reflect on. Only an incorrect answer swaps the timer for an
+// explicit "Continue" button, appended right under the feedback
+// message, so the learner moves on when THEY are ready.
+function advanceAfterAnswer(container, correct, onDone, delay = 1100) {
+  if (correct) {
+    setTimeout(onDone, delay);
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'lesson-actions';
+  wrap.innerHTML = `<button type="button" class="btn btn--primary btn--lg" id="lesson-answer-continue">Continue</button>`;
+  container.appendChild(wrap);
+  document.getElementById('lesson-answer-continue').addEventListener('click', () => {
+    // BUGFIX — onDone isn't always a full re-render (completeAndAdvance
+    // replaces the whole slide, but showContextStep only APPENDS a new
+    // block below whatever's already on screen, by design — see its
+    // own comment). Without removing this button first, it was left
+    // sitting on screen, already-clicked and now inert, with the new
+    // "Use it in context" section rendered in below it.
+    wrap.remove();
+    onDone();
+  }, { once: true });
+}
 
 function renderLessonWatch(mission, index, item, plan, ctx) {
   const sign = window.LWMissions.getSign(mission.level, item.signId);
@@ -177,9 +240,10 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
         const correct = btn.dataset.value === reg.answer;
         btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
         feedback.hidden = false;
-        feedback.textContent = (correct ? '✓ Right — ' : `Not quite — ${reg.answer} fits best here. `) + reg.note;
+        window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
+          (correct ? 'Right — ' : `Not quite — ${reg.answer} fits best here. `) + reg.note, { size: 'sm' });
         feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-        setTimeout(() => completeAndAdvance(mission, index, item), 1400);
+        advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
       });
     });
   } else {
@@ -209,9 +273,10 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
       const correct = btn.dataset.value === opts.correct;
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
-      feedback.textContent = correct ? '✓ Correct!' : `Not quite — that was "${(sign && sign.title) || item.signId}".`;
+      window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
+        correct ? 'Correct!' : `Not quite — that was "${(sign && sign.title) || item.signId}".`, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-      setTimeout(onDone, 1100);
+      advanceAfterAnswer(container, correct, onDone, 1100);
     });
   });
 }
@@ -244,9 +309,10 @@ function renderBoosterRegister(mission, index, item, plan) {
       const correct = btn.dataset.value === reg.answer;
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
-      feedback.textContent = (correct ? '✓ Right — ' : `Not quite — ${reg.answer} fits best. `) + reg.note;
+      window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
+        (correct ? 'Right — ' : `Not quite — ${reg.answer} fits best. `) + reg.note, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-      setTimeout(() => completeAndAdvance(mission, index, item), 1400);
+      advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
     });
   });
 }
@@ -287,9 +353,10 @@ function renderPracticeScenario(mission, index, item, plan) {
         const correct = btn.dataset.correct === 'true';
         btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
         feedback.hidden = false;
-        feedback.textContent = correct ? '✓ Correct!' : 'Not quite — take another look next time you see these two.';
+        window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
+          correct ? 'Correct!' : 'Not quite — take another look next time you see these two.', { size: 'sm' });
         feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-        setTimeout(() => showContextStep(mission, index, item, plan), 1100);
+        advanceAfterAnswer(el, correct, () => showContextStep(mission, index, item, plan), 1100);
       });
     });
   } else if (plan.recognizeOptions) {
@@ -341,12 +408,12 @@ function renderQuizHandoff(mission) {
     <div class="lesson-stage-label">Mission recap</div>
     <h1>Nice work — here's what you can do now</h1>
     <ul class="lesson-recap">
-      ${recap.length ? recap.map((line) => `<li>✓ ${escapeHtml(line)}</li>`).join('') : '<li class="text-muted">Complete a few more items to build your recap.</li>'}
+      ${recap.length ? recap.map((line) => `<li>${window.LWIcons.markup('complete', { size: 'status', className: 'lw-icon--tone-success' })}<span class="lw-icon-label">${escapeHtml(line)}</span></li>`).join('') : '<li class="text-muted">Complete a few more items to build your recap.</li>'}
     </ul>
     <p class="text-muted">One more step: pass the Mastery Quiz (80%+) to fully complete this mission.</p>
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-start-quiz" ${outOfHearts ? 'disabled' : ''}>
-        🎯 Start Mastery Quiz
+        ${window.LWIcons.markup('current', { size: 'sm' })}<span class="lw-icon-label">Start Mastery Quiz</span>
       </button>
       <a href="mission-overview.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--secondary btn--lg">
         Back to Mission Overview

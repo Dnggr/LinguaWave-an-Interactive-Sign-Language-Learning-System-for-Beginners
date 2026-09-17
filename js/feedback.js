@@ -101,7 +101,7 @@ window.submitSurvey = async function () {
       // auth.js, so this shouldn't happen in practice.
       console.warn('[feedback.js] window.LWAuth Firestore handles unavailable — answers not persisted:', answers);
     }
-    window.LinguaWave?.showToast?.('Thanks for your feedback! 🎉', 'success');
+    window.LinguaWave?.showToast?.('Thanks for your feedback!', 'success');
   } catch (err) {
     console.error('[feedback.js] Firestore write failed:', err);
     window.LinguaWave?.showToast?.('Could not submit feedback — please try again.', 'error');

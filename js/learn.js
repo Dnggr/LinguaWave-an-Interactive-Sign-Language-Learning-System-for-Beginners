@@ -1,8 +1,8 @@
 /**
  * js/learn.js — Renderer for pages/learn.html
  * ─────────────────────────────────────────────────────────────────
- * Same data source as js/dashboard.js: window.LWMissions /
- * window.LWData only.
+ * Same data source as js/dashboard.js: window.LWMissions only —
+ * js/data.js is not loaded on this page and isn't needed.
  *
  * CHAPTER GATING (Task 1, this revision) : "Locked" now means "this
  * mission's chapter isn't unlocked yet" — a chapter only unlocks once
@@ -186,9 +186,9 @@ function renderList(filterText) {
 }
 
 function initPage() {
-  if (!window.LWData || !window.LWMissions) {
+  if (!window.LWMissions) {
     document.getElementById('path-list').innerHTML =
-      `<p class="text-muted">Loading real content failed — check that js/data.js and js/missions.js both loaded.</p>`;
+      `<p class="text-muted">Loading real content failed — check that js/missions.js loaded.</p>`;
     return;
   }
 
@@ -204,6 +204,19 @@ function initPage() {
   const orientationSlot = document.getElementById('orientation-slot');
   if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
   renderList('');
+
+  // Interactive Locked-State Feedback (this revision) — locked rows
+  // render as a plain, non-navigable <div> (renderRow() above), so a
+  // click here never had anything to do. Delegated on #path-list (not
+  // per-row) since renderList() replaces the row markup wholesale on
+  // every search keystroke and every sync reconcile — a listener on
+  // the container survives all of that without being re-attached.
+  document.getElementById('path-list').addEventListener('click', (e) => {
+    const lockedRow = e.target.closest('.path-row--locked');
+    if (!lockedRow) return;
+    e.preventDefault();
+    window.LinguaWave?.triggerLockedFeedback?.(lockedRow);
+  });
 
   searchInput.addEventListener('input', () => renderList(searchInput.value));
 

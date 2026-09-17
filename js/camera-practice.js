@@ -506,9 +506,12 @@ function showQuickCheck() {
         });
         if (quickCheckFeedbackEl) {
           quickCheckFeedbackEl.style.display = '';
-          quickCheckFeedbackEl.textContent = correct
-            ? '✅ Nice — that\u2019s right.'
-            : `❌ Not quite — it was "${q.signId}".`;
+          window.LWIcons.setLabel(
+            quickCheckFeedbackEl,
+            correct ? 'success' : 'error',
+            correct ? 'Nice — that\u2019s right.' : `Not quite — it was "${q.signId}".`,
+            { size: 'sm' }
+          );
           quickCheckFeedbackEl.className = `assessment-feedback assessment-feedback--${correct ? 'success' : 'error'}`;
         }
         // Correct answers get the standalone "Correct!" takeover
@@ -855,58 +858,23 @@ let lastHandCount  = 0;
 // approximation of it — so a single-category unit's badge here and
 // that category's own mission page always show the identical number.
 
-// CHANGED (this session — new lesson-plan pivot) — copied verbatim
-// from js/learn.js's own (also just-updated) UNIT_ICONS/CATEGORY_ICONS,
-// same documented small-duplication call as before this session.
-// HOMEPAGE PIVOT (this session) — 'welcome' entry removed (Unit 0 is
-// no longer a UNITS entry, see data.js). Every other id unchanged.
-const UNIT_ICONS = {
-  alphabet: '🔤', fingerspell_name: '🖊️', numbers: '🔢',
-  greetings: '👋', polite_words: '🙌', people: '🧑‍🤝‍🧑', feelings: '😊',
-  needs: '🥤', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
-  body: '🧍', personal_information: '🪪', colors_unit: '🎨', shapes: '🔺',
-  size: '📏', appearance: '✨', touch: '🌡️', taste: '👅', sound: '🔊',
-  descriptions: '📝', family_unit: '👪', home: '🏠', furniture: '🛋️',
-  household: '🪟', bathroom: '🚿', kitchen: '🍳', school: '🏫',
-  school_supplies: '✏️', classroom: '📋', classroom_actions: '🙋',
-  subjects: '📚', food_unit: '🍽️', fruits: '🍎', vegetables: '🥕',
-  snacks: '🍪', drinks: '🥤', animals_unit: '🐾', wild_animals: '🦁',
-  insects: '🐝', clothes_unit: '👕', dressing: '🧺', personal_items: '🎒',
-  nature: '🌳', plants: '🌱', weather: '⛅', seasons: '🍂',
-  places_unit: '🗺️', vehicles: '🚗', transportation: '🚶',
-  professions: '👷', community: '🏙️', time_unit: '⏰', daytime: '🌅',
-  days: '📅', months: '🗓️', sequence: '🔢', frequency: '🔁',
-  location: '📍', distance: '📐', directions: '🧭', social: '🤝',
-  manners: '🙇', turn_taking: '🔄', responses: '💬', questions: '❓',
-  conversation: '💭', requests_unit: '🙋', answers: '✅',
-  basic_phrases: '💬', phrasebook: '📖',
-};
-const CATEGORY_ICONS = {
-  alphabet: '🔤', numbers: '🔢',
-  family: '👪', places: '🏠', time: '⏰', temperature: '🌡️', food: '🍎',
-  clothes: '👕', health: '🩹', feelings: '😊', requests: '🙏', amounts: '📏',
-  colors: '🎨', money: '💵', animals: '🐾', sequence_demo: '💬',
-  greetings_intro: '👋', basic_responses: '💬', family_phrases: '👨‍👩‍👧',
-  daily_needs: '🥤', asking_questions: '❓', polite_expressions: '🙌',
-  affection_feelings: '❤️', describing_things: '🖍️', self_introduction: '🧑',
-  daily_activities: '📅', family_conversations: '🗣️', talking_about_feelings: '💭',
-  asking_for_help: '🆘', school_conversations: '🏫', shopping_ordering: '🛍️',
-  social_conversations: '🎉', emergency_situations: '🚨', everyday_dialogues: '💡',
-  people: '🧑‍🤝‍🧑', actions: '🏃', hand_actions: '🤲', communication: '🗣️',
-  body: '🧍', personal_information: '🪪', shapes: '🔺', size: '📏',
-  appearance: '✨', taste: '👅', sound: '🔊', descriptions: '📝',
-  home: '🏠', furniture: '🛋️', household: '🪟', bathroom: '🚿',
-  kitchen: '🍳', school: '🏫', school_supplies: '✏️', classroom: '📋',
-  classroom_actions: '🙋', subjects: '📚', fruits: '🍎', vegetables: '🥕',
-  snacks: '🍪', drinks: '🥤', wild_animals: '🦁', insects: '🐝',
-  dressing: '🧺', personal_items: '🎒', nature: '🌳', plants: '🌱',
-  weather: '⛅', seasons: '🍂', vehicles: '🚗', transportation: '🚶',
-  professions: '👷', community: '🏙️', daytime: '🌅', days: '📅',
-  months: '🗓️', sequence: '🔢', frequency: '🔁', location: '📍',
-  distance: '📐', directions: '🧭', social: '🤝', manners: '🙇',
-  turn_taking: '🔄', responses: '💬', conversation: '💭',
-  making_requests: '🙋', answers: '✅',
-};
+// ICON MIGRATION — the two emoji lookup tables that used to live here
+// (UNIT_ICONS and CATEGORY_ICONS, ~45 lines of hand-picked emoji, copied
+// verbatim between this file and js/learn.js) are GONE. They were one of
+// three competing icon systems for the same categories — see
+// LinguaWave_Icon_Audit.md section 2. Every id they keyed on is now an id
+// in the single shared set in js/icons.js, so the lookup table itself was
+// redundant: window.LWIcons.markup(cat.id) IS the lookup.
+//
+// Two consequences worth knowing before you re-add a map here:
+//   1. There is no longer a silent fallback. The old code ended in a
+//      bookmark-emoji default, so any unmapped category quietly rendered
+//      an icon that looked deliberate. An unknown id now renders a
+//      visible placeholder and warns in the console (LWIcons.missing()).
+//   2. Unit ids and category ids share one namespace in js/icons.js, so a
+//      unit and its category can no longer drift apart the way these two
+//      maps did (they disagreed on `sequence`, `answers` and
+//      `basic_phrases` before this change).
 
 // Which unit (by `order`) this page is currently inside, so the
 // sidebar can auto-expand it. Mirrors updateLessonMeta()'s own
@@ -1017,14 +985,21 @@ function sidebarSignRow(cat, signId, mission, missionLocked) {
       : 'Locked — finish every mission in the current chapter to unlock this one';
     const stateClass = pending ? ' course-sidebar__sign--pending' : ' course-sidebar__sign--locked';
     return `<span class="course-sidebar__sign${stateClass}" aria-disabled="true" title="${reason}">` +
-      `<span class="course-sidebar__sign-icon">🔒</span>` +
+      `<span class="course-sidebar__sign-icon">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
       `<span class="course-sidebar__sign-label">${escapeHtml(label)}</span>` +
     `</span>`;
   }
 
   const href = `camera-practice.html?level=${encodeURIComponent(cat.level)}&category=${encodeURIComponent(cat.id)}&sign=${encodeURIComponent(signId)}`;
   const stateClass = isCurrent ? ' course-sidebar__sign--current' : (done ? ' course-sidebar__sign--done' : '');
-  const icon = isCurrent ? '▶' : (done ? '✔' : '○');
+  // Status glyphs were plain text characters that rendered at a
+  // different weight and baseline on every OS/font. The colour rules
+  // in css/lesson.css key off the row's state class and still apply —
+  // these icons inherit them through currentColor.
+  const icon = window.LWIcons.markup(
+    isCurrent ? 'current' : (done ? 'complete' : 'not_started'),
+    { size: 'status' }
+  );
   return `<a class="course-sidebar__sign${stateClass}" href="${href}">` +
     `<span class="course-sidebar__sign-icon">${icon}</span>` +
     `<span class="course-sidebar__sign-label">${escapeHtml(label)}</span>` +
@@ -1058,19 +1033,19 @@ function sidebarCategoryBlock(cat, opts) {
   // `missionLocked`, rather than linking to a sign boot() would just
   // bounce the learner straight back out of anyway.
   if (missionLocked) {
-    const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
+    const icon = window.LWIcons.markup(cat.id);
     return `<div class="course-sidebar__cat">` +
       `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked — finish every mission in the current chapter to unlock this one">` +
         `<span class="course-sidebar__cat-icon">${icon}</span>` +
         `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
-        `<span class="course-sidebar__cat-count">🔒</span>` +
+        `<span class="course-sidebar__cat-count">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
       `</span>` +
     `</div>`;
   }
 
   const doneCount = signs.filter(s => isSignLearnedInMission(mission, s)).length;
   const isCurrentCat = !isNameDrill && cat.id === category;
-  const icon = CATEGORY_ICONS[cat.id] ?? '🔖';
+  const icon = window.LWIcons.markup(cat.id);
   // Jump target is the first sign that's both unlearned AND actually
   // reachable — not just the first unlearned one — so this link never
   // lands on a sign this same render pass would itself show as
@@ -1156,7 +1131,7 @@ function renderCourseSidebar() {
     const curUnitOrder = currentUnitOrder();
 
     el.innerHTML = units.map(unit => {
-      const icon = UNIT_ICONS[unit.id] ?? '\ud83d\udd16';
+      const icon = window.LWIcons.markup(unit.id);
       const isCurrentUnit = unit.order === curUnitOrder;
 
       // HOMEPAGE PIVOT (this session) — the old kind==='info' branch
@@ -1181,7 +1156,7 @@ function renderCourseSidebar() {
 
       if (liveCats.length === 0) {
         return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
-          `<span class="course-sidebar__unit-icon">\ud83d\udd12</span>` +
+          `<span class="course-sidebar__unit-icon">${window.LWIcons.markup('locked', { size: 'sm' })}</span>` +
           `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
           `<span class="course-sidebar__unit-pct">Soon</span>` +
         `</div>`;
@@ -1191,7 +1166,7 @@ function renderCourseSidebar() {
       const unlocked = isReference || (window.LWProgress?.isCategoryUnlocked?.(liveCats[0].level, liveCats[0].id) ?? true);
       if (!unlocked) {
         return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
-          `<span class="course-sidebar__unit-icon">\ud83d\udd12</span>` +
+          `<span class="course-sidebar__unit-icon">${window.LWIcons.markup('locked', { size: 'sm' })}</span>` +
           `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
           `<span class="course-sidebar__unit-pct">0%</span>` +
         `</div>`;
@@ -1474,7 +1449,19 @@ function updateLessonMeta() {
   // it, and only show the big single-letter badge for actual letters.
   const signDataForTitle = isNameDrill ? null : (window.LWData?.getSign?.(level, sign) ?? null);
   const displayTitle = signDataForTitle?.title ?? sign;
-  if (letter)  letter.textContent   = isNameDrill ? '🖊️' : (sign.length === 1 ? sign : '✋');
+  // The big badge shows the actual character for single-character signs
+  // (letters and the 0-9 numbers category) and an icon otherwise. It used
+  // to show a pen emoji for the name drill and an open-hand emoji for
+  // multi-character signs; those are the only two non-letter states, so
+  // they get real icons at badge scale rather than font-dependent glyphs.
+  if (letter) {
+    if (!isNameDrill && sign.length === 1) {
+      letter.textContent = sign;
+    } else {
+      window.LWIcons.setLabel(letter, isNameDrill ? 'fingerspell_name' : 'hand_actions', '',
+        { className: 'lesson-letter__icon' });
+    }
+  }
   // CHANGED — used to be `sign.length === 1 ? 'Letter ${sign}' : displayTitle`,
   // which assumed every single-character signId was a letter. That broke
   // the moment the 'numbers' category (also single-character signIds,
@@ -1586,8 +1573,15 @@ function updateLessonMeta() {
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) {
       if (signData.referenceUrl) {
+        // NOTE — unlike lesson.js's camera-practice link, this one stays
+        // target="_blank" + noopener: it points to an external,
+        // third-party site (Lifeprint.com), so keeping window.opener
+        // isolated matters more here than reusing one tab. noopener
+        // defeats named-target reuse anyway (see lesson.js's
+        // cameraPracticeLinkHtml for why), so there'd be nothing to
+        // gain from naming this one.
         referenceEl.innerHTML =
-          `📖 <a href="${escapeHtml(signData.referenceUrl)}" target="_blank" rel="noopener noreferrer">See this sign on Lifeprint.com (ASL University)</a>`;
+          `${window.LWIcons.markup('phrasebook', { size: 'sm' })} <a href="${escapeHtml(signData.referenceUrl)}" target="_blank" rel="noopener noreferrer">See this sign on Lifeprint.com (ASL University)</a>`;
         referenceEl.style.display = '';
       } else {
         referenceEl.style.display = 'none';
@@ -1600,7 +1594,7 @@ function updateLessonMeta() {
     // supposed to have a data.js entry in the first place.
     if (lessonDescriptionEl) {
       lessonDescriptionEl.textContent = nameDrillLetters.length > 0
-        ? `This is the "ASDF" moment — combining letters you already know into something real. Tap "▶ Try it" below and fingerspell your name, one letter at a time: ${nameDrillLetters.join('-')}.`
+        ? `This is the "ASDF" moment — combining letters you already know into something real. Tap "Try it" below and fingerspell your name, one letter at a time: ${nameDrillLetters.join('-')}.`
         : `We don't have any letters to drill — your profile name doesn't contain any A–Z characters.`;
     }
     if (lessonTipsEl) {
@@ -1664,7 +1658,7 @@ function updateLessonMeta() {
   if (isNameDrill) {
     if (startBtnEl) startBtnEl.style.display = 'none';
   } else {
-    if (startBtnEl) startBtnEl.textContent = '🎥 Practice Check (optional)';
+    if (startBtnEl) window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
     // BUG 5 FIX: use .onclick assignment (idempotent) instead of
     // addEventListener, which stacks duplicate listeners if called twice.
     if (startBtnEl) startBtnEl.onclick = startAssessment;
@@ -1775,7 +1769,7 @@ function setupNavButtons() {
       // V1-removal pass: pages/quiz.html is deleted (all 12 chapters
       // now use the native Mastery Quiz — see lesson.js/mission-overview.js's
       // SAMPLE_MASTERY_QUIZ_CHAPTERS); route there instead, same-folder.
-      btnNext.textContent = 'Finish → Category Assessment 📝';
+      btnNext.textContent = 'Finish → Category Assessment';
       btnNext.onclick = () => {
         markCurrentSignPracticed();
         shutdown();
@@ -1843,7 +1837,7 @@ function setupNavButtons() {
         // item is exactly what's missing) — so this hands them
         // straight back into the guided lesson flow for the content
         // they were just looking at, not somewhere random.
-        btnNext.textContent = '↻ Continue Mission';
+        window.LWIcons.setLabel(btnNext, 'continue_mission', 'Continue Mission', { size: 'sm' });
         btnNext.onclick = () => {
           shutdown();
           window.location = `lesson.html?mission=${encodeURIComponent(category)}`;
@@ -1879,7 +1873,7 @@ async function bootDetectionEngine() {
   setStatus('', 'ready');
 
   if (!isModelReady()) {
-    setFaceWarn(`⚠️ Hand/face tracking failed to load — sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
+    setFaceWarn(`Hand/face tracking failed to load — sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
   }
 
   try {
@@ -1887,13 +1881,13 @@ async function bootDetectionEngine() {
     const motionErr = getMotionModelError();
     if (motionErr) {
       setClassifierWarn(
-        '⚠️ Motion model failed to load — motion signs cannot be detected. ' +
+        'Motion model failed to load — motion signs cannot be detected. ' +
         'Check that /asl_motion_model/model.json exists. (' + motionErr + ')'
       );
     }
   } catch (err) {
     console.error('[lesson.js] Classifier failed to load — camera still running:', err);
-    setClassifierWarn('⚠️ Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
+    setClassifierWarn('Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
 
   // FIX (2026-08-21, earlier session): stamp both to "now" right before
@@ -1972,7 +1966,7 @@ function startRenderLoop() {
       const faceHoldMs = warmingUp ? INITIAL_WARMUP_MS : FACE_WARN_HOLD_MS;
       setFaceWarn(
         now - lastFaceSeenAt > faceHoldMs
-          ? '⚠️ Face not detected — step back so your whole head is visible.'
+          ? 'Face not detected — step back so your whole head is visible.'
           : ''
       );
     }
@@ -2115,19 +2109,20 @@ function setMotionStatus(state, label) {
       motionStatusLabelEl.textContent = 'Recording — perform the sign now';
       break;
     case 'success':
-      motionStatusLabelEl.textContent = `✅ Detected "${label}"`;
+      window.LWIcons.setLabel(motionStatusLabelEl, 'success', `Detected "${label}"`, { size: 'sm' });
       break;
     case 'fail':
       motionStatusLabelEl.textContent = label
-        ? `❌ Wasn't confident enough (saw "${label}")`
-        : '❌ No clear motion detected';
+        ? `Wasn't confident enough (saw "${label}")`
+        : 'No clear motion detected';
       break;
     case 'hand-lost':
       // NEW: shown when the hand left frame with too little of the
       // sign captured to even guess — see HAND_LOST_GRACE_MS handling
       // in the render loop. Explicit and actionable, unlike the old
       // silent hang.
-      motionStatusLabelEl.textContent = '⚠️ Hand left the frame too soon — keep it up until recording finishes, then try again';
+      window.LWIcons.setLabel(motionStatusLabelEl, 'warning',
+      'Hand left the frame too soon — keep it up until recording finishes, then try again', { size: 'sm' });
       break;
     case 'idle':
     default:
@@ -2256,7 +2251,8 @@ function logDetection(label, confidence, kind) {
   const emptyEl = detectionLogListEl.querySelector('.detection-log__empty');
   if (emptyEl) emptyEl.remove();
 
-  const icon = kind === 'success' ? '✅' : kind === 'confirming' ? '🔁' : '❌';
+  const icon = window.LWIcons.markup(FEEDBACK_ICONS[kind] || 'info',
+    { size: 'status', className: `lw-icon--tone-${kind === 'success' ? 'success' : kind === 'confirming' ? 'info' : 'error'}` });
   const li = document.createElement('li');
   li.className = `detection-log__entry--${kind}`;
   const time = new Date().toLocaleTimeString([], { hour12: false });
@@ -2292,7 +2288,7 @@ function handlePracticeFrame(result) {
       if (result.label !== expectedStep) {
         // Forgiving in practice mode: retry just this step rather than
         // aborting the whole sequence, unlike assessment's strict fail.
-        showFeedback(`❌ Detected "${result.label}" — try "${expectedStep}" again`, 'error');
+        showFeedback(`Detected "${result.label}" — try "${expectedStep}" again`, 'error');
         enterCooldown(1000);
         resetMotionBuffer();
         setTimeout(() => startPhraseStep(), 1000);
@@ -2316,14 +2312,14 @@ function handlePracticeFrame(result) {
       if (isMotion) resetMotionBuffer();
       phraseStepIdx++;
       updatePhrasePromptText();
-      showFeedback(`✅ Got it — next: "${phraseSteps[phraseStepIdx]}"`, 'success');
+      showFeedback(`Got it — next: "${phraseSteps[phraseStepIdx]}"`, 'success');
       setTimeout(() => startPhraseStep(), PHRASE_STEP_DELAY);
       return;
     }
 
     enterCooldown(1200);
     if (isMotion) resetMotionBuffer();
-    showFeedback('✅ Phrase complete!', 'success');
+    showFeedback('Phrase complete!', 'success');
     // NEW (this session) — Fingerspell-as-assessment. This drill is
     // deliberately forgiving (a wrong letter retries that step instead
     // of failing the attempt — see the comment above this block), so
@@ -2366,7 +2362,7 @@ function handlePracticeFrame(result) {
       return;
     }
     if (isMotion) {
-      showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
+      showFeedback(`Nice! Detected: ${result.label}`, 'success');
       enterCooldown(1200);
       resetMotionBuffer();
       debounceCount = 0;
@@ -2374,7 +2370,7 @@ function handlePracticeFrame(result) {
     } else {
       debounceCount++;
       if (debounceCount >= DEBOUNCE_FRAMES && lastDetected === result.label) {
-        showFeedback(`✅ Nice! Detected: ${result.label}`, 'success');
+        showFeedback(`Nice! Detected: ${result.label}`, 'success');
         enterCooldown(1200);
         debounceCount = 0;
       }
@@ -2416,7 +2412,7 @@ function startAssessment() {
   if (scoreEl)     scoreEl.style.display     = '';
 
   if (modeBarEl) {
-    modeBarEl.textContent  = '🎯 Assessment Mode';
+    window.LWIcons.setLabel(modeBarEl, 'progress', 'Assessment Mode', { size: 'sm' });
     modeBarEl.className    = 'mode-bar mode-bar--pill mode-bar--assessment';
   }
 
@@ -2530,7 +2526,7 @@ function handleAssessmentFrame(result) {
       const stepInfo = `${result.label} (step ${phraseStepIdx + 1}/${phraseSteps.length})`;
       phraseSteps = null;
       missedSigns.push({ expected: currentSign, got: stepInfo });
-      showFeedback(`❌ Detected "${result.label}" — expected "${expectedStep}"`, 'error');
+      showFeedback(`Detected "${result.label}" — expected "${expectedStep}"`, 'error');
       setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
       return;
     }
@@ -2560,7 +2556,7 @@ function handleAssessmentFrame(result) {
     if (isMotion) resetMotionBuffer();
     phraseSteps = null;
     score++;
-    showFeedback(`✅ Correct! (${result.confidence}%)`, 'success');
+    showFeedback(`Correct! (${result.confidence}%)`, 'success');
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
     setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
     return;
@@ -2585,11 +2581,11 @@ function handleAssessmentFrame(result) {
 
   if (result.label === currentSign) {
     score++;
-    showFeedback(`✅ Correct! (${result.confidence}%)`, 'success');
+    showFeedback(`Correct! (${result.confidence}%)`, 'success');
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
   } else {
     missedSigns.push({ expected: currentSign, got: result.label });
-    showFeedback(`❌ Detected ${result.label} — expected ${currentSign}`, 'error');
+    showFeedback(`Detected ${result.label} — expected ${currentSign}`, 'error');
   }
 
   setTimeout(() => {
@@ -2616,7 +2612,7 @@ function endAssessment() {
   if (scoreEl)     scoreEl.style.display     = 'none';
 
   if (modeBarEl) {
-    modeBarEl.textContent = '📖 Practice Mode';
+    window.LWIcons.setLabel(modeBarEl, 'learn', 'Practice Mode', { size: 'sm' });
     modeBarEl.className   = 'mode-bar mode-bar--pill mode-bar--practice';
   }
 
@@ -2643,7 +2639,7 @@ function endAssessment() {
   if (overlayEl && finalScoreEl) {
     finalScoreEl.textContent = `${Math.round(pct * 100)}%`;
     document.getElementById('overlay-result-title').textContent =
-      passed ? '🎉 Nice practice run!' : 'Good attempt — keep practicing!';
+      passed ? 'Nice practice run!' : 'Good attempt — keep practicing!';
     document.getElementById('overlay-result-msg').textContent =
       passed
         ? 'That looked great. This was just an optional camera practice check — head to the category assessment when you\u2019re ready.'
@@ -2666,7 +2662,7 @@ function endAssessment() {
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    startBtnEl.textContent   = '🎥 Practice Check (optional)';
+    window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
   }
 }
 
@@ -2732,7 +2728,7 @@ function updateConfidenceUI(result) {
     // entire time. That reads as frozen even though it's actively
     // working (the thin frame-collecting bar below is the only thing
     // that moved). Show an explicit pulsing "Listening" state instead.
-    detectedEl.textContent   = '🎥 Listening…';
+    window.LWIcons.setLabel(detectedEl, 'camera', 'Listening…', { size: 'sm' });
     detectedEl.style.color   = 'var(--clr-accent)';
     confidenceEl.style.width = '100%';
     confidenceEl.style.background = 'var(--clr-accent)';
@@ -2747,19 +2743,38 @@ function updateConfidenceUI(result) {
   }
 }
 
+// Maps the semantic feedback `type` these helpers already took to an
+// icon in the shared set. This is the whole point of the icon migration
+// for this file: before, ~20 call sites each hard-coded their own emoji
+// INTO the message string ("\u2705 Correct!", "\u274c Detected X") while ALSO
+// passing type:'success'/'error' — the glyph and the type could disagree,
+// and did. Now the caller passes meaning only and the icon is derived.
+const FEEDBACK_ICONS = {
+  success:    'success',
+  error:      'error',
+  confirming: 'info',
+  info:       'info',
+  warning:    'warning',
+};
+
 function showFeedback(message, type) {
   if (!feedbackEl) return;
-  feedbackEl.textContent  = message;
   feedbackEl.className    = `assessment-feedback assessment-feedback--${type}`;
   feedbackEl.style.display = message ? '' : 'none';
+  if (!message) { feedbackEl.textContent = ''; return; }
+  // setLabel(), not innerHTML: these messages interpolate model output
+  // and sign ids, so the text stays a text node and only the icon is
+  // markup. Nothing user- or model-supplied is ever parsed as HTML.
+  window.LWIcons.setLabel(feedbackEl, FEEDBACK_ICONS[type] || 'info', message,
+    { size: 'sm', className: `lw-icon--tone-${type === 'error' ? 'error' : type === 'success' ? 'success' : 'info'}` });
 }
 
 function setStatus(message, type) {
   if (!statusEl) return;
   if (!message) { statusEl.style.display = 'none'; return; }
   statusEl.style.display   = 'flex';
-  statusEl.textContent     = message;
   statusEl.className       = `camera-status camera-status--${type}`;
+  window.LWIcons.setLabel(statusEl, FEEDBACK_ICONS[type] || 'info', message, { size: 'sm' });
 }
 
 function setClassifierWarn(message) {
@@ -2767,7 +2782,10 @@ function setClassifierWarn(message) {
     classifierWarnEl = document.getElementById('classifier-warn');
   }
   if (!classifierWarnEl) return;
-  classifierWarnEl.textContent = message;
+  // 'warning', not 'error': the camera still runs, only detection is
+  // degraded. These were all "\u26a0\ufe0f" prefixes inside the message string.
+  if (message) window.LWIcons.setLabel(classifierWarnEl, 'warning', message, { size: 'sm' });
+  else classifierWarnEl.textContent = '';
   classifierWarnEl.style.display = message ? '' : 'none';
 }
 
@@ -2779,7 +2797,8 @@ function setFaceWarn(message) {
     faceWarnEl = document.getElementById('face-warn');
   }
   if (!faceWarnEl) return;
-  faceWarnEl.textContent = message;
+  if (message) window.LWIcons.setLabel(faceWarnEl, 'warning', message, { size: 'sm' });
+  else faceWarnEl.textContent = '';
   faceWarnEl.style.display = message ? '' : 'none';
 }
 
@@ -2789,7 +2808,8 @@ function setHandStatus(count) {
     handStatusEl.textContent  = 'No hand detected';
     handStatusEl.className    = 'hand-status-pill hand-status-pill--none';
   } else {
-    handStatusEl.textContent  = count === 1 ? '✋ Hand detected' : '🤲 Both hands';
+    window.LWIcons.setLabel(handStatusEl, 'hand_actions',
+      count === 1 ? 'Hand detected' : 'Both hands', { size: 'status' });
     handStatusEl.className    = 'hand-status-pill hand-status-pill--ok';
   }
 }
@@ -2822,13 +2842,13 @@ window.closeOverlay = function() {
 window.retryLesson = function() {
   closeOverlay();
   if (startBtnEl) {
-    startBtnEl.textContent   = '🎥 Practice Check (optional)';
+    window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
     startBtnEl.style.display = '';
   }
   if (promptBoxEl) promptBoxEl.style.display = 'none';
   if (scoreEl)     scoreEl.style.display     = 'none';
   if (modeBarEl) {
-    modeBarEl.textContent = '📖 Practice Mode';
+    window.LWIcons.setLabel(modeBarEl, 'learn', 'Practice Mode', { size: 'sm' });
     modeBarEl.className   = 'mode-bar mode-bar--pill mode-bar--practice';
   }
   mode = 'practice';

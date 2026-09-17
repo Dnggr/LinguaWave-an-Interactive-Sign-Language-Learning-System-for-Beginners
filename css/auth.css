@@ -20,12 +20,193 @@
   .hero__grid { grid-template-columns: 1fr; }
 }
 
+/* ── HERO — WAVE BACKGROUND (waves + navbar restyle pass, rev 4) ──
+   REV 4: proper sine-wave shape + a 3rd parallax layer, per a
+   reference "low frequency / long wavelength" sine diagram — REV 3's
+   path used ONE cubic-Bezier "C" command to span an entire 1200-unit
+   period (control points at the 1/4 and 3/4 marks, pulling up then
+   down within a single curve), which is a workable long-wavelength
+   swell but not a true sine curve — a single Bezier segment doesn't
+   hold a symmetric peak/trough the way a real sine wave does. Each
+   path below instead uses the standard SVG sine-wave construction:
+   ONE "C" command per HALF-period (600 units), with BOTH of that
+   command's control points held at the peak/trough height and placed
+   at the half-period's 1/4 and 3/4 marks — that's what gives a flat-
+   topped, symmetric crest (or trough) instead of a lopsided hump.
+   Two such half-period commands (crest then trough) = one full
+   1200-unit period, repeated twice across the 2400 viewBox — still
+   tiles seamlessly via translateX(0 → -50%), since that's exactly
+   one period.
+
+   A `--deep` layer was added behind `--back`/`--front` (very low
+   opacity, slowest, drifting the OPPOSITE direction) purely for
+   parallax depth, the way a layered-wave background typically has
+   3-4 bands moving at different speeds — but the FRONT layer (most
+   opaque, topmost, "the main wave") keeps the same direction as
+   before: translateX(0 → -50%) shifts a 200%-wide element LEFT by
+   half its own width; since that's a container-relative measure, it
+   equals exactly one period of a periodic pattern, so the visible
+   window doesn't jump — points that were off-screen to the right
+   scroll into view as the element slides left, i.e. the pattern
+   visibly travels right-to-left. Only `--deep` reverses that (an
+   `animation-direction: reverse` on the same keyframe) for contrast.
+
+   Sizing (band height, baseline height, section padding) is
+   unchanged from rev 3 — this pass is shape-only.
+
+   2026-09-16: .hero--wave now reaches up behind the navbar instead of
+   stopping below it — margin-top pulls the box up by the navbar's own
+   box height (60px .navbar__inner + 1px border-bottom = 61px), and
+   padding-top grows by that same 61px so the actual copy/illustration
+   still lands where it did before; only the background paints further
+   up. Paired with .navbar--hero's near-transparent background (see
+   that comment in the NAVBAR — HERO VARIANT block above), the wave
+   gradient now shows through the bar, so navbar and hero read as one
+   continuous surface that moves/themes together rather than two
+   separately-colored strips stacked on each other. */
+.hero--wave {
+  position: relative;
+  overflow: hidden;
+  margin-top: -61px;
+  padding-top: calc(var(--space-8) + 61px);
+  padding-bottom: 130px;
+  background:
+    radial-gradient(120% 140% at 82% 6%, rgba(37,99,235,.14), transparent 55%),
+    linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #D2ECEA 75%, #C4E6DE 100%);
+}
+.hero--wave .container { position: relative; z-index: 2; }
+
+[data-theme="dark"] .hero--wave {
+  background:
+    radial-gradient(120% 140% at 82% 6%, rgba(45,150,190,.35), transparent 55%),
+    linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E3159 78%, #0F4C66 100%);
+}
+[data-theme="dark"] .hero--wave .section__eyebrow { color: #7FC4E8; }
+[data-theme="dark"] .hero--wave .hero__copy h1 { color: #FFFFFF; }
+[data-theme="dark"] .hero--wave .hero__lead { color: rgba(234,242,255,.78); }
+[data-theme="dark"] .hero--wave .btn--ghost { color: #EAF2FF; border-color: rgba(234,242,255,.35); }
+[data-theme="dark"] .hero--wave .btn--ghost:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,.08); }
+
+.hero-waves {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 130px;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 1;
+}
+.hero-waves__layer {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 200%; height: 100%;
+  animation: lw-wave-drift linear infinite;
+}
+.hero-waves__layer--deep {
+  fill: rgba(45,155,175,.22);
+  opacity: .6;
+  animation-duration: 42s;
+  animation-direction: reverse;
+}
+[data-theme="dark"] .hero-waves__layer--deep { fill: rgba(45,155,175,.3); }
+.hero-waves__layer--back {
+  fill: rgba(45,155,175,.45);
+  opacity: .85;
+  animation-duration: 26s;
+}
+[data-theme="dark"] .hero-waves__layer--back { fill: rgba(45,155,175,.55); }
+.hero-waves__layer--front {
+  fill: var(--clr-bg);
+  animation-duration: 18s;
+}
+@keyframes lw-wave-drift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-waves__layer { animation: none; }
+}
+
+/* Floating card row — pulls the section right after the hero up into
+   the wave's light-colored front layer (same var(--clr-bg) fill), so
+   the "Why Learn ASL?" row reads as cards resting on the wave crest
+   rather than a new section starting below it, matching the mockup.
+   The hero shrank (190px→130px band) in this revision, so the whole
+   page is shorter overall — combined with a slightly bigger overlap
+   here (-85px→-95px) that's enough for each card's paragraph, not
+   just its icon+title, to clear the fold on a typical viewport
+   without scrolling. */
+.hero--wave + .section {
+  position: relative;
+  z-index: 3;
+  margin-top: -95px;
+}
+@media (max-width: 700px) {
+  .hero--wave + .section { margin-top: -55px; }
+}
+
+/* ── NAVBAR — HERO VARIANT ─────────────────────────────────────────
+   REV 2: now that the hero itself follows the theme toggle, the
+   navbar sitting on top of it can too — rev 1 pinned this to a
+   permanent dark-glass bar for the same reason it pinned the hero to
+   navy (a bar that flips to a light backdrop over a now-ALSO-light
+   hero is no longer a mismatch, it's the point). So this block no
+   longer overrides background/text color at all: `.navbar` in
+   style.css §5 already reads `var(--backdrop)` for its background and
+   `var(--clr-text-muted)`/`var(--clr-accent)` for link/logo color,
+   both theme tokens, so a plain `.navbar--hero` (no extra rules)
+   would already look correct in both themes with zero duplication.
+   What's left here is purely additive, not color-correcting: the
+   gradient logo mark and the gradient "Get Started" CTA are a
+   deliberate brand accent that stays the same gradient regardless of
+   theme (same reasoning as the illustration's circle wash below —
+   it's its own self-contained color, not something that needs to
+   invert with the page).
+
+   2026-09-16: the one exception to "purely additive" — background is
+   now overridden after all, to --backdrop-hero instead of the shared
+   --backdrop (defined next to --backdrop in css/style.css §1, same
+   per-theme hue, alpha dropped from .85 to .10) so this bar reads as
+   almost transparent over the hero. Link/logo/button colors are
+   untouched and still just inherit the theme tokens as before. That
+   transparency is also why .hero--wave (below) now reaches up behind
+   this bar instead of stopping at it — see the comment there — so the
+   wave gradient shows through the bar and the two read as one
+   continuous surface instead of a solid strip sitting on top of one. */
+.navbar--hero {
+  background: var(--backdrop-hero);
+}
+.navbar--hero .btn--primary {
+  background: linear-gradient(120deg, #2563EB, #0F9DA6);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(15,157,166,.35);
+}
+.navbar--hero .btn--primary:hover { background: linear-gradient(120deg, #2563EB, #0F9DA6); filter: brightness(1.1); }
+
+/* Logo mark — small gradient badge + two stacked wave strokes,
+   flanking "LinguaWave" the way the reference mockup's icon does.
+   2026-09-16: commented out (markup + rules) rather than deleted —
+   there's no permanent logo yet, so this placeholder badge is pulled
+   for now; "LinguaWave" stays as plain text. Uncomment both this
+   block and the matching HTML span to bring it back later.
+.navbar__logo { display: inline-flex; align-items: center; }
+.navbar__mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #2563EB, #0F9DA6);
+  margin-right: var(--space-2);
+  flex-shrink: 0;
+}
+.navbar__mark svg { width: 16px; height: 16px; }
+*/
+
 /* ── HERO ILLUSTRATION (mockup alignment pass, 2026-08-31) ────────
    Replaces the auth-card that used to occupy the hero's right
-   column — a soft line-art pair of signing hands inside a coral
-   circle wash, matching the mockup's Homepage screen. Pure inline
-   SVG (currentColor-free, uses design-token colors directly) so it
-   themes correctly in both light/dark without a second asset. */
+   column — a soft line-art pair of signing hands inside a circle
+   wash, matching the mockup's Homepage screen. Pure inline SVG
+   (currentColor-free, uses design-token colors directly — var(--clr-
+   accent)/var(--clr-accent-soft)/var(--clr-accent-dim)) so it re-
+   themes automatically with the palette (blue as of this session's
+   color pass) in both light/dark without a second asset. */
 .hero-illustration {
   display: flex; align-items: center; justify-content: center;
   padding: var(--space-8);
@@ -34,6 +215,88 @@
 @media (max-width: 900px) {
   .hero-illustration { padding: var(--space-4); }
   .hero-illustration svg { max-width: 260px; }
+}
+
+/* Hero-only overrides for the same illustration, applied regardless
+   of theme (not just dark) — the circle wash is the hand's actual
+   backdrop, not the outer hero gradient, so it needs to read as a
+   vivid disc either way for the white hand silhouette to pop; light-
+   theme's --clr-accent-soft is a barely-there 10% tint built for a
+   white card background, too faint on its own here in either theme.
+   The attribute selector below targets the wash circle by its literal
+   (unresolved) `fill="var(--clr-accent-soft)"` markup string —
+   presentation attributes carry zero specificity, so any of these
+   rules already wins over it without editing the SVG markup itself. */
+.hero--wave .hero-illustration { position: relative; }
+.hero--wave .hero-illustration::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  background: radial-gradient(circle, rgba(56,189,248,.35), transparent 70%);
+  filter: blur(32px);
+  z-index: -1;
+}
+.hero--wave .hero-illustration svg circle[fill="var(--clr-accent-soft)"] { fill: rgba(56,189,248,.22); }
+.hero--wave .hero-illustration svg path[stroke="var(--clr-accent)"] { stroke: #DCEEFF; }
+.hero--wave .hero-illustration svg path[stroke="var(--clr-accent-dim)"] { stroke: rgba(220,238,255,.6); }
+.hero--wave .hero-illustration svg path[fill="var(--clr-surface)"] { fill: rgba(255,255,255,.94); }
+
+/* ── HERO SKY DECOR — day (sun) vs night (stars) ──────────────────
+   Two full-bleed layers spanning the whole hero (not just the
+   illustration corner), toggled purely by [data-theme] display:none/
+   block — no JS swap needed, same trick the wave/navbar color swaps
+   already use. Sits at z-index:1 (behind .container's z-index:2)
+   since it's part of the hero's backdrop, not foreground content. */
+.hero-decor {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-decor--night { display: none; }
+[data-theme="dark"] .hero-decor--day { display: none; }
+[data-theme="dark"] .hero-decor--night { display: block; }
+
+/* Day: just a sun (soft glow, gently pulsing). Used to also carry a
+   big cloud drifting behind the headline, cut at the user's request —
+   see the removed .hero-decor__cloud rules in git history if it ever
+   needs to come back. */
+.hero-decor__sun {
+  position: absolute; top: 8%; right: 9%;
+  width: 46px; height: 46px;
+  color: #FBBF24;
+  filter: drop-shadow(0 0 18px rgba(251,191,36,.55));
+  animation: lw-sun-pulse 5s ease-in-out infinite;
+}
+@keyframes lw-sun-pulse {
+  0%, 100% { opacity: .85; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-decor__sun { animation: none; }
+}
+
+/* Night: stars are generated at runtime by js/hero-decor.js (a real
+   scattered "blue noise" distribution across the whole hero, not
+   hand-placed percentages — see that file's header comment for why).
+   This block only owns the shared visual rules every generated star
+   uses; per-star position/size/timing come in as inline styles. */
+.hero-star {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: #EAF2FF;
+  animation: lw-star-twinkle 3s ease-in-out infinite;
+}
+.hero-star--big { background: none; color: #8FD9EE; border-radius: 0; }
+.hero-star--big svg { width: 100%; height: 100%; display: block; }
+@keyframes lw-star-twinkle {
+  0%, 100% { opacity: .25; transform: scale(.8); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-star { animation: none; opacity: .7; }
 }
 
 /* ── WHY LEARN ASL? row (mockup's 3-card row directly under hero) ─ */
@@ -55,28 +318,93 @@
   .why-row { grid-template-columns: 1fr; }
 }
 
-/* ── TOPIC PREVIEW ────────────────────────────────────────────── */
-.topic-preview {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+/* ── TOPIC MARQUEE — two-row infinite scroll of topic chips ────────
+   Replaces the old `.topic-preview` static grid with two rows that
+   scroll in opposite directions ("first layer" right-to-left,
+   "second layer" left-to-right) — not connected by any literal line
+   or arrow between them, just two contrasting directions reading as
+   one continuous, circulating cloud of all 70 topics in the
+   curriculum. The chip markup itself is generated at runtime by
+   js/topic-marquee.js, not hard-coded here — index.html just holds
+   two empty track <ul>s for it to fill.
+
+   Each row's track holds the full 70-chip list TWICE, back-to-back —
+   that's what makes translateX(0 → -50%) loop seamlessly (shifting a
+   track by half of its own width moves it exactly one full copy of
+   the list, so the seam where copy 1 ends and copy 2 begins is
+   invisible), the same trick the hero wave uses. `width: max-content`
+   lets the track size itself to its natural (2×) content width rather
+   than needing a fixed pixel value.
+
+   Accessibility: chips are plain, non-interactive <div>s (2026-09-17:
+   used to be buttons that opened the Sign Up tab — see the TOPIC
+   PREVIEW comment in index.html for why that was removed). Only ONE
+   of the four total chip-sets on the page (row 1's first copy) sits
+   in the accessibility tree — role="list" there, no aria-hidden. The
+   other three (row 1's duplicate, both of row 2's copies) are
+   `aria-hidden="true"` so screen readers don't hear the same 70 topic
+   names four times over; nothing here needs `tabindex` anymore since
+   there's no action to focus toward. */
+.topic-marquee {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   margin-top: var(--space-6);
+  /* Fade chips out at the edges instead of a hard clip line */
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
+.topic-marquee__row { overflow: hidden; }
+.topic-marquee__track {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: max-content;
+  list-style: none;
+  /* Top headroom so a hovered chip's translateY(-2px) lift has room
+     to clear before it hits this row's overflow:hidden clip line —
+     without it, the lift pushes the chip's top border straight into
+     the clip and cuts it off. The row auto-grows by the same 6px
+     since its height just follows the track's, so nothing else here
+     needs to shift to compensate. */
+  padding-top: 6px;
+  /* 70 unique chips is ~8.75× the length of the old 8-chip content,
+     so these durations are scaled up proportionally from the
+     original 34s/30s to keep the same visual scroll speed. */
+  animation: lw-marquee 300s linear infinite;
+}
+.topic-marquee__row--ltr .topic-marquee__track {
+  animation-duration: 264s;
+  animation-direction: reverse;
+}
+@keyframes lw-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+/* No pause-on-hover: chips aren't clickable anymore (see the
+   accessibility note above), so there's no "chasing a moving target"
+   problem to solve — hovering a row keeps scrolling right through it,
+   same as the rest of the marquee. */
+@media (prefers-reduced-motion: reduce) {
+  .topic-marquee__track { animation: none; }
+}
+
 .topic-chip {
   display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  flex: 0 0 auto; width: 148px;
   background: var(--clr-surface); border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg); padding: var(--space-4);
-  text-align: center; cursor: pointer; font-family: var(--font-body);
+  text-align: center; font-family: var(--font-body);
   color: var(--clr-text);
   transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
+/* Hover is purely decorative now (no cursor:pointer — there's nothing
+   to click), but it still lifts on hover so the marquee reads as
+   "alive" as you skim across it. */
 .topic-chip:hover { border-color: var(--clr-accent); transform: translateY(-2px); }
-.topic-chip:focus-visible { outline: 2px solid var(--clr-accent); outline-offset: 2px; }
 .topic-chip__icon { font-size: 1.5rem; }
-.topic-chip__title { font-size: var(--fs-sm); font-weight: 600; }
+.topic-chip__title { font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .topic-preview__lock { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
-
-@media (max-width: 900px) {
-  .topic-preview { grid-template-columns: repeat(2, 1fr); }
-}
 
 /* ── ABOUT ASL ────────────────────────────────────────────────── */
 .etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
