@@ -67,7 +67,7 @@
 }
 .devcmp-row--done { border-color: var(--clr-success); }
 .devcmp-row--dropoff {
-  border-color: var(--clr-yellow, #c9a227);
+  border-color: var(--clr-yellow, #B45309);
   background: var(--clr-yellow-soft);
   font-weight: 700;
 }

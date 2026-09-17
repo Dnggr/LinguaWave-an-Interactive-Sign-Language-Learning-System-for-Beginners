@@ -911,3 +911,327 @@ a.unit-progress-row:focus-visible {
   font-weight: 600;
   color: var(--clr-text);
 }
+/* ═════════════════════════════════════════════════════════════════
+ * DASHBOARD REBUILD (blue-teal mockup alignment pass)
+ * ─────────────────────────────────────────────────────────────────
+ * Everything below is new, for the rebuilt pages/dashboard.html /
+ * js/dashboard.js (greeting + mission banner + progress ring +
+ * learning-path grid + recommended grid). Distinct class names on
+ * purpose (.mission-banner, .progress-card, .path-tile, .rec-card)
+ * so none of this collides with the older .hero-row/.continue-card/
+ * .journey-rail/.journey-card rules above, which this rebuild no
+ * longer uses but which are left in place rather than risk deleting
+ * something still relied on elsewhere (this file has already been
+ * through one V1→V2 pivot — see that section's own header comment —
+ * and .stats-grid/.stat-tile from that era ARE still live, shared
+ * with pages/progress.html). Colors/spacing/radii all come from the
+ * shared tokens in css/style.css — no new hex values introduced.
+ * ═════════════════════════════════════════════════════════════════ */
+
+/* ── Greeting ──────────────────────────────────────────────────── */
+.dash-greeting h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--clr-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.dash-greeting__wave {
+  display: inline-block;
+  animation: dash-wave 2.2s ease-in-out infinite;
+  transform-origin: 70% 70%;
+}
+@keyframes dash-wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+  30% { transform: rotate(14deg); }
+  40% { transform: rotate(-4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-greeting__wave { animation: none; }
+}
+
+/* ── Section heading row ("Learning Path" / "Recommended for You") ─ */
+.section-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.section-heading-row h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.section-heading-row__link {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-accent);
+  white-space: nowrap;
+}
+.section-heading-row__link:hover { text-decoration: underline; }
+
+/* ── Today's Mission + Your Progress row ──────────────────────────
+ * 2:1 split — the mission banner takes the wide column, the
+ * progress card sits beside it, matching the mockup's proportions.
+ * Stacks to one column below 900px. */
+.dash-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .dash-hero-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Today's Mission banner ───────────────────────────────────────
+ * Deliberately the ONE spot on this page that breaks from the flat
+ * .card look — a gradient hero, same "this is the important thing
+ * right now" treatment index.html's own hero section uses, so the
+ * Dashboard reads as "start here" the instant it loads. */
+.mission-banner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  min-height: 220px;
+  padding: var(--space-8);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--clr-accent) 0%, var(--clr-accent-dim) 100%);
+  box-shadow: var(--shadow-card);
+}
+.mission-banner__text {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+}
+.mission-banner__eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: rgba(255, 255, 255, .85);
+  margin-bottom: var(--space-2);
+}
+.mission-banner__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: var(--space-2);
+}
+.mission-banner__desc {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, .88);
+  margin-bottom: var(--space-5);
+  line-height: 1.5;
+}
+.mission-banner__cta {
+  background: #ffffff;
+  color: var(--clr-accent-dim);
+}
+.mission-banner__cta:hover { background: rgba(255, 255, 255, .9); }
+.mission-banner__art {
+  position: relative;
+  z-index: 0;
+  flex: 0 0 auto;
+  width: 160px;
+  height: 160px;
+}
+.mission-banner__art svg { width: 100%; height: 100%; }
+@media (max-width: 640px) {
+  .mission-banner { flex-direction: column; text-align: center; padding: var(--space-6); }
+  .mission-banner__text { max-width: none; }
+  .mission-banner__art { width: 110px; height: 110px; }
+}
+
+/* ── Your Progress card ───────────────────────────────────────────
+ * Ring is a plain conic-gradient circle (same technique as
+ * pages/progress.html's larger hero ring in css/app.css — kept as
+ * its own smaller copy here since the two live in different
+ * stylesheets and this one never needs to grow past card size). */
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+.progress-card__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.progress-ring {
+  --pct: 0;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-surface-2) 0);
+  transition: background 400ms var(--ease);
+}
+.progress-ring::before {
+  content: '';
+  position: absolute;
+}
+.progress-ring__pct {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--clr-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.progress-card__level {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.progress-card__level-eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-accent);
+}
+.progress-card__level-title {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--clr-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.progress-card__stats {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clr-border);
+}
+.progress-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.progress-card__stat-value {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--clr-text);
+  white-space: nowrap;
+}
+.progress-card__stat-label {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Learning Path grid ───────────────────────────────────────────
+ * Icon-tile grid — one tile per mission, same statusMeta() labels/
+ * colors as pages/learn.html's rows so "In Progress"/"Locked"/
+ * "Completed" mean the same thing everywhere in the app. */
+.learning-path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-4);
+}
+.path-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+a.path-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--clr-accent);
+}
+.path-tile--locked {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.path-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--clr-accent-soft);
+  color: var(--clr-accent);
+}
+.path-tile--done .path-tile__icon { background: var(--clr-success-soft); color: var(--clr-success); }
+.path-tile--current .path-tile__icon { background: var(--clr-orange-soft); color: var(--clr-orange); }
+.path-tile--locked .path-tile__icon { background: var(--clr-locked-soft); color: var(--clr-locked); }
+.path-tile__title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.path-tile__count {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+}
+.path-tile__badge { margin-top: auto; }
+
+/* ── Recommended for You grid ──────────────────────────────────── */
+.recommended-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.rec-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.rec-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-1);
+}
+.rec-card__icon--teal   { background: var(--clr-secondary-soft); color: var(--clr-secondary-dim); }
+.rec-card__icon--violet { background: var(--clr-violet-soft, var(--clr-accent-soft)); color: var(--clr-violet, var(--clr-accent)); }
+.rec-card__icon--orange { background: var(--clr-orange-soft); color: var(--clr-orange); }
+.rec-card__icon--success{ background: var(--clr-success-soft); color: var(--clr-success); }
+.rec-card__title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+.rec-card__desc {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+.rec-card__cta { margin-top: var(--space-2); }

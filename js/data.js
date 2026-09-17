@@ -69,6 +69,19 @@
  * in this file hardcodes a specific number — everything sorts/filters
  * generically — but `js/learn.js`/`progress.js` weren't available to
  * check for hardcoded unit numbers outside this file.
+ *
+ * CURRICULUM REALIGNMENT (2026-09-15) — the 2026-09-03 renumber above
+ * closed this file's OWN gap at order:2, but never compared the
+ * result against js/missions.js's UNITS_V2 (the array the live
+ * Missions system runs on) — UNITS_V2 never dropped
+ * 'fingerspell_name' from order:2, so closing this file's gap instead
+ * of matching UNITS_V2's actually left the two files' numbering
+ * silently diverging by exactly 1 for every shared unit from Numbers
+ * onward. This pass REOPENS the order:2 gap (Numbers is order:3
+ * again, not 2) and shifts every unit after it back up by 1 to match.
+ * Verified programmatically: all 67 unit ids shared with UNITS_V2 now
+ * have identical `order` values (0 mismatches). Full detail + why at
+ * the top of the UNITS array itself, a few lines below.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -257,99 +270,135 @@
  *
  * kind meanings unchanged from Rev 6 — see SYSTEM_ARCHITECTURE.md.
  * ──────────────────────────────────────────────────────────────── */
+/**
+ * CURRICULUM REALIGNMENT (this session, 2026-09-15) — every `order`
+ * value from 2 upward shifted +1 (and every CATEGORIES[].unit value
+ * that referenced one shifted to match, so the two stay linked, same
+ * as the 2026-09-03 renumber's own rule). This UNDOES the 2026-09-03
+ * "close the gap at 2" renumber and deliberately REOPENS that gap —
+ * verified against js/missions.js's UNITS_V2 (the array the live
+ * Missions system actually runs on): UNITS_V2 kept 'fingerspell_name'
+ * at order:2 the whole time, so this file's own closed gap meant the
+ * two files silently disagreed on every shared unit's number from
+ * Numbers onward (this file's Greetings=3 vs UNITS_V2's Greetings=4,
+ * etc.) — a real bug (see AI_MEMORY.md / the backtest report this
+ * session references), not a cosmetic mismatch: camera-practice.js's
+ * course-sidebar reads THIS file's numbers for display, while the
+ * actual unlock state a learner has earned lives in the Missions
+ * system's numbers.
+ *   Checked programmatically after this shift: all 67 unit ids that
+ * exist in both files now have IDENTICAL `order` values (0
+ * mismatches). The only remaining differences are ids that exist in
+ * only one file — 'food_unit' (this file only, still comingSoon —
+ * see below) and 'fingerspell_name'/'basic_phrases'/'phrasebook'
+ * (UNITS_V2 only, this file's own REV 9 note below explains why
+ * they're out of this file's 68-topic scope) — which is an honest
+ * content-inclusion difference, not a numbering conflict.
+ *   NOT done as part of this pass: rewriting every OTHER comment
+ * elsewhere in this file that quotes an old unit number in prose
+ * (e.g. "topic 32" cross-references into updated_fixed_lesson.txt,
+ * which is a different, unrelated numbering and wasn't touched). Only
+ * the functional `order`/`unit` fields, and the couple of comments
+ * directly describing those fields' meaning right below, were
+ * updated — matching this file's own established convention (see the
+ * 2026-09-03 note's own "left as-is on purpose" carve-out for
+ * historical references).
+ */
 const UNITS = [
-  // HOMEPAGE PIVOT (this session) — order: 0 'welcome' (kind:'info',
-  // "Welcome to ASL: A Brief History") REMOVED. That content is now
-  // the static pages/homepage.html landing page shown right after
-  // login, not a trail unit — see file header comment. Order
-  // deliberately starts at 1 now; 1/2/3 below keep their existing
-  // values unchanged (per task instructions: don't renumber just to
-  // close the gap at 0 — nothing reads UNITS as a zero-indexed array,
-  // every lookup below is by `.id` or `.order` value, confirmed via
-  // getUnits()/getCategoriesForUnit()/progress.js's getOrderedLiveCategories()).
+  // HOMEPAGE PIVOT — order: 0 'welcome' (kind:'info', "Welcome to ASL:
+  // A Brief History") REMOVED. That content is now the static
+  // pages/homepage.html landing page shown right after login, not a
+  // trail unit — see file header comment. Order deliberately starts
+  // at 1; the gap at 0 (Welcome) and the gap at 2 (Fingerspell, see
+  // below) are both intentional — nothing reads UNITS as a
+  // zero-indexed array, every lookup below is by `.id` or `.order`
+  // value, confirmed via getUnits()/getCategoriesForUnit()/
+  // progress.js's getOrderedLiveCategories()).
   { id: 'alphabet', order: 1, title: 'The Alphabet', kind: 'category-group' , categoryGroup: 'asl_foundations' },
-  // REMOVED (this session) — 'fingerspell_name' (order: 2, kind:'interactive')
-  // dropped: it's not one of the 68 topics in the lesson compilation this
-  // file is scoped to. Order gap at 2 left as-is, per this file's existing
-  // convention (see the Homepage-pivot Unit 0 removal note above) —
-  // nothing reads UNITS as a zero-indexed array.
-  { id: 'numbers', order: 2, title: 'Numbers', kind: 'category-group' , categoryGroup: 'asl_foundations' },
+  // REMOVED — 'fingerspell_name' (order: 2, kind:'interactive') isn't
+  // one of the 68 topics in the lesson compilation this file is
+  // scoped to; it still exists in js/missions.js's UNITS_V2 (a real,
+  // working feature there). Order gap at 2 is left open specifically
+  // so this file's numbering for every topic after it (3 onward)
+  // stays aligned with UNITS_V2's — see the CURRICULUM REALIGNMENT
+  // note above this array.
+  { id: 'numbers', order: 3, title: 'Numbers', kind: 'category-group' , categoryGroup: 'asl_foundations' },
   // ── Topics 3–68 below, one per unit, order matches the source
   // file's own numbering exactly (topic N below = "N. <title>" in
   // updated_fixed_lesson.txt) minus the 2-unit offset from Welcome +
   // Fingerspell above.
-  { id: 'greetings', order: 3, title: 'Greetings', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
-  { id: 'polite_words', order: 4, title: 'Polite Words', kind: 'category-group' , categoryGroup: 'express_feelings' },
-  { id: 'people', order: 5, title: 'People', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
-  { id: 'feelings', order: 6, title: 'Feelings', kind: 'category-group' , categoryGroup: 'express_feelings' },
-  { id: 'needs', order: 7, title: 'Needs', kind: 'category-group' , categoryGroup: 'express_feelings' },
-  { id: 'actions', order: 8, title: 'Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
-  { id: 'hand_actions', order: 9, title: 'Hand Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
-  { id: 'communication', order: 10, title: 'Communication', kind: 'category-group' , categoryGroup: 'daily_actions' },
-  { id: 'body', order: 11, title: 'Body', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'personal_information', order: 12, title: 'Personal Information', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
-  { id: 'colors_unit', order: 13, title: 'Colors', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'shapes', order: 14, title: 'Shapes', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'size', order: 15, title: 'Size', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'appearance', order: 16, title: 'Appearance', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'touch', order: 17, title: 'Touch', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'taste', order: 18, title: 'Taste', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'sound', order: 19, title: 'Sound', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'descriptions', order: 20, title: 'Descriptions', kind: 'category-group' , categoryGroup: 'describing_things' },
-  { id: 'family_unit', order: 21, title: 'Family', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'home', order: 22, title: 'Home', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'furniture', order: 23, title: 'Furniture', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'household', order: 24, title: 'Household', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'bathroom', order: 25, title: 'Bathroom', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'kitchen', order: 26, title: 'Kitchen', kind: 'category-group' , categoryGroup: 'home_family' },
-  { id: 'school', order: 27, title: 'School', kind: 'category-group' , categoryGroup: 'school_life' },
-  { id: 'school_supplies', order: 28, title: 'School Supplies', kind: 'category-group' , categoryGroup: 'school_life' },
-  { id: 'classroom', order: 29, title: 'Classroom', kind: 'category-group' , categoryGroup: 'school_life' },
-  { id: 'classroom_actions', order: 30, title: 'Classroom Actions', kind: 'category-group' , categoryGroup: 'school_life' },
-  { id: 'subjects', order: 31, title: 'Subjects', kind: 'category-group' , categoryGroup: 'school_life' },
-  // RE-ADDED (this session) — 'food_unit' (order: 32), topic 32 "Food" from
+  { id: 'greetings', order: 4, title: 'Greetings', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'polite_words', order: 5, title: 'Polite Words', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'people', order: 6, title: 'People', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'feelings', order: 7, title: 'Feelings', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'needs', order: 8, title: 'Needs', kind: 'category-group' , categoryGroup: 'express_feelings' },
+  { id: 'actions', order: 9, title: 'Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'hand_actions', order: 10, title: 'Hand Actions', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'communication', order: 11, title: 'Communication', kind: 'category-group' , categoryGroup: 'daily_actions' },
+  { id: 'body', order: 12, title: 'Body', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'personal_information', order: 13, title: 'Personal Information', kind: 'category-group' , categoryGroup: 'introduce_yourself' },
+  { id: 'colors_unit', order: 14, title: 'Colors', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'shapes', order: 15, title: 'Shapes', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'size', order: 16, title: 'Size', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'appearance', order: 17, title: 'Appearance', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'touch', order: 18, title: 'Touch', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'taste', order: 19, title: 'Taste', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'sound', order: 20, title: 'Sound', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'descriptions', order: 21, title: 'Descriptions', kind: 'category-group' , categoryGroup: 'describing_things' },
+  { id: 'family_unit', order: 22, title: 'Family', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'home', order: 23, title: 'Home', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'furniture', order: 24, title: 'Furniture', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'household', order: 25, title: 'Household', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'bathroom', order: 26, title: 'Bathroom', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'kitchen', order: 27, title: 'Kitchen', kind: 'category-group' , categoryGroup: 'home_family' },
+  { id: 'school', order: 28, title: 'School', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'school_supplies', order: 29, title: 'School Supplies', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'classroom', order: 30, title: 'Classroom', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'classroom_actions', order: 31, title: 'Classroom Actions', kind: 'category-group' , categoryGroup: 'school_life' },
+  { id: 'subjects', order: 32, title: 'Subjects', kind: 'category-group' , categoryGroup: 'school_life' },
+  // RE-ADDED (this session) — 'food_unit' (order: 33), topic 32 "Food" from
   // the 68-topic lesson compilation (Rice/Bread/Egg/Chicken/Fish/Meat/Soup).
   // comingSoon:true on its CATEGORIES entry below — no SIGNS content has
   // been authored/verified for these 7 words yet.
-  { id: 'food_unit', order: 32, title: 'Food', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'fruits', order: 33, title: 'Fruits', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'vegetables', order: 34, title: 'Vegetables', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'snacks', order: 35, title: 'Snacks', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'drinks', order: 36, title: 'Drinks', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'animals_unit', order: 37, title: 'Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'wild_animals', order: 38, title: 'Wild Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'insects', order: 39, title: 'Insects', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'clothes_unit', order: 40, title: 'Clothes', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
-  { id: 'dressing', order: 41, title: 'Dressing', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
-  { id: 'personal_items', order: 42, title: 'Personal Items', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
-  { id: 'nature', order: 43, title: 'Nature', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'plants', order: 44, title: 'Plants', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'weather', order: 45, title: 'Weather', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'seasons', order: 46, title: 'Seasons', kind: 'category-group' , categoryGroup: 'food_nature' },
-  { id: 'places_unit', order: 47, title: 'Places', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'vehicles', order: 48, title: 'Vehicles', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'transportation', order: 49, title: 'Transportation', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'professions', order: 50, title: 'Professions', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'community', order: 51, title: 'Community', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'time_unit', order: 52, title: 'Time', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'daytime', order: 53, title: 'Daytime', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'days', order: 54, title: 'Days', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'months', order: 55, title: 'Months', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'sequence', order: 56, title: 'Sequence', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'frequency', order: 57, title: 'Frequency', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'location', order: 58, title: 'Location', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'distance', order: 59, title: 'Distance', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'directions', order: 60, title: 'Directions', kind: 'category-group' , categoryGroup: 'people_places_time' },
-  { id: 'social', order: 61, title: 'Social', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'manners', order: 62, title: 'Manners', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'turn_taking', order: 63, title: 'Turn-Taking', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'responses', order: 64, title: 'Responses', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'questions', order: 65, title: 'Questions', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'conversation', order: 66, title: 'Conversation', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'requests_unit', order: 67, title: 'Requests', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  { id: 'answers', order: 68, title: 'Answers', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
-  // REMOVED (this session) — 'basic_phrases' (order: 69) and 'phrasebook'
-  // (order: 70) dropped: pure vocabulary is all the 68-topic lesson
+  { id: 'food_unit', order: 33, title: 'Food', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'fruits', order: 34, title: 'Fruits', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'vegetables', order: 35, title: 'Vegetables', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'snacks', order: 36, title: 'Snacks', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'drinks', order: 37, title: 'Drinks', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'animals_unit', order: 38, title: 'Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'wild_animals', order: 39, title: 'Wild Animals', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'insects', order: 40, title: 'Insects', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'clothes_unit', order: 41, title: 'Clothes', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'dressing', order: 42, title: 'Dressing', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'personal_items', order: 43, title: 'Personal Items', kind: 'category-group' , categoryGroup: 'clothing_belongings' },
+  { id: 'nature', order: 44, title: 'Nature', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'plants', order: 45, title: 'Plants', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'weather', order: 46, title: 'Weather', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'seasons', order: 47, title: 'Seasons', kind: 'category-group' , categoryGroup: 'food_nature' },
+  { id: 'places_unit', order: 48, title: 'Places', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'vehicles', order: 49, title: 'Vehicles', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'transportation', order: 50, title: 'Transportation', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'professions', order: 51, title: 'Professions', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'community', order: 52, title: 'Community', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'time_unit', order: 53, title: 'Time', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'daytime', order: 54, title: 'Daytime', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'days', order: 55, title: 'Days', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'months', order: 56, title: 'Months', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'sequence', order: 57, title: 'Sequence', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'frequency', order: 58, title: 'Frequency', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'location', order: 59, title: 'Location', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'distance', order: 60, title: 'Distance', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'directions', order: 61, title: 'Directions', kind: 'category-group' , categoryGroup: 'people_places_time' },
+  { id: 'social', order: 62, title: 'Social', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'manners', order: 63, title: 'Manners', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'turn_taking', order: 64, title: 'Turn-Taking', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'responses', order: 65, title: 'Responses', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'questions', order: 66, title: 'Questions', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'conversation', order: 67, title: 'Conversation', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'requests_unit', order: 68, title: 'Requests', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  { id: 'answers', order: 69, title: 'Answers', kind: 'category-group' , categoryGroup: 'having_a_conversation' },
+  // REMOVED (this session) — 'basic_phrases' (order: 70) and 'phrasebook'
+  // (order: 71) dropped: pure vocabulary is all the 68-topic lesson
   // compilation covers, no phrase-combination or reference-sentence
   // topics. Order gaps left as-is, same convention as above.
 ];
@@ -419,7 +468,7 @@ const CATEGORY_GROUPS = [
 const CATEGORIES = [
   // ── level=basic — Alphabet & Numbers (topics 1-2, unchanged from Rev 6) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
-  { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 2 },
+  { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 3 },
 
   // ── level=medium — topics 3-68, one category per unit, in the exact
   // order given in Omen's uploaded 'updated fixed lesson.txt' (topic
@@ -429,7 +478,7 @@ const CATEGORIES = [
   // (disabled:true). words[] below is the fuller preview list from the new
   // plan; only HELLO has an actual SIGNS/dictionary entry so far.
   {
-    id: 'essentials_greetings', level: 'medium', title: 'Greetings', order: 1, comingSoon: false, unit: 3,
+    id: 'essentials_greetings', level: 'medium', title: 'Greetings', order: 1, comingSoon: false, unit: 4,
     // HI removed from words[]/SIGNS (2026-09-03 classifier conflict audit):
     // HI and HELLO are the identical wave, just quicker/smaller — the
     // landmark classifier can't tell them apart. HELLO is kept as the
@@ -447,7 +496,7 @@ const CATEGORIES = [
   // (YES/NO live under 'essentials_basic_responses'/'questions' instead — see
   // that entry).
   {
-    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Words', order: 1, comingSoon: false, unit: 4,
+    id: 'essentials_polite_expressions', level: 'medium', title: 'Polite Words', order: 1, comingSoon: false, unit: 5,
     words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'YES', 'NO'],
   },
   // 5. People
@@ -462,7 +511,7 @@ const CATEGORIES = [
   // exist. Per project convention (see BATHROOM/RESTROOM), we don't invent
   // duplicate physical-sign entries just to hit one-entry-per-word.
   {
-    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: false, unit: 5,
+    id: 'people', level: 'medium', title: 'People', order: 1, comingSoon: false, unit: 6,
     words: ['ME', 'MY', 'YOU', 'YOUR', 'BOY', 'GIRL', 'BABY', 'CHILD', 'MAN', 'WOMAN', 'PERSON', 'FRIEND', 'TEACHER', 'STUDENT'],
   },
   // 6. Feelings
@@ -474,7 +523,7 @@ const CATEGORIES = [
   // SLEEP under Requests/Actions and can't be told apart by the landmark classifier —
   // SLEEP is kept as the trained motion entry. Same precedent as BITTER/SOUR under Taste.
   {
-    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: false, unit: 6,
+    id: 'feelings', level: 'medium', title: 'Feelings', order: 1, comingSoon: false, unit: 7,
     words: ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'EXCITED', 'TIRED', 'HUNGRY', 'THIRSTY', 'SICK', 'FINE', 'OKAY', 'BORED', 'WORRIED', 'NERVOUS'],
   },
   // 7. Needs
@@ -484,7 +533,7 @@ const CATEGORIES = [
   // SLEEP/MORE/LESS/WANT/NEED/LIKE entry yet) — flagged, not a regression,
   // just the preview text now says more than the app can actually check yet.
   {
-    id: 'requests', level: 'medium', title: 'Needs', order: 1, comingSoon: false, unit: 7,
+    id: 'requests', level: 'medium', title: 'Needs', order: 1, comingSoon: false, unit: 8,
     words: ['FOOD', 'WATER', 'HELP', 'SLEEP', 'BATHROOM', 'HOME', 'SCHOOL', 'MORE', 'LESS', 'WANT', 'NEED', 'LIKE'],
   },
   // 8. Actions
@@ -497,7 +546,7 @@ const CATEGORIES = [
   // regression. CLEAN reuses the old 'health' NICE/CLEAN entry (same physical
   // sign) rather than inventing a duplicate — see that entry's history note.
   {
-    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: false, unit: 8,
+    id: 'actions', level: 'medium', title: 'Actions', order: 1, comingSoon: false, unit: 9,
     // SEE removed from words[] (2026-09-04 classifier conflict audit) —
     // identical sign to LOOK; see "MEDIUM · ACTIONS" SIGNS block comment.
     words: ['GO', 'COME', 'STOP', 'WAIT', 'SIT', 'STAND', 'WALK', 'RUN', 'JUMP', 'EAT', 'DRINK', 'SLEEP', 'WAKE', 'PLAY', 'LOOK', 'LISTEN', 'TALK', 'READ', 'WRITE', 'DRAW', 'SING', 'DANCE', 'COOK', 'CLEAN', 'THINK', 'CRY', 'LAUGH', 'RIDE', 'BATH'],
@@ -506,7 +555,7 @@ const CATEGORIES = [
   // REV 8 (2026-08-25): flipped to comingSoon:false — full ASLU-checked SIGNS
   // coverage added for every word[] below (see "MEDIUM · HAND ACTIONS" block).
   {
-    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: false, unit: 9,
+    id: 'hand_actions', level: 'medium', title: 'Hand Actions', order: 1, comingSoon: false, unit: 10,
     // PUSH removed from words[] (2026-09-04 classifier conflict audit)
     // — identical sign to FORWARD (Directions); see "MEDIUM · HAND
     // ACTIONS" SIGNS block comment.
@@ -520,12 +569,12 @@ const CATEGORIES = [
   // repeated here. Every remaining word has real SIGNS coverage (see
   // "MEDIUM · COMMUNICATION" block).
   {
-    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: false, unit: 10,
+    id: 'communication', level: 'medium', title: 'Communication', order: 1, comingSoon: false, unit: 11,
     words: ['ASK', 'ANSWER', 'TELL', 'SHOW', 'SHARE', 'TEACH', 'SIGN'],
   },
   // 11. Body
   {
-    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 11,
+    id: 'body', level: 'medium', title: 'Body', order: 1, comingSoon: false, unit: 12,
     words: ['BODY', 'HEAD', 'HAIR', 'FACE', 'EYE', 'EAR', 'NOSE', 'MOUTH', 'TEETH', 'HAND', 'FINGER', 'ARM', 'LEG', 'FOOT', 'STOMACH', 'BACK'],
   },
   // 12. Personal Information — unlocked this pass. 9 of these 15 words
@@ -533,7 +582,7 @@ const CATEGORIES = [
   // entries already live under family/people/places — see the
   // "MEDIUM · PERSONAL_INFORMATION" SIGNS block comment.
   {
-    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 12,
+    id: 'personal_information', level: 'medium', title: 'Personal Information', order: 1, comingSoon: false, unit: 13,
     // AGE restored (2026-09-09) — ASLU-confirmed to be the exact same
     // sign as OLD under Appearance (no repetition-count difference after
     // all, contra the 2026-09-04 audit's assumption). Re-added as a
@@ -547,12 +596,12 @@ const CATEGORIES = [
   // were removed rather than kept as unused entries — see BROWN's
   // detection notes if a metallic color is ever wanted back.
   {
-    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: false, unit: 13,
+    id: 'colors', level: 'medium', title: 'Colors', order: 1, comingSoon: false, unit: 14,
     words: ['RED', 'BLUE', 'YELLOW', 'GREEN', 'ORANGE', 'PURPLE', 'WHITE', 'BLACK', 'GRAY', 'BROWN', 'PINK'],
   },
   // 14. Shapes
   {
-    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: false, unit: 14,
+    id: 'shapes', level: 'medium', title: 'Shapes', order: 1, comingSoon: false, unit: 15,
     words: ['CIRCLE', 'SQUARE', 'TRIANGLE', 'RECTANGLE', 'OVAL', 'STAR', 'HEART', 'DIAMOND'],
   },
   // 15. Size
@@ -560,7 +609,7 @@ const CATEGORIES = [
   // comingSoon:true, zero dictionary.js entries — safe to retire, no
   // detection risk). FULL moved to 'descriptions' per the new plan.
   {
-    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 15,
+    id: 'size', level: 'medium', title: 'Size', order: 1, comingSoon: false, unit: 16,
     words: ['BIG', 'SMALL', 'TALL', 'SHORT', 'LONG', 'WIDE', 'THIN', 'HEAVY', 'LIGHT'],
   },
   // 16. Appearance — unlocked this pass. CLEAN reuses the entry already
@@ -568,7 +617,7 @@ const CATEGORIES = [
   // identical to CLEAN and can't be told apart by the landmark
   // classifier (see "MEDIUM · APPEARANCE" SIGNS block comment).
   {
-    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 16,
+    id: 'appearance', level: 'medium', title: 'Appearance', order: 1, comingSoon: false, unit: 17,
     words: ['BEAUTIFUL', 'PRETTY', 'UGLY', 'CUTE', 'CLEAN', 'DIRTY', 'MESSY', 'OLD', 'NEW', 'BROKEN', 'DARK', 'BRIGHT'],
   },
   // 17. Touch
@@ -582,14 +631,14 @@ const CATEGORIES = [
   // H-handshape cross-and-thrust with no second source backing it. Same
   // "no citable/convergent source" convention as MANGO/PAPAYA/MARKET.
   {
-    id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 17,
+    id: 'temperature', level: 'medium', title: 'Touch', order: 1, comingSoon: false, unit: 18,
     words: ['HOT', 'COLD', 'WARM', 'COOL', 'SOFT', 'HARD', 'ROUGH', 'SMOOTH', 'WET', 'DRY'],
   },
   // 18. Taste — BITTER removed from words[]: physically identical to
   // SOUR and can't be told apart by the landmark classifier (see
   // "MEDIUM · TASTE" SIGNS block comment).
   {
-    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 18,
+    id: 'taste', level: 'medium', title: 'Taste', order: 1, comingSoon: false, unit: 19,
     words: ['SWEET', 'SOUR', 'SALTY', 'SPICY', 'DELICIOUS', 'FRESH'],
   },
   // 19. Sound — unlocked this pass. SILENT removed from words[]/SIGNS
@@ -599,7 +648,7 @@ const CATEGORIES = [
   // Same precedent as BITTER/SOUR under Taste. HIGH/LOW reuse the
   // general elevation signs, applied to pitch.
   {
-    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: false, unit: 19,
+    id: 'sound', level: 'medium', title: 'Sound', order: 1, comingSoon: false, unit: 20,
     words: ['LOUD', 'QUIET', 'NOISY', 'HIGH', 'LOW'],
   },
   // 20. Descriptions
@@ -608,7 +657,7 @@ const CATEGORIES = [
   // SigningSavvy. GOOD/BAD reuse the existing medium_feelings_GOOD/BAD entries
   // (same physical sign, already live under Questions). FULL was already here.
   {
-    id: 'descriptions', level: 'medium', title: 'Descriptions', order: 1, comingSoon: false, unit: 20,
+    id: 'descriptions', level: 'medium', title: 'Descriptions', order: 1, comingSoon: false, unit: 21,
     words: ['FAST', 'SLOW', 'STRONG', 'WEAK', 'GOOD', 'BAD', 'FULL', 'EMPTY', 'OPEN', 'CLOSED'],
   },
   // 21. Family
@@ -628,7 +677,7 @@ const CATEGORIES = [
   // word is the same fix used elsewhere in this file for one-sign/
   // multiple-English-word pairs (see BITTER/SOUR under Taste).
   {
-    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 21,
+    id: 'family', level: 'medium', title: 'Family', order: 1, comingSoon: false, unit: 22,
     // GRANDCHILD dropped from words[] (2026-09-04 Track B audit, batch 2):
     // sourcing found (PocketSign mechanics + an ASLU granddaughter.htm
     // cross-reference) was only moderate confidence and not fully
@@ -638,7 +687,7 @@ const CATEGORIES = [
   },
   // 22. Home
   {
-    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 22,
+    id: 'home', level: 'medium', title: 'Home', order: 1, comingSoon: false, unit: 23,
     words: ['HOUSE', 'HOME', 'BEDROOM', 'BATHROOM', 'KITCHEN', 'LIVING', 'DINING', 'GARAGE', 'YARD'],
   },
   // 23. Furniture
@@ -650,12 +699,12 @@ const CATEGORIES = [
   // kept as the trained motion entry for that gesture. Same precedent as
   // BITTER/SOUR under Taste.
   {
-    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: false, unit: 23,
+    id: 'furniture', level: 'medium', title: 'Furniture', order: 1, comingSoon: false, unit: 24,
     words: ['BED', 'PILLOW', 'BLANKET', 'CHAIR', 'TABLE', 'SOFA', 'SHELF', 'LAMP'],
   },
   // 24. Household
   {
-    id: 'household', level: 'medium', title: 'Household', order: 1, comingSoon: false, unit: 24,
+    id: 'household', level: 'medium', title: 'Household', order: 1, comingSoon: false, unit: 25,
     words: ['DOOR', 'WINDOW', 'WALL', 'FLOOR', 'ROOF', 'CLOCK', 'MIRROR', 'FAN', 'TV', 'REMOTE', 'PHONE', 'COMPUTER', 'BOOK', 'KEY'],
   },
   // 25. Bathroom
@@ -667,7 +716,7 @@ const CATEGORIES = [
   // physically identical to medium_home_BATHROOM and can't be told apart by the
   // landmark classifier (see "MEDIUM · BATHROOM" SIGNS block comment).
   {
-    id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: false, unit: 25,
+    id: 'bathroom', level: 'medium', title: 'Bathroom', order: 1, comingSoon: false, unit: 26,
     words: ['SHOWER', 'BATHTUB', 'SOAP', 'SHAMPOO', 'TOWEL', 'TOOTHBRUSH', 'TOOTHPASTE'],
   },
   // 26. Kitchen
@@ -679,17 +728,17 @@ const CATEGORIES = [
   // STOVE and OVEN; no clear ASLU-documented sign for FREEZER/POT/PAN as kitchen
   // nouns), same treatment as PEN/ART/ENGLISH elsewhere in this file.
   {
-    id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: false, unit: 26,
+    id: 'kitchen', level: 'medium', title: 'Kitchen', order: 1, comingSoon: false, unit: 27,
     words: ['REFRIGERATOR', 'PLATE', 'BOWL', 'CUP', 'SPOON', 'FORK', 'KNIFE'],
   },
   // 27. School
   {
-    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: false, unit: 27,
+    id: 'school', level: 'medium', title: 'School', order: 1, comingSoon: false, unit: 28,
     words: ['TEACHER', 'STUDENT', 'PRINCIPAL', 'FRIEND', 'CLASSMATE', 'BOY', 'GIRL'],
   },
   // 28. School Supplies
   {
-    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 28,
+    id: 'school_supplies', level: 'medium', title: 'School Supplies', order: 1, comingSoon: false, unit: 29,
     // PEN removed — no dedicated ASLU sign; fingerspell P-E-N (existing Fingerspell feature covers this).
     // MARKER, GLUE, FOLDER removed from words[] (2026-09-04 Track B audit):
     // no convergent citable source found. MARKER — a real sign exists per
@@ -709,7 +758,7 @@ const CATEGORIES = [
   // precedent as BAG/PEN/ENGLISH elsewhere in this file.
   // BOARD resolved (2026-09-04) — see medium_classroom_BOARD SIGNS entry.
   {
-    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 29,
+    id: 'classroom', level: 'medium', title: 'Classroom', order: 1, comingSoon: false, unit: 30,
     words: ['DESK', 'CHAIR', 'TABLE', 'BOARD', 'DOOR', 'WINDOW', 'CLOCK', 'COMPUTER', 'SHELF', 'TRASH'],
   },
   // 30. Classroom Actions
@@ -727,12 +776,12 @@ const CATEGORIES = [
   // (an entirely different F-handshape sign meaning "near") — that
   // entry is untouched.
   {
-    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: false, unit: 30,
+    id: 'classroom_actions', level: 'medium', title: 'Classroom Actions', order: 1, comingSoon: false, unit: 31,
     words: ['READ', 'WRITE', 'DRAW', 'COLOR', 'LISTEN', 'LOOK', 'SIT', 'STAND', 'ASK', 'ANSWER', 'OPEN', 'SHARE', 'HELP'],
   },
   // 31. Subjects
   {
-    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: false, unit: 31,
+    id: 'subjects', level: 'medium', title: 'Subjects', order: 1, comingSoon: false, unit: 32,
     // ART removed — identical clip to DRAW (ASLU: combine DRAW/ART with the person affix); use DRAW instead.
     // ENGLISH removed — no dedicated ASLU sign; fingerspell E-N-G-L-I-S-H (existing Fingerspell feature covers this).
     // MUSIC removed (2026-09-04 classifier conflict audit): physically identical to
@@ -752,7 +801,7 @@ const CATEGORIES = [
   // this gesture. Same precedent as BITTER/SOUR under Taste. See
   // "MEDIUM · FOOD" SIGNS block at the end of the file.
   {
-    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: false, unit: 32,
+    id: 'food', level: 'medium', title: 'Food', order: 1, comingSoon: false, unit: 33,
     words: ['RICE', 'BREAD', 'EGG', 'FISH', 'MEAT', 'SOUP'],
   },
   // 33. Fruits
@@ -768,7 +817,7 @@ const CATEGORIES = [
   // (see STOVE/OVEN/PEN/ENGLISH elsewhere) they're left to the Fingerspell
   // feature rather than given an invented "the" sign.
   {
-    id: 'fruits', level: 'medium', title: 'Fruits', order: 1, comingSoon: false, unit: 33,
+    id: 'fruits', level: 'medium', title: 'Fruits', order: 1, comingSoon: false, unit: 34,
     words: ['APPLE', 'BANANA', 'ORANGE', 'GRAPES', 'WATERMELON', 'PINEAPPLE', 'STRAWBERRY', 'PEAR', 'MELON'],
   },
   // 34. Vegetables
@@ -777,7 +826,7 @@ const CATEGORIES = [
   // low-confidence; ASLU lists fingerspelling as a recognized variation, so
   // treated the same as SINK/STOVE/OVEN/TOY/BAG elsewhere in this file.
   {
-    id: 'vegetables', level: 'medium', title: 'Vegetables', order: 1, comingSoon: false, unit: 34,
+    id: 'vegetables', level: 'medium', title: 'Vegetables', order: 1, comingSoon: false, unit: 35,
     // PUMPKIN removed from words[]/SIGNS (2026-09-03 classifier conflict
     // audit): PUMPKIN and MELON (under Fruits) are the identical sign —
     // MELON is kept as the trained motion entry.
@@ -789,14 +838,14 @@ const CATEGORIES = [
   // CANDY reuse the existing medium_food_COOKIE/CANDY entries (same
   // physical signs). See "MEDIUM · SNACKS" SIGNS block at the end of the file.
   {
-    id: 'snacks', level: 'medium', title: 'Snacks', order: 1, comingSoon: false, unit: 35,
+    id: 'snacks', level: 'medium', title: 'Snacks', order: 1, comingSoon: false, unit: 36,
     words: ['COOKIE', 'CAKE', 'CANDY', 'CHOCOLATE', 'DONUT', 'PIE', 'POPCORN', 'CHIPS', 'CUPCAKE', 'ICECREAM'],
   },
   // 36. Drinks — unlocked (2026-09-01): all 6 words researched fresh against
   // lifeprint.com and cross-checked against Handspeak/aslbloom/PocketSign/
   // ASL Interactive. See "MEDIUM · DRINKS" SIGNS block at the end of the file.
   {
-    id: 'drinks', level: 'medium', title: 'Drinks', order: 1, comingSoon: false, unit: 36,
+    id: 'drinks', level: 'medium', title: 'Drinks', order: 1, comingSoon: false, unit: 37,
     words: ['WATER', 'MILK', 'JUICE', 'SODA', 'TEA', 'COFFEE'],
   },
   // 37. Animals
@@ -807,7 +856,7 @@ const CATEGORIES = [
   // and can't be told apart by the landmark classifier — BIRD is kept as
   // the trained motion entry. Same precedent as BITTER/SOUR under Taste.
   {
-    id: 'animals', level: 'medium', title: 'Animals', order: 1, comingSoon: false, unit: 37,
+    id: 'animals', level: 'medium', title: 'Animals', order: 1, comingSoon: false, unit: 38,
     words: ['DOG', 'CAT', 'BIRD', 'FISH', 'RABBIT', 'DUCK', 'COW', 'PIG', 'HORSE', 'GOAT', 'SHEEP'],
   },
   // 38. Wild Animals
@@ -816,12 +865,12 @@ const CATEGORIES = [
   // single dedicated ASLU sign — written as the documented HORSE + STRIPES
   // compound. See "MEDIUM · WILD ANIMALS" SIGNS block at the end of the file.
   {
-    id: 'wild_animals', level: 'medium', title: 'Wild Animals', order: 1, comingSoon: false, unit: 38,
+    id: 'wild_animals', level: 'medium', title: 'Wild Animals', order: 1, comingSoon: false, unit: 39,
     words: ['LION', 'TIGER', 'ELEPHANT', 'MONKEY', 'GIRAFFE', 'BEAR', 'ZEBRA', 'SNAKE', 'FROG', 'TURTLE'],
   },
   // 39. Insects
   {
-    id: 'insects', level: 'medium', title: 'Insects', order: 1, comingSoon: false, unit: 39,
+    id: 'insects', level: 'medium', title: 'Insects', order: 1, comingSoon: false, unit: 40,
     words: ['ANT', 'BUTTERFLY', 'BEE', 'SPIDER'],
   },
   // 40. Clothes
@@ -833,7 +882,7 @@ const CATEGORIES = [
   // BITTER/SOUR under Taste. If a distinct CAP sign is sourced later, add
   // it back with its own SIGNS entry.
   {
-    id: 'clothes', level: 'medium', title: 'Clothes', order: 1, comingSoon: false, unit: 40,
+    id: 'clothes', level: 'medium', title: 'Clothes', order: 1, comingSoon: false, unit: 41,
     words: ['SHIRT', 'PANTS', 'SHORTS', 'DRESS', 'SKIRT', 'SHOES', 'SOCKS', 'HAT', 'JACKET', 'COAT', 'BELT'],
   },
   // 41. Dressing — unlocked (2026-09-01): WEAR/CHANGE/FOLD are new content,
@@ -844,7 +893,7 @@ const CATEGORIES = [
   // "MEDIUM · DRESSING" SIGNS block at the end of the file — including a
   // flagged note on the existing WASH entry that I did NOT change.
   {
-    id: 'dressing', level: 'medium', title: 'Dressing', order: 1, comingSoon: false, unit: 41,
+    id: 'dressing', level: 'medium', title: 'Dressing', order: 1, comingSoon: false, unit: 42,
     words: ['WEAR', 'CHANGE', 'WASH', 'FOLD', 'CLEAN', 'DIRTY'],
   },
   // 42. Personal Items
@@ -856,7 +905,7 @@ const CATEGORIES = [
   // single agreed dedicated sign (same precedent as MANGO/PAPAYA elsewhere
   // in this file), so it's left to the Fingerspell feature.
   {
-    id: 'personal_items', level: 'medium', title: 'Personal Items', order: 1, comingSoon: false, unit: 42,
+    id: 'personal_items', level: 'medium', title: 'Personal Items', order: 1, comingSoon: false, unit: 43,
     words: ['WALLET', 'PHONE', 'WATCH', 'GLASSES', 'KEY', 'UMBRELLA', 'BOTTLE'],
   },
   // 43. Nature — UNLOCKED (this session): 17 of the 19 words researched
@@ -873,7 +922,7 @@ const CATEGORIES = [
   // later, add them back with a SIGNS entry. See "MEDIUM · NATURE" SIGNS
   // block at the end of the file.
   {
-    id: 'nature', level: 'medium', title: 'Nature', order: 1, comingSoon: false, unit: 43,
+    id: 'nature', level: 'medium', title: 'Nature', order: 1, comingSoon: false, unit: 44,
     words: ['SUN', 'MOON', 'STAR', 'CLOUD', 'RAIN', 'WIND', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'ROCK', 'SAND', 'MOUNTAIN', 'RIVER', 'OCEAN', 'BEACH', 'ISLAND'],
   },
   // 44. Plants — UNLOCKED (this session): 10 of the 12 words researched
@@ -890,7 +939,7 @@ const CATEGORIES = [
   // feature instead of inventing one. See "MEDIUM · PLANTS" SIGNS block
   // at the end of the file.
   {
-    id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: false, unit: 44,
+    id: 'plants', level: 'medium', title: 'Plants', order: 1, comingSoon: false, unit: 45,
     words: ['PLANT', 'TREE', 'FLOWER', 'GRASS', 'LEAF', 'BRANCH', 'GROW', 'WATER'],
   },
   // 45. Weather
@@ -903,7 +952,7 @@ const CATEGORIES = [
   // are written fresh under 'weather' so this category stands on its own.
   // See "MEDIUM · WEATHER" SIGNS block at the end of the file.
   {
-    id: 'weather', level: 'medium', title: 'Weather', order: 1, comingSoon: false, unit: 45,
+    id: 'weather', level: 'medium', title: 'Weather', order: 1, comingSoon: false, unit: 46,
     // CLOUDY and WINDY removed from words[] (2026-09-04 classifier
     // conflict audit) — identical signs to CLOUD/WIND under Nature; see
     // "MEDIUM · WEATHER" SIGNS block comment.
@@ -917,7 +966,7 @@ const CATEGORIES = [
   },
   // 46. Seasons
   {
-    id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: false, unit: 46,
+    id: 'seasons', level: 'medium', title: 'Seasons', order: 1, comingSoon: false, unit: 47,
     // WINTER restored (per Josh) — was removed in the 2026-09-03
     // classifier conflict audit as identical to COLD (under Weather),
     // then added back as a kept-alongside case, same as PLANT/SPRING.
@@ -931,7 +980,7 @@ const CATEGORIES = [
   // Places list for the lesson-content preview; the trained SIGNS set is
   // unchanged.
   {
-    id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 47,
+    id: 'places', level: 'medium', title: 'Places', order: 1, comingSoon: false, unit: 48,
     // MARKET removed from words[] (2026-09-04 Track B audit) — already
     // researched and dropped elsewhere in this file as "no citable
     // source" under the 'community' category (see MANGO/PAPAYA/SEED/ROOT
@@ -951,7 +1000,7 @@ const CATEGORIES = [
   // ASLbloom / Signing Savvy. See SIGNS entries for per-word notes
   // (BUS/TRUCK/VAN/TAXI are lexicalized fingerspelling).
   {
-    id: 'vehicles', level: 'medium', title: 'Vehicles', order: 1, comingSoon: false, unit: 48,
+    id: 'vehicles', level: 'medium', title: 'Vehicles', order: 1, comingSoon: false, unit: 49,
     // SHIP removed from words[] (2026-09-04 classifier conflict audit)
     // — identical sign to BOAT; see "MEDIUM · VEHICLES" SIGNS block.
     words: ['CAR', 'BUS', 'TRUCK', 'VAN', 'TAXI', 'TRAIN', 'BIKE', 'MOTORCYCLE', 'AIRPLANE', 'BOAT'],
@@ -963,7 +1012,7 @@ const CATEGORIES = [
   // WASH/CLEAN/DIRTY under 'dressing'). See "MEDIUM · TRANSPORTATION"
   // SIGNS block at the end of the file.
   {
-    id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: false, unit: 49,
+    id: 'transportation', level: 'medium', title: 'Transportation', order: 1, comingSoon: false, unit: 50,
     words: ['WALK', 'RIDE', 'FLY', 'GO', 'STOP', 'WAIT'],
   },
   // 50. Professions — UNLOCKED (this session): 18 of the 20 words researched
@@ -987,7 +1036,7 @@ const CATEGORIES = [
   // later, add them back with a SIGNS entry. See "MEDIUM · PROFESSIONS"
   // SIGNS block at the end of the file.
   {
-    id: 'professions', level: 'medium', title: 'Professions', order: 1, comingSoon: false, unit: 50,
+    id: 'professions', level: 'medium', title: 'Professions', order: 1, comingSoon: false, unit: 51,
     words: ['TEACHER', 'DOCTOR', 'NURSE', 'POLICE', 'FIREFIGHTER', 'FARMER', 'DRIVER', 'COOK', 'DENTIST', 'MECHANIC', 'CARPENTER', 'LAWYER', 'SOLDIER', 'WAITER', 'ARTIST', 'WORKER', 'OWNER'],
   },
   // 51. Community — UNLOCKED (this session): all 9 remaining words
@@ -1000,7 +1049,7 @@ const CATEGORIES = [
   // description, drop it from the preview list instead. If a described
   // source turns up later, add it back in and give it a SIGNS entry.
   {
-    id: 'community', level: 'medium', title: 'Community', order: 1, comingSoon: false, unit: 51,
+    id: 'community', level: 'medium', title: 'Community', order: 1, comingSoon: false, unit: 52,
     words: ['SCHOOL', 'HOSPITAL', 'POLICE', 'FIRE', 'LIBRARY', 'BANK', 'STORE', 'RESTAURANT', 'PARK'],
   },
   // 52. Time
@@ -1010,21 +1059,21 @@ const CATEGORIES = [
   // LATER/SOON/AFTER/EARLY/LATE/TOMORROW/YESTERDAY, none of which are trained
   // yet); the trained SIGNS set is unchanged.
   {
-    id: 'time', level: 'medium', title: 'Time', order: 1, comingSoon: false, unit: 52,
+    id: 'time', level: 'medium', title: 'Time', order: 1, comingSoon: false, unit: 53,
     // TODAY removed from words[] (2026-09-04 classifier conflict audit)
     // — identical sign to NOW; see "MEDIUM · TIME" SIGNS block comment.
     words: ['TIME', 'NOW', 'LATER', 'SOON', 'BEFORE', 'AFTER', 'EARLY', 'LATE', 'TOMORROW', 'YESTERDAY'],
   },
   // 53. Daytime
   {
-    id: 'daytime', level: 'medium', title: 'Daytime', order: 1, comingSoon: false, unit: 53,
+    id: 'daytime', level: 'medium', title: 'Daytime', order: 1, comingSoon: false, unit: 54,
     // EVENING removed from words[]/SIGNS (2026-09-03 classifier conflict
     // audit): EVENING and NIGHT are the identical sign — NIGHT is kept.
     words: ['MORNING', 'AFTERNOON', 'NIGHT'],
   },
   // 54. Days
   {
-    id: 'days', level: 'medium', title: 'Days', order: 1, comingSoon: false, unit: 54,
+    id: 'days', level: 'medium', title: 'Days', order: 1, comingSoon: false, unit: 55,
     words: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
   },
   // 55. Months
@@ -1040,7 +1089,7 @@ const CATEGORIES = [
   // detection — same open question likely applies to any other
   // fingerspelled vocabulary elsewhere in this file.
   {
-    id: 'months', level: 'medium', title: 'Months', order: 1, comingSoon: false, unit: 55,
+    id: 'months', level: 'medium', title: 'Months', order: 1, comingSoon: false, unit: 56,
     words: ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'],
   },
   // 56. Sequence
@@ -1048,7 +1097,7 @@ const CATEGORIES = [
   // (ASLU), cross-checked against Handspeak. FINISHED reuses the existing
   // medium_turn_taking_FINISHED entry (same physical sign).
   {
-    id: 'sequence', level: 'medium', title: 'Sequence', order: 1, comingSoon: false, unit: 56,
+    id: 'sequence', level: 'medium', title: 'Sequence', order: 1, comingSoon: false, unit: 57,
     words: ['FIRST', 'SECOND', 'THIRD', 'NEXT', 'THEN', 'BEGINNING', 'MIDDLE', 'END', 'FINALLY', 'FINISHED'],
   },
   // 57. Frequency
@@ -1059,7 +1108,7 @@ const CATEGORIES = [
   // notes on those SIGNS entries below). RARELY is ASLU's own documented
   // exaggerated variant of SOMETIMES, not a separate root sign.
   {
-    id: 'frequency', level: 'medium', title: 'Frequency', order: 1, comingSoon: false, unit: 57,
+    id: 'frequency', level: 'medium', title: 'Frequency', order: 1, comingSoon: false, unit: 58,
     words: ['ALWAYS', 'OFTEN', 'SOMETIMES', 'RARELY', 'NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'],
   },
   // 58. Location — UNLOCKED (this session): IN, OUT, INSIDE, OUTSIDE, and
@@ -1080,7 +1129,7 @@ const CATEGORIES = [
   // instead of inventing fixed signs for context-dependent classifiers.
   // See "MEDIUM · LOCATION" SIGNS block at the end of the file.
   {
-    id: 'location', level: 'medium', title: 'Location', order: 1, comingSoon: false, unit: 58,
+    id: 'location', level: 'medium', title: 'Location', order: 1, comingSoon: false, unit: 59,
     // BEHIND removed from words[]/SIGNS (2026-09-03 classifier conflict
     // audit): BACK and BEHIND are the identical sign — BACK is kept as
     // the trained motion entry.
@@ -1088,7 +1137,7 @@ const CATEGORIES = [
   },
   // 59. Distance
   {
-    id: 'distance', level: 'medium', title: 'Distance', order: 1, comingSoon: false, unit: 59,
+    id: 'distance', level: 'medium', title: 'Distance', order: 1, comingSoon: false, unit: 60,
     // CLOSE removed from words[]/SIGNS (2026-09-03 classifier conflict
     // audit): NEAR and CLOSE (in the "nearby" sense) are the identical
     // F-handshape sign — NEAR is kept as the trained motion entry.
@@ -1098,7 +1147,7 @@ const CATEGORIES = [
   // against lifeprint.com (ASLU); BACK/TURN/GO/STOP/WAIT reuse existing
   // entries. FORWARD flagged as lower-confidence (no dedicated ASLU page).
   {
-    id: 'directions', level: 'medium', title: 'Directions', order: 1, comingSoon: false, unit: 60,
+    id: 'directions', level: 'medium', title: 'Directions', order: 1, comingSoon: false, unit: 61,
     words: ['LEFT', 'RIGHT', 'UP', 'DOWN', 'FORWARD', 'BACK', 'TURN', 'GO', 'STOP', 'WAIT'],
   },
   // 61. Social — UNLOCKED (this session): 5 new words researched
@@ -1106,7 +1155,7 @@ const CATEGORIES = [
   // reuse existing entries. CLASSMATE and NEIGHBOR are compound signs,
   // flagged as lower-confidence — see SIGNS entries.
   {
-    id: 'social', level: 'medium', title: 'Social', order: 1, comingSoon: false, unit: 61,
+    id: 'social', level: 'medium', title: 'Social', order: 1, comingSoon: false, unit: 62,
     words: ['FRIEND', 'CLASSMATE', 'NEIGHBOR', 'PLAY', 'TALK', 'SHARE', 'HELP', 'MEET', 'VISIT', 'LIKE', 'LOVE', 'TOGETHER'],
   },
   // 62. Manners
@@ -1121,7 +1170,7 @@ const CATEGORIES = [
   // typically fingerspelled or covered by CAN); same MANGO/PAPAYA
   // precedent as elsewhere in this file.
   {
-    id: 'manners', level: 'medium', title: 'Manners', order: 1, comingSoon: false, unit: 62,
+    id: 'manners', level: 'medium', title: 'Manners', order: 1, comingSoon: false, unit: 63,
     words: ['PLEASE', 'THANKS', 'WELCOME', 'SORRY', 'EXCUSE', 'HELP'],
   },
   // 63. Turn-Taking
@@ -1131,7 +1180,7 @@ const CATEGORIES = [
   // lifeprint.com (ASLU) and cross-checked against Handspeak/Brainscape
   // ASLU-sourced flashcard sets.
   {
-    id: 'turn_taking', level: 'medium', title: 'Turn-Taking', order: 1, comingSoon: false, unit: 63,
+    id: 'turn_taking', level: 'medium', title: 'Turn-Taking', order: 1, comingSoon: false, unit: 64,
     words: ['MY', 'YOUR', 'TURN', 'WAIT', 'GO', 'STOP', 'AGAIN', 'FINISHED'],
   },
   // 64. Responses
@@ -1147,7 +1196,7 @@ const CATEGORIES = [
   // against lifeprint.com and cross-checked against Handspeak/StudoCu
   // ASLU-sourced notes.
   {
-    id: 'responses', level: 'medium', title: 'Responses', order: 1, comingSoon: false, unit: 64,
+    id: 'responses', level: 'medium', title: 'Responses', order: 1, comingSoon: false, unit: 65,
     words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'GOOD', 'UNDERSTAND'],
   },
   // 65. Questions
@@ -1160,7 +1209,7 @@ const CATEGORIES = [
   // 'responses'/'answers'/'polite_words' categories below for where those 4
   // words sit in the new plan; no SIGNS entries were moved or renamed.
   {
-    id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 65,
+    id: 'essentials_basic_responses', level: 'medium', title: 'Questions', order: 1, comingSoon: false, unit: 66,
     // WHOSE dropped from words[] (2026-09-04 Track B audit, batch 3): no
     // dedicated citable sign found anywhere \u2014 ASL expresses this as WHO +
     // a possessive pronoun (a grammatical construction, not a single
@@ -1182,7 +1231,7 @@ const CATEGORIES = [
   // reliably tell apart) — CLEAN is kept as the trained motion entry.
   // Same precedent as BITTER/SOUR under Taste.
   {
-    id: 'conversation', level: 'medium', title: 'Conversation', order: 1, comingSoon: false, unit: 66,
+    id: 'conversation', level: 'medium', title: 'Conversation', order: 1, comingSoon: false, unit: 67,
     words: ['HELLO', 'GOOD', 'FINE', 'NAME', 'MEET', 'THANKS', 'WELCOME', 'LATER', 'GOODBYE'],
   },
   // 67. Requests
@@ -1198,7 +1247,7 @@ const CATEGORIES = [
   // against lifeprint.com (ASLU), cross-checked against Handspeak/
   // aslbloom/PocketSign/Brainscape ASLU-sourced flashcard sets.
   {
-    id: 'making_requests', level: 'medium', title: 'Requests', order: 1, comingSoon: false, unit: 67,
+    id: 'making_requests', level: 'medium', title: 'Requests', order: 1, comingSoon: false, unit: 68,
     words: ['HAVE', 'CAN', 'HELP', 'GIVE', 'PLEASE', 'WAIT', 'GO', 'WHERE', 'THIS', 'THAT'],
   },
   // 68. Answers
@@ -1209,7 +1258,7 @@ const CATEGORIES = [
   // DON'T-KNOW sign (see that entry's notes) — flagging this so it's
   // clear the literal word list item isn't a standalone "don't" sign.
   {
-    id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: false, unit: 68,
+    id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: false, unit: 69,
     words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'KNOW', 'DON\'T', 'UNDERSTAND', 'GOOD'],
   },
 

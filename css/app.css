@@ -135,9 +135,13 @@
  *   done (Completed)     -> --clr-success / --clr-success-soft (green)
  *   current (In Progress)-> --clr-orange  / --clr-orange-soft  (orange)
  *   available             -> --clr-blue    / --clr-blue-soft    (blue)
- *   locked                -> --clr-red     / --clr-red-soft     (red) —
- *     matches badge--locked's existing red everywhere else this app
- *     shows a locked state (js/learn.js, js/learn.js's statusMeta()).
+ *   locked                -> --clr-locked  / --clr-locked-soft  (slate) —
+ *     matches badge--locked's color everywhere else this app shows a
+ *     locked state (js/learn.js, js/learn.js's statusMeta()). Changed
+ *     from --clr-red this session — red reads as "something is
+ *     wrong," which locked/not-yet-unlocked content isn't; a neutral
+ *     slate communicates "not available yet" instead, same idea as a
+ *     disabled button rather than an error state.
  * Locked cards also render as a plain <div> (no href), same pattern
  * js/learn.js's renderRow() already uses for its own locked rows —
  * there's no real gating/hearts logic yet (guide §10–11), so nothing
@@ -146,8 +150,8 @@
 .journey-card--current { border-left: 4px solid var(--clr-orange);  background: var(--clr-orange-soft); }
 .journey-card--available { border-left: 4px solid var(--clr-blue); background: var(--clr-blue-soft); }
 .journey-card--locked {
-  border-left: 4px solid var(--clr-red);
-  background: var(--clr-red-soft);
+  border-left: 4px solid var(--clr-locked);
+  background: var(--clr-locked-soft);
   opacity: .6;
   cursor: not-allowed;
 }
@@ -173,7 +177,7 @@
 .journey-card--done:hover      { border-color: var(--clr-success); }
 .journey-card--current:hover   { border-color: var(--clr-orange); }
 .journey-card--available:hover { border-color: var(--clr-blue); }
-.journey-card--locked:hover    { border-color: var(--clr-red); }
+.journey-card--locked:hover    { border-color: var(--clr-locked); }
 
 /* ── Learning Path list (Learn page) ─────────────────────────────── */
 .path-search {
@@ -227,7 +231,14 @@
   padding: var(--space-4) var(--space-5);
   text-decoration: none;
   color: inherit;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast) var(--ease);
 }
+/* ADDED (blue-teal mockup alignment pass) — every other interactive
+   row/card in this app (.course-card, .lesson-card, .trail-group__summary)
+   already has a hover state; .path-row was the one gap, so a tappable
+   chapter row on pages/learn.html gave no feedback at all until click. */
+.path-row:hover:not(.path-row--locked) { background: var(--clr-surface-2); }
 .path-row__num {
   flex: none;
   width: 2.25rem;
@@ -265,7 +276,13 @@
  * flush against the row's edge — a little margin gives it the same
  * breathing room the chapter-level Locked badge already got. */
 .path-row__lock-badge { margin-right: var(--space-2); }
-.path-row--locked { opacity: .6; cursor: not-allowed; }
+/* Interactive Locked-State Feedback (css/style.css §19) — `cursor:
+   default`, not `not-allowed`: the row is deliberately still
+   clickable (js/learn.js wires a click handler for it), it just
+   triggers a shake + red-border flash instead of navigating. Matches
+   the same `cursor: default` call already made for `.sign-chip--locked`
+   below, for the same reason (see that rule's own comment). */
+.path-row--locked { opacity: .6; cursor: default; }
 .path-row--locked .path-row__title { color: var(--clr-text-muted); }
 /* Orientation row (this session) — sits above the chapter list,
    never locked, so it gets its own accent instead of borrowing the
@@ -870,7 +887,12 @@
 .lesson-option:hover:not(:disabled) { border-color: var(--clr-accent); transform: translateY(-1px); }
 .lesson-option:disabled { cursor: default; }
 .lesson-option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
-.lesson-option--incorrect { border-color: var(--clr-red); background: var(--clr-red-soft); opacity: .75; }
+/* Interactive Locked-State Feedback pattern (css/style.css §19) —
+   plays the same shake @keyframes as .lw-shake-invalid directly off
+   this class, since a chosen wrong answer is freshly applied each
+   time (a new question re-renders the buttons from scratch), so no
+   JS add/remove step is needed the way locked content needs one. */
+.lesson-option--incorrect { border-color: var(--clr-red); background: var(--clr-red-soft); opacity: .75; animation: lw-shake-invalid 420ms var(--ease); }
 
 .lesson-pair {
   display: grid;
@@ -976,7 +998,14 @@
   line-height: 1;
   margin: var(--space-2) 0 var(--space-4);
 }
-.quiz-summary__score--pass { color: var(--clr-success); }
+/* Violet, not green, for a PASSED mastery quiz (this session) — this
+   is the app's one "you mastered this" moment (see js/mastery-quiz.js's
+   "Mission mastered!" heading), a bigger deal than an ordinary
+   --clr-success completion elsewhere, so it gets the one color this
+   palette deliberately reserves for that: --clr-violet. Everyday
+   "done"/correct-answer states stay green — see .lesson-option--correct
+   above and the rest of --clr-success's uses. */
+.quiz-summary__score--pass { color: var(--clr-violet); }
 .quiz-summary__score--fail { color: var(--clr-red); }
-.quiz-summary__recap { color: var(--clr-success); font-weight: 600; margin: var(--space-3) 0; }
+.quiz-summary__recap { color: var(--clr-violet); font-weight: 600; margin: var(--space-3) 0; }
 .quiz-summary__actions { justify-content: center; }

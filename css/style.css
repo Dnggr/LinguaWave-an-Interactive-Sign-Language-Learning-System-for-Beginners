@@ -7,28 +7,47 @@
  *
  * THEME SYSTEM: two themes, toggled by data-theme="light"|"dark" on
  * <html> — see js/theme.js for the toggle control + persistence.
- * :root carries the light palette as the pre-JS fallback (this
- * pass makes LIGHT the app's default identity, not just one of two
- * equal options); [data-theme="dark"] below is a warm dark variant
- * of the same palette, kept fully working for anyone who prefers it.
+ * :root carries the light palette as the pre-JS fallback (LIGHT is
+ * the app's default identity, not just one of two equal options);
+ * [data-theme="dark"] below is a true-dark variant of the same
+ * palette (not a simple invert), kept fully working for anyone who
+ * prefers it.
  *
- * DESIGN PASS (this session) — visual pivot to a warm, light,
- * rounded look (reference: lingvano.com/asl), replacing the previous
- * violet/near-black minimalist theme:
- *   - Backgrounds moved from cool near-black/lavender-white to warm
- *     cream/terracotta neutrals.
- *   - Accent moved from violet to a warm coral, the one recurring
- *     brand color across buttons, links, and highlighted state.
- *   - The radius scale was raised across the board (10/16/22/30px
- *     instead of 3/6/10/16) for the "friendly rounded card" language
- *     the whole component set (`.card`, `.btn`, course/topic cards,
- *     etc.) already inherits from these tokens — see §6/§7 below for
- *     the two components that needed an explicit rule change on top
- *     of the token bump (buttons now use the pill radius outright).
- *   - Semantic colors (success/red/yellow/orange/blue) were re-tinted
- *     warmer so nothing reads as a leftover cool-toned accent next to
- *     the new palette; what each color MEANS (success, error, badge
- *     tiers) is unchanged.
+ * DESIGN PASS (this session) — repaint to a calm "learning-app blue
+ * + teal" identity, replacing the previous warm coral/cream/
+ * terracotta theme from the prior session:
+ *   - Backgrounds moved from warm cream/near-black-brown to cool
+ *     slate neutrals (#F8FAFC light / #0F172A dark) — a clean
+ *     educational-SaaS feel that keeps focus on the hands/signs
+ *     rather than the chrome around them.
+ *   - Brand identity is now two-tone instead of one accent color:
+ *     --clr-accent (Ocean Blue) reads as "Learning" — primary
+ *     buttons, links, focus states, the active/current signal — and
+ *     the new --clr-secondary (Teal) reads as "Communication/
+ *     Practice" — secondary buttons and practice-flavored touch
+ *     points. --clr-blue is kept as its own token for back-compat
+ *     with existing call sites but is intentionally the SAME value
+ *     as --clr-accent now (one consistent blue, not two competing
+ *     ones — see the "don't color every category differently"
+ *     principle this pass follows throughout).
+ *   - Two new semantic tokens: --clr-locked (neutral slate) and
+ *     --clr-violet (mastery/achievement). Locked content previously
+ *     borrowed --clr-red, which reads as "something is wrong" rather
+ *     than "not available yet" — §6b/journey-card and §8/badge below
+ *     now point locked states at the new neutral token instead.
+ *     Violet is deliberately unused almost everywhere so it stays
+ *     special — see .quiz-summary__score--pass in css/app.css for
+ *     its one real use, the "Mission mastered!" moment.
+ *   - Every semantic hue (success/red/yellow/orange/violet/secondary)
+ *     was tuned a shade or two darker (light mode) / lighter (dark
+ *     mode) than a "pure" swatch would be, specifically so each one
+ *     stays readable at small text sizes AND as white-on-fill button/
+ *     badge backgrounds — plain vivid swatches (e.g. a raw #10B981
+ *     emerald) look nice as a color chip but fail contrast as actual
+ *     UI text, the same reason the previous palette's yellow was a
+ *     muted gold rather than a bright one.
+ *   - Radius/spacing/type-scale tokens are unchanged — this pass is
+ *     color-only.
  */
 
 /* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
@@ -81,78 +100,116 @@
 
 /* ── 1a. COLOR TOKENS — theme-aware ──────────────────────────────
    :root/no-attribute = light (the app's default now); [data-theme=
-   "dark"] is the alternate, still fully supported via the toggle. */
+   "dark"] is the alternate, still fully supported via the toggle.
+   Every hue below was checked against WCAG AA (4.5:1) for its real
+   use in this codebase — as small text/icons AND as a white-text
+   fill background (badges, filled buttons) — not just eyeballed;
+   --clr-locked is the one deliberate exception, since "locked"
+   content is meant to read as visually de-emphasized, the same way
+   a disabled button is exempt from normal text-contrast rules. */
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --clr-bg:          #FFF8F0;   /* warm cream page background            */
-  --clr-surface:     #FFFFFF;   /* cards pop white against the cream bg  */
-  --clr-surface-2:   #FDECDD;   /* soft peach — chips, hover, icon tiles */
-  --clr-border:      #F0DFCB;   /* warm tan divider, not cool gray       */
+  --clr-bg:          #F8FAFC;   /* cool white page background             */
+  --clr-surface:     #FFFFFF;   /* cards pop white against the cool bg    */
+  --clr-surface-2:   #EFF6FF;   /* soft blue tint — chips, hover, tiles   */
+  --clr-border:      #E2E8F0;   /* cool slate divider                     */
 
-  --clr-accent:      #F2643C;   /* primary — warm coral/terracotta       */
-  --clr-accent-dim:  #D9502B;
-  --clr-accent-soft: rgba(242,100,60,.10);
+  --clr-accent:        #2563EB; /* primary — Ocean Blue, "Learning"       */
+  --clr-accent-dim:    #1D4ED8;
+  --clr-accent-soft:   rgba(37,99,235,.10);
 
-  --clr-success:      #3F9142;
-  --clr-success-soft: rgba(63,145,66,.10);
+  --clr-secondary:      #0F766E; /* secondary — Teal, "Communication"     */
+  --clr-secondary-dim:  #115E59;
+  --clr-secondary-soft: rgba(13,148,136,.10);
 
-  --clr-red:         #C23616;
-  --clr-red-soft:    rgba(194,54,22,.09);
+  --clr-success:      #047857;  /* emerald, deepened from a pure swatch   */
+  --clr-success-soft: rgba(16,185,129,.10);
 
-  --clr-yellow:      #B98900;
-  --clr-yellow-soft: rgba(185,137,0,.12);
+  --clr-red:         #DC2626;
+  --clr-red-soft:    rgba(239,68,68,.09);
 
-  --clr-orange:      #C1650B;
-  --clr-orange-soft: rgba(193,101,11,.10);
+  --clr-yellow:      #B45309;   /* amber — "needs review", muted for text */
+  --clr-yellow-soft: rgba(245,158,11,.12);
 
-  --clr-blue:        #3568B0;
-  --clr-blue-soft:   rgba(53,104,176,.09);
+  --clr-orange:      #C2410C;
+  --clr-orange-soft: rgba(249,115,22,.10);
 
-  --clr-text:        #2B211A;   /* warm near-black, not cool gray-black  */
-  --clr-text-muted:  #8A7A6B;
+  --clr-blue:        #2563EB;   /* same value as --clr-accent, on purpose */
+  --clr-blue-soft:   rgba(37,99,235,.10);
+
+  --clr-locked:      #94A3B8;   /* neutral slate — "not available yet",   */
+  --clr-locked-soft: rgba(148,163,184,.14); /* not an error (see §6b/§8)  */
+
+  --clr-violet:      #7C3AED;   /* mastery/achievement — used sparingly   */
+  --clr-violet-soft: rgba(139,92,246,.12);
+
+  --clr-text:        #0F172A;
+  --clr-text-muted:  #64748B;
   --clr-text-invert: #FFFFFF;
 
-  --shadow-card: 0 1px 2px rgba(43,33,26,.05), 0 10px 28px rgba(43,33,26,.08);
-  --backdrop:    rgba(255,248,240,.85);
+  --shadow-card: 0 1px 2px rgba(15,23,42,.06), 0 10px 28px rgba(15,23,42,.08);
+  --backdrop:    rgba(248,250,252,.85);
+  /* Same hue as --backdrop, alpha dropped way down — used by
+     .navbar--hero (index.html only) so that bar reads as almost
+     transparent over the hero instead of the glassy .85 every other
+     page's .navbar keeps. See css/auth.css's NAVBAR — HERO VARIANT. */
+  --backdrop-hero: rgba(248,250,252,.10);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --clr-bg:          #1F1712;   /* warm, brown-tinted near-black          */
-  --clr-surface:     #2A2019;
-  --clr-surface-2:   #362A21;
-  --clr-border:      #47372B;
+  --clr-bg:          #0F172A;   /* slate near-black, not brown-tinted     */
+  --clr-surface:     #1E293B;
+  --clr-surface-2:   #334155;
+  --clr-border:      #475569;
 
-  --clr-accent:      #FF8A65;   /* brighter coral, tuned for dark contrast */
-  --clr-accent-dim:  #FF6F45;
-  --clr-accent-soft: rgba(255,138,101,.16);
+  --clr-accent:        #60A5FA; /* lighter blue, tuned for dark contrast  */
+  --clr-accent-dim:    #3B82F6;
+  --clr-accent-soft:   rgba(96,165,250,.16);
 
-  --clr-success:      #7CC576;
-  --clr-success-soft: rgba(124,197,118,.16);
+  --clr-secondary:      #2DD4BF;
+  --clr-secondary-dim:  #14B8A6;
+  --clr-secondary-soft: rgba(45,212,191,.16);
 
-  --clr-red:         #FF7A66;
-  --clr-red-soft:    rgba(255,122,102,.16);
+  --clr-success:      #34D399;
+  --clr-success-soft: rgba(52,211,153,.16);
 
-  --clr-yellow:      #E3B341;
-  --clr-yellow-soft: rgba(227,179,65,.16);
+  --clr-red:         #F87171;
+  --clr-red-soft:    rgba(248,113,113,.16);
 
-  --clr-orange:      #F0975A;
-  --clr-orange-soft: rgba(240,151,90,.16);
+  --clr-yellow:      #FBBF24;
+  --clr-yellow-soft: rgba(251,191,36,.16);
 
-  --clr-blue:        #6FA0E0;
-  --clr-blue-soft:   rgba(111,160,224,.16);
+  --clr-orange:      #FB923C;
+  --clr-orange-soft: rgba(251,146,60,.16);
 
-  --clr-text:        #FBEEE4;
-  --clr-text-muted:  #C8B6A6;
-  --clr-text-invert: #241A14;
+  --clr-blue:        #60A5FA;   /* same value as --clr-accent, on purpose */
+  --clr-blue-soft:   rgba(96,165,250,.16);
 
-  --shadow-card: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.3);
-  --backdrop:    rgba(31,23,18,.85);
+  --clr-locked:      #64748B;
+  --clr-locked-soft: rgba(100,116,139,.20);
+
+  --clr-violet:      #A78BFA;
+  --clr-violet-soft: rgba(167,139,250,.18);
+
+  --clr-text:        #F8FAFC;
+  --clr-text-muted:  #CBD5E1;
+  --clr-text-invert: #0F172A;
+
+  --shadow-card: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.35);
+  --backdrop:    rgba(15,23,42,.85);
+  --backdrop-hero: rgba(15,23,42,.10);
 }
 
 /* ── 2. RESET ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Applies to every in-page hash link on every page that loads this
+   file (index.html's #about-asl included) — browsers that honor
+   prefers-reduced-motion fall back to an instant jump on their own,
+   no extra media query needed here. See §12 below for the
+   scroll-margin-top that keeps the landing spot from hiding under
+   the sticky navbar. */
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   background: var(--clr-bg);
@@ -205,12 +262,22 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   border-bottom: 1px solid var(--clr-border);
 }
 .navbar__inner {
-  display: flex;
+  /* Grid, not flex + space-between: with 3 flex children,
+     space-between only puts the middle one (.navbar__links) at the
+     visual center when the logo and the button group happen to be
+     the same width — they aren't (logo text vs. toggle+2 buttons),
+     so "Home / Learn / About" was drifting left. A 1fr/auto/1fr grid
+     centers the middle column relative to the whole bar regardless
+     of how wide either side is. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-6);
   height: 60px;
 }
+.navbar__logo { justify-self: start; }
+.navbar__links { justify-self: center; }
+.navbar__user { justify-self: end; }
 .navbar__logo {
   font-family: var(--font-display);
   font-size: var(--fs-xl);
@@ -239,6 +306,19 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   gap: var(--space-3);
   font-size: var(--fs-sm);
   color: var(--clr-text-muted);
+}
+
+/* BUGFIX (wave/navbar restyle pass) — .navbar__links + .navbar__user
+   were already tight enough to overflow off-screen under ~640px with
+   nothing to show for it (no wrap, no hamburger — see the TODO at the
+   top of this section); index.html's nav going from one button to a
+   Log In/Get Started pair made that worse. Full hamburger collapse is
+   still the TODO; this is the minimal fix so nothing gets clipped in
+   the meantime — drop the secondary text links, keep logo + toggle +
+   buttons, which is what a visitor actually needs on a small screen. */
+@media (max-width: 640px) {
+  .navbar__links { display: none; }
+  .navbar__inner { gap: var(--space-3); }
 }
 
 /* ── 5a. THEME SWITCH ───────────────────────────────────────────── */
@@ -403,12 +483,17 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 }
 .btn--primary:hover { background: var(--clr-accent-dim); }
 
+/* Teal, not neutral gray (this session) — gives the app a genuine
+   two-tone brand (blue primary / teal secondary) instead of one
+   accent color plus an unstyled gray fallback everywhere else. Fills
+   solid on hover so it still reads as a clear, tappable action next
+   to a primary button, not a disabled-looking one. */
 .btn--secondary {
-  background: var(--clr-surface-2);
-  color: var(--clr-text);
-  border: 1px solid var(--clr-border);
+  background: var(--clr-secondary-soft);
+  color: var(--clr-secondary-dim);
+  border: 1px solid var(--clr-secondary);
 }
-.btn--secondary:hover { background: var(--clr-border); }
+.btn--secondary:hover { background: var(--clr-secondary); color: var(--clr-text-invert); }
 
 .btn--ghost {
   background: transparent;
@@ -461,7 +546,9 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .badge--basic        { background: var(--clr-blue-soft);   color: var(--clr-blue); }
 .badge--medium       { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
 .badge--intermediate { background: var(--clr-orange-soft); color: var(--clr-orange); }
-.badge--locked       { background: var(--clr-red-soft);    color: var(--clr-red); }
+/* Locked now reads as neutral/"not available yet" rather than red/
+   "something is wrong" (this session) — was --clr-red-soft/--clr-red. */
+.badge--locked       { background: var(--clr-locked-soft); color: var(--clr-locked); }
 .badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
 .badge--dev          { background: var(--clr-orange-soft); color: var(--clr-orange); }
 
@@ -545,6 +632,18 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 /* ── 12. SECTION LAYOUT HELPERS ─────────────────────────────────── */
 .section { padding-block: var(--space-16); }
 .section--sm { padding-block: var(--space-8); }
+/* Anchor-scroll offset — any section with an id (currently just
+   #about-asl, targeted by the navbar's "About" link and the hero's
+   "Explore ASL" button) lands with its heading tucked under the
+   sticky .navbar (§5, 60px tall) otherwise: the browser scrolls the
+   section's top edge flush to the viewport top, which is exactly
+   where the translucent sticky bar sits. scroll-margin-top shifts
+   that landing point down by the bar's height plus a little
+   breathing room, so "About American Sign Language" is visible right
+   after the jump instead of hidden behind the bar. Not related to
+   .hero--wave's own negative margin above (auth.css) — that only
+   pulls up the section immediately after the hero, not this one. */
+.section[id] { scroll-margin-top: calc(60px + var(--space-6)); }
 .section__header { margin-bottom: var(--space-8); }
 .section__eyebrow {
   font-size: var(--fs-xs);
@@ -790,4 +889,128 @@ html.lw-force-reduced-motion *::after {
   .app-sidebar__logo { margin-bottom: 0; margin-right: var(--space-4); }
   .app-sidebar__nav { flex-direction: row; }
   .app-sidebar__foot { border-top: none; margin-top: 0; padding-top: 0; margin-left: auto; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ICON SYSTEM (see js/icons.js and LinguaWave_Icon_Audit.md)
+   ─────────────────────────────────────────────────────────────────────
+   Every icon in the app is now one inline <svg class="lw-icon">, drawn
+   with currentColor, so it inherits text colour and theme automatically
+   and needs no per-screen colour rules. The containers below were all
+   originally sized around an emoji GLYPH (font-size on a text node);
+   an <svg> ignores font-size, so each of those containers gets an
+   explicit icon size here instead. If you change a container's box
+   size, change its icon size in this block too.
+   ═══════════════════════════════════════════════════════════════════ */
+/* :where() gives these zero specificity ON PURPOSE. Several components
+   already size their own icon box (.app-sidebar__icon is 20px, the
+   theme toggle's .theme-switch__icon is 12px inside an 18px thumb,
+   .topic-card__icon svg is 52% of its badge). Those rules appear
+   EARLIER in this file, so a normal .lw-icon selector here would
+   silently win on cascade order and blow out their layout. Zero
+   specificity means the host container always keeps control and this is
+   only the default for icons nobody has sized. */
+:where(.lw-icon) {
+  width: 24px; height: 24px;
+  flex: 0 0 auto;
+  display: inline-block;
+  color: currentColor;
+  vertical-align: middle;
+}
+.lw-icon--sm     { width: 16px; height: 16px; }
+.lw-icon--status { width: 14px; height: 14px; }
+.lw-icon--nav    { width: 24px; height: 24px; }
+
+/* An id with no artwork assigned. Deliberately ugly: the old code fell
+   back to a bookmark emoji that looked plausible, so nobody ever noticed
+   a category had been missed. This is meant to be noticed in review. */
+.lw-icon--missing { color: var(--clr-red); opacity: .8; }
+
+/* Icon + text pairs built by LWIcons.setLabel(). The gap lives here so
+   no call site has to hand-space an icon against its own label. */
+.lw-icon-label { margin-left: var(--space-2); }
+.lw-icon + .lw-icon-label { vertical-align: middle; }
+
+/* Containers previously sized for an emoji glyph ─────────────────────*/
+.topic-chip__icon           { display: inline-flex; color: var(--clr-accent); }
+.topic-chip__icon .lw-icon  { width: 28px; height: 28px; }
+
+.category-card__icon        { color: var(--clr-accent); }
+.category-card__icon .lw-icon { width: 28px; height: 28px; }
+
+.continue-card__icon        { color: var(--clr-accent); }
+.continue-card__icon .lw-icon { width: 28px; height: 28px; }
+
+.quick-check-modal__icon    { color: var(--clr-success); }
+.quick-check-modal__icon .lw-icon { width: 40px; height: 40px; }
+
+/* Course-sidebar status column. Was '\u25b6' / '\u2714' / '\u25cb' / '\ud83d\udd12' as bare text,
+   which rendered at a different weight and baseline on every OS. The
+   colour rules in css/lesson.css still apply — currentColor picks them
+   up with no extra selectors. */
+.course-sidebar__sign-icon  { display: inline-flex; align-items: center; justify-content: center; }
+.course-sidebar__sign-icon .lw-icon { width: 14px; height: 14px; }
+.course-sidebar__cat-icon   { display: inline-flex; color: var(--clr-accent); }
+.course-sidebar__cat-icon .lw-icon { width: 18px; height: 18px; }
+.course-sidebar__cat-count .lw-icon { width: 14px; height: 14px; }
+
+/* Inline icons sitting inside a line of prose or a button label. */
+.btn .lw-icon,
+.motion-try-btn .lw-icon    { width: 18px; height: 18px; margin-right: var(--space-2); }
+.btn .lw-icon + .lw-icon-label,
+.motion-try-btn .lw-icon + .lw-icon-label { margin-left: 0; }
+
+.user-chip .lw-icon         { width: 18px; height: 18px; color: var(--clr-accent); }
+.camera-tips__title         { display: flex; align-items: center; gap: var(--space-2); }
+.camera-tips__title .lw-icon { width: 18px; height: 18px; color: var(--clr-accent); }
+
+/* Status colours for the shared feedback/toast icon set, so a caller
+   picks a MEANING ('success') and never a colour or a glyph. */
+.lw-icon--tone-success { color: var(--clr-success); }
+.lw-icon--tone-error   { color: var(--clr-red); }
+.lw-icon--tone-info    { color: var(--clr-accent); }
+.lw-icon--tone-muted   { color: var(--clr-text-muted); }
+
+/* The 80px .lesson-letter badge normally holds one big character; when the
+   sign isn't a single letter it holds an icon instead, which has to be
+   scaled up to match that character's optical weight. */
+.lesson-letter__icon { width: 44px; height: 44px; }
+
+/* ── 19. LOCKED / INVALID INTERACTION FEEDBACK (shared) ─────────────
+   "Interactive Locked-State Feedback" — a brief shake + rapid red-
+   border flash for something the learner CAN click but that can't
+   actually be acted on right now: a locked chapter row
+   (.path-row--locked, css/app.css), a locked/pending dictionary chip
+   (.sign-chip--locked/--pending, css/app.css), or any other locked/
+   unavailable-content surface added later. These elements keep a
+   normal `cursor: default` (not `cursor: not-allowed`) precisely so
+   this feedback reads as "not yet" rather than "actively blocked" —
+   see .path-row--locked's own comment in css/app.css.
+
+   Usage: JS toggles the .lw-shake-invalid class on click (see
+   triggerLockedFeedback() in js/main.js) and removes it again on
+   'animationend', so a repeat click replays the full animation
+   instead of doing nothing the second time. Only the transform is
+   defined here — the border-color flash rides each element's own
+   existing border-color transition (.card / .sign-chip in this file),
+   so the flash speed already matches that surface's normal motion
+   instead of a second, competing timing.
+
+   A selected WRONG answer (.lesson-option--incorrect in css/app.css,
+   .quick-check__option--wrong in css/lesson.css) plays the same
+   @keyframes directly off its own class instead of this one — that
+   state is meant to stick until the next question, not settle back,
+   so it has no JS-driven add/remove step. */
+.lw-shake-invalid {
+  animation: lw-shake-invalid 420ms var(--ease);
+  border-color: var(--clr-red);
+}
+@keyframes lw-shake-invalid {
+  10%, 90%     { transform: translateX(-1px); }
+  20%, 80%     { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60%     { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lw-shake-invalid { animation: none; }
 }

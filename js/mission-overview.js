@@ -265,7 +265,10 @@ function render(mission, status) {
   // the learner is actually about to do. Same lessonUrl/href either
   // way — no behavior change, review safety is enforced in
   // lesson.js itself, not by this label.
-  const startLabel = status === 'done' ? '🔁 Review Mission' : '▶ Start Mission';
+  // Icon comes from the same `status` the label already branches on:
+  // a repeat glyph for a review pass, a play glyph for a first run.
+  const startLabel = window.LWIcons.markup(status === 'done' ? 'frequency' : 'current', { size: 'sm' })
+    + `<span class="lw-icon-label">${status === 'done' ? 'Review Mission' : 'Start Mission'}</span>`;
 
   el.innerHTML = `
     <div class="mo-header">
@@ -302,17 +305,23 @@ function render(mission, status) {
       </div>
     </div>
 
+    <!-- "Know some already?" (was here, permanently disabled/"Coming
+         soon") REMOVED this session rather than wired up — it would
+         have been a second implementation of exactly what "🎯 Start
+         Mastery Quiz" below already does correctly: an advanced
+         learner who already knows the mission's signs can go straight
+         to that button, pass it, and markMissionComplete() (see
+         js/missions.js) marks the whole mission done, not just the
+         quiz item. Leaving a visibly-disabled duplicate button next to
+         a working one read as a broken promise rather than a real gap. -->
     <div class="mo-actions">
       ${locked ? '' : `<a href="${lessonUrl}" class="btn btn--primary btn--lg">${startLabel}</a>`}
       ${locked ? '' : `
         <button type="button" class="btn btn--secondary btn--lg" id="mo-start-quiz"
                 data-quiz-url="${quizUrl}" ${outOfHearts ? 'disabled' : ''}>
-          🎯 Start Mastery Quiz
+          ${window.LWIcons.markup('current', { size: 'sm' })}<span class="lw-icon-label">Start Mastery Quiz</span>
         </button>
       `}
-      <button type="button" class="btn btn--ghost btn--lg" disabled title="Coming soon">
-        Know some already? <span class="badge badge--dev">Coming soon</span>
-      </button>
     </div>
   `;
 
@@ -371,6 +380,19 @@ function initPage() {
   // once it resolves.
   renderMissionOverview();
   window.LWMissions.whenMissionsSyncReady().then(renderMissionOverview);
+
+  // Interactive Locked-State Feedback (this revision) — locked/pending
+  // chips render as a plain, non-navigable <span> (render()'s `locked`
+  // branch above), so a click did nothing. Delegated on #mo-content
+  // rather than per-chip since render() replaces the whole panel's
+  // innerHTML (including every chip) on both the initial paint and the
+  // post-sync reconcile.
+  document.getElementById('mo-content').addEventListener('click', (e) => {
+    const chip = e.target.closest('.sign-chip--locked, .sign-chip--pending');
+    if (!chip) return;
+    e.preventDefault();
+    window.LinguaWave?.triggerLockedFeedback?.(chip);
+  });
 }
 
 if (document.readyState === 'loading') {

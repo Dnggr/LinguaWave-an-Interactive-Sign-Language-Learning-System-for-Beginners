@@ -74,6 +74,53 @@ function initActiveNav() {
 }
 
 
+/* ── SIDEBAR NAV GUARD ────────────────────────────────────────────
+ * Two problems this stops on every .app-sidebar__link (Dashboard /
+ * Learn / Progress / Feedback / Settings, on every page that has
+ * the sidebar):
+ *   1. Clicking the link for the page you're already on used to just
+ *      re-navigate to the exact same URL — a full, pointless reload.
+ *      Each page already hardcodes `.active` on its own current
+ *      sidebar link (see e.g. pages/dashboard.html), so that's all
+ *      this needs to check — no need to re-derive "current page"
+ *      from the URL the way initActiveNav() above does.
+ *   2. Rapid repeat clicks — same link or a different one, fired
+ *      before the browser has actually left the page — could queue
+ *      up more than one navigation. Once a real navigation starts,
+ *      further clicks on ANY sidebar link are ignored until this
+ *      page actually unloads.
+ * Only plain left-clicks are intercepted; Ctrl/Cmd/Shift-click and
+ * middle-click (open in a new tab) are left alone.
+ */
+function initSidebarNavGuard() {
+  const links = document.querySelectorAll('.app-sidebar__link');
+  if (!links.length) return;
+
+  let navigating = false;
+
+  links.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      // Already on this page, or another nav click is already in
+      // flight — swallow this one instead of firing another reload.
+      if (link.classList.contains('active') || navigating) {
+        e.preventDefault();
+        return;
+      }
+
+      navigating = true;
+    });
+  });
+
+  // Bfcache restore (browser back/forward) can bring this exact JS
+  // state back without DOMContentLoaded re-running — reset the flag
+  // so a `navigating` left `true` from before the user left doesn't
+  // permanently block the sidebar after they return.
+  window.addEventListener('pageshow', () => { navigating = false; });
+}
+
+
 /* ── PROGRESS BARS: animate fill on page load ────────────────────── */
 /*
  * Reads [data-progress="0-100"] on any .progress-bar__fill element
@@ -106,7 +153,18 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast--${type}`;
   toast.setAttribute('role', 'alert');
-  toast.textContent = message;
+  // ICON MIGRATION — the audit's section 3 asked for one shared status
+  // icon component instead of each caller prefixing its own emoji into
+  // the message ('\u2705 Saved', 'Thanks! \ud83c\udf89'). The `type` argument this
+  // function has always taken is now the only thing that picks the
+  // icon, so callers pass plain text and can't disagree with it.
+  // setLabel() over innerHTML: toast messages carry user-entered text.
+  const TOAST_ICONS = { success: 'success', error: 'error', info: 'info', warning: 'warning' };
+  if (window.LWIcons) {
+    window.LWIcons.setLabel(toast, TOAST_ICONS[type] || 'info', message, { size: 'sm' });
+  } else {
+    toast.textContent = message;
+  }
   document.body.appendChild(toast);
 
   // Trigger animation then auto-remove
@@ -115,6 +173,29 @@ function showToast(message, type = 'info') {
     toast.classList.remove('toast--visible');
     toast.addEventListener('transitionend', () => toast.remove(), { once: true });
   }, 3000);
+}
+
+
+/* ── LOCKED / INVALID INTERACTION FEEDBACK ──────────────────────────
+ * "Interactive Locked-State Feedback" — call this on click for any
+ * element the learner CAN click but that can't actually be acted on
+ * right now (a locked chapter row, a locked/pending dictionary chip,
+ * any other locked/unavailable-content surface). Toggles the shared
+ * .lw-shake-invalid class (css/style.css §19) on and back off via
+ * 'animationend' — removing it first and forcing a reflow before
+ * re-adding means a fast repeat click restarts the animation instead
+ * of doing nothing because the class was already present. Doesn't
+ * navigate or perform any action itself — callers still need their
+ * own preventDefault()/early-return; this only supplies the feedback.
+ */
+function triggerLockedFeedback(el) {
+  if (!el) return;
+  el.classList.remove('lw-shake-invalid');
+  void el.offsetWidth; // force reflow so the animation restarts on a repeat click
+  el.classList.add('lw-shake-invalid');
+  el.addEventListener('animationend', () => {
+    el.classList.remove('lw-shake-invalid');
+  }, { once: true });
 }
 
 
@@ -151,6 +232,7 @@ function initUserDetails() {
 /* ── INIT ────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
+  initSidebarNavGuard();
   initProgressBars();
   initUserDetails();
   // FIX (migration-analysis pass) — guarded null check added since
@@ -166,4 +248,5 @@ document.addEventListener('DOMContentLoaded', () => {
 window.LinguaWave = {
   getActiveUser,
   showToast,
+  triggerLockedFeedback,
 };

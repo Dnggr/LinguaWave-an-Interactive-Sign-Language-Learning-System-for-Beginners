@@ -226,6 +226,10 @@ button.category-card {
   border-radius: var(--radius-lg);
   background: var(--clr-surface);
   overflow: hidden;
+  /* ADDED (blue-teal mockup alignment pass) — matches the shadow every
+     other card-like surface in the app already carries (.card,
+     .lesson-card, .rec-card); chapter sections were flat by comparison. */
+  box-shadow: var(--shadow-card);
 }
 .trail-group__summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);

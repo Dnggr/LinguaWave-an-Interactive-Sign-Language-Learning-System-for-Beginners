@@ -14,7 +14,7 @@
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
       root.style.colorScheme = resolved;
-      root.style.background = resolved === 'light' ? '#FFF8F0' : '#1F1712';
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
   <!--
@@ -57,6 +57,11 @@
   <!-- Reuses the compare page's .devcmp-picker styling for the new
        mission <select> (Phase 3) — no new CSS needed for that alone. -->
   <link rel="stylesheet" href="../css/missions-compare.css" />
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs, and before DOMContentLoaded hydrates any
+       data-lw-icon="" markup below. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
 </head>
 <body>
 
