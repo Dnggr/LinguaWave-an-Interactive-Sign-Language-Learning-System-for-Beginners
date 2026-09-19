@@ -1,4 +1,3 @@
-
 /**
  * js/missions.js — Missions Content Layer (PILOT — Phase 0 + Phase 1)
  * ─────────────────────────────────────────────────────────────────
@@ -9600,20 +9599,41 @@ function getCategoriesForUnitV2(unitOrder) {
     return out;
   }
 
-  // §7 Phase 3 — a Missions mission for every live category, built
-  // fresh each call (missions are cheap to build; nothing here is
-  // cached, matching the pilot's own no-cache behavior).
+  // PERF FIX (this revision) — getAllMissions() used to rebuild all
+  // ~65 missions (each with its own items[] array) from scratch on
+  // EVERY call, by design ("missions are cheap to build; nothing here
+  // is cached"). In practice every page calls it at least twice
+  // (immediate render + the post-Firestore-sync repaint), and the
+  // rebuild cost was the smaller problem — the bigger one was that a
+  // fresh object graph every call meant a mission was never the same
+  // object twice, so nothing could ever cache per-mission work (like
+  // getMissionProgress() below) against it. SIGNS_V2/CATEGORIES_V2/
+  // UNITS_V2/CATEGORY_GROUPS_V2 are static consts — never mutated at
+  // runtime — so the built mission list is identical every time
+  // within one page load; caching it is safe and just means "build
+  // once per page load" instead of "build every call," with stable
+  // object identity as the added benefit.
+  let _missionsCache = null;
+
   function getAllMissions() {
-    return getLiveCategoryList().map((c) => buildMissionForCategory(c.level, c.id));
+    if (!_missionsCache) {
+      _missionsCache = getLiveCategoryList().map((c) => buildMissionForCategory(c.level, c.id));
+    }
+    return _missionsCache;
   }
 
   // §7 Phase 3 — category ids are unique across the whole app (same
   // assumption js/engine/progress.js's own storage makes — see its
   // file header), so a bare categoryId lookup is enough; returns null
   // if the category isn't live (comingSoon, no signs, or unknown id).
+  // PERF FIX — now looks the mission up in the same cached list
+  // getAllMissions() builds/returns, instead of independently
+  // re-building a brand-new mission object every call. Same result
+  // (buildMissionForCategory(cat.level, cat.id) is exactly what's
+  // stored at that category's slot in the cached list) — just no
+  // longer builds a second, disconnected copy of it.
   function getMissionForCategory(categoryId) {
-    const cat = getLiveCategoryList().find((c) => c.id === categoryId);
-    return cat ? buildMissionForCategory(cat.level, cat.id) : null;
+    return getAllMissions().find((m) => m.category === categoryId) || null;
   }
 
   /* ── Progress (dual-horizon, §3.4) ───────────────────────────────
@@ -9623,32 +9643,63 @@ function getCategoriesForUnitV2(unitOrder) {
    * "second, shorter bar" from §3.4/§5.4.
    */
 
+  // PERF FIX (this revision) — loadProgressState() used to hit
+  // localStorage.getItem() + JSON.parse() on EVERY call, and it's
+  // called once per item (isItemComplete() below), for every item of
+  // every mission, every time progress/status is computed. A single
+  // render of learn.html's or dashboard.js's mission list calls it
+  // well over a thousand times, each one a synchronous disk-backed
+  // read — that's the main cost behind "dashboard/learn feel laggy."
+  // Fix: keep the parsed state (plus a Set mirror of
+  // completedItemIds, for O(1) membership checks instead of
+  // Array.includes()'s O(n) scan) in an in-memory cache, keyed by the
+  // uid it was loaded for. The cache is only ever rebuilt when (a)
+  // the uid changes (same safety rule as before — never serve one
+  // account's cache to another) or (b) saveProgressState() below
+  // writes new state, which refreshes the cache from exactly what it
+  // just wrote rather than invalidating it and paying for a re-read.
+  // Nothing about what callers see changes — same shapes, same
+  // per-account scoping, same completedAt backfill — only how often
+  // the actual storage read happens.
+  let _progressCache = null; // { uid, state, completedIdsSet } | null
+
   function loadProgressState() {
     const uid = getCurrentUidV2();
+    if (_progressCache && _progressCache.uid === uid) return _progressCache.state;
+
+    let state;
     try {
       const raw = localStorage.getItem(PROGRESS_KEY);
-      const state = raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
       // Per-account scoping — see the block comment above
       // getCurrentUidV2(). A missing/mismatched uid means this saved
       // record belongs to a different account (or predates this fix)
       // — treat it as empty rather than adopt someone else's progress.
-      if (!state || state.uid !== uid) {
-        return { uid, completedItemIds: [], completedAt: {} };
+      if (!parsed || parsed.uid !== uid) {
+        state = { uid, completedItemIds: [], completedAt: {} };
+      } else {
+        // Phase 2 addition — additive: old saved state from Phase 1
+        // (before `completedAt` existed) has no such key, so backfill
+        // an empty map rather than requiring a migration/reset.
+        if (!parsed.completedAt) parsed.completedAt = {};
+        state = parsed;
       }
-      // Phase 2 addition — additive: old saved state from Phase 1
-      // (before `completedAt` existed) has no such key, so backfill
-      // an empty map rather than requiring a migration/reset.
-      if (!state.completedAt) state.completedAt = {};
-      return state;
     } catch {
-      return { uid, completedItemIds: [], completedAt: {} };
+      state = { uid, completedItemIds: [], completedAt: {} };
     }
+    _progressCache = { uid, state, completedIdsSet: new Set(state.completedItemIds) };
+    return state;
   }
 
   function saveProgressState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
+      // Refresh the cache from what was actually just written, instead
+      // of dropping it and forcing the next isItemComplete() to pay
+      // for a fresh localStorage read + JSON.parse.
+      _progressCache = { uid: state.uid, state, completedIdsSet: new Set(state.completedItemIds) };
+      _progressVersion++; // PERF FIX — see getMissionProgress()'s memo cache below.
     } catch (e) {
       console.warn('[missions.js] could not persist Missions progress:', e);
     }
@@ -9660,15 +9711,15 @@ function getCategoriesForUnitV2(unitOrder) {
   }
 
   function isItemComplete(mission, index, item) {
-    const state = loadProgressState();
-    return state.completedItemIds.includes(itemId(mission, index, item));
+    loadProgressState(); // ensures _progressCache is populated/fresh for the current uid
+    return _progressCache.completedIdsSet.has(itemId(mission, index, item));
   }
 
   function markItemComplete(mission, index, item) {
     const state = loadProgressState();
     const id = itemId(mission, index, item);
     let changed = false;
-    if (!state.completedItemIds.includes(id)) {
+    if (!_progressCache.completedIdsSet.has(id)) { // PERF FIX — O(1) Set check, was Array.includes()
       state.completedItemIds.push(id);
       changed = true;
     }
@@ -9754,10 +9805,32 @@ function getCategoriesForUnitV2(unitOrder) {
     return mission.items.length;
   }
 
+  // PERF FIX (this revision) — isChapterUnlocked() (below) calls
+  // getMissionProgress() on every mission in every EARLIER chapter,
+  // for every mission being rendered — so a full mission-list render
+  // recomputed the same mission's progress many times over, with no
+  // caching ("nothing cached, checked against live progress every
+  // time" was the explicit design). Now that mission objects have a
+  // stable identity across a page load (see getAllMissions() above),
+  // a mission's progress can be memoized against that identity, and
+  // only recomputed when progress actually changed — tracked via
+  // _progressVersion, bumped once per real write in
+  // saveProgressState() above. Still always correct (any real
+  // completion invalidates every mission's memo, not just this one,
+  // since chapter-gating means one mission's completion can flip
+  // another's lock state too) — just never redone for nothing between
+  // writes.
+  let _progressVersion = 0;
+  const _missionProgressMemo = new WeakMap(); // mission -> { version, value }
+
   function getMissionProgress(mission) {
-    if (!mission.items.length) return 0;
-    const done = mission.items.filter((item, i) => isItemComplete(mission, i, item)).length;
-    return done / mission.items.length;
+    const memo = _missionProgressMemo.get(mission);
+    if (memo && memo.version === _progressVersion) return memo.value;
+    const value = mission.items.length
+      ? mission.items.filter((item, i) => isItemComplete(mission, i, item)).length / mission.items.length
+      : 0;
+    _missionProgressMemo.set(mission, { version: _progressVersion, value });
+    return value;
   }
 
   function getLessonProgress(mission, signId) {
