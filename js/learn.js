@@ -25,6 +25,24 @@
 
 let allMissions = [];
 
+// PERF FIX (this revision) — the search input had no debounce, so
+// every keystroke fired a full renderList() (re-filter every mission,
+// recompute status for every visible one, replace #path-list's entire
+// innerHTML). That's the "typing in search feels janky" symptom.
+// Small, generic debounce: delays calling `fn` until `wait`ms have
+// passed with no further calls, restarting the timer on each call
+// (the standard trailing-edge debounce) — used only for the search
+// listener below; every other call site (initial render, the
+// post-Firestore-sync repaint) still renders immediately/synchronously,
+// unaffected by this.
+function debounce(fn, wait) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
 function statusMeta(status) {
   switch (status) {
     case 'done': return { label: 'Completed', badge: 'badge--done' };
@@ -218,7 +236,11 @@ function initPage() {
     window.LinguaWave?.triggerLockedFeedback?.(lockedRow);
   });
 
-  searchInput.addEventListener('input', () => renderList(searchInput.value));
+  // Debounced (150ms) — see debounce()'s comment above. A learner
+  // typing a multi-character query no longer triggers a full
+  // filter+status-recompute+innerHTML-rebuild on every single
+  // keystroke, only once they pause briefly.
+  searchInput.addEventListener('input', debounce(() => renderList(searchInput.value), 150));
 
   window.LWMissions.whenMissionsSyncReady().then(() => {
     allMissions = window.LWMissions.getAllMissions();
