@@ -23,6 +23,10 @@
 'use strict';
 
 const PREF_STORAGE_KEY = 'lw-preferences';
+// The guided tour has no preference here any more: it used to have a
+// "Guide popups" switch (showGuides), replaced by the "Replay all guides"
+// button below. js/tour.js retires any leftover showGuides value itself,
+// and this file never reads or writes it.
 const DEFAULT_PREFS = { notifications: true, soundEffects: true, reducedMotion: false };
 
 function loadPrefs() {
@@ -149,6 +153,19 @@ function initSettingsPage() {
     prefs.reducedMotion = motionEl.checked;
     savePrefs(prefs);
     applyReducedMotion(prefs.reducedMotion);
+  });
+
+  // NEW: "Replay all guides". js/tour.js owns the state: resetAll()
+  // forgets every guide this account has seen or skipped, plus any
+  // "Skip all". Then we open the dashboard with ?tour=1 so the first
+  // guide plays straight away (the dashboard is where the tour starts),
+  // and every other page's guide plays on its next visit. Nothing here
+  // reads a setting, so no toggle can stop a replay from working.
+  const replayEl = document.getElementById('btn-replay-guides');
+  replayEl?.addEventListener('click', () => {
+    if (!window.LWTour) return;
+    window.LWTour.resetAll();
+    window.location.href = 'dashboard.html?tour=1';
   });
 
   document.getElementById('btn-edit-profile')?.addEventListener('click', () => {

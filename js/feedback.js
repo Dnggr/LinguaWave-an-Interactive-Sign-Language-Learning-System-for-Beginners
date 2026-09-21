@@ -104,7 +104,7 @@ window.submitSurvey = async function () {
     window.LinguaWave?.showToast?.('Thanks for your feedback!', 'success');
   } catch (err) {
     console.error('[feedback.js] Firestore write failed:', err);
-    window.LinguaWave?.showToast?.('Could not submit feedback — please try again.', 'error');
+    window.LinguaWave?.showToast?.('Could not submit feedback. Please try again.', 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Submit Feedback & Continue'; }
     return;
   }

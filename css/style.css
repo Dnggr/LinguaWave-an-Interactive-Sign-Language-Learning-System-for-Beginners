@@ -51,12 +51,30 @@
  */
 
 /* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
+/* FONT PASS — body face changed from Inter (flagged as the default "template"
+   font on every page) to Atkinson Hyperlegible Next: built by the Braille
+   Institute for character distinction at small sizes, which suits beginners
+   reading instructions while watching hands. SELF-HOSTED (css/fonts/, OFL
+   licence alongside) rather than via Google Fonts so it renders identically
+   offline and the exact file is the one that was tested. One variable file
+   covers every weight the UI uses (400/500/600/700). The url() is relative to
+   this stylesheet, so it resolves from index.html and pages/*.html alike.
+   To revert: restore --font-body to 'Inter' and re-add
+   `&family=Inter:wght@400;500;600` to the Google Fonts <link> in each page. */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2') format('woff2');
+}
+
 :root {
   color-scheme: light dark;
 
   /* Type scale */
   --font-display:  'Space Grotesk', sans-serif;
-  --font-body:     'Inter', sans-serif;
+  --font-body:     'Atkinson Hyperlegible Next', system-ui, sans-serif; /* FONT PASS: was 'Inter' — see @font-face above */
   --font-mono:     'JetBrains Mono', monospace;
 
   --fs-xs:   0.75rem;
@@ -73,6 +91,14 @@
   --space-2:  0.5rem;
   --space-3:  0.75rem;
   --space-4:  1rem;
+  /* BUGFIX (light-mode UX pass) — --space-5 was referenced by 16 rules
+     (app.css, dashboard.css, learn.css, pages/homepage.html) but never
+     defined. An undefined var() makes the WHOLE declaration invalid at
+     computed-value time, so every `padding: var(--space-5)` /
+     `gap: var(--space-5)` silently became 0 — that was the cramped
+     Learn rows, flush Dashboard path tiles, and the Continue Mission
+     button jammed under its description. */
+  --space-5:  1.25rem;
   --space-6:  1.5rem;
   --space-8:  2rem;
   --space-12: 3rem;
@@ -119,15 +145,28 @@
   --clr-accent-dim:    #1D4ED8;
   --clr-accent-soft:   rgba(37,99,235,.10);
 
-  --clr-secondary:      #0F766E; /* secondary — Teal, "Communication"     */
-  --clr-secondary-dim:  #115E59;
-  --clr-secondary-soft: rgba(13,148,136,.10);
+  /* PALETTE PASS — teal retired. The secondary hue was consumed by exactly
+     one component (.btn--secondary) and "blue + teal" reads as a generic
+     template palette; every warm hue is already spoken for by a semantic
+     state (red = error, yellow/orange = warning, violet = mastery), so a
+     second brand hue would collide with those. Secondary now ALIASES the
+     blue accent, which makes .btn--secondary the outlined form of the
+     primary button. To bring a second hue back, restore (light / dark):
+       --clr-secondary       #0F766E / #2DD4BF
+       --clr-secondary-dim   #115E59 / #14B8A6
+       --clr-secondary-soft  rgba(13,148,136,.10) / rgba(45,212,191,.16)
+       --clr-secondary-text  #115E59 / #2DD4BF
+       and the #0F9DA6 gradient ends + shadow in css/auth.css. */
+  --clr-secondary:      var(--clr-accent);
+  --clr-secondary-dim:  var(--clr-accent-dim);
+  --clr-secondary-soft: var(--clr-accent-soft);
 
   --clr-success:      #047857;  /* emerald, deepened from a pure swatch   */
   --clr-success-soft: rgba(16,185,129,.10);
 
   --clr-red:         #DC2626;
   --clr-red-soft:    rgba(239,68,68,.09);
+  --clr-red-text:    #B91C1C; /* NEW (light pass): red as TEXT on --clr-red-soft. #DC2626 was 4.11:1; this is 5.5:1 */
 
   --clr-yellow:      #B45309;   /* amber — "needs review", muted for text */
   --clr-yellow-soft: rgba(245,158,11,.12);
@@ -145,10 +184,51 @@
   --clr-violet-soft: rgba(139,92,246,.12);
 
   --clr-text:        #0F172A;
-  --clr-text-muted:  #64748B;
+  /* CHANGED (light-mode UX pass) — was #64748B (4.55:1 on the page bg,
+     but 4.37:1 on --clr-surface-2 hover rows/chips, which fails AA for
+     the small text used there). #586780 = 5.47:1 on the page, 5.26:1 on
+     surface-2, 5.11:1 on the locked pill — still clearly secondary to
+     --clr-text, just no longer borderline. */
+  --clr-text-muted:  #586780;
   --clr-text-invert: #FFFFFF;
 
-  --shadow-card: 0 1px 2px rgba(15,23,42,.06), 0 10px 28px rgba(15,23,42,.08);
+  /* NEW (light-mode UX pass) — tokens for spots that were reusing a
+     fill/tint color as TEXT or as a "track" and missing contrast:
+       --clr-track        empty part of progress bars/rings. Was
+                          --clr-surface-2 (1.09:1 on a white card — a 0%
+                          bar looked like nothing at all).
+       --clr-accent-text  accent used as TEXT on --clr-blue-soft pills
+                          (e.g. the "Available" badge was 4.49:1).
+       --clr-locked-text  "Locked" label text. --clr-locked (#94A3B8) is
+                          2.29:1 on its own pill; it stays fine for
+                          icons/borders but is too faint for a label
+                          that carries state information.
+       --banner-from/to   Continue Mission banner gradient. Light values
+                          are the exact ones the banner already used. */
+  --clr-track:       #E2E8F0;
+  --clr-accent-text: #1D4ED8;
+  --clr-locked-text: #586780;
+  /* NEW (dark-mode UX pass) — two more tokens with a light value that is
+     deliberately the SAME as what those spots already used, so light mode
+     renders identically; dark overrides them below.
+       --clr-secondary-text  secondary button label. Now an alias of
+                             --clr-accent-text (see PALETTE PASS below).
+       --clr-border-strong   border for CONTROLS (inputs, toggle tracks).
+                             CHANGED (light-mode pass) #E2E8F0 -> #7C8BA1:
+                             3.5:1 on white / 3.3:1 on the page background;
+                             WCAG 1.4.11 asks 3:1 of a control boundary and
+                             the old value was ~1.2:1. */
+  --clr-secondary-text: var(--clr-accent-text);
+  --clr-border-strong:  #7C8BA1;
+  --banner-from:     #2563EB;
+  --banner-to:       #1D4ED8;
+
+  /* CHANGED (light-mode UX pass) — was `0 1px 2px …, 0 10px 28px …`.
+     A 1px border PLUS a 28px-blur drop shadow is two competing depth
+     cues on every card (flagged as "hairline border with wide shadow").
+     The border already defines the card edge in light mode; the shadow
+     now only lifts it slightly. Dark's shadow is unchanged. */
+  --shadow-card: 0 1px 2px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.04);
   --backdrop:    rgba(248,250,252,.85);
   /* Same hue as --backdrop, alpha dropped way down — used by
      .navbar--hero (index.html only) so that bar reads as almost
@@ -168,15 +248,17 @@
   --clr-accent-dim:    #3B82F6;
   --clr-accent-soft:   rgba(96,165,250,.16);
 
-  --clr-secondary:      #2DD4BF;
-  --clr-secondary-dim:  #14B8A6;
-  --clr-secondary-soft: rgba(45,212,191,.16);
+  /* PALETTE PASS: was #2DD4BF / #14B8A6 / rgba(45,212,191,.16) — see the note in the light block. */
+  --clr-secondary:      var(--clr-accent);
+  --clr-secondary-dim:  var(--clr-accent-dim);
+  --clr-secondary-soft: var(--clr-accent-soft);
 
   --clr-success:      #34D399;
   --clr-success-soft: rgba(52,211,153,.16);
 
   --clr-red:         #F87171;
   --clr-red-soft:    rgba(248,113,113,.16);
+  --clr-red-text:    #FCA5A5; /* NEW (light pass): red as TEXT on --clr-red-soft. #F87171 was 4.18:1 on the alert tint; this is 6.1:1 */
 
   --clr-yellow:      #FBBF24;
   --clr-yellow-soft: rgba(251,191,36,.16);
@@ -197,7 +279,38 @@
   --clr-text-muted:  #CBD5E1;
   --clr-text-invert: #0F172A;
 
-  --shadow-card: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.35);
+  /* NEW (light-mode UX pass) — dark counterparts of the light tokens
+     added above. --clr-track/--clr-accent-text keep dark's existing
+     look (surface-2 / accent); --clr-locked-text lifts the Locked label
+     off its dark pill; the banner gradient is deepened because white
+     text on the old light-blue (#60A5FA) start color was 2.54:1. */
+  --clr-track:       #334155;
+  /* CHANGED (dark-mode UX pass) — was #60A5FA (same as --clr-accent). As
+     TEXT on the tinted accent fills (active sidebar link, "Available" pill,
+     current sign row, hero banner) that measured 4.05–4.34:1, just under
+     the 4.5 AA line, because the tint lifts the background toward the text.
+     #74B3FC clears it on every backdrop it sits on (4.7–6.7:1) while
+     staying visibly the same brand blue. --clr-accent itself is untouched,
+     so fills (buttons, bars, rings, toggle-on) look exactly as before. */
+  --clr-accent-text: #74B3FC;
+  --clr-locked-text: #94A3B8;
+  /* NEW (dark-mode UX pass). --clr-secondary-dim (#14B8A6) is DARKER than
+     --clr-secondary in this theme, so using it for text gave the secondary
+     button label only 4.19:1; plain --clr-secondary is 5.63:1.
+     --clr-border-strong: control edges (input borders, toggle tracks) were
+     --clr-border #475569 = 1.9:1 against a card; #748399 is 3.8:1. */
+  /* PALETTE PASS: was #2DD4BF (teal); now follows the blue accent-text. */
+  --clr-secondary-text: var(--clr-accent-text);
+  --clr-border-strong:  #748399;
+  --banner-from:     #1D4ED8;
+  --banner-to:       #1E3A8A;
+
+  /* CHANGED (dark-mode UX pass) — was `0 1px 2px …, 0 10px 28px …`. On a
+     #0F172A page a 28px black blur is essentially invisible, so it only
+     added a second depth cue next to the card's 1px border (the same
+     "hairline border + wide shadow" issue the light pass fixed). Dark
+     surfaces already separate by lightness (bg → surface → surface-2). */
+  --shadow-card: 0 1px 2px rgba(0,0,0,.40), 0 2px 8px rgba(0,0,0,.25);
   --backdrop:    rgba(15,23,42,.85);
   --backdrop-hero: rgba(15,23,42,.10);
 }
@@ -220,7 +333,7 @@ body {
   min-height: 100vh;
 }
 img, video { display: block; max-width: 100%; }
-a { color: var(--clr-blue); text-decoration: none; }
+a { color: var(--clr-accent-text); text-decoration: none; } /* CHANGED (dark pass) was --clr-blue; light #2563EB→#1D4ED8 is a barely-visible darkening, dark now clears AA on surface-2 */
 a:hover { text-decoration: underline; }
 button { cursor: pointer; font-family: inherit; }
 ul, ol { list-style: none; }
@@ -235,6 +348,11 @@ h1 { font-size: var(--fs-3xl); }
 h2 { font-size: var(--fs-2xl); }
 h3 { font-size: var(--fs-xl); }
 h4 { font-size: var(--fs-lg); }
+/* NEW (Impeccable pass): a semantic <h2> that keeps the old <h3> look. Used
+   where a card title sits straight under the page <h1> (camera page, homepage
+   feature cards), so the outline goes h1 > h2 instead of skipping a level.
+   A class beats the bare `h2` selector above, so no !important needed. */
+.heading-md { font-size: var(--fs-xl); }
 p  { color: var(--clr-text-muted); line-height: 1.7; }
 
 /* ── 4. LAYOUT ──────────────────────────────────────────────────── */
@@ -318,7 +436,24 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
    buttons, which is what a visitor actually needs on a small screen. */
 @media (max-width: 640px) {
   .navbar__links { display: none; }
-  .navbar__inner { gap: var(--space-3); }
+  /* CHANGED (Impeccable pass): two columns once the links are gone. With the old
+     1fr auto 1fr the button group landed in the middle (auto) column and floated
+     mid-bar instead of sitting at the right edge. */
+  .navbar__inner { gap: var(--space-3); grid-template-columns: auto 1fr; }
+}
+/* NEW (Impeccable pass): logo + theme switch + Log In + Get Started needs about
+   416px, so the logged-out landing navbar scrolled sideways on every phone under
+   414px wide (2px at 390, 17px at 375, 32px at 360, 72px at 320). Tighter padding,
+   gaps and logo size cover 360 and up; the theme switch drops out under 340px,
+   where nothing else can give. */
+@media (max-width: 480px) {
+  .navbar__inner { padding-inline: var(--space-4); }
+  .navbar__logo { font-size: var(--fs-lg); }
+  .navbar__user { gap: var(--space-2); }
+  .navbar__user .btn--sm { padding-inline: var(--space-3); }
+}
+@media (max-width: 340px) {
+  .navbar__user .theme-switch { display: none; }
 }
 
 /* ── 5a. THEME SWITCH ───────────────────────────────────────────── */
@@ -447,7 +582,10 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   inset: 0;
   z-index: -1;
   border-radius: var(--radius-pill);
-  background: var(--clr-text);
+  /* CHANGED (light-mode UX pass) — was var(--clr-text) (near-black in
+     light mode), the only place the app used black as an "active" color;
+     every other active/selected state is the blue accent. */
+  background: var(--clr-accent);
   transition: background var(--dur-fast) var(--ease);
 }
 .theme-segmented--no-transition .theme-segmented__opt,
@@ -475,13 +613,13 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
               box-shadow var(--dur-fast) var(--ease);
   white-space: nowrap;
 }
-.btn:active { transform: translateY(1px); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
 
 .btn--primary {
   background: var(--clr-accent);
   color: var(--clr-text-invert);
 }
-.btn--primary:hover { background: var(--clr-accent-dim); }
+.btn--primary:hover:not(:disabled) { background: var(--clr-accent-dim); }
 
 /* Teal, not neutral gray (this session) — gives the app a genuine
    two-tone brand (blue primary / teal secondary) instead of one
@@ -490,27 +628,33 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
    to a primary button, not a disabled-looking one. */
 .btn--secondary {
   background: var(--clr-secondary-soft);
-  color: var(--clr-secondary-dim);
+  color: var(--clr-secondary-text); /* CHANGED (dark pass) was --clr-secondary-dim; see token note */
   border: 1px solid var(--clr-secondary);
 }
-.btn--secondary:hover { background: var(--clr-secondary); color: var(--clr-text-invert); }
+.btn--secondary:hover:not(:disabled) { background: var(--clr-secondary); color: var(--clr-text-invert); }
 
 .btn--ghost {
   background: transparent;
   color: var(--clr-text-muted);
   border: 1px solid var(--clr-border);
 }
-.btn--ghost:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }
+.btn--ghost:hover:not(:disabled) { color: var(--clr-text); border-color: var(--clr-text-muted); }
 
 .btn--danger {
   background: var(--clr-red);
-  color: #ffffff;
+  color: var(--clr-text-invert); /* CHANGED (light pass) was #ffffff: white on dark mode's light-red fill is 2.77:1; invert is #fff in light (unchanged), #0F172A in dark (6.45:1) */
 }
 
 .btn--lg { padding: var(--space-4) var(--space-8); font-size: var(--fs-base); }
 .btn--sm { padding: var(--space-2) var(--space-4); font-size: var(--fs-xs); }
 .btn--full { width: 100%; }
-.btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+/* CHANGED (Impeccable pass): dropped `pointer-events: none`. It made the
+   `cursor: not-allowed` beside it dead code (a click-through element never
+   shows its own cursor) and let hit-testing fall through to the parent, so a
+   disabled Previous button was "occluded" by .lesson-nav. A disabled <button>
+   already swallows clicks; hover/active are guarded with :not(:disabled)
+   on the variants above instead. */
+.btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ── 7. CARDS ───────────────────────────────────────────────────── */
 .card {
@@ -543,12 +687,12 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   text-transform: uppercase;
   letter-spacing: .06em;
 }
-.badge--basic        { background: var(--clr-blue-soft);   color: var(--clr-blue); }
+.badge--basic        { background: var(--clr-blue-soft);   color: var(--clr-accent-text); }
 .badge--medium       { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
 .badge--intermediate { background: var(--clr-orange-soft); color: var(--clr-orange); }
 /* Locked now reads as neutral/"not available yet" rather than red/
    "something is wrong" (this session) — was --clr-red-soft/--clr-red. */
-.badge--locked       { background: var(--clr-locked-soft); color: var(--clr-locked); }
+.badge--locked       { background: var(--clr-locked-soft); color: var(--clr-locked-text); }
 .badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
 .badge--dev          { background: var(--clr-orange-soft); color: var(--clr-orange); }
 
@@ -574,24 +718,26 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .progress-bar {
   width: 100%;
   height: 6px;
-  background: var(--clr-surface-2);
+  background: var(--clr-track); /* CHANGED (light-mode UX pass) — was --clr-surface-2 (1.09:1): an empty bar was invisible */
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
 .progress-bar__fill {
-  width: 0%; /* FIX (this session): a block-level div with no explicit
-    width defaults to filling its parent (width:auto), so any
-    .progress-bar__fill without an inline style — pages/dashboard.html's
-    Overall Progress bar, pages/camera-practice.html's, pages/quiz.html's — was
-    rendering FULL on first paint and visibly snapping down to the real
-    percentage once JS set style.width. Defaulting to 0% here means a
-    bar with no JS-set width yet reads as "not started" instead of
-    "complete", which is the honest state and also the far less jarring
-    one to flash before the real value lands. */
+  /* CHANGED (Impeccable pass): the fill used to animate `width`, which
+     forces layout on every frame. It is now always full width and slid
+     sideways with `transform: translateX()`, which only needs compositing.
+     Producers set a unitless `--p` (0 to 100) instead of a `width`, e.g.
+     style="--p:42". The parent's `overflow: hidden` + pill radius clip
+     the hidden part, and the fill's own rounded end is what shows at p%,
+     so the cap is never squashed the way `scaleX()` would squash it.
+     Unset --p is 0, so a bar with no value yet reads "not started" (the
+     old `width: 0%` default, same reason: no full-bar flash on first paint). */
+  width: 100%;
   height: 100%;
   background: var(--clr-accent);
   border-radius: var(--radius-pill);
-  transition: width var(--dur-slow) var(--ease);
+  transform: translateX(calc((var(--p, 0) - 100) * 1%));
+  transition: transform var(--dur-slow) var(--ease);
 }
 
 /* ── 10. FORM ELEMENTS ──────────────────────────────────────────── */
@@ -603,7 +749,7 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 }
 .form-input {
   background: var(--clr-surface);
-  border: 1px solid var(--clr-border);
+  border: 1px solid var(--clr-border-strong); /* CHANGED (dark pass) was --clr-border */
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-4);
   color: var(--clr-text);
@@ -623,11 +769,23 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
-  border-left: 4px solid;
+  /* CHANGED (Impeccable pass) was `border-left: 4px solid`: a thick coloured
+     edge on one side of a rounded box is the "side-tab" pattern. The colour
+     already lives in the tinted background and the text, so a hairline on all
+     four sides is enough. Colour comes from the variants below. */
+  border: 1px solid;
 }
 .alert--success { background: var(--clr-success-soft); border-color: var(--clr-success); color: var(--clr-success); }
-.alert--error   { background: var(--clr-red-soft);     border-color: var(--clr-red);     color: var(--clr-red); }
-.alert--info    { background: var(--clr-blue-soft);    border-color: var(--clr-blue);    color: var(--clr-blue); }
+.alert--error   { background: var(--clr-red-soft);     border-color: var(--clr-red);     color: var(--clr-red-text); } /* CHANGED (light pass) text was --clr-red: 4.3:1 light / 4.2:1 dark on the tint */
+.alert--info    { background: var(--clr-blue-soft);    border-color: var(--clr-blue);    color: var(--clr-accent-text); } /* CHANGED (light pass) text was --clr-blue: 4.31:1 on the tint in light */
+/* The solid borders above are the fallback; where color-mix() exists the
+   hairline is softened to a tint of the same hue so it reads as an edge, not
+   a frame. */
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+  .alert--success { border-color: color-mix(in srgb, var(--clr-success) 45%, transparent); }
+  .alert--error   { border-color: color-mix(in srgb, var(--clr-red) 45%, transparent); }
+  .alert--info    { border-color: color-mix(in srgb, var(--clr-blue) 45%, transparent); }
+}
 
 /* ── 12. SECTION LAYOUT HELPERS ─────────────────────────────────── */
 .section { padding-block: var(--space-16); }
@@ -645,12 +803,12 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
    pulls up the section immediately after the hero, not this one. */
 .section[id] { scroll-margin-top: calc(60px + var(--space-6)); }
 .section__header { margin-bottom: var(--space-8); }
+/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .section__eyebrow {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: var(--clr-accent);
+  letter-spacing: 0;
+  color: var(--clr-accent-text); /* EYEBROW PASS: was --clr-accent (3.87:1 on the light hero) */
   margin-bottom: var(--space-2);
 }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); }
@@ -685,8 +843,17 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .gap-4 { gap: var(--space-4); }
 .gap-6 { gap: var(--space-6); }
 .mt-2 { margin-top: var(--space-2); }
+/* BUGFIX (light-mode UX pass) — .mt-3, .mt-6, .mb-2, .mb-3 were used in
+   settings.html, camera-practice.html, progress-page.js and
+   mission-overview.js but never defined (same failure mode as
+   --space-5: no error, just no spacing — e.g. Settings' Profile and
+   Preferences cards touching, "Needs Review" sitting on its subtitle). */
+.mt-3 { margin-top: var(--space-3); }
 .mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
 .mt-8 { margin-top: var(--space-8); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
 .mb-4 { margin-bottom: var(--space-4); }
 .mb-8 { margin-bottom: var(--space-8); }
 
@@ -830,7 +997,7 @@ html.lw-force-reduced-motion *::after {
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .app-sidebar__link:hover { background: var(--clr-surface-2); color: var(--clr-text); text-decoration: none; }
-.app-sidebar__link.active { background: var(--clr-accent-soft); color: var(--clr-accent); }
+.app-sidebar__link.active { background: var(--clr-accent-soft); color: var(--clr-accent-text); } /* CHANGED (dark pass) was --clr-accent */
 .app-sidebar__link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 .app-sidebar__icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; }
 .app-sidebar__icon svg { width: 100%; height: 100%; }
@@ -854,7 +1021,7 @@ html.lw-force-reduced-motion *::after {
 }
 .toggle-switch__track {
   position: absolute; inset: 0; border-radius: var(--radius-pill);
-  background: var(--clr-surface-2); border: 1px solid var(--clr-border);
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border-strong); /* CHANGED (dark pass) was --clr-border */
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .toggle-switch__thumb {
@@ -862,7 +1029,10 @@ html.lw-force-reduced-motion *::after {
   border-radius: 50%; background: var(--clr-text-muted);
   transition: transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease);
 }
-.toggle-switch input:checked ~ .toggle-switch__track { background: var(--clr-success); border-color: var(--clr-success); }
+/* CHANGED (light-mode UX pass) — "on" was --clr-success green, but green
+   means "completed" everywhere else (badge--done, done rows); a
+   preference being enabled isn't an achievement. Accent = active. */
+.toggle-switch input:checked ~ .toggle-switch__track { background: var(--clr-accent); border-color: var(--clr-accent); }
 .toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(20px); background: #fff; }
 .toggle-switch input:focus-visible ~ .toggle-switch__track { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 

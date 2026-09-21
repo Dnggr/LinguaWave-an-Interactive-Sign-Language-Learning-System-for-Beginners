@@ -30,6 +30,17 @@
  * mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
  * mastery-quiz.js's SAMPLE_CATEGORY_GROUPS.
  *
+ * REVIEW BEFORE THE MASTERY QUIZ : the ‹ › review nav (and Review
+ * Mission's always-full bar) used to unlock only once the whole mission
+ * was 100% done, which only a PASSED quiz can produce. A learner who
+ * reached the last item and then ran out of hearts had no way to look
+ * back at what they'd learned. It now unlocks as soon as the closing
+ * Mastery Quiz is the only item left (window.LWMissions.
+ * canReviewMission()), and stays unlocked after. It does NOT unlock for
+ * a learner who skipped straight to the quiz without working through
+ * the mission. `?review=1` (Mission Overview's "Review Mission" button)
+ * opens such a mission at the start instead of at the quiz recap.
+ *
  * Same data-source discipline as every other *.js file: reads only
  * window.LWData / window.LWMissions / window.LWMissionsLoop.
  * ─────────────────────────────────────────────────────────────────
@@ -83,8 +94,8 @@ function mediaBlockHtml(sign) {
       <div class="lesson-media__fallback">
         <img class="lesson-media__img" alt="${safeTitle}" src="${safeImage}"
              onerror="this.style.display='none'; this.parentElement.classList.add('lesson-media__fallback--text-only');">
-        <p class="lesson-media__hint text-muted">
-          Video/image not available yet in this preview build (${safeVideo || 'no path'}) — using the written description below instead.
+        <p class="lesson-media__hint text-muted" data-video-path="${safeVideo || ''}">
+          The video for this sign isn't available yet, so here's the written description instead.
         </p>
       </div>
     </div>
@@ -198,7 +209,7 @@ function renderLessonWatch(mission, index, item, plan, ctx) {
     ${descriptionHtml(sign)}
     ${cameraPracticeLinkHtml(mission, item.signId)}
     <div class="lesson-actions">
-      <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Got it — continue</button>
+      <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Got it, continue</button>
     </div>
   `;
   document.getElementById('lesson-continue').addEventListener('click', () => {
@@ -241,7 +252,7 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
         btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
         feedback.hidden = false;
         window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-          (correct ? 'Right — ' : `Not quite — ${reg.answer} fits best here. `) + reg.note, { size: 'sm' });
+          (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best here. `) + reg.note, { size: 'sm' });
         feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
         advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
       });
@@ -274,7 +285,7 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
       window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-        correct ? 'Correct!' : `Not quite — that was "${(sign && sign.title) || item.signId}".`, { size: 'sm' });
+        correct ? 'Correct!' : `Not quite, that was "${(sign && sign.title) || item.signId}".`, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
       advanceAfterAnswer(container, correct, onDone, 1100);
     });
@@ -310,7 +321,7 @@ function renderBoosterRegister(mission, index, item, plan) {
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
       window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-        (correct ? 'Right — ' : `Not quite — ${reg.answer} fits best. `) + reg.note, { size: 'sm' });
+        (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best. `) + reg.note, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
       advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
     });
@@ -354,7 +365,7 @@ function renderPracticeScenario(mission, index, item, plan) {
         btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
         feedback.hidden = false;
         window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-          correct ? 'Correct!' : 'Not quite — take another look next time you see these two.', { size: 'sm' });
+          correct ? 'Correct!' : 'Not quite, take another look next time you see these two.', { size: 'sm' });
         feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
         advanceAfterAnswer(el, correct, () => showContextStep(mission, index, item, plan), 1100);
       });
@@ -400,17 +411,26 @@ function renderQuizHandoff(mission) {
   // is unreachable in practice (every real categoryGroup is in
   // SAMPLE_MASTERY_QUIZ_CHAPTERS) but kept defensive rather than removing
   // usesNativeQuiz, which other logic in this function still reads.
+  // &from=lesson lets the quiz's Back link return HERE (this recap slide,
+  // where the review nav now lives) instead of dropping the learner all
+  // the way out to the missions list. See js/mastery-quiz.js.
   const quizUrl = usesNativeQuiz
-    ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
-    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`;
+    ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`
+    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`;
+  // Only claim the review nav exists when it does. (This slide is only
+  // reachable once canReviewMission() is true, but the copy shouldn't
+  // depend on that staying so.)
+  const reviewHint = window.LWMissions.canReviewMission(mission)
+    ? ' Want a refresher first? Use the arrow buttons above (or your arrow keys) to look back through the mission.'
+    : '';
 
   el.innerHTML = `
     <div class="lesson-stage-label">Mission recap</div>
-    <h1>Nice work — here's what you can do now</h1>
+    <h1>Nice work: here's what you can do now</h1>
     <ul class="lesson-recap">
       ${recap.length ? recap.map((line) => `<li>${window.LWIcons.markup('complete', { size: 'status', className: 'lw-icon--tone-success' })}<span class="lw-icon-label">${escapeHtml(line)}</span></li>`).join('') : '<li class="text-muted">Complete a few more items to build your recap.</li>'}
     </ul>
-    <p class="text-muted">One more step: pass the Mastery Quiz (80%+) to fully complete this mission.</p>
+    <p class="text-muted">One more step: finish the Mastery Quiz to complete this mission.${reviewHint}</p>
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-start-quiz" ${outOfHearts ? 'disabled' : ''}>
         ${window.LWIcons.markup('current', { size: 'sm' })}<span class="lw-icon-label">Start Mastery Quiz</span>
@@ -419,7 +439,7 @@ function renderQuizHandoff(mission) {
         Back to Mission Overview
       </a>
     </div>
-    ${outOfHearts ? '<p class="lesson-callout">Out of Mastery Quiz hearts for now — check Mission Overview for the refill countdown.</p>' : ''}
+    ${outOfHearts ? '<p class="lesson-callout">Out of Mastery Quiz hearts for now. Check Mission Overview for the refill countdown.</p>' : ''}
   `;
   const quizBtn = document.getElementById('lesson-start-quiz');
   if (quizBtn) {
@@ -483,17 +503,19 @@ function renderMissionIntro(mission, startIndex) {
   // Task 3 fix — this screen is a real, counted slide now ("Item 1 of
   // N+1", see updateTrack()'s own header note), and Review Mission's
   // "always looks fully progressed" rule (Task 2) applies here too —
-  // a learner reviewing a finished mission should see the bar already
-  // full on the intro card, not just once they reach a real item.
+  // a learner reviewing should see the bar already full on the intro
+  // card, not just once they reach a real item.
   // Review nav (per later follow-up) is no longer forced hidden here
   // either — index -1 identifies this as the intro slide to
   // updateReviewNav()/renderSlide(), so Review Mission's ‹/› buttons
   // (and the arrow-key listener that delegates to them) can step onto
   // and off of the intro slide the same way they already step between
   // real items.
-  const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
-  updateTrack(mission, -1, isMissionComplete);
-  updateReviewNav(mission, -1, isMissionComplete);
+  // "Reviewing" now means canReviewMission() (a finished mission OR one
+  // where only the Mastery Quiz is left), not just a finished one.
+  const isReviewMode = window.LWMissions.canReviewMission(mission);
+  updateTrack(mission, -1, isReviewMode);
+  updateReviewNav(mission, -1, isReviewMode);
 
   const el = document.getElementById('lesson-content');
   const introMoment = mission.introMoment || {};
@@ -561,15 +583,21 @@ function celebrateInline(message) {
 // the intro slide, per explicit follow-up ("that attached picture is
 // from Review Mission, the progress should be full at that intro
 // too") — only the dot moves to show the CURRENTLY-viewed slide.
-function updateTrack(mission, index, isMissionComplete) {
+//
+// "Review Mission" here means isReviewMode (window.LWMissions.
+// canReviewMission()): a finished mission, OR one where every item but
+// the closing Mastery Quiz is done. In the second case every lesson item
+// really is complete, so pinning the fill at 100 is accurate and avoids
+// the bar visibly shrinking as the learner steps back to look things up.
+function updateTrack(mission, index, isReviewMode) {
   const total = mission.items.length;
   const displayTotal = total + 1;
   const displayPos = Math.min(index + 2, displayTotal);
   const dotPct = Math.round((displayPos / displayTotal) * 100);
-  const fillPct = isMissionComplete ? 100 : dotPct;
-  document.getElementById('lesson-track-fill').style.width = `${fillPct}%`;
+  const fillPct = isReviewMode ? 100 : dotPct;
+  document.getElementById('lesson-track-fill').style.setProperty('--p', String(fillPct));
   const dot = document.getElementById('lesson-track-dot');
-  if (dot) dot.style.left = `${dotPct}%`;
+  if (dot) dot.style.setProperty('--p', String(dotPct));
   document.getElementById('lesson-track-label').textContent = `Item ${displayPos} of ${displayTotal}`;
 }
 
@@ -589,9 +617,11 @@ function renderItem(mission, index) {
   // always reflects the CURRENT item, not just where the page started.
   // Task 2's updateTrack() also needs this same flag now (Review
   // Mission's always-full bar vs Start Mission's incremental one).
-  const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
-  updateTrack(mission, index, isMissionComplete);
-  updateReviewNav(mission, index, isMissionComplete);
+  // Both now key off canReviewMission() rather than "100% complete", so
+  // the nav is already there on the last slide (see header note).
+  const isReviewMode = window.LWMissions.canReviewMission(mission);
+  updateTrack(mission, index, isReviewMode);
+  updateReviewNav(mission, index, isReviewMode);
   const item = mission.items[index];
   const plan = window.LWMissionsLoop.planForItem(mission, index, item);
 
@@ -635,11 +665,13 @@ function renderSlide(mission, index) {
 // explicit follow-up: step one item at a time (‹ Previous / Next ›)
 // instead of jumping straight to the very first/last item, so a
 // learner reviewing a finished mission can move back and forth through
-// it freely. Only wired/unhidden when the mission is already 100%
-// complete (getMissionProgress(mission) >= 1, the same definition
-// js/missions.js's own getMissionStatus() uses for its 'done' state) —
-// every in-progress/locked mission never sees this bar at all, so it
-// can't be used to bypass required progression there. Called from
+// it freely. Only wired/unhidden when window.LWMissions.
+// canReviewMission(mission) is true: the mission is 100% complete, OR
+// the learner has worked through every item up to the closing Mastery
+// Quiz (so they can prepare for it, or look things up after running out
+// of hearts). Every other in-progress/locked mission never sees this
+// bar at all, so it can't be used to skip ahead of required progression
+// there. Called from
 // renderItem() itself (not just once from initPage()) so the buttons'
 // disabled state and destination index always track whatever item is
 // CURRENTLY on screen, not just wherever the learner started.
@@ -664,14 +696,22 @@ function renderSlide(mission, index) {
 // the intro, Next steps to item 0; from item 0, Previous steps back
 // to the intro — the same one-position-at-a-time stepping the rest of
 // this bar already does, just extended to cover the intro slide too.
-function updateReviewNav(mission, index, isMissionComplete) {
+function updateReviewNav(mission, index, isReviewMode) {
   const bar = document.getElementById('lesson-review-nav');
   if (!bar) return;
-  if (!isMissionComplete) {
+  if (!isReviewMode) {
     bar.hidden = true;
     return;
   }
   bar.hidden = false;
+  // "Completed" is only true once the quiz has been passed; before that
+  // the accurate label is what the bar is actually for.
+  const label = bar.querySelector('.lesson-review-nav__label');
+  if (label) {
+    label.textContent = window.LWMissions.getMissionProgress(mission) >= 1
+      ? 'Reviewing a completed mission'
+      : 'Reviewing before the Mastery Quiz';
+  }
   const prevBtn = document.getElementById('lesson-nav-prev');
   const nextBtn = document.getElementById('lesson-nav-next');
   if (prevBtn) {
@@ -682,6 +722,12 @@ function updateReviewNav(mission, index, isMissionComplete) {
     nextBtn.disabled = index >= mission.items.length - 1;
     nextBtn.onclick = () => renderSlide(mission, index + 1);
   }
+}
+
+// ?review=1 — set by Mission Overview's "Review Mission" button (see
+// computeResumeIndex() below for what it does and doesn't allow).
+function wantsReviewFromStart() {
+  return new URLSearchParams(window.location.search).get('review') === '1';
 }
 
 // Resume support — getDropOffIndex already exists in js/missions.js
@@ -700,18 +746,35 @@ function updateReviewNav(mission, index, isMissionComplete) {
 // initPage() can compute it twice — once against whatever's in
 // localStorage right now, once again after cross-device sync — and
 // compare the two without duplicating this logic.
+//
+// Only-the-quiz-left missions (canReviewMission() true, not yet done)
+// resume at the recap slide by default, so the quiz's Back link lands
+// the learner where they were. Mission Overview's "Review Mission"
+// button adds ?review=1 to open at the start instead, same as a
+// finished mission. The param is ignored unless review is allowed, so
+// it can't be used to skip the lessons.
 function computeResumeIndex(mission) {
   const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
-  let startIndex = isMissionComplete ? 0 : window.LWMissions.getDropOffIndex(mission);
+  const startAtBeginning = isMissionComplete
+    || (wantsReviewFromStart() && window.LWMissions.canReviewMission(mission));
+  let startIndex = startAtBeginning ? 0 : window.LWMissions.getDropOffIndex(mission);
   if (startIndex >= mission.items.length) startIndex = mission.items.length - 1;
   return startIndex;
+}
+
+// What the optimistic paint / post-sync reconcile in initPage() compares.
+// The start index alone isn't enough now: the review nav's visibility
+// depends on canReviewMission() too, and after a cross-device sync that
+// can flip while the start index stays 0 (e.g. a fresh device that
+// synced a finished mission).
+function resumeViewKey(mission) {
+  return `${computeResumeIndex(mission)}|${window.LWMissions.canReviewMission(mission)}`;
 }
 
 // Renders whichever slide computeResumeIndex() currently resolves to
 // — the mission intro (Task 1: only makes sense right before item 0,
 // a genuinely fresh mission or a start-of-mission review) or the real
-// item. Returns the index it rendered so the caller can tell later
-// whether a second call would render something different.
+// item.
 function renderResumePoint(mission) {
   const startIndex = computeResumeIndex(mission);
   if (startIndex === 0) {
@@ -719,7 +782,6 @@ function renderResumePoint(mission) {
   } else {
     renderItem(mission, startIndex);
   }
-  return startIndex;
 }
 
 async function initPage() {
@@ -733,12 +795,12 @@ async function initPage() {
   const mission = categoryId ? window.LWMissions.getMissionForCategory(categoryId) : null;
 
   if (!mission || !mission.items.length) {
-    el.innerHTML = `<p class="text-muted">No lesson found for "${escapeHtml(categoryId || '')}" — <a href="learn.html">back to all missions</a>.</p>`;
+    el.innerHTML = `<p class="text-muted">No lesson found for "${escapeHtml(categoryId || '')}". <a href="learn.html">Back to all missions</a>.</p>`;
     return;
   }
 
   document.getElementById('lesson-exit').href = `mission-overview.html?mission=${encodeURIComponent(mission.category)}`;
-  document.title = `${mission.title} — LinguaWave (preview)`;
+  document.title = `${mission.title} | LinguaWave (preview)`;
 
   // OPTIMISTIC-PAINT FIX (replaces the old "Loading your lesson…"
   // blocking-await placeholder) — mirrors js/mission-overview.js's own
@@ -754,7 +816,8 @@ async function initPage() {
   // way it explicitly isn't in js/mastery-quiz.js: nothing on this page
   // is destructive or hearts-spending, so there's no "mid-attempt"
   // state a second render could clobber.
-  const renderedIndex = renderResumePoint(mission);
+  const renderedKey = resumeViewKey(mission);
+  renderResumePoint(mission);
 
   // Reconcile cross-device Firestore progress in the background: if it
   // turns out the learner's real resume position differs (e.g. more
@@ -763,7 +826,7 @@ async function initPage() {
   // matches — the common case — this is a no-op re-render is skipped
   // entirely, so the optimistic paint above stands unchanged.
   await window.LWMissions.whenMissionsSyncReady();
-  if (computeResumeIndex(mission) !== renderedIndex) {
+  if (resumeViewKey(mission) !== renderedKey) {
     renderResumePoint(mission);
   }
 }

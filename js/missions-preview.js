@@ -164,13 +164,13 @@ function renderMission(mission) {
         <span class="dev-progress-row__label">Mission progress</span>
         <span>${Math.round(missionProgress * 100)}%</span>
       </div>
-      <div class="progress-bar"><div class="progress-bar__fill" style="width:${missionProgress * 100}%"></div></div>
+      <div class="progress-bar"><div class="progress-bar__fill" style="--p:${missionProgress * 100}"></div></div>
 
       <div class="dev-progress-row dev-progress-row--sub">
         <span class="dev-progress-row__label">${currentSign ? `Current lesson (${currentSign})` : 'Lesson'}</span>
         <span>${Math.round(lessonProgress * 100)}%</span>
       </div>
-      <div class="progress-bar progress-bar--sm"><div class="progress-bar__fill" style="width:${lessonProgress * 100}%"></div></div>
+      <div class="progress-bar progress-bar--sm"><div class="progress-bar__fill" style="--p:${lessonProgress * 100}"></div></div>
     </div>
 
     <ul class="dev-item-list">

@@ -158,10 +158,10 @@
   gap: var(--space-1);
   min-width: 0;
 }
+/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .continue-card__eyebrow {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
   color: var(--clr-text-muted);
   font-weight: 600;
 }
@@ -309,13 +309,11 @@
   position: relative;
   overflow: hidden;
 }
-.progress-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--clr-accent);
-}
+/* REMOVED (light-mode UX pass) — the 3px accent stripe (.progress-card::before)
+   was clipped by the card's rounded corners, so it read as a stray line
+   across the top rather than an intentional edge, and "colored stripe on
+   one edge of a card" is a generic-dashboard tell. The ring + eyebrow
+   already carry the accent. */
 
 .progress-card__head {
   display: flex;
@@ -340,7 +338,11 @@
    small touch, but flat single-tone bars are the most "generic admin
    dashboard" tell there is. */
 .progress-card .progress-bar__fill {
-  background: linear-gradient(90deg, var(--clr-accent-dim), var(--clr-accent));
+  /* CHANGED (Impeccable pass): the fill is now full width and slid by
+     transform (css/style.css), so the gradient is sized to the visible p%
+     and pinned to the right edge instead of being stretched across the
+     hidden part. */
+  background: linear-gradient(90deg, var(--clr-accent-dim), var(--clr-accent)) right / calc(var(--p, 0) * 1%) 100% no-repeat;
 }
 
 /* ── Progress card: secondary/demoted variant (Priority 0 #2,
@@ -1006,7 +1008,10 @@ a.unit-progress-row:focus-visible {
   min-height: 220px;
   padding: var(--space-8);
   border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, var(--clr-accent) 0%, var(--clr-accent-dim) 100%);
+  /* CHANGED (light-mode UX pass) — reads --banner-from/to (style.css)
+     instead of --clr-accent/--clr-accent-dim. Light values are identical
+     to before; dark no longer puts white text on light-blue #60A5FA. */
+  background: linear-gradient(135deg, var(--banner-from) 0%, var(--banner-to) 100%);
   box-shadow: var(--shadow-card);
 }
 .mission-banner__text {
@@ -1014,12 +1019,12 @@ a.unit-progress-row:focus-visible {
   z-index: 1;
   max-width: 480px;
 }
+/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .mission-banner__eyebrow {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: rgba(255, 255, 255, .85);
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, .95); /* CHANGED — was .85 = 4.20:1 on the light banner (AA needs 4.5) */
   margin-bottom: var(--space-2);
 }
 .mission-banner__title {
@@ -1031,13 +1036,13 @@ a.unit-progress-row:focus-visible {
 }
 .mission-banner__desc {
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, .88);
+  color: rgba(255, 255, 255, .95); /* CHANGED — was .88 = 4.37:1 */
   margin-bottom: var(--space-5);
   line-height: 1.5;
 }
 .mission-banner__cta {
   background: #ffffff;
-  color: var(--clr-accent-dim);
+  color: var(--banner-to); /* CHANGED — was --clr-accent-dim, which is only 3.7:1 on white in dark mode */
 }
 .mission-banner__cta:hover { background: rgba(255, 255, 255, .9); }
 .mission-banner__art {
@@ -1079,7 +1084,7 @@ a.unit-progress-row:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-surface-2) 0);
+  background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-track) 0); /* CHANGED — track was --clr-surface-2 (1.09:1) */
   transition: background 400ms var(--ease);
 }
 .progress-ring::before {
@@ -1104,11 +1109,11 @@ a.unit-progress-row:focus-visible {
   gap: var(--space-1);
   min-width: 0;
 }
+/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .progress-card__level-eyebrow {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: 0;
   color: var(--clr-accent);
 }
 .progress-card__level-title {
@@ -1150,9 +1155,13 @@ a.unit-progress-row:focus-visible {
  * "Completed" mean the same thing everywhere in the app. */
 .learning-path-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  /* CHANGED (light-mode UX pass) — min was 140px. Once the missing
+     --space-5 padding was restored, a 140px tile only had ~100px inside,
+     which wrapped the "In Progress" badge onto two lines. */
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
   gap: var(--space-4);
 }
+.path-tile .badge { white-space: nowrap; }
 .path-tile {
   display: flex;
   flex-direction: column;
@@ -1171,9 +1180,15 @@ a.path-tile:hover {
   border-color: var(--clr-accent);
 }
 .path-tile--locked {
-  opacity: .6;
+  /* CHANGED (light-mode UX pass) — was `opacity: .6` on the whole tile,
+     which also faded the Locked badge (2.29:1 -> lower). Now the tile
+     recedes by losing its card surface and title weight instead, so the
+     badge stays readable. */
+  background: var(--clr-bg);
+  box-shadow: none;
   cursor: not-allowed;
 }
+.path-tile--locked .path-tile__title { color: var(--clr-text-muted); }
 .path-tile__icon {
   display: inline-flex;
   align-items: center;
@@ -1219,10 +1234,17 @@ a.path-tile:hover {
   border-radius: var(--radius-md);
   margin-bottom: var(--space-1);
 }
-.rec-card__icon--teal   { background: var(--clr-secondary-soft); color: var(--clr-secondary-dim); }
-.rec-card__icon--violet { background: var(--clr-violet-soft, var(--clr-accent-soft)); color: var(--clr-violet, var(--clr-accent)); }
-.rec-card__icon--orange { background: var(--clr-orange-soft); color: var(--clr-orange); }
-.rec-card__icon--success{ background: var(--clr-success-soft); color: var(--clr-success); }
+/* CHANGED (light-mode UX pass) — four different tints (teal/violet/
+   orange/green) on four sibling cards that don't encode anything.
+   style.css's own palette notes say violet is reserved for the
+   "Mission mastered!" moment and that categories shouldn't each get a
+   color, and orange/green already mean "in progress"/"done" on the
+   path tiles right above. One accent tone; the --tone class names stay
+   so js/dashboard.js needs no change. */
+.rec-card__icon--teal,
+.rec-card__icon--violet,
+.rec-card__icon--orange,
+.rec-card__icon--success { background: var(--clr-accent-soft); color: var(--clr-accent-text); }
 .rec-card__title {
   font-size: var(--fs-sm);
   font-weight: 700;

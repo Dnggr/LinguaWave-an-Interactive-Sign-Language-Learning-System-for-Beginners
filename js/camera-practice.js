@@ -169,6 +169,29 @@ let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
 let faceWarnEl        = null;
 
+/* BUGFIX (dark-mode UX pass) — this used to be declared right above
+   showFeedback() (~line 2750). boot() is invoked at MODULE LEVEL (see the
+   `boot()` call after its definition, ~line 1418) and has no `await` before
+   bootDetectionEngine(), so its very first statement — setStatus('Loading
+   hand + face tracking model…') — ran DURING module evaluation, before the
+   `const` below had been initialised: "ReferenceError: Cannot access
+   'FEEDBACK_ICONS' before initialization". That rejected boot()'s promise
+   and the detection engine never started. Declared up here it exists
+   before any code can call setStatus()/showFeedback()/logDetection(). */
+// Maps the semantic feedback `type` these helpers already took to an
+// icon in the shared set. This is the whole point of the icon migration
+// for this file: before, ~20 call sites each hard-coded their own emoji
+// INTO the message string ("\u2705 Correct!", "\u274c Detected X") while ALSO
+// passing type:'success'/'error' — the glyph and the type could disagree,
+// and did. Now the caller passes meaning only and the icon is derived.
+const FEEDBACK_ICONS = {
+  success:    'success',
+  error:      'error',
+  confirming: 'info',
+  info:       'info',
+  warning:    'warning',
+};
+
 // Lesson content refs
 const lessonImageEl       = document.getElementById('lesson-image');
 const lessonImgHintEl     = document.getElementById('lesson-img-placeholder-hint');
@@ -339,6 +362,35 @@ function shuffleArr(arr) {
   return a;
 }
 
+/** "letter" (A-Z), "number" (0-10) or "word": what a learner would read
+ *  the option as. Used only to keep Quick Check options looking alike. */
+function quickCheckKind(signId) {
+  if (/^[A-Za-z]$/.test(signId)) return 'letter';
+  if (/^\d+$/.test(signId)) return 'number';
+  return 'word';
+}
+
+/** Three wrong answers for a Quick Check on `targetSign`, most similar first:
+ *  1) other signs in the current category, 2) same level and same kind,
+ *  3) any other sign. Deduped by signId (a word can live in two categories,
+ *  e.g. STORE in Places and Community) and never includes the target. */
+function pickQuickCheckDistractors(targetSign) {
+  const all = window.LWData?.SIGNS ?? [];
+  const unique = ids => Array.from(new Set(ids)).filter(s => s !== targetSign);
+  const chosen = [];
+  const take = ids => {
+    for (const id of shuffleArr(unique(ids))) {
+      if (chosen.length >= 3) break;
+      if (!chosen.includes(id)) chosen.push(id);
+    }
+  };
+  take(window.LWData?.getCategorySigns?.(level, category) ?? []);
+  const kind = quickCheckKind(targetSign);
+  if (chosen.length < 3) take(all.filter(s => s.level === level && quickCheckKind(s.signId) === kind).map(s => s.signId));
+  if (chosen.length < 3) take(all.map(s => s.signId));
+  return chosen;
+}
+
 /**
  * Builds one MC recall question about a random sign from the cluster
  * that just finished (the last QUICK_CHECK_CLUSTER_SIZE signs up to
@@ -355,9 +407,13 @@ function buildQuickCheckQuestion() {
   const targetData    = window.LWData?.getSign?.(level, targetSign);
   if (!targetData?.description) return null;
 
-  const pool = Array.from(new Set((window.LWData?.SIGNS ?? []).map(s => s.signId)))
-    .filter(s => s !== targetSign);
-  const distractors = shuffleArr(pool).slice(0, 3);
+  // FIX (Impeccable pass): distractors used to be 3 random signIds from the
+  // WHOLE course, so a letter question could offer STORE / BREAD / WHY and
+  // "A" was the only answer that looked like a letter. Now they come from
+  // the same category first (letters against letters, colours against
+  // colours), then the same kind of sign at the same level, and only then
+  // from anywhere, so the question stays answerable in a small category.
+  const distractors = pickQuickCheckDistractors(targetSign);
   if (distractors.length < 3) return null;
 
   // NEW — REV 8 teaching-rhythm pass: recall variety ("identify a sign
@@ -377,7 +433,7 @@ function buildQuickCheckQuestion() {
   if (usePicture) {
     return {
       signId: targetSign,
-      prompt: 'Quick recall — which word matches this sign?',
+      prompt: 'Quick recall: which word matches this sign?',
       promptImage: targetData.imageUrl,
       options: shuffleArr([targetSign, ...distractors]),
     };
@@ -389,7 +445,7 @@ function buildQuickCheckQuestion() {
 
   return {
     signId: targetSign,
-    prompt: `Quick recall — which sign matches this description?\n"${desc}"`,
+    prompt: `Quick recall: which sign matches this description?\n"${desc}"`,
     promptImage: null,
     options: shuffleArr([targetSign, ...distractors]),
   };
@@ -407,8 +463,7 @@ function buildQuickCheckQuestion() {
  * every sign is its own full page load (see the COURSE SIDEBAR
  * comment above boot()), a plain in-memory flag would reset on every
  * navigation and never actually reduce anything — sessionStorage is
- * used instead so "already seen this session" persists across pages,
- * same pattern as this session's course-sidebar scroll fix above.
+ * used instead so "already seen this session" persists across pages.
  * After the first showing, correct answers keep the inline
  * "✅ Nice — that's right." feedback (unchanged, still fires before
  * this function is even called) but skip the full-screen takeover —
@@ -509,7 +564,7 @@ function showQuickCheck() {
           window.LWIcons.setLabel(
             quickCheckFeedbackEl,
             correct ? 'success' : 'error',
-            correct ? 'Nice — that\u2019s right.' : `Not quite — it was "${q.signId}".`,
+            correct ? 'Nice, that\u2019s right.' : `Not quite, it was "${q.signId}".`,
             { size: 'sm' }
           );
           quickCheckFeedbackEl.className = `assessment-feedback assessment-feedback--${correct ? 'success' : 'error'}`;
@@ -767,7 +822,7 @@ function startPhraseStep() {
   clearTimeout(motionCountdownTimer);
   resetMotionBuffer();
   handLostSinceArmedAt = null;
-  if (motionBufEl) motionBufEl.style.width = '0%';
+  if (motionBufEl) motionBufEl.style.setProperty('--p', '0');
   cooldown = true; // hold through the countdown below
   runMotionCountdown(0);
 }
@@ -981,8 +1036,8 @@ function sidebarSignRow(cat, signId, mission, missionLocked) {
   if (!accessible) {
     const pending = !missionLocked; // mission is open, just this sign isn't reached yet
     const reason = pending
-      ? 'Locked — finish the earlier signs in this mission first'
-      : 'Locked — finish every mission in the current chapter to unlock this one';
+      ? 'Locked: finish the earlier signs in this mission first'
+      : 'Locked: finish every mission in the current chapter to unlock this one';
     const stateClass = pending ? ' course-sidebar__sign--pending' : ' course-sidebar__sign--locked';
     return `<span class="course-sidebar__sign${stateClass}" aria-disabled="true" title="${reason}">` +
       `<span class="course-sidebar__sign-icon">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
@@ -1035,7 +1090,7 @@ function sidebarCategoryBlock(cat, opts) {
   if (missionLocked) {
     const icon = window.LWIcons.markup(cat.id);
     return `<div class="course-sidebar__cat">` +
-      `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked — finish every mission in the current chapter to unlock this one">` +
+      `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked: finish every mission in the current chapter to unlock this one">` +
         `<span class="course-sidebar__cat-icon">${icon}</span>` +
         `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
         `<span class="course-sidebar__cat-count">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
@@ -1198,7 +1253,7 @@ function renderCourseSidebar() {
           `<span class="course-sidebar__unit-pct">${pct}%</span>` +
           `<span class="course-sidebar__chevron" aria-hidden="true">${open ? '\u25be' : '\u25b8'}</span>` +
         `</button>` +
-        `<div class="course-sidebar__unit-bar"><div class="course-sidebar__unit-bar-fill" style="width:${pct}%"></div></div>` +
+        `<div class="course-sidebar__unit-bar"><div class="course-sidebar__unit-bar-fill" style="--p:${pct}"></div></div>` +
         `<div class="course-sidebar__unit-body"${open ? '' : ' style="display:none;"'}>${body}</div>` +
       `</div>`;
     }).join('');
@@ -1233,53 +1288,55 @@ function renderCourseSidebar() {
     return;
   }
 
-  restoreCourseSidebarScroll(el);
-  bindCourseSidebarScrollSave(el);
+  scrollCourseSidebarToCurrent(el);
 }
 
-// BUGFIX (this session) — reported: "when choosing course from sidebar
-// it refreshed everything and goes to default state... it treats
-// every course as different links and makes the scroll go back from
-// beginning." Root cause: every row in #course-sidebar is a plain
-// <a href="camera-practice.html?..."> by design (see the COURSE SIDEBAR banner
-// comment above boot() — full page nav, same as Prev/Next, decided
-// on purpose this session) so clicking one is a real navigation, not
-// an in-page state change — the browser has nothing to remember the
-// old scroll position with on its own.
+// ALWAYS CENTRE THE CURRENT SIGN (this session) — reported: the sidebar
+// didn't follow the lesson; the learner had to scroll it to find the row
+// matching the title they're looking at.
 //
-// Fix keeps that full-navigation design as-is (least risk — the
-// camera lifecycle's beforeunload-based shutdown() still doesn't need
-// to know or care) and instead persists #course-sidebar's scrollTop
-// across the navigation via sessionStorage, keyed generically (not
-// per-URL) since the sidebar's own scroll position is a property of
-// "where the learner was browsing," not of any one lesson page.
-const COURSE_SIDEBAR_SCROLL_KEY = 'lw-course-sidebar-scroll';
-let courseSidebarScrollSaveTimer = null;
-
-function restoreCourseSidebarScroll(el) {
-  const saved = sessionStorage.getItem(COURSE_SIDEBAR_SCROLL_KEY);
-  if (saved !== null) {
-    el.scrollTop = Number(saved) || 0;
-    return;
+// History, kept because it's why this looks the way it does. An earlier
+// BUGFIX reported: "when choosing course from sidebar it refreshed
+// everything and goes to default state... the scroll goes back from
+// beginning." Root cause: every row in #course-sidebar is a plain
+// <a href="camera-practice.html?..."> by design (see the COURSE SIDEBAR
+// banner comment above boot() — full page nav, same as Prev/Next), so a
+// click is a real navigation and the browser can't remember the old scroll
+// position. That fix saved #course-sidebar's scrollTop to sessionStorage
+// ('lw-course-sidebar-scroll') and restored it on the next page, and only
+// centred the current row on the first visit of a session.
+// The catch: the restored position won over the current row, so after a
+// Next/Prev, a deep link or a click in the middle of a long unit the
+// sidebar sat wherever it was last left, not on the sign being taught.
+//
+// Now the current row is centred on EVERY load and nothing is saved or
+// restored. That still fixes the original complaint (the list never
+// resets to the top — the row you clicked IS the current row on the next
+// page, so it lands centred) and makes the sidebar match the lesson title.
+//
+// Scrolls only #course-sidebar's own box, never scrollIntoView(): that
+// scrolls EVERY scrollable ancestor, so the whole PAGE jumped ~50px on load
+// and tucked the lesson title under the sticky navbar (dark-mode UX pass).
+// Prefers the current SIGN row: the enclosing UNIT comes first in document
+// order and centring a 26-row block can push the current sign partly out of
+// view. Falls back to the unit when no sign row is rendered (name drill) or
+// it has no box (collapsed unit).
+// Below 1200px the sidebar is stacked above the lesson with max-height:none
+// (css/lesson.css), so it has nothing to scroll and this is a no-op there —
+// on purpose: scrolling the PAGE to the row would push the lesson off-screen.
+function scrollCourseSidebarToCurrent(el) {
+  let target = el.querySelector('.course-sidebar__sign--current');
+  if (!target || target.getBoundingClientRect().height === 0) {
+    target = el.querySelector('.course-sidebar__unit--current');
   }
-  // First visit this session (nothing saved yet) — bring the current
-  // unit/sign into view instead of leaving the sidebar at the very
-  // top, same intent as the "current" class already computed above.
-  el.querySelector('.course-sidebar__unit--current, .course-sidebar__sign--current')
-    ?.scrollIntoView({ block: 'center' });
-}
-
-function bindCourseSidebarScrollSave(el) {
-  el.addEventListener('scroll', () => {
-    // Debounced — a scroll event fires continuously, and writing to
-    // sessionStorage on every single one is unnecessary churn for a
-    // value that only needs to be current by the time the learner
-    // actually clicks a link and navigates away.
-    clearTimeout(courseSidebarScrollSaveTimer);
-    courseSidebarScrollSaveTimer = setTimeout(() => {
-      sessionStorage.setItem(COURSE_SIDEBAR_SCROLL_KEY, String(el.scrollTop));
-    }, 150);
-  });
+  if (!target) return;
+  const t = target.getBoundingClientRect();
+  const c = el.getBoundingClientRect();
+  // Offset of the row inside the sidebar's scrollable (padding) box, then
+  // enough scroll to put the row's midpoint at the box's midpoint. Assigning
+  // scrollTop is instant — scroll-behavior:smooth in css/style.css is on
+  // <html> only and isn't inherited by this element.
+  el.scrollTop += (t.top - c.top - el.clientTop) - (el.clientHeight - t.height) / 2;
 }
 
 
@@ -1310,7 +1367,7 @@ async function boot() {
   // the UI-level gap, not a security boundary.
   if (!(window.LWProgress?.isCategoryUnlocked?.(level, category) ?? true)) {
     window.LinguaWave?.showToast?.(
-      "That lesson isn't unlocked yet — finish the one before it first.",
+      "That lesson isn't unlocked yet. Finish the one before it first.",
       'error'
     );
     // FIX (V1-removal pass) — learn.html now lives in the same
@@ -1349,7 +1406,7 @@ async function boot() {
     const allMissions = window.LWMissions.getAllMissions();
     if (window.LWMissions.getMissionStatus(lockedMission, allMissions) === 'locked') {
       window.LinguaWave?.showToast?.(
-        'This mission is locked — finish every mission in the current chapter first.',
+        'This mission is locked. Finish every mission in the current chapter first.',
         'error'
       );
       window.location.replace(`mission-overview.html?mission=${encodeURIComponent(category)}`);
@@ -1370,7 +1427,7 @@ async function boot() {
     // never anything but the mission's own first (and only) sign.
     if (!isNameDrill && !isSignAccessible(lockedMission, sign)) {
       window.LinguaWave?.showToast?.(
-        "That sign isn't unlocked yet — finish the earlier ones in this mission first.",
+        "That sign isn't unlocked yet. Finish the earlier ones in this mission first.",
         'error'
       );
       window.location.replace(`mission-overview.html?mission=${encodeURIComponent(category)}`);
@@ -1391,7 +1448,7 @@ async function boot() {
   if (totalSigns === 0) {
     // Category has no functional signs yet (comingSoon) — bail out
     // of camera boot entirely and just say so.
-    setStatus(`"${category}" isn't trained yet — check back soon.`, 'error');
+    setStatus(`"${category}" isn't trained yet. Check back soon.`, 'error');
     updateLessonMeta();
     return;
   }
@@ -1551,7 +1608,13 @@ function updateLessonMeta() {
       const placeholder = document.getElementById('lesson-img-placeholder');
       if (placeholder) placeholder.style.display = 'none';
     }
-    if (lessonImgHintEl) lessonImgHintEl.textContent = `Add image to ${signData.imageUrl}`;
+    // CHANGED (dark-mode UX pass): was `Add image to ${signData.imageUrl}` — a developer
+    // TODO shown to learners whenever a reference image is missing. Plain copy now; the
+    // path is kept in data-image-path so it is still one inspect-element away for devs.
+    if (lessonImgHintEl) {
+      lessonImgHintEl.textContent = "The reference image for this sign isn't available yet.";
+      lessonImgHintEl.dataset.imagePath = signData.imageUrl || '';
+    }
 
     if (lessonVideoEl) {
       const source = lessonVideoEl.querySelector('source');
@@ -1594,14 +1657,14 @@ function updateLessonMeta() {
     // supposed to have a data.js entry in the first place.
     if (lessonDescriptionEl) {
       lessonDescriptionEl.textContent = nameDrillLetters.length > 0
-        ? `This is the "ASDF" moment — combining letters you already know into something real. Tap "Try it" below and fingerspell your name, one letter at a time: ${nameDrillLetters.join('-')}.`
-        : `We don't have any letters to drill — your profile name doesn't contain any A–Z characters.`;
+        ? `This is the "ASDF" moment: combining letters you already know into something real. Tap "Try it" below and fingerspell your name, one letter at a time: ${nameDrillLetters.join('-')}.`
+        : `We don't have any letters to drill. Your profile name doesn't contain any A–Z characters.`;
     }
     if (lessonTipsEl) {
       lessonTipsEl.innerHTML = [
         'Hold each letter clearly until it registers before moving to the next',
-        'A brief pause between letters is fine — you get a fresh countdown for each one',
-        'Reuses the same trained A–Z alphabet model — no new signs to learn here',
+        'A brief pause between letters is fine. You get a fresh countdown for each one',
+        'Reuses the same trained A–Z alphabet model. No new signs to learn here',
       ].map(t => `<li>${escapeHtml(t)}</li>`).join('');
     }
     if (lessonImageEl) lessonImageEl.style.display = 'none';
@@ -1615,13 +1678,13 @@ function updateLessonMeta() {
     // ("Add image to assets/images/basic/A.png" — the Letter A
     // default), which is meaningless for a multi-letter name drill.
     if (lessonImgHintEl) {
-      lessonImgHintEl.textContent = 'No single reference image — this drill combines the letters from your own name.';
+      lessonImgHintEl.textContent = 'No single reference image. This drill combines the letters from your own name.';
     }
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) referenceEl.style.display = 'none';
   } else {
     if (lessonDescriptionEl) lessonDescriptionEl.textContent =
-      `Lesson content for "${displayTitle}" hasn't been written yet. The camera detection still works — try practicing the sign below.`;
+      `Lesson content for "${displayTitle}" hasn't been written yet. The camera detection still works. Try practicing the sign below.`;
     if (lessonTipsEl) lessonTipsEl.innerHTML = '';
     if (lessonImageEl) lessonImageEl.style.display = 'none';
     const placeholder = document.getElementById('lesson-img-placeholder');
@@ -1873,7 +1936,7 @@ async function bootDetectionEngine() {
   setStatus('', 'ready');
 
   if (!isModelReady()) {
-    setFaceWarn(`Hand/face tracking failed to load — sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
+    setFaceWarn(`Hand/face tracking failed to load. Sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
   }
 
   try {
@@ -1881,13 +1944,13 @@ async function bootDetectionEngine() {
     const motionErr = getMotionModelError();
     if (motionErr) {
       setClassifierWarn(
-        'Motion model failed to load — motion signs cannot be detected. ' +
+        'Motion model failed to load. Motion signs cannot be detected. ' +
         'Check that /asl_motion_model/model.json exists. (' + motionErr + ')'
       );
     }
   } catch (err) {
     console.error('[lesson.js] Classifier failed to load — camera still running:', err);
-    setClassifierWarn('Sign classifier failed to load — camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
+    setClassifierWarn('Sign classifier failed to load. Camera is live but detection is disabled. Check the console for details (Keras 3 issue).');
   }
 
   // FIX (2026-08-21, earlier session): stamp both to "now" right before
@@ -1966,7 +2029,7 @@ function startRenderLoop() {
       const faceHoldMs = warmingUp ? INITIAL_WARMUP_MS : FACE_WARN_HOLD_MS;
       setFaceWarn(
         now - lastFaceSeenAt > faceHoldMs
-          ? 'Face not detected — step back so your whole head is visible.'
+          ? 'Face not detected. Step back so your whole head is visible.'
           : ''
       );
     }
@@ -2070,17 +2133,17 @@ function updateMotionBuffer() {
   if (!motionBufEl) return;
 
   if (!motionArmed) {
-    motionBufEl.style.width = '0%';
+    motionBufEl.style.setProperty('--p', '0');
     return;
   }
 
   const { elapsedMs, durationMs, progress } = getMotionBufferStatus();
-  motionBufEl.style.width = `${Math.round(progress * 100)}%`;
+  motionBufEl.style.setProperty('--p', String(Math.round(progress * 100)));
 
   if (motionStatusLabelEl && elapsedMs > 0) {
     const elapsedSec  = (elapsedMs / 1000).toFixed(1);
     const durationSec = (durationMs / 1000).toFixed(1);
-    motionStatusLabelEl.textContent = `Recording — ${elapsedSec}s / ${durationSec}s — keep signing!`;
+    motionStatusLabelEl.textContent = `Recording: ${elapsedSec}s / ${durationSec}s. Keep signing!`;
   }
 }
 
@@ -2106,7 +2169,7 @@ function setMotionStatus(state, label) {
       motionStatusLabelEl.textContent = `Get ready… ${label}`; // '3' / '2' / '1' / 'GO!'
       break;
     case 'recording':
-      motionStatusLabelEl.textContent = 'Recording — perform the sign now';
+      motionStatusLabelEl.textContent = 'Recording: perform the sign now';
       break;
     case 'success':
       window.LWIcons.setLabel(motionStatusLabelEl, 'success', `Detected "${label}"`, { size: 'sm' });
@@ -2122,7 +2185,7 @@ function setMotionStatus(state, label) {
       // in the render loop. Explicit and actionable, unlike the old
       // silent hang.
       window.LWIcons.setLabel(motionStatusLabelEl, 'warning',
-      'Hand left the frame too soon — keep it up until recording finishes, then try again', { size: 'sm' });
+      'Hand left the frame too soon. Keep it up until recording finishes, then try again', { size: 'sm' });
       break;
     case 'idle':
     default:
@@ -2166,7 +2229,7 @@ function startMotionRecording() {
   clearTimeout(motionCountdownTimer);
   resetMotionBuffer();
   handLostSinceArmedAt = null;
-  if (motionBufEl) motionBufEl.style.width = '0%';
+  if (motionBufEl) motionBufEl.style.setProperty('--p', '0');
   runMotionCountdown(0);
 }
 
@@ -2215,7 +2278,7 @@ function resetMotionUI() {
   phraseSteps   = null;
   phraseStepIdx = 0;
   resetMotionBuffer();
-  if (motionBufEl) motionBufEl.style.width = '0%';
+  if (motionBufEl) motionBufEl.style.setProperty('--p', '0');
   setMotionStatus('idle');
   // NEW (assessment lag fix): default back to full-rate detection —
   // this is the "normal" state for idle browsing, practice mode, and
@@ -2288,7 +2351,7 @@ function handlePracticeFrame(result) {
       if (result.label !== expectedStep) {
         // Forgiving in practice mode: retry just this step rather than
         // aborting the whole sequence, unlike assessment's strict fail.
-        showFeedback(`Detected "${result.label}" — try "${expectedStep}" again`, 'error');
+        showFeedback(`Detected "${result.label}". Try "${expectedStep}" again`, 'error');
         enterCooldown(1000);
         resetMotionBuffer();
         setTimeout(() => startPhraseStep(), 1000);
@@ -2312,7 +2375,7 @@ function handlePracticeFrame(result) {
       if (isMotion) resetMotionBuffer();
       phraseStepIdx++;
       updatePhrasePromptText();
-      showFeedback(`Got it — next: "${phraseSteps[phraseStepIdx]}"`, 'success');
+      showFeedback(`Got it, next: "${phraseSteps[phraseStepIdx]}"`, 'success');
       setTimeout(() => startPhraseStep(), PHRASE_STEP_DELAY);
       return;
     }
@@ -2355,7 +2418,7 @@ function handlePracticeFrame(result) {
       // enterCooldown() throttles this to roughly once per 800ms
       // instead of re-firing every render-loop frame the wrong sign
       // stays in view.
-      showFeedback(`Detected "${result.label}" — this lesson is "${sign}"`, 'error');
+      showFeedback(`Detected "${result.label}". This lesson is "${sign}"`, 'error');
       enterCooldown(800);
       debounceCount = 0;
       lastDetected  = null;
@@ -2485,7 +2548,7 @@ function showNextPrompt() {
 
     promptTimer = setTimeout(() => {
       missedSigns.push({ expected: currentSign, got: null });
-      showFeedback('⏱ Time up — moving on', 'error');
+      showFeedback('⏱ Time up, moving on', 'error');
       setTimeout(() => {
         quizIdx++;
         showNextPrompt();
@@ -2526,7 +2589,7 @@ function handleAssessmentFrame(result) {
       const stepInfo = `${result.label} (step ${phraseStepIdx + 1}/${phraseSteps.length})`;
       phraseSteps = null;
       missedSigns.push({ expected: currentSign, got: stepInfo });
-      showFeedback(`Detected "${result.label}" — expected "${expectedStep}"`, 'error');
+      showFeedback(`Detected "${result.label}". Expected "${expectedStep}"`, 'error');
       setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
       return;
     }
@@ -2542,7 +2605,7 @@ function handleAssessmentFrame(result) {
       // extra time rather than one shared clock ticking under it
       promptTimer = setTimeout(() => {
         missedSigns.push({ expected: currentSign, got: null });
-        showFeedback('⏱ Time up — moving on', 'error');
+        showFeedback('⏱ Time up, moving on', 'error');
         phraseSteps = null;
         setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
       }, PROMPT_TIMEOUT);
@@ -2585,7 +2648,7 @@ function handleAssessmentFrame(result) {
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
   } else {
     missedSigns.push({ expected: currentSign, got: result.label });
-    showFeedback(`Detected ${result.label} — expected ${currentSign}`, 'error');
+    showFeedback(`Detected ${result.label}. Expected ${currentSign}`, 'error');
   }
 
   setTimeout(() => {
@@ -2623,7 +2686,7 @@ function endAssessment() {
       missedListEl.innerHTML =
         `<p><strong>Review these signs:</strong></p><ul>` +
         missedSigns.map(m =>
-          `<li>${escapeHtml(m.expected)}${m.got ? ` — detected as ${escapeHtml(m.got)}` : ' — not detected in time'}</li>`
+          `<li>${escapeHtml(m.expected)}${m.got ? `: detected as ${escapeHtml(m.got)}` : ': not detected in time'}</li>`
         ).join('') +
         `</ul>`;
       missedListEl.style.display = '';
@@ -2639,11 +2702,11 @@ function endAssessment() {
   if (overlayEl && finalScoreEl) {
     finalScoreEl.textContent = `${Math.round(pct * 100)}%`;
     document.getElementById('overlay-result-title').textContent =
-      passed ? 'Nice practice run!' : 'Good attempt — keep practicing!';
+      passed ? 'Nice practice run!' : 'Good attempt. Keep practicing!';
     document.getElementById('overlay-result-msg').textContent =
       passed
-        ? 'That looked great. This was just an optional camera practice check — head to the category assessment when you\u2019re ready.'
-        : `You scored ${Math.round(pct * 100)}% this time. Camera detection has its limits, so this is just optional practice — it won\u2019t stop you from continuing.`;
+        ? 'That looked great. This was just an optional camera practice check. Head to the category assessment when you\u2019re ready.'
+        : `You scored ${Math.round(pct * 100)}% this time. Camera detection has its limits, so this is just optional practice. It won\u2019t stop you from continuing.`;
 
     const continueBtn = document.getElementById('btn-overlay-continue');
     const retryBtn    = document.getElementById('btn-overlay-retry');
@@ -2716,9 +2779,9 @@ function updateConfidenceUI(result) {
     // calling an in-progress attempt "not a match" before it's even
     // settled would read as premature.
     const showAsWrongMatch = result.matched && !isCorrectSign;
-    detectedEl.textContent        = showAsWrongMatch ? `${result.label} — not "${expectedId}"` : result.label;
+    detectedEl.textContent        = showAsWrongMatch ? `${result.label}, not "${expectedId}"` : result.label;
     detectedEl.style.color        = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-text-muted)';
-    confidenceEl.style.width      = `${result.confidence}%`;
+    confidenceEl.style.setProperty('--p', String(result.confidence));
     confidenceEl.style.background = showAsSuccess ? 'var(--clr-success)' : 'var(--clr-yellow)';
     confTextEl.textContent        = `${result.confidence}%`;
   } else if (motionArmed) {
@@ -2730,7 +2793,7 @@ function updateConfidenceUI(result) {
     // that moved). Show an explicit pulsing "Listening" state instead.
     window.LWIcons.setLabel(detectedEl, 'camera', 'Listening…', { size: 'sm' });
     detectedEl.style.color   = 'var(--clr-accent)';
-    confidenceEl.style.width = '100%';
+    confidenceEl.style.setProperty('--p', '100');
     confidenceEl.style.background = 'var(--clr-accent)';
     confidenceEl.classList.add('confidence-bar-fill--pulse');
     confTextEl.textContent   = '…';
@@ -2738,24 +2801,13 @@ function updateConfidenceUI(result) {
     confidenceEl.classList.remove('confidence-bar-fill--pulse');
     detectedEl.textContent    = '–';
     detectedEl.style.color    = 'var(--clr-text-muted)';
-    confidenceEl.style.width  = '0%';
+    confidenceEl.style.setProperty('--p', '0');
     confTextEl.textContent    = '0%';
   }
 }
 
-// Maps the semantic feedback `type` these helpers already took to an
-// icon in the shared set. This is the whole point of the icon migration
-// for this file: before, ~20 call sites each hard-coded their own emoji
-// INTO the message string ("\u2705 Correct!", "\u274c Detected X") while ALSO
-// passing type:'success'/'error' — the glyph and the type could disagree,
-// and did. Now the caller passes meaning only and the icon is derived.
-const FEEDBACK_ICONS = {
-  success:    'success',
-  error:      'error',
-  confirming: 'info',
-  info:       'info',
-  warning:    'warning',
-};
+// FEEDBACK_ICONS lives with the other module-level declarations near the top
+// of this file (search "FEEDBACK_ICONS ="), NOT here — see the BUGFIX note there.
 
 function showFeedback(message, type) {
   if (!feedbackEl) return;

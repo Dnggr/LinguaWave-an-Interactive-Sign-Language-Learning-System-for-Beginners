@@ -54,16 +54,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Mission Overview — LinguaWave</title>
+  <title>Mission Overview | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 </head>
-<body>
+<body data-tour="mission-overview">
 
   <a href="#mo-main" class="skip-link">Skip to Mission Overview</a>
 
@@ -141,5 +142,10 @@
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/mission-overview.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="mission-overview">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

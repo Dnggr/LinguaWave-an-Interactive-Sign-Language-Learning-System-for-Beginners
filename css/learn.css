@@ -160,8 +160,9 @@ button.category-card {
 }
 .course-card__badge { flex: 0 0 auto; }
 .course-card__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .course-card__eyebrow {
-  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
+  font-size: var(--fs-sm); letter-spacing: 0;
   color: var(--clr-text-muted); font-weight: 600;
 }
 .course-card__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-base); line-height: 1.3; }
@@ -230,6 +231,9 @@ button.category-card {
      other card-like surface in the app already carries (.card,
      .lesson-card, .rec-card); chapter sections were flat by comparison. */
   box-shadow: var(--shadow-card);
+  /* ADDED — js/learn.js's scrollToOpenChapter() scrolls the open chapter to the
+     top of the viewport on load; this leaves a little air above its header. */
+  scroll-margin-top: var(--space-6);
 }
 .trail-group__summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);

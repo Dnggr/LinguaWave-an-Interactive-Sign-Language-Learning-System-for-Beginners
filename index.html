@@ -84,10 +84,10 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LinguaWave — Learn ASL Sign Language</title>
+  <title>LinguaWave | Learn ASL Sign Language</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
 
@@ -159,7 +159,9 @@
   <section class="section hero hero--wave">
     <div class="container hero__grid">
       <div class="hero__copy">
-        <p class="section__eyebrow">Capstone Project 2026</p>
+        <!-- REMOVED (Impeccable pass): a "Capstone project 2026" eyebrow sat above the h1
+             (flagged as a hero eyebrow / pill chip). The footer already says "Capstone
+             Project 2026"; put the line back here if you want it in the hero too. -->
         <h1>Learn to Sign.<br />Connect. Communicate.</h1>
         <p class="hero__lead">
           Learn American Sign Language (ASL) step-by-step with interactive lessons,
@@ -244,17 +246,17 @@
       <div class="why-row">
         <div class="card why-row__item">
           <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-          <h3>Communicate</h3>
+          <h2 class="why-row__title">Communicate</h2>
           <p class="text-muted">Connect with the Deaf community</p>
         </div>
         <div class="card why-row__item">
           <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
-          <h3>Easy to Learn</h3>
+          <h2 class="why-row__title">Easy to Learn</h2>
           <p class="text-muted">Step-by-step lessons made for beginners</p>
         </div>
         <div class="card why-row__item">
           <span class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-          <h3>Track Progress</h3>
+          <h2 class="why-row__title">Track Progress</h2>
           <p class="text-muted">See your growth as you learn new signs</p>
         </div>
       </div>
@@ -323,7 +325,7 @@
   <section class="section section--sm">
     <div class="container">
       <h2>A preview of what you'll learn</h2>
-      <p class="text-muted">A preview of what you'll learn — sign up free to jump in.</p>
+      <p class="text-muted">Sign up free to jump in.</p>
 
       <!--
         Plain <div> chips, not links or buttons — these are intentionally
@@ -369,7 +371,7 @@
       <div class="grid-3 mt-4">
         <div class="card">
           <h3>Real-time camera feedback</h3>
-          <p class="text-muted">Your camera checks your handshape and motion as you sign — powered by on-device hand tracking, not just multiple choice.</p>
+          <p class="text-muted">Your camera checks your handshape and motion as you sign, powered by on-device hand tracking, not just multiple choice.</p>
         </div>
         <div class="card">
           <h3>One guided path</h3>
@@ -377,20 +379,23 @@
         </div>
         <div class="card">
           <h3>Learn respectfully</h3>
-          <p class="text-muted">Alongside vocabulary, you'll pick up the etiquette and history behind the language — more on that below.</p>
+          <p class="text-muted">Alongside vocabulary, you'll pick up the etiquette and history behind the language. More on that below.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ── ABOUT ASL (merged from the former pages/intro-to-asl.html) ─── -->
+  <!-- CHANGED (light-mode UX pass) — dropped container--narrow (800px): it made this block
+         narrower than every section around it and pushed its left edge off the shared
+         grid. At full container width the two-column cards still hold ~65 characters a line. -->
   <section class="section section--sm" id="about-asl">
-    <div class="container container--narrow">
+    <div class="container">
       <h2>About American Sign Language</h2>
       <div class="grid-2 mt-4">
         <div class="card">
           <h3>What is ASL?</h3>
-          <p class="text-muted">American Sign Language is a complete, natural language with its own grammar and syntax — it isn't a signed version of English. It's used primarily by Deaf communities across the US and parts of Canada.</p>
+          <p class="text-muted">American Sign Language is a complete, natural language with its own grammar and syntax. It isn't a signed version of English. It's used primarily by Deaf communities across the US and parts of Canada.</p>
           <p class="text-muted">Its roots trace to 1817, when the American School for the Deaf opened in Hartford, Connecticut, founded by Thomas Gallaudet and Laurent Clerc, a Deaf teacher from France. ASL grew from French Sign Language blending with sign systems already used locally.</p>
         </div>
         <div class="card">
@@ -400,17 +405,17 @@
         </div>
         <div class="card">
           <h3>Deaf awareness &amp; etiquette</h3>
-          <p class="text-muted">Many in the Deaf community see themselves as a linguistic and cultural group — not as having something to "fix." A few habits go a long way:</p>
+          <p class="text-muted">Many in the Deaf community see themselves as a linguistic and cultural group, not as having something to "fix." A few habits go a long way:</p>
           <ul class="etiquette-list text-muted">
-            <li>Keep eye contact — it's how a signed conversation stays connected.</li>
+            <li>Keep eye contact: it's how a signed conversation stays connected.</li>
             <li>Get attention with a wave or a light tap on the shoulder, not shouting.</li>
             <li>Face the person directly and keep your face visible; facial expression carries grammar, not just emotion.</li>
-            <li>It's fine to ask to write something down instead of guessing — don't fake understanding.</li>
+            <li>It's fine to ask to write something down instead of guessing. Don't fake understanding.</li>
           </ul>
         </div>
         <div class="card">
           <h3>How a sign works</h3>
-          <p class="text-muted">Stokoe identified that every sign is built from a few parameters: handshape, location, movement, and palm orientation — plus facial expression, which changes meaning the way tone of voice does in speech.</p>
+          <p class="text-muted">Stokoe identified that every sign is built from a few parameters: handshape, location, movement, and palm orientation, plus facial expression, which changes meaning the way tone of voice does in speech.</p>
           <p class="text-muted">That's also why LinguaWave's camera tracks motion and position rather than grading a single still frame.</p>
         </div>
       </div>
@@ -421,14 +426,14 @@
   <section class="section section--sm">
     <div class="container text-center">
       <h2>Ready to start signing?</h2>
-      <p class="text-muted mb-4">It's free to join — pick up right where the preview above left off.</p>
+      <p class="text-muted mb-4">It's free to join. Pick up right where the preview above left off.</p>
       <button type="button" class="btn btn--primary btn--lg" data-hero-cta>Get Started Free</button>
     </div>
   </section>
 
   <footer class="footer">
     <div class="container">
-      <p class="text-muted">LinguaWave — Capstone Project 2026</p>
+      <p class="text-muted">LinguaWave · Capstone Project 2026</p>
     </div>
   </footer>
 

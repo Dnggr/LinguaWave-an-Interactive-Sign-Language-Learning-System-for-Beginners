@@ -9805,6 +9805,30 @@ function getCategoriesForUnitV2(unitOrder) {
     return mission.items.length;
   }
 
+  // NEW, ADDITIVE — "may this learner step back through the mission and
+  // review it?" True once every item BEFORE the closing QUIZ is complete
+  // (i.e. getDropOffIndex() has reached the QUIZ item, so the Mastery Quiz
+  // is the only thing left), and of course once the whole mission is done
+  // (getDropOffIndex() === items.length). Used by js/lesson.js (the ‹ › review
+  // nav) and js/mission-overview.js (the "Review Mission" button).
+  //
+  // Why this exists: the review nav used to unlock only at 100%
+  // (getMissionProgress() >= 1), which only a PASSED Mastery Quiz can
+  // produce (markMissionComplete()). So a learner who reached the last
+  // item, then failed or ran out of hearts on the quiz, was stuck with
+  // no way to look back at what they'd learned — the exact moment they
+  // needed to. "Reached the last item BY WORKING THROUGH the mission" is
+  // deliberately the bar, not "quiz attempted": a learner who jumps
+  // straight to the quiz via its skip-path has completed no items, so
+  // this stays false for them and Start Mission remains their route
+  // through the lessons. Reads only the existing per-item completion
+  // state; writes nothing.
+  function canReviewMission(mission) {
+    const last = mission.items.length - 1;
+    if (last < 0) return false;
+    return getDropOffIndex(mission) >= last;
+  }
+
   // PERF FIX (this revision) — isChapterUnlocked() (below) calls
   // getMissionProgress() on every mission in every EARLIER chapter,
   // for every mission being rendered — so a full mission-list render
@@ -10144,6 +10168,26 @@ function getCategoriesForUnitV2(unitOrder) {
     discussionCount: null, // reserved for §3.12, stays hidden until non-zero
   };
 
+  /* ── Trail numbering (light-mode UX pass) ──────────────────────
+   * NEW — category id -> 1-based position on the trail: chapter order,
+   * then order within the chapter. This is the number Learn's rows and
+   * Mission Overview's header display. It is NOT a mission's index in
+   * getAllMissions(): that array is in unit order, and chapters regroup it
+   * (e.g. "Personal Information" is array slot 12 but lives in Chapter 2),
+   * so array-index numbering skipped values (Chapter 5 read 11, 13, 14…)
+   * and would disagree with the order the learner actually sees. Keyed by
+   * category id, which is stable across searches/filters.
+   */
+  function getTrailNumbers(allMissions) {
+    const list = allMissions || getAllMissions();
+    const byCategory = new Map();
+    let n = 0;
+    getCategoryGroupsV2().forEach((g) => {
+      list.filter((m) => m.categoryGroup === g.id).forEach((m) => byCategory.set(m.category, ++n));
+    });
+    return byCategory;
+  }
+
   /* ── Public export ───────────────────────────────────────────── */
 
   global.LWMissions = {
@@ -10163,6 +10207,7 @@ function getCategoriesForUnitV2(unitOrder) {
     isItemComplete,
     getItemCompletedAt,      // NEW — Phase 2
     getDropOffIndex,         // NEW — Phase 2
+    canReviewMission,        // NEW — true once only the closing Mastery Quiz is left (or the mission is done); gates the lesson review nav + Overview's "Review Mission"
     getRecap,
     getStreakSummary,
     recordActivityToday,
@@ -10174,6 +10219,7 @@ function getCategoriesForUnitV2(unitOrder) {
     isChapterUnlocked,       // NEW (Task 1) — chapter gating
     getMissionStatus,        // NEW (Task 1) — single shared 'done'/'locked'/'current'/'available' rule
     getCurrentChapterId,     // NEW (Task 1) — which chapter section should default-open
+    getTrailNumbers,         // NEW (light-mode UX pass) — category id -> trail position, shared by learn.js + mission-overview.js
     ui: UI_CONFIG,
     // NEW (this revision) —'s own independent content model and its
     // accessors, forked from js/data.js's latest content. Purely

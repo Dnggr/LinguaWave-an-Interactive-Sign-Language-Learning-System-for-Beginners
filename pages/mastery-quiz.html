@@ -79,16 +79,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Mastery Quiz — LinguaWave</title>
+  <title>Mastery Quiz | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 </head>
-<body>
+<body data-tour="mastery-quiz">
 
   <a href="#mq-main" class="skip-link">Skip to Mastery Quiz</a>
 
@@ -133,9 +134,15 @@
 
       <section class="section section--sm section--tight">
         <div class="container container--narrow">
-          <a href="learn.html" class="back-link">
+          <!-- Back link. This static "All missions" is only what the
+               not-found screen keeps (no mission to go back to).
+               js/mastery-quiz.js's configureBackLink() repoints it, once
+               the mission is known, at the lesson recap slide (when the
+               learner arrived with &from=lesson) or the mission's own
+               Mission Overview, instead of the whole missions list. -->
+          <a href="learn.html" class="back-link" id="mq-back">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            All missions
+            <span id="mq-back-label">All missions</span>
           </a>
           <div id="mq-content">
             <!-- filled by js/mastery-quiz.js -->
@@ -162,5 +169,10 @@
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/mastery-quiz.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="mastery-quiz">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

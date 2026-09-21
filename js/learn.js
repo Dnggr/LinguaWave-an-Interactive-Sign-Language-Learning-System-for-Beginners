@@ -43,6 +43,33 @@ function debounce(fn, wait) {
   };
 }
 
+// AUTO-SCROLL TO THE OPEN CHAPTER (this session) — reported: every time
+// the learner came back to Learn they had to scroll down to the chapter
+// they're actually on (Chapter 5 is far below the fold once earlier
+// chapters are done). renderList() already opens exactly one chapter when
+// not searching — the first not-100%-complete one, LWMissions.
+// getCurrentChapterId() — so that <details open> IS the place to land.
+//   - Instant, not smooth: css/style.css sets html{scroll-behavior:smooth},
+//     which would animate a page-load jump down past every earlier chapter.
+//   - block:'start' (not 'center'): an open chapter is usually taller than
+//     the viewport, so centring would cut its header off. The breathing
+//     room above it comes from `.trail-group { scroll-margin-top }` in
+//     css/learn.css.
+//   - Never while searching (renderList() opens EVERY matching chapter
+//     then, there's no single "open chapter" to go to).
+// Only the window scrolls here (no inner scroll box), so scrollIntoView()
+// is safe on this page — unlike camera-practice.js's sidebar, where it isn't.
+function scrollToOpenChapter() {
+  const chapter = document.querySelector('#path-list .trail-group[open]');
+  if (chapter) chapter.scrollIntoView({ block: 'start', behavior: 'instant' });
+}
+
+// Flips to true on the learner's first wheel/touch/key/click, so the
+// post-Firestore-sync repaint below can re-aim the scroll (the open
+// chapter can change once merged progress arrives) without yanking the
+// page out from under someone who has already started scrolling.
+let userTookOverScroll = false;
+
 function statusMeta(status) {
   switch (status) {
     case 'done': return { label: 'Completed', badge: 'badge--done' };
@@ -52,7 +79,7 @@ function statusMeta(status) {
   }
 }
 
-function renderRow(mission, index, status) {
+function renderRow(mission, index, status, displayNumber) {
   const meta = statusMeta(status);
   const pct = Math.round(window.LWMissions.getMissionProgress(mission) * 100);
   const locked = status === 'locked';
@@ -67,7 +94,7 @@ function renderRow(mission, index, status) {
 
   return `
     <${tag} class="card path-row path-row--${status}" ${hrefAttr} data-index="${index}">
-      <span class="path-row__num">${String(index + 1).padStart(2, '0')}</span>
+      <span class="path-row__num">${String((displayNumber || index + 1)).padStart(2, '0')}</span>
       <div class="path-row__body">
         <p class="path-row__title">${mission.title}</p>
         <p class="path-row__goal">${mission.goal}</p>
@@ -75,7 +102,7 @@ function renderRow(mission, index, status) {
       <div class="path-row__meta">
         <span class="badge ${meta.badge}${locked ? ' path-row__lock-badge' : ''}">${meta.label}</span>
         ${!hideBar ? `<div class="path-row__progress">
-          <div class="progress-bar"><div class="progress-bar__fill" style="width:${pct}%"></div></div>
+          <div class="progress-bar"><div class="progress-bar__fill" style="--p:${pct}"></div></div>
         </div>` : ''}
         ${!locked ? `<svg class="path-row__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>` : ''}
       </div>
@@ -135,7 +162,7 @@ function renderList(filterText) {
     return missions.map((m) => {
       const realIndex = allMissions.indexOf(m);
       const status = window.LWMissions.getMissionStatus(m, allMissions);
-      return renderRow(m, realIndex, status);
+      return renderRow(m, realIndex, status, trailNumber.get(m.category));
     }).join('');
   }
 
@@ -147,6 +174,12 @@ function renderList(filterText) {
   // every mission fell through to "ungrouped" with no chapter headers
   // rendering at all. Chapters live on window.LWMissions now.
   const chapters = (window.LWMissions && window.LWMissions.getCategoryGroups) ? window.LWMissions.getCategoryGroups() : [];
+  // BUGFIX (light-mode UX pass) — row numbers used to be each mission's index in
+  // allMissions, but chapters regroup that array, so Chapter 5 read 11, 13, 14…
+  // Number by trail position via the shared LWMissions.getTrailNumbers() (see its
+  // comment in js/missions.js). Built from the full list, not `filtered`, so
+  // numbers stay stable while the learner types in the search box.
+  const trailNumber = window.LWMissions.getTrailNumbers ? window.LWMissions.getTrailNumbers(allMissions) : new Map();
   // CHAPTER GATING (Task 1) — "current" chapter (the one auto-opened)
   // is the first chapter, in order, that isn't 100% complete yet; see
   // getCurrentChapterId() in js/missions.js.
@@ -223,6 +256,16 @@ function initPage() {
   if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
   renderList('');
 
+  // This page positions itself (see scrollToOpenChapter()), so opt out of
+  // the browser's own scroll restoration — on Back from a mission it would
+  // otherwise race us and drop the learner wherever they happened to be
+  // scrolled last time instead of on their current chapter.
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((evt) => {
+    window.addEventListener(evt, () => { userTookOverScroll = true; }, { once: true, passive: true });
+  });
+  scrollToOpenChapter();
+
   // Interactive Locked-State Feedback (this revision) — locked rows
   // render as a plain, non-navigable <div> (renderRow() above), so a
   // click here never had anything to do. Delegated on #path-list (not
@@ -240,12 +283,18 @@ function initPage() {
   // typing a multi-character query no longer triggers a full
   // filter+status-recompute+innerHTML-rebuild on every single
   // keystroke, only once they pause briefly.
-  searchInput.addEventListener('input', debounce(() => renderList(searchInput.value), 150));
+  // Clearing the box collapses the list back to the single open chapter,
+  // which can strand the page mid-nowhere — land on that chapter again.
+  searchInput.addEventListener('input', debounce(() => {
+    renderList(searchInput.value);
+    if (!searchInput.value.trim()) scrollToOpenChapter();
+  }, 150));
 
   window.LWMissions.whenMissionsSyncReady().then(() => {
     allMissions = window.LWMissions.getAllMissions();
     if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
     renderList(searchInput.value);
+    if (!userTookOverScroll && !searchInput.value.trim()) scrollToOpenChapter();
   });
 }
 

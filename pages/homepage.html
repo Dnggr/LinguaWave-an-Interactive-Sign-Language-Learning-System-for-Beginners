@@ -68,9 +68,9 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome — LinguaWave</title>
+  <title>Welcome | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <!-- Reuses css/learn.css's .unit-info/.unit-info__section (originally
        built for learn.js's now-removed Unit 0 screen, repurposed) and
@@ -128,7 +128,7 @@
     .hero-banner {
       display: inline-flex; align-items: center; gap: var(--space-2);
       padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill);
-      background: var(--clr-accent-soft); color: var(--clr-accent);
+      background: var(--clr-accent-soft); color: var(--clr-accent-text); /* CHANGED (dark pass) was --clr-accent: 4.06:1 in dark */
       font-size: var(--fs-xs); font-weight: 600; text-decoration: none;
       margin-bottom: var(--space-5);
     }
@@ -288,12 +288,12 @@
     <div class="container">
       <a href="learn.html?unit=alphabet" class="hero-banner">
         <span class="icon-badge" aria-hidden="true" data-lw-icon="hero_sparkle"></span>
-        New here? Start with the Alphabet — free &amp; self-paced
+        New here? Start with the Alphabet, free &amp; self-paced
       </a>
       <div class="homepage-hero">
         <h1>Learn to sign.<br>Speak with your hands.</h1>
         <p class="mt-4 text-muted">
-          Real handshapes, real practice, and a little Deaf-culture context —
+          Real handshapes, real practice, and a little Deaf-culture context.
           LinguaWave teaches American Sign Language one sign at a time, right
           in your browser.
         </p>
@@ -313,21 +313,21 @@
           <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
             <span data-lw-icon="communicate" data-lw-icon-self="1"></span>
           </span>
-          <h3>Communicate</h3>
+          <h2 class="heading-md">Communicate</h2>
           <p class="mt-2">Connect with the Deaf community using real, useful signs.</p>
         </div>
         <div class="card text-center">
           <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
             <span data-lw-icon="learn" data-lw-icon-self="1"></span>
           </span>
-          <h3>Easy to Learn</h3>
+          <h2 class="heading-md">Easy to Learn</h2>
           <p class="mt-2">Short, beginner-friendly lessons that build on each other.</p>
         </div>
         <div class="card text-center">
           <span class="icon-badge" style="width:40px;height:40px;margin:0 auto var(--space-3);" aria-hidden="true">
             <span data-lw-icon="progress" data-lw-icon-self="1"></span>
           </span>
-          <h3>Track Progress</h3>
+          <h2 class="heading-md">Track Progress</h2>
           <p class="mt-2">See your growth as you learn new signs, level by level.</p>
         </div>
       </div>
@@ -363,7 +363,7 @@
         <div class="quote-block__mark" aria-hidden="true">
           <span data-lw-icon="quote" data-lw-icon-self="1"></span>
         </div>
-        <p class="quote-block__text">ASL is a complete, natural language — not a signed version of English. LinguaWave teaches it that way, one handshape at a time.</p>
+        <p class="quote-block__text">ASL is a complete, natural language, not a signed version of English. LinguaWave teaches it that way, one handshape at a time.</p>
       </div>
     </div>
   </section>
@@ -371,7 +371,7 @@
   <!-- ── TOPIC GRID ("Subject Areas" equivalent) ─────────────────── -->
   <section class="section section--sm">
     <div class="container">
-      <p class="section__eyebrow text-center">Get Started</p>
+      <p class="section__eyebrow text-center">Get started</p>
       <h2 class="text-center">Browse Topics</h2>
       <p class="text-center text-muted mt-2">Jump straight into any of these to begin your learning path.</p>
       <div class="topic-grid">
@@ -420,34 +420,34 @@
        (repurposed from the old Unit 0 trail screen). -->
   <section class="section section--sm">
     <div class="container">
-      <p class="section__eyebrow text-center">Before You Start</p>
+      <p class="section__eyebrow text-center">Before you start</p>
       <h2 class="text-center">ASL Basics &amp; Deaf Culture</h2>
       <p class="text-center text-muted mt-2">A quick primer before you dive into the lessons.</p>
       <div class="unit-info mt-8">
 
         <div class="unit-info__section">
           <h3>What is ASL?</h3>
-          <p>American Sign Language (ASL) is a complete, natural language with its own grammar and structure — it is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.</p>
+          <p>American Sign Language (ASL) is a complete, natural language with its own grammar and structure. It is not a signed version of English. It is expressed through handshapes, movement, facial expression, and body posture, and it is the primary language of many Deaf and hard-of-hearing communities in the United States and parts of Canada.</p>
         </div>
 
         <div class="unit-info__section">
           <h3>A Brief History of ASL</h3>
-          <p>Modern ASL traces back to 1817, when Thomas Hopkins Gallaudet and Laurent Clerc opened the American School for the Deaf in Hartford, Connecticut — the first permanent school for Deaf students in the U.S. Gallaudet was inspired to study Deaf education by his neighbor's Deaf daughter, Alice Cogswell, and it was her father, Dr. Mason Cogswell, who helped fund Gallaudet's trip to Europe. There he met Clerc, a Deaf teacher who signed French Sign Language, and convinced him to cross the Atlantic and help start the school. At Hartford, Clerc's French Sign Language blended with the sign language Deaf students already brought with them — including Martha's Vineyard Sign Language, used for generations on a Massachusetts island by a community with an unusually high rate of hereditary deafness — and modern ASL grew out of that mix over the decades that followed.</p>
+          <p>Modern ASL traces back to 1817, when Thomas Hopkins Gallaudet and Laurent Clerc opened the American School for the Deaf in Hartford, Connecticut, the first permanent school for Deaf students in the U.S. Gallaudet was inspired to study Deaf education by his neighbor's Deaf daughter, Alice Cogswell, and it was her father, Dr. Mason Cogswell, who helped fund Gallaudet's trip to Europe. There he met Clerc, a Deaf teacher who signed French Sign Language, and convinced him to cross the Atlantic and help start the school. At Hartford, Clerc's French Sign Language blended with the sign language Deaf students already brought with them (including Martha's Vineyard Sign Language, used for generations on a Massachusetts island by a community with an unusually high rate of hereditary deafness), and modern ASL grew out of that mix over the decades that followed.</p>
         </div>
 
         <div class="unit-info__section">
           <h3>How practice works in LinguaWave</h3>
-          <p>Each lesson teaches a sign with an image, a written description, and a short demo video. When you are ready, you can open the optional Camera Check to practice in front of your webcam — LinguaWave will try to recognize your handshape live. This camera check is practice, not a pass/fail gate: your quiz score comes from the Multiple Choice and Identification rounds, not from the camera.</p>
+          <p>Each lesson teaches a sign with an image, a written description, and a short demo video. When you are ready, you can open the optional Camera Check to practice in front of your webcam. LinguaWave will try to recognize your handshape live. This camera check is practice, not a pass/fail gate: your quiz score comes from the Multiple Choice and Identification rounds, not from the camera.</p>
         </div>
 
         <div class="unit-info__section">
           <h3>Deaf culture note: capitalizing "Deaf"</h3>
-          <p>You will often see "Deaf" capitalized. This marks Deaf as a cultural and linguistic identity — belonging to a community with its own language and traditions — rather than only describing a hearing level. Lowercase "deaf" is generally used when referring strictly to hearing status.</p>
+          <p>You will often see "Deaf" capitalized. This marks Deaf as a cultural and linguistic identity, belonging to a community with its own language and traditions, rather than only describing a hearing level. Lowercase "deaf" is generally used when referring strictly to hearing status.</p>
         </div>
 
         <div class="unit-info__section">
           <h3>Deaf culture note: getting someone's attention</h3>
-          <p>Waving in someone's line of sight, a light tap on the shoulder, or a gentle tap on a table to send a vibration are the polite ways to get a Deaf person's attention — calling out a name usually will not work the way it does in spoken conversation.</p>
+          <p>Waving in someone's line of sight, a light tap on the shoulder, or a gentle tap on a table to send a vibration are the polite ways to get a Deaf person's attention. Calling out a name usually will not work the way it does in spoken conversation.</p>
         </div>
 
         <a href="intro-to-asl.html" class="lesson-card category-card lesson-card--intro">
@@ -463,7 +463,7 @@
   </section>
 
   <footer class="footer">
-    <div class="container"><p>LinguaWave — Capstone Project 2025</p></div>
+    <div class="container"><p>LinguaWave · Capstone Project 2025</p></div>
   </footer>
 
   <script src="../js/main.js"></script>

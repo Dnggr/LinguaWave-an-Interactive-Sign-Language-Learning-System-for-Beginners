@@ -124,14 +124,15 @@ function initSidebarNavGuard() {
 /* ── PROGRESS BARS: animate fill on page load ────────────────────── */
 /*
  * Reads [data-progress="0-100"] on any .progress-bar__fill element
- * and sets the width so the CSS transition plays on load.
+ * and sets --p (the fill is slid with transform, see css/style.css's
+ * .progress-bar__fill) so the CSS transition plays on load.
  * TODO: replace hardcoded data attributes with values from Firestore.
  */
 function initProgressBars() {
   document.querySelectorAll('.progress-bar__fill[data-progress]').forEach(el => {
     const pct = Math.min(100, Math.max(0, parseInt(el.dataset.progress, 10)));
     // Defer to next frame so transition fires
-    requestAnimationFrame(() => { el.style.width = `${pct}%`; });
+    requestAnimationFrame(() => { el.style.setProperty('--p', String(pct)); });
   });
 }
 
@@ -240,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // no <footer class="footer"> element at all; querySelector() would
   // otherwise throw here and silently abort whatever ran after it.
   const footerP = document.querySelector('.footer p');
-  if (footerP) footerP.textContent = `LinguaWave — Capstone Project 2026`; // makes the footer of all pages relative to this text
+  if (footerP) footerP.textContent = `LinguaWave · Capstone Project 2026`; // makes the footer of all pages relative to this text
 });
 
 

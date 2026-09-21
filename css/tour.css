@@ -1,0 +1,226 @@
+/* ═══════════════════════════════════════════════════════════════════
+   css/tour.css: guided tour / hint popups                        (NEW)
+   ─────────────────────────────────────────────────────────────────
+   Styles for js/tour.js (engine) + js/tour-guides.js (copy). Loaded
+   AFTER css/style.css, so it can read every design token from there
+   (colour, radius, spacing, motion). Nothing in this file hardcodes a
+   brand colour: the popover, the spotlight ring and the progress
+   segments all follow --clr-* and so switch with the theme.
+
+   Anatomy (all created by js/tour.js at runtime):
+
+     .lw-tour                    full-screen layer, z-index 1200
+       .lw-tour__shield          transparent, catches stray clicks
+       .lw-tour__spot            the cut-out around the target. Its
+                                 huge box-shadow IS the dimmed page,
+                                 so no separate overlay is needed
+       .lw-tour__pop             the card (role="dialog")
+         .lw-tour__bar             segments + Back / Skip / Next
+         .lw-tour__text            title + body
+
+   Also here: .lw-tour-note (the one-line confirmation after a guide is
+   skipped).
+
+   Why .lw-tour-note and not the app's toast: css/toast.css is linked
+   on camera-practice.html only, so a showToast() call on any other
+   page renders unstyled. This note ships its own styles instead of
+   depending on a stylesheet most pages don't load.
+
+   Motion: transitions use the --dur-* and --ease tokens, and css/style.css §15's
+   blanket prefers-reduced-motion rule (plus .lw-force-reduced-motion)
+   already collapses every duration in here to ~0, so nothing below
+   needs its own reduced-motion branch.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="light"] {
+  --tour-dim:        rgba(15, 23, 42, .52);
+  --tour-pop-shadow: 0 18px 40px rgba(15, 23, 42, .26), 0 2px 8px rgba(15, 23, 42, .12);
+}
+[data-theme="dark"] {
+  --tour-dim:        rgba(2, 6, 23, .68);
+  --tour-pop-shadow: 0 18px 44px rgba(0, 0, 0, .60), 0 2px 8px rgba(0, 0, 0, .40);
+}
+
+/* ── Layer ─────────────────────────────────────────────────────── */
+.lw-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease);
+}
+.lw-tour.is-open { opacity: 1; }
+
+/* Blocks clicks on the page underneath so nobody navigates away with
+   the tour half-open. Scrolling still works (wheel events pass to the
+   document), and Skip / Esc are always one action away. */
+.lw-tour__shield {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+/* ── Spotlight ─────────────────────────────────────────────────── */
+.lw-tour__spot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: var(--radius-md);
+  /* 1: accent ring around the target.  2: the dimmed page. */
+  box-shadow: 0 0 0 2px var(--clr-accent), 0 0 0 9999px var(--tour-dim);
+  pointer-events: none;
+  transition:
+    top var(--dur-base) var(--ease),
+    left var(--dur-base) var(--ease),
+    width var(--dur-base) var(--ease),
+    height var(--dur-base) var(--ease),
+    border-radius var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+/* A step with no target (a welcome card) collapses the spot to a point
+   in the middle of the screen: the page stays dimmed, the ring goes. */
+.lw-tour--centered .lw-tour__spot {
+  box-shadow: 0 0 0 0 transparent, 0 0 0 9999px var(--tour-dim);
+}
+
+/* Applied for one frame by js/tour.js when something must move NOW
+   (first paint, scroll, resize) so the glide only plays between steps. */
+.lw-tour--instant .lw-tour__spot,
+.lw-tour--instant .lw-tour__pop {
+  transition: none;
+}
+
+/* ── Card ──────────────────────────────────────────────────────── */
+.lw-tour__pop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: min(380px, calc(100vw - 24px));
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--tour-pop-shadow);
+  pointer-events: auto;
+  transition:
+    top var(--dur-base) var(--ease),
+    left var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+.lw-tour:not(.is-open) .lw-tour__pop { transform: translateY(8px); }
+
+/* Top row: progress segments on the left, actions on the right. */
+.lw-tour__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.lw-tour__steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: var(--space-2);
+}
+.lw-tour__seg {
+  flex: 0 1 24px;
+  min-width: 8px;
+  height: 4px;
+  border-radius: 4px;
+  /* --clr-border-strong (not --clr-track): 3:1+ against the card, so
+     the "steps left" part of the indicator is actually visible. */
+  background: var(--clr-border-strong);
+  transition: background var(--dur-base) var(--ease), flex-basis var(--dur-base) var(--ease);
+}
+.lw-tour__seg.is-done    { background: var(--clr-accent); }
+.lw-tour__seg.is-current { background: var(--clr-accent); flex-basis: 40px; }
+
+/* Skip / Back: quiet text buttons, so Next is the only loud control. */
+.lw-tour__link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--clr-text-muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  /* "Skip all" is longer than "Skip": keep it on one line. */
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.lw-tour__link:hover { color: var(--clr-text); background: var(--clr-surface-2); }
+
+/* Next reuses .btn.btn--primary (pill, accent fill); only the padding
+   is tightened so it sits level with the text buttons. */
+.lw-tour__next { padding: var(--space-2) var(--space-5); }
+
+.lw-tour__link:focus-visible,
+.lw-tour__next:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--clr-surface), 0 0 0 4px var(--clr-accent);
+}
+
+/* ── Copy ──────────────────────────────────────────────────────── */
+.lw-tour__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--clr-text);
+}
+.lw-tour__body {
+  margin-top: var(--space-2);
+  font-size: calc(var(--fs-base) * .9375);
+  line-height: 1.55;
+  color: var(--clr-text-muted);
+}
+@keyframes lw-tour-text-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.lw-tour__text.is-in { animation: lw-tour-text-in var(--dur-base) var(--ease) both; }
+
+/* Phones: the card gets full width, and the segments take their own
+   row so the three actions never squeeze them to nothing. */
+@media (max-width: 420px) {
+  .lw-tour__pop { padding: var(--space-4); }
+  .lw-tour__bar { flex-wrap: wrap; justify-content: flex-end; }
+  .lw-tour__steps { flex: 1 0 100%; margin: 0 0 var(--space-2); }
+}
+
+/* ── Confirmation after a skip ─────────────────────────────────── */
+.lw-tour-note {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  z-index: 1150;
+  max-width: calc(100vw - 24px);
+  padding: var(--space-3) var(--space-5);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--tour-pop-shadow);
+  font-size: var(--fs-sm);
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+  pointer-events: none;
+}
+.lw-tour-note.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+@media print {
+  .lw-tour, .lw-tour-note { display: none !important; }
+}

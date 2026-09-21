@@ -229,10 +229,10 @@ function render(mission, status) {
       const learned = isSignLearned(mission, id);
       const label = signTitle(mission, id);
       if (locked) {
-        return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked — finish every mission in the current chapter to unlock this one">${label}</span>`;
+        return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked: finish every mission in the current chapter to unlock this one">${label}</span>`;
       }
       if (!isSignAccessible(mission, signs, id)) {
-        return `<span class="sign-chip sign-chip--pending" aria-disabled="true" title="Locked — finish the earlier signs in this mission first">${label}</span>`;
+        return `<span class="sign-chip sign-chip--pending" aria-disabled="true" title="Locked: finish the earlier signs in this mission first">${label}</span>`;
       }
       const dictUrl = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}&sign=${encodeURIComponent(id)}`;
       return `<a href="${dictUrl}" class="sign-chip${learned ? ' sign-chip--learned' : ''}">${label}</a>`;
@@ -245,7 +245,17 @@ function render(mission, status) {
   // header comment for the full integration note). pages/camera-practice.html
   // is still reachable from inside lesson.html itself, as the
   // explicit "Practice with your camera" link on each Watch stage.
-  const lessonUrl = `lesson.html?mission=${encodeURIComponent(mission.category)}`;
+  //
+  // REVIEW BEFORE THE MASTERY QUIZ — canReview is true for a finished
+  // mission AND for one where only the closing Mastery Quiz is left
+  // (window.LWMissions.canReviewMission()), so a learner who has worked
+  // through everything can look back over it to prepare for the quiz, or
+  // while waiting for hearts to refill. It stays false for a learner who
+  // hasn't reached the quiz through the mission itself. In that case the
+  // button below opens the lesson at the start (?review=1) instead of at
+  // the recap slide where the lesson would otherwise resume.
+  const canReview = !locked && window.LWMissions.canReviewMission(mission);
+  const lessonUrl = `lesson.html?mission=${encodeURIComponent(mission.category)}${canReview ? '&review=1' : ''}`;
   // NEW — ALL 12 chapters (see SAMPLE_MASTERY_QUIZ_CHAPTERS above)
   // now route to the real mastery-quiz.html sample.
   // V1-removal pass: pages/quiz.html is deleted. The `false` branch
@@ -259,20 +269,24 @@ function render(mission, status) {
   const pct = Math.round(window.LWMissions.getMissionProgress(mission) * 100);
   const heartsState = window.LWMissions.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;
-  // Priority 2, item 5/6 — label-only: a 'done' mission's own lesson
-  // page now shows a Go to Start/Go to End review nav bar (see
-  // js/lesson.js), so this entry point is relabeled to match what
-  // the learner is actually about to do. Same lessonUrl/href either
-  // way — no behavior change, review safety is enforced in
-  // lesson.js itself, not by this label.
-  // Icon comes from the same `status` the label already branches on:
-  // a repeat glyph for a review pass, a play glyph for a first run.
-  const startLabel = window.LWIcons.markup(status === 'done' ? 'frequency' : 'current', { size: 'sm' })
-    + `<span class="lw-icon-label">${status === 'done' ? 'Review Mission' : 'Start Mission'}</span>`;
+  // Priority 2, item 5/6 — label-only: a mission the learner may review
+  // (see canReview above) has a ‹ Previous / Next › review nav on its
+  // lesson page (see js/lesson.js), so this entry point is relabeled to
+  // match what the learner is actually about to do. Review safety is
+  // enforced in lesson.js itself, not by this label.
+  // Icon comes from the same `canReview` the label branches on: a
+  // repeat glyph for a review pass, a play glyph for a first run.
+  const startLabel = window.LWIcons.markup(canReview ? 'frequency' : 'current', { size: 'sm' })
+    + `<span class="lw-icon-label">${canReview ? 'Review Mission' : 'Start Mission'}</span>`;
+
+  // BUGFIX (light-mode UX pass) — was `mission._index + 1` (array position), which
+  // no longer matches the number Learn shows for the same mission; both now read
+  // LWMissions.getTrailNumbers() (js/missions.js). Falls back to the old value.
+  const missionNumber = (window.LWMissions.getTrailNumbers && window.LWMissions.getTrailNumbers().get(mission.category)) || (mission._index + 1);
 
   el.innerHTML = `
     <div class="mo-header">
-      <span class="mo-header__num">Mission ${String(mission._index + 1).padStart(2, '0')}</span>
+      <span class="mo-header__num">Mission ${String(missionNumber).padStart(2, '0')}</span>
       <span class="badge ${meta.badge}">${meta.label}</span>
     </div>
     <h1>${mission.title}</h1>
@@ -280,11 +294,11 @@ function render(mission, status) {
 
     ${!locked ? `
       <div class="mo-progress">
-        <div class="progress-bar"><div class="progress-bar__fill" style="width:${pct}%"></div></div>
+        <div class="progress-bar"><div class="progress-bar__fill" style="--p:${pct}"></div></div>
         <span class="mo-progress__label">${pct}% complete</span>
       </div>
     ` : `
-      <div class="note-banner">This mission is locked — finish every mission in the current chapter 100% to unlock the next chapter.</div>
+      <div class="note-banner">This mission is locked. Finish every mission in the current chapter 100% to unlock the next chapter.</div>
     `}
 
     <h2 class="mt-6 mb-3">You'll practice</h2>
@@ -294,10 +308,6 @@ function render(mission, status) {
       <div class="card mo-fact">
         <p class="mo-fact__label">Estimated effort</p>
         <p class="mo-fact__value">~${estimateMinutes(mission)} min <span class="text-muted">(estimate)</span></p>
-      </div>
-      <div class="card mo-fact">
-        <p class="mo-fact__label">Mastery requirement</p>
-        <p class="mo-fact__value">Score 80%+ on the Mastery Quiz</p>
       </div>
       <div class="card mo-fact mo-fact--hearts">
         <p class="mo-fact__label">Mastery Hearts</p>
@@ -352,7 +362,7 @@ function renderMissionOverview() {
   const mission = categoryId ? window.LWMissions.getMissionForCategory(categoryId) : null;
 
   if (!mission) {
-    el.innerHTML = `<p class="text-muted">No mission found for "${categoryId || ''}" — <a href="learn.html">back to all missions</a>.</p>`;
+    el.innerHTML = `<p class="text-muted">No mission found for "${categoryId || ''}". <a href="learn.html">Back to all missions</a>.</p>`;
     return;
   }
 
@@ -360,7 +370,7 @@ function renderMissionOverview() {
 
   const status = window.LWMissions.getMissionStatus(mission, allMissions);
 
-  document.title = `${mission.title} — LinguaWave (preview)`;
+  document.title = `${mission.title} | LinguaWave (preview)`;
   render(mission, status);
 }
 
