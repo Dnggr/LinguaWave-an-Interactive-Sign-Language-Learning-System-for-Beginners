@@ -63,16 +63,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Progress — LinguaWave</title>
+  <title>Progress | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 </head>
-<body>
+<body data-tour="progress">
 
   <a href="#main" class="skip-link">Skip to Progress</a>
 
@@ -175,7 +176,7 @@
       </section>
 
       <footer class="footer">
-        <div class="container"><p>LinguaWave — Capstone Project 2026 (preview)</p></div>
+        <div class="container"><p>LinguaWave · Capstone Project 2026 (preview)</p></div>
       </footer>
 
     </div>
@@ -200,5 +201,10 @@
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/progress-page.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="progress">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

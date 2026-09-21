@@ -59,16 +59,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Lesson — LinguaWave</title>
+  <title>Lesson | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 </head>
-<body>
+<body data-tour="lesson">
 
   <a href="#lesson-main" class="skip-link">Skip to Lesson</a>
 
@@ -120,18 +121,23 @@
             </a>
             <!--
               Review nav (Priority 2, item 5) — ONLY unhidden by
-              js/lesson.js when the mission is already 100% complete
-              (window.LWMissions.getMissionProgress(mission) >= 1). Stays
-              `hidden` (both the attribute and no inline style) for any
-              in-progress/locked mission so it can never be used to
-              skip ahead of required progression — see that file's
-              renderItem()/updateReviewNav() for the single place this
-              is decided, on every render (not just page load), so the
-              buttons always reflect whichever item is on screen right
-              now. Per explicit follow-up, this steps one item at a
-              time (‹ Previous / Next ›) rather than jumping straight
-              to the first/last item — js/lesson.js disables
-              whichever side has no further item to step to.
+              js/lesson.js when window.LWMissions.canReviewMission(mission)
+              is true: the mission is 100% complete, OR the learner has
+              worked through every item up to the closing Mastery Quiz
+              (so they can prepare for it, or look things up after running
+              out of hearts). Stays `hidden` (both the attribute and no
+              inline style) for any other in-progress/locked mission so
+              it can never be used to skip ahead of required progression
+              — see that file's renderItem()/updateReviewNav() for the
+              single place this is decided, on every render (not just
+              page load), so the buttons always reflect whichever item is
+              on screen right now. The label text below is only a
+              default: updateReviewNav() sets it to "Reviewing before the
+              Mastery Quiz" while the mission isn't finished yet. Per
+              explicit follow-up, this steps one item at a time
+              (‹ Previous / Next ›) rather than jumping straight to the
+              first/last item — js/lesson.js disables whichever side has
+              no further item to step to.
             -->
             <div class="lesson-review-nav" id="lesson-review-nav" hidden>
               <span class="lesson-review-nav__label">Reviewing a completed mission</span>
@@ -152,8 +158,8 @@
                 both).
               -->
               <div class="progress-bar lesson-track__bar">
-                <div class="progress-bar__fill" id="lesson-track-fill" style="width:0%"></div>
-                <div class="lesson-track__dot" id="lesson-track-dot" style="left:0%"></div>
+                <div class="progress-bar__fill" id="lesson-track-fill" style="--p:0"></div>
+                <div class="lesson-track__dot" id="lesson-track-dot" style="--p:0"></div>
               </div>
               <span class="lesson-track__label" id="lesson-track-label">Item 1 of 1</span>
             </div>
@@ -184,5 +190,10 @@
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/lesson.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="lesson">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

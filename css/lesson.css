@@ -47,7 +47,9 @@
 .course-sidebar__unit--current .course-sidebar__unit-title { color: var(--clr-accent); }
 .course-sidebar__chevron { color: var(--clr-text-muted); font-size: var(--fs-xs); flex-shrink: 0; }
 .course-sidebar__unit-bar { height: 3px; background: var(--clr-surface-2); border-radius: var(--radius-pill); margin: 0 var(--space-3) var(--space-2); overflow: hidden; }
-.course-sidebar__unit-bar-fill { height: 100%; background: var(--clr-accent); border-radius: var(--radius-pill); transition: width var(--dur-slow) var(--ease); }
+/* CHANGED (Impeccable pass): transform, not width, same scheme as
+   .progress-bar__fill in css/style.css (--p is 0 to 100, set inline). */
+.course-sidebar__unit-bar-fill { width: 100%; height: 100%; background: var(--clr-accent); border-radius: var(--radius-pill); transform: translateX(calc((var(--p, 0) - 100) * 1%)); transition: transform var(--dur-slow) var(--ease); }
 .course-sidebar__unit-body { padding-bottom: var(--space-2); }
 
 .course-sidebar__cat { margin: 0 var(--space-1); }
@@ -71,8 +73,8 @@
 .course-sidebar__sign-icon { font-size: var(--fs-xs); flex-shrink: 0; width: 14px; }
 .course-sidebar__sign--done { color: var(--clr-text); }
 .course-sidebar__sign--done .course-sidebar__sign-icon { color: var(--clr-success); }
-.course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent); font-weight: 600; }
-.course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent); }
+.course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent-text); font-weight: 600; } /* CHANGED (dark pass) was --clr-accent: 4.34:1 in dark */
+.course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent-text); }
 
 /* NEW — locked/pending sign rows (this revision) — js/camera-practice.js's
  * sidebarSignRow() renders BOTH states as a plain <span>, not an
@@ -163,6 +165,9 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   height: 300px; color: var(--clr-text-muted); gap: var(--space-2); font-size: var(--fs-sm);
 }
+/* NEW (Impeccable pass): <small> defaults to 0.833em, which came out at
+   11.67px here, the only text under 12px on any page. */
+.lesson-img-placeholder small { font-size: var(--fs-sm); }
 /* Numbered steps, not bullets — "How to perform the sign" reads as a
    short sequence (this content genuinely is ordered: hand shape, then
    placement, then movement), so a numbered marker earns its place
@@ -203,6 +208,9 @@
 .quick-check__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
 .quick-check__prompt { font-size: var(--fs-base); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-4); }
 .quick-check__options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+/* NEW (Impeccable pass): the "just for practice" note was a 105-character
+   line at 12px. 14px with a measure cap keeps it to a comfortable line. */
+.quick-check__note { font-size: var(--fs-sm); max-width: 60ch; }
 .quick-check__options button {
   padding: var(--space-3) var(--space-4); background: var(--clr-surface-2);
   border: 2px solid var(--clr-border); border-radius: var(--radius-md);

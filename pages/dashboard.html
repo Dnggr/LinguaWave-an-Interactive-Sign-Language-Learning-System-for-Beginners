@@ -44,16 +44,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Dashboard — LinguaWave</title>
+  <title>Dashboard | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 </head>
-<body>
+<body data-tour="dashboard">
 
   <a href="#main" class="skip-link">Skip to Dashboard</a>
 
@@ -100,7 +101,7 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="dash-greeting">
-            <h1><span id="dash-greeting-word">Good morning,</span><span data-user-name>Learner</span>! <span class="dash-greeting__wave" aria-hidden="true">👋</span></h1>
+            <h1><span id="dash-greeting-word">Good morning,</span><!-- BUGFIX (light-mode UX pass) — the h1 is a flex container with a gap, so a bare "!" text node became its own flex item and rendered as "rene !". Name + "!" now share one span. --><span><span data-user-name>Learner</span>!</span> <span class="dash-greeting__wave" aria-hidden="true">👋</span></h1>
             <p class="mt-2 text-muted">Small steps make big progress. Keep going!</p>
           </div>
         </div>
@@ -161,5 +162,10 @@
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/dashboard.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="dashboard">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

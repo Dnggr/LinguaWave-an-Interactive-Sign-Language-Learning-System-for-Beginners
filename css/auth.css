@@ -72,16 +72,15 @@
   padding-bottom: 130px;
   background:
     radial-gradient(120% 140% at 82% 6%, rgba(37,99,235,.14), transparent 55%),
-    linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #D2ECEA 75%, #C4E6DE 100%);
+    linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #E3EEFC 75%, #DAE8FB 100%); /* PALETTE PASS: was #D2ECEA 75%, #C4E6DE 100% (mint/teal end) — blue-only now; also fixes hero text at 4.29:1 */
 }
 .hero--wave .container { position: relative; z-index: 2; }
 
 [data-theme="dark"] .hero--wave {
   background:
-    radial-gradient(120% 140% at 82% 6%, rgba(45,150,190,.35), transparent 55%),
-    linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E3159 78%, #0F4C66 100%);
+    radial-gradient(120% 140% at 82% 6%, rgba(59,130,246,.32), transparent 55%),
+    linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E2A5C 78%, #123A7A 100%); /* PALETTE PASS: was #0E3159 78%, #0F4C66 100% and rgba(45,150,190,.35) glow (teal end) — navy→blue now */
 }
-[data-theme="dark"] .hero--wave .section__eyebrow { color: #7FC4E8; }
 [data-theme="dark"] .hero--wave .hero__copy h1 { color: #FFFFFF; }
 [data-theme="dark"] .hero--wave .hero__lead { color: rgba(234,242,255,.78); }
 [data-theme="dark"] .hero--wave .btn--ghost { color: #EAF2FF; border-color: rgba(234,242,255,.35); }
@@ -101,19 +100,20 @@
   width: 200%; height: 100%;
   animation: lw-wave-drift linear infinite;
 }
+/* PALETTE PASS: the wave layers were teal-blue rgba(45,155,175,·); now blue-500 rgba(59,130,246,·) at the same alphas (4 values below). */
 .hero-waves__layer--deep {
-  fill: rgba(45,155,175,.22);
+  fill: rgba(59,130,246,.22);
   opacity: .6;
   animation-duration: 42s;
   animation-direction: reverse;
 }
-[data-theme="dark"] .hero-waves__layer--deep { fill: rgba(45,155,175,.3); }
+[data-theme="dark"] .hero-waves__layer--deep { fill: rgba(59,130,246,.3); }
 .hero-waves__layer--back {
-  fill: rgba(45,155,175,.45);
+  fill: rgba(59,130,246,.45);
   opacity: .85;
   animation-duration: 26s;
 }
-[data-theme="dark"] .hero-waves__layer--back { fill: rgba(45,155,175,.55); }
+[data-theme="dark"] .hero-waves__layer--back { fill: rgba(59,130,246,.55); }
 .hero-waves__layer--front {
   fill: var(--clr-bg);
   animation-duration: 18s;
@@ -176,11 +176,11 @@
   background: var(--backdrop-hero);
 }
 .navbar--hero .btn--primary {
-  background: linear-gradient(120deg, #2563EB, #0F9DA6);
+  background: linear-gradient(120deg, #2563EB, #1D4ED8);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(15,157,166,.35);
+  box-shadow: 0 6px 18px rgba(37,99,235,.35); /* PALETTE PASS: gradient ends + this shadow were teal (#0F9DA6); teal retired, see style.css */
 }
-.navbar--hero .btn--primary:hover { background: linear-gradient(120deg, #2563EB, #0F9DA6); filter: brightness(1.1); }
+.navbar--hero .btn--primary:hover { background: linear-gradient(120deg, #2563EB, #1D4ED8); filter: brightness(1.1); }
 
 /* Logo mark — small gradient badge + two stacked wave strokes,
    flanking "LinguaWave" the way the reference mockup's icon does.
@@ -192,7 +192,7 @@
 .navbar__mark {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #2563EB, #0F9DA6);
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
   margin-right: var(--space-2);
   flex-shrink: 0;
 }
@@ -232,7 +232,7 @@
   content: '';
   position: absolute;
   inset: 8%;
-  background: radial-gradient(circle, rgba(56,189,248,.35), transparent 70%);
+  background: radial-gradient(circle, rgba(96,165,250,.35), transparent 70%);
   filter: blur(32px);
   z-index: -1;
 }
@@ -282,36 +282,76 @@
    hand-placed percentages — see that file's header comment for why).
    This block only owns the shared visual rules every generated star
    uses; per-star position/size/timing come in as inline styles. */
+/* CHANGED (Impeccable pass): only the four sparkles twinkle now. Forty-odd 2px
+   dots on an infinite opacity/scale loop were flagged as "pulsing status dots",
+   so the small stars hold a fixed brightness from --o (0 to 1, set per star by
+   js/hero-decor.js). The four-point sparkles keep a slower, shallower twinkle
+   (opacity .55 to 1, scale .9 to 1.1, per-star delay and duration set by the same
+   script), which keeps some life in the sky with a fraction of the motion.
+   prefers-reduced-motion switches it off and they hold --o like the dots.
+   The sparkles were also cyan (#8FD9EE, hue 193), flagged as an "AI color
+   palette" tell on navy; they are now the same pale blue-white as the hand
+   stroke above. Old rules, for a full revert (every star twinkling):
+     .hero-star { animation: lw-star-twinkle 3s ease-in-out infinite; }
+     .hero-star--big { color: #8FD9EE; }
+     @keyframes lw-star-twinkle { 0%,100% { opacity:.25; transform:scale(.8) } 50% { opacity:1; transform:scale(1.15) } }
+     (plus the per-star animation-delay/duration lines for every star in js/hero-decor.js) */
 .hero-star {
   position: absolute;
   width: 2px; height: 2px;
   border-radius: 50%;
   background: #EAF2FF;
-  animation: lw-star-twinkle 3s ease-in-out infinite;
+  opacity: var(--o, .7);
 }
-.hero-star--big { background: none; color: #8FD9EE; border-radius: 0; }
+.hero-star--big {
+  background: none; color: #DCEBFF; border-radius: 0;
+  animation: lw-sparkle-twinkle 4s ease-in-out infinite; /* delay + duration overridden per star inline */
+}
 .hero-star--big svg { width: 100%; height: 100%; display: block; }
-@keyframes lw-star-twinkle {
-  0%, 100% { opacity: .25; transform: scale(.8); }
-  50%      { opacity: 1;   transform: scale(1.15); }
+@keyframes lw-sparkle-twinkle {
+  0%, 100% { opacity: .55; transform: scale(.9); }
+  50%      { opacity: 1;   transform: scale(1.1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-star { animation: none; opacity: .7; }
+  .hero-star--big { animation: none; }
 }
 
 /* ── WHY LEARN ASL? row (mockup's 3-card row directly under hero) ─ */
 .why-row {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
 }
-.why-row__item { text-align: center; padding: var(--space-6) var(--space-4); }
+/* CHANGED (Impeccable pass): was a centred column with the icon tile stacked above
+   the title (flagged as "icon tile stacked above heading"). The tile now sits in
+   its own left column spanning the title and the line under it, and the text is
+   left-aligned. Old rules: `.why-row__item { text-align: center; padding:
+   var(--space-6) var(--space-4) }` and `margin-bottom: var(--space-3)` on the badge. */
+.why-row__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-6);
+}
 .why-row__item .icon-badge {
+  grid-row: 1 / span 2;
   display: inline-flex; align-items: center; justify-content: center;
   width: 44px; height: 44px; border-radius: var(--radius-md);
   background: var(--clr-accent-soft); color: var(--clr-accent);
-  margin-bottom: var(--space-3);
 }
 .why-row__item .icon-badge svg { width: 55%; height: 55%; }
 .why-row__item h3 { margin-bottom: var(--space-1); }
+/* NEW (light-mode UX pass) — index.html's three feature cards are now <h2>
+   (they were <h3> straight after the <h1>, skipping a level for screen-
+   reader heading navigation). Same look as the old h3. */
+.why-row__title { font-size: var(--fs-xl); margin-bottom: var(--space-1); }
+
+/* NEW (light-mode UX pass) — text rhythm inside the landing page's card
+   grids. The global reset zeroes every margin, so <h3> sat directly on its
+   first <p>, and stacked <p>/<ul> in the About cards ran together. */
+.grid-2 > .card > h3,
+.grid-3 > .card > h3 { margin-bottom: var(--space-2); }
+.grid-2 > .card > p + p,
+.grid-2 > .card > p + ul { margin-top: var(--space-3); }
 .why-row__item p { margin: 0; font-size: var(--fs-sm); }
 
 @media (max-width: 700px) {
@@ -407,7 +447,7 @@
 .topic-preview__lock { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
 
 /* ── ABOUT ASL ────────────────────────────────────────────────── */
-.etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
+.etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); list-style: disc; /* BUGFIX (light-mode UX pass) — style.css's `ul{list-style:none}` reset was removing the bullets, so the `li::marker` accent rule below never had a marker to color */ }
 .etiquette-list li::marker { color: var(--clr-accent); }
 
 .auth-card {

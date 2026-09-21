@@ -110,7 +110,7 @@ function renderMissionBanner(missions) {
 
   el.innerHTML = `
     <div class="mission-banner__text">
-      <p class="mission-banner__eyebrow">${started ? "Continue Your Mission" : "Today's Mission"}</p>
+      <p class="mission-banner__eyebrow">${started ? "Continue your mission" : "Today's mission"}</p>
       <h2 class="mission-banner__title">${escapeHtml(mission.title)}</h2>
       <p class="mission-banner__desc">${escapeHtml(mission.goal)}</p>
       <a href="mission-overview.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--primary btn--lg mission-banner__cta">
@@ -244,6 +244,10 @@ function renderRecommended(missions) {
   const quizHref = mission ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}` : 'mastery-quiz.html';
   const missionHref = mission ? `mission-overview.html?mission=${encodeURIComponent(mission.category)}` : 'learn.html';
 
+  // CHANGED (light-mode UX pass) — all four CTAs are btn--secondary now. They
+  // were two teal-outline + two solid-blue with no rule behind the split, and
+  // the solid blue competed with the Continue Mission banner, which is the one
+  // thing this page wants the learner to click first.
   const cards = [
     {
       icon: 'camera', tone: 'teal',
@@ -255,13 +259,13 @@ function renderRecommended(missions) {
       icon: 'asking_questions', tone: 'violet',
       title: 'Quick Quiz',
       desc: 'Test your knowledge in a short mastery quiz.',
-      cta: 'Take Quiz', href: quizHref, btn: 'btn--primary',
+      cta: 'Take Quiz', href: quizHref, btn: 'btn--secondary',
     },
     {
       icon: 'celebration', tone: 'orange',
       title: 'Daily Challenge',
       desc: mission ? `Keep your streak alive with &ldquo;${escapeHtml(mission.title)}.&rdquo;` : 'Keep your streak alive.',
-      cta: 'Start Challenge', href: missionHref, btn: 'btn--primary',
+      cta: 'Start Challenge', href: missionHref, btn: 'btn--secondary',
     },
     {
       icon: 'phrasebook', tone: 'success',

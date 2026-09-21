@@ -3,9 +3,31 @@
  * ─────────────────────────────────────────────────────────────────
  * A real-native Mastery Quiz: multiple-choice, one question per
  * sign in the mission, immediate per-question feedback, then a single
- * end-of-quiz pass/fail summary — resolving the mockup-audit gap
+ * end-of-quiz summary — resolving the mockup-audit gap
  * where V1's quiz.js conflated "per-question Correct! card" (mockup
  * screen 9) with "end-of-quiz summary" into one results-title string.
+ *
+ * PASS RULE (no score threshold) : there is no percentage to reach any
+ * more (it used to be 80%). Mastery Hearts are the only gate: a wrong
+ * answer spends a heart, and the one that empties the pool stops the
+ * quiz on the spot (renderOutOfHearts()), so getting to the end of the
+ * quiz with a heart left IS passing, and finishQuiz() completes the
+ * mission. This was a product call ("the heart attempts are already
+ * enough to filter beginners from advanced learners"). Known
+ * consequence, deliberately accepted: the hearts allow up to 2 misses
+ * (3-heart pool), so on a mission with only a few signs that can be a
+ * low score. A 1-sign mission passes even on a wrong answer, because
+ * one miss can't empty a 3-heart pool. To bring a floor back, gate
+ * `finishQuiz()` on numCorrect again.
+ *
+ * BACK LINK : the link above the quiz used to always read "All
+ * missions" (learn.html), dropping the learner three screens back.
+ * configureBackLink() below now returns them to where they came from:
+ * the lesson's recap slide when they arrived with `&from=lesson` (see
+ * js/lesson.js's renderQuizHandoff()), otherwise the mission's own
+ * Mission Overview. The static "All missions" link in the HTML stays
+ * only for the not-found screen, where there is no mission to go back
+ * to.
  *
  * ENDING SCREEN (Priority 3 task 7, "option 2" follow-up) : the old
  * per-sign "You can now sign..." <ul> (one <li> per getRecap() line)
@@ -79,7 +101,6 @@ const SAMPLE_CATEGORY_GROUPS = [
   'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
 ];
 const MAX_QUESTIONS = 12;
-const PASS_THRESHOLD = 0.8; // unchanged from V1's pages/quiz.js — same mastery bar, new screen
 // Priority 1, Task 3 — "wait about 1-2 seconds" for the auto-continue
 // after a correct answer. Sits inside that stated range.
 const AUTO_ADVANCE_DELAY_MS = 1500;
@@ -128,8 +149,8 @@ function mediaBlockHtml(sign) {
       <div class="lesson-media__fallback">
         <img class="lesson-media__img" alt="${safeTitle}" src="${safeImage}"
              onerror="this.style.display='none'; this.parentElement.classList.add('lesson-media__fallback--text-only');">
-        <p class="lesson-media__hint text-muted">
-          Video/image not available yet in this preview build (${safeVideo || 'no path'}) — using the sign name below instead.
+        <p class="lesson-media__hint text-muted" data-video-path="${safeVideo || ''}">
+          The video for this sign isn't available yet, so here's the sign name instead.
         </p>
       </div>
     </div>
@@ -241,11 +262,35 @@ function buildQuizQuestions(mission) {
   });
 }
 
+/* ── Back link ─────────────────────────────────────────────────── */
+
+// Repoints the page's Back link (#mq-back, static "All missions" in the
+// HTML) at the screen the learner actually came from. `from` is an
+// allow-list, not a URL: only "lesson" is recognised, anything else
+// (Mission Overview's button, the camera-practice redirect, a typed or
+// stale link) falls back to the mission's own overview, which is one
+// step back for all of them. Called from initPage() once the mission is
+// known, so it also applies to the not-sampled and out-of-hearts screens.
+function configureBackLink(mission) {
+  const link = document.getElementById('mq-back');
+  const label = document.getElementById('mq-back-label');
+  if (!link || !label) return;
+  const from = new URLSearchParams(window.location.search).get('from');
+  const category = encodeURIComponent(mission.category);
+  if (from === 'lesson') {
+    link.href = `lesson.html?mission=${category}`;
+    label.textContent = 'Back to lesson';
+  } else {
+    link.href = `mission-overview.html?mission=${category}`;
+    label.textContent = 'Back to mission overview';
+  }
+}
+
 /* ── Gate screens ──────────────────────────────────────────────── */
 
 function renderNotFound() {
   document.getElementById('mq-content').innerHTML =
-    `<p class="text-muted">No mission found for that link — <a href="learn.html">back to all missions</a>.</p>`;
+    `<p class="text-muted">No mission found for that link. <a href="learn.html">Back to all missions</a>.</p>`;
 }
 
 function renderNotSampledYet(mission) {
@@ -256,7 +301,7 @@ function renderNotSampledYet(mission) {
   document.getElementById('mq-content').innerHTML = `
     <div class="note-banner">
       This sample build of the Mastery Quiz now covers all 12 chapters. "${escapeHtml(mission.title)}"
-      isn't part of it — this can happen with a stale link, a typed URL, or a category not yet added to
+      isn't part of it. This can happen with a stale link, a typed URL, or a category not yet added to
       SAMPLE_CATEGORY_GROUPS.
     </div>
     <div class="lesson-actions">
@@ -271,15 +316,26 @@ function renderNotSampledYet(mission) {
 // #mq-content, so no quiz button/option from before it can still
 // be interacted with — that's what "prevent further quiz interaction"
 // means here, not a separate disabled state layered on top.
+//
+// The primary button is the way to spend the wait usefully. It replaces
+// the old fail summary's "Review the mission" button, which went away with
+// the score threshold (this screen is now the only "didn't pass" state).
+// A learner who worked through the mission to the quiz can review it
+// (canReviewMission(), opened at the start via ?review=1); anyone else is
+// sent to the lessons.
 function renderOutOfHearts(mission, heartsState) {
+  const category = encodeURIComponent(mission.category);
+  const canReview = window.LWMissions.canReviewMission(mission);
+  const lessonHref = `lesson.html?mission=${category}${canReview ? '&review=1' : ''}`;
   document.getElementById('mq-content').innerHTML = `
     <div class="note-banner">
-      <strong>Out of Mastery Quiz hearts.</strong> The quiz has stopped here —
-      come back and try again once your hearts have replenished
+      <strong>Out of Mastery Quiz hearts.</strong> The quiz has stopped here.
+      Come back and try again once your hearts have replenished
       (next heart in ${formatCountdown(heartsState.nextRefillAt)}).
     </div>
     <div class="lesson-actions">
-      <a href="mission-overview.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
+      <a href="${lessonHref}" class="btn btn--primary btn--lg">${canReview ? 'Review the mission' : 'Start the mission'}</a>
+      <a href="mission-overview.html?mission=${category}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
     </div>
   `;
 }
@@ -298,7 +354,7 @@ function renderQuestion(state) {
       <span>Question ${state.currentIndex + 1} of ${state.questions.length} &middot; ${escapeHtml(state.mission.title)}</span>
       ${heartsRowHtml(heartsState)}
     </div>
-    <div class="progress-bar quiz-progress-bar"><div class="progress-bar__fill" style="width:${pct}%"></div></div>
+    <div class="progress-bar quiz-progress-bar"><div class="progress-bar__fill" style="--p:${pct}"></div></div>
 
     <div class="lesson-stage-label">Mastery Quiz</div>
     <h1 class="lesson-prompt">What does this sign mean?</h1>
@@ -401,7 +457,7 @@ function handleAnswer(state, chosenSignId) {
     // Task 3 — incorrect: feedback + manual Continue, no auto-advance.
     document.getElementById('mq-feedback').innerHTML = `
       <div class="lesson-feedback lesson-feedback--incorrect">
-        Not quite — this sign means "${escapeHtml((correctSign && correctSign.title) || q.correct)}".
+        Not quite. This sign means "${escapeHtml((correctSign && correctSign.title) || q.correct)}".
       </div>
       <div class="lesson-actions">
         <button type="button" class="btn btn--primary btn--lg" id="mq-continue">${isLast ? 'See results' : 'Continue'}</button>
@@ -413,34 +469,32 @@ function handleAnswer(state, chosenSignId) {
 
 function finishQuiz(state) {
   const scoreFraction = state.numCorrect / state.questions.length;
-  const passed = scoreFraction >= PASS_THRESHOLD;
 
-  // Task 2 — hearts were already spent per wrong answer as they
-  // happened (handleAnswer()); nothing is spent here on submit. Just
-  // read the final state for the summary screen below.
-  const heartsAfter = window.LWMissions.getHeartsState();
+  // Reaching this function IS passing — see PASS RULE in the file
+  // header. handleAnswer() ends the quiz early (renderOutOfHearts())
+  // the moment a wrong answer empties the heart pool, so the only way
+  // to get here is to have finished every question with a heart left.
+  // Hearts were already spent per wrong answer as they happened;
+  // nothing is spent here.
+  //
+  // Priority 1, Task 1 ("Mastery Quiz Completes the Mission") — a
+  // pass marks the ENTIRE mission complete (every LESSON/BOOSTER/
+  // PRACTICE item, not just this QUIZ item), via the new, additive
+  // window.LWMissions.markMissionComplete() (missions.js). Previously
+  // this only marked the mission's own QUIZ item, which closed the
+  // "recap/Missions Completed stat never reaches 100%" gap logged
+  // when the QUIZ-only marking was first added, but left the actual
+  // product requirement unmet: the Mastery Quiz is supposed to be a
+  // full skip path for advanced users ("should not need to complete
+  // every lesson after passing it"), so the mission itself — not
+  // just its quiz — needs to read as 100% done, unlocking the next
+  // chapter (isChapterUnlocked()) and every page's progress reflects
+  // it (dashboard/learn/mission-overview/progress, all of which read
+  // getMissionProgress()/getMissionStatus(), not this file).
+  window.LWMissions.markMissionComplete(state.mission);
+  const recap = window.LWMissions.getRecap(state.mission);
 
-  let recap = [];
-  if (passed) {
-    // Priority 1, Task 1 ("Mastery Quiz Completes the Mission") — a
-    // pass marks the ENTIRE mission complete (every LESSON/BOOSTER/
-    // PRACTICE item, not just this QUIZ item), via the new, additive
-    // window.LWMissions.markMissionComplete() (missions.js). Previously
-    // this only marked the mission's own QUIZ item, which closed the
-    // "recap/Missions Completed stat never reaches 100%" gap logged
-    // when the QUIZ-only marking was first added, but left the actual
-    // product requirement unmet: the Mastery Quiz is supposed to be a
-    // full skip path for advanced users ("should not need to complete
-    // every lesson after passing it"), so the mission itself — not
-    // just its quiz — needs to read as 100% done, unlocking the next
-    // chapter (isChapterUnlocked()) and every page's progress reflects
-    // it (dashboard/learn/mission-overview/progress, all of which read
-    // getMissionProgress()/getMissionStatus(), not this file).
-    window.LWMissions.markMissionComplete(state.mission);
-    recap = window.LWMissions.getRecap(state.mission);
-  }
-
-  renderSummary(state, { scoreFraction, passed, heartsAfter, recap });
+  renderSummary(state, { scoreFraction, recap });
 }
 
 function renderSummary(state, result) {
@@ -459,24 +513,17 @@ function renderSummary(state, result) {
     ? `<p class="quiz-summary__recap">You've mastered all ${result.recap.length} sign${result.recap.length === 1 ? '' : 's'} in ${escapeHtml(mission.title)}.</p>`
     : '';
 
-  const failNote = !result.passed ? `
-    <p class="text-muted">You need ${Math.round(PASS_THRESHOLD * 100)}% to pass. Review the mission and try again.</p>
-    ${result.heartsAfter.hearts <= 0
-      ? `<p class="lesson-callout">Out of Mastery Quiz hearts for now — next one in ${formatCountdown(result.heartsAfter.nextRefillAt)}.</p>`
-      : `<p class="text-muted">${result.heartsAfter.hearts} of ${result.heartsAfter.maxHearts} Mastery Hearts left.</p>`}
-  ` : '';
-
+  // Only ever a pass screen now — the "Not quite there yet" branch went
+  // away with the score threshold. Running out of hearts is handled by
+  // renderOutOfHearts() before the quiz gets this far.
   el.innerHTML = `
     <div class="quiz-summary">
-      <div class="quiz-summary__score ${result.passed ? 'quiz-summary__score--pass' : 'quiz-summary__score--fail'}">${pct}%</div>
-      <h1>${result.passed ? `${window.LWIcons.markup('celebration', { size: 'sm' })}<span class="lw-icon-label">Mission mastered!</span>` : 'Not quite there yet'}</h1>
+      <div class="quiz-summary__score quiz-summary__score--pass">${pct}%</div>
+      <h1>${window.LWIcons.markup('celebration', { size: 'sm' })}<span class="lw-icon-label">Mission mastered!</span></h1>
       <p class="text-muted">${state.numCorrect} of ${state.questions.length} correct.</p>
-      ${result.passed ? recapLine : ''}
-      ${failNote}
+      ${recapLine}
       <div class="lesson-actions quiz-summary__actions">
-        ${result.passed
-          ? `<a href="learn.html" class="btn btn--primary btn--lg">Back to your missions</a>`
-          : `<a href="lesson.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--primary btn--lg">Review the mission</a>`}
+        <a href="learn.html" class="btn btn--primary btn--lg">Back to your missions</a>
         <a href="mission-overview.html?mission=${encodeURIComponent(mission.category)}" class="btn btn--secondary btn--lg">Mission Overview</a>
       </div>
     </div>
@@ -526,7 +573,8 @@ async function initPage() {
     return;
   }
 
-  document.title = `Mastery Quiz — ${mission.title} — LinguaWave (preview)`;
+  document.title = `Mastery Quiz: ${mission.title} | LinguaWave (preview)`;
+  configureBackLink(mission);
 
   // Not sync-sensitive — categoryGroup is static mission data, not
   // progress — so this gate is checked once, before the optimistic

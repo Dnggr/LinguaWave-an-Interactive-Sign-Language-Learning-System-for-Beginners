@@ -42,9 +42,9 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings — LinguaWave</title>
+  <title>Settings | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/app.css" />
 
@@ -186,6 +186,16 @@
                 <span class="toggle-switch__thumb"></span>
               </label>
             </div>
+
+            <!-- Guided tour (NEW). One button, no switch: it clears which
+                 guides this account has seen or skipped (and any "Skip
+                 all") and opens the dashboard so the tour plays again from
+                 the start. Wired by js/settings-page.js; the state lives
+                 in js/tour.js. -->
+            <div class="pref-row">
+              <span class="pref-row__label">Guided tour</span>
+              <button type="button" class="btn btn--secondary btn--sm" id="btn-replay-guides">Replay all guides</button>
+            </div>
           </div>
 
           <!-- ── DEVELOPER (Missions pilot) ───────────────────────────
@@ -223,7 +233,7 @@
       </section>
 
       <footer class="footer">
-        <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
+        <div class="container"><p>LinguaWave · Capstone Project 2026</p></div>
       </footer>
 
     </div><!-- /.app-main -->
@@ -231,6 +241,7 @@
 
   <script src="../js/main.js"></script>
   <script src="../js/missions.js"></script>
+  <script src="../js/tour.js"></script>
   <script src="../js/settings-page.js"></script>
 </body>
 </html>

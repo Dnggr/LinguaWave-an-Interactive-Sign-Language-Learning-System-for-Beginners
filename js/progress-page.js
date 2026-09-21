@@ -211,7 +211,7 @@ function renderNeedsReview(learnedSigns) {
     el.innerHTML = `
       <h2 class="mb-2">Needs Review</h2>
       <p class="text-muted" style="font-size: var(--fs-sm);">
-        Nothing's due yet — signs show up here once it's been a couple of days since you first learned them.
+        Nothing's due yet. Signs show up here once it's been a couple of days since you first learned them.
       </p>
     `;
     return;
@@ -255,11 +255,11 @@ function renderChapters(missions) {
     return `
       <div class="unit-progress-group" style="padding: var(--space-4) var(--space-2);">
         <div class="flex" style="justify-content: space-between; margin-bottom: var(--space-2);">
-          <span class="unit-progress-group__label">Chapter ${chapter.order} — ${escapeHtml(chapter.title)}</span>
+          <span class="unit-progress-group__label">Chapter ${chapter.order} · ${escapeHtml(chapter.title)}</span>
           <span class="unit-progress-group__meta">${items.pct}%</span>
         </div>
         <div class="progress-bar">
-          <div class="progress-bar__fill" style="width:${items.pct}%;" data-progress="${items.pct}"></div>
+          <div class="progress-bar__fill" style="--p:${items.pct};" data-progress="${items.pct}"></div>
         </div>
       </div>
     `;

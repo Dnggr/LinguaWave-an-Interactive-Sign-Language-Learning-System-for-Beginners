@@ -52,7 +52,7 @@ function renderOldColumn(old) {
   return `
     <div class="devcmp-col card">
       <h2>Current system</h2>
-      <div class="progress-bar"><div class="progress-bar__fill" style="width:${old.percentComplete}%"></div></div>
+      <div class="progress-bar"><div class="progress-bar__fill" style="--p:${old.percentComplete}"></div></div>
       <div class="devcmp-stat-line"><span>Signs practiced</span><span>${old.practicedCount} / ${old.totalSigns} (${old.percentComplete}%)</span></div>
       <div class="devcmp-stat-line"><span>Mastery quiz</span><span>${assessment}</span></div>
       <ul class="devcmp-rowlist" style="margin-top: var(--space-4);">${rows}</ul>
@@ -85,7 +85,7 @@ function renderNewColumn(dv2) {
   return `
     <div class="devcmp-col card">
       <h2>Missions pilot</h2>
-      <div class="progress-bar"><div class="progress-bar__fill" style="width:${dv2.percentComplete}%"></div></div>
+      <div class="progress-bar"><div class="progress-bar__fill" style="--p:${dv2.percentComplete}"></div></div>
       <div class="devcmp-stat-line"><span>Items complete</span><span>${dv2.completedCount} / ${dv2.totalItems} (${dv2.percentComplete}%)</span></div>
       <div class="devcmp-stat-line"><span>Drop-off</span><span>${dv2.dropOffItem ? (dv2.dropOffItem.kind === 'QUIZ' ? 'Mastery Quiz' : `${dv2.dropOffItem.kind} \u2014 ${dv2.dropOffItem.signId}`) : 'None — mission complete'}</span></div>
       <ul class="devcmp-rowlist" style="margin-top: var(--space-4);">${rows}</ul>

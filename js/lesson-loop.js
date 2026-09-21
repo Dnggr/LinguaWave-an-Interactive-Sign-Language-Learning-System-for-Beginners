@@ -108,11 +108,11 @@
    * place of a full loop for SAME_SIGN_AS pairs. */
   const REGISTER_PROMPTS = {
     HI: { prompt: 'Your friend walks by after class. Which greeting fits best?', options: ['HI', 'HELLO'], answer: 'HI',
-          note: 'Same sign as HELLO — HI is just quicker and more casual.' },
+          note: 'Same sign as HELLO. HI is just quicker and more casual.' },
     BYE: { prompt: 'You\u2019re ending a quick video call with a friend. Which fits best?', options: ['BYE', 'GOODBYE'], answer: 'BYE',
-           note: 'Same sign as GOODBYE — BYE is just quicker and more casual.' },
+           note: 'Same sign as GOODBYE. BYE is just quicker and more casual.' },
     NIGHT: { prompt: 'It\u2019s late and you\u2019re heading to bed. Which word fits this moment?', options: ['NIGHT', 'EVENING'], answer: 'NIGHT',
-             note: 'Physically the same sign as EVENING — in ASL, context or a following word tells them apart, not the handshape.' },
+             note: 'Physically the same sign as EVENING. In ASL, context or a following word tells them apart, not the handshape.' },
   };
 
   /* ── CONTEXT_PROMPTS — Contextualize-stage sentence prompts ────────
@@ -302,7 +302,7 @@
     if (item.kind === 'LESSON') {
       if (lighter) {
         return {
-          loopStage: 'Contextualize (lighter — sign already known)',
+          loopStage: 'Contextualize (lighter: sign already known)',
           render: 'lesson-lighter',
           reason: duplicateOf ? `Same sign as ${duplicateOf}` : 'Already taught in an earlier mission',
           registerPrompt: duplicateOf ? registerPromptFor(item.signId) : null,

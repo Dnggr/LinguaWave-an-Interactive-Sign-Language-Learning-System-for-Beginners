@@ -53,13 +53,14 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lesson — LinguaWave</title>
+  <title>Lesson | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/lesson.css" />
   <link rel="stylesheet" href="../css/lesson-camera.css" />
   <link rel="stylesheet" href="../css/toast.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
 
   <script type="module" src="../js/auth.js"></script>
   <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
@@ -74,7 +75,7 @@
   });
   </script>
 </head>
-<body>
+<body data-tour="camera-practice">
 
   <!-- ── SKIP LINK (Design pass, 2026-08-23; retargeted 2026-08-26) ───
        PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
@@ -186,16 +187,16 @@
             />
             <div class="lesson-img-placeholder" id="lesson-img-placeholder">
               <span><span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Sign reference image</span>
-              <small id="lesson-img-placeholder-hint">Add image to assets/images/basic/A.png</small>
+              <small id="lesson-img-placeholder-hint">The reference image for this sign isn't available yet.</small>
             </div>
           </div>
 
           <!-- Text explanation -->
           <div class="lesson-desc card mt-8" id="lesson-desc">
-            <h3>How to perform the sign</h3>
+            <h2 class="heading-md">How to perform the sign</h2>
             <p class="mt-4" id="lesson-description">
               Make a fist with your thumb resting against the side of your
-              index finger — not tucked underneath. Hold your hand upright
+              index finger, not tucked underneath. Hold your hand upright
               with your palm facing the person you're signing to.
             </p>
             <ol class="lesson-desc__tips mt-4" id="lesson-tips">
@@ -209,7 +210,7 @@
 
           <!-- Video demonstration -->
           <div class="lesson-video-wrap mt-8">
-            <h3>Watch the Sign in Motion</h3>
+            <h2 class="heading-md">Watch the Sign in Motion</h2>
             <div class="lesson-video mt-4">
               <video
                 id="lesson-video"
@@ -281,8 +282,8 @@
             <img class="quick-check__image" id="quick-check-image" alt="Sign to identify" style="display:none;" />
             <div class="quick-check__options" id="quick-check-options"></div>
             <div class="assessment-feedback mt-3" id="quick-check-feedback" style="display:none;"></div>
-            <p class="text-muted mt-3" style="font-size: var(--fs-xs);">
-              Just for practice — this doesn't affect your score. Your graded check happens in the category assessment.
+            <p class="text-muted mt-3 quick-check__note">
+              Just for practice: this doesn't affect your score. Your graded check happens in the category assessment.
             </p>
           </div><!-- /quick-check-card -->
 
@@ -453,7 +454,7 @@
           <div class="assessment-panel mt-4">
 
             <p class="text-muted" style="font-size: var(--fs-xs); margin-bottom: var(--space-2);">
-              Optional — webcam sign detection has real accuracy limits, so this
+              Optional: webcam sign detection has real accuracy limits, so this
               won't block your progress. Your real assessment happens after all
               signs in this category, mixing multiple choice, identification,
               and an optional camera round.
@@ -485,7 +486,7 @@
             <p class="camera-tips__title"><span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Camera Tips</p>
             <ul class="camera-tips__list">
               <li>Letters: hold the sign steady for about 1.5 seconds to register</li>
-              <li>Motion signs: click "Practice Check" — you get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
+              <li>Motion signs: click "Practice Check". You get a 3-2-1 countdown to get your hand ready before it starts capturing</li>
               <li>Make sure your hand is well-lit and fully visible</li>
               <li>Keep your hand centred in the frame</li>
             </ul>
@@ -534,7 +535,7 @@
   </div>
 
   <footer class="footer">
-    <div class="container"><p>LinguaWave — Capstone Project 2026</p></div>
+    <div class="container"><p>LinguaWave · Capstone Project 2026</p></div>
   </footer>
 
   <script src="../js/main.js"></script>
@@ -555,19 +556,21 @@
   -->
   <script src="../js/missions.js"></script>
   <!--
-    BRIDGE (migration-analysis pass) — this page still records
-    practice through V1's window.LWProgress above, but it's reached
-    from V2's Mission Overview dictionary chips, so it also needs
-    window.LWDataV2 loaded to mark the matching V2 mission item
-    complete (see markSignPracticedBridge() in data-v2.js and its call
-    sites in lesson.js). Must load before lesson.js, same as data.js.
+    REMOVED (Impeccable pass): a second <script src="../js/data-v2.js">
+    lived here. That file was renamed to missions.js (loaded just above)
+    and the global it defined, window.LWDataV2, is now window.LWMissions,
+    so the tag only produced a 404 on every load.
   -->
-  <script src="../js/data-v2.js"></script>
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).
     All other page scripts are plain <script> tags — no conflict.
   -->
   <script type="module" src="../js/camera-practice.js"></script>
+  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
+       js/tour.js, how it looks in css/tour.css. This page opts in via
+       <body data-tour="camera-practice">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
 </body>
 </html>

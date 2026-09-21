@@ -161,7 +161,7 @@
 
 .camera-status--error {
   background: var(--clr-red-soft);
-  color: var(--clr-red);
+  color: var(--clr-red-text); /* CHANGED (light pass) was --clr-red: 4.11:1 in light */
 }
 
 /* ── 6. HAND STATUS PILL ─────────────────────────────────────────── */
@@ -226,12 +226,17 @@
   overflow: hidden;
 }
 
+/* CHANGED (Impeccable pass): this bar updates on detection frames while the
+   model is running, so it was the animated-`width` case that mattered most.
+   Now full width and slid with transform; JS sets --p (0 to 100) instead of
+   style.width. See .progress-bar__fill in css/style.css for the scheme. */
 .confidence-bar-fill {
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: var(--clr-success);
   border-radius: var(--radius-pill);
-  transition: width .1s linear, background .15s var(--ease);
+  transform: translateX(calc((var(--p, 0) - 100) * 1%));
+  transition: transform .1s linear, background .15s var(--ease);
 }
 
 .confidence-bar-fill--motion {

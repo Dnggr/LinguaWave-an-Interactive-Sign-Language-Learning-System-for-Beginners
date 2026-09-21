@@ -22,7 +22,11 @@
  * eye catching on clumps or empty gaps, which uniform Math.random()
  * scatter tends to produce. A few stars are upgraded to the bigger
  * four-point "sparkle" glyph, and every star gets its own randomized
- * twinkle delay + duration so the field never pulses in sync.
+ * brightness (the --o custom property, read by .hero-star in css/auth.css)
+ * so the field has depth. Only the four big sparkles twinkle, each on its
+ * own animation delay + duration. The 2px dots used to twinkle too; that
+ * was dropped in the Impeccable pass (they were flagged as pulsing status
+ * dots).
  *
  * Runs once per page load regardless of the active theme (cheap, and
  * the night layer is simply display:none in light mode via css/
@@ -76,11 +80,12 @@
     el.className = 'hero-star' + (isBig ? ' hero-star--big' : '');
     el.style.left = xPct.toFixed(2) + '%';
     el.style.top = yPct.toFixed(2) + '%';
-    el.style.animationDelay = randBetween(0, 2.8).toFixed(2) + 's';
-    el.style.animationDuration = randBetween(2.6, 4.2).toFixed(2) + 's';
+    el.style.setProperty('--o', (isBig ? randBetween(0.75, 1) : randBetween(0.3, 0.95)).toFixed(2));
 
     if (isBig) {
       const size = randBetween(13, 19);
+      el.style.animationDelay = randBetween(0, 3).toFixed(2) + 's';
+      el.style.animationDuration = randBetween(3.2, 4.8).toFixed(2) + 's';
       el.style.width = size.toFixed(1) + 'px';
       el.style.height = size.toFixed(1) + 'px';
       el.innerHTML =
