@@ -9661,15 +9661,32 @@ function getCategoriesForUnitV2(unitOrder) {
   // Nothing about what callers see changes — same shapes, same
   // per-account scoping, same completedAt backfill — only how often
   // the actual storage read happens.
-  let _progressCache = null; // { uid, state, completedIdsSet } | null
+  //
+  // BUGFIX (this revision) — the cache used to trust its own `uid`
+  // match alone and never re-checked the real localStorage record, so
+  // anything that touched PROGRESS_KEY outside saveProgressState()
+  // (another tab, a manual "clear site data," a future reset-progress
+  // feature, a test harness resetting its localStorage stub) left this
+  // module serving stale in-memory state indefinitely — confirmed via
+  // the repo's own _test_lesson-loop.node.js failure ("getDropOffIndex
+  // resumes mid-mission at the right index"). Fix: still do the cheap
+  // localStorage.getItem() every call (that read was never the cost —
+  // JSON.parse()+Set-construction was), but compare the raw string
+  // against what's cached and only re-parse/rebuild the Set when it's
+  // actually changed. Same perf win as before (skips JSON.parse+Set
+  // rebuild on the hot path), now correct if storage changes underneath
+  // this module too.
+  let _progressCache = null; // { uid, raw, state, completedIdsSet } | null
 
   function loadProgressState() {
     const uid = getCurrentUidV2();
-    if (_progressCache && _progressCache.uid === uid) return _progressCache.state;
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (_progressCache && _progressCache.uid === uid && _progressCache.raw === raw) {
+      return _progressCache.state;
+    }
 
     let state;
     try {
-      const raw = localStorage.getItem(PROGRESS_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
       // Per-account scoping — see the block comment above
       // getCurrentUidV2(). A missing/mismatched uid means this saved
@@ -9687,18 +9704,21 @@ function getCategoriesForUnitV2(unitOrder) {
     } catch {
       state = { uid, completedItemIds: [], completedAt: {} };
     }
-    _progressCache = { uid, state, completedIdsSet: new Set(state.completedItemIds) };
+    _progressCache = { uid, raw, state, completedIdsSet: new Set(state.completedItemIds) };
     return state;
   }
 
   function saveProgressState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
+      const raw = JSON.stringify(state);
+      localStorage.setItem(PROGRESS_KEY, raw);
       // Refresh the cache from what was actually just written, instead
       // of dropping it and forcing the next isItemComplete() to pay
-      // for a fresh localStorage read + JSON.parse.
-      _progressCache = { uid: state.uid, state, completedIdsSet: new Set(state.completedItemIds) };
+      // for a fresh localStorage read + JSON.parse. Cached `raw` here
+      // matches what's now actually in storage, so the next
+      // loadProgressState() call's string compare short-circuits clean.
+      _progressCache = { uid: state.uid, raw, state, completedIdsSet: new Set(state.completedItemIds) };
       _progressVersion++; // PERF FIX — see getMissionProgress()'s memo cache below.
     } catch (e) {
       console.warn('[missions.js] could not persist Missions progress:', e);

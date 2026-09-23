@@ -73,25 +73,19 @@
    scope; this page's DOMContentLoaded handler now works around it with
    a bounded timeout instead).
 
-   .dash-loading-pulse: a small, reusable "still working" cue for the
-   handful of static placeholder strings this page shows before
-   js/dashboard.js's first render pass — the Continue Learning card's
-   eyebrow, #unit-progress-list's loading row, and #recap-empty. Kept
-   deliberately subtle (opacity only, no motion/scale) since this is a
-   secondary affordance layered on TEXT that already explains what's
-   happening ("Loading your path…" etc.) — the animation is a bonus cue
-   for a wait that takes a moment, not the only signal that something
-   is happening. Respects prefers-reduced-motion. */
-.dash-loading-pulse {
-  animation: dash-pulse 1.4s ease-in-out infinite;
-}
-@keyframes dash-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: .45; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dash-loading-pulse { animation: none; }
-}
+   CLEANUP (this revision) — removed the .dash-loading-pulse rule
+   (+ its @keyframes dash-pulse) that used to live here, along with the
+   .dash-fallback-alert rule further down this section and the whole
+   .dash-hero-row/.dash-progress-card* /.dash-progress-ring* family
+   later in this file. Confirmed via a project-wide search across every
+   pages/*.html and js/*.js file: none of these classes are applied
+   anywhere in the live app — an earlier dashboard-rebuild session (see
+   AI_MEMORY.md's 09-16 "Dashboard rebuild" row) wrote this CSS, but the
+   matching HTML/JS wiring either never landed in this repo or was
+   reverted afterward without the CSS being cleaned up. The real, live
+   loading/error affordances on this page are .unit-progress-list__loading
+   (below) and the shared .alert/.alert--error component from
+   css/style.css. */
 
 /* Matches unit-progress-row's own internal padding so the loading
    placeholder (pages/dashboard.html) sits at the same inset as the real
@@ -100,18 +94,6 @@
 .unit-progress-list__loading {
   padding: var(--space-3) var(--space-4);
   margin: 0;
-}
-
-/* js/dashboard.js's showProgressUnavailable() reuses css/style.css's
-   existing `.alert`/`.alert--error` component (already loaded on every
-   page; same `--clr-red`/`--clr-red-soft` reuse pattern toast.css and
-   quiz.css already use) rather than inventing new error styling here.
-   This is the one small adjustment needed to nest it cleanly inside
-   #unit-progress-list, which — unlike a normal page-level alert banner —
-   already sits inside a bordered/rounded container of its own. */
-.dash-fallback-alert {
-  margin: 0;
-  border-radius: var(--radius-md);
 }
 
 /* ── Continue Learning hero card (2026-08-21 code session) ───────────
@@ -203,76 +185,6 @@
   .continue-card__actions .btn { width: 100%; }
   .continue-card__progress { flex-wrap: wrap; }
   .continue-card__progress .progress-bar { width: 100%; flex: 1 1 100%; }
-}
-
-/* ── HERO ROW + YOUR PROGRESS CARD (mockup alignment pass, 2026-08-31)
-   Wraps `.continue-card` and the new `.dash-progress-card` side by
-   side, matching the mockup's Dashboard screen. `.continue-card`
-   itself is UNCHANGED above — this only adds the wrapper grid and the
-   new sidecar card. Ring uses the same conic-gradient `--pct`
-   technique as css/learn.css's `.sidebar-progress__ring` — kept as a
-   separate rule (not a shared class) since the two live in different
-   stylesheets loaded on different pages and this one's sized for a
-   2-column hero card rather than a sidebar panel. */
-.dash-hero-row {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: var(--space-4);
-  align-items: stretch;
-}
-.dash-hero-row .continue-card { height: 100%; }
-
-.dash-progress-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-3);
-}
-.dash-progress-card__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--clr-text);
-  align-self: flex-start;
-}
-.dash-progress-ring {
-  --pct: 0;
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  width: 88px; height: 88px; border-radius: 50%;
-  background: conic-gradient(var(--clr-accent) calc(var(--pct) * 1%), var(--clr-accent-soft) 0);
-}
-.dash-progress-ring::before {
-  content: ''; position: absolute; inset: 7px; border-radius: 50%;
-  background: var(--clr-surface);
-}
-.dash-progress-ring__pct {
-  position: relative; z-index: 1;
-  font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700;
-  color: var(--clr-accent);
-}
-.dash-progress-card__stats {
-  display: flex;
-  width: 100%;
-  gap: var(--space-2);
-}
-.dash-progress-card__stat {
-  flex: 1 1 0;
-  display: flex; flex-direction: column; gap: 2px;
-  padding: var(--space-2);
-  background: var(--clr-surface-2);
-  border-radius: var(--radius-md);
-}
-.dash-progress-card__stat-value {
-  font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700;
-  color: var(--clr-text);
-}
-.dash-progress-card__stat-label {
-  font-size: var(--fs-xs); color: var(--clr-text-muted);
-}
-
-@media (max-width: 900px) {
-  .dash-hero-row { grid-template-columns: 1fr; }
 }
 
 /* ── Overall Progress heading: demoted (Priority 0 #2, 2026-08-21) ───
