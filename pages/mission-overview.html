@@ -130,7 +130,7 @@
     mission-overview.js's signTitle(), which now reads
     window.LWMissions directly (SIGNS_V2 already carries its own title).
   -->
-  <script src="../js/missions.js"></script>
+  <script defer src="../js/missions.js"></script>
   <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
        window.LWIcons must exist before any page script, inline script or
        module body runs, and before DOMContentLoaded hydrates any

@@ -120,6 +120,12 @@
   async function saveStore(store) {
     saveStoreLocal(store); // write locally first, always — instant, safe from navigation interruption
 
+    // Same guard as hydrateStore() above — a page without auth.js loaded
+    // already fell into the catch block below via a TypeError (so this
+    // was never a crash), but bail explicitly so it's a clear no-op
+    // instead of a caught-and-logged exception every call.
+    if (!window.LWAuth) return;
+
     try {
       const { db, doc, setDoc, getCurrentUser } = window.LWAuth;
       const user = getCurrentUser();
@@ -167,6 +173,24 @@
 async function hydrateStore() {
   await window.LWAuth?.whenAuthReady?.();
   console.log('[progress.js] authReady resolved, starting hydration check');
+
+  // BUGFIX (this revision) — this used to destructure window.LWAuth
+  // unguarded right after the optional-chained await above, so a page
+  // that loads progress.js without auth.js (e.g. pages/missions-compare.html,
+  // a dev-only diagnostic page) threw an unhandled TypeError here, and
+  // since hydrateStore() is fire-and-forget with no .catch() at its one
+  // call site below, that was an unhandled promise rejection on every
+  // load of such a page. Same defensive shape AGENTS.md's own QA
+  // checklist already asks for ("window.LWAuth ... safely guarded
+  // before invoking methods or destructuring properties") — this just
+  // wasn't applied here yet. Degrades the same way the "no user" branch
+  // already does: resolve progressReady so callers awaiting it don't
+  // hang, and treat it as a guest/no-progress-source state.
+  if (!window.LWAuth) {
+    console.log('[progress.js] window.LWAuth not loaded on this page, skipping hydration');
+    resolveProgressReady();
+    return;
+  }
 
   const { db, doc, getDoc, getCurrentUser } = window.LWAuth;
   const user = getCurrentUser();

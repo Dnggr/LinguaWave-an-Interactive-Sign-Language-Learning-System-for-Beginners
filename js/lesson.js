@@ -407,16 +407,17 @@ function renderQuizHandoff(mission) {
   // mission-overview.js's usesNativeQuiz: ALL 12 chapters go to the
   // real-native Mastery Quiz now.
   const usesNativeQuiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
-  // V1-removal pass: pages/quiz.html is deleted. The `false` branch below
-  // is unreachable in practice (every real categoryGroup is in
-  // SAMPLE_MASTERY_QUIZ_CHAPTERS) but kept defensive rather than removing
-  // usesNativeQuiz, which other logic in this function still reads.
+  // CLEANUP (this revision) — pages/quiz.html is deleted, and both
+  // branches of this url built the exact same string (dead ternary,
+  // no behavior difference between them) since that deletion. quizUrl
+  // is now just the one real URL. usesNativeQuiz itself is kept below
+  // (unreachable with current data — every real categoryGroup is in
+  // SAMPLE_MASTERY_QUIZ_CHAPTERS — but a real, intentional fallback if
+  // a future chapter is ever added without also being sampled there).
   // &from=lesson lets the quiz's Back link return HERE (this recap slide,
   // where the review nav now lives) instead of dropping the learner all
   // the way out to the missions list. See js/mastery-quiz.js.
-  const quizUrl = usesNativeQuiz
-    ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`
-    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`;
+  const quizUrl = `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`;
   // Only claim the review nav exists when it does. (This slide is only
   // reachable once canReviewMission() is true, but the copy shouldn't
   // depend on that staying so.)
