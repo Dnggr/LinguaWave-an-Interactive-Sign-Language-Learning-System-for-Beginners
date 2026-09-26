@@ -576,7 +576,9 @@
         await LWAuth.login(email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        showAuthModal(error.message)
+        console.error("Login failed:", error); // Safe developer-facing logs
+        const userMessage = getFriendlyAuthErrorMessage(error.code);
+        showAuthModal(userMessage);
       }
     }
 
@@ -591,7 +593,9 @@
         await LWAuth.register(name, email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        showAuthModal(error.message)
+        console.error("Registration failed:", error);
+        const userMessage = getFriendlyAuthErrorMessage(error.code);
+        showAuthModal(userMessage);
       }
     }
 
@@ -607,6 +611,26 @@
      authModalClose.addEventListener('click', () => {
        authModal.classList.add('hidden');
      });
+
+     // Helper to translate Firebase Auth codes into user-friendly messages
+    function getFriendlyAuthErrorMessage(errorCode) {
+      switch (errorCode) {
+        case 'auth/invalid-credential':
+          return 'Incorrect email or password. Please try again.';
+        case 'auth/email-already-in-use':
+          return 'This email is already registered. Try logging in instead.';
+        case 'auth/weak-password':
+          return 'Your password is too weak. Please use at least 6 characters.';
+        case 'auth/invalid-email':
+          return 'Please enter a valid email address.';
+        case 'auth/too-many-requests':
+          return 'Access temporarily locked due to too many failed attempts. Try again later.';
+        case 'auth/network-request-failed':
+          return 'A network error occurred. Please check your internet connection and try again.';
+        default:
+          return 'An unexpected error occurred. Please try again.';
+      }
+    }
   </script>
 </body>
 </html>
