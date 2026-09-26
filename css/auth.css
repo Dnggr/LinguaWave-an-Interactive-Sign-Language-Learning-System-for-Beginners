@@ -460,20 +460,87 @@
 
 /* ── TAB TOGGLE (Log In / Sign Up) ─────────────────────────────── */
 .auth-tabs {
+  position: relative;
   display: flex; gap: var(--space-2);
   background: var(--clr-surface-2); border-radius: var(--radius-md);
   padding: var(--space-1); margin-top: var(--space-8);
 }
+/* The blue highlight is this one pill sliding between tabs (position
+   set in px by JS, see positionAuthTabsIndicator() in index.html) —
+   rather than each button's background independently fading in/out,
+   which read as an instant flash/flicker at --dur-fast (150ms). The
+   slide uses --dur-base (250ms) so it reads as one smooth motion. */
+.auth-tabs__indicator {
+  position: absolute; top: var(--space-1); bottom: var(--space-1); left: var(--space-1);
+  width: 0; /* set by JS once real tab widths are known */
+  background: var(--clr-accent); border-radius: var(--radius-sm);
+  transition: transform var(--dur-base) var(--ease);
+  will-change: transform;
+}
 .auth-tab {
+  position: relative; z-index: 1;
   flex: 1; padding: var(--space-2) var(--space-4);
   background: transparent; border: none; border-radius: var(--radius-sm);
   color: var(--clr-text-muted); font-size: var(--fs-sm); font-weight: 600;
   font-family: var(--font-body); cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  transition: color var(--dur-base) var(--ease);
 }
-.auth-tab--active { background: var(--clr-accent); color: var(--clr-text-invert); }
+.auth-tab--active { color: var(--clr-text-invert); }
 
-.auth-form { display: flex; flex-direction: column; margin-top: var(--space-6); }
+.auth-form {
+  display: flex; flex-direction: column; margin-top: var(--space-6);
+  opacity: 1; transform: translateY(0);
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+/* ── LOG IN / SIGN UP crossfade (see showAuthTab in index.html) ──
+   Outgoing form fades+lifts out quickly, then swaps display:none,
+   then incoming form fades+settles in — avoids the old instant
+   display:none/flex snap, which read as an abrupt "fast phase" cut. */
+.auth-form--fade-out { opacity: 0; transform: translateY(-6px); transition: opacity 160ms var(--ease), transform 160ms var(--ease); }
+.auth-form--fade-in-start { opacity: 0; transform: translateY(6px); transition: none; }
+
+/* ── FLOATING LABEL (Log In / Sign Up) ─────────────────────────────
+   Same material-style floating-label technique as BarangayDocs'
+   login.html (.fl-group/.fl-input/.fl-label), reusing the EXISTING
+   .form-group / .form-input / label markup instead of new class
+   names — scoped under .auth-form so pages/feedback.html's separate
+   .form-input textarea (no .form-group wrapper there) is untouched.
+   Colors read from the theme tokens above instead of BarangayDocs'
+   hardcoded dark-navy values, so this follows the light/dark toggle;
+   --dur-fast/--ease match the timing .form-input:focus already uses.
+   Requires the <input> to come BEFORE its <label> in the markup (see
+   index.html) so the `+` adjacent-sibling selectors below can reach
+   it, and placeholder=" " so :not(:placeholder-shown) can detect
+   "has a value" the same way BarangayDocs' does. */
+.auth-form .form-group { position: relative; display: block; }
+.auth-form .form-input { width: 100%; } /* .form-group used to stretch this via flex; restore it now that .form-group is position:relative/block for the label overlay */
+.auth-form .form-input::placeholder { color: transparent; }
+.auth-form .form-group label {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  color: var(--clr-text-muted);
+  pointer-events: none;
+  padding: 0 var(--space-1);
+  background: transparent;
+  line-height: 1;
+  transition: top var(--dur-fast) var(--ease), font-size var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.auth-form .form-input:focus + label,
+.auth-form .form-input:not(:placeholder-shown) + label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 0 var(--space-1);
+  background: var(--clr-surface); /* matches .auth-card's own background, so the label "cuts" the border like BarangayDocs' notch */
+}
+.auth-form .form-input:focus + label { color: var(--clr-accent); }
+.auth-form .form-input:not(:focus):not(:placeholder-shown) + label { color: var(--clr-text-muted); }
 
 .auth-switch { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
 

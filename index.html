@@ -277,7 +277,8 @@
         <p class="auth-card__eyebrow">Get started</p>
 
         <!-- ── TAB TOGGLE ───────────────────────────────────────── -->
-        <div class="auth-tabs">
+        <div class="auth-tabs" id="auth-tabs">
+          <span class="auth-tabs__indicator" id="auth-tabs-indicator" aria-hidden="true"></span>
           <button class="auth-tab auth-tab--active" id="tab-login" onclick="showAuthTab('login')">Log In</button>
           <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Sign Up</button>
         </div>
@@ -285,12 +286,12 @@
         <!-- ── LOG IN FORM ──────────────────────────────────────── -->
         <form class="auth-form" id="login-form" onsubmit="event.preventDefault(); handleLogin();">
           <div class="form-group">
+            <input type="email" id="login-email" class="form-input" placeholder=" " autocomplete="email" />
             <label for="login-email">Email</label>
-            <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
           </div>
           <div class="form-group mt-4">
+            <input type="password" id="login-password" class="form-input" placeholder=" " autocomplete="current-password" />
             <label for="login-password">Password</label>
-            <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" />
           </div>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
           <p class="auth-switch text-muted">
@@ -301,16 +302,16 @@
         <!-- ── REGISTER FORM ────────────────────────────────────── -->
         <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
           <div class="form-group">
+            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" />
             <label for="reg-name">Full name</label>
-            <input type="text" id="reg-name" class="form-input" placeholder="Alex Santos" autocomplete="name" />
           </div>
           <div class="form-group mt-4">
+            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" />
             <label for="reg-email">Email</label>
-            <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" autocomplete="email" />
           </div>
           <div class="form-group mt-4">
+            <input type="password" id="reg-password" class="form-input" placeholder=" " autocomplete="new-password" />
             <label for="reg-password">Password</label>
-            <input type="password" id="reg-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" />
           </div>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
           <p class="auth-switch text-muted">
@@ -448,12 +449,62 @@
   <script>
     'use strict';
 
+    // Slides the blue pill behind the active tab instead of each
+    // button's background fading in/out on its own (which, both
+    // firing at once, read as a flash rather than a single motion).
+    // animate=false is used right after the modal opens, so the pill
+    // snaps straight to the right tab instead of sliding in from 0.
+    const authTabsIndicator = document.getElementById('auth-tabs-indicator');
+    function positionAuthTabsIndicator(animate) {
+      const loginTab    = document.getElementById('tab-login');
+      const registerTab = document.getElementById('tab-register');
+      const activeTab   = loginTab.classList.contains('auth-tab--active') ? loginTab : registerTab;
+      if (!activeTab.offsetWidth) return; // modal not visible yet — nothing to measure
+
+      if (!animate) authTabsIndicator.style.transition = 'none';
+      authTabsIndicator.style.width = activeTab.offsetWidth + 'px';
+      authTabsIndicator.style.transform = `translateX(${activeTab.offsetLeft - loginTab.offsetLeft}px)`;
+      if (!animate) {
+        void authTabsIndicator.offsetWidth; // force reflow before re-enabling the transition
+        authTabsIndicator.style.transition = '';
+      }
+    }
+    window.addEventListener('resize', () => positionAuthTabsIndicator(false));
+
+    // Crossfades the login/register forms instead of snapping their
+    // display on/off, so switching tabs reads as one smooth motion
+    // rather than an instant cut. See .auth-form--fade-out /
+    // .auth-form--fade-in-start in css/auth.css for the timing.
     function showAuthTab(tab) {
       const isLogin = tab === 'login';
-      document.getElementById('login-form').style.display    = isLogin ? 'flex' : 'none';
-      document.getElementById('register-form').style.display  = isLogin ? 'none' : 'flex';
+      const loginForm    = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const showEl = isLogin ? loginForm : registerForm;
+      const hideEl = isLogin ? registerForm : loginForm;
+
       document.getElementById('tab-login').classList.toggle('auth-tab--active', isLogin);
       document.getElementById('tab-register').classList.toggle('auth-tab--active', !isLogin);
+      positionAuthTabsIndicator(true);
+
+      // Already on this tab (or mid-transition into it) — nothing to animate.
+      if (showEl.style.display === 'flex' && !showEl.classList.contains('auth-form--fade-in-start')) return;
+
+      // Cancel any in-flight transition on either form so rapid tab
+      // clicks can't leave things in a half-faded state.
+      loginForm.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start');
+      registerForm.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start');
+
+      hideEl.classList.add('auth-form--fade-out');
+
+      window.setTimeout(() => {
+        hideEl.style.display = 'none';
+        hideEl.classList.remove('auth-form--fade-out');
+
+        showEl.style.display = 'flex';
+        showEl.classList.add('auth-form--fade-in-start');
+        void showEl.offsetWidth; // force reflow so the fade-in actually transitions
+        showEl.classList.remove('auth-form--fade-in-start');
+      }, 160);
     }
 
     // ── SIGN IN MODAL open/close ────────────────────────────────────
@@ -468,6 +519,7 @@
     function openAuthModal(tab) {
       showAuthTab(tab);
       signinModal.classList.remove('hidden');
+      positionAuthTabsIndicator(false); // modal was hidden during showAuthTab(), so snap now that it's visible
       document.getElementById(tab === 'login' ? 'login-email' : 'reg-name').focus();
     }
     function closeAuthModal() {

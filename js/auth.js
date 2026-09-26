@@ -112,7 +112,16 @@ function getCurrentUser() {
 }
 
 function isLoggedIn() {
-  return !!getCurrentUser();
+  // Authorization must be based on Firebase's own live auth state —
+  // NOT the localStorage mirror. getCurrentUser() reads a cache that
+  // exists purely so other pages can render a name/email/level
+  // synchronously without an extra Firestore round-trip; being plain
+  // localStorage, it can be edited directly in DevTools. auth.currentUser
+  // is populated by the Firebase SDK itself from the real signed-in
+  // session and can't be forged that way. (Safe to read synchronously
+  // here because every caller — requireAuth()/redirectIfLoggedIn() —
+  // already waits for 'lwauth-ready' first; see whenAuthReady().)
+  return !!auth.currentUser;
 }
 
 /* ── LOG IN ───────────────────────────────────────────────────────
@@ -230,8 +239,13 @@ window.LWAuth = {
   requireAuth,
   redirectIfLoggedIn,
   whenAuthReady,
-  doc, 
-  db, 
-  getDoc, 
-  setDoc, 
 };
+// SECURITY (audit pass): `doc`, `db`, `getDoc`, `setDoc` used to be
+// re-exported here, which meant anyone with the browser console could
+// run LWAuth.setDoc(LWAuth.doc(LWAuth.db, 'users', uid), {level:'admin', ...})
+// and write directly to their own Firestore profile — no app code
+// involved at all. Nothing else in the codebase referenced these
+// (checked before removing), so this only removes capability that
+// wasn't being used. The real protection against that kind of write
+// has to be Firestore Security Rules (see firestore.rules) — removing
+// this export narrows the attack surface but does not replace rules.
