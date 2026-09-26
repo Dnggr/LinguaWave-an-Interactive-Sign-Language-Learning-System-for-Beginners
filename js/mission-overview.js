@@ -256,16 +256,17 @@ function render(mission, status) {
   // the recap slide where the lesson would otherwise resume.
   const canReview = !locked && window.LWMissions.canReviewMission(mission);
   const lessonUrl = `lesson.html?mission=${encodeURIComponent(mission.category)}${canReview ? '&review=1' : ''}`;
-  // NEW — ALL 12 chapters (see SAMPLE_MASTERY_QUIZ_CHAPTERS above)
-  // now route to the real mastery-quiz.html sample.
-  // V1-removal pass: pages/quiz.html is deleted. The `false` branch
-  // below is unreachable in practice (every real mission's categoryGroup
-  // is in the sample) but kept defensive rather than removing
-  // usesNativeQuiz, which other logic in this function still reads.
+  // ALL 12 chapters (see SAMPLE_MASTERY_QUIZ_CHAPTERS above) now route
+  // to the real mastery-quiz.html sample.
+  // CLEANUP (this revision) — pages/quiz.html is deleted, and both
+  // branches of this url built the exact same string (dead ternary, no
+  // behavior difference) since that deletion; quizUrl is now just the
+  // one real URL. usesNativeQuiz itself is kept below (unreachable with
+  // current data — every real mission's categoryGroup is in the sample
+  // — but a real, intentional fallback if a future chapter is ever
+  // added without also being sampled there).
   const usesNativeQuiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
-  const quizUrl = usesNativeQuiz
-    ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`
-    : `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`;
+  const quizUrl = `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}`;
   const pct = Math.round(window.LWMissions.getMissionProgress(mission) * 100);
   const heartsState = window.LWMissions.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;

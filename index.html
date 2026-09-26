@@ -87,7 +87,15 @@
   <title>LinguaWave | Learn ASL Sign Language</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <!-- PERF FIX (this revision) — was a plain render-blocking
+       <link rel="stylesheet">. preload it, then swap to a real
+       stylesheet once fetched (media="print" doesn't block the
+       initial render since it doesn't match screen; onload flips it
+       to "all"); <noscript> keeps it working with JS disabled. Same
+       heading font, same URL, just no longer blocks first paint. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
 

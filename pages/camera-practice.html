@@ -539,7 +539,7 @@
     data.js must load before lesson.js — it provides per-letter lesson
     content (title, description, tips, image) via window.LWData.getSign().
   -->
-  <script src="../js/data.js"></script>
+  <script defer src="../js/data.js"></script>
   <!-- Progress engine: tracks practiced signs / category & level assessments. -->
   <script defer src="../js/engine/progress.js"></script>
   <!--
@@ -550,7 +550,7 @@
     complete (see markSignPracticedBridge() in missions.js and its call
     sites in lesson.js). Must load before lesson.js, same as data.js.
   -->
-  <script src="../js/missions.js"></script>
+  <script defer src="../js/missions.js"></script>
   <!--
     REMOVED (Impeccable pass): a second <script src="../js/data-v2.js">
     lived here. That file was renamed to missions.js (loaded just above)
