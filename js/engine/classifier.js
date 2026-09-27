@@ -110,8 +110,8 @@ const MOTION_LABELS_PATH = '../asl_motion_model/labels.json';
 // notebook's augmentation cell (Cell 6.5) already expands real
 // examples. Ask if you want that added — it's a bigger change (new
 // capture category + retrain) so it's not bundled into this pass.
-const MATCH_THRESHOLD         = 85;   // was 75 — minimum % confidence to count as "matched"
-const MOTION_THRESHOLD        = 80;   // was 70 — slightly lower than static still, but meaningfully higher than before
+const MATCH_THRESHOLD         = 75;   // REVERTED from 85 back to the original 75 — minimum % confidence to count as "matched"
+const MOTION_THRESHOLD        = 70;   // REVERTED from 80 back to the original 70 — slightly lower than static
 // A confident, CORRECT classification usually has a clear winner over
 // the runner-up class. Noise/out-of-distribution input often produces
 // a muddled distribution instead — several classes within a few points
@@ -120,7 +120,12 @@ const MOTION_THRESHOLD        = 80;   // was 70 — slightly lower than static s
 // catches that "the model wasn't actually sure" case specifically,
 // which a pure confidence floor can't distinguish from genuine
 // confidence.
-const RUNNERUP_MARGIN_MIN     = 20;   // percentage points the top guess must beat 2nd place by
+const RUNNERUP_MARGIN_MIN     = 20;   // NOTE: this whole requirement is NEW (there was no runner-up
+                                       // check in the original 75/70 version) — left in place since it
+                                       // wasn't part of what you asked to revert, but it's still an
+                                       // extra strictness layer beyond the old behavior. Say the word
+                                       // if you want this removed/set to 0 too, to fully match the old
+                                       // matching logic.
 // CHANGED (today): 20 -> 40. capture.html used to assign a DIFFERENT frame
 // length per sign (15 for short taps like IN/OUT/WITH, up to 60 for full
 // sentences) — that's what made the Colab notebook reject exports the
@@ -187,6 +192,32 @@ let motionBuffer = [];
 function dist3(a, b) {
   const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// FIX (distance-from-camera sensitivity — "A reads as Y when I move my
+// hand back") — the 63 raw per-hand values used to be MediaPipe's raw
+// normalized image coordinates, fed straight into the model. Those
+// encode how BIG the hand looks in frame and WHERE it sits on screen —
+// not just its shape — so the same handshape performed closer to vs.
+// further from the camera produced meaningfully different numbers the
+// model was never trained to treat as equivalent. FIX: re-center each
+// hand on its own wrist (landmark 0) and scale by the wrist→middle-MCP
+// (landmark 9) bone length — a reference distance that stays roughly
+// constant regardless of camera distance AND barely changes whether
+// fingers are curled or extended (unlike e.g. "max distance from
+// wrist", which would partly cancel out the very finger-curl
+// differences that distinguish signs). This must be applied IDENTICALLY
+// in capture.html's buildFeatureVec() and here — matching normalization
+// is as load-bearing as matching frame count/feature count.
+function normalizeHandLandmarks(pts) {
+  if (!pts) return null;
+  const wrist = pts[0];
+  const scale = dist3(wrist, pts[9]) || 1e-6;
+  return pts.map(p => ({
+    x: (p.x - wrist.x) / scale,
+    y: (p.y - wrist.y) / scale,
+    z: (p.z - wrist.z) / scale,
+  }));
 }
 
 /**
@@ -271,6 +302,14 @@ export function palmOrientation(handPts) {
  *   [handToChin][handToForehead][handToShoulder][handToHip]
  *   [leftPalmOrientation x3][rightPalmOrientation x3]
  *
+ * FIX: the 63+63 hand values are now wrist-centered + bone-length-scaled
+ * (see normalizeHandLandmarks() above), NOT raw MediaPipe image
+ * coordinates as before — this makes the hand-shape portion of the
+ * vector invariant to how close the hand is to the camera. capture.html
+ * MUST apply the exact same wrist-center + wrist→middle-MCP scaling
+ * before this fix is real end-to-end (currently only patched here and
+ * in mediapipe.js — see those files' comments).
+ *
  * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks, or null
  * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks, or null
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set, or null
@@ -282,9 +321,20 @@ function buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks) {
   const rightPresent = rightLm ? 1 : 0;
   if (!leftLm && !rightLm) return null;
 
+  // NOTE: face-relative distances still use the RAW (un-normalized)
+  // wrist position on purpose — that calculation already does its own
+  // camera-distance-cancelling normalization (dividing by faceScale/
+  // torsoScale), and it needs the wrist's real position relative to the
+  // face/body, not a wrist-centered version of itself (which would
+  // always be zero relative to its own origin).
   const faceFeat = computeFaceRelativeFeatures(rightLm || leftLm, faceLandmarks, poseLandmarks);
-  const leftVec  = leftLm  ? leftLm.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
-  const rightVec = rightLm ? rightLm.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
+  const leftNorm  = normalizeHandLandmarks(leftLm);
+  const rightNorm = normalizeHandLandmarks(rightLm);
+  const leftVec  = leftNorm  ? leftNorm.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
+  const rightVec = rightNorm ? rightNorm.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
+  // palmOrientation is already a unit vector (direction only), so it's
+  // scale-invariant by construction either way — no change needed here,
+  // raw points are fine.
   const leftOrient  = palmOrientation(leftLm);
   const rightOrient = palmOrientation(rightLm);
 
