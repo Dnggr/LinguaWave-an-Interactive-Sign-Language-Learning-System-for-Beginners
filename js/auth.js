@@ -44,7 +44,10 @@ reauthenticateWithCredential,
 verifyBeforeUpdateEmail,
 deleteUser,
 sendPasswordResetEmail,
-updatePassword
+updatePassword,
+GoogleAuthProvider,
+signInWithPopup,
+linkWithCredential
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   getFirestore,
@@ -76,6 +79,10 @@ const db = getFirestore(app);
 
 'use strict';
 
+// Set by loginWithGoogle() when it hits account-exists-with-different-
+// credential — see linkPendingGoogleCredential() below for how it's
+// consumed once the user logs back in with their original password.
+let pendingGoogleCredential = null;
 
 const LW_SESSION_KEY = 'lw_session';
 const MAX_NAME_LENGTH = 30;
@@ -243,6 +250,82 @@ async function register(name, email, password) {
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   return user;
+}
+
+/* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
+ * Handles both first-time sign-up AND returning login through the
+ * same call — signInWithPopup() creates the Firebase Auth user
+ * automatically the first time this Google account signs in, so
+ * there's no separate "register with Google" path.
+ *
+ * Because of that, this manually upserts the Firestore `users/{uid}`
+ * doc the same way register() does — but only fills it in the FIRST
+ * time (snapshot.exists() check), so a returning user's saved
+ * name/level are never clobbered by whatever their Google profile
+ * says today. Same deletionRequested-clearing behavior as login().
+ * ──────────────────────────────────────────────────────────────── */
+async function loginWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  let result;
+  try {
+    result = await signInWithPopup(auth, provider);
+  } catch (error) {
+    if (error && error.code === 'auth/account-exists-with-different-credential') {
+      // This email already has a password-based account. Stash the
+      // Google credential so linkPendingGoogleCredential() can attach
+      // it once the user proves ownership by logging in with their
+      // original password — see that function below.
+      pendingGoogleCredential = GoogleAuthProvider.credentialFromError(error);
+    }
+    throw error; // still let the caller show/handle the error
+  }
+
+  const firebaseUser = result.user;
+  const userRef = doc(db, 'users', firebaseUser.uid);
+  const snapshot = await getDoc(userRef);
+
+  let profile;
+  if (snapshot.exists()) {
+    profile = snapshot.data();
+    if (profile.deletionRequested) {
+      await updateDoc(userRef, { deletionRequested: false, deletionRequestedAt: null });
+      profile.deletionRequested = false;
+      profile.deletionRequestedAt = null;
+    }
+  } else {
+    const rawName = (firebaseUser.displayName || '').trim().slice(0, MAX_NAME_LENGTH);
+    profile = {
+      uid: firebaseUser.uid,
+      name: rawName || firebaseUser.email.split('@')[0] || 'Learner',
+      email: firebaseUser.email,
+      level: 'basic',
+      joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
+    };
+    await setDoc(userRef, profile);
+  }
+
+  const user = {
+    uid: firebaseUser.uid,
+    name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
+    email: firebaseUser.email,
+    level: profile.level || 'basic',
+    joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
+  };
+
+  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  return user;
+}
+
+/* Links a Google credential that was stashed by loginWithGoogle()
+ * after an account-exists-with-different-credential error. Call this
+ * right after a successful password login() — if there's nothing
+ * pending, it's a silent no-op, so it's always safe to call. Once
+ * linked, Google sign-in works for this account from then on. */
+async function linkPendingGoogleCredential() {
+  if (!pendingGoogleCredential || !auth.currentUser) return;
+  const credential = pendingGoogleCredential;
+  pendingGoogleCredential = null;
+  await linkWithCredential(auth.currentUser, credential);
 }
 
 /* ── LOG OUT ──────────────────────────────────────────────────────
@@ -448,6 +531,8 @@ window.LWAuth = {
   isLoggedIn,
   login,
   register,
+  loginWithGoogle, 
+  linkPendingGoogleCredential,
   logout,
   sendPasswordReset,
   updateUsername,
@@ -476,4 +561,4 @@ window.LWAuth = {
 // Firestore Security Rules should still independently restrict
 // users/{uid} writes to that uid. sendPasswordReset() needs no such
 // guard — it takes only an email and never touches Firestore or any
-// signed-in session.
+// signed-in session.
