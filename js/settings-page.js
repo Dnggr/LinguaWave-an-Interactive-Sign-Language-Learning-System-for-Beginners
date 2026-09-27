@@ -1,46 +1,37 @@
 /**
- * js/settings-page.js — Preference persistence + Edit Profile modal
- *                        for pages/settings.html
+ * js/settings-page.js — Preference persistence for pages/settings.html
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : Wires the Notifications / Sound Effects / Reduced Motion
  *            toggle switches to localStorage, following the exact
  *            same persistence pattern js/theme.js already established
  *            for the theme toggle (a plain localStorage key, read on
- *            load, written on change) — not a new pattern. Also wires
- *            the Edit Profile modal (rename / change email / change
- *            password / delete account) added this session.
+ *            load, written on change) — not a new pattern.
  *
- * SCOPE    : Notifications/Sound/Motion prefs still have no backend
- *            write — local-device persistence only, same tier as the
- *            theme preference. The Edit Profile modal is different:
- *            renaming, email/password changes and account deletion
- *            are real Firebase Auth/Firestore operations, so this
- *            file does NOT talk to Firebase directly. It calls
- *            window.LWAuth.updateUsername / .updateUserEmail /
- *            .changePassword / .deleteAccount and expects those to
- *            exist on js/auth.js
- *            (out of scope, not opened this session — same rule every
- *            other session in this codebase has followed; see the
- *            contract comment above initEditProfileModal() for exactly
- *            what each method needs to do). If a method isn't there
- *            yet, its form shows a disabled-state message instead of
- *            throwing.
+ * SCOPE    : No backend/Firestore write exists for these preferences
+ *            anywhere in this repo (js/auth.js is out of scope, not
+ *            opened — same rule every other session in this codebase
+ *            has followed). This is local-device persistence only,
+ *            same tier as the theme preference. If/when a real
+ *            preferences doc exists server-side, only this file's
+ *            save()/load() would need to change.
  *
- * "Edit Profile" now opens the modal below instead of just logging —
- * see initEditProfileModal().
+ * "Edit Profile" routes to pages/edit-profile.html — see that page's
+ * own js/edit-profile.js for the profile-edit screen itself. (This
+ * file used to also wire a Level badge here, driven by js/xp.js /
+ * window.LWXP — removed along with initLevelBadge() below.)
  *
- * NEW (this session) — GUARD CONFIRM MODAL: every action that actually
- * changes account state (rename, email change, password change,
- * delete) — plus "Replay all guides", which resets saved tour state —
- * now goes through window.LWConfirmGuard(message), a small promise-
- * based modal defined in initConfirmGuardModal() below. It shows the
- * message ("Do you want to change your email to a@b.com?"-style),
- * disables its Confirm button for a 10-second countdown, and only
- * resolves true once the learner clicks Confirm after the countdown
- * finishes (Cancel/Escape resolve false immediately). This replaces
- * the plain window.confirm() guard from the previous pass — see
- * pages/settings.html for the new #guard-confirm-modal markup this
- * depends on.
+ * GUARD CONFIRM MODAL (RECONCILED — pulled in from a teammate's pass
+ * that also built an in-page Edit Profile modal here; that modal
+ * itself didn't land, see pages/settings.html's own RECONCILED note,
+ * but this generic guard is used on its own merits): "Replay all
+ * guides", which resets saved tour state for the whole account, goes
+ * through window.LWConfirmGuard(message) — a small promise-based
+ * modal defined in initConfirmGuardModal() below. It shows the
+ * message, disables its Confirm button for a 10-second countdown, and
+ * only resolves true once the learner clicks Confirm after the
+ * countdown finishes (Cancel/Escape resolve false immediately).
+ * js/edit-profile.js has its own copy of this same modal for its own
+ * sensitive actions, since the two files don't share one page/DOM.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -124,9 +115,9 @@ function initMissionsDevBlock() {
   });
 }
 
-// NEW — Guard confirm modal. A single, reusable, promise-based modal
-// used by every state-changing action on this page (see the top-of-
-// file note). Exposes window.LWConfirmGuard(message) -> Promise<boolean>.
+// Guard confirm modal (RECONCILED — from a teammate's pass). A single,
+// reusable, promise-based modal, used here for "Replay all guides".
+// Exposes window.LWConfirmGuard(message) -> Promise<boolean>.
 //
 // Depends on pages/settings.html's #guard-confirm-modal markup:
 //   #guard-confirm-modal        the .modal-overlay wrapper (hidden by default)
@@ -175,9 +166,9 @@ function initConfirmGuardModal() {
       settle(true);
     });
     cancelBtn.addEventListener('click', () => settle(false));
-    // Same choice as the Edit Profile modal: clicking the backdrop does
-    // NOT dismiss it — only Cancel or Escape do, so a stray click can't
-    // silently wave through (or drop) an in-flight account change.
+    // Clicking the backdrop deliberately does NOT dismiss it — only
+    // Cancel or Escape do, so a stray click can't silently wave
+    // through (or drop) an in-flight account change.
 
     window.LWConfirmGuard = function confirmGuard(message) {
       return new Promise((resolve) => {
@@ -211,260 +202,12 @@ function initConfirmGuardModal() {
   }
 }
 
-// NEW — Edit Profile modal (rename / change email / delete account).
-// ─────────────────────────────────────────────────────────────────
-// CONTRACT this function expects from window.LWAuth (js/auth.js):
-//
-//   LWAuth.updateUsername(newUsername) -> Promise<void>
-//     Updates the signed-in user's Firebase Auth displayName AND the
-//     matching Firestore user doc's username field, then resolves.
-//     Reject with an Error on failure (see friendlyError() below for
-//     which .code values get a nicer message).
-//
-//   LWAuth.updateUserEmail(newEmail, currentPassword) -> Promise<void>
-//     Reauthenticates the user with currentPassword (e.g. via
-//     EmailAuthProvider.credential + reauthenticateWithCredential),
-//     then calls verifyBeforeUpdateEmail(user, newEmail) — NOT a bare
-//     updateEmail() — so the login email only actually changes once
-//     the learner clicks the confirmation link Firebase sends to the
-//     new address. This matches Firebase's current guidance and avoids
-//     an unverified address silently becoming the login email.
-//
-//   LWAuth.changePassword(currentPassword, newPassword) -> Promise<void>
-//     Reauthenticates with currentPassword, then sets newPassword as
-//     the account's password via Firebase Auth's updatePassword().
-//
-//   LWAuth.deleteAccount(currentPassword) -> Promise<void>
-//     Reauthenticates with currentPassword, deletes the learner's
-//     Firestore user doc (and any owned progress/subcollection docs),
-//     then calls deleteUser() on the Firebase Auth user. Order matters:
-//     delete the Firestore data first — once deleteUser() succeeds the
-//     client is signed out and can no longer pass Firestore security
-//     rules that check request.auth.
-//
-// If any of these methods is missing, that form disables itself with
-// a message instead of throwing — so this still works fine if auth.js
-// hasn't been updated yet.
-//
-// GUARD MODAL (new): each handler below awaits window.LWConfirmGuard()
-// with a specific message right after its own field validation passes
-// and right before the LWAuth call fires. The learner has to sit
-// through the 10-second countdown and then click Confirm; cancelling
-// or leaving it unclicked leaves the button/status line untouched (no
-// "Saving…" flash for an unconfirmed action).
-function initEditProfileModal() {
-  const openBtn  = document.getElementById('btn-edit-profile');
-  const overlay  = document.getElementById('edit-profile-modal');
-  const closeBtn = document.getElementById('edit-profile-close');
-  if (!openBtn || !overlay || !closeBtn) return;
-
-  const modalEl        = overlay.querySelector('.modal');
-  const nameEl          = document.getElementById('settings-user-name');
-  const avatarInitialEl = document.getElementById('settings-avatar-initial');
-
-  const renameForm    = document.getElementById('form-rename');
-  const usernameEl    = document.getElementById('input-new-username');
-  const renameStatus  = document.getElementById('rename-status');
-  const renameBtn     = document.getElementById('btn-save-rename');
-
-  const emailForm       = document.getElementById('form-email');
-  const newEmailEl      = document.getElementById('input-new-email');
-  const emailPasswordEl = document.getElementById('input-email-password');
-  const emailStatus     = document.getElementById('email-status');
-  const emailBtn        = document.getElementById('btn-save-email');
-
-  const passwordForm        = document.getElementById('form-password');
-  const currentPasswordEl   = document.getElementById('input-current-password');
-  const newPasswordEl       = document.getElementById('input-new-password');
-  const confirmPasswordEl   = document.getElementById('input-confirm-password');
-  const passwordStatus      = document.getElementById('password-status');
-  const passwordBtn         = document.getElementById('btn-save-password');
-
-  const deleteForm       = document.getElementById('form-delete');
-  const deletePasswordEl = document.getElementById('input-delete-password');
-  const deleteConfirmEl  = document.getElementById('input-delete-confirm');
-  const deleteStatus     = document.getElementById('delete-status');
-  const deleteBtn        = document.getElementById('btn-confirm-delete');
-
-  function setStatus(el, message, kind) {
-    if (!el) return;
-    el.textContent = message || '';
-    el.classList.remove('modal__status--error', 'modal__status--success');
-    if (kind) el.classList.add(`modal__status--${kind}`);
-  }
-
-  function friendlyError(err) {
-    const code = err && err.code;
-    const known = {
-      'auth/wrong-password': "That password isn't correct.",
-      'auth/invalid-credential': "That password isn't correct.",
-      'auth/email-already-in-use': 'Another account already uses that email.',
-      'auth/requires-recent-login': 'Please log out and back in, then try again.',
-      'auth/invalid-email': "That doesn't look like a valid email address.",
-      'auth/weak-password': 'Please choose a stronger password.',
-      'auth/too-many-requests': 'Too many attempts — please wait a bit and try again.',
-    };
-    return (code && known[code]) || (err && err.message) || 'Something went wrong. Please try again.';
-  }
-
-  function resetModalState() {
-    setStatus(renameStatus, '');
-    setStatus(emailStatus, '');
-    setStatus(passwordStatus, '');
-    setStatus(deleteStatus, '');
-    usernameEl.value = nameEl?.textContent?.trim() || '';
-    newEmailEl.value = '';
-    emailPasswordEl.value = '';
-    currentPasswordEl.value = '';
-    newPasswordEl.value = '';
-    confirmPasswordEl.value = '';
-    deletePasswordEl.value = '';
-    deleteConfirmEl.value = '';
-  }
-
-  function onKeydown(e) {
-    if (e.key === 'Escape') closeModal();
-  }
-
-  function openModal() {
-    resetModalState();
-    overlay.hidden = false;
-    modalEl?.focus();
-    document.addEventListener('keydown', onKeydown);
-  }
-
-  function closeModal() {
-    overlay.hidden = true;
-    document.removeEventListener('keydown', onKeydown);
-    openBtn.focus();
-  }
-
-  openBtn.addEventListener('click', openModal);
-  closeBtn.addEventListener('click', closeModal);
-  // Clicking the backdrop deliberately does NOT close the modal — only
-  // the X button and Escape do. This form holds a password + delete
-  // account section, so an accidental outside click shouldn't be able
-  // to silently discard what's been typed.
-
-  // ── Rename ──────────────────────────────────────────────────────
-  renameForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newName = usernameEl.value.trim();
-    if (!newName) { setStatus(renameStatus, 'Enter a name first.', 'error'); return; }
-    if (typeof window.LWAuth?.updateUsername !== 'function') {
-      setStatus(renameStatus, 'Renaming is not available right now.', 'error');
-      return;
-    }
-    // GUARD
-    const confirmed = await window.LWConfirmGuard(`Do you want to change your display name to "${newName}"?`);
-    if (!confirmed) return;
-    renameBtn.disabled = true;
-    setStatus(renameStatus, 'Saving…');
-    try {
-      await window.LWAuth.updateUsername(newName);
-      setStatus(renameStatus, 'Saved.', 'success');
-      if (nameEl) nameEl.textContent = newName;
-      if (avatarInitialEl) avatarInitialEl.textContent = newName.charAt(0).toUpperCase();
-    } catch (err) {
-      setStatus(renameStatus, friendlyError(err), 'error');
-    } finally {
-      renameBtn.disabled = false;
-    }
-  });
-
-  // ── Change email ────────────────────────────────────────────────
-  emailForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newEmail = newEmailEl.value.trim();
-    const password = emailPasswordEl.value;
-    if (!newEmail || !password) { setStatus(emailStatus, 'Fill in both fields.', 'error'); return; }
-    if (typeof window.LWAuth?.updateUserEmail !== 'function') {
-      setStatus(emailStatus, 'Changing email is not available right now.', 'error');
-      return;
-    }
-    // GUARD
-    const confirmed = await window.LWConfirmGuard(`Do you want to change your email to ${newEmail}?`);
-    if (!confirmed) return;
-    emailBtn.disabled = true;
-    setStatus(emailStatus, 'Sending confirmation…');
-    try {
-      await window.LWAuth.updateUserEmail(newEmail, password);
-      setStatus(emailStatus, `Confirmation link sent to ${newEmail}. Your login email won't change until you click it.`, 'success');
-      emailPasswordEl.value = '';
-    } catch (err) {
-      setStatus(emailStatus, friendlyError(err), 'error');
-    } finally {
-      emailBtn.disabled = false;
-    }
-  });
-
-  // ── Change password ─────────────────────────────────────────────
-  passwordForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const current = currentPasswordEl.value;
-    const next = newPasswordEl.value;
-    const confirmVal = confirmPasswordEl.value;
-    if (!current || !next || !confirmVal) { setStatus(passwordStatus, 'Fill in all three fields.', 'error'); return; }
-    if (next.length < 8) { setStatus(passwordStatus, 'New password needs at least 8 characters.', 'error'); return; }
-    if (next !== confirmVal) { setStatus(passwordStatus, "New passwords don't match.", 'error'); return; }
-    if (typeof window.LWAuth?.changePassword !== 'function') {
-      setStatus(passwordStatus, 'Changing password is not available right now.', 'error');
-      return;
-    }
-    // GUARD
-    const confirmed = await window.LWConfirmGuard('Do you want to update your password now?');
-    if (!confirmed) return;
-    passwordBtn.disabled = true;
-    setStatus(passwordStatus, 'Saving…');
-    try {
-      await window.LWAuth.changePassword(current, next);
-      setStatus(passwordStatus, 'Password updated.', 'success');
-      currentPasswordEl.value = '';
-      newPasswordEl.value = '';
-      confirmPasswordEl.value = '';
-    } catch (err) {
-      setStatus(passwordStatus, friendlyError(err), 'error');
-    } finally {
-      passwordBtn.disabled = false;
-    }
-  });
-
-  // ── Delete account ──────────────────────────────────────────────
-  deleteForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const password = deletePasswordEl.value;
-    if (deleteConfirmEl.value.trim() !== 'DELETE') {
-      setStatus(deleteStatus, 'Type DELETE (all caps) to confirm.', 'error');
-      return;
-    }
-    if (!password) { setStatus(deleteStatus, 'Enter your password.', 'error'); return; }
-    if (typeof window.LWAuth?.deleteAccount !== 'function') {
-      setStatus(deleteStatus, 'Account deletion is not available right now.', 'error');
-      return;
-    }
-    // GUARD — on top of the typed "DELETE" + password above, since this
-    // is the single most destructive action on the page.
-    const confirmed = await window.LWConfirmGuard('Do you want to permanently delete your account and all learning progress? This cannot be undone.');
-    if (!confirmed) return;
-    deleteBtn.disabled = true;
-    setStatus(deleteStatus, 'Deleting your account…');
-    try {
-      await window.LWAuth.deleteAccount(password);
-      window.location.href = '../index.html';
-    } catch (err) {
-      setStatus(deleteStatus, friendlyError(err), 'error');
-      deleteBtn.disabled = false;
-    }
-  });
-}
-
 function initSettingsPage() {
   const prefs = loadPrefs();
 
   initConfirmGuardModal();
   initThemeSelect();
   initMissionsDevBlock();
-  initEditProfileModal();
 
   const notifEl  = document.getElementById('pref-notifications');
   const soundEl  = document.getElementById('pref-sound-effects');
@@ -514,16 +257,16 @@ function initSettingsPage() {
     applyReducedMotion(prefs.reducedMotion);
   });
 
-  // NEW: "Replay all guides". js/tour.js owns the state: resetAll()
-  // forgets every guide this account has seen or skipped, plus any
-  // "Skip all". Then we open the dashboard with ?tour=1 so the first
-  // guide plays straight away (the dashboard is where the tour starts),
-  // and every other page's guide plays on its next visit. Nothing here
-  // reads a setting, so no toggle can stop a replay from working.
+  // "Replay all guides". js/tour.js owns the state: resetAll() forgets
+  // every guide this account has seen or skipped, plus any "Skip all".
+  // Then we open the dashboard with ?tour=1 so the first guide plays
+  // straight away (the dashboard is where the tour starts), and every
+  // other page's guide plays on its next visit. Nothing here reads a
+  // setting, so no toggle can stop a replay from working.
   //
-  // GUARD (new): this clears saved tour progress across the whole app,
-  // so it goes through the same guard modal + 10s countdown as the
-  // Edit Profile actions above before resetAll() runs.
+  // GUARD (RECONCILED — from a teammate's pass): this clears saved
+  // tour progress across the whole app, so it goes through the guard
+  // modal + 10s countdown above before resetAll() runs.
   const replayEl = document.getElementById('btn-replay-guides');
   replayEl?.addEventListener('click', async () => {
     if (!window.LWTour) return;
@@ -532,10 +275,14 @@ function initSettingsPage() {
     window.LWTour.resetAll();
     window.location.href = 'dashboard.html?tour=1';
   });
+
+  document.getElementById('btn-edit-profile')?.addEventListener('click', () => {
+    window.location.href = 'edit-profile.html';
+  });
 }
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initSettingsPage);
 } else {
   initSettingsPage();
-}
+}
