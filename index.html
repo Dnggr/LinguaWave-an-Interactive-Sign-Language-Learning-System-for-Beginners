@@ -87,15 +87,7 @@
   <title>LinguaWave | Learn ASL Sign Language</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- PERF FIX (this revision) — was a plain render-blocking
-       <link rel="stylesheet">. preload it, then swap to a real
-       stylesheet once fetched (media="print" doesn't block the
-       initial render since it doesn't match screen; onload flips it
-       to "all"); <noscript> keeps it working with JS disabled. Same
-       heading font, same URL, just no longer blocks first paint. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
 
@@ -165,6 +157,59 @@
        divider (.hero-waves below) — see css/auth.css's HERO — WAVE
        BACKGROUND comment for how the two SVG layers loop seamlessly. -->
   <section class="section hero hero--wave">
+    <!-- hero-background: houses the ONLY thing the theme-toggle spin
+         transition ever transforms — .hero-rotor a couple levels down.
+         .hero__grid (copy + illustration) and .hero-waves below are
+         siblings, deliberately OUTSIDE this div, so they never move.
+         See js/hero-decor.js's "HERO SKY SPIN" block for the click
+         handler and this file's matching "HERO — BACKGROUND SPIN
+         LAYER" section in auth.css for the full explanation of the
+         off-center pivot, the rotation + reduced-motion handling. -->
+    <div class="hero-background" aria-hidden="true">
+      <!-- hero-rotor-frame: fixed placement only, no rotation of its
+           own — just anchors an oversized square well above the hero
+           so .hero-rotor's actual rotation pivots around THAT point,
+           not the hero's own center. -->
+      <div class="hero-rotor-frame">
+        <div class="hero-rotor">
+          <!-- Two halves of one rigid disc, permanently 180° apart.
+               Rotating .hero-rotor clockwise is the ENTIRE transition:
+               it swings whichever theme is currently facing the hero
+               away and carries the other one in from off-screen —
+               nothing here ever crossfades. -->
+          <div class="hero-rotor__half hero-rotor__half--dark">
+            <div class="hero-rotor__anchor hero-rotor__anchor--dark">
+              <div class="hero-decor hero-decor--night" aria-hidden="true">
+                <!-- Populated at runtime by js/hero-decor.js — see that file
+                     for why the stars aren't hard-coded here anymore (a real
+                     scattered/randomized field needs actual math, not more
+                     hand-placed percentages). -->
+              </div>
+            </div>
+          </div>
+          <div class="hero-rotor__half hero-rotor__half--light">
+            <div class="hero-rotor__anchor hero-rotor__anchor--light">
+              <div class="hero-decor hero-decor--day" aria-hidden="true">
+                <svg class="hero-decor__sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="5" fill="currentColor"/>
+                  <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <line x1="12" y1="1" x2="12" y2="3.5"/>
+                    <line x1="12" y1="20.5" x2="12" y2="23"/>
+                    <line x1="1" y1="12" x2="3.5" y2="12"/>
+                    <line x1="20.5" y1="12" x2="23" y2="12"/>
+                    <line x1="4.2" y1="4.2" x2="6" y2="6"/>
+                    <line x1="18" y1="18" x2="19.8" y2="19.8"/>
+                    <line x1="4.2" y1="19.8" x2="6" y2="18"/>
+                    <line x1="18" y1="6" x2="19.8" y2="4.2"/>
+                  </g>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="container hero__grid">
       <div class="hero__copy">
         <!-- REMOVED (Impeccable pass): a "Capstone project 2026" eyebrow sat above the h1
@@ -181,10 +226,9 @@
         </div>
       </div>
 
-      <!-- Sky decor: sun (light) or scattered stars (dark) — pure
-           CSS [data-theme] toggle, see auth.css's HERO SKY DECOR
-           comment. Spans the whole hero, not just this column, so
-           it's placed as the grid's sibling below. -->
+      <!-- Hero illustration — foreground content, stays in .hero__grid
+           (NOT inside .hero-background above) so it never moves during
+           the theme-toggle spin. -->
       <div class="hero-illustration" aria-hidden="true">
         <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="160" cy="160" r="150" fill="var(--clr-accent-soft)" />
@@ -195,29 +239,6 @@
           <path d="M90 250c22 20 46 30 72 30" stroke="var(--clr-accent-dim)" stroke-width="4" stroke-linecap="round" fill="none" opacity=".5"/>
         </svg>
       </div>
-    </div>
-
-    <div class="hero-decor hero-decor--day" aria-hidden="true">
-      <svg class="hero-decor__sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="5" fill="currentColor"/>
-        <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-          <line x1="12" y1="1" x2="12" y2="3.5"/>
-          <line x1="12" y1="20.5" x2="12" y2="23"/>
-          <line x1="1" y1="12" x2="3.5" y2="12"/>
-          <line x1="20.5" y1="12" x2="23" y2="12"/>
-          <line x1="4.2" y1="4.2" x2="6" y2="6"/>
-          <line x1="18" y1="18" x2="19.8" y2="19.8"/>
-          <line x1="4.2" y1="19.8" x2="6" y2="18"/>
-          <line x1="18" y1="6" x2="19.8" y2="4.2"/>
-        </g>
-      </svg>
-    </div>
-
-    <div class="hero-decor hero-decor--night" aria-hidden="true">
-      <!-- Populated at runtime by js/hero-decor.js — see that file
-           for why the stars aren't hard-coded here anymore (a real
-           scattered/randomized field needs actual math, not more
-           hand-placed percentages). -->
     </div>
 
     <!-- Animated wave divider — three looping SVG layers (deepest→
@@ -310,11 +331,11 @@
         <!-- ── REGISTER FORM ────────────────────────────────────── -->
         <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
           <div class="form-group">
-            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" maxlength="30" />
+            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" />
             <label for="reg-name">Full name</label>
           </div>
           <div class="form-group mt-4">
-            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" maxlength="254" />
+            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" />
             <label for="reg-email">Email</label>
           </div>
           <div class="form-group mt-4">
@@ -576,59 +597,8 @@
         await LWAuth.login(email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        console.error("Login failed:", error); // Safe developer-facing logs
-        const userMessage = getFriendlyAuthErrorMessage(error);
-        showAuthModal(userMessage);
+        showAuthModal(error.message)
       }
-    }
-
-    // ── EMAIL DOMAIN TYPO CHECK ─────────────────────────────────────
-    // The `type="email"` attribute and Firebase's own auth/invalid-email
-    // check only validate *shape* (something@something.tld) — "gmail.co"
-    // and "gmail.cam" both pass that check, since .co and .cam are real
-    // TLDs. Neither catches a near-miss typo of a well-known provider,
-    // which is what actually causes signups with an address the learner
-    // can never receive mail at. This checks the entered domain against
-    // a short list of common providers and flags anything 1-2 edits away
-    // (a dropped/swapped/wrong letter) as a likely typo.
-    const KNOWN_EMAIL_DOMAINS = [
-      'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
-      'live.com', 'aol.com', 'protonmail.com', 'msn.com', 'yahoo.co.uk',
-    ];
-
-    function levenshteinDistance(a, b) {
-      const rows = a.length + 1;
-      const cols = b.length + 1;
-      const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
-      for (let i = 0; i < rows; i++) dp[i][0] = i;
-      for (let j = 0; j < cols; j++) dp[0][j] = j;
-      for (let i = 1; i < rows; i++) {
-        for (let j = 1; j < cols; j++) {
-          dp[i][j] = a[i - 1] === b[j - 1]
-            ? dp[i - 1][j - 1]
-            : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
-        }
-      }
-      return dp[rows - 1][cols - 1];
-    }
-
-    // Returns a suggested correct domain (e.g. "gmail.com") if `domain`
-    // looks like a typo of a known provider, or null if it's an exact
-    // match already or too different from anything on the list to guess
-    // at (i.e. probably just a different, legitimate domain).
-    function suggestEmailDomain(domain) {
-      const lower = (domain || '').toLowerCase();
-      if (!lower || KNOWN_EMAIL_DOMAINS.includes(lower)) return null;
-      let best = null;
-      let bestDistance = Infinity;
-      for (const known of KNOWN_EMAIL_DOMAINS) {
-        const distance = levenshteinDistance(lower, known);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          best = known;
-        }
-      }
-      return (best && bestDistance <= 2) ? best : null;
     }
 
     // REV 4 PHASE 5: no more reg-level field to read — everyone starts
@@ -636,43 +606,13 @@
     // a level argument. See js/auth.js's register() for the matching change.
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value.trim();
+      const email    = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
-
-      // Pre-flight check so a too-long name never reaches LWAuth.register()
-      // at all — register() also rejects it server-side-equivalent (see
-      // js/auth.js), this just gives a faster, friendlier message here
-      // instead of surfacing that error's generic default case below.
-      if (name.trim().length > 30) {
-        showAuthModal('Please use a name with 30 characters or fewer.');
-        return;
-      }
-
-      // Same reasoning as the name check above: the HTML maxlength stops
-      // typing past the limit, not a value set any other way, and
-      // register() below rejects it too — this just fails fast with a
-      // friendly message instead of a round-trip to Firebase.
-      if (email.length > 254) {
-        showAuthModal('Please use an email address with 254 characters or fewer.');
-        return;
-      }
-
-      // Catch a likely-typo'd provider domain (gmail.co, gmail.cam, ...)
-      // before it ever reaches Firebase, which would happily accept it.
-      const domain = email.split('@')[1];
-      const suggestion = domain ? suggestEmailDomain(domain) : null;
-      if (suggestion) {
-        showAuthModal('That email address looks like it might have a typo — did you mean "' + email.split('@')[0] + '@' + suggestion + '"? Please double-check it before continuing.');
-        return;
-      }
-
       try {
         await LWAuth.register(name, email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
-        console.error("Registration failed:", error);
-        const userMessage = getFriendlyAuthErrorMessage(error);
-        showAuthModal(userMessage);
+        showAuthModal(error.message)
       }
     }
 
@@ -688,54 +628,6 @@
      authModalClose.addEventListener('click', () => {
        authModal.classList.add('hidden');
      });
-
-     // Helper to translate an auth/Firestore error into a user-friendly
-     // message. Takes the whole error object (not just the code) because:
-     //  - a Firestore write failure (e.g. register()'s profile setDoc, see
-     //    js/auth.js) has a non-"auth/"-prefixed code like 'permission-denied',
-     //    so it needs its own case rather than falling through silently;
-     //  - a plain `new Error(...)` thrown by this app's own code (like the
-     //    name-length checks in js/auth.js) has no `.code` at all, but its
-     //    `.message` is already written for learners — that's strictly
-     //    better than a blanket fallback, so the default case uses it.
-    function getFriendlyAuthErrorMessage(error) {
-      const code = error && error.code;
-      switch (code) {
-        case 'auth/invalid-credential':
-        case 'auth/wrong-password':
-          return 'Incorrect email or password. Please try again.';
-        case 'auth/user-not-found':
-          return 'No account found with that email. Check the spelling, or sign up instead.';
-        case 'auth/email-already-in-use':
-          return 'This email is already registered. Try logging in instead.';
-        case 'auth/weak-password':
-          return 'Your password is too weak. Please use at least 6 characters.';
-        case 'auth/invalid-email':
-          return 'Please enter a valid email address.';
-        case 'auth/missing-email':
-          return 'Please enter your email address.';
-        case 'auth/missing-password':
-          return 'Please enter your password.';
-        case 'auth/user-disabled':
-          return 'This account has been disabled. Contact support for help.';
-        case 'auth/too-many-requests':
-          return 'Access temporarily locked due to too many failed attempts. Try again later.';
-        case 'auth/network-request-failed':
-          return 'A network error occurred. Please check your internet connection and try again.';
-        case 'permission-denied':
-          // Firestore rejected the profile write that register()/login()
-          // make right after Firebase Auth succeeds — most likely cause
-          // is the deployed Firestore security rules, not the learner.
-          return "We created your login, but couldn't save your profile because of a permissions error on our end. Please try again — contact support if it keeps happening.";
-        default:
-          if (!code) {
-            return (error && error.message) || 'Something unexpected went wrong. Please try again.';
-          }
-          // An unmapped code — name it instead of a dead-end message, so
-          // it's something the learner (or support) can actually act on.
-          return 'Something went wrong (' + code + '). Please try again, and let us know if it keeps happening.';
-      }
-    }
   </script>
 </body>
-</html>
+</html>

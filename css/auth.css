@@ -70,21 +70,253 @@
   margin-top: -61px;
   padding-top: calc(var(--space-8) + 61px);
   padding-bottom: 130px;
-  background:
+  /* The two gradients themselves now live ONCE, here, as custom
+     properties — .hero-backdrop (static) and .hero-background__sky
+     (the rotating copy, further below) both paint from these same two
+     values instead of each hard-coding their own copy. --hero-crossfade
+     is shared the same way, so both fade at identical speed and start
+     at the identical instant (data-theme changing) and can never drift
+     out of sync with each other — see the "HERO — BACKGROUND SPIN
+     LAYER" comment below for why two copies of the sky exist at all. */
+  --hero-sky-light:
     radial-gradient(120% 140% at 82% 6%, rgba(37,99,235,.14), transparent 55%),
     linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #E3EEFC 75%, #DAE8FB 100%); /* PALETTE PASS: was #D2ECEA 75%, #C4E6DE 100% (mint/teal end) — blue-only now; also fixes hero text at 4.29:1 */
-}
-.hero--wave .container { position: relative; z-index: 2; }
-
-[data-theme="dark"] .hero--wave {
-  background:
+  --hero-sky-dark:
     radial-gradient(120% 140% at 82% 6%, rgba(59,130,246,.32), transparent 55%),
     linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E2A5C 78%, #123A7A 100%); /* PALETTE PASS: was #0E3159 78%, #0F4C66 100% and rgba(45,150,190,.35) glow (teal end) — navy→blue now */
 }
+.hero--wave .container { position: relative; z-index: 2; }
+
 [data-theme="dark"] .hero--wave .hero__copy h1 { color: #FFFFFF; }
 [data-theme="dark"] .hero--wave .hero__lead { color: rgba(234,242,255,.78); }
 [data-theme="dark"] .hero--wave .btn--ghost { color: #EAF2FF; border-color: rgba(234,242,255,.35); }
 [data-theme="dark"] .hero--wave .btn--ghost:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,.08); }
+
+/* Lets the three color overrides just above crossfade instead of hard-
+   cutting the instant data-theme flips (mid-spin, that's the 50% mark
+   of .hero-background's rotation — see the spin-layer comment below).
+   Without this, the sky gradient fades gradually while the text/button
+   colors on top of it still snapped instantly, which for a moment left
+   already-white text sitting on a still-mid-fade (and occasionally
+   low-contrast) patch of sky. --dur-slow/--ease are the existing
+   tokens (css/style.css §1) already used for every other transition in
+   this file — not a new value invented just for this. */
+.hero--wave .hero__copy h1,
+.hero--wave .hero__lead,
+.hero--wave .btn--ghost {
+  transition: color var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease);
+}
+
+/* ── HERO — BACKGROUND SPIN LAYER (theme-toggle transition) ───────
+   A real spatial "turning sky", not a crossfade: light and dark are
+   two halves of one rigid disc (.hero-rotor), each permanently
+   occupying its own fixed 180° — light the top half, dark the bottom
+   half (flipped from the old above-hero pivot, see below), split
+   straight down the middle by .hero-rotor__half's clip-
+   paths — and clicking the toggle physically rotates that WHOLE disc
+   clockwise, swinging the current half away and carrying the other
+   one in from off-screen, the same direction every time. Nothing ever
+   crossfades: at any instant, every pixel of the hero is showing one
+   theme's actual gradient at 100% opacity, just possibly a rotated
+   one. .hero__grid (copy + illustration) and .hero-waves are siblings
+   of .hero-background, never children of it, so nothing foreground
+   ever rotates.
+
+   THE PIVOT IS OFF-CENTER ON PURPOSE. .hero-rotor-frame doesn't sit
+   centered on the hero — it's shifted so the disc's center (and so
+   its rotation pivot) is a good distance BELOW the hero, roughly at
+   the wave band (.hero-waves), with the hero sitting at the disc's
+   "12 o'clock". That's what makes half the disc arrive DIAGONALLY
+   from the lower corner — from the waves' epicenter — instead of
+   sweeping down from above the page or just spinning in place under
+   the content: at rest the whole hero sits inside a single 180° arc,
+   comfortably far from the dividing line, and only during the
+   rotation does that line swing up close enough to sweep across the
+   viewport. (Centering the pivot ON the hero instead would put that
+   dividing line through the hero at every single angle, showing both
+   halves split down the middle all the time — never a clean single-
+   theme rest state.) --hero-rotor-size/--hero-rotor-pivot below are
+   in cqw — % of .hero-background's OWN width — specifically so both
+   axes scale off one consistent reference (hero width) instead of
+   width% and height% quietly meaning different things, which is also
+   why .hero-background turns on container-query units at all.
+
+   Rotation is a clean 180° per click, always in the same clockwise
+   sense (0°→180° lands on dark, 180°→360° — visually identical to
+   0° — lands back on light), never reset or reversed: the sun sits at
+   a fixed design position (top 8% right 9%) and the star field is
+   generated once per page load at fixed coordinates, nested in
+   .hero-rotor__anchor at that same fixed offset from the pivot, so
+   landing on a clean multiple of 180° is what keeps them re-arriving
+   exactly where they started rather than drifting a little further
+   off with every toggle. */
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden; /* clips .hero-rotor-frame's deliberate oversize — belt-and-suspenders alongside .hero--wave's own overflow:hidden */
+  container-type: size; /* enables cqw/cqh below; safe here since inset:0 already gives this box a fully determinate size independent of content */
+  pointer-events: none; /* purely decorative, same convention .hero-decor already uses below — belt-and-suspenders alongside z-index already keeping it under .container's clickable content */
+}
+.hero-rotor-frame {
+  --hero-rotor-size: 420cqw;   /* oversized square disc; see the comment above for why this has to clear both axes at once */
+  --hero-rotor-pivot: 150cqw;  /* distance from the disc's center to the hero's center (and to each anchor below) — pushed DOWN, toward .hero-waves, not up */
+  position: absolute;
+  left: 50cqw;
+  top: 50cqh;
+  width: var(--hero-rotor-size);
+  aspect-ratio: 1 / 1;
+  /* Positive translateY (was negative) drops the disc's center below
+     the hero instead of above it, so the pivot sits down near the
+     wave band — the whole spin now radiates up from the waves'
+     epicenter instead of sweeping down from the top of the page. */
+  transform: translate(-50%, -50%) translateY(var(--hero-rotor-pivot));
+}
+.hero-rotor {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  /* Rotation lives on the standalone `rotate` property, NOT inside a
+     `transform: rotate()` shorthand — see the "SMOOTHING PASS" comment
+     below for why that split is the actual fix, not a stylistic one. */
+  rotate: 0deg;
+  scale: 1;
+}
+[data-theme="dark"] .hero-rotor { rotate: 180deg; }
+.hero-rotor.is-spinning-to-dark {
+  /* --spin-duration/--spin-ease are scoped here, not global tokens —
+     nothing else uses them, same as .theme-switch's own local
+     --switch-w/--thumb custom properties further down. js/hero-
+     decor.js's SPIN_MS/THEME_FLIP_MS constants are kept in sync with
+     --spin-duration by hand — same "kept in sync" convention as js/
+     theme.js's THEME_BG comment for --clr-bg. */
+  --spin-duration: 900ms;
+  --spin-ease: cubic-bezier(.37, 0, .63, 1); /* easeInOutSine */
+  animation:
+    lw-hero-rotor-to-dark var(--spin-duration) var(--spin-ease) 1 forwards,
+    lw-hero-rotor-pulse   var(--spin-duration) var(--spin-ease) 1 forwards;
+  will-change: rotate, scale;
+}
+.hero-rotor.is-spinning-to-light {
+  --spin-duration: 900ms;
+  --spin-ease: cubic-bezier(.37, 0, .63, 1);
+  animation:
+    lw-hero-rotor-to-light var(--spin-duration) var(--spin-ease) 1 forwards,
+    lw-hero-rotor-pulse    var(--spin-duration) var(--spin-ease) 1 forwards;
+  will-change: rotate, scale;
+}
+/* SMOOTHING PASS: the previous version packed rotate() AND scale()
+   into ONE `transform` animation with 5 stops (0/18/50/82/100%), on
+   the theory that small steps at the ends plus one big jump through
+   the middle would read as a single continuous slow→fast→slow sweep.
+   It doesn't: a shared animation-timing-function is only ever applied
+   BETWEEN each adjacent pair of keyframes, not across the animation as
+   a whole, so a symmetric ease-in-out curve like this one decelerates
+   to a near-standstill at EVERY stop — 0%, 18%, 50%, 82%, AND 100% —
+   then re-accelerates from a standing start each time. That's 4
+   separate hitches per spin, confirmed by sampling the rotor's actual
+   computed angle on every animation frame during a real click: angular
+   velocity repeatedly collapsed toward zero and lurched forward again,
+   instead of the single sweep the old comment intended.
+   The fix is two independent single-purpose animations instead of one
+   multi-stop one. `rotate` now has just 0%/100% — a PLAIN two-stop
+   curve using this same cubic-bezier already IS the whole continuous
+   slow→fast→slow sweep, no intermediate stops needed, so there's
+   nothing left to hitch on. Bonus: because this curve is symmetric
+   about its own midpoint, 50% of the 900ms duration lands on EXACTLY
+   90°/270° — the dividing line crossing the viewport — which is also
+   exactly when js/hero-decor.js's THEME_FLIP_MS timer fires, a sync
+   the old hand-placed "95deg at 50%" keyframe could only approximate.
+   `scale` keeps its own 3-stop pulse (still needs a middle stop to
+   bulge and settle back) but now on its own timeline: a brief pause at
+   the very peak of a 5%, size pulse just reads as a little "breath",
+   not a stutter — it's only jarring when it's the ROTATION that pauses
+   mid-sweep. -to-light is just -to-dark's degrees shifted +180°,
+   continuing the same clockwise direction rather than winding back. */
+@keyframes lw-hero-rotor-to-dark {
+  0%   { rotate: 0deg;   }
+  100% { rotate: 180deg; }
+}
+@keyframes lw-hero-rotor-to-light {
+  0%   { rotate: 180deg; }
+  100% { rotate: 360deg; }
+}
+@keyframes lw-hero-rotor-pulse {
+  0%   { scale: 1;    }
+  50%  { scale: 1.05; }
+  100% { scale: 1;    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-rotor.is-spinning-to-dark,
+  .hero-rotor.is-spinning-to-light { animation: none; }
+  /* Simple short transition instead, per the reduced-motion spec —
+     covers the plain data-theme-driven rotate:0deg/180deg rule above
+     for the rare path that reaches it without a spin class (see js/
+     hero-decor.js), so it still animates a little instead of hard-
+     cutting. Targets `rotate` now, not `transform` — see above. */
+  .hero-rotor { transition: rotate 200ms var(--ease); }
+}
+
+/* One rigid disc, two 180° halves — clip-path is what makes each
+   half only ever show its OWN semicircle rather than the whole square
+   .hero-rotor__anchor sky beneath it stretching edge to edge. Both
+   halves rotate together as .hero-rotor's direct children, so they
+   never drift out of their fixed 180°-apart relationship. */
+.hero-rotor__half {
+  position: absolute;
+  inset: 0;
+}
+/* Zones swapped from the disc's naive top/bottom split — with the
+   pivot now BELOW the hero (see the spin-layer comment above), the
+   hero sits in the square's top-facing local zone at rest, so LIGHT
+   (the at-rest theme) has to own that top zone, and DARK the bottom
+   one, or the rest state would show the wrong gradient under the
+   right-colored anchor content (exactly the "light background, white
+   dark-theme text" desync this pass fixed). */
+/* 49.9%, not a clean 50% — gives the two halves a hairline (~0.2%)
+   overlap at the seam instead of meeting edge-to-edge. Two independently
+   clipped boxes that only just touch can show a 1px gap of whatever's
+   behind them if either edge rounds to a different sub-pixel under the
+   .hero-rotor `scale` pulse; a small overlap costs nothing visible (light
+   is later in DOM order, so it simply paints over dark's edge in that
+   sliver) and removes the seam as a failure mode entirely. */
+.hero-rotor__half--dark  { clip-path: inset(49.9% 0 0 0); background: var(--hero-sky-dark); }
+.hero-rotor__half--light { clip-path: inset(0 0 49.9% 0); background: var(--hero-sky-light); }
+
+/* .hero-rotor__anchor is sized to exactly the hero's own box (cqw/
+   cqh, not the oversized disc), positioned --hero-rotor-pivot away
+   from the disc's center — the light anchor straight "above" it
+   (where the hero actually sits at rest) and the dark anchor straight
+   "below" (180° around the disc, i.e. exactly where a 180° clockwise
+   turn carries it to that same "above" spot). Anything of the disc
+   outside these two boxes is just .hero-rotor__half's own flat
+   background showing — plausible color, but not worth detailing since
+   a viewer only glimpses it while the sweep is mid-motion. Sun/stars
+   sit inside here completely unchanged from before (top:8%/right:9%
+   etc. still resolve against this exact hero-sized box), which is the
+   whole reason this anchor exists instead of repainting them straight
+   onto the oversized halves. */
+.hero-rotor__anchor {
+  position: absolute;
+  left: 50%;
+  width: 100cqw;
+  height: 100cqh;
+}
+.hero-rotor__anchor--light {
+  /* Disc center is now BELOW the hero (see .hero-rotor-frame), so the
+     at-rest (light, 0deg) anchor has to sit ABOVE the disc's local
+     center by one pivot to land back on the hero's actual box —
+     signs flipped from the old above-hero pivot. */
+  top: calc(50% - var(--hero-rotor-pivot, 150cqw));
+  transform: translate(-50%, -50%);
+}
+.hero-rotor__anchor--dark {
+  /* Diametrically opposite the light anchor (below the disc's local
+     center by one pivot) so that after the 180° rotation it swings
+     around to land exactly where light was resting. */
+  top: calc(50% + var(--hero-rotor-pivot, 150cqw));
+  transform: translate(-50%, -50%);
+}
 
 .hero-waves {
   position: absolute;
@@ -242,21 +474,26 @@
 .hero--wave .hero-illustration svg path[fill="var(--clr-surface)"] { fill: rgba(255,255,255,.94); }
 
 /* ── HERO SKY DECOR — day (sun) vs night (stars) ──────────────────
-   Two full-bleed layers spanning the whole hero (not just the
-   illustration corner), toggled purely by [data-theme] display:none/
-   block — no JS swap needed, same trick the wave/navbar color swaps
-   already use. Sits at z-index:1 (behind .container's z-index:2)
-   since it's part of the hero's backdrop, not foreground content. */
+   Two full-bleed layers, one per .hero-rotor__anchor (see the HERO —
+   BACKGROUND SPIN LAYER comment above). Which one is actually VISIBLE
+   is no longer a display:none/block toggle keyed off [data-theme] —
+   .hero-decor--day only ever lives inside the light anchor and
+   --night only inside the dark one, so the rotor's own clip-path
+   halves are what show/hide them, simply by which 180° arc currently
+   faces the viewport. Forcing display:block here (overriding what
+   would otherwise be each element's own default) keeps both always
+   "on" and lets the clip-path be the only thing deciding visibility —
+   swapping it back to a display toggle would fight the rotation and
+   make a whole half go blank exactly when it's supposed to be sweeping
+   into view. */
 .hero-decor {
   position: absolute;
   inset: 0;
   overflow: hidden;
   z-index: 1;
   pointer-events: none;
+  display: block;
 }
-.hero-decor--night { display: none; }
-[data-theme="dark"] .hero-decor--day { display: none; }
-[data-theme="dark"] .hero-decor--night { display: block; }
 
 /* Day: just a sun (soft glow, gently pulsing). Used to also carry a
    big cloud drifting behind the headline, cut at the user's request —
