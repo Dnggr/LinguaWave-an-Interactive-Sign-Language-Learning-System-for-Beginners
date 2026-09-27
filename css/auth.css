@@ -842,3 +842,29 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .auth-modal__close:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }
+
+.btn--google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border, #ddd);
+}
+.btn--google:hover { background: var(--clr-surface-hover, #f4f4f4); }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--clr-text-muted);
+  margin: 1rem 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--clr-border, #ddd);
+}
+.auth-divider span { padding: 0 0.75rem; font-size: 0.85rem; }
