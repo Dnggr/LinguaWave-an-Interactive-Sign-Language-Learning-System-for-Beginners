@@ -17,9 +17,12 @@
  *            index.html calls login()/register()/sendPasswordReset().
  *            main.js calls getCurrentUser() to render the navbar.
  *            Every protected page calls requireAuth() on load.
- *            pages/settings.html's Edit Profile modal (via
- *            js/settings-page.js) calls updateUsername() /
- *            updateUserEmail() / changePassword() / deleteAccount().
+ *            pages/edit-profile.html (via js/edit-profile.js) calls
+ *            updateUsername() / updateUserEmail() / deleteAccount().
+ *            (js/edit-profile.js also loads js/account-security.js
+ *            for its own Change Password / forgot-password forms —
+ *            see that file for why it's a separate module rather than
+ *            calling changePassword() here.)
  *
  * READY STATE: Firebase's onAuthStateChanged() check is async, so
  *            requireAuth() and whenAuthReady() wait for the
@@ -75,6 +78,14 @@ const db = getFirestore(app);
 
 
 const LW_SESSION_KEY = 'lw_session';
+const MAX_NAME_LENGTH = 30;
+// RFC 5321's own limits (64-char local part + 255-char domain) allow up
+// to 320 in theory, but 254 is the widely-used practical cap — it's the
+// longest address that still fits in RFC 5321's own MAIL FROM/RCPT TO
+// command length limit, so anything past it can't be a real deliverable
+// address anyway.
+const MAX_EMAIL_LENGTH = 254;
+const DELETION_GRACE_PERIOD_DAYS = 30;
 
 // ── AUTH STATE SYNC ─────────────────────────────────────────────
 // Fires once on page load (after Firebase checks for an existing
@@ -144,6 +155,11 @@ function isLoggedIn() {
  * profile (falling back to sensible defaults if the document doesn't
  * exist yet) so the cached session always has a name/level/joined
  * date to show, not just an email.
+ *
+ * Also doubles as the "undo" for deleteAccount()'s grace-period soft
+ * delete below: if the profile is flagged `deletionRequested`, logging
+ * back in here clears it — coming back within the window IS the
+ * cancellation, no separate "restore my account" flow needed.
  * ──────────────────────────────────────────────────────────────── */
 async function login(email, password) {
   const result = await signInWithEmailAndPassword(auth, email, password);
@@ -153,6 +169,14 @@ async function login(email, password) {
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
   const profile = snapshot.exists() ? snapshot.data() : {};
+
+  // Cancel a pending deletion on successful login — see deleteAccount()'s
+  // header comment for the full grace-period design.
+  if (profile.deletionRequested) {
+    await updateDoc(userRef, { deletionRequested: false, deletionRequestedAt: null });
+    profile.deletionRequested = false;
+    profile.deletionRequestedAt = null;
+  }
 
   const user = {
     uid: firebaseUser.uid,
@@ -172,14 +196,31 @@ async function login(email, password) {
  * in index.html, so every new account is written with a fixed
  * 'basic' value — kept as a real field (rather than dropped) so
  * anything downstream that reads `user.level` never sees `undefined`.
+ *
+ * Rejects an over-length `name` (> MAX_NAME_LENGTH) or `email`
+ * (> MAX_EMAIL_LENGTH) before touching Firebase at all. index.html's
+ * `maxlength` attributes on the signup fields only block *typing* past
+ * the limit — they do nothing about a value set any other way — so
+ * this is the real backstop that keeps either one out of Firebase/
+ * Firestore in the first place. updateUsername()/updateUserEmail()
+ * below apply the matching checks for changes made after signup.
  * ──────────────────────────────────────────────────────────────── */
 async function register(name, email, password) {
+  const trimmedName = (name || '').trim();
+  if (trimmedName.length > MAX_NAME_LENGTH) {
+    throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
+  }
+  const trimmedEmail = (email || '').trim();
+  if (trimmedEmail.length > MAX_EMAIL_LENGTH) {
+    throw new Error('Email must be ' + MAX_EMAIL_LENGTH + ' characters or fewer.');
+  }
+
   const result = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
 
   const user = {
     uid: firebaseUser.uid,
-    name: (name || '').trim() || firebaseUser.email.split('@')[0] || 'Learner',
+    name: trimmedName || firebaseUser.email.split('@')[0] || 'Learner',
     email: firebaseUser.email,
     level: 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
@@ -274,12 +315,17 @@ async function reauthenticate(currentPassword) {
  * onAuthStateChanged listener above skips re-fetching Firestore
  * whenever the cached uid already matches the signed-in user, so
  * without this the new name would never appear until that cache was
- * cleared (e.g. next full logout/login). */
+ * cleared (e.g. next full logout/login). Same MAX_NAME_LENGTH guard as
+ * register() — see that function's header comment for why the
+ * client-side maxlength attribute alone doesn't cover this. */
 async function updateUsername(newName) {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) throw new Error('Not signed in.');
   const trimmed = (newName || '').trim();
   if (!trimmed) throw new Error('Enter a name first.');
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
+  }
 
   await updateDoc(doc(db, 'users', firebaseUser.uid), { name: trimmed });
 
@@ -300,6 +346,9 @@ async function updateUsername(newName) {
 async function updateUserEmail(newEmail, currentPassword) {
   const trimmed = (newEmail || '').trim();
   if (!trimmed) throw new Error('Enter a new email address.');
+  if (trimmed.length > MAX_EMAIL_LENGTH) {
+    throw new Error('Email must be ' + MAX_EMAIL_LENGTH + ' characters or fewer.');
+  }
   const firebaseUser = await reauthenticate(currentPassword);
   await verifyBeforeUpdateEmail(firebaseUser, trimmed);
 }
@@ -319,20 +368,36 @@ async function changePassword(currentPassword, newPassword) {
   await updatePassword(firebaseUser, trimmed);
 }
 
-/* Permanently deletes the account: Firestore doc first, then the
- * Firebase Auth user, then clears local caches. Order matters —
- * deleteUser() signs the client out immediately, and Firestore
- * Security Rules checking request.auth would then reject the
- * deleteDoc() if it ran after. If learner progress or other per-user
- * data lives in additional collections/subcollections, delete those
- * here too, before deleteDoc(), for the same reason. */
+/* GRACE-PERIOD SOFT DELETE — not an instant hard delete. Reauthenticates,
+ * then just flags `users/{uid}` with `deletionRequested: true` +
+ * `deletionRequestedAt` and signs the learner out. Nothing is deleted
+ * here: not the profile doc, not `userProgressV2/{uid}`, not the
+ * Firebase Auth user. Logging back in during the grace period (see
+ * login() above) clears the flag automatically — coming back IS the
+ * undo, same pattern Discord/Google use for their own account
+ * deletions — rather than a separate "restore my account" flow.
+ *
+ * IMPORTANT — LIMITATION (stated plainly, not a silent gap): actually
+ * purging accounts once DELETION_GRACE_PERIOD_DAYS has passed needs a
+ * server-side scheduled job (e.g. a Cloud Function that checks
+ * `deletionRequestedAt` on a schedule and deletes anything past the
+ * window, including `userProgressV2/{uid}` and the Auth user). That
+ * job does not exist in this repo — building one requires knowing this
+ * project's Firebase setup (Blaze plan, existing functions, etc.) and
+ * isn't something to add blind. Until it's built and deployed, a
+ * "deleted" account is inert (signed out, and should be treated as
+ * gone by anything that checks `deletionRequested`) but its data is
+ * not physically gone yet. */
 async function deleteAccount(currentPassword) {
   const firebaseUser = await reauthenticate(currentPassword);
   const uid = firebaseUser.uid;
 
-  await deleteDoc(doc(db, 'users', uid));
-  await deleteUser(firebaseUser);
+  await updateDoc(doc(db, 'users', uid), {
+    deletionRequested: true,
+    deletionRequestedAt: new Date().toISOString(),
+  });
 
+  await signOut(auth);
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
   localStorage.removeItem(LW_SESSION_KEY);
 }
@@ -378,6 +443,7 @@ function whenAuthReady() {
  * ──────────────────────────────────────────────────────────────── */
 window.LWAuth = {
   LW_SESSION_KEY,
+  DELETION_GRACE_PERIOD_DAYS,
   getCurrentUser,
   isLoggedIn,
   login,
@@ -410,4 +476,4 @@ window.LWAuth = {
 // Firestore Security Rules should still independently restrict
 // users/{uid} writes to that uid. sendPasswordReset() needs no such
 // guard — it takes only an email and never touches Firestore or any
-// signed-in session.
+// signed-in session.

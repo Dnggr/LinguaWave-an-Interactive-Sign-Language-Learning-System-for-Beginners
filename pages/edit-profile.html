@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/edit-profile.html — Account Profile
+    ─────────────────────────────────────────────────────────────────
+    Reached from pages/settings.html's "Edit Profile" button. Four
+    things live here:
+      1. Display name edit.
+      2. Change Email — RECONCILED this pass: a teammate session built
+         this as part of an in-page modal on pages/settings.html at
+         the same time this page was built; kept this page as the
+         real destination instead (see pages/settings.html's own
+         RECONCILED note) and pulled the operation in from there.
+      3. Change Password + "forgot your current password" reset email
+         — js/account-security.js, added from OUTSIDE js/auth.js
+         (see that file's own header comment for why it's safe).
+      4. Delete Account — RECONCILED this pass, same story as Change
+         Email above.
+
+    XP REMOVAL (this pass): this page used to also carry a fifth thing
+    here, an account-wide Level/XP summary card (js/xp.js) — removed,
+    along with its initLevelCard() function in js/edit-profile.js and
+    the js/xp.js <script> tag below.
+
+    Change Email and Delete Account both call window.LWAuth (js/auth.js
+    PROFILE MANAGEMENT block) — .updateUserEmail() reauthenticates then
+    sends a confirmation link (the login email doesn't change until
+    it's clicked); .deleteAccount() reauthenticates, then flags the
+    account for grace-period deletion and signs the learner out — see
+    auth.js's deleteAccount() header comment for the full design (this
+    pass replaced its old instant hard-delete). Display name also calls
+    window.LWAuth — .updateUsername() — rather than the raw doc/db/setDoc
+    handles this page used to reach for directly: those were
+    deliberately removed from window.LWAuth (see auth.js's SECURITY
+    note) since they let anyone in the browser console write arbitrary
+    fields to their own Firestore profile.
+
+    GUARD CONFIRM MODAL: every action that changes account state (name,
+    email, password, delete) now goes through window.LWConfirmGuard()
+    first — a 10-second-countdown "are you sure?" modal, own copy of
+    pages/settings.html's (js/settings-page.js), since the two pages
+    don't share one DOM. Delete Account additionally requires typing
+    "DELETE" first, same as the teammate session's original design —
+    it's the single most destructive action on this page.
+
+    CONNECTS : ← pages/settings.html ("Edit Profile" button)
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Profile | LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/account-security.js"></script>
+  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
+       window.LWIcons must exist before any page script, inline script or
+       module body runs. See js/icons.js. -->
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => {
+    LWAuth.requireAuth('../index.html');
+  });
+  </script>
+  <style>
+    /* Page-scoped, same pattern as pages/settings.html's own <style>
+       block: layout only, every color/spacing value still comes from
+       css/style.css's tokens. */
+    .profile-card { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
+    .profile-card__avatar {
+      width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
+      background: var(--clr-accent-soft); color: var(--clr-accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700;
+    }
+    .profile-card__info { flex: 1; min-width: 220px; }
+    .profile-card__email { color: var(--clr-text-muted); font-size: var(--fs-sm); margin-top: var(--space-2); }
+    .password-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+    /* Delete Account card heading — same red-as-text token
+       .modal__section--danger used on pages/settings.html's old
+       in-page modal draft, applied here to a plain .card instead. */
+    .danger-title { color: var(--clr-red-text); }
+
+    /* Guard confirm modal (RECONCILED — own copy of
+       pages/settings.html's, since the two pages don't share a DOM).
+       Reuses existing tokens throughout — only the overlay/panel
+       shell has no existing equivalent. */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      /* Deliberately NOT --backdrop — that token is a light, blurred
+         frosted-glass tint for the sticky .navbar, not a scrim for
+         dimming page content behind a modal. Works the same
+         regardless of which theme is active. */
+      background: rgba(15, 23, 42, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--space-4);
+      z-index: 1000; /* same top-layer treatment as .skip-link */
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-xl); /* matches .card */
+      box-shadow: var(--shadow-card);
+      max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
+      padding: var(--space-6);
+    }
+    .modal:focus { outline: none; }
+    .modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+    .modal--guard { max-width: 400px; }
+    .modal--guard p { font-size: var(--fs-sm); color: var(--clr-text); margin: 0 0 var(--space-5); overflow-wrap: anywhere; }
+    .modal__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+    /* Keeps the Confirm button's width stable as its label counts down
+       from "Confirm (10)" to "Confirm" so it doesn't jump around. */
+    .modal__actions .btn--danger { min-width: 8.5em; }
+  </style>
+</head>
+<body>
+
+  <a href="#edit-profile-main" class="skip-link">Skip to main content</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Progress
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+
+      <section class="section section--sm">
+        <div class="container container--narrow" id="edit-profile-main" tabindex="-1">
+          <a href="settings.html" class="btn btn--ghost btn--sm mb-4">← Back to Settings</a>
+          <h1>Edit Profile</h1>
+          <p class="text-muted mt-2">Your name, your level, and your account security.</p>
+
+          <!-- ── PROFILE ─────────────────────────────────────────── -->
+          <div class="card mt-8 profile-card">
+            <div class="profile-card__avatar" aria-hidden="true" data-user-initial></div>
+            <div class="profile-card__info">
+              <div class="form-group">
+                <label for="edit-profile-name-input">Name</label>
+                <input type="text" id="edit-profile-name-input" class="form-input" autocomplete="name" maxlength="30" />
+              </div>
+              <div class="profile-card__email" data-user-email>—</div>
+            </div>
+            <button class="btn btn--primary" id="btn-save-name">Save changes</button>
+          </div>
+
+          <!-- ── CHANGE EMAIL (RECONCILED — pulled in from a teammate's
+               pass; see this page's header comment) ────────────────
+               window.LWAuth.updateUserEmail() reauthenticates with
+               the current password, then sends a confirmation link to
+               the new address — the login email itself doesn't change
+               until that link is clicked, so nothing here touches the
+               on-page email display above. -->
+          <div class="card mt-6">
+            <h2 class="mb-2">Change Email</h2>
+            <p class="text-muted" style="font-size: var(--fs-sm);">We'll send a confirmation link to the new address — your login email won't change until you click it.</p>
+            <div class="form-group mt-3">
+              <label for="new-email-input">New email address</label>
+              <input type="email" id="new-email-input" class="form-input" autocomplete="off" maxlength="254" />
+            </div>
+            <div class="form-group mt-3">
+              <label for="email-password-input">Current password</label>
+              <input type="password" id="email-password-input" class="form-input" autocomplete="current-password" />
+            </div>
+            <button class="btn btn--primary mt-4" id="btn-change-email" type="button">Update Email</button>
+          </div>
+
+          <!-- ── CHANGE PASSWORD ─────────────────────────────────── -->
+          <div class="card mt-6">
+            <h2 class="mb-2">Change Password</h2>
+            <div class="form-group mt-3">
+              <label for="current-password-input">Current password</label>
+              <input type="password" id="current-password-input" class="form-input" autocomplete="current-password" />
+            </div>
+            <div class="form-group mt-3">
+              <label for="new-password-input">New password</label>
+              <input type="password" id="new-password-input" class="form-input" autocomplete="new-password" />
+            </div>
+            <div class="form-group mt-3">
+              <label for="confirm-password-input">Confirm new password</label>
+              <input type="password" id="confirm-password-input" class="form-input" autocomplete="new-password" />
+            </div>
+            <div class="password-actions mt-4">
+              <button class="btn btn--primary" id="btn-change-password" type="button">Update Password</button>
+              <button class="btn btn--ghost btn--sm" id="btn-forgot-password" type="button">Forgot your current password?</button>
+            </div>
+          </div>
+
+          <!-- ── DELETE ACCOUNT (RECONCILED — pulled in from a
+               teammate's pass; see this page's header comment) ──────
+               window.LWAuth.deleteAccount() reauthenticates, then
+               flags the account for grace-period deletion and signs
+               the learner out — nothing is deleted immediately. Typed
+               "DELETE" + password here, THEN the guard-confirm modal
+               below — double confirmation for the most consequential
+               action on this page, same design the teammate session
+               used, even though it's reversible for a while now (see
+               auth.js's deleteAccount()/login() for the full design). -->
+          <div class="card mt-6">
+            <h2 class="mb-2 danger-title">Delete Account</h2>
+            <p class="text-muted" style="font-size: var(--fs-sm);">This deactivates your account and signs you out immediately. Log back in within 30 days to cancel — after that, your account and all learning progress are permanently deleted.</p>
+            <div class="form-group mt-3">
+              <label for="delete-password-input">Current password</label>
+              <input type="password" id="delete-password-input" class="form-input" autocomplete="current-password" />
+            </div>
+            <div class="form-group mt-3">
+              <label for="delete-confirm-input">Type <strong>DELETE</strong> to confirm</label>
+              <input type="text" id="delete-confirm-input" class="form-input" autocomplete="off" />
+            </div>
+            <button class="btn btn--danger mt-4" id="btn-delete-account" type="button">Delete my account</button>
+          </div>
+
+          <!-- ── GUARD CONFIRM MODAL (RECONCILED — own copy of
+               pages/settings.html's, since the two pages don't share
+               one DOM) ───────────────────────────────────────────────
+               Generic "Do you want to …?" modal reused by every
+               state-changing action on this page (name, email,
+               password, delete). Its message is set at open time by
+               window.LWConfirmGuard(message) in js/edit-profile.js;
+               the Confirm button starts disabled and counts down from
+               "Confirm (10)" to "Confirm" before it can be clicked. -->
+          <div class="modal-overlay" id="guard-confirm-modal" hidden>
+            <div class="modal modal--guard" role="alertdialog" aria-modal="true" aria-labelledby="guard-confirm-title" tabindex="-1">
+              <div class="modal__head">
+                <h2 id="guard-confirm-title">Confirm change</h2>
+              </div>
+              <p id="guard-confirm-message">Are you sure?</p>
+              <div class="modal__actions">
+                <button type="button" class="btn btn--ghost btn--sm" id="guard-confirm-cancel">Cancel</button>
+                <button type="button" class="btn btn--danger btn--sm" id="guard-confirm-btn" disabled>Confirm</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
+
+  <script src="../js/main.js"></script>
+  <script src="../js/missions.js"></script>
+  <script src="../js/edit-profile.js"></script>
+</body>
+</html>

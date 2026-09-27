@@ -310,11 +310,11 @@
         <!-- ── REGISTER FORM ────────────────────────────────────── -->
         <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
           <div class="form-group">
-            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" />
+            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" maxlength="30" />
             <label for="reg-name">Full name</label>
           </div>
           <div class="form-group mt-4">
-            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" />
+            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" maxlength="254" />
             <label for="reg-email">Email</label>
           </div>
           <div class="form-group mt-4">
@@ -577,9 +577,58 @@
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
         console.error("Login failed:", error); // Safe developer-facing logs
-        const userMessage = getFriendlyAuthErrorMessage(error.code);
+        const userMessage = getFriendlyAuthErrorMessage(error);
         showAuthModal(userMessage);
       }
+    }
+
+    // ── EMAIL DOMAIN TYPO CHECK ─────────────────────────────────────
+    // The `type="email"` attribute and Firebase's own auth/invalid-email
+    // check only validate *shape* (something@something.tld) — "gmail.co"
+    // and "gmail.cam" both pass that check, since .co and .cam are real
+    // TLDs. Neither catches a near-miss typo of a well-known provider,
+    // which is what actually causes signups with an address the learner
+    // can never receive mail at. This checks the entered domain against
+    // a short list of common providers and flags anything 1-2 edits away
+    // (a dropped/swapped/wrong letter) as a likely typo.
+    const KNOWN_EMAIL_DOMAINS = [
+      'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+      'live.com', 'aol.com', 'protonmail.com', 'msn.com', 'yahoo.co.uk',
+    ];
+
+    function levenshteinDistance(a, b) {
+      const rows = a.length + 1;
+      const cols = b.length + 1;
+      const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+      for (let i = 0; i < rows; i++) dp[i][0] = i;
+      for (let j = 0; j < cols; j++) dp[0][j] = j;
+      for (let i = 1; i < rows; i++) {
+        for (let j = 1; j < cols; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+      return dp[rows - 1][cols - 1];
+    }
+
+    // Returns a suggested correct domain (e.g. "gmail.com") if `domain`
+    // looks like a typo of a known provider, or null if it's an exact
+    // match already or too different from anything on the list to guess
+    // at (i.e. probably just a different, legitimate domain).
+    function suggestEmailDomain(domain) {
+      const lower = (domain || '').toLowerCase();
+      if (!lower || KNOWN_EMAIL_DOMAINS.includes(lower)) return null;
+      let best = null;
+      let bestDistance = Infinity;
+      for (const known of KNOWN_EMAIL_DOMAINS) {
+        const distance = levenshteinDistance(lower, known);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = known;
+        }
+      }
+      return (best && bestDistance <= 2) ? best : null;
     }
 
     // REV 4 PHASE 5: no more reg-level field to read — everyone starts
@@ -587,14 +636,42 @@
     // a level argument. See js/auth.js's register() for the matching change.
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value;
+      const email    = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
+
+      // Pre-flight check so a too-long name never reaches LWAuth.register()
+      // at all — register() also rejects it server-side-equivalent (see
+      // js/auth.js), this just gives a faster, friendlier message here
+      // instead of surfacing that error's generic default case below.
+      if (name.trim().length > 30) {
+        showAuthModal('Please use a name with 30 characters or fewer.');
+        return;
+      }
+
+      // Same reasoning as the name check above: the HTML maxlength stops
+      // typing past the limit, not a value set any other way, and
+      // register() below rejects it too — this just fails fast with a
+      // friendly message instead of a round-trip to Firebase.
+      if (email.length > 254) {
+        showAuthModal('Please use an email address with 254 characters or fewer.');
+        return;
+      }
+
+      // Catch a likely-typo'd provider domain (gmail.co, gmail.cam, ...)
+      // before it ever reaches Firebase, which would happily accept it.
+      const domain = email.split('@')[1];
+      const suggestion = domain ? suggestEmailDomain(domain) : null;
+      if (suggestion) {
+        showAuthModal('That email address looks like it might have a typo — did you mean "' + email.split('@')[0] + '@' + suggestion + '"? Please double-check it before continuing.');
+        return;
+      }
+
       try {
         await LWAuth.register(name, email, password);
         window.location.href = 'pages/dashboard.html';
       } catch (error) {
         console.error("Registration failed:", error);
-        const userMessage = getFriendlyAuthErrorMessage(error.code);
+        const userMessage = getFriendlyAuthErrorMessage(error);
         showAuthModal(userMessage);
       }
     }
@@ -612,25 +689,53 @@
        authModal.classList.add('hidden');
      });
 
-     // Helper to translate Firebase Auth codes into user-friendly messages
-    function getFriendlyAuthErrorMessage(errorCode) {
-      switch (errorCode) {
+     // Helper to translate an auth/Firestore error into a user-friendly
+     // message. Takes the whole error object (not just the code) because:
+     //  - a Firestore write failure (e.g. register()'s profile setDoc, see
+     //    js/auth.js) has a non-"auth/"-prefixed code like 'permission-denied',
+     //    so it needs its own case rather than falling through silently;
+     //  - a plain `new Error(...)` thrown by this app's own code (like the
+     //    name-length checks in js/auth.js) has no `.code` at all, but its
+     //    `.message` is already written for learners — that's strictly
+     //    better than a blanket fallback, so the default case uses it.
+    function getFriendlyAuthErrorMessage(error) {
+      const code = error && error.code;
+      switch (code) {
         case 'auth/invalid-credential':
+        case 'auth/wrong-password':
           return 'Incorrect email or password. Please try again.';
+        case 'auth/user-not-found':
+          return 'No account found with that email. Check the spelling, or sign up instead.';
         case 'auth/email-already-in-use':
           return 'This email is already registered. Try logging in instead.';
         case 'auth/weak-password':
           return 'Your password is too weak. Please use at least 6 characters.';
         case 'auth/invalid-email':
           return 'Please enter a valid email address.';
+        case 'auth/missing-email':
+          return 'Please enter your email address.';
+        case 'auth/missing-password':
+          return 'Please enter your password.';
+        case 'auth/user-disabled':
+          return 'This account has been disabled. Contact support for help.';
         case 'auth/too-many-requests':
           return 'Access temporarily locked due to too many failed attempts. Try again later.';
         case 'auth/network-request-failed':
           return 'A network error occurred. Please check your internet connection and try again.';
+        case 'permission-denied':
+          // Firestore rejected the profile write that register()/login()
+          // make right after Firebase Auth succeeds — most likely cause
+          // is the deployed Firestore security rules, not the learner.
+          return "We created your login, but couldn't save your profile because of a permissions error on our end. Please try again — contact support if it keeps happening.";
         default:
-          return 'An unexpected error occurred. Please try again.';
+          if (!code) {
+            return (error && error.message) || 'Something unexpected went wrong. Please try again.';
+          }
+          // An unmapped code — name it instead of a dead-end message, so
+          // it's something the learner (or support) can actually act on.
+          return 'Something went wrong (' + code + '). Please try again, and let us know if it keeps happening.';
       }
     }
   </script>
 </body>
-</html>
+</html>

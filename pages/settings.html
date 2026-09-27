@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,24 +37,34 @@
                hidden dev block still reads/writes the SAME
                'lw-missions-enabled' key as js/missions.js.
 
-    NEW (this session): Edit Profile now opens #edit-profile-modal
-               (rename / change email / change password / delete
-               account) instead of doing nothing. Wired by
-               js/settings-page.js's initEditProfileModal(); the
-               actual Firebase Auth/Firestore work happens in
-               js/auth.js behind window.LWAuth.updateUsername /
-               .updateUserEmail / .changePassword / .deleteAccount —
-               see that file's PROFILE MANAGEMENT comment block.
+    RECONCILED (this pass): a teammate session built an in-page Edit
+               Profile modal (rename/email/password/delete) on this
+               page at the same time this session built the dedicated
+               pages/edit-profile.html. Kept the dedicated page —
+               "Edit Profile" above just navigates to it — so that
+               modal never landed here; the reauth-gated
+               email-change/delete-account operations and the friendly
+               error mapping it introduced moved to js/edit-profile.js
+               instead, calling the same window.LWAuth methods
+               (js/auth.js's PROFILE MANAGEMENT block) the modal would
+               have called.
 
-    NEW (this session): every state-changing action (rename, email
-               change, password change, delete, and "Replay all
-               guides") now opens #guard-confirm-modal first — a
-               generic "Do you want to …?" modal whose Confirm button
-               is disabled behind a 10-second countdown. Wired by
-               js/settings-page.js's initConfirmGuardModal(), exposed
-               as window.LWConfirmGuard(message).
+    XP REMOVAL (this pass): pages/edit-profile.html used to also carry
+               an account-wide Level/XP summary (js/xp.js) — removed;
+               this page's own Level badge below and its js/xp.js
+               <script> tag are removed the same way.
+
+    KEPT (from that session): "Replay all guides" now opens
+               #guard-confirm-modal first — a generic "Do you want
+               to …?" modal whose Confirm button is disabled behind a
+               10-second countdown. Wired by js/settings-page.js's
+               initConfirmGuardModal(), exposed as
+               window.LWConfirmGuard(message). edit-profile.html has
+               its own copy of this same modal for its own actions,
+               since the two pages don't share one DOM.
 
     CONNECTS : ← app sidebar (every page)
+               → pages/edit-profile.html ("Edit Profile" button)
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -77,7 +88,7 @@
   });
   </script>
   <style>
-    /* Page-scoped: profile card + preference-row + Edit Profile modal
+    /* Page-scoped: profile card + preference-row + guard-confirm-modal
        layout only. Everything else reuses css/style.css as-is. */
     .profile-card { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
     .profile-card__avatar {
@@ -95,17 +106,10 @@
     .pref-row:last-child { border-bottom: none; }
     .pref-row__label { font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text); }
 
-    /* Edit Profile modal (NEW). Reuses existing tokens/components
-       throughout (per css/app.css's own "extend the shared components
-       first" convention) rather than duplicating them:
-         - .form-group / .form-input (css/style.css §10) for every
-           label+field pair, instead of a page-local reinvention —
-           picks up their existing WCAG-checked border/focus styling
-           for free.
-         - .btn--danger and .btn:disabled are already defined globally
-           (css/style.css §6) — not redeclared here.
-       Only the parts with no existing equivalent (the overlay/panel
-       shell, section dividers, status lines) get new rules. */
+    /* Guard confirm modal (RECONCILED — pulled in from teammate's
+       pass). Reuses existing tokens throughout (per css/app.css's own
+       "extend the shared components first" convention) — only the
+       overlay/panel shell has no existing equivalent. */
     .modal-overlay {
       position: fixed; inset: 0;
       /* Deliberately NOT --backdrop — that token is a light, blurred
@@ -128,32 +132,12 @@
     }
     .modal:focus { outline: none; }
     .modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
-    .modal__close {
-      background: none; border: none; font-size: var(--fs-2xl); line-height: 1;
-      cursor: pointer; color: var(--clr-text-muted); padding: 0 var(--space-1);
-      transition: color var(--dur-fast) var(--ease);
-    }
-    .modal__close:hover { color: var(--clr-text); }
-    .modal__section {
-      padding: var(--space-4) 0; border-bottom: 1px solid var(--clr-border);
-      display: flex; flex-direction: column; gap: var(--space-3);
-    }
-    .modal__section:last-child { border-bottom: none; }
-    .modal__section-title { font-size: var(--fs-lg); } /* no --fs-md token exists — see §1 DESIGN TOKENS */
-    .modal__hint { font-size: var(--fs-xs); color: var(--clr-text-muted); }
-    .modal__status { font-size: var(--fs-xs); min-height: 1.1em; }
-    /* --clr-red-text / --clr-success are the same tokens .alert--error/
-       --success (§11) use for TEXT specifically — --clr-red alone is
-       tuned for borders/fills, not small text, on top of these two. */
-    .modal__status--error { color: var(--clr-red-text); }
-    .modal__status--success { color: var(--clr-success); }
-    .modal__section--danger .modal__section-title { color: var(--clr-red-text); }
-
-    /* Guard confirm modal (NEW). Reuses .modal-overlay/.modal above as-is
-       — this is just a small "are you sure?" panel with two buttons, so
-       it only needs its own message spacing and an actions row. */
+    /* This page only ever opens one modal (the guard), so it only
+       needs message spacing and an actions row — no .modal__section /
+       .modal__status etc.; those stayed with the forms that use them,
+       in pages/edit-profile.html's own page-scoped styles. */
     .modal--guard { max-width: 400px; }
-    .modal--guard p { font-size: var(--fs-sm); color: var(--clr-text); margin: 0 0 var(--space-5); }
+    .modal--guard p { font-size: var(--fs-sm); color: var(--clr-text); margin: 0 0 var(--space-5); overflow-wrap: anywhere; }
     .modal__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
     /* Keeps the Confirm button's width stable as its label counts down
        from "Confirm (10)" to "Confirm" so it doesn't jump around. */
@@ -218,92 +202,14 @@
             <button class="btn btn--secondary" id="btn-edit-profile">Edit Profile</button>
           </div>
 
-          <!-- ── EDIT PROFILE MODAL (NEW) ─────────────────────────────
-               Opened by #btn-edit-profile. Four independent actions,
-               each its own mini-form/status line so one action's error
-               doesn't block the others. Wired by js/settings-page.js's
-               initEditProfileModal(), which calls window.LWAuth
-               (js/auth.js) for the actual Firebase Auth/Firestore work
-               — see that file's contract comment for what each method
-               must do. Each submit now first opens #guard-confirm-modal
-               below via window.LWConfirmGuard() before it runs. -->
-          <div class="modal-overlay" id="edit-profile-modal" hidden>
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title" tabindex="-1">
-              <div class="modal__head">
-                <h2 id="edit-profile-title">Edit Profile</h2>
-                <button type="button" class="modal__close" id="edit-profile-close" aria-label="Close">&times;</button>
-              </div>
-
-              <form class="modal__section" id="form-rename">
-                <h3 class="modal__section-title">Username</h3>
-                <div class="form-group">
-                  <label for="input-new-username">Display name</label>
-                  <input class="form-input" type="text" id="input-new-username" maxlength="40" autocomplete="off" required />
-                </div>
-                <p class="modal__status" id="rename-status" role="status" aria-live="polite"></p>
-                <button type="submit" class="btn btn--secondary btn--sm" id="btn-save-rename">Save name</button>
-              </form>
-
-              <form class="modal__section" id="form-email">
-                <h3 class="modal__section-title">Email</h3>
-                <div class="form-group">
-                  <label for="input-new-email">New email address</label>
-                  <input class="form-input" type="email" id="input-new-email" autocomplete="off" required />
-                </div>
-                <div class="form-group">
-                  <label for="input-email-password">Current password</label>
-                  <input class="form-input" type="password" id="input-email-password" autocomplete="current-password" required />
-                </div>
-                <p class="modal__hint">We'll send a confirmation link to the new address — it won't take effect until you click it.</p>
-                <p class="modal__status" id="email-status" role="status" aria-live="polite"></p>
-                <button type="submit" class="btn btn--secondary btn--sm" id="btn-save-email">Update email</button>
-              </form>
-
-              <form class="modal__section" id="form-password">
-                <h3 class="modal__section-title">Password</h3>
-                <div class="form-group">
-                  <label for="input-current-password">Current password</label>
-                  <input class="form-input" type="password" id="input-current-password" autocomplete="current-password" required />
-                </div>
-                <div class="form-group">
-                  <label for="input-new-password">New password</label>
-                  <input class="form-input" type="password" id="input-new-password" autocomplete="new-password" minlength="8" required />
-                </div>
-                <div class="form-group">
-                  <label for="input-confirm-password">Confirm new password</label>
-                  <input class="form-input" type="password" id="input-confirm-password" autocomplete="new-password" minlength="8" required />
-                </div>
-                <p class="modal__status" id="password-status" role="status" aria-live="polite"></p>
-                <button type="submit" class="btn btn--secondary btn--sm" id="btn-save-password">Update password</button>
-              </form>
-
-              <form class="modal__section modal__section--danger" id="form-delete">
-                <h3 class="modal__section-title">Delete account</h3>
-                <p class="modal__hint">This permanently deletes your account and all learning progress. This can't be undone.</p>
-                <div class="form-group">
-                  <label for="input-delete-password">Current password</label>
-                  <input class="form-input" type="password" id="input-delete-password" autocomplete="current-password" required />
-                </div>
-                <div class="form-group">
-                  <label for="input-delete-confirm">Type <strong>DELETE</strong> to confirm</label>
-                  <input class="form-input" type="text" id="input-delete-confirm" autocomplete="off" required />
-                </div>
-                <p class="modal__status" id="delete-status" role="status" aria-live="polite"></p>
-                <button type="submit" class="btn btn--danger btn--sm" id="btn-confirm-delete">Delete my account</button>
-              </form>
-            </div>
-          </div>
-
-          <!-- ── GUARD CONFIRM MODAL (NEW) ─────────────────────────────
-               Generic "Do you want to …?" modal reused by every
-               state-changing action on this page (rename, email change,
-               password change, delete, replay guides). Its message is
-               set at open time by window.LWConfirmGuard(message) in
+          <!-- ── GUARD CONFIRM MODAL (RECONCILED — from teammate's
+               pass) ─────────────────────────────────────────────────
+               Generic "Do you want to …?" modal. On this page it only
+               guards "Replay all guides" below. Its message is set at
+               open time by window.LWConfirmGuard(message) in
                js/settings-page.js; the Confirm button starts disabled
                and counts down from "Confirm (10)" to "Confirm" before
-               it can be clicked. Sits on top of #edit-profile-modal
-               when opened from inside it (fixed + centered, same as
-               every other modal-overlay on this page). -->
+               it can be clicked. -->
           <div class="modal-overlay" id="guard-confirm-modal" hidden>
             <div class="modal modal--guard" role="alertdialog" aria-modal="true" aria-labelledby="guard-confirm-title" tabindex="-1">
               <div class="modal__head">
@@ -366,12 +272,12 @@
               </label>
             </div>
 
-            <!-- Guided tour (NEW). One button, no switch: it clears which
+            <!-- Guided tour. One button, no switch: it clears which
                  guides this account has seen or skipped (and any "Skip
                  all") and opens the dashboard so the tour plays again from
                  the start. Wired by js/settings-page.js; the state lives
                  in js/tour.js. Now goes through #guard-confirm-modal
-                 first, same as the Edit Profile actions above. -->
+                 first (RECONCILED — from teammate's pass). -->
             <div class="pref-row">
               <span class="pref-row__label">Guided tour</span>
               <button type="button" class="btn btn--secondary btn--sm" id="btn-replay-guides">Replay all guides</button>
@@ -416,6 +322,11 @@
   </div><!-- /.app-shell -->
 
   <script src="../js/main.js"></script>
+  <!-- defer (RECONCILED — from teammate's pass): missions.js is
+       enormous, and js/tour.js / js/settings-page.js below only touch
+       window.LWMissions inside their own DOMContentLoaded handlers —
+       deferred scripts are guaranteed to finish before that fires, so
+       this is a safe load-order win, not just moved for no reason. -->
   <script defer src="../js/missions.js"></script>
   <script src="../js/tour.js"></script>
   <script src="../js/settings-page.js"></script>
