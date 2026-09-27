@@ -7,12 +7,19 @@
  *            profile into Firestore (`users/{uid}`), and caches a
  *            small session object in localStorage so every page can
  *            read it synchronously via getCurrentUser() without an
- *            async round-trip.
+ *            async round-trip. Also handles self-service profile
+ *            changes from the Settings page: renaming, email change,
+ *            password change, and account deletion (see PROFILE
+ *            MANAGEMENT below), plus the logged-out "forgot password"
+ *            flow (sendPasswordReset()) used from index.html.
  *
  * CONNECTS : Loaded by index.html (root) and every pages/*.html file.
- *            index.html calls login()/register().
+ *            index.html calls login()/register()/sendPasswordReset().
  *            main.js calls getCurrentUser() to render the navbar.
  *            Every protected page calls requireAuth() on load.
+ *            pages/settings.html's Edit Profile modal (via
+ *            js/settings-page.js) calls updateUsername() /
+ *            updateUserEmail() / changePassword() / deleteAccount().
  *
  * READY STATE: Firebase's onAuthStateChanged() check is async, so
  *            requireAuth() and whenAuthReady() wait for the
@@ -28,13 +35,21 @@ getAuth,
 createUserWithEmailAndPassword,
 signInWithEmailAndPassword,
 signOut, 
-onAuthStateChanged
+onAuthStateChanged,
+EmailAuthProvider,
+reauthenticateWithCredential,
+verifyBeforeUpdateEmail,
+deleteUser,
+sendPasswordResetEmail,
+updatePassword
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   getFirestore,
   doc,
   setDoc,
-  getDoc
+  getDoc,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -171,8 +186,19 @@ async function register(name, email, password) {
   };
 
   const userRef = doc(db, 'users', firebaseUser.uid);
-  await setDoc(userRef, user);
   
+  try {
+    await setDoc(userRef, user);
+  } catch (firestoreError) {
+    // Firestore write failed — roll back the orphaned Auth account
+    // rather than leaving a bodyless account behind.
+    try {
+      await firebaseUser.delete();
+    } catch (deleteError) {
+      console.error('Failed to roll back orphaned auth account:', deleteError);
+    }
+    throw firestoreError; // still let the caller show the real error
+  }  
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   return user;
@@ -188,6 +214,127 @@ async function logout(redirectPath) {
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
   localStorage.removeItem(LW_SESSION_KEY);
   window.location.href = redirectPath || '/index.html';
+}
+
+/* ── FORGOT PASSWORD (logged out) ────────────────────────────────
+ * Called from index.html's "Forgot password?" link — no signed-in
+ * user required, since the whole point is recovering an account you
+ * can't currently log into. Firebase emails newEmail a reset link
+ * directly; nothing here needs the current password.
+ *
+ * Deliberately does NOT reveal whether the address has an account.
+ * With this project's email-enumeration protection on (the default
+ * for new Firebase projects), sendPasswordResetEmail() already
+ * resolves the same way whether or not the address exists; this
+ * still swallows auth/user-not-found defensively in case that
+ * protection is ever turned off, so index.html can safely always
+ * show one generic "check your inbox" message either way. Real
+ * problems (bad email format, rate limiting) still surface normally.
+ * ──────────────────────────────────────────────────────────────── */
+async function sendPasswordReset(email) {
+  const trimmed = (email || '').trim();
+  if (!trimmed) throw new Error('Enter your email address.');
+  try {
+    await sendPasswordResetEmail(auth, trimmed);
+  } catch (err) {
+    if (err && err.code === 'auth/user-not-found') return; // don't leak account existence
+    throw err;
+  }
+}
+
+/* ── PROFILE MANAGEMENT (NEW) ────────────────────────────────────
+ * Backs the Edit Profile modal on pages/settings.html. Each function
+ * below is deliberately narrow — it only ever touches the *signed-in*
+ * user's own doc/account, and only ever writes the specific field(s)
+ * named here — same spirit as the SECURITY note at the bottom of this
+ * file about not handing the console a general-purpose Firestore
+ * write. Firestore Security Rules should still independently enforce
+ * that `users/{uid}` is only writable by that uid; this is defense in
+ * depth, not a substitute for rules.
+ *
+ * reauthenticate() is required before both updateUserEmail() and
+ * deleteAccount() — Firebase rejects those "sensitive" operations
+ * with auth/requires-recent-login if the session isn't fresh, and
+ * asking for the password again here also stops someone from walking
+ * up to an unlocked, already-logged-in tab and hijacking or deleting
+ * the account without knowing the password at all.
+ * ──────────────────────────────────────────────────────────────── */
+async function reauthenticate(currentPassword) {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) throw new Error('Not signed in.');
+  const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+  await reauthenticateWithCredential(firebaseUser, credential);
+  return firebaseUser;
+}
+
+/* Renames the learner. This app doesn't use Firebase Auth's own
+ * displayName anywhere (login/register never set it — `name` has only
+ * ever lived in Firestore), so this only touches the Firestore doc.
+ * It also patches the localStorage session cache directly: the
+ * onAuthStateChanged listener above skips re-fetching Firestore
+ * whenever the cached uid already matches the signed-in user, so
+ * without this the new name would never appear until that cache was
+ * cleared (e.g. next full logout/login). */
+async function updateUsername(newName) {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) throw new Error('Not signed in.');
+  const trimmed = (newName || '').trim();
+  if (!trimmed) throw new Error('Enter a name first.');
+
+  await updateDoc(doc(db, 'users', firebaseUser.uid), { name: trimmed });
+
+  const cached = getCurrentUser();
+  if (cached && cached.uid === firebaseUser.uid) {
+    cached.name = trimmed;
+    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(cached));
+  }
+}
+
+/* Changes the learner's login email. Uses verifyBeforeUpdateEmail
+ * rather than a bare updateEmail() — Firebase sends a confirmation
+ * link to the NEW address, and the login email only actually changes
+ * once that link is clicked. Deliberately does not touch the cached
+ * session or Firestore `email` field here, since nothing has changed
+ * yet from Firebase's point of view; it'll pick up the new address
+ * itself the next time this learner signs in after confirming. */
+async function updateUserEmail(newEmail, currentPassword) {
+  const trimmed = (newEmail || '').trim();
+  if (!trimmed) throw new Error('Enter a new email address.');
+  const firebaseUser = await reauthenticate(currentPassword);
+  await verifyBeforeUpdateEmail(firebaseUser, trimmed);
+}
+
+/* Changes the learner's password while logged in (different from
+ * sendPasswordReset() above, which is for someone who's locked out).
+ * Reauthenticates with the CURRENT password first — same
+ * requires-recent-login reasoning as updateUserEmail()/deleteAccount()
+ * — then hands the new one to Firebase. Firebase itself enforces a
+ * 6-character minimum and throws auth/weak-password below that; the
+ * length check here just gives a faster, friendlier message before
+ * making the round-trip. */
+async function changePassword(currentPassword, newPassword) {
+  const trimmed = newPassword || '';
+  if (trimmed.length < 8) throw new Error('Use at least 8 characters.');
+  const firebaseUser = await reauthenticate(currentPassword);
+  await updatePassword(firebaseUser, trimmed);
+}
+
+/* Permanently deletes the account: Firestore doc first, then the
+ * Firebase Auth user, then clears local caches. Order matters —
+ * deleteUser() signs the client out immediately, and Firestore
+ * Security Rules checking request.auth would then reject the
+ * deleteDoc() if it ran after. If learner progress or other per-user
+ * data lives in additional collections/subcollections, delete those
+ * here too, before deleteDoc(), for the same reason. */
+async function deleteAccount(currentPassword) {
+  const firebaseUser = await reauthenticate(currentPassword);
+  const uid = firebaseUser.uid;
+
+  await deleteDoc(doc(db, 'users', uid));
+  await deleteUser(firebaseUser);
+
+  localStorage.removeItem(window.LWProgress?.STORE_KEY);
+  localStorage.removeItem(LW_SESSION_KEY);
 }
 
 /* ── ROUTE GUARDS ─────────────────────────────────────────────────
@@ -236,6 +383,11 @@ window.LWAuth = {
   login,
   register,
   logout,
+  sendPasswordReset,
+  updateUsername,
+  updateUserEmail,
+  changePassword,
+  deleteAccount,
   requireAuth,
   redirectIfLoggedIn,
   whenAuthReady,
@@ -249,3 +401,13 @@ window.LWAuth = {
 // wasn't being used. The real protection against that kind of write
 // has to be Firestore Security Rules (see firestore.rules) — removing
 // this export narrows the attack surface but does not replace rules.
+//
+// updateUsername/updateUserEmail/changePassword/deleteAccount above
+// are exported deliberately, unlike doc/setDoc: each is a fixed,
+// narrow operation on the caller's OWN uid rather than a
+// general-purpose read/write — there's no path from having these on
+// window.LWAuth to writing another user's doc or an arbitrary field.
+// Firestore Security Rules should still independently restrict
+// users/{uid} writes to that uid. sendPasswordReset() needs no such
+// guard — it takes only an email and never touches Firestore or any
+// signed-in session.
