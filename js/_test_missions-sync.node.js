@@ -143,7 +143,7 @@ async function scenario2_migration_pushesLocalUp() {
     lw_missions_progress_v1: JSON.stringify({
       uid,
       completedItemIds: ['m1_0_LESSON_HELLO'],
-      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T00:00:00.000Z' },
+      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z' },
     }),
     lw_missions_streak_v1: JSON.stringify({ uid, days: ['2026-09-01', '2026-09-02'], forgivenessUsedThisWeek: 0 }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: [] }),
@@ -171,7 +171,7 @@ async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
   backend.docs.set(`userProgressV2/${uid}`, {
     progress: {
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_1_LESSON_HI'],
-      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T00:00:00.000Z', m1_1_LESSON_HI: '2026-09-02T00:00:00.000Z' },
+      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_1_LESSON_HI: '2026-09-02T12:00:00.000Z' },
     },
     streak: { days: ['2026-09-01', '2026-09-03'], forgivenessUsedThisWeek: 1 },
     hearts: { lostAt: ['2026-09-05T10:00:00.000Z'] },
@@ -181,7 +181,7 @@ async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
     lw_missions_progress_v1: JSON.stringify({
       uid,
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_2_LESSON_MORNING'], // one overlapping, one local-only
-      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T00:00:00.000Z', m1_2_LESSON_MORNING: '2026-09-04T00:00:00.000Z' },
+      completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_2_LESSON_MORNING: '2026-09-04T12:00:00.000Z' },
     }),
     lw_missions_streak_v1: JSON.stringify({ uid, days: ['2026-09-01', '2026-09-02'], forgivenessUsedThisWeek: 0 }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: ['2026-09-06T00:00:00.000Z'] }), // stale local-only loss

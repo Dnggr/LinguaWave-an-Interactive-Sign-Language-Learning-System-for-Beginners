@@ -24,9 +24,12 @@
     ─────────────────────────────────────────────────────────────────
     PURPOSE  : Shows the learning content for one ASL sign AND provides
                a live camera panel for real-time gesture practice.
-               After reviewing the sign, the user can click "Practice
-               Check (optional)" for live camera feedback — this is
-               ungraded; the real scored assessment is quiz.html.
+               After reviewing the sign, the user must click "Practice
+               Check" and pass it (see PASS_THRESHOLD in
+               js/camera-practice.js) to unlock "Continue to Next
+               Sign" — see the completion overlay near the bottom of
+               this file, and endAssessment()/continueToNext() in
+               js/camera-practice.js for the gate itself.
 
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
@@ -239,77 +242,6 @@
             </p>
           </div>
 
-          <!--
-            ══════════════════════════════════════════════════════════
-            QUICK CHECK — REV 4 PIVOT PHASE 6
-            ══════════════════════════════════════════════════════════
-            PURPOSE: a lightweight, non-blocking recall question shown
-            after a small cluster of signs (see shouldShowQuickCheck()
-            in lesson.js), per SYSTEM_ARCHITECTURE.md Rev 4 §Assessment
-            format changes ("tighten the teach→quiz loop... instead of
-            the current '10 signs then one big quiz' pattern").
-
-            "Reusing the existing Practice Check UI" (PIVOT_CHECKLIST.md
-            Phase 6, item 1) is interpreted here as reusing that panel's
-            INTERACTION PATTERN — an optional, skippable prompt card
-            that gives immediate feedback and never blocks Prev/Next —
-            not the camera mechanism itself, since a plain recall
-            question doesn't need a webcam and needs to work even if
-            the camera failed to load. See AI_MEMORY.md's Phase 6
-            session log for why this interpretation was chosen over a
-            literal reuse of #assessment-prompt-box.
-
-            Hidden by default; shown/populated by lesson.js's
-            showQuickCheck() only on a checkpoint sign. Purely
-            formative — no LWProgress write, no effect on the graded
-            category assessment in quiz.js.
-
-            CHANGED — REV 8 teaching-rhythm pass: now shown after EVERY
-            sign (QUICK_CHECK_CLUSTER_SIZE dropped from 3 to 1 in
-            lesson.js — "checkpoint sign" above is every sign now), and
-            can render as either a text-description prompt or a picture
-            prompt (#quick-check-image, new — recall variety, "identify
-            a sign from a signer image"). See buildQuickCheckQuestion()/
-            showQuickCheck() in lesson.js.
-          -->
-          <div class="quick-check card mt-8" id="quick-check-card" tabindex="-1" style="display:none;">
-            <div class="quick-check__head">
-              <span class="section__eyebrow" style="margin-bottom:0;"><span aria-hidden="true" data-lw-icon="info" data-lw-icon-size="sm"></span> Quick Check</span>
-              <button class="detection-log__clear" id="btn-quick-check-skip" type="button">Skip</button>
-            </div>
-            <p class="quick-check__prompt" id="quick-check-prompt" style="white-space: pre-line;"></p>
-            <!-- NEW — REV 8: optional picture prompt. Hidden unless
-                 the current question uses the picture format; onerror-
-                 hidden by lesson.js if the image fails to load. -->
-            <img class="quick-check__image" id="quick-check-image" alt="Sign to identify" style="display:none;" />
-            <div class="quick-check__options" id="quick-check-options"></div>
-            <div class="assessment-feedback mt-3" id="quick-check-feedback" style="display:none;"></div>
-            <p class="text-muted mt-3 quick-check__note">
-              Just for practice: this doesn't affect your score. Your graded check happens in the category assessment.
-            </p>
-          </div><!-- /quick-check-card -->
-
-          <!-- ── QUICK CHECK — CORRECT-ANSWER TAKEOVER ─────────────────
-               Mirrors pages/learn.html's #congrats-modal pattern (same
-               backdrop + centered card + focus-trap-lite approach) but
-               scoped to lesson.css since this page doesn't load
-               learn.css. Only shown on a CORRECT Quick Check answer —
-               see the click handler in lesson.js. A wrong answer stays
-               with the existing inline red highlight only; no takeover,
-               so an incorrect guess never feels like a bigger event
-               than a correct one. Markup only; lesson.js populates the
-               text and toggles [hidden]. -->
-          <div class="quick-check-modal" id="quick-check-modal" hidden>
-            <div class="quick-check-modal__backdrop" data-quick-check-dismiss></div>
-            <div class="quick-check-modal__box" role="dialog" aria-modal="true" aria-labelledby="quick-check-modal-title" aria-describedby="quick-check-modal-body">
-              <div class="quick-check-modal__icon" aria-hidden="true" data-lw-icon="success"></div>
-              <h2 class="quick-check-modal__title" id="quick-check-modal-title">Correct!</h2>
-              <p class="quick-check-modal__body" id="quick-check-modal-body"></p>
-              <button type="button" class="btn btn--primary btn--full" id="quick-check-modal-dismiss">Continue →</button>
-              <button type="button" class="quick-check-modal__explain" id="quick-check-modal-explain">View Explanation</button>
-            </div>
-          </div>
-
           <!-- PREV / NEXT navigation -->
           <div class="lesson-nav mt-8">
             <button class="btn btn--ghost" id="btn-prev">← Previous</button>
@@ -443,9 +375,11 @@
                    line-height: 1.4;"
           ></div>
 
-          <!-- Assessment section — an OPTIONAL, ungraded camera check.
-               It never blocks progress; the graded assessment lives in
-               quiz.html per category. CHANGED: this button used to be
+          <!-- Assessment section — the Camera Practice check. GATE
+               (this session): passing it is required to unlock
+               "Continue to Next Sign" on the completion overlay below
+               — see endAssessment()/continueToNext() in
+               js/camera-practice.js. CHANGED: this button used to be
                "Practice Check", separate from a "Start Recording"
                button in the detection panel above. They did the same
                job (both meant "attempt this sign for real"), so
@@ -455,18 +389,22 @@
                lesson.js). -->
           <div class="assessment-panel mt-4">
 
-            <p class="text-muted" style="font-size: var(--fs-xs); margin-bottom: var(--space-2);">
-              Optional: webcam sign detection has real accuracy limits, so this
-              won't block your progress. Your real assessment happens after all
-              signs in this category, mixing multiple choice, identification,
-              and an optional camera round.
-            </p>
-
             <!-- Start button — triggers get-ready, then (for motion
                  signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
-              <span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Practice Check (optional)
+              <span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Practice Check
             </button>
+
+            <!-- MOVED (was above the button): this note now sits directly
+                 under "Practice Check". It auto-hides whenever the button
+                 itself is hidden (during a check, or on the name drill) —
+                 see the sibling rule in css/lesson-camera.css. -->
+            <p class="text-muted practice-check-note" style="font-size: var(--fs-xs);">
+              You need at least 80% to move on. Webcam sign detection has real
+              accuracy limits, so if it's not registering, check the Camera Tips
+              below, then try again — "Practice & Retry" keeps you on this sign
+              for another attempt.
+            </p>
 
             <!-- Assessment prompt (shown during assessment only) -->
             <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
@@ -506,7 +444,12 @@
        ══════════════════════════════════════════════════════════ -->
   <div class="completion-overlay" id="completion-overlay" style="display:none;" role="dialog" aria-modal="true">
     <div class="completion-card">
+      <!-- NEW: small close (X), same look as the login modal's close button.
+           Dismisses the overlay only — progress was already saved in
+           endAssessment() — and leaves the Practice Check button ready. -->
+      <button type="button" class="completion-card__close" id="completion-close" aria-label="Close" onclick="closeOverlay()">&times;</button>
       <div class="completion-score" id="final-score">80%</div>
+      <p class="completion-attempts" id="final-attempts">Attempt 1</p>
       <h2 id="overlay-result-title"><span aria-hidden="true" data-lw-icon="celebration" data-lw-icon-size="sm"></span> Lesson Passed!</h2>
 
       <!--

@@ -9189,6 +9189,11 @@ function getCategoriesForUnitV2(unitOrder) {
   // sharing a key with them.
   const PROGRESS_KEY = 'lw_missions_progress_v1';
   const STREAK_KEY = 'lw_missions_streak_v1';
+  // Marker on saved streak state: its `days` are LOCAL calendar days (see
+  // the TIMEZONE FIX block at todayStr()). Absent = legacy UTC-keyed days.
+  // Declared up here (not next to its helpers) so nothing that runs early
+  // can hit it in its temporal dead zone.
+  const STREAK_DAYKEYS = 'local-v2';
   const HEARTS_KEY = 'lw_missions_hearts_v1';
 
   // ── Cross-device Firestore sync (NEW, this revision) ────────────
@@ -9258,14 +9263,20 @@ function getCategoriesForUnitV2(unitOrder) {
       ...(local.progress.completedAt || {}),
       ...(remoteProgress.completedAt || {}),
     };
+    // Either side may still hold legacy UTC-keyed days (an un-updated
+    // device can keep writing them) — normalise both to local day keys
+    // against the MERGED timestamps before unioning, so a stale device
+    // can't reintroduce the off-by-a-day entries.
+    const localStreakN = migrateStreakDaysToLocal(local.streak, mergedCompletedAt);
+    const remoteStreakN = migrateStreakDaysToLocal(remoteStreak, mergedCompletedAt);
     const mergedDays = Array.from(new Set([
-      ...(local.streak.days || []),
-      ...(remoteStreak.days || []),
+      ...(localStreakN.days || []),
+      ...(remoteStreakN.days || []),
     ])).sort();
 
     return {
       progress: { ...local.progress, completedItemIds: mergedIds, completedAt: mergedCompletedAt },
-      streak: { ...local.streak, days: mergedDays, forgivenessUsedThisWeek: remoteStreak.forgivenessUsedThisWeek },
+      streak: { ...local.streak, days: mergedDays, dayKeys: STREAK_DAYKEYS, forgivenessUsedThisWeek: remoteStreak.forgivenessUsedThisWeek },
       hearts: { ...local.hearts, lostAt: (remoteHearts.lostAt || []).slice() },
     };
   }
@@ -9957,8 +9968,51 @@ function getCategoriesForUnitV2(unitOrder) {
    * numbers. A day counts once any item is marked complete that day.
    */
 
+  /* TIMEZONE FIX — every streak day key is the learner's LOCAL calendar
+   * day ('YYYY-MM-DD'), never the UTC date. This used to be
+   * `new Date().toISOString().slice(0, 10)` (UTC), which broke streaks
+   * for anyone ahead of UTC (e.g. the Philippines, UTC+8): activity
+   * before 8 AM local was filed under "yesterday", and the day-stepping
+   * helpers below (which also went through toISOString()) never found
+   * "the next day", so a streak could not grow past 1. Day arithmetic
+   * now goes through shiftDayKey(), which steps a local Date by whole
+   * calendar days (DST-safe) and never touches UTC. */
+  function localDayKey(dateLike) {
+    const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function shiftDayKey(key, deltaDays) {
+    const [y, m, d] = key.split('-').map(Number);
+    return localDayKey(new Date(y, m - 1, d + deltaDays));
+  }
+
   function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+    return localDayKey(new Date());
+  }
+
+  /* One-time migration of saved streak days from UTC keys to local keys.
+   * Saved state written before this fix has no `dayKeys` marker and its
+   * days are UTC dates. Every item's completedAt is an ISO timestamp
+   * taken at the same instant recordActivityToday() ran, so a legacy
+   * day D is "explained" exactly when some completedAt's UTC date is D;
+   * those days are dropped and rebuilt as the LOCAL days of the same
+   * timestamps. Legacy days no timestamp explains (activity from before
+   * completedAt existed) are kept as-is — best effort, nothing lost.
+   * Idempotent: state already carrying the marker is returned untouched. */
+  function migrateStreakDaysToLocal(state, completedAtMap) {
+    if (!state || state.dayKeys === STREAK_DAYKEYS) return state;
+    const utcExplained = new Set();
+    const localDays = new Set();
+    Object.keys(completedAtMap || {}).forEach((k) => {
+      const t = new Date(completedAtMap[k]);
+      if (isNaN(t.getTime())) return;
+      utcExplained.add(t.toISOString().slice(0, 10));
+      localDays.add(localDayKey(t));
+    });
+    const kept = (state.days || []).filter((d) => !utcExplained.has(d));
+    const days = Array.from(new Set([...kept, ...localDays])).sort();
+    return { ...state, days, dayKeys: STREAK_DAYKEYS };
   }
 
   function loadStreakState() {
@@ -9968,11 +10022,21 @@ function getCategoriesForUnitV2(unitOrder) {
       const state = raw ? JSON.parse(raw) : null;
       // Per-account scoping — see getCurrentUidV2()'s block comment.
       if (!state || state.uid !== uid) {
-        return { uid, days: [], forgivenessUsedThisWeek: 0 };
+        return { uid, days: [], forgivenessUsedThisWeek: 0, dayKeys: STREAK_DAYKEYS };
+      }
+      if (state.dayKeys !== STREAK_DAYKEYS) {
+        // Legacy UTC-keyed days — migrate once and persist locally.
+        // skipPush: a load must never write to Firestore (it could
+        // clobber days another device added before the sync merge
+        // runs); the marker reaches Firestore on the next normal save
+        // or reconcile.
+        const migrated = migrateStreakDaysToLocal(state, loadProgressState().completedAt);
+        saveStreakState(migrated, { skipPush: true });
+        return migrated;
       }
       return state;
     } catch {
-      return { uid, days: [], forgivenessUsedThisWeek: 0 };
+      return { uid, days: [], forgivenessUsedThisWeek: 0, dayKeys: STREAK_DAYKEYS };
     }
   }
 
@@ -9997,9 +10061,7 @@ function getCategoriesForUnitV2(unitOrder) {
   }
 
   function dayBefore(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
+    return shiftDayKey(dateStr, -1);
   }
 
   function getStreakSummary() {
@@ -10010,10 +10072,7 @@ function getCategoriesForUnitV2(unitOrder) {
     // forward, comparing each day to the previous day + 1.
     let longest = 1, run = 1;
     for (let i = 1; i < days.length; i++) {
-      const prev = new Date(days[i - 1] + 'T00:00:00');
-      prev.setDate(prev.getDate() + 1);
-      const expected = prev.toISOString().slice(0, 10);
-      run = (days[i] === expected) ? run + 1 : 1;
+      run = (days[i] === shiftDayKey(days[i - 1], 1)) ? run + 1 : 1;
       if (run > longest) longest = run;
     }
 

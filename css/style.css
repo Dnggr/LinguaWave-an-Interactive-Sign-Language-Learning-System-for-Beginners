@@ -1111,9 +1111,6 @@ html.lw-force-reduced-motion *::after {
 .continue-card__icon        { color: var(--clr-accent); }
 .continue-card__icon .lw-icon { width: 28px; height: 28px; }
 
-.quick-check-modal__icon    { color: var(--clr-success); }
-.quick-check-modal__icon .lw-icon { width: 40px; height: 40px; }
-
 /* Course-sidebar status column. Was '\u25b6' / '\u2714' / '\u25cb' / '\ud83d\udd12' as bare text,
    which rendered at a different weight and baseline on every OS. The
    colour rules in css/lesson.css still apply — currentColor picks them
@@ -1166,11 +1163,10 @@ html.lw-force-reduced-motion *::after {
    so the flash speed already matches that surface's normal motion
    instead of a second, competing timing.
 
-   A selected WRONG answer (.lesson-option--incorrect in css/app.css,
-   .quick-check__option--wrong in css/lesson.css) plays the same
-   @keyframes directly off its own class instead of this one — that
-   state is meant to stick until the next question, not settle back,
-   so it has no JS-driven add/remove step. */
+   A selected WRONG answer (.lesson-option--incorrect in css/app.css)
+   plays the same @keyframes directly off its own class instead of
+   this one — that state is meant to stick until the next question,
+   not settle back, so it has no JS-driven add/remove step. */
 .lw-shake-invalid {
   animation: lw-shake-invalid 420ms var(--ease);
   border-color: var(--clr-red);

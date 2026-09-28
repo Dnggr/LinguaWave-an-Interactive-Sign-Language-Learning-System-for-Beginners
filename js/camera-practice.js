@@ -86,6 +86,27 @@
     - "Next" on the last sign in a lesson now goes straight to
       pages/quiz.html?level=X&category=Y (the category assessment)
       instead of forcing the in-page camera quiz.
+
+  GATE (this session — supersedes REV 3 above for THIS check only):
+  product now requires the per-sign Camera Practice check to actually
+  gate progress — a learner must score >= PASS_THRESHOLD here before
+  "Continue to Next Sign" is offered or the sign counts as done.
+  REV 3's category/level quiz.html assessment is untouched by this;
+  only this page's own per-sign round changed. Concretely:
+    - "Viewing/opening a sign calls recordSignPracticed() immediately"
+      (above) was already dead — see the BUGFIX comment on
+      recordSignPracticed()'s real call site further down, which
+      moved that to sign-EXIT, not open. This session narrows it
+      further: completion (recordSignPracticed() AND
+      LWMissions.markSignPracticedBridge()) is now written in exactly
+      ONE place, endAssessment(), and only when passed is true. Every
+      other former writer (the Finish button, a sidebar-link exit —
+      see markCurrentSignPracticed()) now only reconfirms an
+      ALREADY-passed sign; it can no longer complete one on its own.
+    - The button is "🎥 Practice Check" (no "(optional)" — it isn't).
+    - continueToNext() re-checks the same persisted completion state
+      before navigating, instead of trusting that the Continue button
+      was correctly hidden — see its own comment for why.
   ══════════════════════════════════════════════════════════════════
 */
 
@@ -129,6 +150,7 @@ const feedbackEl      = document.getElementById('assessment-feedback');
 const scoreEl         = document.getElementById('score-display');
 const overlayEl       = document.getElementById('completion-overlay');
 const finalScoreEl    = document.getElementById('final-score');
+const finalAttemptsEl = document.getElementById('final-attempts');
 const motionBufEl     = document.getElementById('motion-buffer-bar');
 const motionBufWrapEl = document.getElementById('motion-buffer-wrap');
 const missedListEl    = document.getElementById('missed-signs-review'); // BUG 8 — optional, see lesson.html snippet
@@ -143,27 +165,6 @@ const btnTryPracticeEl    = document.getElementById('btn-try-practice');
 const detectionLogListEl = document.getElementById('detection-log-list');
 const btnClearLogEl      = document.getElementById('btn-clear-log');
 
-// NEW — REV 4 PIVOT PHASE 6: "Quick Check" mini-quiz refs. See the
-// block comment in lesson.html above #quick-check-card and
-// showQuickCheck()/buildQuickCheckQuestion() below for the mechanism.
-const quickCheckCardEl     = document.getElementById('quick-check-card');
-const quickCheckPromptEl   = document.getElementById('quick-check-prompt');
-// NEW — REV 8 teaching-rhythm pass: optional picture prompt (recall
-// variety, "identify a sign from a signer image" — see
-// buildQuickCheckQuestion()'s promptImage branch below). Hidden
-// whenever a question doesn't use the picture format.
-const quickCheckImageEl    = document.getElementById('quick-check-image');
-const quickCheckOptionsEl  = document.getElementById('quick-check-options');
-const quickCheckFeedbackEl = document.getElementById('quick-check-feedback');
-const btnQuickCheckSkipEl  = document.getElementById('btn-quick-check-skip');
-// NEW — Quick Check correct-answer takeover (mockup screen 7): a
-// standalone "Correct!" confirmation, separate from the small inline
-// feedback line quickCheckFeedbackEl still renders under the options
-// for both outcomes. Only ever shown for a correct answer.
-const quickCheckModalEl        = document.getElementById('quick-check-modal');
-const quickCheckModalBodyEl    = document.getElementById('quick-check-modal-body');
-const quickCheckModalDismissEl = document.getElementById('quick-check-modal-dismiss');
-const quickCheckModalExplainEl = document.getElementById('quick-check-modal-explain');
 // BUG 1 FIX: separate non-blocking classifier warning element.
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
@@ -291,322 +292,6 @@ const sign       = (requestedSign || signOrder[0] || '').toUpperCase();
 const signIdx    = Math.max(signOrder.indexOf(sign), 0);
 const totalSigns = signOrder.length;
 
-// ══════════════════════════════════════════════════════════════════
-// REV 4 PIVOT — Phase 6: "Quick Check" — lightweight in-lesson recall
-// ══════════════════════════════════════════════════════════════════
-// Per SYSTEM_ARCHITECTURE.md Rev 4 §Assessment format changes: "Add a
-// lightweight, non-blocking mini-check after each sign (or small
-// cluster) inside lesson.html itself... instead of the current '10
-// signs then one big quiz' pattern." This is a small multiple-choice
-// recall question ("which sign matches this description?") shown
-// after every QUICK_CHECK_CLUSTER_SIZE signs (and always on the last
-// sign of a category, even if that doesn't land on a clean multiple),
-// built the same way quiz.js's Multiple Choice round builds its own
-// questions (data.js description as the prompt, 3 random other
-// signIds as distractors) — see buildQuickCheckQuestion() below. Not
-// a shared import: quiz.js's buildMCRound()/buildDistractors() are
-// private closures in a different page's module, not exported, so
-// this is a small, deliberately parallel reimplementation rather than
-// a new shared-utility module for ~15 lines of logic.
-//
-// Deliberately NOT wired into window.LWProgress anywhere — no score is
-// kept, nothing is recorded, and it never blocks Prev/Next (see
-// setupNavButtons(), untouched). "Reusing the existing Practice Check
-// UI" (PIVOT_CHECKLIST.md Phase 6) is interpreted as reusing that
-// panel's non-blocking, always-skippable INTERACTION PATTERN — not the
-// camera mechanism, which this has nothing to do with. See
-// AI_MEMORY.md's Phase 6 session log for the full reasoning.
-//
-// CHANGED — REV 8 teaching-rhythm pass: was 3 (a Quick Check every 3
-// signs). The reference teaching rhythm this pass implements calls for
-// an immediate small recall interaction after EACH sign taught — SIGN
-// → MEANING → SEE IT → RECALL → FEEDBACK → OPTIONAL PRACTICE → NEXT —
-// rather than teaching a small cluster before testing any of it. 1
-// makes shouldShowQuickCheck() below true for every sign and
-// buildQuickCheckQuestion()'s "cluster" collapse to just the current
-// sign, which is exactly the "one sign, then recall it" shape. No
-// other logic changed — a category still safely handles totalSigns<=1
-// (skips entirely) the same way it always did.
-const QUICK_CHECK_CLUSTER_SIZE = 1;
-
-/**
- * True on a "checkpoint" sign: every QUICK_CHECK_CLUSTER_SIGN'th sign
- * in the category, and always the last sign (so a category whose
- * count isn't a clean multiple of the cluster size still gets a final
- * check instead of silently skipping one at the end).
- */
-function shouldShowQuickCheck() {
-  // The name drill is one synthetic "sign" that internally chains many
-  // letters (see computeSignOrder()) — there's no data.js description
-  // to build a recall question from, and clustering across a single
-  // pseudo-sign doesn't mean anything. Skip entirely.
-  if (isNameDrill) return false;
-  // Too small to cluster — every sign is effectively already the
-  // "last" sign, and a 1-question category doesn't need retention
-  // testing beyond the category assessment itself.
-  if (totalSigns <= 1) return false;
-  const isEndOfCluster = (signIdx + 1) % QUICK_CHECK_CLUSTER_SIZE === 0;
-  const isLastSign     = signIdx === totalSigns - 1;
-  return isEndOfCluster || isLastSign;
-}
-
-/** Fisher–Yates shuffle — local copy of the same pattern quiz.js uses
- *  (see that file's shuffle()); kept local for the same reason
- *  buildQuickCheckQuestion() below is local, not imported. */
-function shuffleArr(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-/** "letter" (A-Z), "number" (0-10) or "word": what a learner would read
- *  the option as. Used only to keep Quick Check options looking alike. */
-function quickCheckKind(signId) {
-  if (/^[A-Za-z]$/.test(signId)) return 'letter';
-  if (/^\d+$/.test(signId)) return 'number';
-  return 'word';
-}
-
-/** Three wrong answers for a Quick Check on `targetSign`, most similar first:
- *  1) other signs in the current category, 2) same level and same kind,
- *  3) any other sign. Deduped by signId (a word can live in two categories,
- *  e.g. STORE in Places and Community) and never includes the target. */
-function pickQuickCheckDistractors(targetSign) {
-  const all = window.LWData?.SIGNS ?? [];
-  const unique = ids => Array.from(new Set(ids)).filter(s => s !== targetSign);
-  const chosen = [];
-  const take = ids => {
-    for (const id of shuffleArr(unique(ids))) {
-      if (chosen.length >= 3) break;
-      if (!chosen.includes(id)) chosen.push(id);
-    }
-  };
-  take(window.LWData?.getCategorySigns?.(level, category) ?? []);
-  const kind = quickCheckKind(targetSign);
-  if (chosen.length < 3) take(all.filter(s => s.level === level && quickCheckKind(s.signId) === kind).map(s => s.signId));
-  if (chosen.length < 3) take(all.map(s => s.signId));
-  return chosen;
-}
-
-/**
- * Builds one MC recall question about a random sign from the cluster
- * that just finished (the last QUICK_CHECK_CLUSTER_SIZE signs up to
- * and including the current one), or null if there isn't enough
- * content to build a fair 4-option question yet (e.g. very early in a
- * freshly-added category with few SIGNS entries) — callers treat null
- * as "don't show the card this time" rather than showing a broken
- * question.
- */
-function buildQuickCheckQuestion() {
-  const clusterStart = Math.max(0, signIdx - QUICK_CHECK_CLUSTER_SIZE + 1);
-  const clusterSigns = signOrder.slice(clusterStart, signIdx + 1);
-  const targetSign    = clusterSigns[Math.floor(Math.random() * clusterSigns.length)];
-  const targetData    = window.LWData?.getSign?.(level, targetSign);
-  if (!targetData?.description) return null;
-
-  // FIX (Impeccable pass): distractors used to be 3 random signIds from the
-  // WHOLE course, so a letter question could offer STORE / BREAD / WHY and
-  // "A" was the only answer that looked like a letter. Now they come from
-  // the same category first (letters against letters, colours against
-  // colours), then the same kind of sign at the same level, and only then
-  // from anywhere, so the question stays answerable in a small category.
-  const distractors = pickQuickCheckDistractors(targetSign);
-  if (distractors.length < 3) return null;
-
-  // NEW — REV 8 teaching-rhythm pass: recall variety ("identify a sign
-  // from a signer image", per the reference teaching mechanics list),
-  // extending this same function/card rather than building a second
-  // question type elsewhere. Alternates roughly 50/50 with the
-  // original description-based format so Quick Check doesn't always
-  // ask the identical shape of question. Reuses signData.imageUrl —
-  // the exact same field the "Sign image" block above already loads —
-  // so this needs no new data.js content. Every SIGNS entry with a
-  // description also has an imageUrl today (see js/data.js), but the
-  // `targetData.imageUrl &&` guard means a future content-only entry
-  // missing one just silently falls back to the text format instead of
-  // ever showing a broken picture prompt.
-  const usePicture = !!targetData.imageUrl && Math.random() < 0.5;
-
-  if (usePicture) {
-    return {
-      signId: targetSign,
-      prompt: 'Quick recall: which word matches this sign?',
-      promptImage: targetData.imageUrl,
-      options: shuffleArr([targetSign, ...distractors]),
-    };
-  }
-
-  const desc = targetData.description.length > 130
-    ? targetData.description.slice(0, 129).trimEnd() + '…'
-    : targetData.description;
-
-  return {
-    signId: targetSign,
-    prompt: `Quick recall: which sign matches this description?\n"${desc}"`,
-    promptImage: null,
-    options: shuffleArr([targetSign, ...distractors]),
-  };
-}
-
-/**
- * Shows the standalone "Correct!" takeover for a Quick Check answer
- * (mockup screen 7). Called only from the correct branch of the
- * options click handler below — a wrong answer never opens this,
- * it just keeps the existing inline red highlight.
- *
- * BUGFIX (this session) — reported: the takeover was popping up on
- * every single correct Quick Check answer across the whole lesson,
- * which reads as naggy over a session with dozens of signs. Since
- * every sign is its own full page load (see the COURSE SIDEBAR
- * comment above boot()), a plain in-memory flag would reset on every
- * navigation and never actually reduce anything — sessionStorage is
- * used instead so "already seen this session" persists across pages.
- * After the first showing, correct answers keep the inline
- * "✅ Nice — that's right." feedback (unchanged, still fires before
- * this function is even called) but skip the full-screen takeover —
- * still a clear, positive signal, just not a blocking interruption.
- */
-const QUICK_CHECK_MODAL_SHOWN_KEY = 'lw-quick-check-modal-shown';
-
-function showQuickCheckModal(signId) {
-  if (!quickCheckModalEl) return;
-  if (sessionStorage.getItem(QUICK_CHECK_MODAL_SHOWN_KEY) === 'true') return;
-  sessionStorage.setItem(QUICK_CHECK_MODAL_SHOWN_KEY, 'true');
-  if (quickCheckModalBodyEl) {
-    quickCheckModalBodyEl.textContent = `This sign means "${signId}". You're building your first conversation!`;
-  }
-  quickCheckModalEl.hidden = false;
-  quickCheckModalDismissEl?.focus();
-}
-function hideQuickCheckModal() {
-  if (!quickCheckModalEl) return;
-  quickCheckModalEl.hidden = true;
-  // Return focus to the card itself rather than a disabled option
-  // button — every option is disabled by this point (see the click
-  // handler below), so there's nothing meaningful to refocus inside it.
-  quickCheckCardEl?.focus?.();
-}
-quickCheckModalDismissEl?.addEventListener('click', hideQuickCheckModal);
-quickCheckModalEl?.querySelector('[data-quick-check-dismiss]')?.addEventListener('click', hideQuickCheckModal);
-quickCheckModalExplainEl?.addEventListener('click', () => {
-  hideQuickCheckModal();
-  // "View Explanation" — scroll back to the "How to perform the
-  // sign" card already on this page, rather than opening yet another
-  // panel with the same content.
-  document.getElementById('lesson-desc')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && quickCheckModalEl && !quickCheckModalEl.hidden) hideQuickCheckModal();
-});
-
-/**
- * Shows (or hides) the Quick Check card for the sign currently on
- * screen. Called once from updateLessonMeta() on every sign load —
- * never mid-page, since navigating away/back is what re-triggers a
- * fresh (possibly re-randomized) question.
- */
-function showQuickCheck() {
-  if (!quickCheckCardEl) return;
-  hideQuickCheckModal();
-
-  if (!shouldShowQuickCheck()) {
-    quickCheckCardEl.style.display = 'none';
-    return;
-  }
-
-  const q = buildQuickCheckQuestion();
-  if (!q) {
-    quickCheckCardEl.style.display = 'none';
-    return;
-  }
-
-  quickCheckCardEl.style.display = '';
-  if (quickCheckPromptEl) quickCheckPromptEl.textContent = q.prompt;
-
-  // NEW — REV 8 teaching-rhythm pass: optional picture prompt. onerror
-  // hides the image and falls back to just the (already-set) text
-  // prompt instead of showing a broken-image icon — same defensive
-  // pattern lesson-image/lesson.html's onerror already uses.
-  if (quickCheckImageEl) {
-    if (q.promptImage) {
-      quickCheckImageEl.src = q.promptImage;
-      quickCheckImageEl.alt = 'Sign to identify';
-      quickCheckImageEl.style.display = '';
-      quickCheckImageEl.onerror = () => { quickCheckImageEl.style.display = 'none'; };
-    } else {
-      quickCheckImageEl.removeAttribute('src');
-      quickCheckImageEl.style.display = 'none';
-    }
-  }
-
-  if (quickCheckFeedbackEl) {
-    quickCheckFeedbackEl.style.display = 'none';
-    quickCheckFeedbackEl.textContent   = '';
-  }
-
-  if (quickCheckOptionsEl) {
-    quickCheckOptionsEl.innerHTML = q.options.map(opt =>
-      `<button type="button" data-option="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`
-    ).join('');
-    quickCheckOptionsEl.querySelectorAll('button').forEach(btn => {
-      btn.onclick = () => {
-        const correct = btn.dataset.option === q.signId;
-        quickCheckOptionsEl.querySelectorAll('button').forEach(b => {
-          b.disabled = true;
-          if (b.dataset.option === q.signId) b.classList.add('quick-check__option--correct');
-          else if (b === btn) b.classList.add('quick-check__option--wrong');
-        });
-        if (quickCheckFeedbackEl) {
-          quickCheckFeedbackEl.style.display = '';
-          window.LWIcons.setLabel(
-            quickCheckFeedbackEl,
-            correct ? 'success' : 'error',
-            correct ? 'Nice, that\u2019s right.' : `Not quite, it was "${q.signId}".`,
-            { size: 'sm' }
-          );
-          quickCheckFeedbackEl.className = `assessment-feedback assessment-feedback--${correct ? 'success' : 'error'}`;
-        }
-        // Correct answers get the standalone "Correct!" takeover
-        // (mockup screen 7); wrong answers stay with just the inline
-        // red highlight + feedback line above — no takeover, so a
-        // miss never feels like a bigger event than a hit.
-        if (correct) showQuickCheckModal(q.signId);
-        // REVERTED (this session) — the previous "BUGFIX" here called
-        // recordSignPracticed()/markSignPracticedBridge() directly from
-        // this click handler, so a correct answer wrote mission
-        // progress the instant it was clicked — while the learner was
-        // still sitting on this sign's slide, before Prev/Next/Finish.
-        // That gave the app two independent writers for the same
-        // progress (this handler AND markCurrentSignPracticed() in
-        // setupNavButtons()), so the stored progress could advance
-        // ahead of what the page itself was showing (sidebar
-        // checkmarks, mission %) until the next navigation caught up.
-        // Quick Check is meant to be a non-blocking, zero-stakes recall
-        // check (see the block comment above buildQuickCheckQuestion())
-        // — it no longer writes progress at all. The real gap this was
-        // patching (leaving via a sidebar <a href> link never recorded
-        // the sign as practiced) is fixed properly below instead: a
-        // single delegated listener on #course-sidebar now calls the
-        // SAME markCurrentSignPracticed() Prev/Next/Finish use, right
-        // before any sidebar link is followed. See setupNavButtons()
-        // and wireSidebarProgressCapture() near renderCourseSidebar().
-      };
-    });
-  }
-}
-
-// Wired once — the Skip control just hides the card; nothing to
-// persist, since not answering is already a fully supported path
-// (Next works either way).
-if (btnQuickCheckSkipEl) {
-  btnQuickCheckSkipEl.onclick = () => {
-    if (quickCheckCardEl) quickCheckCardEl.style.display = 'none';
-  };
-}
-
 // BUG 8 (reverted): category assessments used to test every sign in
 // the category in one run. Per feedback, every lesson — letters,
 // words, phrases — now assesses just the one sign on screen, same
@@ -632,6 +317,7 @@ let quizSigns      = [];
 let quizIdx        = 0;
 let score          = 0;
 let missedSigns    = [];   // BUG 8: [{ expected, got }]
+let attemptCount   = 0;    // Practice Check rounds started on this page load (shown on the completion card)
 let promptTimer    = null;
 let getReadyTimer  = null;
 let rafId          = null;
@@ -1144,11 +830,9 @@ function showSidebarUnavailable(el, reason) {
 // above) — clicking one leaves this page directly without ever
 // touching btnPrev/btnNext, so without this, a sign a learner only
 // reached via a sidebar link (never clicked Next on) never got
-// recorded. This replaces the old fix for that same gap, which lived
-// in the Quick Check click handler instead (see the "REVERTED" block
-// comment above buildQuickCheckQuestion()'s handler) — that let Quick
-// Check race ahead of the visible page state; this doesn't, since it
-// only ever writes at the moment the learner actually clicks away.
+// recorded. It only ever writes at the moment the learner actually
+// clicks away, so stored progress never races ahead of the visible
+// page state.
 // Attached once per page load (guarded by the dataset flag below) —
 // #course-sidebar itself is never replaced, only its innerHTML is
 // re-rendered, so a listener on the container survives every
@@ -1693,20 +1377,23 @@ function updateLessonMeta() {
     if (referenceEl) referenceEl.style.display = 'none';
   }
 
-  // REV 3: this is now an optional, ungraded practice check — the
-  // real assessment lives in quiz.html (category / level). Start
-  // Recording used to be a separate button/action; now clicking this
-  // one button both starts the practice-check flow AND (for motion
-  // signs) triggers the 3-2-1 countdown + recording automatically,
-  // see showNextPrompt().
+  // REV 3 (superseded this session — see GATE note in endAssessment()
+  // and continueToNext()): this used to be an optional, ungraded
+  // practice check with the real assessment living in quiz.html. It's
+  // now the required gate for this sign — passing it is what unlocks
+  // "Continue to Next Sign." Start Recording used to be a separate
+  // button/action; now clicking this one button both starts the
+  // practice-check flow AND (for motion signs) triggers the 3-2-1
+  // countdown + recording automatically, see showNextPrompt().
   // FIXED (2026-08-20, review session): the button's .textContent
   // ('🎥 Start Assessment') used to not match this file's own Rev 3
   // header comment, which always said it was renamed to "🎥 Practice
   // Check (optional)" — that rename never actually landed in the 4
   // places the text is set (here, pages/camera-practice.html's default markup,
-  // and the two post-camera-round resets below). All 4 now say
-  // "🎥 Practice Check (optional)" — see AI_MEMORY.md Session Log for
-  // the full before/after and why this was flagged as safe to just fix.
+  // and the two post-camera-round resets below). All 4 said
+  // "🎥 Practice Check (optional)" for a while — see AI_MEMORY.md
+  // Session Log for that before/after. This session dropped the
+  // "(optional)" suffix from all 4 in turn, now that it no longer is.
   //
   // NEW — Rev4 Phase 2: hide this button entirely for the name drill
   // instead of wiring it to startAssessment(). handleAssessmentFrame()
@@ -1721,7 +1408,7 @@ function updateLessonMeta() {
   if (isNameDrill) {
     if (startBtnEl) startBtnEl.style.display = 'none';
   } else {
-    if (startBtnEl) window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
+    if (startBtnEl) window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check', { size: 'sm' });
     // BUG 5 FIX: use .onclick assignment (idempotent) instead of
     // addEventListener, which stacks duplicate listeners if called twice.
     if (startBtnEl) startBtnEl.onclick = startAssessment;
@@ -1738,11 +1425,6 @@ function updateLessonMeta() {
   // never carry over.
   resetMotionUI();
   syncMotionUIForMode();
-
-  // NEW — REV 4 PIVOT PHASE 6: show (or hide) the Quick Check card for
-  // whichever sign just loaded. See showQuickCheck()/
-  // shouldShowQuickCheck() above.
-  showQuickCheck();
 
   // NEW — course-player merge (this session): render the persistent
   // sidebar. Placed here (not inside boot() directly) because
@@ -1775,20 +1457,31 @@ function navUrl(targetSign) {
 // the old call site did (see that guard's comment) — this drill has
 // its own recordUnitAssessment() completion signal elsewhere.
 //
-// MOVED to module scope (this session) — was a closure private to
+// MOVED to module scope (earlier session) — was a closure private to
 // setupNavButtons(), so only Prev/Next/Finish could call it. Now
 // wireSidebarProgressCapture() (near renderCourseSidebar()) shares
-// this exact same function for sidebar-link exits, instead of a
-// second, independent write living in the Quick Check click handler.
-// One function, one behavior, every real exit path from a sign calls
-// it — no more risk of two writers disagreeing about when a sign
-// counts as "practiced."
+// this exact same function for sidebar-link exits.
+//
+// GATE (this session): this used to be an independent completion
+// writer — it recorded a sign as done just because the learner
+// navigated away from it (Finish → Category Assessment, or a
+// sidebar-link click), with no regard for whether a Camera Practice
+// check had ever been attempted, let alone passed. That was a real
+// bypass of the "must pass the camera check to advance" rule:
+// skipping the check entirely and clicking Finish still gave full
+// credit. Completion is now written in exactly ONE place —
+// endAssessment(), and only on a pass (see PASS_THRESHOLD above). So
+// this function no longer creates completion; it only re-confirms
+// bookkeeping (LWProgress's practicedAt / the mission bridge, both
+// idempotent) for a sign that has ALREADY passed — a safe no-op for
+// any sign that hasn't, which is what actually closes this bypass.
 function markCurrentSignPracticed() {
-  if (!isNameDrill) {
-    window.LWProgress?.recordSignPracticed?.(level, category, sign);
-    // BRIDGE — see markSignPracticedBridge() comment in missions.js.
-    window.LWMissions?.markSignPracticedBridge?.(category, sign);
-  }
+  if (isNameDrill) return;
+  const mission = missionForSidebarCategory(category);
+  if (!isSignLearnedInMission(mission, sign)) return; // not passed — nothing to record
+  window.LWProgress?.recordSignPracticed?.(level, category, sign);
+  // BRIDGE — see markSignPracticedBridge() comment in missions.js.
+  window.LWMissions?.markSignPracticedBridge?.(category, sign);
 }
 
 function setupNavButtons() {
@@ -1828,7 +1521,16 @@ function setupNavButtons() {
       };
     } else if (isLast) {
       // REV 3: the graded check is now the category assessment page,
-      // not the in-lesson camera quiz (which is optional practice only).
+      // not this in-lesson camera round.
+      // GATE (this session): markCurrentSignPracticed() below no
+      // longer completes this sign just because Finish was clicked —
+      // it only reconfirms one that already passed (see its own
+      // comment). Clicking Finish without ever passing the camera
+      // check still goes to the Mastery Quiz (unchanged below) — that
+      // mirrors the same "skip path" the Mastery Quiz already offers
+      // everywhere else in the app (see markMissionComplete()'s
+      // comment in missions.js): it's allowed to leave this LESSON
+      // item incomplete, it just won't get credit for it.
       // V1-removal pass: pages/quiz.html is deleted (all 12 chapters
       // now use the native Mastery Quiz — see lesson.js/mission-overview.js's
       // SAMPLE_MASTERY_QUIZ_CHAPTERS); route there instead, same-folder.
@@ -2413,8 +2115,13 @@ function handlePracticeFrame(result) {
   if (result.matched && !cooldown) {
     if (!isCorrectSign) {
       // Forgiving, same spirit as the phrase-mode retry message above:
-      // practice is optional and ungated (Rev 3), so this is
-      // informational, not a fail state — just don't claim success.
+      // this is free PRACTICE mode (the "Try it" button / passive
+      // detection outside an active Practice Check attempt), not the
+      // graded Practice Check itself — see startAssessment()/
+      // handleAssessmentFrame() for that. Free practice stays
+      // ungated on purpose even after this session's GATE change, so
+      // a wrong guess here is still informational, not a fail state —
+      // just don't claim success.
       // enterCooldown() throttles this to roughly once per 800ms
       // instead of re-firing every render-loop frame the wrong sign
       // stays in view.
@@ -2456,6 +2163,7 @@ function startAssessment() {
   quizIdx     = 0;
   score       = 0;
   missedSigns = [];
+  attemptCount++;
   mode        = 'assessment';
   syncMotionUIForMode();
   debounceCount = 0;
@@ -2696,36 +2404,57 @@ function endAssessment() {
     }
   }
 
-  // REV 3: this camera round is optional practice, not a gate — always
-  // record the sign(s) as practiced and always let the learner continue,
-  // whatever the score. The graded pass/fail lives in quiz.html.
+  // GATE (superseded REV 3 — this session): REV 3 made this an
+  // ungraded, non-blocking round ("always record the sign(s) as
+  // practiced and always let the learner continue, whatever the
+  // score"). Per the current product requirement, the Camera Practice
+  // check is now the gate for this sign: completion is recorded, and
+  // "Continue to Next Sign" is offered, ONLY on a pass. A fail records
+  // nothing and only offers "Practice & Retry" — see PASS_THRESHOLD
+  // above. This is the ONE place completion is written for a normal
+  // (non-name-drill) sign; markCurrentSignPracticed() (Finish button /
+  // sidebar-link exit, near navUrl()) no longer independently
+  // completes a sign — it now only ever confirms bookkeeping for a
+  // sign that got its pass right here, so there is exactly one path
+  // that can complete a sign, not several that need to agree.
   if (overlayEl && finalScoreEl) {
     finalScoreEl.textContent = `${Math.round(pct * 100)}%`;
+    if (finalAttemptsEl) finalAttemptsEl.textContent = `Attempt ${attemptCount}`;
     document.getElementById('overlay-result-title').textContent =
-      passed ? 'Nice practice run!' : 'Good attempt. Keep practicing!';
+      passed ? 'Lesson Passed!' : 'Not quite yet';
     document.getElementById('overlay-result-msg').textContent =
       passed
-        ? 'That looked great. This was just an optional camera practice check. Head to the category assessment when you\u2019re ready.'
-        : `You scored ${Math.round(pct * 100)}% this time. Camera detection has its limits, so this is just optional practice. It won\u2019t stop you from continuing.`;
+        ? 'Nice work — you cleared the camera check. Your progress has been saved.'
+        : `You scored ${Math.round(pct * 100)}% — you need at least ${Math.round(PASS_THRESHOLD * 100)}% to move on. Give it another go.`;
 
     const continueBtn = document.getElementById('btn-overlay-continue');
     const retryBtn    = document.getElementById('btn-overlay-retry');
-    // Both actions are always available now — nothing is gated.
-    if (continueBtn) continueBtn.style.display = '';
-    if (retryBtn)    retryBtn.style.display    = '';
+    // STRICT EITHER/OR (this session): a fail no longer also offers
+    // Continue — showing both implied the score didn't actually
+    // matter, which is the exact bug being fixed here.
+    if (continueBtn) continueBtn.style.display = passed ? '' : 'none';
+    if (retryBtn)    retryBtn.style.display    = passed ? 'none' : '';
 
     overlayEl.style.display = 'flex';
 
-    quizSigns.forEach(s => {
-      window.LWProgress?.recordSignPracticed?.(level, category, s);
-      // BRIDGE — see markSignPracticedBridge() comment in missions.js.
-      window.LWMissions?.markSignPracticedBridge?.(category, s);
-    });
+    // Only a PASS ever writes completion. A fail must not mark the
+    // sign, its mission's LESSON item, or the legacy Progress store as
+    // done — see continueToNext() below for the matching read-side
+    // enforcement (it re-checks this same persisted state before
+    // navigating, rather than trusting that continueBtn stayed
+    // hidden).
+    if (passed) {
+      quizSigns.forEach(s => {
+        window.LWProgress?.recordSignPracticed?.(level, category, s);
+        // BRIDGE — see markSignPracticedBridge() comment in missions.js.
+        window.LWMissions?.markSignPracticedBridge?.(category, s);
+      });
+    }
   }
 
   if (startBtnEl) {
     startBtnEl.style.display = '';
-    window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
+    window.LWIcons.setLabel(startBtnEl, 'camera', passed ? 'Practice Check' : 'Practice Check — try again', { size: 'sm' });
   }
 }
 
@@ -2891,23 +2620,53 @@ window.closeOverlay = function() {
   if (overlayEl) overlayEl.style.display = 'none';
 };
 
+// CHANGED: "Practice & Retry" used to only close the overlay and put the
+// learner back in practice mode, so they had to find and click "Practice
+// Check" again — which didn't match what the button says. It now closes the
+// overlay and starts a fresh Practice Check right away. startAssessment()
+// already resets quizIdx/score/missedSigns, the timers, and the prompt/score
+// UI, so no separate reset is needed here. The name drill hides the Practice
+// Check entirely (see the isNameDrill branch above), so it's skipped there.
 window.retryLesson = function() {
   closeOverlay();
-  if (startBtnEl) {
-    window.LWIcons.setLabel(startBtnEl, 'camera', 'Practice Check (optional)', { size: 'sm' });
-    startBtnEl.style.display = '';
-  }
-  if (promptBoxEl) promptBoxEl.style.display = 'none';
-  if (scoreEl)     scoreEl.style.display     = 'none';
-  if (modeBarEl) {
-    window.LWIcons.setLabel(modeBarEl, 'learn', 'Practice Mode', { size: 'sm' });
-    modeBarEl.className   = 'mode-bar mode-bar--pill mode-bar--practice';
-  }
-  mode = 'practice';
-  syncMotionUIForMode();
+  if (isNameDrill) return;
+  startAssessment();
 };
 
+// GATE, underlying-state check (this session): continueToNext() used
+// to trust that it would only ever be reached by clicking a Continue
+// button that was already correctly hidden on a fail. That's one
+// layer (UI), not a real gate — a stale overlay, a re-shown card, or
+// just calling window.continueToNext() directly from the console all
+// still bypassed it. This re-derives pass/fail from the SAME
+// persisted completion store boot()'s own URL/mission/pending-sign
+// guards already treat as the one source of truth
+// (isSignLearnedInMission() → window.LWMissions.isItemComplete()) —
+// the identical check a page refresh, a typed URL, or a sidebar link
+// to this same sign would be re-evaluated against — so there's no
+// separate "did it actually pass" flag left lying around to go stale
+// on its own.
 window.continueToNext = function() {
+  if (!isNameDrill) {
+    const mission = missionForSidebarCategory(category);
+    if (!isSignLearnedInMission(mission, sign)) {
+      // Refuse the navigation and put the learner back in front of
+      // the one action that can actually clear it, instead of just
+      // silently doing nothing.
+      if (overlayEl) {
+        document.getElementById('overlay-result-title').textContent = 'Not quite yet';
+        document.getElementById('overlay-result-msg').textContent =
+          `You need at least ${Math.round(PASS_THRESHOLD * 100)}% on the camera check to move on. Give it another go.`;
+        const continueBtn = document.getElementById('btn-overlay-continue');
+        const retryBtn    = document.getElementById('btn-overlay-retry');
+        if (continueBtn) continueBtn.style.display = 'none';
+        if (retryBtn)    retryBtn.style.display    = '';
+        overlayEl.style.display = 'flex';
+      }
+      return;
+    }
+  }
+
   shutdown();
   const nextIdx = signIdx + 1;
   if (nextIdx < totalSigns) {

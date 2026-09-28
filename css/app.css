@@ -555,18 +555,18 @@
   row-gap: var(--space-3);
   align-items: center;
 }
-/* Ring + label: direct grid children, placed into column 1's two
- * rows explicitly. `justify-self: center` centers each within that
- * column since the column's own width is `auto` (sized to the wider
- * of the two, i.e. the ring). */
+/* Ring + label group: direct grid children, placed into column 1's
+ * two rows explicitly. `justify-self: center` centers each within
+ * that column since the column's own width is `auto` (sized to the
+ * wider of the two, i.e. the ring). CHANGED (Phase 1 Progress Center
+ * redesign) — the grid-item role that used to belong to
+ * `.progress-ring-label` directly now belongs to its wrapper,
+ * `.progress-ring-label-group` (added further below), since the label
+ * text sits alongside a new always-visible sub-line and an expandable
+ * sign breakdown (js/progress-page.js's renderHero()). Grid-row 2 is
+ * unchanged, so no media-query updates were needed below — the
+ * group occupies exactly the cell the bare label used to. */
 .progress-hero__ring { grid-column: 1; grid-row: 1; justify-self: center; }
-.progress-ring-label {
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: center;
-  font-weight: 600;
-  color: var(--clr-text-muted);
-}
 
 /* Stats tile: same 5 tiles as before (css/dashboard.css's
  * .stats-grid/.stat-tile, reused unmodified — see that file's own
@@ -597,19 +597,23 @@
    (same specificity, later in the file) silently beat it. On a phone the
    stats card therefore stayed in an implicit second column: five tiles
    squeezed to ~34px wide at x=361 and the page scrolled sideways. It has
-   to come AFTER `.progress-hero__ring`, `.progress-ring-label` and
-   `.progress-stats-card` above to win. */
+   to come AFTER `.progress-hero__ring`, `.progress-ring-label-group` and
+   `.progress-stats-card` above to win. RENAMED (Phase 1 Progress Center
+   redesign) — `.progress-ring-label` here became
+   `.progress-ring-label-group`, the actual grid item now (see that
+   rule's own comment above); the row numbers themselves (1/2/3) are
+   unchanged. */
 @media (max-width: 640px) {
   .progress-hero-row {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
   }
   .progress-hero__ring,
-  .progress-ring-label,
+  .progress-ring-label-group,
   .progress-stats-card { grid-column: 1; justify-self: center; }
-  .progress-hero__ring   { grid-row: 1; }
-  .progress-ring-label   { grid-row: 2; }
-  .progress-stats-card   { grid-row: 3; width: 100%; }
+  .progress-hero__ring        { grid-row: 1; }
+  .progress-ring-label-group  { grid-row: 2; }
+  .progress-stats-card        { grid-row: 3; width: 100%; }
 }
 
 /* Ring itself — this 240px is only the FALLBACK/initial size (shown
@@ -1037,3 +1041,675 @@
 .quiz-summary__score--fail { color: var(--clr-red); }
 .quiz-summary__recap { color: var(--clr-violet); font-weight: 600; margin: var(--space-3) 0; }
 .quiz-summary__actions { justify-content: center; }
+
+/* ── Progress page — Phase 1 "Learning Progress Center" redesign ────
+ * Additive rules for pages/progress.html's redesigned js/progress-
+ * page.js: the side stack (Next Milestone + Needs Review), the ring's
+ * always-visible sub-line + expandable sign breakdown, clickable stat
+ * tiles, and the chapter timeline that replaces the old isolated
+ * per-chapter bar list. Everything below builds on the existing
+ * tokens/.card/.badge/.progress-bar/.btn components — see this file's
+ * own header note. The original .progress-grid/.progress-hero-row/
+ * .needs-review/.review-row rules above are unchanged.
+ */
+
+/* Side column: Next Milestone (small, fixed height) stacked above
+ * Needs Review (flexes/scrolls — js/progress-page.js's
+ * syncReviewCardHeight() caps it against the hero row's height minus
+ * this card's own height). */
+.progress-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+.next-milestone { flex: 0 0 auto; }
+.next-milestone__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  margin: 0 0 var(--space-1);
+}
+.next-milestone__sub { font-size: var(--fs-sm); margin: 0; }
+
+/* Ring label group: always-visible "42 / 64 signs learned · 22
+ * remaining" line under "Overall Progress" (§02), plus a small
+ * toggle that reveals the mastered/practicing/not-started split
+ * without crowding the main view (progressive disclosure). */
+.progress-ring-label-group {
+  position: relative; /* anchors the floating .progress-ring-detail popover */
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+.progress-ring-sub { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.progress-ring-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  background: none;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--clr-accent-text);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+.progress-ring-detail-toggle:hover { background: var(--clr-surface-2); }
+.progress-ring-detail-toggle svg { transition: transform var(--dur-fast) var(--ease); }
+.progress-ring-detail-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.progress-ring-detail {
+  /* Popover: floats over the content below instead of pushing it down. */
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: var(--space-3);
+  background: var(--clr-surface, #fff);
+  border: 1px solid var(--clr-border, rgba(15, 23, 42, .12));
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 220px;
+  text-align: left;
+}
+.progress-ring-detail[hidden] { display: none; }
+.progress-ring-detail__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+}
+.progress-ring-detail__row span:first-child { color: var(--clr-text-muted); }
+.progress-ring-detail__row span:last-child { font-weight: 700; color: var(--clr-text); }
+
+/* Plain text styling for the label itself — the grid placement now
+ * lives on its wrapper, .progress-ring-label-group, defined earlier
+ * in this file alongside .progress-hero__ring (both breakpoints). */
+.progress-ring-label { font-weight: 600; color: var(--clr-text-muted); }
+
+/* Clickable stat tiles (§03) — same tile look whether it's a <div> or
+ * an <a>; only the interactive ones get a pointer + hover accent. */
+a.stat-tile { text-decoration: none; color: inherit; cursor: pointer; transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px); }
+
+/* ── Chapter timeline (§07 + §08 combined) ───────────────────────────
+ * Vertical stepper: each chapter's status icon connects to the next
+ * via a thin rail, replacing the old plain "label + bar" rows with a
+ * genuine sense of progression while staying inside the same
+ * #progress-chapters card (no separate parallel widget). */
+.chapter-timeline { display: flex; flex-direction: column; }
+.chapter-timeline__row {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+.chapter-timeline__row--current {
+  background: var(--clr-accent-soft);
+}
+.chapter-timeline__rail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.chapter-timeline__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--clr-locked-soft);
+  color: var(--clr-locked);
+}
+.chapter-timeline__icon--done { background: var(--clr-success-soft); color: var(--clr-success); }
+/* CHANGED (Phase 3 "animated learning journey") — a slow pulse marks
+   the one chapter that's actually "the one you're working on," so the
+   eye finds it immediately instead of having to scan every row's %.
+   Purely decorative (nothing here is a live/urgent alert), so it's a
+   plain infinite loop rather than anything that demands attention. */
+.chapter-timeline__icon--current {
+  background: var(--clr-orange-soft);
+  color: var(--clr-orange);
+  animation: lw-current-pulse 2.2s var(--ease) infinite;
+}
+.chapter-timeline__icon--locked { background: var(--clr-locked-soft); color: var(--clr-locked); }
+@keyframes lw-current-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--clr-orange-soft); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
+/* CHANGED (Phase 3 "wave/path visualization between chapters") — the
+ * old plain 2px div is now an inline SVG per row (js/progress-page.js's
+ * renderChapters()), each carrying the identical wavy "d" path; only
+ * the SVG's rendered height differs per row via preserveAspectRatio=
+ * "none", so ONE stroke-dasharray/length works everywhere regardless
+ * of how tall that row ends up. Colour still comes from the row's own
+ * status (same done/current/locked classes the icon beside it uses) —
+ * the connector reads as "how far the path's been walked," not a
+ * second, independent signal. The draw-in (lw-wave-draw) is what
+ * "animated learning journey" actually refers to: the path reveals
+ * itself top-to-bottom on load, staggered per row via each SVG's own
+ * --wave-delay custom property; @media (prefers-reduced-motion) in
+ * §15 above already forces every animation-duration on the page to
+ * .01ms, so a learner with that preference just sees the finished
+ * path instantly rather than losing the animation and getting nothing
+ * in its place. */
+.chapter-timeline__wave {
+  flex: 1 1 auto;
+  width: 24px;
+  min-height: var(--space-4);
+  margin-top: var(--space-1);
+}
+.chapter-timeline__wave path {
+  fill: none;
+  stroke: var(--clr-border);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 150;
+  stroke-dashoffset: 150;
+  animation: lw-wave-draw var(--dur-slow) var(--ease) forwards;
+  animation-delay: var(--wave-delay, 0ms);
+}
+@keyframes lw-wave-draw {
+  to { stroke-dashoffset: 0; }
+}
+.chapter-timeline__wave--done path { stroke: var(--clr-success-soft); }
+.chapter-timeline__wave--current path { stroke: var(--clr-orange-soft); }
+/* A locked chapter's own connector (leading OUT of it, toward an even
+   later chapter) reads as "not reached yet" — faint, and it doesn't
+   need a draw-in reveal since there's nothing being "walked" yet. */
+.chapter-timeline__wave--locked path {
+  stroke: var(--clr-border);
+  opacity: .5;
+  stroke-dasharray: 3 6;
+  stroke-dashoffset: 0;
+  animation: none;
+}
+
+/* Phase 3 — "Just completed" (§11-adjacent: a small, real-timestamp-
+   gated celebration, not the full banner). Sits between the chapter
+   title row and its progress bar/pct, only for a chapter finished in
+   the last 24h (js/progress-page.js's RECENTLY_DONE_MS). */
+.chapter-timeline__fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--clr-success);
+}
+.chapter-timeline__fresh-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clr-success);
+  animation: lw-fresh-pulse 1.6s var(--ease) infinite;
+}
+@keyframes lw-fresh-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+.chapter-timeline__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.chapter-timeline__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.chapter-timeline__title { font-weight: 600; }
+.chapter-timeline__row--locked .chapter-timeline__title { color: var(--clr-text-muted); }
+.chapter-timeline__pct {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.chapter-timeline__row--done .chapter-timeline__pct { color: var(--clr-success); }
+.chapter-timeline__row--current .chapter-timeline__pct { color: var(--clr-orange); }
+
+/* ── Completed-state CTAs on the bottom banner (§11/§13) — same
+ * translucent-white treatment as css/dashboard.css's own
+ * .mission-banner__cta:hover state, applied to the two secondary
+ * actions ("Practice Again" / "Explore Sign Collection") that sit
+ * beside the primary white .mission-banner__cta button. */
+.progress-cta__btn--ghost-invert {
+  background: rgba(255, 255, 255, .16);
+  border: 1px solid rgba(255, 255, 255, .5);
+  color: #ffffff;
+}
+.progress-cta__btn--ghost-invert:hover { background: rgba(255, 255, 255, .28); }
+
+/* ── Phase 3 — Completion celebration banner (§11) ───────────────────
+ * pages/progress.html's #progress-celebration: a `.card` variant, full
+ * width, hidden by js/progress-page.js's renderCelebration() until
+ * every reachable mission is actually done. Deliberately its own
+ * gradient rather than a plain .card background — this is the one
+ * moment on the page meant to look like a reward, not another stats
+ * panel. */
+.progress-celebration {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  margin-bottom: var(--space-6);
+  background: linear-gradient(135deg, var(--clr-accent-soft), var(--clr-violet-soft));
+  border-color: var(--clr-accent-soft);
+}
+.progress-celebration[hidden] { display: none; }
+.progress-celebration__sparkle { display: inline-flex; }
+.progress-celebration__sparkle-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--clr-violet);
+  animation: lw-sparkle-twinkle 2.4s var(--ease) infinite;
+}
+@keyframes lw-sparkle-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .6; transform: scale(1.12); }
+}
+.progress-celebration__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  margin: var(--space-3) 0 var(--space-1);
+}
+.progress-celebration__sub {
+  color: var(--clr-text-muted);
+  margin: 0 0 var(--space-4);
+}
+.progress-celebration__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Phase 3 — Sign Mastery grid ──────────────────────────────────────
+ * pages/progress.html's #sign-mastery, below the chapter timeline.
+ * One small square chip per sign in the selected chapter
+ * (js/progress-page.js's renderSignMasteryGrid()) — colour is the
+ * whole signal, so each chip is a plain filled square rather than an
+ * icon; the legend below the grid is what makes the colours legible
+ * rather than relying on colour alone (each chip also carries a
+ * title="" + a visually-hidden name+state span for the same reason). */
+.sign-mastery { margin-top: var(--space-6); }
+.sign-mastery[hidden] { display: none; }
+.sign-mastery__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.sign-mastery__select {
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+}
+.sign-mastery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: var(--space-2);
+}
+.sign-mastery__chip {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--clr-track);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.sign-mastery__chip:hover, .sign-mastery__chip:focus-visible {
+  transform: scale(1.15);
+  outline: 2px solid var(--clr-accent);
+  outline-offset: 1px;
+}
+.sign-mastery__chip--mastered { background: var(--clr-success); }
+.sign-mastery__chip--practicing { background: var(--clr-orange); }
+.sign-mastery__chip--remaining { background: var(--clr-track); }
+.sign-mastery__legend {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  flex-wrap: wrap;
+}
+.sign-mastery__dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--space-1);
+  vertical-align: middle;
+}
+.sign-mastery__dot--mastered { background: var(--clr-success); }
+.sign-mastery__dot--practicing { background: var(--clr-orange); }
+.sign-mastery__dot--remaining { background: var(--clr-track); }
+
+
+/* Phase 1 layout — hero full width, then Next Milestone | Needs Review
+ * side by side (replaces the old 1.7fr/1fr .progress-grid + side stack). */
+.progress-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .progress-pair { grid-template-columns: 1fr; }
+}
+
+
+/* Mastery Hearts tile + explainer popover */
+.stat-tile-wrap { position: relative; display: flex; }
+.stat-tile-wrap > .stat-tile { flex: 1; }
+button.stat-tile { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+a.stat-tile, button.stat-tile { transition: border-color var(--dur-fast) var(--ease); }
+a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, currentColor); }
+.hearts-explainer {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  padding: var(--space-3);
+  background: var(--clr-surface, #fff);
+  border: 1px solid var(--clr-border, rgba(15, 23, 42, .12));
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+  font-size: var(--fs-sm);
+}
+.hearts-explainer[hidden] { display: none; }
+.hearts-explainer p { margin: var(--space-1) 0 0; color: var(--clr-text-muted); }
+
+/* Mastery Hearts value: heart glyph + count ("❤ 3") instead of "3/3".
+ * The SVG is sized in em so it tracks .stat-tile__value's font-size
+ * (--fs-xl) and stays optically level with the digit. Colors come from
+ * the semantic tokens, so dark mode gets --clr-red's lighter value for
+ * free. At 0 hearts the glyph switches to an outline in muted grey —
+ * an empty pool should look empty, not just show a red "0". */
+.stat-tile__value--icon { display: inline-flex; align-items: center; gap: var(--space-2); }
+.heart-icon {
+  width: .9em;
+  height: .9em;
+  flex: 0 0 auto;
+  fill: var(--clr-red);
+  stroke: var(--clr-red);
+}
+.heart-icon--empty { fill: none; stroke: var(--clr-text-muted); }
+
+/* Day Streak tile: the number/label on the left, this week's Mon–Sun
+ * strip on the right (js/progress-page.js's buildStreakWeek()). Spans
+ * both columns of the 2-col stats grid — a 7-cell strip doesn't fit
+ * in a half-width tile — and wraps under the number on phone widths.
+ * Cells reuse .heatmap-cell's active/inactive/future colors from the
+ * Learning Activity card, just larger (20px vs 14px) since there are
+ * only seven of them and they're a tap-sized tile's main visual. */
+.stat-tile--streak {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+.stat-tile__streak-text { display: flex; flex-direction: column; gap: var(--space-1); }
+.streak-week { display: inline-flex; gap: 6px; }
+.streak-week__day { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.streak-week .heatmap-cell { width: 20px; height: 20px; border-radius: 5px; }
+.streak-week__letter { font-size: 10px; line-height: 1; color: var(--clr-text-muted); }
+/* Today's ring: a surface-colored gap then an accent ring, so it reads
+ * on both the green (active) and grey (not-yet-active) cell states. */
+.streak-week__cell--today { box-shadow: 0 0 0 2px var(--clr-surface), 0 0 0 3.5px var(--clr-accent); }
+
+/* ── Day Streak dialog (js/progress-page.js's openStreakDialog()) ─────
+ * Native <dialog>: focus trap, Esc and the top layer come from the
+ * browser. Zero padding on the dialog itself so its body fills it —
+ * that is what lets a click on the <dialog> element be treated as a
+ * backdrop click. `margin: auto` is explicit because a global reset
+ * that zeroes margins would otherwise pin a modal dialog to the corner.
+ * Scrim colour matches the app's other modals (.modal-overlay). */
+.streak-dialog {
+  margin: auto;
+  padding: 0;
+  width: min(92vw, 380px);
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--clr-text);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .35);
+}
+.streak-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+.streak-dialog[open] { animation: streak-dialog-in var(--dur-base) var(--ease); }
+@keyframes streak-dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .streak-dialog[open] { animation: none; } }
+/* Stop the page scrolling behind the open dialog. */
+body:has(.streak-dialog[open]) { overflow: hidden; }
+
+.streak-dialog__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--clr-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.streak-dialog__close:hover { color: var(--clr-text); background: var(--clr-track); }
+.streak-dialog__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) var(--space-6) var(--space-6);
+}
+
+/* Flame — orange while a streak is alive, muted at 0. Inner/glow are
+ * white overlays so the same markup works on both themes. */
+.streak-flame { width: 96px; height: auto; margin-bottom: var(--space-4); }
+.streak-flame__outer { fill: var(--clr-orange); }
+.streak-flame__inner { fill: #fff; opacity: .38; }
+.streak-flame__glow  { fill: #fff; opacity: .55; }
+.streak-flame--idle .streak-flame__outer { fill: var(--clr-track); }
+.streak-flame--idle .streak-flame__inner { fill: var(--clr-surface); opacity: .6; }
+.streak-flame--idle .streak-flame__glow  { fill: var(--clr-surface); opacity: .9; }
+
+.streak-dialog__title { margin: 0 0 var(--space-5); font-size: var(--fs-2xl); line-height: 1.15; }
+
+/* Last-5-days row: letter above a check box. Done = solid green with a
+ * check (check colour is --clr-text-invert so it stays legible on both
+ * the deep light-mode green and the pale dark-mode green); today, if not
+ * practiced yet, gets an accent outline; missed days are plain outlines. */
+.streak-days { list-style: none; margin: 0 0 var(--space-5); padding: 0; display: flex; gap: var(--space-3); }
+.streak-days__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.streak-days__letter { font-size: var(--fs-sm); font-weight: 700; color: var(--clr-text-muted); }
+.streak-days__box {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  color: var(--clr-text-invert);
+}
+.streak-days__box svg { width: 24px; height: 24px; }
+.streak-days__item--done .streak-days__box { background: var(--clr-success); border-color: var(--clr-success); }
+.streak-days__item--today .streak-days__box { border-color: var(--clr-accent); }
+.streak-days__item--today .streak-days__letter { color: var(--clr-accent); }
+
+.streak-dialog__msg { margin: 0 0 var(--space-2); max-width: 30ch; color: var(--clr-text); }
+.streak-dialog__best { margin: 0 0 var(--space-5); font-size: var(--fs-sm); color: var(--clr-text-muted); }
+.streak-dialog__cta { text-decoration: none; }
+
+/* ── Progress page — Phase 2 "Make progress feel personal" ───────────
+ * Additive rules for js/progress-page.js's renderSnapshot() /
+ * renderActivity() / renderConsistency() / renderHighlights(). Builds
+ * on the same .card/.progress-bar/token vocabulary as Phase 1 above —
+ * no new colors introduced beyond the existing semantic set
+ * (--clr-success for "strength," --clr-orange for "needs focus," same
+ * meaning --clr-orange already carries for the "current" chapter, not
+ * an error/failure color).
+ */
+
+/* §1 Strengths & Focus Areas */
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+@media (max-width: 700px) {
+  .snapshot-grid { grid-template-columns: 1fr; gap: var(--space-6); }
+}
+.snapshot-col__label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  margin: 0 0 var(--space-3);
+}
+.snapshot-row { margin-bottom: var(--space-4); }
+.snapshot-row:last-child { margin-bottom: 0; }
+.snapshot-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.snapshot-row__title { font-size: var(--fs-sm); font-weight: 600; }
+.snapshot-row__pct {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+}
+.snapshot-bar { height: 8px; }
+.snapshot-bar--strength .progress-bar__fill { background: var(--clr-success); }
+.snapshot-bar--focus .progress-bar__fill { background: var(--clr-orange); }
+
+/* §2/§3/§4 layout — Recent Activity (wider) beside a stack of the
+ * consistency heatmap + highlights, same paired-card rhythm as
+ * `.progress-pair` (Next Milestone | Needs Review) above. */
+.progress-activity-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .progress-activity-row { grid-template-columns: 1fr; }
+}
+.progress-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* §2 Recent Activity */
+.activity-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.activity-day__label {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+}
+.activity-day__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+}
+
+/* §3 Learning consistency heatmap */
+.heatmap { display: flex; flex-direction: column; gap: 4px; }
+.heatmap-row { display: flex; align-items: center; gap: 4px; }
+.heatmap-row__label {
+  width: 14px;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  color: var(--clr-text-muted);
+  flex: 0 0 auto;
+}
+.heatmap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.heatmap-cell--inactive { background: var(--clr-track); }
+.heatmap-cell--active { background: var(--clr-success); }
+.heatmap-cell--future { background: transparent; border: 1px dashed var(--clr-border); opacity: .6; }
+
+/* §4 Personal Bests */
+.highlights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.highlights-row { display: flex; align-items: center; gap: var(--space-3); }
+.highlights-row__icon {
+  font-size: var(--fs-lg);
+  width: 28px;
+  flex: 0 0 auto;
+  text-align: center;
+}
+.highlights-row__body { display: flex; flex-direction: column; min-width: 0; }
+.highlights-row__label { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.highlights-row__value {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
