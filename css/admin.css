@@ -1,0 +1,244 @@
+/**
+ * admin.css — Admin panel styles (NEW)
+ * ─────────────────────────────────────────────────────────────────
+ * Deliberately does NOT redefine tokens, .btn, .card, .badge, .alert,
+ * .form-group/.form-input, .app-shell/.app-sidebar/.app-main, or
+ * .stats-grid/.stat-tile — those already exist in css/style.css and
+ * css/dashboard.css and are reused as-is so the admin panel matches
+ * the learner app instead of introducing a second visual language.
+ * This file only adds what didn't already exist: a data table, a
+ * generic modal, a list-page toolbar, and a couple of admin-only
+ * accents (the "Admin" sidebar badge, the pre-auth-check gate).
+ * Load order: style.css, dashboard.css (for .stats-grid/.stat-tile),
+ * then this file.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+/* ── ADMIN GATE — avoid flashing admin content before the email
+   check in js/admin-auth.js resolves. requireAdmin() adds
+   .admin-ready once it's confirmed the signed-in account is the
+   admin; until then the page is invisible rather than half-rendered. */
+body.admin-gate { visibility: hidden; }
+body.admin-gate.admin-ready { visibility: visible; }
+
+/* ── SIDEBAR — "Admin" badge under the logo + a link back to the
+   learner app, so it's never ambiguous which shell you're in. */
+.admin-sidebar__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3) var(--space-6);
+  margin-top: calc(var(--space-8) * -1 + var(--space-2));
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--clr-text-muted);
+}
+.admin-exit-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  text-decoration: none;
+}
+.admin-exit-link:hover { color: var(--clr-text); text-decoration: underline; }
+
+/* ── PAGE HEADER ───────────────────────────────────────────────── */
+.admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+.admin-header h1 { margin-bottom: var(--space-1); }
+.admin-header p { color: var(--clr-text-muted); }
+
+/* ── TOOLBAR — search + filter + primary action, above a table ──── */
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.admin-toolbar__search { flex: 1 1 240px; min-width: 200px; }
+.admin-toolbar__filter { flex: 0 0 auto; width: auto; min-width: 160px; }
+.admin-toolbar__spacer { flex: 1; }
+
+/* ── DATA TABLE ────────────────────────────────────────────────── */
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  background: var(--clr-surface);
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  min-width: 640px;
+}
+.admin-table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--clr-text-muted);
+  background: var(--clr-surface-2);
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--clr-border);
+  vertical-align: middle;
+}
+.admin-table tr:hover td { background: var(--clr-surface-2); }
+.admin-table td.admin-table__title { font-weight: 600; color: var(--clr-text); }
+.admin-table td.admin-table__muted { color: var(--clr-text-muted); }
+.admin-table__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.admin-table__empty {
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--clr-text-muted);
+}
+.admin-table__loading {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--clr-text-muted);
+}
+
+/* ── MODAL — generic overlay + centered card, used for every
+   create/edit form and every delete confirmation in the panel. */
+.admin-modal-backdrop {
+  position: fixed; inset: 0;
+  background: var(--backdrop);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-6);
+  z-index: 100;
+}
+.admin-modal {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  width: 100%;
+  max-width: 560px;
+  max-height: min(720px, 90vh);
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+.admin-modal--sm { max-width: 420px; }
+.admin-modal__head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.admin-modal__head h2 { margin: 0; font-size: var(--fs-lg); }
+.admin-modal__close {
+  background: none; border: none; cursor: pointer;
+  color: var(--clr-text-muted); font-size: var(--fs-xl); line-height: 1;
+  padding: var(--space-1) var(--space-2);
+}
+.admin-modal__close:hover { color: var(--clr-text); }
+.admin-modal__foot {
+  display: flex; justify-content: flex-end; gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* ── FORM GRID — two columns on wide modals, one on narrow/mobile. */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.admin-form-grid .form-group--full { grid-column: 1 / -1; }
+@media (max-width: 560px) {
+  .admin-form-grid { grid-template-columns: 1fr; }
+}
+
+/* ── OPTIONS LIST — quiz-question answer choices (admin-quiz.html) */
+.admin-option-row {
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.admin-option-row .form-input { flex: 1; }
+.admin-option-row__correct { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); color: var(--clr-text-muted); white-space: nowrap; }
+.admin-option-row__remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--clr-text-muted); font-size: var(--fs-lg); line-height: 1;
+  padding: var(--space-2);
+}
+.admin-option-row__remove:hover { color: var(--clr-red); }
+
+/* ── REPORTS — level-by-level bars, built from the same track/fill
+   language as .progress-bar so it doesn't look like a new component. */
+.admin-bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 48px;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+}
+.admin-bar-row + .admin-bar-row { margin-top: var(--space-3); }
+.admin-bar-row__track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--clr-track);
+  overflow: hidden;
+}
+.admin-bar-row__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--clr-accent);
+}
+.admin-bar-row__count { text-align: right; color: var(--clr-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── MISC ──────────────────────────────────────────────────────── */
+.admin-danger-note {
+  font-size: var(--fs-xs);
+  color: var(--clr-red-text);
+  margin-top: var(--space-2);
+}
+.admin-section-title {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  margin-bottom: var(--space-4);
+}
+.admin-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+@media (max-width: 860px) {
+  .admin-grid-2 { grid-template-columns: 1fr; }
+}
+.admin-quick-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.admin-quick-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  text-decoration: none;
+}
+.admin-quick-link__icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--clr-accent-soft);
+  color: var(--clr-accent);
+}
+.admin-quick-link__icon .lw-icon { width: 22px; height: 22px; }
+.admin-quick-link__title { color: var(--clr-text); font-weight: 700; margin-bottom: 2px; }
+.admin-quick-link__desc { color: var(--clr-text-muted); font-size: var(--fs-sm); }

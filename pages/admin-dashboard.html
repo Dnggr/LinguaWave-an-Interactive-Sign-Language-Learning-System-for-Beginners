@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/admin-dashboard.html — Admin panel landing page (NEW)
+    ─────────────────────────────────────────────────────────────────
+    One admin account only, gated by js/admin-auth.js (checks the
+    signed-in email against ADMIN_EMAIL — see that file). Not linked
+    from the learner sidebar on purpose; the admin opens this page's
+    URL directly after logging in with the admin account.
+    Quick links to the four admin sections + a small stats summary
+    pulled live from Firestore via js/admin-firebase.js.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin Dashboard | LinguaWave</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/toast.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body class="admin-gate">
+
+  <a href="#main" class="skip-link">Skip to Admin Dashboard</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="admin-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <div class="admin-sidebar__tag">
+        <span data-lw-icon="settings" aria-hidden="true" style="width:14px;height:14px;display:inline-flex;"></span>
+        Admin Panel
+      </div>
+      <nav class="app-sidebar__nav">
+        <a href="admin-dashboard.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Admin Dashboard
+        </a>
+        <a href="admin-lessons.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Lesson Management
+        </a>
+        <a href="admin-quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="questions"></span>
+          Quiz Management
+        </a>
+        <a href="admin-users.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
+          User Management
+        </a>
+        <a href="admin-reports.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Reports &amp; Analytics
+        </a>
+      </nav>
+      <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
+        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                  aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+            <span class="theme-switch__check">
+              <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+              <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+            </span>
+          </button>
+          <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-header">
+            <div>
+              <h1>Admin Dashboard</h1>
+              <p>Signed in as <strong data-user-email>&mdash;</strong>. Simple content and account management for LinguaWave.</p>
+            </div>
+          </div>
+
+          <div class="stats-grid" id="admin-stats-grid">
+            <div class="stat-tile"><div class="stat-tile__value" id="stat-users">&mdash;</div><div class="stat-tile__label">Learners</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="stat-signs">&mdash;</div><div class="stat-tile__label">Lessons</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="stat-questions">&mdash;</div><div class="stat-tile__label">Quiz Questions</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="section-heading-row">
+            <h2>Manage</h2>
+          </div>
+          <div class="admin-quick-links">
+            <a class="card admin-quick-link" href="admin-lessons.html">
+              <span class="admin-quick-link__icon" data-lw-icon="learn" aria-hidden="true"></span>
+              <span>
+                <span class="admin-quick-link__title" style="display:block;">Lesson Management</span>
+                <span class="admin-quick-link__desc">Add, edit, or remove lesson content.</span>
+              </span>
+            </a>
+            <a class="card admin-quick-link" href="admin-quiz.html">
+              <span class="admin-quick-link__icon" data-lw-icon="questions" aria-hidden="true"></span>
+              <span>
+                <span class="admin-quick-link__title" style="display:block;">Quiz Management</span>
+                <span class="admin-quick-link__desc">Add, edit, or remove quiz questions.</span>
+              </span>
+            </a>
+            <a class="card admin-quick-link" href="admin-users.html">
+              <span class="admin-quick-link__icon" data-lw-icon="people" aria-hidden="true"></span>
+              <span>
+                <span class="admin-quick-link__title" style="display:block;">User Management</span>
+                <span class="admin-quick-link__desc">View learners and update their level.</span>
+              </span>
+            </a>
+            <a class="card admin-quick-link" href="admin-reports.html">
+              <span class="admin-quick-link__icon" data-lw-icon="progress" aria-hidden="true"></span>
+              <span>
+                <span class="admin-quick-link__title" style="display:block;">Reports &amp; Analytics</span>
+                <span class="admin-quick-link__desc">Learner, lesson, and quiz breakdowns.</span>
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/admin-firebase.js"></script>
+  <script type="module" src="../js/admin-auth.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/admin-dashboard.js"></script>
+</body>
+</html>
