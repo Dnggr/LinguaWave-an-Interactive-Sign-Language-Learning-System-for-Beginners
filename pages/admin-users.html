@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/admin-users.html — User Management (NEW)
+    ─────────────────────────────────────────────────────────────────
+    Reads/edits the SAME `users/{uid}` Firestore docs js/auth.js
+    already writes on register/login. Editing the level here changes
+    the field going forward — it doesn't retroactively regrade a
+    learner's history. "Delete" removes only the Firestore profile
+    document, not the Firebase Auth login — see js/admin-firebase.js
+    and the in-page warning for why (this stack has no server-side
+    Admin SDK to remove the auth account itself).
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>User Management | LinguaWave Admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/toast.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body class="admin-gate">
+
+  <a href="#main" class="skip-link">Skip to User Management</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="admin-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <div class="admin-sidebar__tag">
+        <span data-lw-icon="settings" aria-hidden="true" style="width:14px;height:14px;display:inline-flex;"></span>
+        Admin Panel
+      </div>
+      <nav class="app-sidebar__nav">
+        <a href="admin-dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Admin Dashboard
+        </a>
+        <a href="admin-lessons.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Lesson Management
+        </a>
+        <a href="admin-quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="questions"></span>
+          Quiz Management
+        </a>
+        <a href="admin-users.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
+          User Management
+        </a>
+        <a href="admin-reports.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Reports &amp; Analytics
+        </a>
+      </nav>
+      <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
+        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                  aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+            <span class="theme-switch__check">
+              <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+              <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+            </span>
+          </button>
+          <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-header">
+            <div>
+              <h1>User Management</h1>
+              <p>View learners and update their level. No account creation here — accounts sign themselves up.</p>
+            </div>
+          </div>
+
+          <div class="admin-toolbar">
+            <input class="form-input admin-toolbar__search" id="user-search" type="search" placeholder="Search by name or email&hellip;" />
+            <select class="form-input admin-toolbar__filter" id="user-level-filter">
+              <option value="">All levels</option>
+              <option value="basic">Basic</option>
+              <option value="medium">Medium</option>
+              <option value="intermediate">Intermediate</option>
+            </select>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Level</th>
+                  <th>Joined</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="user-table-body">
+                <tr><td colspan="5" class="admin-table__loading">Loading learners&hellip;</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="admin-modal-backdrop" id="user-delete-backdrop" hidden>
+    <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="user-delete-title">
+      <div class="admin-modal__head">
+        <h2 id="user-delete-title">Remove this learner's profile?</h2>
+        <button class="admin-modal__close" id="user-delete-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p id="user-delete-body" class="text-muted">This can't be undone.</p>
+      <p class="admin-danger-note">This only deletes their Firestore profile — it does NOT delete their login. They could sign in again and get a fresh, empty profile.</p>
+      <div class="admin-modal__foot">
+        <button class="btn btn--ghost" type="button" id="user-delete-cancel">Cancel</button>
+        <button class="btn btn--danger" type="button" id="user-delete-confirm">Remove Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/admin-firebase.js"></script>
+  <script type="module" src="../js/admin-auth.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/admin-users.js"></script>
+</body>
+</html>

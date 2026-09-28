@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/admin-reports.html — Reports & Analytics (NEW)
+    ─────────────────────────────────────────────────────────────────
+    Read-only. Every number here is computed client-side, fresh on
+    load, from the same three Firestore collections the other admin
+    pages manage (see js/admin-firebase.js's getReportStats()) — no
+    separate analytics store, nothing cached.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Reports &amp; Analytics | LinguaWave Admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/toast.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body class="admin-gate">
+
+  <a href="#main" class="skip-link">Skip to Reports</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="admin-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <div class="admin-sidebar__tag">
+        <span data-lw-icon="settings" aria-hidden="true" style="width:14px;height:14px;display:inline-flex;"></span>
+        Admin Panel
+      </div>
+      <nav class="app-sidebar__nav">
+        <a href="admin-dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Admin Dashboard
+        </a>
+        <a href="admin-lessons.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Lesson Management
+        </a>
+        <a href="admin-quiz.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="questions"></span>
+          Quiz Management
+        </a>
+        <a href="admin-users.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
+          User Management
+        </a>
+        <a href="admin-reports.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Reports &amp; Analytics
+        </a>
+      </nav>
+      <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
+        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                  aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+            <span class="theme-switch__check">
+              <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+              <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+            </span>
+          </button>
+          <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-header">
+            <div>
+              <h1>Reports &amp; Analytics</h1>
+              <p>A live snapshot — recomputed every time you open this page.</p>
+            </div>
+          </div>
+
+          <div class="stats-grid" id="report-stats-grid">
+            <div class="stat-tile"><div class="stat-tile__value" id="report-total-users">&mdash;</div><div class="stat-tile__label">Total Learners</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="report-total-signs">&mdash;</div><div class="stat-tile__label">Total Lessons</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="report-total-questions">&mdash;</div><div class="stat-tile__label">Total Quiz Questions</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-grid-2">
+            <div class="card">
+              <div class="admin-section-title">Learners by Level</div>
+              <div id="report-users-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+            <div class="card">
+              <div class="admin-section-title">Lessons by Level</div>
+              <div id="report-signs-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-grid-2">
+            <div class="card">
+              <div class="admin-section-title">Quiz Questions by Level</div>
+              <div id="report-questions-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+            <div class="card">
+              <div class="admin-section-title">Most Recent Sign-ups</div>
+              <div id="report-recent-users"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/admin-firebase.js"></script>
+  <script type="module" src="../js/admin-auth.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/admin-reports.js"></script>
+</body>
+</html>

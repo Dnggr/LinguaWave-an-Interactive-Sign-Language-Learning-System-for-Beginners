@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/admin-quiz.html — Quiz Management (NEW)
+    ─────────────────────────────────────────────────────────────────
+    CRUD over the Firestore `questions` collection (see
+    js/admin-firebase.js). Same "not yet wired into the live quiz"
+    caveat as Lesson Management — see that file's header.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Quiz Management | LinguaWave Admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/toast.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body class="admin-gate">
+
+  <a href="#main" class="skip-link">Skip to Quiz Management</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="admin-dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <div class="admin-sidebar__tag">
+        <span data-lw-icon="settings" aria-hidden="true" style="width:14px;height:14px;display:inline-flex;"></span>
+        Admin Panel
+      </div>
+      <nav class="app-sidebar__nav">
+        <a href="admin-dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Admin Dashboard
+        </a>
+        <a href="admin-lessons.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Lesson Management
+        </a>
+        <a href="admin-quiz.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="questions"></span>
+          Quiz Management
+        </a>
+        <a href="admin-users.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
+          User Management
+        </a>
+        <a href="admin-reports.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Reports &amp; Analytics
+        </a>
+      </nav>
+      <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
+        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                  aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+            <span class="theme-switch__check">
+              <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+              <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+            </span>
+          </button>
+          <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-header">
+            <div>
+              <h1>Quiz Management</h1>
+              <p>Create, edit, and remove quiz questions.</p>
+            </div>
+            <button class="btn btn--primary" id="btn-new-question" type="button">+ Add Question</button>
+          </div>
+
+          <div class="admin-toolbar">
+            <input class="form-input admin-toolbar__search" id="question-search" type="search" placeholder="Search by question text&hellip;" />
+            <select class="form-input admin-toolbar__filter" id="question-level-filter">
+              <option value="">All levels</option>
+              <option value="basic">Basic</option>
+              <option value="medium">Medium</option>
+              <option value="intermediate">Intermediate</option>
+            </select>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Level</th>
+                  <th>Related Sign</th>
+                  <th>Options</th>
+                  <th>Order</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="question-table-body">
+                <tr><td colspan="6" class="admin-table__loading">Loading questions&hellip;</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Create/Edit modal -->
+  <div class="admin-modal-backdrop" id="question-modal-backdrop" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="question-modal-title">
+      <div class="admin-modal__head">
+        <h2 id="question-modal-title">Add Question</h2>
+        <button class="admin-modal__close" id="question-modal-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <form id="question-form">
+        <div class="admin-form-grid">
+          <div class="form-group form-group--full">
+            <label for="question-prompt">Question</label>
+            <textarea class="form-input" id="question-prompt" name="prompt" rows="2" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="question-level">Level</label>
+            <select class="form-input" id="question-level" name="level" required>
+              <option value="basic">Basic</option>
+              <option value="medium">Medium</option>
+              <option value="intermediate">Intermediate</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="question-relatedsign">Related Sign (optional)</label>
+            <input class="form-input" id="question-relatedsign" name="relatedSign" type="text" placeholder="e.g. medium_family_MOTHER" />
+          </div>
+          <div class="form-group">
+            <label for="question-order">Order</label>
+            <input class="form-input" id="question-order" name="order" type="number" step="1" min="0" />
+          </div>
+        </div>
+
+        <div class="form-group form-group--full mt-4">
+          <label>Answer Options <span class="text-muted">(select the correct one)</span></label>
+          <div id="question-options-list"></div>
+          <button class="btn btn--ghost btn--sm mt-2" type="button" id="question-add-option" style="align-self:flex-start;">+ Add Option</button>
+        </div>
+
+        <div class="admin-modal__foot">
+          <button class="btn btn--ghost" type="button" id="question-form-cancel">Cancel</button>
+          <button class="btn btn--primary" type="submit" id="question-form-submit">Save Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="admin-modal-backdrop" id="question-delete-backdrop" hidden>
+    <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="question-delete-title">
+      <div class="admin-modal__head">
+        <h2 id="question-delete-title">Delete question?</h2>
+        <button class="admin-modal__close" id="question-delete-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p id="question-delete-body" class="text-muted">This can't be undone.</p>
+      <div class="admin-modal__foot">
+        <button class="btn btn--ghost" type="button" id="question-delete-cancel">Cancel</button>
+        <button class="btn btn--danger" type="button" id="question-delete-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/admin-firebase.js"></script>
+  <script type="module" src="../js/admin-auth.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/admin-quiz.js"></script>
+</body>
+</html>
