@@ -1,35 +1,25 @@
 /**
- * admin-lessons.js — Controller for pages/admin-lessons.html (NEW)
- * List/search/filter + create/edit/delete for the Firestore `signs`
- * collection. See js/admin-firebase.js for the CRUD functions and the
- * note on how this relates to js/data.js (the learner app's real
- * content source).
+ * admin-lessons.js — Controller for pages/admin-lessons.html
+ * Read-only list/search/filter of the HARDCODED lessons in js/missions.js
+ * (via js/admin-content.js). No Firestore, no level. Click "View" to see
+ * a lesson's full content. To change a lesson, edit missions.js.
  */
-import { listSigns, createSign, updateSign, deleteSign } from "./admin-firebase.js";
+import { getLessons, getChapters } from "./admin-content.js";
 
-let allSigns = [];
-let editingId = null; // null = creating a new one
-let pendingDeleteId = null;
-
+let allLessons = [];
 const els = {};
 
 function cacheEls() {
   els.tbody = document.getElementById("sign-table-body");
   els.search = document.getElementById("sign-search");
-  els.levelFilter = document.getElementById("sign-level-filter");
-  els.newBtn = document.getElementById("btn-new-sign");
+  els.chapterFilter = document.getElementById("sign-chapter-filter");
+  els.count = document.getElementById("sign-count");
 
   els.modalBackdrop = document.getElementById("sign-modal-backdrop");
   els.modalTitle = document.getElementById("sign-modal-title");
+  els.modalBody = document.getElementById("sign-modal-body");
   els.modalClose = document.getElementById("sign-modal-close");
-  els.form = document.getElementById("sign-form");
-  els.formCancel = document.getElementById("sign-form-cancel");
-
-  els.deleteBackdrop = document.getElementById("sign-delete-backdrop");
-  els.deleteBody = document.getElementById("sign-delete-body");
-  els.deleteClose = document.getElementById("sign-delete-close");
-  els.deleteCancel = document.getElementById("sign-delete-cancel");
-  els.deleteConfirm = document.getElementById("sign-delete-confirm");
+  els.modalDone = document.getElementById("sign-modal-done");
 }
 
 function escapeHtml(str) {
@@ -40,157 +30,82 @@ function escapeHtml(str) {
 
 function render() {
   const term = els.search.value.trim().toLowerCase();
-  const level = els.levelFilter.value;
+  const chapter = els.chapterFilter.value;
 
-  const rows = allSigns.filter((s) => {
-    if (level && s.level !== level) return false;
+  const rows = allLessons.filter((s) => {
+    if (chapter && s.chapterId !== chapter) return false;
     if (!term) return true;
-    return (s.title || "").toLowerCase().includes(term) || (s.signId || "").toLowerCase().includes(term);
+    return (
+      s.title.toLowerCase().includes(term) ||
+      s.signId.toLowerCase().includes(term) ||
+      s.missionTitle.toLowerCase().includes(term)
+    );
   });
 
+  els.count.textContent = `${rows.length} of ${allLessons.length} lessons`;
+
   if (!rows.length) {
-    els.tbody.innerHTML = `<tr><td colspan="6" class="admin-table__empty">${allSigns.length ? "No lessons match your search." : "No lessons yet — add your first one."}</td></tr>`;
+    els.tbody.innerHTML = `<tr><td colspan="6" class="admin-table__empty">No lessons match your search.</td></tr>`;
     return;
   }
 
   els.tbody.innerHTML = rows.map((s) => `
     <tr>
-      <td class="admin-table__title">${escapeHtml(s.title || "(untitled)")}</td>
-      <td class="admin-table__muted">${escapeHtml(s.signId || "&mdash;")}</td>
-      <td><span class="badge badge--${escapeHtml(s.level || "basic")}">${escapeHtml(s.level || "&mdash;")}</span></td>
-      <td class="admin-table__muted">${escapeHtml(s.category || "&mdash;")}</td>
+      <td class="admin-table__title">${escapeHtml(s.title)}</td>
+      <td class="admin-table__muted">${escapeHtml(s.signId)}</td>
+      <td class="admin-table__muted">${escapeHtml(s.missionTitle)}</td>
+      <td class="admin-table__muted">${escapeHtml(s.chapterTitle)}</td>
       <td class="admin-table__muted">${s.order ?? "&mdash;"}</td>
       <td class="admin-table__actions">
-        <button class="btn btn--ghost btn--sm" data-edit="${s.id}" type="button">Edit</button>
-        <button class="btn btn--danger btn--sm" data-delete="${s.id}" type="button">Delete</button>
+        <button class="btn btn--ghost btn--sm" data-view="${escapeHtml(s.key)}" type="button">View</button>
       </td>
     </tr>
   `).join("");
 }
 
-async function loadSigns() {
-  els.tbody.innerHTML = `<tr><td colspan="6" class="admin-table__loading">Loading lessons&hellip;</td></tr>`;
-  try {
-    allSigns = await listSigns();
-    render();
-  } catch (err) {
-    console.error("Failed to load signs:", err);
-    els.tbody.innerHTML = `<tr><td colspan="6" class="admin-table__empty">Couldn't load lessons from Firestore.</td></tr>`;
-  }
+function fillChapterFilter() {
+  const options = getChapters()
+    .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)}</option>`)
+    .join("");
+  els.chapterFilter.innerHTML = `<option value="">All chapters</option>${options}`;
 }
 
-function openModal(sign) {
-  editingId = sign ? sign.id : null;
-  els.modalTitle.textContent = sign ? "Edit Lesson" : "Add Lesson";
-  els.form.reset();
-  els.form.elements.title.value = sign?.title || "";
-  els.form.elements.signId.value = sign?.signId || "";
-  els.form.elements.level.value = sign?.level || "basic";
-  els.form.elements.category.value = sign?.category || "";
-  els.form.elements.order.value = sign?.order ?? "";
-  els.form.elements.imageUrl.value = sign?.imageUrl || "";
-  els.form.elements.videoUrl.value = sign?.videoUrl || "";
-  els.form.elements.description.value = sign?.description || "";
+function openModal(lesson) {
+  if (!lesson) return;
+  els.modalTitle.textContent = lesson.title;
+  const tips = lesson.tips.length
+    ? `<ul>${lesson.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`
+    : `<p class="text-muted">No tips.</p>`;
+  els.modalBody.innerHTML = `
+    <p class="text-muted">${escapeHtml(lesson.chapterTitle)} &middot; ${escapeHtml(lesson.missionTitle)} &middot; Sign ID ${escapeHtml(lesson.signId)}</p>
+    <h3>Description</h3>
+    <p>${escapeHtml(lesson.description) || "&mdash;"}</p>
+    <h3>Tips</h3>
+    ${tips}
+    <h3>Media</h3>
+    <p class="text-muted">Image: ${escapeHtml(lesson.imageUrl) || "&mdash;"}<br />
+    Video: ${escapeHtml(lesson.videoUrl) || "&mdash;"}<br />
+    Detection: ${escapeHtml(lesson.detectionType) || "&mdash;"}</p>
+  `;
   els.modalBackdrop.hidden = false;
 }
 
 function closeModal() {
   els.modalBackdrop.hidden = true;
-  editingId = null;
-}
-
-async function handleSubmit(e) {
-  e.preventDefault();
-  const fd = new FormData(els.form);
-  const data = {
-    title: (fd.get("title") || "").trim(),
-    signId: (fd.get("signId") || "").trim(),
-    level: fd.get("level"),
-    category: (fd.get("category") || "").trim(),
-    order: fd.get("order") ? Number(fd.get("order")) : null,
-    imageUrl: (fd.get("imageUrl") || "").trim(),
-    videoUrl: (fd.get("videoUrl") || "").trim(),
-    description: (fd.get("description") || "").trim(),
-  };
-
-  if (!data.title || !data.signId) {
-    window.LinguaWave?.showToast?.("Title and Sign ID are required.", "error");
-    return;
-  }
-
-  const submitBtn = document.getElementById("sign-form-submit");
-  submitBtn.disabled = true;
-  try {
-    if (editingId) {
-      await updateSign(editingId, data);
-      window.LinguaWave?.showToast?.("Lesson updated.", "success");
-    } else {
-      await createSign(data);
-      window.LinguaWave?.showToast?.("Lesson added.", "success");
-    }
-    closeModal();
-    await loadSigns();
-  } catch (err) {
-    console.error("Failed to save sign:", err);
-    window.LinguaWave?.showToast?.("Couldn't save this lesson.", "error");
-  } finally {
-    submitBtn.disabled = false;
-  }
-}
-
-function openDeleteConfirm(id) {
-  const sign = allSigns.find((s) => s.id === id);
-  pendingDeleteId = id;
-  els.deleteBody.textContent = `Delete "${sign?.title || "this lesson"}"? This can't be undone.`;
-  els.deleteBackdrop.hidden = false;
-}
-
-function closeDeleteConfirm() {
-  els.deleteBackdrop.hidden = true;
-  pendingDeleteId = null;
-}
-
-async function confirmDelete() {
-  if (!pendingDeleteId) return;
-  els.deleteConfirm.disabled = true;
-  try {
-    await deleteSign(pendingDeleteId);
-    window.LinguaWave?.showToast?.("Lesson deleted.", "success");
-    closeDeleteConfirm();
-    await loadSigns();
-  } catch (err) {
-    console.error("Failed to delete sign:", err);
-    window.LinguaWave?.showToast?.("Couldn't delete this lesson.", "error");
-  } finally {
-    els.deleteConfirm.disabled = false;
-  }
 }
 
 function wireEvents() {
   els.search.addEventListener("input", render);
-  els.levelFilter.addEventListener("change", render);
-  els.newBtn.addEventListener("click", () => openModal(null));
-  els.modalClose.addEventListener("click", closeModal);
-  els.formCancel.addEventListener("click", closeModal);
-  els.modalBackdrop.addEventListener("click", (e) => { if (e.target === els.modalBackdrop) closeModal(); });
-  els.form.addEventListener("submit", handleSubmit);
-
+  els.chapterFilter.addEventListener("change", render);
   els.tbody.addEventListener("click", (e) => {
-    const editId = e.target.closest("[data-edit]")?.dataset.edit;
-    const delId = e.target.closest("[data-delete]")?.dataset.delete;
-    if (editId) openModal(allSigns.find((s) => s.id === editId));
-    if (delId) openDeleteConfirm(delId);
+    const key = e.target.closest("[data-view]")?.dataset.view;
+    if (key) openModal(allLessons.find((s) => s.key === key));
   });
-
-  els.deleteClose.addEventListener("click", closeDeleteConfirm);
-  els.deleteCancel.addEventListener("click", closeDeleteConfirm);
-  els.deleteBackdrop.addEventListener("click", (e) => { if (e.target === els.deleteBackdrop) closeDeleteConfirm(); });
-  els.deleteConfirm.addEventListener("click", confirmDelete);
-
+  els.modalClose.addEventListener("click", closeModal);
+  els.modalDone.addEventListener("click", closeModal);
+  els.modalBackdrop.addEventListener("click", (e) => { if (e.target === els.modalBackdrop) closeModal(); });
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!els.modalBackdrop.hidden) closeModal();
-    if (!els.deleteBackdrop.hidden) closeDeleteConfirm();
+    if (e.key === "Escape" && !els.modalBackdrop.hidden) closeModal();
   });
 }
 
@@ -198,8 +113,15 @@ async function init() {
   const ok = await window.LWAdminAuth.requireAdmin();
   if (!ok) return;
   cacheEls();
-  wireEvents();
-  await loadSigns();
+  try {
+    allLessons = getLessons();
+    fillChapterFilter();
+    wireEvents();
+    render();
+  } catch (err) {
+    console.error("Failed to load lessons:", err);
+    els.tbody.innerHTML = `<tr><td colspan="6" class="admin-table__empty">Couldn't load the lesson content (js/missions.js).</td></tr>`;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

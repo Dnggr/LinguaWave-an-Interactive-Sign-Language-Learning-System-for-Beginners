@@ -62,6 +62,8 @@
        module body runs, and before DOMContentLoaded hydrates any
        data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body>
 

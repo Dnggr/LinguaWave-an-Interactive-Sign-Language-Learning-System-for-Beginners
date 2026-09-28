@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/admin-login.html — Admin sign-in (NEW)
+    The admin has its OWN sign-in and its OWN Firebase session (named app
+    "lw-admin", see js/admin-firebase.js). It is separate from the learner
+    login on index.html, so both can be signed in in the same browser.
+    Do NOT add js/role-guard.js or js/auth.js to this page.
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin Sign In | LinguaWave</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .admin-login { min-height: 100vh; display: grid; place-items: center; padding: var(--space-6); }
+    .admin-login__card { width: 100%; max-width: 400px; padding: var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); }
+    .admin-login__card h1 { margin: 0; font-size: var(--fs-2xl); }
+    .admin-login__card p { margin: 0; color: var(--clr-text-muted); }
+    .admin-login__divider { text-align: center; color: var(--clr-text-muted); font-size: var(--fs-sm); }
+    .admin-login__back { text-align: center; font-size: var(--fs-sm); }
+  </style>
+</head>
+<body>
+  <main class="admin-login">
+    <div class="card admin-login__card">
+      <h1>Admin sign in</h1>
+      <p>LinguaWave administrator access only. This is separate from the learner login.</p>
+
+      <div id="admin-login-msg" class="alert alert--error" role="alert" hidden></div>
+
+      <div class="form-group">
+        <label for="admin-email">Email</label>
+        <input class="form-input" type="email" id="admin-email" autocomplete="username" maxlength="254" />
+      </div>
+      <div class="form-group">
+        <label for="admin-password">Password</label>
+        <input class="form-input" type="password" id="admin-password" autocomplete="current-password" />
+      </div>
+
+      <button type="button" class="btn btn--primary btn--full" id="admin-login-btn">Sign in</button>
+      <div class="admin-login__divider">or</div>
+      <button type="button" class="btn btn--ghost btn--full" id="admin-google-btn">Continue with Google</button>
+
+      <div class="admin-login__back"><a href="../index.html">&larr; Back to learner site</a></div>
+    </div>
+  </main>
+
+  <script type="module" src="../js/admin-login.js"></script>
+</body>
+</html>

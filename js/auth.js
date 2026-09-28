@@ -55,7 +55,12 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  orderBy
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -562,3 +567,12 @@ window.LWAuth = {
 // users/{uid} writes to that uid. sendPasswordReset() needs no such
 // guard — it takes only an email and never touches Firestore or any
 // signed-in session.
+
+// ES-MODULE EXPORTS for js/admin-firebase.js (admin panel).
+// This file is the ONLY place the Firebase config, initializeApp() and
+// SDK imports live; the admin panel imports app/auth/db and the Firestore
+// helpers from here instead of repeating them. These are module exports,
+// NOT properties of window.LWAuth, so the console-hijack risk described in
+// the SECURITY note above (LWAuth.setDoc / LWAuth.db) does not come back.
+// Real protection is still firestore.rules.
+export { app, auth, db, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy };

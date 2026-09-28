@@ -18,9 +18,9 @@
     pages/admin-reports.html — Reports & Analytics (NEW)
     ─────────────────────────────────────────────────────────────────
     Read-only. Every number here is computed client-side, fresh on
-    load, from the same three Firestore collections the other admin
-    pages manage (see js/admin-firebase.js's getReportStats()) — no
-    separate analytics store, nothing cached.
+    load (see js/admin-firebase.js's getReportStats()): learners from
+    Firestore, lessons and quizzes from the hardcoded curriculum in
+    js/missions.js. No separate analytics store, nothing cached.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -37,6 +37,8 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/toast.css" />
   <link rel="stylesheet" href="../css/admin.css" />
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body class="admin-gate">
 
@@ -72,7 +74,6 @@
         </a>
       </nav>
       <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
-        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                   aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
@@ -99,7 +100,7 @@
           <div class="stats-grid" id="report-stats-grid">
             <div class="stat-tile"><div class="stat-tile__value" id="report-total-users">&mdash;</div><div class="stat-tile__label">Total Learners</div></div>
             <div class="stat-tile"><div class="stat-tile__value" id="report-total-signs">&mdash;</div><div class="stat-tile__label">Total Lessons</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="report-total-questions">&mdash;</div><div class="stat-tile__label">Total Quiz Questions</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="report-total-questions">&mdash;</div><div class="stat-tile__label">Total Quizzes</div></div>
           </div>
         </div>
       </section>
@@ -112,7 +113,7 @@
               <div id="report-users-by-level"><p class="text-muted">Loading&hellip;</p></div>
             </div>
             <div class="card">
-              <div class="admin-section-title">Lessons by Level</div>
+              <div class="admin-section-title">Lessons by Chapter</div>
               <div id="report-signs-by-level"><p class="text-muted">Loading&hellip;</p></div>
             </div>
           </div>
@@ -123,7 +124,7 @@
         <div class="container">
           <div class="admin-grid-2">
             <div class="card">
-              <div class="admin-section-title">Quiz Questions by Level</div>
+              <div class="admin-section-title">Quiz Questions by Chapter</div>
               <div id="report-questions-by-level"><p class="text-muted">Loading&hellip;</p></div>
             </div>
             <div class="card">
@@ -142,6 +143,8 @@
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script src="../js/main.js"></script>
+  <script defer src="../js/missions.js"></script>
+  <script defer src="../js/lesson-loop.js"></script>
   <script type="module" src="../js/admin-reports.js"></script>
 </body>
 </html>

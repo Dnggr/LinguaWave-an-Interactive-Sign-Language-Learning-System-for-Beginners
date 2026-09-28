@@ -1,73 +1,75 @@
 /**
- * admin-auth.js — Admin route guard (NEW)
+ * admin-auth.js — Admin route guard (REVISED: checks LIVE Firebase auth)
  * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : "Only one admin" gate for pages/admin-*.html. Reuses the
- *            EXISTING Firebase Auth session from js/auth.js (the admin
- *            logs in through the normal index.html form like any other
- *            account) and only additionally checks that the signed-in
- *            email matches ADMIN_EMAIL below.
+ * PURPOSE  : "Only one admin" gate for pages/admin-*.html.
  *
- * WHY NOT A `role` FIELD IN FIRESTORE : auth.js's own SECURITY note
- *            already flags the risk — a `role`/`level` field on a
- *            user's own profile document is something that account
- *            could rewrite from the browser console unless Security
- *            Rules stop it. A single hardcoded email, checked against
- *            Firebase's own `request.auth.token.email` (which the
- *            Firebase Auth SDK controls, not user-writable data), is
- *            the simplest thing that is actually safe to check against
- *            in Firestore Rules too — see firestore.rules at the repo
- *            root, which re-checks this SAME email server-side. Keep
- *            the two in sync if the admin's email ever changes.
+ * WHAT CHANGED : The old version read the signed-in email from the
+ *            localStorage session cache ("lw_session"). That cache is
+ *            editable in DevTools, so a learner could paste the admin
+ *            email into it and get the admin screens to render. This
+ *            version reads the email from Firebase's own live user
+ *            (auth.currentUser), which the SDK populates from the real
+ *            signed-in session and which cannot be forged from the
+ *            console. If the live user is not the admin, the stale
+ *            cache is cleared (auth.js rebuilds it from Firebase on the
+ *            next page load) so js/role-guard.js can't bounce the
+ *            person back into an admin/learner redirect loop.
  *
- * SETUP    : 1) Register a normal account through index.html's sign-up
- *               form using ADMIN_EMAIL's address below (or change
- *               ADMIN_EMAIL to whichever address you want to use).
- *            2) Log in with that account, then open
- *               pages/admin-dashboard.html directly — there is no link
- *               to it from the learner sidebar on purpose, to keep the
- *               two experiences visually separate.
- *            3) Publish firestore.rules in the Firebase console so the
- *               restriction is enforced server-side, not just here.
+ * STILL JUST UI GATING : This hides admin pages from non-admins. The
+ *            real lock on admin DATA is firestore.rules (repo root).
+ *            Publish it in Firebase console -> Firestore -> Rules.
  *
- * CONNECTS : Loaded (as a module) by every pages/admin-*.html, after
- *            js/auth.js. Each admin page controller calls
+ * KEEP IN SYNC : ADMIN_EMAIL here, in js/role-guard.js, in index.html
+ *            (LW_ADMIN_EMAIL) and in firestore.rules.
+ *
+ * LOAD ORDER (already how every admin page does it):
+ *            js/auth.js -> js/admin-firebase.js -> js/admin-auth.js
+ *
+ * CONNECTS : Each admin page controller calls
  *            window.LWAdminAuth.requireAdmin() before rendering.
  * ─────────────────────────────────────────────────────────────────
  */
+import { auth } from "./admin-firebase.js";
 
-// Change this to whichever account should be the one admin.
-const ADMIN_EMAIL = "admin@linguawave.app";
+const ADMIN_EMAIL = "firebase.admin.asl@gmail.com";
+const SESSION_KEY = "lw_session";
 
 function isAdminEmail(email) {
   return !!email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
 /**
- * Waits for auth.js's real Firebase auth check to resolve, then:
- *  - not logged in at all      -> send to index.html
- *  - logged in as someone else -> toast + send back to the learner dashboard
- *  - logged in as ADMIN_EMAIL  -> resolve true, reveal the page
- * Mirrors js/auth.js's own requireAuth()/whenAuthReady() shape so it
- * reads the same way to anyone already familiar with that file.
+ * Waits for Firebase to finish restoring the session, then:
+ *  - not signed in at all      -> index.html
+ *  - signed in as someone else -> toast + learner dashboard
+ *  - signed in as ADMIN_EMAIL  -> reveal the page, resolve true
  */
 async function requireAdmin(opts) {
   const notLoggedInPath = (opts && opts.notLoggedInPath) || "../index.html";
   const notAdminPath = (opts && opts.notAdminPath) || "dashboard.html";
 
+  // Let auth.js finish its own onAuthStateChanged work first (it writes
+  // the session cache), then make sure Firebase itself has settled.
   if (window.LWAuth?.whenAuthReady) {
     await window.LWAuth.whenAuthReady();
   }
+  if (typeof auth.authStateReady === "function") {
+    await auth.authStateReady();
+  }
 
-  if (!window.LWAuth?.isLoggedIn?.()) {
-    window.location.href = notLoggedInPath;
+  const user = auth.currentUser; // LIVE Firebase user — not localStorage
+
+  if (!user) {
+    window.location.replace(notLoggedInPath);
     return false;
   }
 
-  const user = window.LWAuth.getCurrentUser?.();
-  if (!isAdminEmail(user?.email)) {
-    // main.js (loaded earlier on every admin page) provides this.
+  if (!isAdminEmail(user.email)) {
+    // Drop a possibly forged/stale cache so the next page load rebuilds
+    // it from Firebase and role-guard.js can't loop.
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
     window.LinguaWave?.showToast?.("This area is for the admin account only.", "error");
-    window.location.href = notAdminPath;
+    window.location.replace(notAdminPath);
     return false;
   }
 

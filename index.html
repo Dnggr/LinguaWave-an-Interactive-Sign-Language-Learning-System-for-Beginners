@@ -106,9 +106,18 @@
        must load after js/icons.js. See js/topic-marquee.js. -->
   <script src="js/topic-marquee.js" defer></script>
   <script>
+    // Keep in sync with ADMIN_EMAIL in js/admin-auth.js
+    const LW_ADMIN_EMAIL = 'firebase.admin.asl@gmail.com';
+
+    function lwPostAuthPath() {
+      const u = window.LWAuth && LWAuth.getCurrentUser && LWAuth.getCurrentUser();
+      const isAdmin = !!(u && u.email) && u.email.toLowerCase() === LW_ADMIN_EMAIL.toLowerCase();
+      return isAdmin ? 'pages/admin-dashboard.html' : 'pages/dashboard.html';
+    }
+
     window.addEventListener('lwauth-ready', () => {
-    LWAuth.redirectIfLoggedIn('pages/dashboard.html');
-   });
+      LWAuth.redirectIfLoggedIn(lwPostAuthPath());
+    });
   </script>
 </head>
 <body>
@@ -610,7 +619,7 @@
       try {
         await LWAuth.login(email, password);
         await LWAuth.linkPendingGoogleCredential(); // no-op unless a Google sign-in just flagged a conflict
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = lwPostAuthPath();
       } catch (error) {
         showAuthModal(error.message)
       }
@@ -625,7 +634,7 @@
       const password = document.getElementById('reg-password').value;
       try {
         await LWAuth.register(name, email, password);
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = lwPostAuthPath();
       } catch (error) {
         showAuthModal(error.message)
       }
@@ -634,7 +643,7 @@
     async function handleGoogleSignIn() {
       try {
         await LWAuth.loginWithGoogle();
-        window.location.href = 'pages/dashboard.html';
+        window.location.href = lwPostAuthPath();
       } catch (error) {
         if (error && error.code === 'auth/popup-closed-by-user') return;
         if (error && error.code === 'auth/account-exists-with-different-credential') {

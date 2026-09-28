@@ -20,10 +20,10 @@
     Reads/edits the SAME `users/{uid}` Firestore docs js/auth.js
     already writes on register/login. Editing the level here changes
     the field going forward — it doesn't retroactively regrade a
-    learner's history. "Delete" removes only the Firestore profile
-    document, not the Firebase Auth login — see js/admin-firebase.js
-    and the in-page warning for why (this stack has no server-side
-    Admin SDK to remove the auth account itself).
+    learner's history. "Delete" removes the learner's Firebase Auth
+    login AND their Firestore data, via the `deleteLearnerAccount`
+    Cloud Function in /functions (see ADMIN_SETUP.md). If that function
+    isn't deployed, nothing is deleted.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -40,6 +40,8 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/toast.css" />
   <link rel="stylesheet" href="../css/admin.css" />
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body class="admin-gate">
 
@@ -75,7 +77,6 @@
         </a>
       </nav>
       <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
-        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                   aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
@@ -134,14 +135,14 @@
   <div class="admin-modal-backdrop" id="user-delete-backdrop" hidden>
     <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="user-delete-title">
       <div class="admin-modal__head">
-        <h2 id="user-delete-title">Remove this learner's profile?</h2>
+        <h2 id="user-delete-title">Delete this learner?</h2>
         <button class="admin-modal__close" id="user-delete-close" type="button" aria-label="Close">&times;</button>
       </div>
       <p id="user-delete-body" class="text-muted">This can't be undone.</p>
-      <p class="admin-danger-note">This only deletes their Firestore profile — it does NOT delete their login. They could sign in again and get a fresh, empty profile.</p>
+      <p class="admin-danger-note">This permanently deletes their login (Firebase Authentication) and all their data. It can't be undone.</p>
       <div class="admin-modal__foot">
         <button class="btn btn--ghost" type="button" id="user-delete-cancel">Cancel</button>
-        <button class="btn btn--danger" type="button" id="user-delete-confirm">Remove Profile</button>
+        <button class="btn btn--danger" type="button" id="user-delete-confirm">Delete Learner</button>
       </div>
     </div>
   </div>

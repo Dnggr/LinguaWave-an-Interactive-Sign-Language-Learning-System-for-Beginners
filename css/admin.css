@@ -126,6 +126,10 @@ body.admin-gate.admin-ready { visibility: visible; }
   padding: var(--space-6);
   z-index: 100;
 }
+.admin-modal-backdrop[hidden] { display: none; }
+/* ^ FIX: the class above sets display:flex, which beats the browser's
+   default [hidden]{display:none}. Without this line every modal stays
+   open on page load and the JS hidden=true/false toggles do nothing. */
 .admin-modal {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);

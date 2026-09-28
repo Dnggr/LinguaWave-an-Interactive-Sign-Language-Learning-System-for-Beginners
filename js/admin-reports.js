@@ -1,8 +1,8 @@
 /**
  * admin-reports.js — Controller for pages/admin-reports.html (NEW)
  * Purely read-only: pulls getReportStats() from js/admin-firebase.js
- * and renders it as stat tiles + level-breakdown bars + a recent
- * sign-ups list. No writes happen on this page.
+ * and renders it as stat tiles + breakdown bars (learners by their
+ * level; lessons and quiz questions by chapter) + a recent sign-ups list. No writes happen on this page.
  */
 import { getReportStats } from "./admin-firebase.js";
 
@@ -15,26 +15,30 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function renderBars(containerId, byLevel, total) {
+// entries: [{ label, count }]
+function renderBars(containerId, entries, total) {
   const el = document.getElementById(containerId);
-  const levels = LEVEL_ORDER.filter((l) => byLevel[l]);
 
-  if (!levels.length) {
+  if (!entries.length) {
     el.innerHTML = `<p class="text-muted">No data yet.</p>`;
     return;
   }
 
-  el.innerHTML = levels.map((level) => {
-    const count = byLevel[level] || 0;
+  el.innerHTML = entries.map(({ label, count }) => {
     const pct = total ? Math.round((count / total) * 100) : 0;
     return `
       <div class="admin-bar-row">
-        <span>${LEVEL_LABEL[level] || level}</span>
+        <span>${escapeHtml(label)}</span>
         <span class="admin-bar-row__track"><span class="admin-bar-row__fill" style="width:${pct}%;"></span></span>
         <span class="admin-bar-row__count">${count}</span>
       </div>
     `;
   }).join("");
+}
+
+// Learners' own level field -> bar entries in a fixed order.
+function levelEntries(byLevel) {
+  return LEVEL_ORDER.filter((l) => byLevel[l]).map((l) => ({ label: LEVEL_LABEL[l] || l, count: byLevel[l] }));
 }
 
 function renderRecentUsers(users) {
@@ -66,12 +70,12 @@ async function init() {
     const stats = await getReportStats();
 
     document.getElementById("report-total-users").textContent = stats.totalUsers;
-    document.getElementById("report-total-signs").textContent = stats.totalSigns;
-    document.getElementById("report-total-questions").textContent = stats.totalQuestions;
+    document.getElementById("report-total-signs").textContent = stats.totalLessons;
+    document.getElementById("report-total-questions").textContent = stats.totalQuizzes;
 
-    renderBars("report-users-by-level", stats.usersByLevel, stats.totalUsers);
-    renderBars("report-signs-by-level", stats.signsByLevel, stats.totalSigns);
-    renderBars("report-questions-by-level", stats.questionsByLevel, stats.totalQuestions);
+    renderBars("report-users-by-level", levelEntries(stats.usersByLevel), stats.totalUsers);
+    renderBars("report-signs-by-level", stats.lessonsByChapter, stats.totalLessons);
+    renderBars("report-questions-by-level", stats.quizQuestionsByChapter, stats.totalQuizQuestions);
     renderRecentUsers(stats.recentUsers);
   } catch (err) {
     console.error("Failed to load report stats:", err);

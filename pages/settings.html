@@ -143,6 +143,8 @@
        from "Confirm (10)" to "Confirm" so it doesn't jump around. */
     .modal__actions .btn--danger { min-width: 8.5em; }
   </style>
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body>
 
