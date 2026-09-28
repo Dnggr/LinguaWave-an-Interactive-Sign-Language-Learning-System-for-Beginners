@@ -30,6 +30,34 @@
               getStreakSummary(), getHeartsState(), getCategoryGroups() —
               plus window.LWData for sign titles. No hardcoded numbers.
 
+    PHASE 3 (this revision, on top of the Phase 1 "Learning Progress
+    Center" redesign) — "make it feel distinctly LinguaWave," per
+    progressUI_guidelines.docx's 3-phase plan. Nothing structural
+    from Phase 1 moved; this only adds two new pieces (both real-data-
+    gated, hidden until there's something true to put in them — see
+    their own markup comments below) and reworks the chapter timeline's
+    connecting line into an animated wavy path:
+      - Completion celebration banner (§11 of the guidelines doc)
+      - Sign Mastery grid, scoped to one chapter at a time (§ Phase 3
+        "sign-level mastery visualization")
+      - The chapter timeline's straight connector line -> a wavy SVG
+        path that draws itself in on load, plus a "Just completed"
+        pulse on a chapter finished in the last 24h (real
+        getItemCompletedAt() timestamps, not a fabricated instant) —
+        together, "animated learning journey" + "wave/path
+        visualization between chapters."
+      - Next Milestone -> "contextual recommendation": still the same
+        card/heading by default, but js/progress-page.js's
+        pickRecommendation() now checks review urgency and drop-off
+        position first and swaps in a different heading/CTA when one
+        of those is the more useful thing to surface right now.
+    "Contextual recommendations" (the guideline doc's 5th Phase 3 item)
+    was deliberately folded into the existing Next Milestone card
+    rather than added as a new one — the doc's own closing note warns
+    against making this page "feel like a game overloaded with
+    badges," and a second box making basically the same kind of
+    suggestion would do exactly that.
+
     DIFFERENCES FROM THE MOCKUP, ON PURPOSE (same "don't fabricate
     data that doesn't exist" discipline js/progress-page.js documents
     for the v1 page):
@@ -52,7 +80,30 @@
         and Hearts modules) already surfaced elsewhere in
         (dashboard.html, mission-overview.html); showing them
         here too keeps this page consistent with the rest of rather
-        than omitting data that already exists.
+        than omitting data that already exists. The Hearts tile shows a
+        heart glyph + count ("♥ 3") and the Streak tile shows the day
+        count beside this week's Mon–Sun strip (same cell styles as the
+        #progress-consistency heatmap) — see renderHero() /
+        buildStreakWeek() in js/progress-page.js. Clicking the Streak
+        tile opens a dialog (flame, "N Day Streak", last 5 days as check
+        boxes) built by openStreakDialog() in the same file; it is
+        appended to <body> on demand, so nothing is needed in this markup.
+
+    PHASE 2 : "Make progress feel personal" — four sections added below
+              the Learning Journey, all derived from the same real data
+              (per-item completedAt timestamps + the streak module), same
+              "no fabricated data" discipline as Phase 1:
+                #progress-snapshot     Strengths & Focus Areas (per mission)
+                #progress-activity     Recent Activity timeline
+                #progress-consistency  5-week learning-activity heatmap
+                #progress-highlights   Personal bests
+              Each card handles its own "nothing yet" copy inline, the
+              same convention #next-milestone/#needs-review/
+              #progress-chapters already use — no separate brand-new-
+              learner overlay. Quiz scores are never persisted anywhere
+              in this app (see js/mastery-quiz.js — pass/fail only), so
+              the guidelines' mockup "Best assessment" highlight is
+              intentionally left out rather than faked.
 
     CONNECTS : ← app sidebar (every real page)
                → mission-overview.html (chapter mission links)
@@ -121,58 +172,74 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <h1>Your Progress</h1>
-          <p class="text-muted mt-2">A full picture of how far you've come, mission by mission.</p>
+          <p class="text-muted mt-2">See how far you've come — and what to focus on next.</p>
         </div>
       </section>
 
       <section class="section section--sm">
         <div class="container">
-          <!-- Grid now holds ONLY the hero row (ring + stats) beside
-               Needs Review — "Progress by Chapter" used to live inside
-               .progress-grid__main too, which meant its "70% width,
-               centered" rules below were 70% of this narrow 1.7fr
-               column, not 70% of the page, and left it sitting
-               visibly left-shifted rather than centered. Moved below,
-               outside the grid, so it centers/sizes against the same
-               full-width .container as the grid itself. This also
-               makes "cap Needs Review's height to the left card
-               group" (js/progress-page.js's syncReviewCardHeight(), see
-               css/app.css's .needs-review comment) literally
-               true now — the left column IS the hero row, no chapter
-               list hanging off the bottom of it to be ignored. -->
-          <div class="progress-grid">
+          <!-- Phase 1 structure: hero (ring + stats) full width, then
+               Next Milestone | Needs Review side by side, then the
+               Learning Journey (chapter timeline). Phase 3 adds two
+               more pieces around that same structure, both hidden
+               until js/progress-page.js has real data to put in them
+               (same "don't show meaningless empty stats" discipline
+               as everything else on this page): a full-width
+               celebration banner (§11 — only ever shown once every
+               mission is actually done) directly above the hero, and
+               a Sign Mastery grid (§Phase 3 "sign-level mastery
+               visualization") below the chapter timeline. -->
+          <div class="card progress-celebration" id="progress-celebration" hidden></div>
 
-            <!-- ── LEFT COLUMN ─────────────────────────────────────── -->
-            <div class="progress-grid__main">
-
-              <!-- No "card" class here on purpose — the ring itself
-                   sits outside any card background/border, matching
-                   the reference mockup. js/progress-page.js's
-                   renderHero() puts the actual .card on the stats
-                   tiles only (#progress-stats-card), not on this
-                   outer grid wrapper. -->
-              <div class="progress-hero-row" id="progress-hero">
-                <p class="text-muted loading-pulse">Loading your progress…</p>
-              </div>
-
-            </div>
-
-            <!-- ── RIGHT COLUMN ────────────────────────────────────── -->
-            <div class="progress-grid__side">
-              <div class="card needs-review" id="needs-review">
-                <p class="text-muted loading-pulse">Loading review signs…</p>
-              </div>
-            </div>
-
+          <div class="progress-hero-row" id="progress-hero">
+            <p class="text-muted loading-pulse">Loading your progress…</p>
           </div>
 
-          <!-- ── FULL-WIDTH ROW, below both columns ─────────────────
-               #progress-chapters's own "width: 70%; margin-inline:
-               auto" (css/app.css) now resolves against .container
-               above, not the old narrow grid column. -->
-          <h2 class="mt-8 mb-4 progress-chapters-heading">Progress by Chapter</h2>
+          <div class="progress-pair">
+            <div class="card next-milestone" id="next-milestone">
+              <p class="text-muted loading-pulse">Loading your next milestone…</p>
+            </div>
+            <div class="card needs-review" id="needs-review">
+              <p class="text-muted loading-pulse">Loading review signs…</p>
+            </div>
+          </div>
+
+          <h2 class="mt-8 mb-4 progress-chapters-heading">Your Learning Journey</h2>
           <div class="card unit-progress-list" id="progress-chapters">
-            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading chapter-by-chapter progress…</p>
+            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading your learning journey…</p>
+          </div>
+
+          <!-- Phase 3 — Sign Mastery: a per-chapter grid of every sign
+               the learner has reached in that chapter, colour-coded
+               mastered/practicing/not-started (js/progress-page.js's
+               renderSignMastery()/renderSignMasteryGrid()). Defaults to
+               the learner's current chapter; the <select> lets them
+               browse any OTHER unlocked chapter too. Locked chapters are
+               left out of the picker entirely — nothing to show mastery
+               of yet. Hidden (not just empty) until there's at least one
+               live, unlocked chapter to show. -->
+          <div class="card sign-mastery" id="sign-mastery" hidden></div>
+
+          <!-- PHASE 2 — "make progress feel personal" sections. Each card
+               below handles its own empty state inline (same convention
+               as #next-milestone / #needs-review / #progress-chapters
+               above) rather than one big all-or-nothing empty overlay. -->
+          <div class="card snapshot-card mt-8" id="progress-snapshot">
+            <p class="text-muted loading-pulse">Loading your strengths…</p>
+          </div>
+
+          <div class="progress-activity-row">
+            <div class="card activity-card" id="progress-activity">
+              <p class="text-muted loading-pulse">Loading recent activity…</p>
+            </div>
+            <div class="progress-stack">
+              <div class="card" id="progress-consistency">
+                <p class="text-muted loading-pulse">Loading your learning activity…</p>
+              </div>
+              <div class="card" id="progress-highlights">
+                <p class="text-muted loading-pulse">Loading your highlights…</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -381,6 +381,7 @@
 }
 
 .completion-card {
+  position: relative; /* anchors .completion-card__close */
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
@@ -391,6 +392,26 @@
   box-shadow: var(--shadow-card);
 }
 
+/* NEW: small X in the card's top-right corner — same visual language as the
+   login modal's .auth-modal__close (css/auth.css, not loaded on this page),
+   tucked just inside the card edge so it never clips on narrow screens. */
+.completion-card__close {
+  position: absolute; top: var(--space-3); right: var(--space-3);
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--clr-surface); border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted); font-size: 1.15rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.completion-card__close:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }
+.completion-card__close:focus-visible { outline: 2px solid var(--clr-accent); outline-offset: 2px; }
+
+/* Note under the "Practice Check (optional)" button. Hidden whenever that
+   button is hidden (startAssessment()/name drill set inline display:none),
+   so it never floats on its own during a check. */
+.practice-check-note { margin: var(--space-2) 0 0; }
+#btn-start-assessment[style*="display: none"] + .practice-check-note { display: none; }
+
 .completion-score {
   font-family: var(--font-display);
   font-size: 4rem;
@@ -398,6 +419,13 @@
   color: var(--clr-accent);
   line-height: 1;
   margin-bottom: var(--space-4);
+}
+
+.completion-attempts {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  margin: 0 0 var(--space-4);
 }
 
 .completion-actions {
