@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -244,6 +243,8 @@
        "spine" without touching the shared rule other pages still use. */
     .unit-info { margin-inline: auto; }
   </style>
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body>
 

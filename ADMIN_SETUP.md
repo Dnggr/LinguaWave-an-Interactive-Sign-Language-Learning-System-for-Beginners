@@ -5,8 +5,9 @@ New files, at a glance:
 ```
 firestore.rules              # NEW — publish in Firebase console (see its own header)
 css/admin.css                # NEW
-js/admin-firebase.js         # NEW — Firebase init + Firestore CRUD helpers
+js/admin-firebase.js         # NEW — Firestore users helpers + account-delete call
 js/admin-auth.js             # NEW — single-admin route guard
+js/admin-content.js          # NEW — reads hardcoded lessons/quizzes from missions.js
 js/admin-dashboard.js        # NEW
 js/admin-lessons.js          # NEW
 js/admin-quiz.js             # NEW
@@ -60,23 +61,42 @@ Log in with the admin account, then go directly to
 from the learner sidebar, to keep the two experiences visually
 separate.
 
+## 5. Deleting learners (Cloud Function — one-time deploy)
+
+User Management's **Delete** removes a learner's Firebase Authentication
+login **and** their Firestore data (`users/{uid}` and everything under
+it). A browser can't delete someone else's login, so this goes through
+the `deleteLearnerAccount` function in `functions/`.
+
+1. Firebase console → upgrade the project to the **Blaze** plan (Cloud
+   Functions require it; usage for a class project is effectively free).
+2. Open `functions/index.js` and confirm `ADMIN_EMAIL` matches the admin
+   email used everywhere else.
+3. From the repo root (needs the Firebase CLI, `npm i -g firebase-tools`):
+   ```
+   firebase login
+   firebase init functions   # choose your project; when asked, use the existing
+                             # ./functions folder, JavaScript, keep existing files
+   cd functions && npm install && cd ..
+   firebase deploy --only functions
+   ```
+   If you already have a `firebase.json`, just make sure it has
+   `"functions": [{ "source": "functions" }]`.
+
+Until it's deployed, Delete shows "Delete service isn't deployed yet —
+nothing was deleted" and changes nothing (it never half-deletes).
+Only the admin account can call the function (checked server-side).
+
 ## Scope, on purpose
 
-- **Lesson/Quiz Management** are real CRUD screens against two new
-  Firestore collections (`signs`, `questions`) that
-  `SYSTEM_ARCHITECTURE.md` §4 already planned but never built. They do
-  **not** touch `js/data.js`, which is what the learner-facing pages
-  (`learn.html`, `lesson.html`, etc.) actually read their curriculum
-  from today. So: admin-created/edited lessons and questions are real,
-  saved data, but won't show up to learners yet. Wiring the learner
-  pages to read from Firestore instead is a bigger, separate job (it
-  touches the unit-gating logic in `js/engine/progress.js` and
-  `js/missions.js`) — happy to scope that next if you want it.
-- **Lesson Management** has no motion/gesture-detection fields — it
-  manages lesson content only, not the trained classifier models, per
-  the capstone limitation you flagged.
-- **User Management**'s "Delete" only removes the Firestore profile
-  document, not the Firebase Auth login itself (that needs a
-  server-side Admin SDK, which this static-hosting stack doesn't have).
-  The learner could still sign back in — they'd just get a fresh,
-  empty profile. Flagged in the UI, not hidden.
+- **Lesson/Quiz Management are read-only views of the hardcoded
+  curriculum** in `js/missions.js` (through `js/admin-content.js`) — the
+  same lessons and mastery quizzes learners actually use. Nothing is read
+  from or written to Firestore for them, and there is no level (the app is
+  one linear trail). To change a lesson or a quiz, edit `js/missions.js`
+  (quizzes are generated from each mission's signs) and redeploy.
+- The old Firestore `signs` / `questions` collections are no longer used
+  by the app; any documents in them can be deleted in the Firebase console.
+- **Lesson Management** has no motion/gesture-detection fields — it shows
+  lesson content only, not the trained classifier models, per the capstone
+  limitation.

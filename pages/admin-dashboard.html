@@ -24,7 +24,8 @@
     from the learner sidebar on purpose; the admin opens this page's
     URL directly after logging in with the admin account.
     Quick links to the four admin sections + a small stats summary
-    pulled live from Firestore via js/admin-firebase.js.
+    from js/admin-firebase.js (learners from Firestore; lessons and
+    quizzes counted from the hardcoded curriculum in js/missions.js).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -41,6 +42,8 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/toast.css" />
   <link rel="stylesheet" href="../css/admin.css" />
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body class="admin-gate">
 
@@ -76,7 +79,6 @@
         </a>
       </nav>
       <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
-        <a href="dashboard.html" class="admin-exit-link">&larr; Exit to learner app</a>
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                   aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
@@ -103,7 +105,7 @@
           <div class="stats-grid" id="admin-stats-grid">
             <div class="stat-tile"><div class="stat-tile__value" id="stat-users">&mdash;</div><div class="stat-tile__label">Learners</div></div>
             <div class="stat-tile"><div class="stat-tile__value" id="stat-signs">&mdash;</div><div class="stat-tile__label">Lessons</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="stat-questions">&mdash;</div><div class="stat-tile__label">Quiz Questions</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="stat-questions">&mdash;</div><div class="stat-tile__label">Quizzes</div></div>
           </div>
         </div>
       </section>
@@ -118,14 +120,14 @@
               <span class="admin-quick-link__icon" data-lw-icon="learn" aria-hidden="true"></span>
               <span>
                 <span class="admin-quick-link__title" style="display:block;">Lesson Management</span>
-                <span class="admin-quick-link__desc">Add, edit, or remove lesson content.</span>
+                <span class="admin-quick-link__desc">Browse the lessons built into the app.</span>
               </span>
             </a>
             <a class="card admin-quick-link" href="admin-quiz.html">
               <span class="admin-quick-link__icon" data-lw-icon="questions" aria-hidden="true"></span>
               <span>
                 <span class="admin-quick-link__title" style="display:block;">Quiz Management</span>
-                <span class="admin-quick-link__desc">Add, edit, or remove quiz questions.</span>
+                <span class="admin-quick-link__desc">Browse the mastery quizzes built into the app.</span>
               </span>
             </a>
             <a class="card admin-quick-link" href="admin-users.html">
@@ -154,6 +156,8 @@
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script src="../js/main.js"></script>
+  <script defer src="../js/missions.js"></script>
+  <script defer src="../js/lesson-loop.js"></script>
   <script type="module" src="../js/admin-dashboard.js"></script>
 </body>
 </html>

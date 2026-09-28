@@ -1,12 +1,13 @@
 /**
  * admin-users.js — Controller for pages/admin-users.html (NEW)
  * Lists learner profiles from Firestore `users`, lets the admin
- * change a learner's level inline, and lets them remove a profile
- * document (with the Auth-account caveat explained on the page).
+ * change a learner's level inline, and lets them delete a learner
+ * COMPLETELY — Firebase Auth login + Firestore data — through the
+ * `deleteLearnerAccount` Cloud Function (see js/admin-firebase.js).
  * The admin's own row (matched by ADMIN_EMAIL) has no delete button,
- * so a stray click can't lock the admin out of their own profile doc.
+ * so a stray click can't delete the admin account.
  */
-import { listUsers, updateUserLevel, deleteUserProfile } from "./admin-firebase.js";
+import { listUsers, updateUserLevel, deleteLearnerAccount } from "./admin-firebase.js";
 
 let allUsers = [];
 let pendingDeleteUid = null;
@@ -106,7 +107,7 @@ async function handleLevelChange(e) {
 function openDeleteConfirm(uid) {
   const u = allUsers.find((x) => x.id === uid);
   pendingDeleteUid = uid;
-  els.deleteBody.textContent = `Remove the profile for "${u?.name || u?.email || "this learner"}"?`;
+  els.deleteBody.textContent = `Permanently delete "${u?.name || u?.email || "this learner"}"? Their login and all their data will be removed.`;
   els.deleteBackdrop.hidden = false;
 }
 
@@ -119,13 +120,20 @@ async function confirmDelete() {
   if (!pendingDeleteUid) return;
   els.deleteConfirm.disabled = true;
   try {
-    await deleteUserProfile(pendingDeleteUid);
-    window.LinguaWave?.showToast?.("Profile removed.", "success");
+    // Deletes the Auth login AND the Firestore data server-side.
+    await deleteLearnerAccount(pendingDeleteUid);
+    window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
     closeDeleteConfirm();
     await loadUsers();
   } catch (err) {
-    console.error("Failed to delete user profile:", err);
-    window.LinguaWave?.showToast?.("Couldn't remove this profile.", "error");
+    console.error("Failed to delete learner:", err);
+    const notDeployed = ["functions/not-found", "functions/unavailable", "functions/internal"].includes(err?.code);
+    window.LinguaWave?.showToast?.(
+      notDeployed
+        ? "Delete service isn't deployed yet — nothing was deleted. See ADMIN_SETUP.md."
+        : (err?.message || "Couldn't delete this learner."),
+      "error"
+    );
   } finally {
     els.deleteConfirm.disabled = false;
   }

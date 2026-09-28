@@ -74,6 +74,8 @@
     LWAuth.requireAuth('../index.html');
   });
   </script>
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body data-tour="camera-practice">
 

@@ -13,8 +13,8 @@ async function init() {
   try {
     const stats = await getReportStats();
     document.getElementById("stat-users").textContent = stats.totalUsers;
-    document.getElementById("stat-signs").textContent = stats.totalSigns;
-    document.getElementById("stat-questions").textContent = stats.totalQuestions;
+    document.getElementById("stat-signs").textContent = stats.totalLessons;
+    document.getElementById("stat-questions").textContent = stats.totalQuizzes;
   } catch (err) {
     console.error("Failed to load admin stats:", err);
     window.LinguaWave?.showToast?.("Couldn't load stats from Firestore.", "error");
