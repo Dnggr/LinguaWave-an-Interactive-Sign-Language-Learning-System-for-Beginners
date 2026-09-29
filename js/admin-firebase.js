@@ -71,7 +71,7 @@ function withId(snapshot) {
  * ──────────────────────────────────────────────────────────────── */
 // The admin is not a learner: hide the admin's own profile doc (if it has
 // one) so User Management and Reports only count real learners.
-const ADMIN_EMAIL_LC = "firebase.admin.asl@gmail.com";
+const ADMIN_EMAIL_LC = "linguawave.project@gmail.com";
 export async function listUsers() {
   const snap = await getDocs(collection(db, "users"));
   return withId(snap).filter(

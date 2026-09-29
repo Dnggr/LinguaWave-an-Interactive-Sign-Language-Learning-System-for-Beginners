@@ -29,7 +29,7 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-const ADMIN_EMAIL = "firebase.admin.asl@gmail.com";
+const ADMIN_EMAIL = "linguawave.project@gmail.com";
 
 exports.deleteLearnerAccount = onCall(async (request) => {
   const caller = request.auth;

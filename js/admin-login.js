@@ -7,7 +7,7 @@
  */
 import { auth, adminSignIn, adminGoogleSignIn, adminSignOut } from "./admin-firebase.js";
 
-const ADMIN_EMAIL = "firebase.admin.asl@gmail.com"; // keep in sync (see admin-auth.js)
+const ADMIN_EMAIL = "linguawave.project@gmail.com"; // keep in sync (see admin-auth.js)
 const DASHBOARD = "admin-dashboard.html";
 
 const els = {

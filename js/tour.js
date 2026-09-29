@@ -62,6 +62,11 @@
  *   start(id, {manual})   run a guide now; resolves true if it opened
  *   stop()                close the open guide (recorded as closed)
  *   isActive()            is a guide open right now
+ *   isBusy()              a guide is open OR waiting for its targets to
+ *                         render (isActive() alone misses that window)
+ *   remind(reminder)      show a one-step "Got it" popup on something
+ *                         already on the page; returns true if it opened.
+ *                         See REMINDERS below.
  *   hasGuide(id)          is there a guide with this id
  *   hasSeen(id)           finished, skipped or dismissed by the current
  *                         account (a Skip all counts for every guide)
@@ -71,6 +76,21 @@
  *   'done' | 'skipped' | 'dismissed' | 'closed'.
  *   `?tour=1` in a page's URL forces its guide to start (handy for
  *   demos and support); the param is removed from the address bar.
+ *
+ * REMINDERS : remind({ id, target, title, body, placement, icon,
+ *            buttonLabel }) is the same spotlight + card with the tour
+ *            chrome taken off: no progress segments, no Back / Skip, one
+ *            "Got it" button (Esc does the same). It exists so a page can
+ *            point at ONE thing at the moment a learner needs it (the
+ *            Camera Tips card after repeated misses) without replaying a
+ *            whole guide. On purpose it is invisible to everything a
+ *            guide is tracked by: it never writes to lw_tour_seen_v1,
+ *            never counts toward "Skip all", and never fires `lwtour:end`
+ *            (it fires `lwtour:reminder-end` with {id} instead). It also
+ *            refuses to open while a guide is open or starting, and a
+ *            guide's start() refuses while a reminder is open, so the two
+ *            can never stack. Arrow keys are swallowed, not acted on: a
+ *            stray arrow press must not dismiss a reminder.
  *
  * DESIGN NOTES (non-obvious, kept for whoever edits this next)
  *   - Targets are re-queried by selector on every reposition, never
@@ -332,7 +352,8 @@
   }
 
   /* ── DOM ───────────────────────────────────────────────────────── */
-  function buildDom(guideId, count, skipAll) {
+  function buildDom(guideId, count, skipAll, reminder) {
+    if (reminder) return buildReminderDom(guideId);
     var segs = '';
     for (var i = 0; i < count; i++) segs += '<span class="lw-tour__seg"></span>';
 
@@ -357,6 +378,29 @@
         '<div class="lw-tour__text" aria-live="polite">' +
           '<div class="lw-tour__title" id="lw-tour-title"></div>' +
           '<div class="lw-tour__body" id="lw-tour-body"></div>' +
+        '</div>' +
+      '</div>';
+    return root;
+  }
+
+  // The reminder card: same shield / spotlight / pop shell (so place()
+  // and every class in css/tour.css work unchanged), but only the copy
+  // and one button. The button label is set with textContent in open().
+  function buildReminderDom(guideId) {
+    var root = document.createElement('div');
+    root.className = 'lw-tour lw-tour--reminder';
+    root.setAttribute('data-lw-tour', guideId);
+    root.innerHTML =
+      '<div class="lw-tour__shield" aria-hidden="true"></div>' +
+      '<div class="lw-tour__spot" aria-hidden="true"></div>' +
+      '<div class="lw-tour__pop lw-tour__pop--reminder" role="dialog" aria-modal="true"' +
+      ' aria-labelledby="lw-tour-title" aria-describedby="lw-tour-body">' +
+        '<div class="lw-tour__text" aria-live="polite">' +
+          '<div class="lw-tour__title" id="lw-tour-title"></div>' +
+          '<div class="lw-tour__body" id="lw-tour-body"></div>' +
+        '</div>' +
+        '<div class="lw-tour__foot">' +
+          '<button type="button" class="btn btn--primary lw-tour__next" data-tour-next></button>' +
         '</div>' +
       '</div>';
     return root;
@@ -484,24 +528,43 @@
     var step = a.steps[i];
     var last = i === a.steps.length - 1;
 
-    a.titleEl.textContent = step.title || '';
+    setTitle(a.titleEl, step);
     a.bodyEl.textContent = step.body || '';
     a.textEl.classList.remove('is-in');
     void a.textEl.offsetWidth;                      // restart the fade-in
     a.textEl.classList.add('is-in');
 
-    a.segs.forEach(function (seg, n) {
-      seg.classList.toggle('is-done', n < i);
-      seg.classList.toggle('is-current', n === i);
-    });
-    a.progress.setAttribute('aria-valuenow', String(i + 1));
-    a.progress.setAttribute('aria-valuetext', 'Step ' + (i + 1) + ' of ' + a.steps.length);
+    if (!a.reminder) {                              // reminders have no segments / Back
+      a.segs.forEach(function (seg, n) {
+        seg.classList.toggle('is-done', n < i);
+        seg.classList.toggle('is-current', n === i);
+      });
+      a.progress.setAttribute('aria-valuenow', String(i + 1));
+      a.progress.setAttribute('aria-valuetext', 'Step ' + (i + 1) + ' of ' + a.steps.length);
 
-    a.backBtn.hidden = i === 0;
-    a.nextBtn.textContent = last ? 'Done' : 'Next';
+      a.backBtn.hidden = i === 0;
+      a.nextBtn.textContent = last ? 'Done' : 'Next';
+    }
 
     ensureVisible(step);
     place(!first);
+  }
+
+  // Title text is always a text node (copy is never parsed as HTML). A
+  // step may also name a shared icon (step.icon): the icon markup comes
+  // from js/icons.js, never from the copy, and is skipped when the icon
+  // system isn't on the page.
+  function setTitle(el, step) {
+    el.textContent = '';
+    var icons = window.LWIcons;
+    if (step.icon && icons && typeof icons.markup === 'function') {
+      var holder = document.createElement('span');
+      holder.className = 'lw-tour__title-icon';
+      holder.setAttribute('aria-hidden', 'true');
+      try { holder.innerHTML = icons.markup(step.icon, { size: 'sm' }); } catch (e) { holder = null; }
+      if (holder) el.appendChild(holder);
+    }
+    el.appendChild(document.createTextNode(step.title || ''));
   }
 
   function next() {
@@ -522,6 +585,7 @@
       e.preventDefault();
       e.stopPropagation();
       if (e.key === 'Escape') skip();
+      else if (a.reminder) return;                  // a reminder has nothing to step through
       else if (e.key === 'ArrowRight') next();
       else back();
       return;
@@ -542,10 +606,11 @@
     removeNote();
     var uid = currentUid();
     var manual = !!(opts && opts.manual);
+    var reminder = !!(opts && opts.reminder);
     // The label is decided once, when the guide opens: the count only
     // changes when a guide ends, so it can't go stale mid-guide.
-    var skipAll = !manual && skippedCount(uid) >= SKIPS_BEFORE_SKIP_ALL;
-    var root = buildDom(guideId, steps.length, skipAll);
+    var skipAll = !manual && !reminder && skippedCount(uid) >= SKIPS_BEFORE_SKIP_ALL;
+    var root = buildDom(guideId, steps.length, skipAll, reminder);
     var pop = root.querySelector('.lw-tour__pop');
 
     active = {
@@ -554,6 +619,7 @@
       index: 0,
       uid: uid,
       manual: manual,
+      reminder: reminder,
       skipAll: skipAll,
       opener: document.activeElement,
       root: root,
@@ -562,6 +628,7 @@
       textEl: root.querySelector('.lw-tour__text'),
       titleEl: root.querySelector('#lw-tour-title'),
       bodyEl: root.querySelector('#lw-tour-body'),
+      // null / [] for a reminder, which has no progress row or Back button
       progress: root.querySelector('.lw-tour__steps'),
       segs: Array.prototype.slice.call(root.querySelectorAll('.lw-tour__seg')),
       backBtn: root.querySelector('[data-tour-back]'),
@@ -571,8 +638,12 @@
       raf: 0
     };
 
-    root.querySelector('[data-tour-skip]').addEventListener('click', skip);
-    active.backBtn.addEventListener('click', back);
+    if (reminder) {
+      active.nextBtn.textContent = (opts && opts.buttonLabel) || 'Got it';
+    } else {
+      root.querySelector('[data-tour-skip]').addEventListener('click', skip);
+      active.backBtn.addEventListener('click', back);
+    }
     active.nextBtn.addEventListener('click', next);
 
     document.body.appendChild(root);
@@ -609,6 +680,7 @@
   // learner is looking at: "Skip" ends this guide, "Skip all" ends the tour.
   function skip() {
     if (!active) return;
+    if (active.reminder) { finish('done'); return; } // Esc on a reminder = "Got it"
     finish(active.skipAll ? 'dismissed' : 'skipped');
   }
 
@@ -617,6 +689,17 @@
   function finish(status, silent) {
     var a = teardown();
     if (!a) return;
+    if (a.reminder) {
+      // A reminder is not a guide: nothing is recorded (no seen status,
+      // no skip count, no `lwtour:end`), it only hands focus back and
+      // announces that it closed.
+      var ro = a.opener;
+      if (ro && ro !== document.body && ro.isConnected && ro.focus) ro.focus({ preventScroll: true });
+      try {
+        document.dispatchEvent(new CustomEvent('lwtour:reminder-end', { detail: { id: a.guideId.replace(/^reminder:/, '') } }));
+      } catch (e) { /* CustomEvent unavailable: nothing listens anyway */ }
+      return;
+    }
     // Skipping a guide the learner opened themselves says nothing about
     // whether they want the tour, so it is recorded as 'closed' and never
     // counts toward "Skip all".
@@ -675,6 +758,24 @@
 
   function stop() { if (active) finish('closed', true); }
 
+  // One-step popup on something already on the page (see REMINDERS in
+  // the header). Synchronous on purpose: the target is already rendered
+  // when a page asks for a reminder, so there is nothing to wait for, and
+  // the caller learns right away whether it opened. A target that is
+  // missing or hidden still opens, as a centred card without a spotlight.
+  function remind(reminder) {
+    if (active || starting || !reminder || !reminder.title) return false;
+    var step = {
+      target: reminder.target,
+      title: reminder.title,
+      body: reminder.body,
+      placement: reminder.placement,
+      icon: reminder.icon
+    };
+    open('reminder:' + (reminder.id || 'reminder'), [step], { reminder: true, buttonLabel: reminder.buttonLabel });
+    return true;
+  }
+
   /* ── Auto-start ────────────────────────────────────────────────── */
   function autoStart() {
     var id = document.body && document.body.dataset ? document.body.dataset.tour : '';
@@ -705,6 +806,8 @@
     start: start,
     stop: stop,
     isActive: function () { return !!active; },
+    isBusy: function () { return !!active || starting; },
+    remind: remind,
     hasGuide: function (id) { return !!guides()[id]; },
     hasSeen: function (id) { return hasSeen(id); },
     reset: reset,

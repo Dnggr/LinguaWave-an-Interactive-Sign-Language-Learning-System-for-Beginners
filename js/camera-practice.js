@@ -64,6 +64,29 @@
   poseLandmarks is threaded through to classifyGesture()/classifyMotion()
   so they can derive the shoulder/hip body-relative features.
 
+  CAMERA TIPS REMINDER — repeated misses point at the Camera Tips card
+  ─────────────────────────────────────────────────────────────────
+  WHERE:   the "Camera Tips reminder hooks" block below the assessment
+           state, plus one-line calls in startRenderLoop() (static-try
+           tracking + motion-window outcome), handlePracticeFrame()
+           (success), handleAssessmentFrame()/showNextPrompt() (each
+           Practice Check prompt settles ONCE: passed / wrong / time up)
+           and bootDetectionEngine() (detection-ready flag).
+  WHAT:    This file decides what one attempt is and reports it as a
+           pass or a miss; js/camera-tips-reminder.js counts per sign and
+           shows the reminder (2nd, 5th, 10th, 20th miss, then every 10)
+           through LWTour.remind() — a spotlight on the REAL Camera Tips
+           card, not a copy, with a "Got it" button. Whole tutorial
+           restarts are not involved.
+  RULES:   Frames are never counted. Only a finished attempt is: a
+           Practice Check prompt, a finished motion recording, or a
+           "try" at a static sign (hand raised -> hand lowered / 10s, at
+           most ONE miss per try however long the hand stays up).
+           Nothing is counted while the models aren't loaded, a tour or
+           reminder is open, or the tab is hidden. See the block for the
+           limits (static-only phrase practice, e.g. the name drill, has
+           no discrete attempt to count).
+
   REV 3 — Assessment moved out of the per-sign lesson page
   ─────────────────────────────────────────────────────────────────
   Per product decision: live camera/motion detection inside a single
@@ -194,12 +217,111 @@ const FEEDBACK_ICONS = {
 };
 
 // Lesson content refs
-const lessonImageEl       = document.getElementById('lesson-image');
-const lessonImgHintEl     = document.getElementById('lesson-img-placeholder-hint');
 const lessonDescriptionEl = document.getElementById('lesson-description');
 const lessonTipsEl        = document.getElementById('lesson-tips');
 const lessonVideoEl       = document.getElementById('lesson-video');
+let   lessonEmbedEl       = document.getElementById('lesson-video-embed');   // `let`: swapped for a fresh <iframe> when controls are revealed
+const lessonShieldEl      = document.getElementById('lesson-video-shield');
 const lessonSubtitleEl    = document.getElementById('lesson-subtitle');
+
+// ── Demo video: local file vs. YouTube embed ───────────────────────
+// js/data.js `videoUrl` can be EITHER a local file (../assets/videos/…mp4,
+// the default for almost every sign) OR a YouTube embed URL
+// (https://www.youtube.com/embed/<id>?si=…). A YouTube embed URL is a web
+// page, not a media file, so it can't go in <video>/<source> — it needs the
+// <iframe id="lesson-video-embed"> in camera-practice.html. This picks the
+// right player per sign and hides the other.
+//
+// Only YouTube embed URLs are accepted for the iframe (allow-list, not "any
+// https URL"): videoUrl can also come from admin-edited Firestore content
+// (js/admin-content.js), and we don't want arbitrary pages framed here.
+// To support another host (e.g. player.vimeo.com), extend YT_EMBED_RE.
+const YT_EMBED_RE = /^https:\/\/(www\.)?(youtube\.com|youtube-nocookie\.com)\/embed\/[\w-]{6,}(\?[^\s#]*)?$/i;
+
+function isYouTubeEmbedUrl(url) {
+  return typeof url === 'string' && YT_EMBED_RE.test(url.trim());
+}
+
+// How the YouTube embed behaves. These are YouTube IFrame Player parameters
+// (https://developers.google.com/youtube/player_parameters) added ON TOP of
+// whatever is already in the sign's videoUrl (e.g. its `?si=` share id):
+//   autoplay+mute  start immediately, silently — browsers only allow autoplay when
+//                  muted. This also skips YouTube's "cued" thumbnail screen, which
+//                  always draws the title/channel bar. Same muted/looping treatment
+//                  lesson.js already gives local sign clips.
+//   loop           replay forever. Needs `playlist=<same video id>` for a single
+//                  video (added in buildYouTubeSrc) — YouTube ignores loop without it.
+//                  Looping also means the clip never reaches YouTube's end screen,
+//                  which is where the "More videos" grid comes from.
+//   rel=0          related videos limited to the SAME channel (YouTube no longer
+//                  lets embeds turn suggestions off completely).
+//   playsinline    iOS: play in place instead of forcing fullscreen.
+//   iv_load_policy=3  hide video annotation pop-ups.
+const YT_PLAYER_PARAMS = { autoplay: '1', mute: '1', loop: '1', rel: '0', playsinline: '1', iv_load_policy: '3' };
+
+// videoUrl → the iframe src actually loaded. `controls:false` is the clean default;
+// `controls:true` is what the learner gets after clicking the video.
+function buildYouTubeSrc(videoUrl, { controls }) {
+  const u  = new URL(videoUrl.trim());
+  const id = u.pathname.split('/').pop();                  // …/embed/<id>
+  Object.entries(YT_PLAYER_PARAMS).forEach(([k, v]) => u.searchParams.set(k, v));
+  // loop needs playlist=<id> for a single video. NOT for /embed/videoseries (a real
+  // playlist, which loops on its own) — there "playlist" would be the literal
+  // string "videoseries" and break the embed.
+  if (id !== 'videoseries') u.searchParams.set('playlist', id);
+  u.searchParams.set('controls', controls ? '1' : '0');
+  return u.toString();
+}
+
+// The videoUrl currently showing in the iframe, so the shield click can rebuild
+// the same video with controls turned on.
+let currentEmbedUrl = '';
+
+// Reload the embed with YouTube's controls, then get out of the way.
+// A brand-new <iframe> is swapped in instead of changing .src on the old one:
+// re-pointing an already-loaded iframe adds a browser-history entry (Back would
+// step through the player's own states); a new iframe's first load does not.
+// The clip is a couple of seconds and loops, so restarting it is unnoticeable.
+function revealEmbedControls() {
+  if (!lessonEmbedEl || !currentEmbedUrl) return;
+  if (lessonShieldEl && lessonShieldEl.hidden) return;   // already revealed — never reload twice
+  const fresh = lessonEmbedEl.cloneNode(false);
+  fresh.src = buildYouTubeSrc(currentEmbedUrl, { controls: true });
+  lessonEmbedEl.replaceWith(fresh);
+  lessonEmbedEl = fresh;
+  if (lessonShieldEl) lessonShieldEl.hidden = true;
+}
+if (lessonShieldEl) lessonShieldEl.addEventListener('click', revealEmbedControls);
+
+function applyLessonVideo(videoUrl) {
+  const url = typeof videoUrl === 'string' ? videoUrl.trim() : '';
+
+  if (lessonEmbedEl && isYouTubeEmbedUrl(url)) {
+    // YouTube: stop/hide the local player, load the embed clean (no controls),
+    // and put the click-to-reveal shield on top.
+    if (lessonVideoEl) { lessonVideoEl.pause(); lessonVideoEl.hidden = true; }
+    currentEmbedUrl = url;
+    lessonEmbedEl.src = buildYouTubeSrc(url, { controls: false });
+    lessonEmbedEl.hidden = false;
+    if (lessonShieldEl) lessonShieldEl.hidden = false;
+    return;
+  }
+
+  // Local file: blank/hide the iframe (stops any YouTube playback) and the shield,
+  // then load the mp4. With no videoUrl at all, keep the HTML's placeholder.mp4.
+  currentEmbedUrl = '';
+  if (lessonEmbedEl)  { lessonEmbedEl.src = 'about:blank'; lessonEmbedEl.hidden = true; }
+  if (lessonShieldEl) lessonShieldEl.hidden = true;
+  if (lessonVideoEl) {
+    lessonVideoEl.hidden = false;
+    const source = lessonVideoEl.querySelector('source');
+    if (source && url) source.src = url;
+    lessonVideoEl.load();
+    // autoplay attr covers most cases; this is a safety net (muted, so browsers allow it).
+    const p = lessonVideoEl.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  }
+}
 
 // ── URL params ─────────────────────────────────────────────────────
 const params     = new URLSearchParams(window.location.search);
@@ -321,6 +443,122 @@ let attemptCount   = 0;    // Practice Check rounds started on this page load (s
 let promptTimer    = null;
 let getReadyTimer  = null;
 let rafId          = null;
+
+// ══════════════════════════════════════════════════════════════════
+// Camera Tips reminder hooks (NEW) — see the CAMERA TIPS REMINDER entry
+// in this file's header, and js/camera-tips-reminder.js.
+// ══════════════════════════════════════════════════════════════════
+// This file only says what ONE ATTEMPT is and whether it passed. Three
+// kinds exist, and none of them is a camera frame:
+//
+//   1. A Practice Check prompt. Settles once, as passed (the right sign),
+//      a miss (a wrong sign, or a phrase step that was wrong), or a miss
+//      (time up). settleAssessmentAttempt() guards against settling the
+//      same prompt twice (a late match after "Time up" would otherwise
+//      count again, since that path doesn't set cooldown).
+//   2. A finished motion recording in practice mode ("Try it"). The
+//      classifier window ends exactly once per arming, so one recording
+//      = one attempt: matched-and-correct passes, anything else (wrong
+//      sign, low confidence, or the hand leaving too soon) is a miss.
+//   3. A "try" at a plain static sign in practice mode. Static practice
+//      has no start button, so a try is bounded by the hand itself:
+//      it begins when a hand appears after >= TRY_GAP_MS without one,
+//      and it is a MISS when the hand leaves for >= TRY_GAP_MS having
+//      been up for >= TRY_MIN_MS with no success (shorter than that is
+//      just a hand passing through frame), or when TRY_MAX_MS pass with
+//      the hand still up. A try is settled once — a pass, or a miss —
+//      and cannot count again until the hand has left, so holding a wrong
+//      sign for a minute is ONE miss, not a stream of them.
+//
+// Not counted, on purpose: the static steps of a phrase in practice mode
+// (the name drill, CAR_SPELL...). A wrong letter there is silently
+// retried with no discrete attempt to point at, and the name drill has no
+// Practice Check either, so it never triggers a reminder.
+//
+// Nothing counts while attemptTrackingReady is false (a model didn't load,
+// so every attempt would "fail" for reasons camera tips can't fix), while
+// a tour/reminder is open, or while the tab is hidden — tipsCanCount().
+// Declared up here, not next to the functions that use them, for the same
+// temporal-dead-zone reason as FEEDBACK_ICONS below.
+const TRY_MIN_MS = 2000;
+const TRY_MAX_MS = 10000;
+const TRY_GAP_MS = 1000;
+let attemptTrackingReady  = false;  // hand/face + static classifier loaded (set in bootDetectionEngine)
+let settledAssessmentKey  = null;   // `${round}:${promptIdx}` of the prompt already reported
+let staticTry             = null;   // { startedAt, lastSeenAt, settled } while a hand is up
+let signNeedsExplicitStart = null;  // cached needsExplicitStart(sign); resolved on first use
+
+// One key per sign/word, scoped by level + category so the same id in two
+// places never shares a count. Failures on different signs never combine.
+function tipsKey(signId) { return `${level}/${category}/${signId}`; }
+
+function tipsCanCount(signId) {
+  if (!attemptTrackingReady || document.hidden) return false;
+  if (window.LWCameraTips?.isSuppressed?.()) return false;
+  // A motion sign can't pass without the motion model, so a miss there
+  // says nothing about the learner's camera setup.
+  if (getDetectionType(signId) === 'motion' && !isMotionModelReady()) return false;
+  return true;
+}
+
+function reportFailedAttempt(signId) {
+  if (!tipsCanCount(signId)) return;
+  window.LWCameraTips?.recordFailure?.(tipsKey(signId));
+}
+
+function reportPassedAttempt(signId) {
+  window.LWCameraTips?.recordSuccess?.(tipsKey(signId));
+}
+
+// A Practice Check prompt settles once (see kind 1 above).
+function settleAssessmentAttempt(signId, passed) {
+  const key = `${attemptCount}:${quizIdx}`;
+  if (settledAssessmentKey === key) return;
+  settledAssessmentKey = key;
+  if (passed) reportPassedAttempt(signId); else reportFailedAttempt(signId);
+}
+
+// A correct sign registered in practice mode (static letter/word).
+function notePracticeSuccess() {
+  if (staticTry) staticTry.settled = true;
+  reportPassedAttempt(sign);
+}
+
+// One finished motion recording in practice mode (kind 2 above). Called
+// from the render loop the moment a window ends, with the classifier's
+// result, or null when the hand left before enough was captured.
+function noteMotionPracticeOutcome(result) {
+  if (mode !== 'practice') return;
+  if (result && result.matched && result.label === getActiveSignId()) {
+    reportPassedAttempt(sign);
+    return;
+  }
+  if (!tipsCanCount(getActiveSignId())) return;
+  reportFailedAttempt(sign);
+}
+
+// Kind 3 above: called every frame with whether a hand is in view, but
+// it only ever reports when a whole try has ended, never per frame.
+function trackStaticTry(now, handPresent) {
+  if (signNeedsExplicitStart === null && window.LWData) signNeedsExplicitStart = needsExplicitStart(sign);
+  const applies = mode === 'practice' && signNeedsExplicitStart === false && tipsCanCount(sign);
+  if (!applies) { staticTry = null; return; }
+
+  if (handPresent) {
+    if (!staticTry) { staticTry = { startedAt: now, lastSeenAt: now, settled: false }; return; }
+    staticTry.lastSeenAt = now;
+    if (!staticTry.settled && now - staticTry.startedAt >= TRY_MAX_MS) {
+      staticTry.settled = true;          // one miss for a long try, however long the hand stays up
+      reportFailedAttempt(sign);
+    }
+    return;
+  }
+  if (staticTry && now - staticTry.lastSeenAt >= TRY_GAP_MS) {
+    const t = staticTry;
+    staticTry = null;
+    if (!t.settled && t.lastSeenAt - t.startedAt >= TRY_MIN_MS) reportFailedAttempt(sign);
+  }
+}
 
 const DEBOUNCE_FRAMES = 45;
 let debounceCount  = 0;
@@ -1286,34 +1524,10 @@ function updateLessonMeta() {
       lessonTipsEl.innerHTML = signData.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('');
     }
 
-    if (lessonImageEl) {
-      lessonImageEl.src = signData.imageUrl;
-      lessonImageEl.style.display = '';
-      const placeholder = document.getElementById('lesson-img-placeholder');
-      if (placeholder) placeholder.style.display = 'none';
-    }
-    // CHANGED (dark-mode UX pass): was `Add image to ${signData.imageUrl}` — a developer
-    // TODO shown to learners whenever a reference image is missing. Plain copy now; the
-    // path is kept in data-image-path so it is still one inspect-element away for devs.
-    if (lessonImgHintEl) {
-      lessonImgHintEl.textContent = "The reference image for this sign isn't available yet.";
-      lessonImgHintEl.dataset.imagePath = signData.imageUrl || '';
-    }
-
-    if (lessonVideoEl) {
-      const source = lessonVideoEl.querySelector('source');
-      if (source) source.src = signData.videoUrl;
-      lessonVideoEl.load();
-    }
-
-    // NOTE:make sure to read data.js line 338, and lesson.html line 177 first to make this work properly
-    // if we're gonna use embedded youtube video 
-    // replace the condition above with this commented condition below 
-    
-    // if (lessonVideoEl) {  
-    //   lessonVideoEl.src = signData.videoUrl;
-    //   console.log(`src success`);
-    // }
+    // Demo video — the player (<video> for local files, <iframe> for YouTube
+    // embeds) is chosen from this sign's `videoUrl` in data.js. See
+    // applyLessonVideo() near the top of this file.
+    applyLessonVideo(signData.videoUrl);
 
     // NEW: link out to Lifeprint.com (ASL University) for a second,
     // authoritative reference on this sign, when we have one.
@@ -1351,28 +1565,12 @@ function updateLessonMeta() {
         'Reuses the same trained A–Z alphabet model. No new signs to learn here',
       ].map(t => `<li>${escapeHtml(t)}</li>`).join('');
     }
-    if (lessonImageEl) lessonImageEl.style.display = 'none';
-    const placeholder = document.getElementById('lesson-img-placeholder');
-    if (placeholder) placeholder.style.display = 'flex';
-    // BUG FIX (2026-08-20, review session): lessonImgHintEl is only
-    // ever updated inside the `if (signData)` branch above, which this
-    // drill never enters (signData is deliberately null for it — see
-    // signDataForTitle). Without this, the placeholder box kept
-    // whatever hint pages/camera-practice.html's static markup last had
-    // ("Add image to assets/images/basic/A.png" — the Letter A
-    // default), which is meaningless for a multi-letter name drill.
-    if (lessonImgHintEl) {
-      lessonImgHintEl.textContent = 'No single reference image. This drill combines the letters from your own name.';
-    }
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) referenceEl.style.display = 'none';
   } else {
     if (lessonDescriptionEl) lessonDescriptionEl.textContent =
       `Lesson content for "${displayTitle}" hasn't been written yet. The camera detection still works. Try practicing the sign below.`;
     if (lessonTipsEl) lessonTipsEl.innerHTML = '';
-    if (lessonImageEl) lessonImageEl.style.display = 'none';
-    const placeholder = document.getElementById('lesson-img-placeholder');
-    if (placeholder) placeholder.style.display = 'flex';
     const referenceEl = document.getElementById('lesson-reference-link');
     if (referenceEl) referenceEl.style.display = 'none';
   }
@@ -1641,8 +1839,10 @@ async function bootDetectionEngine() {
     setFaceWarn(`Hand/face tracking failed to load. Sign detection is disabled until this recovers. (${getModelError() ?? 'unknown error'})`);
   }
 
+  let classifierLoaded = false;
   try {
     await loadModels();
+    classifierLoaded = true;
     const motionErr = getMotionModelError();
     if (motionErr) {
       setClassifierWarn(
@@ -1679,6 +1879,10 @@ async function bootDetectionEngine() {
   warmingUp = true;
   clearTimeout(warmupTimer);
   warmupTimer = setTimeout(() => { warmingUp = false; }, INITIAL_WARMUP_MS);
+
+  // Camera Tips reminder: only count attempts once detection can
+  // actually work (see the hooks block near the assessment state).
+  attemptTrackingReady = isModelReady() && classifierLoaded;
 
   startRenderLoop();
 }
@@ -1736,6 +1940,10 @@ function startRenderLoop() {
       );
     }
 
+    // Camera Tips reminder: bookkeeping for a "try" at a static sign
+    // (see the hooks block). Reports only when a whole try has ended.
+    trackStaticTry(now, !!anyHandPresent);
+
     if (!anyHandPresent) {
       // CHANGED (was: unconditional early return, no grace handling —
       // see the removed BUG-10-era comment this replaced). A recording
@@ -1761,6 +1969,7 @@ function startRenderLoop() {
             // window so scoring/logging/UI all stay consistent.
             logDetection(forced.label, forced.confidence, forced.matched ? 'success' : 'fail');
             setMotionStatus(forced.matched ? 'success' : 'fail', forced.label);
+            noteMotionPracticeOutcome(forced);
             updateConfidenceUI(forced);
             if (mode === 'practice') handlePracticeFrame(forced);
             else if (mode === 'assessment') handleAssessmentFrame(forced);
@@ -1768,6 +1977,7 @@ function startRenderLoop() {
             // Too little real motion captured to guess fairly — tell
             // the user plainly what happened instead of a vague fail.
             setMotionStatus('hand-lost');
+            noteMotionPracticeOutcome(null);
             updateConfidenceUI({ label: null, confidence: 0, matched: false, buffering: false });
           }
           updateMotionBuffer();
@@ -1800,6 +2010,7 @@ function startRenderLoop() {
           motionArmed = false;
           logDetection(result.label, result.confidence, result.matched ? 'success' : 'fail');
           setMotionStatus(result.matched ? 'success' : 'fail', result.label);
+          noteMotionPracticeOutcome(result);
         }
       }
       updateMotionBuffer();
@@ -2085,6 +2296,7 @@ function handlePracticeFrame(result) {
     enterCooldown(1200);
     if (isMotion) resetMotionBuffer();
     showFeedback('Phrase complete!', 'success');
+    reportPassedAttempt(sign);
     // NEW (this session) — Fingerspell-as-assessment. This drill is
     // deliberately forgiving (a wrong letter retries that step instead
     // of failing the attempt — see the comment above this block), so
@@ -2141,6 +2353,7 @@ function handlePracticeFrame(result) {
       debounceCount++;
       if (debounceCount >= DEBOUNCE_FRAMES && lastDetected === result.label) {
         showFeedback(`Nice! Detected: ${result.label}`, 'success');
+        notePracticeSuccess();
         enterCooldown(1200);
         debounceCount = 0;
       }
@@ -2164,6 +2377,7 @@ function startAssessment() {
   score       = 0;
   missedSigns = [];
   attemptCount++;
+  staticTry   = null;   // a practice try in flight doesn't carry into the check
   mode        = 'assessment';
   syncMotionUIForMode();
   debounceCount = 0;
@@ -2191,6 +2405,15 @@ function startAssessment() {
 }
 
 function showNextPrompt() {
+  // Camera Tips reminder: a missed prompt can just have opened it. Hold
+  // the next prompt (or the results card, which is what follows the
+  // last prompt) until the learner presses "Got it", so the popup never
+  // stacks on the completion overlay and no prompt timer runs behind it.
+  // whenClosed() runs this straight away when nothing is open.
+  if (window.LWCameraTips?.isOpen?.()) {
+    window.LWCameraTips.whenClosed(showNextPrompt);
+    return;
+  }
   if (quizIdx >= quizSigns.length) {
     endAssessment();
     return;
@@ -2256,6 +2479,7 @@ function showNextPrompt() {
 
     promptTimer = setTimeout(() => {
       missedSigns.push({ expected: currentSign, got: null });
+      settleAssessmentAttempt(currentSign, false);
       showFeedback('⏱ Time up, moving on', 'error');
       setTimeout(() => {
         quizIdx++;
@@ -2297,6 +2521,7 @@ function handleAssessmentFrame(result) {
       const stepInfo = `${result.label} (step ${phraseStepIdx + 1}/${phraseSteps.length})`;
       phraseSteps = null;
       missedSigns.push({ expected: currentSign, got: stepInfo });
+      settleAssessmentAttempt(currentSign, false);
       showFeedback(`Detected "${result.label}". Expected "${expectedStep}"`, 'error');
       setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
       return;
@@ -2313,6 +2538,7 @@ function handleAssessmentFrame(result) {
       // extra time rather than one shared clock ticking under it
       promptTimer = setTimeout(() => {
         missedSigns.push({ expected: currentSign, got: null });
+        settleAssessmentAttempt(currentSign, false);
         showFeedback('⏱ Time up, moving on', 'error');
         phraseSteps = null;
         setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
@@ -2327,6 +2553,7 @@ function handleAssessmentFrame(result) {
     if (isMotion) resetMotionBuffer();
     phraseSteps = null;
     score++;
+    settleAssessmentAttempt(currentSign, true);
     showFeedback(`Correct! (${result.confidence}%)`, 'success');
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
     setTimeout(() => { quizIdx++; showNextPrompt(); }, NEXT_SIGN_DELAY);
@@ -2352,10 +2579,12 @@ function handleAssessmentFrame(result) {
 
   if (result.label === currentSign) {
     score++;
+    settleAssessmentAttempt(currentSign, true);
     showFeedback(`Correct! (${result.confidence}%)`, 'success');
     if (scoreEl) scoreEl.textContent = `Score: ${score} / ${quizSigns.length}`;
   } else {
     missedSigns.push({ expected: currentSign, got: result.label });
+    settleAssessmentAttempt(currentSign, false);
     showFeedback(`Detected ${result.label}. Expected ${currentSign}`, 'error');
   }
 

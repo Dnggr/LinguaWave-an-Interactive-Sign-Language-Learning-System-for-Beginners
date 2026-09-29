@@ -31,7 +31,7 @@
  */
 import { auth } from "./admin-firebase.js";
 
-const ADMIN_EMAIL = "firebase.admin.asl@gmail.com";
+const ADMIN_EMAIL = "linguawave.project@gmail.com";
 const SESSION_KEY = "lw_session";
 
 function isAdminEmail(email) {

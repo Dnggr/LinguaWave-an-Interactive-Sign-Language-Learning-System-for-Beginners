@@ -19,7 +19,9 @@
          .lw-tour__text            title + body
 
    Also here: .lw-tour-note (the one-line confirmation after a guide is
-   skipped).
+   skipped), and the reminder variant (.lw-tour--reminder, built by
+   remind() in js/tour.js): the same layer and card with a single
+   "Got it" button instead of the progress segments and Back / Skip.
 
    Why .lw-tour-note and not the app's toast: css/toast.css is linked
    on camera-practice.html only, so a showToast() call on any other
@@ -185,6 +187,24 @@
   font-size: calc(var(--fs-base) * .9375);
   line-height: 1.55;
   color: var(--clr-text-muted);
+}
+/* ── Reminder variant ───────────────────────────────────────────
+   js/tour.js's remind(): the same card with the tour chrome removed
+   (no progress segments, no Back / Skip), just the copy and one "Got it"
+   button. Everything above (spotlight, placement, theme tokens, the
+   phone docking) is shared, so only what is different is written here. */
+.lw-tour__pop--reminder { padding: var(--space-5); }
+.lw-tour__title-icon {
+  display: inline-flex;
+  vertical-align: -3px;
+  margin-right: var(--space-2);
+  color: var(--clr-accent);
+}
+.lw-tour__title-icon .lw-icon { width: 20px; height: 20px; }
+.lw-tour__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
 }
 @keyframes lw-tour-text-in {
   from { opacity: 0; transform: translateY(4px); }

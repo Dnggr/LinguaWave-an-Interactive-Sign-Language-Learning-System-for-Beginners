@@ -108,6 +108,10 @@
 }
 
 /* ── HERO — BACKGROUND SPIN LAYER (theme-toggle transition) ───────
+   NOTE (09-29): active again on index.html (js/hero-decor.js's
+   HERO_SPIN_ENABLED is true); every other page uses the reveal in
+   css/style.css §5c.
+
    A real spatial "turning sky", not a crossfade: light and dark are
    two halves of one rigid disc (.hero-rotor), each permanently
    occupying its own fixed 180° — light the top half, dark the bottom

@@ -593,6 +593,92 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   transition: none !important;
 }
 
+/* ── 5c. THEME TRANSITION (reveal that starts at the pressed control) ──
+   js/theme.js's runThemeTransition() puts three custom properties on
+   <html> — --theme-origin-x / --theme-origin-y (the CENTRE of the theme
+   control that was pressed, measured from its live getBoundingClientRect
+   each time, so it follows the button through every responsive layout)
+   and --theme-transition-radius (distance from that point to the
+   farthest viewport corner, so the reveal always ends fully covered) —
+   plus the .lw-theme-switching class for the duration. Nothing here
+   hardcodes a position or a size.
+
+   HOW IT WORKS. document.startViewTransition() snapshots the page in the
+   OLD theme, the callback swaps data-theme, and the browser exposes two
+   images: ::view-transition-old(root) and ::view-transition-new(root).
+   The old one just sits there; the new one is revealed through a
+   clip-path circle growing from the control. Only that snapshot layer
+   is clipped — no element of the real page is rotated, moved or
+   re-laid-out. With the control near an edge (the sidebar toggle, the
+   top navbar) the visible part of that circle IS the ~180° sweep.
+
+   The UA default is a crossfade whose old/new images use
+   mix-blend-mode: plus-lighter; both are switched off below (with an
+   opaque reveal that blend mode would ADD the two pages together and
+   flash white). Ordinary transitions are frozen while switching so the
+   live new snapshot doesn't visibly fade colours inside the revealed
+   area; the switch and the Settings segmented control are exempt so
+   their own thumb/pill animations still play. Reduced motion never gets
+   here (theme.js changes the theme immediately), and the media query
+   below is only a belt for a transition started some other way. */
+:root {
+  --theme-transition-duration: 800ms;
+  /* Slow enough at the start that the disc is visibly BORN at the control,
+     a clear surge through the middle, then a soft landing (radius: ~5% at
+     10% of the time, ~28% at 25%, ~80% at 50%, ~96% at 75%). The earlier
+     (.25,.8,.25,1) covered 93% of the radius by the halfway mark and then
+     spent the rest of the time on an unnoticeable tail. */
+  --theme-transition-ease: cubic-bezier(.4, .1, .2, 1);
+}
+
+html.lw-theme-switching::view-transition-group(root),
+html.lw-theme-switching::view-transition-image-pair(root),
+html.lw-theme-switching::view-transition-old(root) {
+  animation: none;
+}
+html.lw-theme-switching::view-transition-old(root),
+html.lw-theme-switching::view-transition-new(root) {
+  mix-blend-mode: normal;
+}
+html.lw-theme-switching::view-transition-new(root) {
+  animation: lw-theme-reveal var(--theme-transition-duration) var(--theme-transition-ease) both;
+}
+@keyframes lw-theme-reveal {
+  from { clip-path: circle(0px at var(--theme-origin-x) var(--theme-origin-y)); }
+  to   { clip-path: circle(var(--theme-transition-radius) at var(--theme-origin-x) var(--theme-origin-y)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lw-theme-switching::view-transition-new(root) { animation: none; }
+}
+
+html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch *, .theme-segmented *)),
+html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch *, .theme-segmented *))::before,
+html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch *, .theme-segmented *))::after {
+  transition: none !important;
+}
+
+/* Press feedback on the switch itself: a brief dip and a soft ring. Kept
+   small on purpose — the button is the SOURCE of the wave, not the show.
+   (Global reduced-motion rule in §15 already flattens it.) */
+.theme-switch.is-theme-pulse {
+  animation: lw-theme-switch-pulse 560ms var(--ease) 1;
+}
+@keyframes lw-theme-switch-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0    color-mix(in srgb, var(--clr-accent) 45%, transparent); }
+  30%  { transform: scale(.93); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 14px color-mix(in srgb, var(--clr-accent) 0%,  transparent); }
+}
+
+/* Fallback overlay for browsers without the View Transitions API — see
+   runThemeVeil() in js/theme.js. Background/clip-path are set there. */
+.lw-theme-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  will-change: clip-path, opacity;
+}
+
 /* ── 6. BUTTONS ─────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

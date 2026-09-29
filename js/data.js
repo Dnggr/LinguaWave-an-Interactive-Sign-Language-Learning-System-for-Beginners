@@ -1281,11 +1281,18 @@ const CATEGORIES = [
  * never contradicts what the classifier is actually checking for.
  * ──────────────────────────────────────────────────────────────── */
 
-//NOTE: read the lesson.js line 1065 comment and lesson.html line 177 comment to proceed
-//If we're gonna use youtube video as the source for video demonstration
-//replace the value of the videoUrl with the corresponding youtube video embed source (src)
-//to get the embed source of the corresponding youtube video click share, select embed and copy the src
-//Example: videoUrl: "https://www.youtube.com/embed/rlhRQiVeQPY?si=U7AqOtDU-hoEq1p5"
+//videoUrl can be a local file OR a YouTube embed URL — pages/camera-practice.html picks the
+//right player automatically (js/camera-practice.js → applyLessonVideo()):
+//  • Local file:    videoUrl: '../assets/videos/basic/B.mp4'   → shown in the <video> player
+//  • YouTube embed: replace the value of videoUrl with the video's embed source (src).
+//    To get it: on YouTube click Share → Embed and copy ONLY the src="…" value of the iframe.
+//    Example: videoUrl: "https://www.youtube.com/embed/rlhRQiVeQPY?si=U7AqOtDU-hoEq1p5"
+//    → shown in the <iframe id="lesson-video-embed">. Paste the URL as-is: camera-practice.js adds
+//    the loop / muted / no-controls / no-"More videos" parameters itself (buildYouTubeSrc()), so
+//    don't add &loop=… etc. here. Only youtube.com / youtube-nocookie.com /embed/ URLs are
+//    accepted for the iframe (see YT_EMBED_RE in camera-practice.js).
+//  (Note: lesson.js and mastery-quiz.js still render videoUrl via <video> only — see their
+//   mediaBlockHtml(); a YouTube URL there falls back to the sign image.)
 
 const SIGNS = [
   {

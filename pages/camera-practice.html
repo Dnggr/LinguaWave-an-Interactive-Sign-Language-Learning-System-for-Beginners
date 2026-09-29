@@ -31,6 +31,12 @@
                this file, and endAssessment()/continueToNext() in
                js/camera-practice.js for the gate itself.
 
+    CAMERA TIPS: the Camera Tips card below the Practice Check is a step of
+               the first-visit guided tour and is also shown as a "Got it"
+               reminder after repeated missed attempts on the same sign
+               (see the script tags at the end of <body>). The card itself
+               is the only copy and stays where it is.
+
     CONNECTS : ← pages/learn.html  (lesson card click)
                ← pages/dashboard.html  (Continue button)
                → next lesson.html (on completion)
@@ -181,19 +187,68 @@
             </div>
           </div>
 
-          <!-- Sign image -->
-          <div class="lesson-image-wrap mt-8">
-            <img
-              id="lesson-image"
-              src="../assets/images/placeholder-sign.png"
-              alt="ASL hand sign reference"
-              class="lesson-image"
-              onerror="this.style.display='none'; document.getElementById('lesson-img-placeholder').style.display='flex';"
-            />
-            <div class="lesson-img-placeholder" id="lesson-img-placeholder">
-              <span><span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Sign reference image</span>
-              <small id="lesson-img-placeholder-hint">The reference image for this sign isn't available yet.</small>
+          <!-- Video demonstration -->
+          <div class="lesson-video-wrap mt-8">
+            <h2 class="heading-md">Watch the Sign in Motion</h2>
+            <div class="lesson-video mt-4">
+              <!--
+                Demo video — TWO players live here, and js/camera-practice.js
+                shows exactly one of them per sign, based on that sign's
+                `videoUrl` in js/data.js (applyLessonVideo()):
+
+                  • videoUrl is a YouTube embed URL
+                      (https://www.youtube.com/embed/<id>?si=...)
+                      → the <iframe id="lesson-video-embed"> below is shown
+                        and its src is built from videoUrl, plus autoplay / muted /
+                        loop / no controls / no related-video suggestions
+                        (buildYouTubeSrc()). Clicking the video reveals controls.
+                  • videoUrl is anything else (e.g. ../assets/videos/basic/B.mp4)
+                      → the <video id="lesson-video"> is shown instead.
+
+                Do NOT hardcode a YouTube URL in this file — change the
+                sign's `videoUrl` in data.js and this page follows it.
+              -->
+              <video
+                id="lesson-video"
+                autoplay
+                loop
+                muted
+                playsinline
+                poster="../assets/images/placeholder-poster.png"
+              >
+                <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <!-- src stays about:blank until camera-practice.js fills it from data.js `videoUrl`. -->
+              <iframe
+                id="lesson-video-embed"
+                width="560" height="315"
+                src="about:blank"
+                title="Sign demonstration video"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen
+                hidden
+              ></iframe>
+              <!--
+                Transparent click-catcher over the YouTube iframe (shown only for YouTube signs).
+                The embed starts clean — muted, looping, NO controls / title / "More videos"
+                (see buildYouTubeSrc() in camera-practice.js). A click anywhere on the video hits
+                this button instead, which reloads the embed WITH YouTube's controls (seek, speed
+                via the gear, fullscreen) and then removes itself so later clicks reach the player.
+              -->
+              <button
+                type="button"
+                id="lesson-video-shield"
+                class="lesson-video__shield"
+                aria-label="Show video controls"
+                hidden
+              ></button>
             </div>
+            <p class="alert alert--info lesson-video-tip mt-4">
+              <span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Watch the movement once, then try to remember it before replaying.
+            </p>
           </div>
 
           <!-- Text explanation -->
@@ -211,35 +266,6 @@
             </ol>
             <!-- NEW: populated by lesson.js from signData.referenceUrl -->
             <p class="mt-4 text-muted" id="lesson-reference-link" style="display:none;"></p>
-          </div>
-
-          <!-- Video demonstration -->
-          <div class="lesson-video-wrap mt-8">
-            <h2 class="heading-md">Watch the Sign in Motion</h2>
-            <div class="lesson-video mt-4">
-              <video
-                id="lesson-video"
-                controls
-                poster="../assets/images/placeholder-poster.png"
-              >
-                <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-              <!--
-                NOTE:make sure to read data.js line 338, and lesson.js line 1065 comments first to make this work properly
-                This is the format of the iframe element of youtube video
-                to enable replace the video element above with the commented iframe element below
-
-                <iframe id="lesson-video" width="560" height="315" 
-                src="about:blank" 
-                title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; 
-                clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-              -->
-            </div>
-            <p class="alert alert--info lesson-video-tip mt-4">
-              <span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Watch the movement once, then try to remember it before replaying.
-            </p>
           </div>
 
           <!-- PREV / NEXT navigation -->
@@ -513,5 +539,16 @@
        <body data-tour="camera-practice">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Camera Tips as contextual coaching (NEW). The Camera Tips card
+       (.camera-tips, in the right-hand column above) is BOTH a step of the
+       guide above on a learner's first visit AND what this pops up when a
+       learner keeps missing the same sign: LWTour.remind() spotlights that
+       one real card with a "Got it" button, it is never duplicated and the
+       tutorial is never restarted. js/camera-practice.js reports each
+       finished attempt as passed / missed; this file counts them per sign
+       and decides when to remind (2nd, 5th, 10th, 20th miss, then every
+       10). Loaded after tour.js, and js/camera-practice.js calls it only
+       through optional chaining, so this page still works without it. -->
+  <script src="../js/camera-tips-reminder.js"></script>
 </body>
 </html>
