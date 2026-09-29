@@ -164,8 +164,18 @@
  * sweep instead of popping at an arbitrary moment, and (3) locks the
  * button against repeat clicks until the animation finishes.
  * toggleTheme() itself is never touched, just called at a different
- * moment than theme.js's default immediate call. */
+ * moment than theme.js's default immediate call.
+ *
+ * NOTE (09-29): the other pages now share a button-originated reveal
+ * (js/theme.js, css/style.css §5c). index.html was reverted to THIS spin:
+ * while HERO_SPIN_ENABLED is true this file marks <html> with
+ * data-lw-theme-transition="off", so theme.js's toggleTheme() (called
+ * mid-spin below) changes the theme instantly instead of also starting
+ * the reveal. Set the flag to false to give index.html the reveal too. */
 (function () {
+  const HERO_SPIN_ENABLED = true;
+  if (HERO_SPIN_ENABLED) document.documentElement.setAttribute('data-lw-theme-transition', 'off');
+
   // Kept in sync BY HAND with css/auth.css's `.hero-rotor.is-spinning-
   // to-*` rules: SPIN_MS mirrors --spin-duration, THEME_FLIP_MS is
   // timed to that animation's 50% keyframe (the dividing line's
@@ -256,6 +266,7 @@
   }
 
   function initHeroThemeSpin() {
+    if (!HERO_SPIN_ENABLED) return; // when off, theme.js's own button-originated transition handles #theme-toggle
     heroRotor = document.querySelector('.hero-rotor');
     themeToggleBtn = document.getElementById('theme-toggle');
     if (!heroRotor || !themeToggleBtn) return; // defensive — both always exist on index.html

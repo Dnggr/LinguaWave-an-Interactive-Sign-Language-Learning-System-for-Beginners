@@ -37,6 +37,7 @@ import {
 getAuth,
 createUserWithEmailAndPassword,
 signInWithEmailAndPassword,
+sendEmailVerification,
 signOut, 
 onAuthStateChanged,
 EmailAuthProvider,
@@ -62,6 +63,10 @@ import {
   query,
   orderBy
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -81,6 +86,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 
 'use strict';
 
@@ -177,6 +183,21 @@ async function login(email, password) {
   const result = await signInWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
 
+  // EMAIL VERIFICATION (email/password accounts only — Google accounts
+  // are pre-verified by Google and always have emailVerified === true).
+  // Signing back out before returning means an unverified account never
+  // gets a cached session, never touches Firestore, and can't reach any
+  // page past the login form.
+  if (!firebaseUser.emailVerified) {
+    await signOut(auth);
+    const err = new Error(
+      'Please verify your email first. Check your inbox (and spam folder) ' +
+      'for the link we sent, or use "Resend verification email" below.'
+    );
+    err.code = 'lw/email-not-verified';
+    throw err;
+  }
+
   // Fetch the real profile from Firestore instead of guessing
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
@@ -227,6 +248,30 @@ async function register(name, email, password) {
     throw new Error('Email must be ' + MAX_EMAIL_LENGTH + ' characters or fewer.');
   }
 
+  // DOMAIN CHECK (free — Node's built-in `dns` module inside a Cloud
+  // Function, no paid third-party email-verification API, no API key).
+  // "renejay@gmail.co" is a syntactically valid email, so Firebase's own
+  // format check lets it through; this catches it by actually looking up
+  // whether the domain has a mail server. See functions/index.js's
+  // checkEmailDomain(). Fails OPEN: if the function is unreachable
+  // (not deployed yet, cold-start network hiccup), signup still
+  // proceeds rather than locking everyone out over an infra issue —
+  // the email-verification link is still the real backstop either way.
+  let domainDeliverable = true;
+  try {
+    const checkEmailDomain = httpsCallable(functions, 'checkEmailDomain');
+    const domainCheck = await checkEmailDomain({ email: trimmedEmail });
+    domainDeliverable = !!(domainCheck.data && domainCheck.data.deliverable);
+  } catch (callErr) {
+    console.warn('Email domain check unavailable, continuing without it:', callErr);
+  }
+  if (!domainDeliverable) {
+    throw new Error(
+      "We couldn't find a mail server for that email's domain — double-check it for a typo " +
+      '(e.g. "gmail.co" instead of "gmail.com").'
+    );
+  }
+
   const result = await createUserWithEmailAndPassword(auth, email, password);
   const firebaseUser = result.user;
 
@@ -253,8 +298,27 @@ async function register(name, email, password) {
     throw firestoreError; // still let the caller show the real error
   }  
 
-  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
-  return user;
+  // EMAIL VERIFICATION (free, built into Firebase Auth — no extra
+  // service, no hardcoded code, no cost): send the link, then sign the
+  // browser back out. register() no longer logs the learner straight
+  // in — login() above refuses any password account until
+  // emailVerified is true, so there is no point caching a session here.
+  // Not fatal if this send fails (e.g. Firebase's per-hour send-rate
+  // limit) — the account still exists and resendVerificationEmail()
+  // below lets them request another one from the login screen.
+  try {
+    await sendEmailVerification(firebaseUser);
+  } catch (sendError) {
+    console.error('Failed to send verification email:', sendError);
+  }
+  await signOut(auth);
+
+  const verifyErr = new Error(
+    'Account created! We sent a verification link to ' + firebaseUser.email +
+    ' — check your inbox (and spam folder), then log in.'
+  );
+  verifyErr.code = 'lw/verify-email-sent';
+  throw verifyErr;
 }
 
 /* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
@@ -525,6 +589,29 @@ function whenAuthReady() {
   });
 }
 
+/* ── RESEND VERIFICATION EMAIL ───────────────────────────────────
+ * For the login screen's "Resend verification email" link. Firebase
+ * only lets an AUTHENTICATED user request their own verification
+ * email (this stops anyone from spamming an arbitrary address they
+ * don't own), so this briefly signs in with the password the learner
+ * already typed, sends the link, and signs back out — it never
+ * leaves a session behind, same as register() above.
+ * ──────────────────────────────────────────────────────────────── */
+async function resendVerificationEmail(email, password) {
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  const firebaseUser = result.user;
+
+  if (firebaseUser.emailVerified) {
+    await signOut(auth);
+    const err = new Error('This email is already verified — just log in.');
+    err.code = 'lw/already-verified';
+    throw err;
+  }
+
+  await sendEmailVerification(firebaseUser);
+  await signOut(auth);
+}
+
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
@@ -536,6 +623,7 @@ window.LWAuth = {
   isLoggedIn,
   login,
   register,
+  resendVerificationEmail,
   loginWithGoogle, 
   linkPendingGoogleCredential,
   logout,

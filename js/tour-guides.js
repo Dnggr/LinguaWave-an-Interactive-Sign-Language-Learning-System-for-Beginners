@@ -30,6 +30,10 @@
  *                how it copes with content a page renders after load.
  *   }
  *
+ * REMINDERS : window.LWTourReminders (bottom of this file) holds the copy
+ *            for one-step "Got it" popups that are NOT guides: they are
+ *            not tracked as seen or skipped and never replay a guide.
+ *
  * COPY RULES (so the guides read like one voice)
  *   - Say what the learner can DO here, not how the page is built.
  *   - Only state things the app really does. Every claim below was
@@ -183,8 +187,17 @@
         {
           target: '#btn-start-assessment',
           placement: 'left',
-          title: 'Test yourself, if you like',
-          body: 'Practice Check runs a short camera round. It is optional and never blocks your progress.',
+          title: 'Clear the camera check',
+          body: 'Practice Check runs a short camera round. Score at least 80% to move on to the next sign. If you miss, you can try again.',
+        },
+        {
+          // The existing Camera Tips card, in place (never a copy). Kept
+          // last on the right-hand column, in the page's own top-to-bottom
+          // order. Also the target of the repeated-miss reminder below.
+          target: '.camera-tips',
+          placement: 'left',
+          title: 'Tips for better detection',
+          body: 'Good light and a centered, fully visible hand help most. If detection keeps missing, this card pops up as a reminder.',
         },
         {
           target: '#course-sidebar',
@@ -243,5 +256,32 @@
       ],
     },
 
+  };
+
+  /* ── Reminders (NEW) ─────────────────────────────────────────────
+     One-step popups that point at something already on a page when a
+     learner needs it, instead of replaying a whole guide. Run by
+     window.LWTour.remind() (js/tour.js); WHEN one fires is decided by
+     the page's own trigger (camera-practice: js/camera-tips-reminder.js).
+       target       the element to spotlight (the real card, never a copy)
+       tiers[]      copy from gentle to more helpful; the trigger picks
+                    the tier from how many times the learner has missed
+       buttonLabel  the only button
+     Same copy rules as the guides above. */
+  window.LWTourReminders = {
+    'camera-tips': {
+      target: '.camera-tips',
+      placement: 'left',
+      icon: 'camera_tips',
+      buttonLabel: 'Got it',
+      tiers: [
+        // 2nd miss
+        { title: 'Quick Camera Tip', body: 'Try keeping your hand centered and fully visible.' },
+        // 5th miss
+        { title: 'Let\u2019s adjust your setup', body: 'Make sure your hand is well-lit and there is enough space around it.' },
+        // 10th miss and every later reminder
+        { title: 'Need a little help?', body: 'Review these camera tips before trying again.' },
+      ],
+    },
   };
 })();

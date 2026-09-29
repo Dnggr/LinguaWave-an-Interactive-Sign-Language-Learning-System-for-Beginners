@@ -5,7 +5,7 @@
  * Non-admin accounts are left alone.
  * Keep ADMIN_EMAIL in sync with js/admin-auth.js and firestore.rules.
  */
-const ADMIN_EMAIL = "firebase.admin.asl@gmail.com";
+const ADMIN_EMAIL = "linguawave.project@gmail.com";
 
 async function run() {
   try {

@@ -87,7 +87,7 @@ function mediaBlockHtml(sign) {
   // build: attaching onerror to <video> alone silently never fires.
   return `
     <div class="lesson-media">
-      <video class="lesson-media__video" muted loop playsinline>
+      <video class="lesson-media__video" autoplay muted loop playsinline>
         <source src="${safeVideo}" type="video/mp4"
                 onerror="var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';">
       </video>

@@ -36,7 +36,7 @@
 (function () {
   "use strict";
 
-  var ADMIN_EMAIL = "firebase.admin.asl@gmail.com";
+  var ADMIN_EMAIL = "linguawave.project@gmail.com";
   var SESSION_KEY = "lw_session";
 
   // Resolve targets relative to THIS script's location so it works

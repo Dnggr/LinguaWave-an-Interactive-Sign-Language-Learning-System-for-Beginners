@@ -107,7 +107,7 @@
   <script src="js/topic-marquee.js" defer></script>
   <script>
     // Keep in sync with ADMIN_EMAIL in js/admin-auth.js
-    const LW_ADMIN_EMAIL = 'firebase.admin.asl@gmail.com';
+    const LW_ADMIN_EMAIL = 'linguawave.project@gmail.com';
 
     function lwPostAuthPath() {
       const u = window.LWAuth && LWAuth.getCurrentUser && LWAuth.getCurrentUser();
@@ -349,6 +349,9 @@
           <p class="auth-switch text-muted">
             Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
           </p>
+          <p class="auth-switch text-muted mt-4">
+            Didn't get a verification email? <a href="#" onclick="handleResendVerification(); return false;">Resend it →</a>
+          </p>
         </form>
 
         <!-- ── REGISTER FORM ────────────────────────────────────── -->
@@ -358,8 +361,9 @@
             <label for="reg-name">Full name</label>
           </div>
           <div class="form-group mt-4">
-            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" />
+            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" onblur="checkEmailTypo()" />
             <label for="reg-email">Email</label>
+            <small id="reg-email-hint" class="text-muted" style="display:none;"></small>
           </div>
           <div class="form-group mt-4">
             <input type="password" id="reg-password" class="form-input" placeholder=" " autocomplete="new-password" />
@@ -628,15 +632,111 @@
     // REV 4 PHASE 5: no more reg-level field to read — everyone starts
     // at the same place (Unit 0), so LWAuth.register() no longer takes
     // a level argument. See js/auth.js's register() for the matching change.
+    // ── EMAIL TYPO HINT (self-contained, no external library) ───────
+    // Instant, client-side, zero network calls. Catches the common
+    // "close but wrong" domain typo (gmail.co, gmial.com, yaho.com...)
+    // the moment the learner leaves the field. This is a courtesy nudge,
+    // not a hard block — the real gate is checkEmailDomain() (a Cloud
+    // Function doing an actual DNS lookup), called inside LWAuth.register().
+    const COMMON_EMAIL_DOMAINS = [
+      'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com',
+      'icloud.com', 'aol.com', 'protonmail.com', 'live.com'
+    ];
+
+    // Plain Levenshtein edit distance — small, dependency-free.
+    function editDistance(a, b) {
+      const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+        Array(b.length + 1).fill(0).map((_, j) => (i === 0 ? j : 0))
+      );
+      for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+      for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+      for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[a.length][b.length];
+    }
+
+    function suggestEmailDomain(email) {
+      const at = email.lastIndexOf('@');
+      if (at < 1 || at === email.length - 1) return null;
+      const domain = email.slice(at + 1).toLowerCase();
+      if (COMMON_EMAIL_DOMAINS.includes(domain)) return null; // already correct
+
+      let best = null;
+      let bestDist = Infinity;
+      for (const candidate of COMMON_EMAIL_DOMAINS) {
+        const dist = editDistance(domain, candidate);
+        if (dist < bestDist) { bestDist = dist; best = candidate; }
+      }
+      // Only suggest for a SMALL typo (1-2 characters off), so we don't
+      // nag someone using a real, uncommon domain (school email, etc.).
+      return bestDist > 0 && bestDist <= 2 ? best : null;
+    }
+
+    function checkEmailTypo() {
+      const input = document.getElementById('reg-email');
+      const hint = document.getElementById('reg-email-hint');
+      const suggestion = suggestEmailDomain(input.value.trim());
+      if (suggestion) {
+        const [local] = input.value.trim().split('@');
+        hint.innerHTML = 'Did you mean <a href="#" onclick="fixEmailDomain(\'' + suggestion + '\'); return false;">' +
+          local + '@' + suggestion + '</a>?';
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+
+    function fixEmailDomain(domain) {
+      const input = document.getElementById('reg-email');
+      const [local] = input.value.trim().split('@');
+      input.value = local + '@' + domain;
+      document.getElementById('reg-email-hint').style.display = 'none';
+    }
+
     async function handleRegister() {
       const name     = document.getElementById('reg-name').value;
       const email    = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
       try {
         await LWAuth.register(name, email, password);
-        window.location.href = lwPostAuthPath();
+        // register() always throws — even on success — because it no
+        // longer logs the learner in directly (see js/auth.js). The
+        // line above never actually returns.
       } catch (error) {
+        if (error && error.code === 'lw/verify-email-sent') {
+          showAuthTab('login');
+          showAuthModal(error.message);
+          return;
+        }
         showAuthModal(error.message)
+      }
+    }
+
+    // "Resend verification email" link on the Log In form — reuses
+    // whatever the learner already typed into the login email/password
+    // fields (Firebase requires proving you own the account before it
+    // will resend the link, so a password is needed here too).
+    async function handleResendVerification() {
+      const email    = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) {
+        showAuthModal('Enter your email and password above first, then tap "Resend it".');
+        return;
+      }
+      try {
+        await LWAuth.resendVerificationEmail(email, password);
+        showAuthModal('Verification email resent to ' + email + ' — check your inbox (and spam folder).');
+      } catch (error) {
+        if (error && error.code === 'lw/already-verified') {
+          showAuthModal(error.message);
+          return;
+        }
+        showAuthModal(error.message || "Couldn't resend the email. Double-check your email and password.");
       }
     }
 
