@@ -1,8 +1,7 @@
 /**
  * js/settings-page.js — Preference persistence for pages/settings.html
  * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Wires the Notifications / Sound Effects / Reduced Motion
- *            toggle switches to localStorage, following the exact
+ * PURPOSE  : Wires the Reduced Motion toggle switch to localStorage, following the exact
  *            same persistence pattern js/theme.js already established
  *            for the theme toggle (a plain localStorage key, read on
  *            load, written on change) — not a new pattern.
@@ -41,7 +40,7 @@ const PREF_STORAGE_KEY = 'lw-preferences';
 // "Guide popups" switch (showGuides), replaced by the "Replay all guides"
 // button below. js/tour.js retires any leftover showGuides value itself,
 // and this file never reads or writes it.
-const DEFAULT_PREFS = { notifications: true, soundEffects: true, reducedMotion: false };
+const DEFAULT_PREFS = { reducedMotion: false };
 
 function loadPrefs() {
   try {
@@ -209,28 +208,24 @@ function initSettingsPage() {
   initThemeSelect();
   initMissionsDevBlock();
 
-  const notifEl  = document.getElementById('pref-notifications');
-  const soundEl  = document.getElementById('pref-sound-effects');
   const motionEl = document.getElementById('pref-reduced-motion');
 
-  // BUGFIX — all three checkboxes ship `checked` hardcoded in the HTML
-  // (see pages/settings.html), and the .checked assignments below
-  // correct each one to its real stored value. .toggle-switch's track/
+  // BUGFIX — the checkbox ships `checked`/unchecked hardcoded in the HTML
+  // (see pages/settings.html), and the .checked assignment below
+  // corrects it to its real stored value. .toggle-switch's track/
   // thumb both have CSS transitions (for nice user-triggered clicks),
   // so whenever a stored value differed from the hardcoded default,
   // that correction visibly slid/faded the switch on every single page
-  // load — e.g. Notifications flipping off→on on every refresh even
+  // load — e.g. a switch flipping off→on on every refresh even
   // though nothing had actually changed. Suppressed for this one
   // initial sync only, same "no-transition" pattern js/theme.js uses
   // for the theme switch (see its initThemeToggles()).
-  const switchEls = [notifEl, soundEl, motionEl]
+  const switchEls = [motionEl]
     .filter(Boolean)
     .map((input) => input.closest('.toggle-switch'))
     .filter(Boolean);
   switchEls.forEach((el) => el.classList.add('toggle-switch--no-transition'));
 
-  if (notifEl)  notifEl.checked  = prefs.notifications;
-  if (soundEl)  soundEl.checked  = prefs.soundEffects;
   if (motionEl) motionEl.checked = prefs.reducedMotion;
   applyReducedMotion(prefs.reducedMotion);
 
@@ -243,14 +238,6 @@ function initSettingsPage() {
     switchEls.forEach((el) => el.classList.remove('toggle-switch--no-transition'));
   });
 
-  notifEl?.addEventListener('change', () => {
-    prefs.notifications = notifEl.checked;
-    savePrefs(prefs);
-  });
-  soundEl?.addEventListener('change', () => {
-    prefs.soundEffects = soundEl.checked;
-    savePrefs(prefs);
-  });
   motionEl?.addEventListener('change', () => {
     prefs.reducedMotion = motionEl.checked;
     savePrefs(prefs);

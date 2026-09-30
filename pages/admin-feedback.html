@@ -16,19 +16,20 @@
     })();
   </script>
   <!--
-    pages/admin-lessons.html — Lesson Management
+    pages/admin-feedback.html — Feedback & Surveys (NEW)
     ─────────────────────────────────────────────────────────────────
-    READ-ONLY view of the HARDCODED lessons in js/missions.js (the same
-    content the learner pages use) via js/admin-content.js. Not backed by
-    Firestore and has no level — the app is one linear trail. To change a
-    lesson, edit js/missions.js. Motion/gesture-detection models are out
-    of scope here (known capstone limitation).
+    Read-only review of the learner feedback that js/feedback.js writes
+    to Firestore `surveys/{id}`. Gated by js/admin-auth.js (live
+    Firebase user, not the localStorage cache) and, for the actual
+    data, by firestore.rules (surveys: admin-only read). Nothing on this
+    page is stored locally or hardcoded — every row comes from Firestore.
+    Controller: js/admin-feedback.js. Question labels: js/survey-schema.js.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Lesson Management | LinguaWave Admin</title>
+  <title>Feedback &amp; Surveys | LinguaWave Admin</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
@@ -39,15 +40,15 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/toast.css" />
   <link rel="stylesheet" href="../css/admin.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
-  <script src="../js/role-guard.js"></script>
   <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
 </head>
 <body class="admin-gate">
 
-  <a href="#main" class="skip-link">Skip to Lesson Management</a>
+  <a href="#main" class="skip-link">Skip to Feedback &amp; Surveys</a>
 
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -61,7 +62,7 @@
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
           Admin Dashboard
         </a>
-        <a href="admin-lessons.html" class="app-sidebar__link active">
+        <a href="admin-lessons.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
           Lesson Management
         </a>
@@ -73,7 +74,7 @@
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
           User Management
         </a>
-        <a href="admin-feedback.html" class="app-sidebar__link">
+        <a href="admin-feedback.html" class="app-sidebar__link active" aria-current="page">
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
           User Feedback
         </a>
@@ -101,52 +102,52 @@
         <div class="container">
           <div class="admin-header">
             <div>
-              <h1>Lesson Management</h1>
-              <p>Lessons built into the app (from <code>js/missions.js</code>). View only &mdash; edit the source file to change them.</p>
+              <h1>Feedback &amp; Surveys</h1>
+              <p>Review learner feedback submitted through LinguaWave.</p>
             </div>
+            <button class="btn btn--ghost btn--sm" id="fb-refresh" type="button">Refresh</button>
           </div>
 
-          <div class="admin-toolbar">
-            <input class="form-input admin-toolbar__search" id="sign-search" type="search" placeholder="Search by title, sign ID, or mission&hellip;" />
-            <select class="form-input admin-toolbar__filter" id="sign-chapter-filter">
-              <option value="">All chapters</option>
-            </select>
-            <span class="text-muted" id="sign-count" aria-live="polite"></span>
-          </div>
-
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Sign ID</th>
-                  <th>Mission</th>
-                  <th>Chapter</th>
-                  <th>Order</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="sign-table-body">
-                <tr><td colspan="6" class="admin-table__loading">Loading lessons&hellip;</td></tr>
-              </tbody>
-            </table>
+          <div class="stats-grid" id="fb-stats" aria-live="polite">
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-total">&mdash;</div><div class="stat-tile__label">Total Feedback</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-basic">&mdash;</div><div class="stat-tile__label">Basic</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-medium">&mdash;</div><div class="stat-tile__label">Medium</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-intermediate">&mdash;</div><div class="stat-tile__label">Intermediate</div></div>
+            <div class="stat-tile" id="fb-stat-other-tile" hidden><div class="stat-tile__value" id="fb-stat-other">&mdash;</div><div class="stat-tile__label">Other / unknown</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-week">&mdash;</div><div class="stat-tile__label">Submissions This Week</div></div>
+            <div class="stat-tile"><div class="stat-tile__value stat-tile__value--text" id="fb-stat-latest">&mdash;</div><div class="stat-tile__label">Most Recent Submission</div></div>
           </div>
         </div>
       </section>
-    </div>
-  </div>
 
-  <!-- View modal (read-only) -->
-  <div class="admin-modal-backdrop" id="sign-modal-backdrop" hidden>
-    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="sign-modal-title">
-      <div class="admin-modal__head">
-        <h2 id="sign-modal-title">Lesson</h2>
-        <button class="admin-modal__close" id="sign-modal-close" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div id="sign-modal-body"></div>
-      <div class="admin-modal__foot">
-        <button class="btn btn--primary" type="button" id="sign-modal-done">Close</button>
-      </div>
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-toolbar">
+            <input class="form-input admin-toolbar__search" id="fb-search" type="search"
+                   placeholder="Search by name, email or comment&hellip;" aria-label="Search feedback" autocomplete="off" />
+            <select class="form-input admin-toolbar__filter" id="fb-level-filter" aria-label="Filter by level">
+              <option value="">All levels</option>
+              <option value="basic">Basic</option>
+              <option value="medium">Medium</option>
+              <option value="intermediate">Intermediate</option>
+            </select>
+          </div>
+          <p class="fb-count text-muted" id="fb-count" aria-live="polite"></p>
+
+          <!-- One of: loading / error / empty / list. Only one is visible at a time. -->
+          <div class="fb-state" id="fb-loading" role="status">Loading feedback&hellip;</div>
+          <div class="fb-state" id="fb-error" role="alert" hidden>
+            <p>Unable to load feedback.<br />Please try again.</p>
+            <button class="btn btn--secondary btn--sm" id="fb-retry" type="button">Try again</button>
+          </div>
+          <div class="fb-state" id="fb-empty" hidden></div>
+
+          <div class="fb-list" id="fb-list" hidden></div>
+          <div class="fb-more" id="fb-more-wrap" hidden>
+            <button class="btn btn--secondary" id="fb-more" type="button">Show more</button>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -156,8 +157,6 @@
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script src="../js/main.js"></script>
-  <script defer src="../js/missions.js"></script>
-  <script defer src="../js/lesson-loop.js"></script>
-  <script type="module" src="../js/admin-lessons.js"></script>
+  <script type="module" src="../js/admin-feedback.js"></script>
 </body>
 </html>

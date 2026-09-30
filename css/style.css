@@ -958,12 +958,20 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 }
 /* In-app override — settings.html's Reduced Motion toggle (see
    js/settings-page.js) for a learner whose OS setting doesn't already
-   request it. Same effect as the media query above, applied manually. */
+   request it. The class is set on <html> on EVERY page, before first
+   paint, by the inline snippet in each page's <head> (reads
+   localStorage 'lw-preferences'.reducedMotion) and kept in sync across
+   tabs by js/theme.js. Same effect as the media query above, plus:
+   animations run once instead of looping (an infinite loop at .01ms
+   just flickers), and smooth scrolling is turned off. */
+html.lw-force-reduced-motion { scroll-behavior: auto !important; }
 html.lw-force-reduced-motion *,
 html.lw-force-reduced-motion *::before,
 html.lw-force-reduced-motion *::after {
   transition-duration: .01ms !important;
   animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
 }
 
 /* ── 16. SKIP LINK + LOADING PULSE (shared, page-agnostic) ─────────
@@ -1096,7 +1104,7 @@ html.lw-force-reduced-motion *::after {
 
 /* ── 18. TOGGLE SWITCH (shared form control) ────────────────────────
    Plain checkbox-driven on/off switch — Settings page preferences
-   (Notifications, Sound Effects, etc). Same visual language as
+   (Reduced Motion, etc). Same visual language as
    .theme-switch's sliding thumb, but generic (no light/dark icon
    glyph) and state-driven by a real <input type="checkbox"> for
    accessible keyboard/AT support, since unlike .theme-switch this isn't wired by
@@ -1122,8 +1130,8 @@ html.lw-force-reduced-motion *::after {
 .toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(20px); background: #fff; }
 .toggle-switch input:focus-visible ~ .toggle-switch__track { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 
-/* BUGFIX — the Notifications/Sound Effects/Reduced Motion checkboxes
-   ship `checked` hardcoded in the HTML (see pages/settings.html), then
+/* BUGFIX — the Reduced Motion checkbox
+   ships with a hardcoded state in the HTML (see pages/settings.html), then
    js/settings-page.js corrects each one to its real stored value on
    load. When a stored value differs from the hardcoded default, that
    correction used to visibly animate (the CSS transitions above are

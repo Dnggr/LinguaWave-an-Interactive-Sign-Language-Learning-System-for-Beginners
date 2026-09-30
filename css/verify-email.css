@@ -1,0 +1,115 @@
+/**
+ * css/verify-email.css — pages/verify-email.html only (NEW, 2026-09-29)
+ * ─────────────────────────────────────────────────────────────────
+ * Reuses the existing `.auth-card` (css/auth.css) and button classes
+ * (css/style.css) so this page reads as part of the login experience;
+ * this file only adds the page shell, the address chip, the status line
+ * and the loading spinner. Colors come from the theme tokens, so light
+ * and dark both work with no extra rules.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+/* `hidden` must win over the display rules below (author `display:flex`
+   would otherwise override the browser's default [hidden] rule). */
+.verify-page [hidden] { display: none !important; }
+
+.verify-page {
+  min-height: 100vh;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+}
+
+.verify-main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Same wordmark treatment as .navbar__logo, without needing a navbar. */
+.verify-brand {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  margin: 0;
+}
+.verify-brand span { color: var(--clr-text-muted); font-weight: 400; }
+
+.verify-card { text-align: center; }
+
+.verify-title {
+  font-size: var(--fs-2xl);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+/* The address being verified. Long addresses must wrap, not overflow. */
+.verify-address {
+  margin: var(--space-2) 0 var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.verify-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.verify-hint {
+  font-size: var(--fs-sm);
+  margin-top: var(--space-6);
+}
+
+/* Status line: info (neutral) / success / error. Each variant pairs a soft
+   background with the text color the theme tokens guarantee is readable
+   on it (see the --clr-red-text note in css/style.css). */
+.verify-status {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+.verify-status--success {
+  background: var(--clr-accent-soft);
+  border-color: var(--clr-accent);
+}
+.verify-status--error {
+  background: var(--clr-red-soft);
+  border-color: var(--clr-red);
+  color: var(--clr-red-text);
+}
+
+/* Loading + success blocks share one centered column. */
+.verify-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
+}
+
+.verify-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--clr-border);
+  border-top-color: var(--clr-accent);
+  animation: lw-verify-spin 0.9s linear infinite;
+}
+@keyframes lw-verify-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .verify-spinner { animation: none; }
+}

@@ -262,6 +262,57 @@ function buildStreakWeek(activeDays) {
   return `<span class="streak-week" role="img" aria-label="${label}">${cols}</span>`;
 }
 
+/* ── Mastery Hearts refill countdown ────────────────────────────
+ * Shows "Next heart in 42m" on the Mastery Hearts tile and inside its
+ * explainer while the pool isn't full. Same wording/format as the
+ * Mastery Quiz's out-of-hearts popup (h + m, rounded up). One interval at
+ * most (AGENTS.md timer rule): it is cleared on pagehide, and it only
+ * touches the text nodes, except when a heart actually comes back, when
+ * it re-renders the hero so the count and icon are right. */
+let heartsCountdownTimerId = null;
+let heartsRenderedCount = null;
+
+function formatHeartCountdown(targetIso) {
+  const ms = new Date(targetIso).getTime() - Date.now();
+  if (ms <= 0) return 'less than a minute';
+  const totalMin = Math.ceil(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function tickHeartsCountdown() {
+  if (!window.LWMissions) return;
+  const now = window.LWMissions.getHeartsState();
+  if (heartsRenderedCount !== null && now.hearts !== heartsRenderedCount) {
+    // A heart came back: redraw the tile, keeping the explainer open if it was.
+    const panel = document.getElementById('hearts-explainer');
+    const wasOpen = !!(panel && !panel.hidden);
+    const missions = window.LWMissions.getAllMissions();
+    renderHero(missions, collectLearnedSigns(missions));
+    if (wasOpen) {
+      const p = document.getElementById('hearts-explainer');
+      const b = document.querySelector('.hearts-toggle');
+      if (p) p.hidden = false;
+      if (b) b.setAttribute('aria-expanded', 'true');
+    }
+    return;
+  }
+  if (!now.nextRefillAt) return;
+  const text = formatHeartCountdown(now.nextRefillAt);
+  document.querySelectorAll('[data-hearts-countdown]').forEach((el) => { el.textContent = text; });
+}
+
+function startHeartsCountdown() {
+  if (heartsCountdownTimerId !== null) clearInterval(heartsCountdownTimerId);
+  heartsCountdownTimerId = setInterval(tickHeartsCountdown, 15000);
+}
+window.addEventListener('pagehide', () => {
+  if (heartsCountdownTimerId !== null) { clearInterval(heartsCountdownTimerId); heartsCountdownTimerId = null; }
+});
+// Background tabs throttle timers; catch up as soon as the tab is back.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tickHeartsCountdown(); });
+
 /* ── §02 Overall Progress + §03 Progress Statistics ─────────────────
  * The ring's own % is still tallyItems() — the SAME formula
  * dashboard.js's ring uses, so the two pages never disagree. Under
@@ -307,6 +358,14 @@ function renderHero(missions, learnedSigns) {
   // least one heart; drawn as an outline at 0 so an empty pool looks
   // empty. Same Feather-style heart path as the rest of the app's icons.
   const heartIcon = `<svg class="heart-icon${hearts.hearts > 0 ? '' : ' heart-icon--empty'}" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>`;
+  // Refill countdown (only while the pool isn't full). Kept in sync by
+  // tickHeartsCountdown(); the same text shows on the tile and in the explainer.
+  heartsRenderedCount = hearts.hearts;
+  const refillText = hearts.nextRefillAt ? formatHeartCountdown(hearts.nextRefillAt) : '';
+  const tileHint = refillText
+    ? `<span class="stat-tile__hint">Next heart in <span data-hearts-countdown>${refillText}</span></span>`
+    : '';
+  const explainerNext = refillText
   // Day Streak tile: number + this-week strip (see buildStreakWeek()).
   const streakWeek = buildStreakWeek(getActiveDaySet(missions));
 
@@ -343,6 +402,7 @@ function renderHero(missions, learnedSigns) {
           <button type="button" class="stat-tile hearts-toggle" aria-expanded="false" aria-controls="hearts-explainer">
             <span class="stat-tile__value stat-tile__value--icon">${heartIcon}<span>${hearts.hearts}</span></span>
             <span class="stat-tile__label">Mastery Hearts</span>
+            ${tileHint}
           </button>
           <div class="hearts-explainer" id="hearts-explainer" hidden>
             <strong>How Mastery Hearts work</strong>
@@ -388,12 +448,17 @@ const STREAK_DIALOG_DAYS = 5;
 /* Teardrop flame drawn in the app's own tokens (orange while a streak is
  * alive, muted grey via .streak-flame--idle at 0). Lighter inner flame
  * and a soft base glow echo the reference; white overlays are
- * translucent so they read on both themes. */
+ * translucent so they read on both themes. A live flame also gets three
+ * ember circles; the motion itself is pure CSS (see .streak-flame in
+ * app.css), and an idle (0-day) flame stays still and has no embers. */
 function streakFlameSvg(idle) {
   return `<svg class="streak-flame${idle ? ' streak-flame--idle' : ''}" viewBox="0 0 96 112" aria-hidden="true">
     <path class="streak-flame__outer" d="M50 4C54 22 84 38 84 72c0 22-16 38-36 38S12 94 12 72c0-16 8-26 16-34 2 8 6 12 12 14C38 34 40 16 50 4z"/>
     <path class="streak-flame__inner" d="M48 44c3 12 22 20 22 40 0 12-10 22-22 22S26 96 26 84c0-10 6-16 10-22 2 5 5 7 8 7-1-9 0-18 4-25z"/>
     <ellipse class="streak-flame__glow" cx="48" cy="100" rx="24" ry="9"/>
+    ${idle ? '' : `<circle class="streak-flame__spark streak-flame__spark--1" cx="30" cy="40" r="3.4"/>
+    <circle class="streak-flame__spark streak-flame__spark--2" cx="66" cy="46" r="2.8"/>
+    <circle class="streak-flame__spark streak-flame__spark--3" cx="50" cy="30" r="2.2"/>`}
   </svg>`;
 }
 
@@ -1177,6 +1242,21 @@ function renderConsistency(missions) {
   `;
 }
 
+/* Lucide icons (https://lucide.dev, ISC licence), inlined so the page needs no
+ * icon font or network request. All use the 24×24 / stroke-2 / round-cap
+ * defaults; colour comes from currentColor via .highlights-row__icon--<tone>.
+ * Tones are semantic, not decorative: flame = streak (orange, same token as
+ * the "current chapter" dot), check = done (green), award = mastery (violet,
+ * which style.css reserves for achievement), hand = sign practice (accent). */
+const HIGHLIGHT_ICON_SVG = (inner) =>
+  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
+const HIGHLIGHT_ICONS = {
+  flame: HIGHLIGHT_ICON_SVG('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
+  hand: HIGHLIGHT_ICON_SVG('<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'),
+  check: HIGHLIGHT_ICON_SVG('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+  award: HIGHLIGHT_ICON_SVG('<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>'),
+};
+
 /* ── PHASE 2 §4 Personal Bests ────────────────────────────────────────
  * Deliberately 3–4 real numbers, no invented "Best assessment %" — see
  * the file-header note on why that one's left out. "Most practiced"
@@ -1204,10 +1284,10 @@ function renderHighlights(missions, learnedSigns) {
   }
 
   const rows = [
-    { icon: '🔥', label: 'Longest streak', value: `${streak.longestStreak} day${streak.longestStreak === 1 ? '' : 's'}` },
-    mostPracticed ? { icon: '🤟', label: 'Most practiced', value: mostPracticed.title } : null,
-    { icon: '📚', label: 'Missions completed', value: String(missionsCompleted) },
-    { icon: '🎯', label: 'Signs mastered', value: String(signs.mastered) },
+    { icon: 'flame', tone: 'orange', label: 'Longest streak', value: `${streak.longestStreak} day${streak.longestStreak === 1 ? '' : 's'}` },
+    mostPracticed ? { icon: 'hand', tone: 'accent', label: 'Most practiced', value: mostPracticed.title } : null,
+    { icon: 'check', tone: 'success', label: 'Missions completed', value: String(missionsCompleted) },
+    { icon: 'award', tone: 'violet', label: 'Signs mastered', value: String(signs.mastered) },
   ].filter(Boolean);
 
   el.innerHTML = `
@@ -1215,7 +1295,7 @@ function renderHighlights(missions, learnedSigns) {
     <ul class="highlights-list">
       ${rows.map((r) => `
         <li class="highlights-row">
-          <span class="highlights-row__icon" aria-hidden="true">${r.icon}</span>
+          <span class="highlights-row__icon highlights-row__icon--${r.tone}" aria-hidden="true">${HIGHLIGHT_ICONS[r.icon]}</span>
           <span class="highlights-row__body">
             <span class="highlights-row__label">${escapeHtml(r.label)}</span>
             <span class="highlights-row__value">${escapeHtml(r.value)}</span>
@@ -1283,6 +1363,7 @@ function initPage() {
   // background and re-render once it resolves.
   renderProgressPage();
   window.LWMissions.whenMissionsSyncReady().then(renderProgressPage);
+  startHeartsCountdown();
 }
 
 if (document.readyState === 'loading') {

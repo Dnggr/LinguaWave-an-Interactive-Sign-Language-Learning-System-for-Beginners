@@ -12,6 +12,7 @@
       var root = document.documentElement;
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
       root.style.colorScheme = resolved;
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
@@ -37,13 +38,15 @@
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Feedback | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/feedback.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <!-- Toast styles: main.js's showToast() (success/error on submit) is unstyled without this. -->
+  <link rel="stylesheet" href="../css/toast.css" />
 
   <script type="module" src="../js/auth.js"></script>
   <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
@@ -59,6 +62,9 @@
   </script>
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/mobile-nav.js" defer></script>
 </head>
 <body>
 
@@ -206,7 +212,8 @@
   </section>
 
   <script src="../js/main.js"></script>
-  <script src="../js/feedback.js"></script>
+  <!-- type="module": feedback.js imports the shared Firebase instance from auth.js (one init). -->
+  <script type="module" src="../js/feedback.js"></script>
   </div><!-- /.app-main -->
 </div><!-- /.app-shell -->
 

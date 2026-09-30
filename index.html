@@ -80,10 +80,44 @@
                the logo's click handler, so both just smooth-scroll to
                the top of this page. See the nav markup and the script
                block near the bottom for both.
+
+    2026-09-29 (EMAIL VERIFICATION — auth flow changed, UI unchanged
+               apart from one removed link): signing up no longer
+               logs anyone in and logging in no longer signs an
+               unverified user back out. Both now hand off to
+               pages/verify-email.html while the person is signed in
+               but UNVERIFIED (see js/auth.js's header comment for the
+               full three-state model). What changed here:
+                 - handleRegister(): LWAuth.register() now RETURNS
+                   { verificationSent } instead of always throwing
+                   'lw/verify-email-sent'; we redirect to
+                   verify-email.html (?status=sent | send-failed).
+                 - handleLogin(): LWAuth.login() now returns
+                   { verified, user }; unverified -> verify-email.html.
+                 - handleGoogleSignIn(): same gate, via getAuthState().
+                 - The login form's "Resend it" link and
+                   handleResendVerification() are REMOVED — that flow
+                   briefly signed in with a typed password; the verify
+                   page's Resend button replaces it.
+                 - Every error goes through LWAuth.describeAuthError()
+                   so learners never see raw "Firebase: Error (...)".
+                 - Submit buttons disable while a request runs (a
+                   double-click used to be able to fire two signups).
+                 - lwauth-ready now also routes a signed-in UNVERIFIED
+                   visitor to verify-email.html (LW_VERIFY_PAGE).
+
+    2026-09-30 (mobile hero + refresh position): (1) On phones the hero
+               now fills exactly one screen and its heading no longer
+               sits under the navbar — CSS only, in css/responsive.css
+               §8b (see the comment there for the cause). (2) A refresh
+               (or Back) now always starts at the top: the small inline
+               script just before </head> turns off the browser's scroll
+               restoration and drops a leftover #about-asl hash on
+               reload. Deliberate hash links still work.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>LinguaWave | Learn ASL Sign Language</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -109,6 +143,10 @@
     // Keep in sync with ADMIN_EMAIL in js/admin-auth.js
     const LW_ADMIN_EMAIL = 'linguawave.project@gmail.com';
 
+    // Where a signed-in but UNVERIFIED account goes (js/auth.js decides
+    // who is unverified from Firebase's emailVerified flag, not from here).
+    const LW_VERIFY_PAGE = 'pages/verify-email.html';
+
     function lwPostAuthPath() {
       const u = window.LWAuth && LWAuth.getCurrentUser && LWAuth.getCurrentUser();
       const isAdmin = !!(u && u.email) && u.email.toLowerCase() === LW_ADMIN_EMAIL.toLowerCase();
@@ -116,8 +154,65 @@
     }
 
     window.addEventListener('lwauth-ready', () => {
-      LWAuth.redirectIfLoggedIn(lwPostAuthPath());
+      // verified -> dashboard/admin; signed-in but unverified -> verify page;
+      // logged out -> nothing (stay on the login form).
+      LWAuth.redirectIfLoggedIn(lwPostAuthPath(), LW_VERIFY_PAGE);
     });
+  </script>
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  <link rel="stylesheet" href="css/responsive.css" />
+  <!-- REFRESH ALWAYS STARTS AT THE TOP (2026-09-30) ──────────────────────
+       Two things made a refresh land part-way down the page:
+       (1) The browser restores the previous scroll position on reload.
+       (2) "About" and "Explore ASL" link to #about-asl, which leaves that
+           #hash in the URL; a refresh then jumps straight back to the About
+           section.
+       Fix: switch scroll restoration to manual, and on a RELOAD or
+       back/forward visit drop a leftover #hash and jump to y=0 (before first
+       paint, again on DOMContentLoaded/load in case late layout moved
+       things, and when the page returns from the back/forward cache).
+       Deliberate hash links (someone opens index.html#about-asl from a
+       shared link) are NOT touched: only reloads and back/forward.
+       If the visitor scrolls/taps before the page finishes loading, we stop
+       resetting so we never yank the page out from under them.
+       scroll-behavior is forced to 'auto' for the jump because css/style.css
+       sets `smooth`, which would animate the reset down from the old spot. -->
+  <script>
+    (function () {
+      try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
+
+      var navType = 'navigate';
+      try {
+        var entry = performance.getEntriesByType('navigation')[0];
+        if (entry) navType = entry.type;
+        else if (performance.navigation && performance.navigation.type === 1) navType = 'reload';
+      } catch (e) {}
+      var isReload = navType === 'reload' || navType === 'back_forward';
+
+      if (isReload && location.hash) {
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      }
+
+      var userMoved = false;
+      ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (evt) {
+        window.addEventListener(evt, function () { userMoved = true; }, { once: true, passive: true });
+      });
+
+      function toTop() {
+        if (userMoved) return;
+        var root = document.documentElement, prev = root.style.scrollBehavior;
+        root.style.scrollBehavior = 'auto';
+        window.scrollTo(0, 0);
+        root.style.scrollBehavior = prev;
+      }
+
+      if (isReload) {
+        toTop();
+        document.addEventListener('DOMContentLoaded', toTop);
+        window.addEventListener('load', toTop);
+      }
+      window.addEventListener('pageshow', function (e) { if (e.persisted) { userMoved = false; toTop(); } });
+    })();
   </script>
 </head>
 <body>
@@ -348,9 +443,6 @@
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
           <p class="auth-switch text-muted">
             Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
-          </p>
-          <p class="auth-switch text-muted mt-4">
-            Didn't get a verification email? <a href="#" onclick="handleResendVerification(); return false;">Resend it →</a>
           </p>
         </form>
 
@@ -617,15 +709,47 @@
       });
     });
 
+    // ── SUBMIT-BUTTON BUSY STATE (2026-09-29) ───────────────────────
+    // Signup now makes a network round-trip to the Reacher pre-check
+    // before it even reaches Firebase, so it can take a few seconds. One
+    // shared flag + a disabled button stops a double-click from firing
+    // two checks / two createUser calls (the second would just fail with
+    // "email already in use" and confuse the learner). Reset ONLY on
+    // failure: on success we're navigating away anyway.
+    let authRequestInFlight = false;
+    function setSubmitBusy(formId, busy, busyLabel) {
+      const btn = document.querySelector('#' + formId + ' button[type="submit"]');
+      if (!btn) return;
+      if (busy) {
+        btn.dataset.label = btn.textContent;
+        btn.textContent = busyLabel;
+        btn.disabled = true;
+      } else {
+        btn.textContent = btn.dataset.label || btn.textContent;
+        btn.disabled = false;
+      }
+    }
+
     async function handleLogin() {
+      if (authRequestInFlight) return;
+      // Raw values on purpose: LWAuth.login() normalizes (trims) the email
+      // itself, so login and signup share ONE normalization (js/auth.js).
       const email    = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
+      authRequestInFlight = true;
+      setSubmitBusy('login-form', true, 'Logging in...');
       try {
-        await LWAuth.login(email, password);
+        const result = await LWAuth.login(email, password);
         await LWAuth.linkPendingGoogleCredential(); // no-op unless a Google sign-in just flagged a conflict
-        window.location.href = lwPostAuthPath();
+        // Verified -> normal destination. Unverified -> still signed in,
+        // but sent to the verification page instead of the app. (If the
+        // Google link above just made the email verified, verify-email.html
+        // re-checks Firebase on load and forwards them straight on.)
+        window.location.href = result.verified ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
-        showAuthModal(error.message)
+        authRequestInFlight = false;
+        setSubmitBusy('login-form', false);
+        showAuthModal(LWAuth.describeAuthError(error));
       }
     }
 
@@ -636,8 +760,10 @@
     // Instant, client-side, zero network calls. Catches the common
     // "close but wrong" domain typo (gmail.co, gmial.com, yaho.com...)
     // the moment the learner leaves the field. This is a courtesy nudge,
-    // not a hard block — the real gate is checkEmailDomain() (a Cloud
-    // Function doing an actual DNS lookup), called inside LWAuth.register().
+    // not a hard block — the real gate is the Reacher pre-check (the
+    // `checkEmailDeliverability` Cloud Function, called inside
+    // LWAuth.register() before any Firebase account is created), and after
+    // that Firebase's verification email.
     const COMMON_EMAIL_DOMAINS = [
       'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com',
       'icloud.com', 'aol.com', 'protonmail.com', 'live.com'
@@ -699,59 +825,42 @@
     }
 
     async function handleRegister() {
+      if (authRequestInFlight) return;
       const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value;
+      const email    = document.getElementById('reg-email').value; // raw: register() trims + validates + sends the SAME normalized value
       const password = document.getElementById('reg-password').value;
+      authRequestInFlight = true;
+      setSubmitBusy('register-form', true, 'Checking email...');
       try {
-        await LWAuth.register(name, email, password);
-        // register() always throws — even on success — because it no
-        // longer logs the learner in directly (see js/auth.js). The
-        // line above never actually returns.
+        // Order inside register(): validate -> Reacher pre-check -> create
+        // Firebase account -> send verification email. A rejected address
+        // throws BEFORE any account exists.
+        const result = await LWAuth.register(name, email, password);
+        // The account now exists but is UNVERIFIED: signed in, no learner
+        // access. verify-email.html shows the "Check your email" screen
+        // (or, for send-failed, says the email didn't go out and offers Resend).
+        window.location.href = LW_VERIFY_PAGE + (result.verificationSent ? '?status=sent' : '?status=send-failed');
       } catch (error) {
-        if (error && error.code === 'lw/verify-email-sent') {
-          showAuthTab('login');
-          showAuthModal(error.message);
-          return;
-        }
-        showAuthModal(error.message)
-      }
-    }
-
-    // "Resend verification email" link on the Log In form — reuses
-    // whatever the learner already typed into the login email/password
-    // fields (Firebase requires proving you own the account before it
-    // will resend the link, so a password is needed here too).
-    async function handleResendVerification() {
-      const email    = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
-      if (!email || !password) {
-        showAuthModal('Enter your email and password above first, then tap "Resend it".');
-        return;
-      }
-      try {
-        await LWAuth.resendVerificationEmail(email, password);
-        showAuthModal('Verification email resent to ' + email + ' — check your inbox (and spam folder).');
-      } catch (error) {
-        if (error && error.code === 'lw/already-verified') {
-          showAuthModal(error.message);
-          return;
-        }
-        showAuthModal(error.message || "Couldn't resend the email. Double-check your email and password.");
+        authRequestInFlight = false;
+        setSubmitBusy('register-form', false);
+        showAuthModal(LWAuth.describeAuthError(error));
       }
     }
 
     async function handleGoogleSignIn() {
       try {
         await LWAuth.loginWithGoogle();
-        window.location.href = lwPostAuthPath();
+        // Google accounts are normally already verified; if one ever
+        // isn't, it goes to the verification page like any other account.
+        window.location.href = LWAuth.getAuthState() === 'verified' ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
-        if (error && error.code === 'auth/popup-closed-by-user') return;
+        if (error && (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request')) return;
         if (error && error.code === 'auth/account-exists-with-different-credential') {
           showAuthTab('login');
           showAuthModal("An account with this email already exists. Log in with your password below to link Google to it — you'll only need to do this once.");
           return;
         }
-        showAuthModal(error.message);
+        showAuthModal(LWAuth.describeAuthError(error));
       }
     }
 

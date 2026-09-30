@@ -10,6 +10,7 @@
       var root = document.documentElement;
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
       root.style.colorScheme = resolved;
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
@@ -24,7 +25,7 @@
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Reports &amp; Analytics | LinguaWave Admin</title>
 
@@ -39,6 +40,9 @@
   <link rel="stylesheet" href="../css/admin.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/mobile-nav.js" defer></script>
 </head>
 <body class="admin-gate">
 
@@ -67,6 +71,10 @@
         <a href="admin-users.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="people"></span>
           User Management
+        </a>
+        <a href="admin-feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
+          User Feedback
         </a>
         <a href="admin-reports.html" class="app-sidebar__link active">
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
@@ -101,6 +109,7 @@
             <div class="stat-tile"><div class="stat-tile__value" id="report-total-users">&mdash;</div><div class="stat-tile__label">Total Learners</div></div>
             <div class="stat-tile"><div class="stat-tile__value" id="report-total-signs">&mdash;</div><div class="stat-tile__label">Total Lessons</div></div>
             <div class="stat-tile"><div class="stat-tile__value" id="report-total-questions">&mdash;</div><div class="stat-tile__label">Total Quizzes</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="report-total-feedback">&mdash;</div><div class="stat-tile__label">Total Feedback Submissions</div></div>
           </div>
         </div>
       </section>
@@ -130,6 +139,21 @@
             <div class="card">
               <div class="admin-section-title">Most Recent Sign-ups</div>
               <div id="report-recent-users"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-grid-2">
+            <div class="card">
+              <div class="admin-section-title">Feedback by Level</div>
+              <div id="report-feedback-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+            <div class="card">
+              <div class="admin-section-title">Recent Feedback <a href="admin-feedback.html" class="text-muted" style="font-size:var(--fs-xs); font-weight:400; margin-left:var(--space-2);">View all</a></div>
+              <div id="report-recent-feedback"><p class="text-muted">Loading&hellip;</p></div>
             </div>
           </div>
         </div>

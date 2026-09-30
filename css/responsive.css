@@ -1,0 +1,355 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   css/responsive.css — Mobile & tablet layer (loaded LAST on every page)
+   ─────────────────────────────────────────────────────────────────────
+   PURPOSE  Phones (<768), tablets (768–1023) and touch devices. Purely
+            additive: nothing above 1024px is restyled, and the existing
+            per-page media queries are left in place — this file only
+            fills the gaps the audit found (see AI_MEMORY.md session log).
+
+   BREAKPOINTS (chosen from where the layouts actually broke, not devices)
+     ≤ 900px   app shell collapses to a top bar + menu button. The old
+               horizontal link row still scrolled sideways up to 899px
+               (measured: 79px clipped at 821, 66px at 834 = iPad Air
+               portrait, 0 at 900), so the menu takes over at 900.
+     ≤ 767px   phone typography / spacing.
+     ≤ 480px   small phone.
+     (pointer: coarse)   touch-target sizing, independent of width so an
+               iPad in landscape gets it too and a narrow desktop window
+               does not.
+     (max-height: 500px) and (orientation: landscape)   phone landscape.
+
+   THEME    Only design tokens (var(--clr-*)) are used, so light/dark and
+            the View-Transition theme reveal (js/theme.js) are untouched.
+   MOTION   Every animation added here is disabled under
+            prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. SAFE DEFAULTS (no visual change on desktop) ─────────────────── */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+img, video { max-width: 100%; }
+/* :where() keeps specificity at zero, so any existing focus style wins and
+   this only fills pages/controls that had none. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--clr-accent);
+  outline-offset: 2px;
+}
+/* Long words/URLs/emails (profile email, mission names) must wrap, never
+   push the page sideways. */
+:where(h1, h2, h3, h4, p, li, label, td, th) { overflow-wrap: break-word; }
+
+/* Notches / rounded corners in landscape (needs viewport-fit=cover, which
+   every page now declares). env() is 0 on devices without insets. */
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ── 1. APP SHELL — top bar + menu button (≤ 900px) ─────────────────────
+   js/mobile-nav.js injects `.lw-nav-toggle` and adds `.lw-nav-ready` to
+   the aside. Without JS none of the collapsing rules match, so the old
+   scrolling link row still works as a fallback.
+
+   Structure on a phone:  [Logo ............ (theme) (☰)]
+                          ── opened panel, in normal flow ──
+                          Dashboard / Learn / Progress / … (48px rows)
+                          [Log out]
+   The panel pushes content down instead of overlaying it, so it can never
+   cover a lesson, a form or the camera. `.app-sidebar__foot` is flattened
+   with display:contents so the theme switch can stay in the bar while the
+   Log out button drops into the panel. */
+.lw-nav-toggle { display: none; }
+
+@media (max-width: 900px) {
+  .app-sidebar {
+    position: sticky; top: 0; z-index: 90;
+    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+    height: auto; width: 100%;
+    overflow: visible;
+    padding: var(--space-2) var(--space-4);
+    padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0px));
+    border-right: none; border-bottom: 1px solid var(--clr-border);
+    column-gap: var(--space-3);
+  }
+  .app-sidebar__logo { order: 1; margin: 0 auto 0 0; padding: 0; min-height: 44px; display: inline-flex; align-items: center; }
+
+  .app-sidebar.lw-nav-ready .lw-nav-toggle {
+    order: 3;
+    display: inline-flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px;
+    width: 44px; height: 44px; padding: 0; flex-shrink: 0;
+    background: transparent; border: 1px solid var(--clr-border); border-radius: var(--radius-md);
+    color: var(--clr-text); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  }
+  .lw-nav-toggle:hover { background: var(--clr-surface-2); }
+  .lw-nav-toggle__bar {
+    display: block; width: 20px; height: 2px; border-radius: 2px; background: currentColor;
+    transition: transform var(--dur-base) var(--ease), opacity var(--dur-fast) var(--ease);
+  }
+  .lw-nav-toggle[aria-expanded="true"] .lw-nav-toggle__bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .lw-nav-toggle[aria-expanded="true"] .lw-nav-toggle__bar:nth-child(2) { opacity: 0; }
+  .lw-nav-toggle[aria-expanded="true"] .lw-nav-toggle__bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* Flatten the foot so its children become items of the bar. */
+  .app-sidebar.lw-nav-ready .app-sidebar__foot,
+  .app-sidebar.lw-nav-ready .app-sidebar__foot > div { display: contents !important; }
+  .app-sidebar.lw-nav-ready .app-sidebar__foot .theme-switch { order: 2; }
+  .app-sidebar.lw-nav-ready .app-sidebar__foot > :not(.theme-switch),
+  .app-sidebar.lw-nav-ready .app-sidebar__foot > div > :not(.theme-switch) {
+    order: 5; flex: 1 0 100%; margin: var(--space-2) 0 0;
+    min-height: 44px; justify-content: center;
+  }
+  .app-sidebar.lw-nav-ready .app-sidebar__nav {
+    order: 4; flex: 1 0 100%;
+    flex-direction: column; gap: var(--space-1);
+    padding-top: var(--space-2); margin-top: var(--space-2);
+    border-top: 1px solid var(--clr-border);
+  }
+  .app-sidebar.lw-nav-ready .admin-sidebar__tag { order: 4; flex: 1 0 100%; padding-bottom: 0; }
+
+  /* Collapsed: only logo + theme switch + button remain. */
+  .app-sidebar.lw-nav-ready:not(.is-open) .app-sidebar__nav,
+  .app-sidebar.lw-nav-ready:not(.is-open) .admin-sidebar__tag,
+  .app-sidebar.lw-nav-ready:not(.is-open) .app-sidebar__foot > :not(.theme-switch),
+  .app-sidebar.lw-nav-ready:not(.is-open) .app-sidebar__foot > div > :not(.theme-switch) { display: none; }
+
+  .app-sidebar.lw-nav-ready.is-open .app-sidebar__nav,
+  .app-sidebar.lw-nav-ready.is-open .app-sidebar__foot > :not(.theme-switch),
+  .app-sidebar.lw-nav-ready.is-open .app-sidebar__foot > div > :not(.theme-switch) {
+    animation: lw-nav-open var(--dur-base) var(--ease);
+  }
+  @keyframes lw-nav-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .app-sidebar.lw-nav-ready .app-sidebar__link { min-height: 48px; padding-inline: var(--space-4); font-size: var(--fs-base); }
+  /* The current page must not rely on colour alone. */
+  .app-sidebar__link.active,
+  .app-sidebar__link[aria-current="page"] { box-shadow: inset 3px 0 0 var(--clr-accent); }
+
+  /* If a panel is taller than a landscape phone, let it scroll instead of
+     pushing Log out below the fold. */
+  .app-sidebar.lw-nav-ready.is-open { max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
+
+  .app-main { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lw-nav-toggle__bar, .lw-nav-toggle { transition: none; }
+  .app-sidebar.is-open .app-sidebar__nav,
+  .app-sidebar.is-open .app-sidebar__foot > * { animation: none !important; }
+}
+
+/* ── 2. LANDING / PUBLIC NAVBAR ─────────────────────────────────────── */
+.navbar { padding-top: env(safe-area-inset-top, 0px); }
+@media (max-width: 480px) {
+  .navbar__inner { gap: var(--space-2); }
+}
+
+/* ── 3. TOUCH TARGETS ───────────────────────────────────────────────────
+   Keyed to the input device, not the width. Sizes grow; colours, radii and
+   fonts stay as designed. */
+@media (pointer: coarse) {
+  .btn, .btn--sm, .auth-tab, .motion-try-btn { min-height: 44px; }
+  .btn--sm { padding-block: var(--space-2); }
+  /* 16px stops iOS Safari zooming the page when an input is focused. */
+  .form-input, input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: max(1rem, 16px); min-height: 44px; }
+  textarea { min-height: 96px; }
+  .auth-modal__close { width: 44px; height: 44px; }
+  /* Switches keep their look; the invisible hit area grows to 44px. */
+  .theme-switch, .toggle-switch { position: relative; }
+  .theme-switch::after, .toggle-switch::after {
+    content: ""; position: absolute; inset: -10px -6px;
+  }
+  .toggle-switch input { inset: -10px -6px; width: calc(100% + 12px); height: calc(100% + 20px); }
+  /* Radio / checkbox rows in the feedback survey, settings, quiz. */
+  label:has(> input[type="radio"]), label:has(> input[type="checkbox"]) { min-height: 44px; display: inline-flex; align-items: center; }
+  .lesson-option, .path-row, .sign-chip, .category-card, .topic-card { min-height: 44px; }
+  .course-sidebar__unit-head, .course-sidebar__cat-head { min-height: 44px; }
+}
+
+/* ── 4. MODALS / OVERLAYS / TOASTS ──────────────────────────────────────
+   The audit found the sign-in modal's top (and its close button) at
+   y = -93px on a 375px-tall landscape phone, i.e. unreachable. The
+   container scrolls and the box uses `margin:auto`, which centres when
+   there is room and starts at the top when there isn't. */
+@media (max-width: 1023px), (max-height: 560px) {
+  .auth-modal, .completion-overlay, .admin-modal-backdrop {
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: max(var(--space-5, 1.25rem), env(safe-area-inset-top, 0px)) max(var(--space-4), env(safe-area-inset-right, 0px))
+             max(var(--space-5, 1.25rem), env(safe-area-inset-bottom, 0px)) max(var(--space-4), env(safe-area-inset-left, 0px));
+  }
+  .auth-modal__box, .completion-card, .admin-modal { margin: auto; }
+  .auth-modal__box { width: 100%; }
+  .auth-modal__box--form { max-width: min(460px, 100%); }
+  .completion-card { width: 100%; padding: var(--space-8) var(--space-6); }
+  .admin-modal { max-width: 100%; }
+  .congrats-modal { overflow-y: auto; padding: max(var(--space-4), env(safe-area-inset-top, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom, 0px)); }
+  .congrats-modal__box { margin: auto; max-height: none; }
+}
+/* The close button hangs 16px outside the box; keep it on-screen. */
+@media (max-width: 520px) {
+  .auth-modal__close { top: calc(-1 * var(--space-3)); right: calc(-1 * var(--space-2)); }
+}
+
+.toast {
+  white-space: normal; text-align: center;
+  width: max-content; max-width: min(92vw, 420px);
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+}
+.lesson-toast {
+  width: max-content; max-width: min(92vw, 420px); text-align: center;
+  bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── 5. PHONES (≤ 767px) ────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  :root { --fs-3xl: clamp(1.75rem, 1.25rem + 2.4vw, 2.25rem); --fs-2xl: clamp(1.4rem, 1.1rem + 1.6vw, 1.75rem); }
+  .container { padding-inline: max(var(--space-4), env(safe-area-inset-left, 0px)); }
+  .section { padding-block: var(--space-8); }
+  .card { padding: var(--space-4); }
+  .btn--full, .btn--lg { min-height: 48px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-input, input, select, textarea { max-width: 100%; }
+  pre, code { overflow-x: auto; max-width: 100%; }
+}
+
+/* ── 6. SMALL PHONES (≤ 480px) ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  :root { --fs-hero: clamp(2rem, 9.5vw, 2.5rem); }
+  .completion-card { padding: var(--space-6) var(--space-4); }
+  .lesson-actions .btn { flex: 1 1 100%; }
+}
+
+/* ── 7. TABLETS (768 – 1023px) ──────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container { padding-inline: var(--space-8); }
+}
+
+/* ── 8. PHONE LANDSCAPE ─────────────────────────────────────────────────
+   Short viewport: reclaim vertical space, stop sticky bars eating it. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-sidebar { position: static; }
+  .navbar { position: static; }
+  .section { padding-block: var(--space-6); }
+  .section--sm, .section--tight { padding-block: var(--space-3); }
+  .camera-panel { position: static; }
+  .camera-viewport video { min-height: 180px; }
+  .hero { min-height: 0; }
+}
+
+/* ── 8b. LANDING HERO — fit the phone screen (index.html) ─────────────────
+   2026-09-30. Two problems, both only on phones:
+   (1) The heading sat UNDER the sticky navbar. `.hero--wave` (auth.css)
+       reaches up behind the navbar with margin-top:-61px and pads its top
+       by space-8 + 61px to compensate; §5's `.section { padding-block }`
+       (same specificity, loaded later) silently replaced that padding, so
+       the first line of the h1 started at y=44 while the navbar covers
+       0-61. `.hero.hero--wave` below is two classes, so it wins no matter
+       which media block or file order applies `.section`.
+   (2) The hero was not one screen tall: it overshot short phones (iPhone
+       SE: 233px too tall, wave band + illustration pushed below the fold)
+       and stopped short on tall ones (390x844: 118px short, the page
+       below started mid-screen). On phones the hero now fills exactly one
+       screen (`svh` = the visible area with browser toolbars showing, so
+       nothing hides under Safari's/Chrome's bar). The copy keeps its
+       natural height and the illustration takes whatever is left and scales
+       to fit, so the CTAs and the picture are always on the first screen.
+   Portrait phones only for (2). Landscape phones are too short to fit
+   everything in one screen, so they keep natural height (see §8) and get
+   only the padding fix (1). Tablets and desktop are untouched. */
+@media (max-width: 767px), (max-height: 500px) and (orientation: landscape) {
+  .hero.hero--wave {
+    padding-top: calc(var(--space-6) + 61px);   /* 61px = navbar box, see auth.css .hero--wave */
+    padding-bottom: 120px;                      /* room for the 130px wave band (it may overlap slightly) */
+  }
+}
+@media (max-width: 767px) and (orientation: portrait) {
+  .hero.hero--wave {
+    min-height: 100vh;                          /* fallback for browsers without svh */
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero--wave > .hero__grid {
+    flex: 1 1 auto;
+    width: 100%;                                /* a flex child would otherwise shrink-wrap and lose .container's width */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);    /* copy = natural height, illustration = the rest */
+    gap: var(--space-4);
+    align-items: start;
+  }
+  .hero--wave .hero-illustration {
+    position: relative;                         /* the svg below is positioned against this box */
+    min-height: 120px;                          /* floor: on very small screens the page scrolls a little rather than the picture vanishing */
+    padding: 0;
+    align-self: stretch;                        /* the 1fr row = whatever screen height the copy leaves over */
+  }
+  /* The svg is taken OUT of the flow (absolute) so its own 320px intrinsic
+     height can't push the hero taller than the screen; it just scales to
+     the box above, centered (margin:auto + all four insets = 0). */
+  .hero--wave .hero-illustration svg {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    max-height: 300px;
+  }
+}
+
+/* Short phones (iPhone SE / small Androids, ≤ 700px tall): the copy alone
+   used ~400px of a 568-667px screen, leaving no room for the picture. Tighter
+   type + spacing so the CTAs AND the illustration still land on the first
+   screen; 320x568 (the smallest we support) is the floor. */
+@media (max-width: 767px) and (orientation: portrait) and (max-height: 700px) {
+  .hero.hero--wave { padding-top: calc(var(--space-4) + 61px); padding-bottom: 88px; }
+  .hero--wave .hero__copy h1 { font-size: clamp(1.7rem, 8.4vw, 2.1rem); margin: var(--space-2) 0; }
+  .hero--wave .hero__lead { font-size: var(--fs-sm); line-height: 1.5; }
+  .hero--wave .hero__ctas { margin-top: var(--space-4); }
+  .hero--wave > .hero__grid { gap: var(--space-2); }
+  .hero--wave .hero-illustration { min-height: 96px; }
+}
+@media (max-width: 340px) and (orientation: portrait) and (max-height: 700px) {
+  .hero--wave .hero__copy h1 { font-size: 1.6rem; }   /* 320px-wide screens: one fewer wrapped line */
+}
+
+/* ── 9. TABLES / WIDE CONTENT ───────────────────────────────────────── */
+.admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+
+/* ── 10. SETTINGS — theme control ───────────────────────────────────────
+   The 3-way System/Light/Dark control was 341px wide inside a 320px
+   viewport (measured). On small phones the row wraps and the control takes
+   the full width, so nothing is clipped and each segment is a bigger tap
+   target. */
+@media (max-width: 480px) {
+  .pref-row { flex-wrap: wrap; row-gap: var(--space-2); }
+  .pref-row .theme-segmented { width: 100%; }
+  .theme-segmented__opt { padding-inline: var(--space-2); }
+}
+@media (pointer: coarse) {
+  .theme-segmented__opt { min-height: 44px; }
+}
+
+/* Stand-alone text links / tiny buttons that measured 18–29px tall. */
+@media (pointer: coarse) {
+  .back-link, .section-heading-row__link, .navbar__logo, .app-sidebar__logo,
+  .detection-log__clear, .progress-ring-detail-toggle, .navbar__profile-link,
+  a.text-muted:not(:where(p, li, label) a) {
+    display: inline-flex; align-items: center; min-height: 44px;
+  }
+  .detection-log__clear { min-width: 44px; justify-content: center; }
+  /* Sign chips in the progress breakdown are a wrapping cloud; grow the
+     hit area with an invisible pseudo-element so the layout doesn't move. */
+  .sign-mastery__chip { position: relative; }
+  .sign-mastery__chip::after { content: ""; position: absolute; inset: -6px; }
+}
+
+/* ── 11. LESSON / CAMERA PAGE — learning content before the outline ─────
+   Below 1200px `.course-layout` stacks (lesson.css). The 260px course
+   outline (every chapter) was stacked ABOVE the sign, pushing the actual
+   lesson a full screen down on phones. Content first, outline after; the
+   page's skip-link already lets keyboard users jump past the outline. */
+@media (max-width: 1200px) {
+  .course-layout > .course-sidebar { order: 2; }
+  .course-layout > :not(.course-sidebar) { order: 1; min-width: 0; }
+  .course-sidebar { max-height: 70vh; overflow-y: auto; }
+}

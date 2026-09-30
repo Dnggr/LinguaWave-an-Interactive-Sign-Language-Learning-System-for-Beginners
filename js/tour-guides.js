@@ -58,6 +58,7 @@
         },
         {
           target: '.app-sidebar__nav',
+          optional: true, // collapsed behind the menu button on phones (css/responsive.css)
           fit: 'children',
           placement: 'right',
           title: 'Move around from the menu',

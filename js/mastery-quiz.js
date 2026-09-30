@@ -247,6 +247,17 @@ function getQuizAttemptSeed() {
   return quizAttemptSeed;
 }
 
+// RANDOM CHOICES — each question's answer choices are a random,
+// on-topic sample of the mission's own chapter (via
+// buildRecognizeOptions(..., randomize=true)), and the correct
+// answer's position is random too. The built option set is memoized
+// per mission+sign for this page load for the same reason
+// getQuizAttemptSeed() is: initPage() can call buildQuizQuestions()
+// twice (optimistic paint, then again after sync) and both calls must
+// agree, or the choices would visibly change mid-load. A fresh page
+// load (a real retake) draws a new random set.
+const quizOptionsCache = new Map();
+
 function buildQuizQuestions(mission) {
   const allSignIds = uniqueSignIds(mission);
   const ordered = shuffleDeterministic(allSignIds, `${mission.id}_mastery_quiz_${getQuizAttemptSeed()}`);
@@ -255,10 +266,15 @@ function buildQuizQuestions(mission) {
 
   return picked.map((signId) => {
     const count = questionOptionCount(mission, signId);
-    const built = (window.LWMissionsLoop && typeof window.LWMissionsLoop.buildRecognizeOptions === 'function')
-      ? window.LWMissionsLoop.buildRecognizeOptions(mission.level, signId, categorySignIds, count)
-      : { correct: signId, options: [signId] };
-    return { signId, correct: built.correct, options: built.options };
+    const cacheKey = `${mission.id}::${signId}`;
+    let built = quizOptionsCache.get(cacheKey);
+    if (!built) {
+      built = (window.LWMissionsLoop && typeof window.LWMissionsLoop.buildRecognizeOptions === 'function')
+        ? window.LWMissionsLoop.buildRecognizeOptions(mission.level, signId, categorySignIds, count, true)
+        : { correct: signId, options: [signId] };
+      quizOptionsCache.set(cacheKey, built);
+    }
+    return { signId, correct: built.correct, options: built.options.slice() };
   });
 }
 
@@ -323,21 +339,153 @@ function renderNotSampledYet(mission) {
 // A learner who worked through the mission to the quiz can review it
 // (canReviewMission(), opened at the start via ?review=1); anyone else is
 // sent to the lessons.
-function renderOutOfHearts(mission, heartsState) {
+//
+// POPUP: the popup (openOutOfHeartsDialog() below) IS this screen. It sits
+// over the last thing the learner saw (the question they just lost their
+// last heart on, dimmed but visible, like the streak popup) and can't be
+// dismissed (no X, no Esc, no backdrop click). The old flat screen
+// (banner, buttons, Back link) is gone, so there's no old UI to fall back to. Its
+// own two actions are the way out, and "Try again" appears when a heart
+// refills. `opts.justFailed` is true only from handleAnswer() (a wrong
+// answer just emptied the pool) and only changes the wording + plays the
+// "last heart breaks" animation; the pre-quiz gate says plainly that
+// they're out.
+function renderOutOfHearts(mission, heartsState, opts) {
   const category = encodeURIComponent(mission.category);
   const canReview = window.LWMissions.canReviewMission(mission);
   const lessonHref = `lesson.html?mission=${category}${canReview ? '&review=1' : ''}`;
-  document.getElementById('mq-content').innerHTML = `
-    <div class="note-banner">
-      <strong>Out of Mastery Quiz hearts.</strong> The quiz has stopped here.
-      Come back and try again once your hearts have replenished
-      (next heart in ${formatCountdown(heartsState.nextRefillAt)}).
-    </div>
-    <div class="lesson-actions">
-      <a href="${lessonHref}" class="btn btn--primary btn--lg">${canReview ? 'Review the mission' : 'Start the mission'}</a>
-      <a href="mission-overview.html?mission=${category}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
+  if (opts && opts.justFailed) {
+    // Lost the last heart mid-quiz: leave the question the learner was on
+    // showing behind the popup (dimmed, like the streak popup), just frozen
+    // with the hearts row emptied. The modal already blocks clicks; the
+    // disabled options keep it inert even for keyboard/assistive tech.
+    document.querySelectorAll('#mq-options .lesson-option').forEach((btn) => { btn.disabled = true; });
+    const heartsRow = document.getElementById('mq-hearts-row');
+    if (heartsRow) heartsRow.outerHTML = heartsRowHtml(heartsState);
+  } else {
+    // Pre-quiz gate: there is no question to show, so nothing sits behind
+    // the popup but the empty page. No banner, buttons or Back link.
+    document.getElementById('mq-content').innerHTML = '';
+    const backLink = document.getElementById('mq-back');
+    if (backLink) backLink.hidden = true;
+  }
+  openOutOfHeartsDialog({
+    heartsState,
+    lessonHref,
+    lessonLabel: canReview ? 'Review the mission' : 'Start the mission',
+    overviewHref: `mission-overview.html?mission=${category}`,
+    justFailed: !!(opts && opts.justFailed)
+  });
+}
+
+/* ── Out-of-hearts popup ───────────────────────────────────────── */
+
+// One interval at most (AGENTS.md timer rule): every open clears the
+// previous one first, and it's also cleared when the dialog closes and on
+// pagehide, so nothing keeps ticking against a detached dialog.
+let outOfHeartsTimerId = null;
+
+function clearOutOfHeartsTimer() {
+  if (outOfHeartsTimerId !== null) {
+    clearInterval(outOfHeartsTimerId);
+    outOfHeartsTimerId = null;
+  }
+}
+window.addEventListener('pagehide', clearOutOfHeartsTimer);
+
+function oohHeartSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.2c-.3 0-.6-.1-.8-.3C7.3 17.9 2 13.6 2 8.9 2 6.2 4.1 4 6.8 4c1.9 0 3.7 1 5.2 2.9C13.5 5 15.3 4 17.2 4 19.9 4 22 6.2 22 8.9c0 4.7-5.3 9-9.2 12-.2.2-.5.3-.8.3z"/></svg>';
+}
+
+// Hearts are drawn empty (that's the point of the screen). When a wrong
+// answer just emptied the pool, heart 0 — the last one to go, since the
+// in-quiz row drains from the right — starts red and "breaks" to grey.
+function oohHeartsHtml(maxHearts, justFailed) {
+  return Array.from({ length: maxHearts }, (_, i) =>
+    `<span class="ooh-heart${justFailed && i === 0 ? ' ooh-heart--breaking' : ''}" style="--i:${i}">${oohHeartSvg()}</span>`
+  ).join('');
+}
+
+function openOutOfHeartsDialog(cfg) {
+  // renderQuizEntry() can paint twice (optimistic + after sync); never
+  // stack two dialogs.
+  const stale = document.getElementById('ooh-dialog');
+  if (stale) stale.remove();
+  clearOutOfHeartsTimer();
+
+  const { heartsState, lessonHref, lessonLabel, overviewHref, justFailed } = cfg;
+  const title = justFailed ? 'Nice try, but it wasn\u2019t right' : 'You\u2019re out of hearts';
+  const msg = justFailed
+    ? 'You\u2019re out of hearts, so the quiz has stopped here.'
+    : 'Come back once a heart has refilled to take the Mastery Quiz.';
+
+  const dialog = document.createElement('dialog');
+  dialog.id = 'ooh-dialog';
+  dialog.className = 'ooh-dialog';
+  dialog.setAttribute('aria-labelledby', 'ooh-title');
+  dialog.setAttribute('aria-describedby', 'ooh-msg');
+  dialog.innerHTML = `
+    <div class="ooh-dialog__body">
+      <div class="ooh-hearts" aria-hidden="true">${oohHeartsHtml(heartsState.maxHearts, justFailed)}</div>
+      <h2 class="ooh-dialog__title" id="ooh-title">${title}</h2>
+      <p class="ooh-dialog__msg" id="ooh-msg">${msg}</p>
+      <p class="ooh-dialog__timer" data-ooh-timer>Next heart in <strong data-ooh-countdown>${formatCountdown(heartsState.nextRefillAt)}</strong></p>
+      <div class="ooh-dialog__actions" data-ooh-actions>
+        <a href="${lessonHref}" class="btn btn--primary btn--lg" autofocus>${lessonLabel}</a>
+        <a href="${overviewHref}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
+      </div>
     </div>
   `;
+
+  // Not dismissable: Esc is swallowed, and if a browser closes it anyway
+  // (Chrome lets a repeated Esc through) it is reopened while still out of
+  // hearts. Only a refilled heart or leaving via an action ends it.
+  dialog.addEventListener('cancel', (e) => e.preventDefault());
+  dialog.addEventListener('close', () => {
+    if (dialog.isConnected && window.LWMissions.getHeartsState().hearts <= 0
+        && typeof dialog.showModal === 'function') {
+      dialog.showModal();
+      return;
+    }
+    clearOutOfHeartsTimer();
+    dialog.remove();
+  });
+
+  document.body.appendChild(dialog);
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+
+  // Live countdown. Hearts refill on a timer server-of-record (see
+  // getHeartsState()), so if one comes back while the popup is open,
+  // swap it for a "Try again" instead of leaving a stale 0m countdown.
+  outOfHeartsTimerId = setInterval(() => {
+    if (!dialog.isConnected) { clearOutOfHeartsTimer(); return; }
+    const now = window.LWMissions.getHeartsState();
+    if (now.hearts > 0) {
+      clearOutOfHeartsTimer();
+      showHeartsBack(dialog, overviewHref);
+      return;
+    }
+    const el = dialog.querySelector('[data-ooh-countdown]');
+    if (el) el.textContent = formatCountdown(now.nextRefillAt);
+  }, 15000);
+}
+
+function showHeartsBack(dialog, overviewHref) {
+  const first = dialog.querySelector('.ooh-heart');
+  if (first) first.className = 'ooh-heart ooh-heart--full';
+  dialog.querySelector('#ooh-title').textContent = 'Your hearts are back!';
+  dialog.querySelector('#ooh-msg').textContent = 'You can take the Mastery Quiz again.';
+  const timer = dialog.querySelector('[data-ooh-timer]');
+  if (timer) timer.hidden = true;
+  const actions = dialog.querySelector('[data-ooh-actions]');
+  actions.innerHTML = `
+    <button type="button" class="btn btn--primary btn--lg" id="ooh-retry">Try again</button>
+    <a href="${overviewHref}" class="btn btn--secondary btn--lg">Back to Mission Overview</a>
+  `;
+  const retry = actions.querySelector('#ooh-retry');
+  retry.addEventListener('click', () => window.location.reload());
+  retry.focus();
 }
 
 /* ── Question flow ────────────────────────────────────────────── */
@@ -421,7 +569,7 @@ function handleAnswer(state, chosenSignId) {
     // now, before any of the normal per-question UI (highlighted
     // options, feedback card, Continue button) gets rendered at all.
     if (heartsAfterMiss.hearts <= 0) {
-      renderOutOfHearts(state.mission, heartsAfterMiss);
+      renderOutOfHearts(state.mission, heartsAfterMiss, { justFailed: true });
       return;
     }
 

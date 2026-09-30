@@ -434,6 +434,25 @@ window.addEventListener('storage', (e) => {
   }
 });
 
+// Reduced Motion (Settings toggle) is applied on every page by the inline
+// <head> snippet; this keeps an already-open tab in step when it is flipped
+// in another tab. (settings-page.js applies it directly in its own tab.)
+// Fallback for pages whose <head> snippet doesn't carry the Reduced Motion line
+// (e.g. index.html): apply the saved setting as soon as this script runs.
+// Default is OFF — the class is only added when the learner turned it on.
+try {
+  if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) {
+    document.documentElement.classList.add('lw-force-reduced-motion');
+  }
+} catch (err) { /* keep off */ }
+
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'lw-preferences') return;
+  let on = false;
+  try { on = !!JSON.parse(e.newValue || '{}').reducedMotion; } catch (err) { /* keep off */ }
+  document.documentElement.classList.toggle('lw-force-reduced-motion', on);
+});
+
 // Live-follow the OS theme while 'system' is selected — no reload
 // needed, matching how Claude's own System option behaves.
 systemSchemeQuery.addEventListener('change', () => {
