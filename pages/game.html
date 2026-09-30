@@ -143,7 +143,15 @@
         <div class="gm-overlay" id="gm-start">
           <div class="gm-card">
             <h2>Ready to break the wall?</h2>
-            <p class="text-muted">Bricks use signs you've learned (with extras if you're new). Sign them in any order. <b class="gm-tag-static">Blue</b> = hold the sign. <b class="gm-tag-motion">Orange</b> = press Space, wait for 3-2-1, then sign.</p>
+            <p class="text-muted">Bricks come from signs you've finished in your lessons (extras fill in if you've learned few). Sign them in any order. <b class="gm-tag-static">Blue</b> = hold the sign. <b class="gm-tag-motion">Orange</b> = press Space, wait for 3-2-1, then sign.</p>
+            <p class="text-muted" id="gm-pool-note" aria-live="polite">Checking your learned signs…</p>
+            <label class="gm-field-row">Signs on the wall
+              <select id="gm-source">
+                <option value="learned" selected>Only signs I've learned</option>
+                <option value="mixed">Learned + new signs</option>
+                <option value="all">Any lesson sign</option>
+              </select>
+            </label>
             <label class="gm-field-row">Wall size
               <select id="gm-size">
                 <option value="9">Small (9 bricks)</option>
@@ -171,6 +179,10 @@
     </div>
   </div>
 
+  <!-- Progress sources for the sign pool: LWProgress (lw_progress_v3) + LWMissions (completed LESSON
+       items). Same plain deferred scripts, same order, as camera-practice.html. Must sit before game.js. -->
+  <script defer src="../js/engine/progress.js"></script>
+  <script defer src="../js/missions.js"></script>
   <script type="module" src="../js/game.js"></script>
 </body>
 </html>
