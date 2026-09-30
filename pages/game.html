@@ -19,13 +19,23 @@
     existing engine modules (cameraUtils, mediapipe, classifier, dictionary,
     renderer) read-only and never edits them.
     Ids kept for the engine: lw-webcam, lw-canvas, camera-status.
+
+    DESIGN ALIGNMENT PASS — this page now matches the rest of the app shell:
+      - viewport-fit=cover, non-blocking Space Grotesk load, css/responsive.css + js/mobile-nav.js
+        (the other app pages all have these; without them the sidebar never collapsed on phones)
+      - js/main.js added: it wires every [data-logout] link, so "Log out" did nothing on this page before
+      - styling lives in css/game.css and now reads only the shared tokens (no hard-coded hex)
+    Markup ids/classes the game logic uses are unchanged, so js/game.js needed no logic changes.
   -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Wall Breaker | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <!-- Same non-blocking font load as dashboard.html / learn.html -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/game.css" />
@@ -37,6 +47,8 @@
   window.addEventListener('lwauth-ready', () => { LWAuth.requireAuth('../index.html'); });
   </script>
   <script src="../js/role-guard.js"></script>
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
 </head>
 <body>
@@ -88,7 +100,7 @@
         <header class="gm-head">
           <div class="gm-head__text">
             <h1 class="gm-title">Wall Breaker</h1>
-            <p class="text-muted">Break every brick in <strong>any order</strong>. Hold blue signs steady; record orange motion signs.</p>
+            <p class="text-muted">Break every brick in <strong>any order</strong>. Hold the solid blue bricks steady; record the dashed orange ones.</p>
           </div>
           <div class="gm-stats" role="status">
             <span class="gm-chip">Bricks <b id="gm-count">0/0</b></span>
@@ -130,8 +142,8 @@
             <h2>Signs log</h2>
             <ul id="gm-log"></ul>
             <div class="gm-legend" aria-label="Legend">
-              <span><i class="gm-dot gm-dot--static"></i>Static</span>
-              <span><i class="gm-dot gm-dot--motion"></i>Motion</span>
+              <span><i class="gm-dot gm-dot--static"></i>Static · HOLD</span>
+              <span><i class="gm-dot gm-dot--motion"></i>Motion · MOVE</span>
             </div>
           </aside>
         </div>
@@ -144,7 +156,7 @@
         <div class="gm-overlay" id="gm-start">
           <div class="gm-card">
             <h2>Ready to break the wall?</h2>
-            <p class="text-muted">Bricks come from signs you've finished in your lessons (extras fill in if you've learned few). Sign them in any order. <b class="gm-tag-static">Blue</b> = hold the sign. <b class="gm-tag-motion">Orange</b> = press Space, wait for 3-2-1, then sign.</p>
+            <p class="text-muted">Bricks come from signs you've finished in your lessons (extras fill in if you've learned few). Sign them in any order. <b class="gm-tag-static">HOLD</b> (solid blue) = hold the sign steady. <b class="gm-tag-motion">MOVE</b> (dashed orange) = press Space, wait for 3-2-1, then sign.</p>
             <p class="text-muted" id="gm-pool-note" aria-live="polite">Checking your learned signs…</p>
             <label class="gm-field-row">Signs on the wall
               <select id="gm-source">
@@ -184,6 +196,10 @@
        items). Same plain deferred scripts, same order, as camera-practice.html. Must sit before game.js,. -->
   <script defer src="../js/engine/progress.js"></script>
   <script defer src="../js/missions.js"></script>
+  <script src="../js/main.js"></script>
+  <!-- DEV-TEST (TEMPORARY) — developer test panel for letters/numbers. Delete this tag, js/game-dev-test.js and the
+       "DEV-TEST" lines in js/game.js before the final defense. Must stay BEFORE game.js (module scripts run in order). -->
+  <script type="module" src="../js/game-dev-test.js"></script> <!-- DEV-TEST -->
   <script type="module" src="../js/game.js"></script>
 </body>
 </html>

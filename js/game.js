@@ -45,12 +45,19 @@ let wrongLabel = null, wrongSince = 0, lastMissAt = 0;
 let waitStart = 0, handLostAt = null, motionMs = 2500;
 let allowedStatic = { active: false, set: null }, allowedMotion = { active: false, set: null };
 
+// DEV-TEST ▼ TEMPORARY hooks for js/game-dev-test.js — delete every line containing "DEV-TEST" before the final defense.
+// DEV-TEST   They are no-ops unless the dev panel is active (needs localStorage 'lw_game_dev'='1'); a throw in dev code never breaks the game.
+const dev = (name, ...args) => { try { return window.LWGameDev?.[name]?.(...args); } catch (e) { console.warn('[dev-test]', e); } };   // DEV-TEST
+
 // ── storage ───────────────────────────────────────────────────────
 function load() {
   try { return Object.assign({ gems: 0, walls: 0, badges: [], best: {} }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
   catch { return { gems: 0, walls: 0, badges: [], best: {} }; }
 }
-function save(d) { try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ } }
+function save(d) {
+  if (dev('blockSave')) return;   // DEV-TEST
+  try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ }
+}
 
 // ── helpers ───────────────────────────────────────────────────────
 const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
@@ -93,6 +100,7 @@ function refreshIdleUi() {
 }
 function miss(text) {
   lastMissAt = Date.now(); stats.wrong++;
+  dev('onMiss', text);   // DEV-TEST
   $('gm-miss').textContent = stats.wrong;
   log(text, 'bad');
   for (const el of [$('gm-cam'), $('gm-wall')]) { el.classList.remove('is-miss'); void el.offsetWidth; el.classList.add('is-miss'); }
@@ -156,6 +164,7 @@ function playableFilter() {
 //         'all'     = any lesson sign
 // returns { signs, learnedSet, note }
 async function buildPool(size, source) {
+  const devPool = dev('getPool'); if (devPool) return devPool;   // DEV-TEST (letters/numbers test set)
   const learnedAll = await getLearnedSignIds();
   const usable = playableFilter();
   const learned = shuffle([...learnedAll].filter(usable));
@@ -246,6 +255,7 @@ function findBrick(label, type) {
 function smash(b, viaMotion) {
   if (!b || b.broken) return;
   b.broken = true; stats.correct++;
+  dev('onSmash', b.sign, viaMotion);   // DEV-TEST
   b.el.classList.remove('is-held'); b.el.classList.add('is-broken'); b.el.disabled = true;
   log(`✓ ${b.sign}`, 'ok');
   dropHold();
@@ -272,6 +282,7 @@ function stepStatic(L, R, F, P, anyHandPresent, now) {
   }
 
   const r = classifyGesture(L, R, F, allowedStatic.set, P, null);
+  dev('onStatic', r);   // DEV-TEST
   if (ignoreGroup && !(r.matched && ignoreGroup.includes(r.label))) ignoreGroup = null;
   const b = r.matched ? findBrick(r.label, 'static') : null;
 
@@ -321,6 +332,7 @@ function endMotion(text) {
   later(() => { phase = 'static'; resetTimers(); if (running) refreshIdleUi(); }, AFTER_MOTION_MS);
 }
 function motionResult(r) {
+  dev('onMotion', r);   // DEV-TEST
   const b = r && r.matched ? findBrick(r.label, 'motion') : null;
   if (b) { setTimer('motion', 1, 'Done', true); smash(b, true); return endMotion(`✓ ${b.sign}`); }
   setTimer('motion', 1, 'Done', true);
@@ -479,3 +491,8 @@ resetTimers();
 showBest();
 refreshPoolNote();
 window.addEventListener('pageshow', (e) => { if (e.persisted) refreshPoolNote(); });   // back/forward cache: progress may have changed
+dev('attach', {   // DEV-TEST — lets the dev panel read the wall and force-break bricks
+  isRunning: () => running,   // DEV-TEST
+  bricks: () => bricks.map((b) => ({ sign: b.sign, type: b.type, broken: b.broken })),   // DEV-TEST
+  smashSign: (sign) => { const b = bricks.find((x) => !x.broken && x.sign === sign); if (b) smash(b, true); return !!b; },   // DEV-TEST
+});   // DEV-TEST
