@@ -5,8 +5,9 @@
  * js/data.js is not loaded on this page and isn't needed.
  *
  * CHAPTER GATING (Task 1, this revision) : "Locked" now means "this
- * mission's chapter isn't unlocked yet" — a chapter only unlocks once
- * every mission in the PREVIOUS chapter is 100% complete. Once a
+ * mission's chapter isn't unlocked yet". REVISED RULE: Chapter 1 is open,
+ * Chapter 2 unlocks when Chapter 1 is 100%, and Chapters 3+ ALL unlock
+ * together once Chapter 2 is 100% (no more one-by-one). Once a
  * chapter is unlocked, every mission inside it is available at once;
  * there's no forced order within a chapter anymore. See
  * window.LWMissions.getMissionStatus()/isChapterUnlocked() in
@@ -203,8 +204,8 @@ function renderList(filterText) {
       const missionsInChapter = byChapter.get(ch.id);
       const doneCount = missionsInChapter.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
       const isOpen = isFiltering || ch.id === currentChapterId;
-      // Task 1 — a chapter is locked as a whole until the previous
-      // chapter is 100% complete. The row-level UI already carries that
+      // Task 1 — a chapter is locked as a whole until its gate is met
+      // (Ch2 needs Ch1 done; Ch3+ need Ch1 AND Ch2 done — see missions.js). The row-level UI already carries that
       // (each mission inside renders 'locked' via getMissionStatus()
       // above, with its badge and no progress bar) — the chapter header
       // now uses the same existing badge language instead of adding a

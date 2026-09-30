@@ -961,7 +961,7 @@ function sidebarSignRow(cat, signId, mission, missionLocked) {
     const pending = !missionLocked; // mission is open, just this sign isn't reached yet
     const reason = pending
       ? 'Locked: finish the earlier signs in this mission first'
-      : 'Locked: finish every mission in the current chapter to unlock this one';
+      : 'Locked: finish Chapter 1 and Chapter 2 to unlock this one';
     const stateClass = pending ? ' course-sidebar__sign--pending' : ' course-sidebar__sign--locked';
     return `<span class="course-sidebar__sign${stateClass}" aria-disabled="true" title="${reason}">` +
       `<span class="course-sidebar__sign-icon">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
@@ -1014,7 +1014,7 @@ function sidebarCategoryBlock(cat, opts) {
   if (missionLocked) {
     const icon = window.LWIcons.markup(cat.id);
     return `<div class="course-sidebar__cat">` +
-      `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked: finish every mission in the current chapter to unlock this one">` +
+      `<span class="course-sidebar__cat-head course-sidebar__cat-head--locked" aria-disabled="true" title="Locked: finish Chapter 1 and Chapter 2 to unlock this one">` +
         `<span class="course-sidebar__cat-icon">${icon}</span>` +
         `<span class="course-sidebar__cat-title">${escapeHtml(cat.title)}</span>` +
         `<span class="course-sidebar__cat-count">${window.LWIcons.markup('locked', { size: 'status' })}</span>` +
@@ -1328,7 +1328,7 @@ async function boot() {
     const allMissions = window.LWMissions.getAllMissions();
     if (window.LWMissions.getMissionStatus(lockedMission, allMissions) === 'locked') {
       window.LinguaWave?.showToast?.(
-        'This mission is locked. Finish every mission in the current chapter first.',
+        'This mission is locked. Finish Chapter 1 and Chapter 2 first.',
         'error'
       );
       window.location.replace(`mission-overview.html?mission=${encodeURIComponent(category)}`);

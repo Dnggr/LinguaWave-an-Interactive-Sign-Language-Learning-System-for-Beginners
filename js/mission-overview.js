@@ -229,7 +229,7 @@ function render(mission, status) {
       const learned = isSignLearned(mission, id);
       const label = signTitle(mission, id);
       if (locked) {
-        return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked: finish every mission in the current chapter to unlock this one">${label}</span>`;
+        return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked: finish Chapter 1 and Chapter 2 to unlock this one">${label}</span>`;
       }
       if (!isSignAccessible(mission, signs, id)) {
         return `<span class="sign-chip sign-chip--pending" aria-disabled="true" title="Locked: finish the earlier signs in this mission first">${label}</span>`;
@@ -299,7 +299,7 @@ function render(mission, status) {
         <span class="mo-progress__label">${pct}% complete</span>
       </div>
     ` : `
-      <div class="note-banner">This mission is locked. Finish every mission in the current chapter 100% to unlock the next chapter.</div>
+      <div class="note-banner">This mission is locked. Finish every mission in Chapter 1 and Chapter 2 (100%) to open all the remaining chapters.</div>
     `}
 
     <h2 class="mt-6 mb-3">You'll practice</h2>
