@@ -23,8 +23,15 @@
 //   questions/{id}         quiz questions    (admin panel)
 //   userProgress/{uid}     progress          (js/engine/progress.js)
 //   userProgressV2/{uid}   missions sync     (js/missions.js)
+//   userGame/{uid}         game progress     (js/game.js)          <- NEW
 //   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
 //
+// CHANGED (progress sync fix): learner progress (userProgress, userProgressV2,
+//      userGame) is now get/create/update by the owner only, with a field
+//      whitelist. NOTE: the rules alone were never the blocker — js/auth.js had
+//      stopped exporting doc/db/getDoc/setDoc on window.LWAuth, so progress.js,
+//      missions.js and game.js threw before any request was sent. They now use
+//      LWAuth.readProgressDoc / writeProgressDoc (see js/auth.js).
 // CHANGED (feedback -> admin panel): surveys/{id} used to accept ANY
 //      document as long as userId matched. It now also requires:
 //        - the document id to start with the caller's uid
@@ -100,13 +107,40 @@ service cloud.firestore {
     }
 
     // ── userProgress/{uid}  (js/engine/progress.js) ────────────
+    // Learned/practiced signs + assessments. Doc id MUST be the caller's uid,
+    // so nobody can read or write another learner's progress.
+    // Reached via window.LWAuth.readProgressDoc/writeProgressDoc (js/auth.js).
     match /userProgress/{uid} {
-      allow read, write: if isOwner(uid);
+      allow get: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && (!('uid' in request.resource.data) || request.resource.data.uid == uid);
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     // ── userProgressV2/{uid}  (js/missions.js) ─────────────────
+    // Missions sync: { progress, streak, hearts }. Written with merge, so
+    // only the top-level keys below are accepted.
     match /userProgressV2/{uid} {
-      allow read, write: if isOwner(uid);
+      allow get: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['progress', 'streak', 'hearts']);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // ── userGame/{uid}  (js/game.js) ───────────────────────────
+    // Sign Wall game: gems, walls cleared, badges, best result per wall size.
+    match /userGame/{uid} {
+      allow get: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['gems', 'walls', 'badges', 'best'])
+        && request.resource.data.gems is number
+        && request.resource.data.gems >= 0 && request.resource.data.gems <= 10000000
+        && request.resource.data.walls is number
+        && request.resource.data.walls >= 0 && request.resource.data.walls <= 10000000
+        && request.resource.data.badges is list
+        && request.resource.data.badges.size() <= 50
+        && request.resource.data.best is map;
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     // ── surveys/{id}  (js/feedback.js -> pages/admin-feedback.html) ──

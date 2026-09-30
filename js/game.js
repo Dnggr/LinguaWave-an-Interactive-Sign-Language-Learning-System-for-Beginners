@@ -54,9 +54,59 @@ function load() {
   try { return Object.assign({ gems: 0, walls: 0, badges: [], best: {} }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
   catch { return { gems: 0, walls: 0, badges: [], best: {} }; }
 }
-function save(d) {
+function save(d, opts) {
   if (dev('blockSave')) return;   // DEV-TEST
   try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ }
+  if (!(opts && opts.skipPush)) pushGameToCloud(d);
+}
+
+// ── cloud sync: userGame/{uid} (gems / walls / badges / best) ──────
+// Goes through window.LWAuth.readProgressDoc/writeProgressDoc (own uid only,
+// whitelisted collection) — never raw Firestore. Local save always happens
+// first; a failed/blocked sync just leaves the game local-only.
+const emptyGame = () => ({ gems: 0, walls: 0, badges: [], best: {} });
+const betterBest = (a, b) => !a ? b : !b ? a : (b.stars > a.stars || (b.stars === a.stars && b.ms < a.ms)) ? b : a;
+
+function mergeGame(local, remote) {
+  const l = Object.assign(emptyGame(), local || {}), r = Object.assign(emptyGame(), remote || {});
+  const best = {};
+  new Set([...Object.keys(l.best || {}), ...Object.keys(r.best || {})]).forEach((k) => { best[k] = betterBest(l.best[k], r.best[k]); });
+  return {
+    gems: Math.max(l.gems | 0, r.gems | 0),
+    walls: Math.max(l.walls | 0, r.walls | 0),
+    badges: Array.from(new Set([...(l.badges || []), ...(r.badges || [])])),
+    best,
+  };
+}
+
+function pushGameToCloud(d) {
+  try {
+    const A = window.LWAuth;
+    if (!A?.writeProgressDoc) return;
+    const { gems, walls, badges, best } = mergeGame(d, null);
+    Promise.resolve(A.writeProgressDoc('userGame', { gems, walls, badges, best })).catch((e) => console.warn('[game] cloud save failed:', e));
+  } catch (e) { console.warn('[game] cloud save failed:', e); }
+}
+
+async function syncGameFromCloud() {
+  try {
+    const A = window.LWAuth;
+    if (!A?.readProgressDoc) return;
+    await withTimeout(A.whenAuthReady?.(), 4000);
+    const uid = A.getCurrentUser?.()?.uid;
+    if (!uid) return;                                   // guest: local-only
+    const snap = await A.readProgressDoc('userGame');
+    if (!snap) return;
+    let local = load();
+    // the local slot isn't per-account: never fold another account's gems into this one
+    if (local.uid && local.uid !== uid) local = emptyGame();
+    const merged = mergeGame(local, snap.exists ? snap.data : null);
+    merged.uid = uid;
+    save(merged, { skipPush: true });
+    await A.writeProgressDoc('userGame', { gems: merged.gems, walls: merged.walls, badges: merged.badges, best: merged.best });
+    $('gm-gems').textContent = merged.gems;
+    showBest();
+  } catch (e) { console.warn('[game] cloud sync failed, staying local-only:', e); }
 }
 
 // ── helpers ───────────────────────────────────────────────────────
@@ -444,6 +494,7 @@ function finish() {
   if (d.walls >= 5) add('veteran', '🏗️ Wall Veteran');
   const prev = d.best[stats.size];
   if (!prev || stars > prev.stars || (stars === prev.stars && ms < prev.ms)) d.best[stats.size] = { stars, ms };
+  try { const u = window.LWAuth?.getCurrentUser?.()?.uid; if (u) d.uid = u; } catch { /* guest */ }
   save(d);
 
   $('gm-gems').textContent = d.gems;
@@ -490,6 +541,7 @@ $('gm-gems').textContent = load().gems;
 resetTimers();
 showBest();
 refreshPoolNote();
+syncGameFromCloud();   // pull + merge userGame/{uid}, then push the merged result back
 window.addEventListener('pageshow', (e) => { if (e.persisted) refreshPoolNote(); });   // back/forward cache: progress may have changed
 dev('attach', {   // DEV-TEST — lets the dev panel read the wall and force-break bricks
   isRunning: () => running,   // DEV-TEST
