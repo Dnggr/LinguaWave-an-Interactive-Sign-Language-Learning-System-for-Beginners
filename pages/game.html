@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/game.html — Wall Breaker (standalone game tab)
+    Self-contained: only js/game.js + css/game.css are new. It REUSES the
+    existing engine modules (cameraUtils, mediapipe, classifier, dictionary,
+    renderer) read-only and never edits them.
+    Ids kept for the engine: lw-webcam, lw-canvas, camera-status.
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Wall Breaker | LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+
+  <script type="module" src="../js/auth.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>
+  window.addEventListener('lwauth-ready', () => { LWAuth.requireAuth('../index.html'); });
+  </script>
+  <script src="../js/role-guard.js"></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to game</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Progress
+        </a>
+        <a href="game.html" class="app-sidebar__link active">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="5" rx="1"/><rect x="13" y="4" width="8" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><rect x="10" y="11" width="8" height="5" rx="1"/><path d="M4 20h16"/></svg></span>
+          Game
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+      <div class="gm">
+        <header class="gm-head">
+          <div class="gm-head__text">
+            <h1 class="gm-title">Wall Breaker</h1>
+            <p class="text-muted">Break every brick in <strong>any order</strong>. Hold blue signs steady; record orange motion signs.</p>
+          </div>
+          <div class="gm-stats" role="status">
+            <span class="gm-chip">Bricks <b id="gm-count">0/0</b></span>
+            <span class="gm-chip">Time <b id="gm-time">0:00</b></span>
+            <span class="gm-chip gm-chip--miss">Misses <b id="gm-miss">0</b></span>
+            <span class="gm-chip gm-chip--gem">Gems <b id="gm-gems">0</b></span>
+          </div>
+        </header>
+
+        <div class="gm-progress" id="gm-progress" aria-hidden="true">
+          <div class="gm-progress__track"><i class="gm-progress__fill"></i></div>
+          <span class="gm-progress__hero" id="gm-hero">🧑</span>
+          <span class="gm-progress__reward" id="gm-reward">🎁</span>
+        </div>
+
+        <div class="gm-top">
+          <section class="gm-left">
+            <div class="gm-cam" id="gm-cam" data-mode="idle">
+              <video id="lw-webcam" autoplay playsinline muted></video>
+              <canvas id="lw-canvas"></canvas>
+              <div id="camera-status" class="gm-cam__status">Press Start to turn on the camera.</div>
+              <div class="gm-target" id="gm-status" aria-live="polite">—</div>
+            </div>
+
+            <div class="gm-timers">
+              <div class="gm-timer gm-timer--static" id="gm-t-static">
+                <div class="gm-timer__row"><span class="gm-timer__name"><i class="gm-dot"></i>Static · hold steady</span><span class="gm-timer__val" id="gm-t-static-val">0.5s</span></div>
+                <div class="gm-timer__bar"><i id="gm-t-static-fill"></i></div>
+              </div>
+              <div class="gm-timer gm-timer--motion" id="gm-t-motion">
+                <div class="gm-timer__row"><span class="gm-timer__name"><i class="gm-dot"></i>Motion · recording</span><span class="gm-timer__val" id="gm-t-motion-val">2.5s</span></div>
+                <div class="gm-timer__bar"><i id="gm-t-motion-fill"></i></div>
+                <button class="btn btn--sm gm-motion-btn" id="gm-btn-motion" type="button" disabled>Record motion sign <kbd>Space</kbd></button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="gm-log">
+            <h2>Signs log</h2>
+            <ul id="gm-log"></ul>
+            <div class="gm-legend" aria-label="Legend">
+              <span><i class="gm-dot gm-dot--static"></i>Static</span>
+              <span><i class="gm-dot gm-dot--motion"></i>Motion</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="gm-field" id="gm-field">
+          <div class="gm-wall" id="gm-wall" aria-label="Wall of sign bricks"></div>
+        </div>
+        <p class="gm-hint text-muted" id="gm-hint"></p>
+
+        <div class="gm-overlay" id="gm-start">
+          <div class="gm-card">
+            <h2>Ready to break the wall?</h2>
+            <p class="text-muted">Bricks use signs you've learned (with extras if you're new). Sign them in any order. <b class="gm-tag-static">Blue</b> = hold the sign. <b class="gm-tag-motion">Orange</b> = press Space, wait for 3-2-1, then sign.</p>
+            <label class="gm-field-row">Wall size
+              <select id="gm-size">
+                <option value="9">Small (9 bricks)</option>
+                <option value="15" selected>Medium (15 bricks)</option>
+                <option value="21">Large (21 bricks)</option>
+              </select>
+            </label>
+            <button class="btn btn--primary" id="gm-btn-start" type="button">Start</button>
+            <p class="text-muted" id="gm-best"></p>
+          </div>
+        </div>
+
+        <div class="gm-overlay" id="gm-result" hidden>
+          <div class="gm-card">
+            <div class="gm-chest" id="gm-chest">🎁</div>
+            <h2 id="gm-result-title">Wall cleared!</h2>
+            <div class="gm-stars" id="gm-stars"></div>
+            <p id="gm-result-text"></p>
+            <div class="gm-badges" id="gm-badges"></div>
+            <button class="btn btn--primary" id="gm-btn-again" type="button">Play again</button>
+            <a class="btn btn--ghost" href="dashboard.html">Dashboard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/game.js"></script>
+</body>
+</html>
