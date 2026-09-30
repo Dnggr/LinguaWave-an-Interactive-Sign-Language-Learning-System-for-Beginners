@@ -27,6 +27,13 @@
  *            profile edits on `users` to the same admin email this
  *            file's sibling (admin-auth.js) checks. Ship both together.
  *
+ * SURVEYS  : listSurveys() reads the learner feedback js/feedback.js
+ *            writes to `surveys/{id}` (admin-only read, see
+ *            firestore.rules). getReportStats() loads users + surveys
+ *            ONCE and shares them, so the dashboard and Reports pages
+ *            don't issue duplicate queries. Row shaping lives in
+ *            js/survey-schema.js.
+ *
  * SCOPE    : Lessons and quizzes are NO LONGER stored in / read from
  *            Firestore here. The admin Lesson/Quiz screens read the
  *            hardcoded curriculum (js/missions.js) through
@@ -50,6 +57,13 @@ import {
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 import { getContentStats } from "./admin-content.js";
+import {
+  normalizeSurvey,
+  enrichWithUsers,
+  sortNewestFirst,
+  computeSurveyStats,
+  displayName,
+} from "./survey-schema.js";
 
 export { auth, db };
 
@@ -94,6 +108,28 @@ export async function deleteLearnerAccount(uid) {
   return res.data;
 }
 
+/* ── SURVEYS (Feedback & Surveys) ─────────────────────────────────
+ * Reads every `surveys/{id}` document in ONE getDocs() call, normalises
+ * it (missing fields become safe defaults, so older documents never
+ * break the page) and returns it newest-first. Sorting happens here in
+ * JavaScript rather than with orderBy("submittedAt"): Firestore's
+ * orderBy silently DROPS documents that lack the field, which would
+ * hide legacy or malformed submissions from the admin.
+ *
+ * Optional `users` (an already-loaded listUsers() result) is used to
+ * fill in name/email on legacy surveys saved before those were stored.
+ *
+ * SCALING: this is the single place to change when the collection gets
+ * big. Swap the getDocs() for a query(collection, orderBy("submittedAt",
+ * "desc"), limit(N), startAfter(cursor)) and have the page call it
+ * per-page; every caller already treats the result as a plain array.
+ * ──────────────────────────────────────────────────────────────── */
+export async function listSurveys(users) {
+  const snap = await getDocs(collection(db, "surveys"));
+  const rows = snap.docs.map((d) => normalizeSurvey(d.id, d.data()));
+  return sortNewestFirst(enrichWithUsers(rows, users));
+}
+
 /* ── REPORTS & ANALYTICS ───────────────────────────────────────────
  * Read-only aggregates computed client-side (learners from Firestore,
  * lessons/quizzes from the hardcoded curriculum). Nothing here is
@@ -104,6 +140,17 @@ export async function getReportStats() {
     e.message = `[users] ${e.message}`;
     throw e;
   });
+  // Feedback is loaded alongside but is NOT allowed to take the rest of
+  // the dashboard/reports down with it: if the surveys read fails, those
+  // numbers come back as null + feedbackError and everything else renders.
+  let surveys = null;
+  let feedbackError = null;
+  try {
+    surveys = await listSurveys(users);
+  } catch (e) {
+    console.error("[surveys] Failed to load feedback:", e);
+    feedbackError = e;
+  }
   // Lessons/quizzes come from the hardcoded curriculum, not Firestore.
   const content = getContentStats();
 
@@ -124,5 +171,17 @@ export async function getReportStats() {
     lessonsByChapter: content.lessonsByChapter,
     quizQuestionsByChapter: content.quizQuestionsByChapter,
     recentUsers: sortedByJoined.slice(0, 5),
+    // Feedback (null when the surveys read failed — see feedbackError).
+    feedback: surveys ? computeSurveyStats(surveys) : null,
+    recentFeedback: surveys
+      ? surveys.slice(0, 5).map((f) => ({
+          id: f.id,
+          name: displayName(f),
+          email: f.userEmail,
+          level: f.level,
+          submittedMs: f.submittedMs,
+        }))
+      : [],
+    feedbackError,
   };
 }

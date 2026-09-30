@@ -246,3 +246,114 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-quick-link__icon .lw-icon { width: 22px; height: 22px; }
 .admin-quick-link__title { color: var(--clr-text); font-weight: 700; margin-bottom: 2px; }
 .admin-quick-link__desc { color: var(--clr-text-muted); font-size: var(--fs-sm); }
+
+
+/* ── FEEDBACK & SURVEYS (admin-feedback.html) ─────────────────────
+   Uses only existing tokens (--clr-*, --space-*, --radius-*), so light
+   and dark themes come for free. min-width:0 on every grid child +
+   overflow-wrap:anywhere on user text is what keeps long emails and
+   comments from ever causing sideways page scroll. */
+.stats-grid > [hidden],
+.fb-state[hidden],
+.fb-list[hidden],
+.fb-more[hidden] { display: none !important; }
+
+.fb-count { font-size: var(--fs-sm); margin: 0 0 var(--space-4); min-height: 1.2em; }
+.fb-state {
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--clr-text-muted);
+  border: 1px dashed var(--clr-border);
+  border-radius: var(--radius-lg);
+}
+.fb-state p { margin: 0 0 var(--space-4); }
+
+.fb-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.fb-more { display: flex; justify-content: center; margin-top: var(--space-6); }
+
+.fb-card { padding: 0; overflow: hidden; min-width: 0; }
+.fb-card__meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(0, .8fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--clr-surface-2);
+  border-bottom: 1px solid var(--clr-border);
+}
+.fb-card__body { padding: var(--space-5); min-width: 0; }
+
+.fb-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.fb-field__label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--clr-text-muted);
+}
+.fb-field__value { color: var(--clr-text); overflow-wrap: anywhere; word-break: break-word; }
+.fb-field--name .fb-field__value { font-weight: 700; }
+.fb-field--email .fb-field__value { font-size: var(--fs-sm); color: var(--clr-text-muted); }
+.fb-field__value .badge { align-self: flex-start; }
+.fb-field__sub { display: block; font-size: var(--fs-xs); color: var(--clr-text-muted); }
+
+.fb-card__body > .fb-field__label { display: block; margin-bottom: var(--space-3); }
+.fb-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.fb-answer {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-surface);
+}
+.fb-answer__label {
+  display: block;
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--clr-accent-text);
+}
+.fb-answer__question {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  overflow-wrap: anywhere;
+}
+.fb-answer__value { margin: 0; font-weight: 600; color: var(--clr-text); overflow-wrap: anywhere; }
+
+.fb-comment {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--clr-border);
+  border-left: 3px solid var(--clr-accent);
+  border-radius: var(--radius-md);
+  background: var(--clr-surface);
+}
+.fb-comment__text {
+  margin: var(--space-1) 0 0;
+  color: var(--clr-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.fb-comment__text--none { color: var(--clr-text-muted); font-style: italic; white-space: normal; }
+
+/* Recent-feedback rows on Reports */
+.fb-recent { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.fb-recent li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-width: 0; }
+.fb-recent__who { min-width: 0; overflow-wrap: anywhere; }
+.fb-recent__when { white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .fb-card__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .fb-card__meta { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); padding: var(--space-4); }
+  .fb-card__body { padding: var(--space-4); }
+  .fb-answers { grid-template-columns: minmax(0, 1fr); }
+  .fb-recent li { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+}

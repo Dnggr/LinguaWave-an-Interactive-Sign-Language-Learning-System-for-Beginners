@@ -1,7 +1,7 @@
 {
   "name": "linguawave-functions",
   "private": true,
-  "description": "Admin-only Cloud Functions for LinguaWave (deletes a learner's Auth login + Firestore data).",
+  "description": "Cloud Functions for LinguaWave: admin-only learner deletion (Auth login + Firestore data) and the public signup email pre-check (Reacher, see index.js / email-check.js).",
   "engines": { "node": "20" },
   "main": "index.js",
   "dependencies": {

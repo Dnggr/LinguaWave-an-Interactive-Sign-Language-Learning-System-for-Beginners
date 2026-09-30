@@ -177,9 +177,10 @@
    * from any other live sign in the same level. Always returns
    * whatever it can find rather than throwing on a small category.
    */
-  function buildRecognizeOptions(level, signId, categorySignIds, count) {
+  function buildRecognizeOptions(level, signId, categorySignIds, count, randomize) {
     count = count || 4;
     const correct = signId;
+    if (randomize) return buildRandomRecognizeOptions(level, signId, categorySignIds, count);
     const pool = [];
     getNearNeighbors(level, signId).forEach((id) => { if (id !== correct) pool.push(id); });
     (categorySignIds || []).forEach((id) => { if (id !== correct && pool.indexOf(id) === -1) pool.push(id); });
@@ -193,6 +194,61 @@
     return { correct, options };
   }
 
+  /** True when two signIds are the same physical sign (HELLO/HI,
+   * GOODBYE/BYE, EVENING/NIGHT — see SAME_SIGN_AS). Such a pair must
+   * never appear together as "correct answer" vs "distractor": both
+   * are right, so picking the "wrong" one would be graded unfairly. */
+  function areSameSign(a, b) {
+    return SAME_SIGN_AS[a] === b || SAME_SIGN_AS[b] === a;
+  }
+
+  /** Real random (Math.random, Fisher-Yates) shuffle — returns a new
+   * array. Used only where a learner-facing question must vary every
+   * time; the seeded shuffleDeterministic() below stays for callers
+   * that need a stable order (admin preview, tests). */
+  function shuffleRandom(arr) {
+    const out = arr.slice();
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+    }
+    return out;
+  }
+
+  /**
+   * Randomized Recognize options. The distractors are a random sample
+   * of the OTHER signs in the mission's own chapter/topic (so they stay
+   * on-topic), never a physical duplicate of the correct sign, and the
+   * final order (including the correct answer's position) is random.
+   * Only if the chapter is too small to supply enough distractors does
+   * it top up — curated near-neighbors first, then any other sign at
+   * the same level — so a tiny chapter still gets a full option set.
+   */
+  function buildRandomRecognizeOptions(level, signId, categorySignIds, count) {
+    const correct = signId;
+    const wanted = Math.max(0, count - 1);
+    const eligible = (id) => id !== correct && !areSameSign(id, correct);
+
+    const chapterPool = shuffleRandom(
+      (categorySignIds || []).filter((id, i, a) => eligible(id) && a.indexOf(id) === i)
+    );
+    const distractors = chapterPool.slice(0, wanted);
+
+    if (distractors.length < wanted) {
+      const topUp = [];
+      getNearNeighbors(level, correct).forEach((id) => { if (eligible(id)) topUp.push(id); });
+      if (global.LWMissions && global.LWMissions.content) {
+        shuffleRandom(global.LWMissions.content.SIGNS).forEach((sg) => {
+          if (sg.level === level && eligible(sg.signId)) topUp.push(sg.signId);
+        });
+      }
+      topUp.forEach((id) => {
+        if (distractors.length < wanted && distractors.indexOf(id) === -1) distractors.push(id);
+      });
+    }
+    return { correct, options: shuffleRandom([correct].concat(distractors)) };
+  }
+
   /**
    * Builds a Discriminate-step pair: { targetSignId, neighborSignId }
    * or null if no usable neighbor exists at all (a small, real
@@ -200,7 +256,16 @@
    * Discriminate stage for that item rather than fake one, same
    * "don't fabricate" rule the rest of this codebase follows).
    */
-  function buildDiscriminatePair(level, signId, categorySignIds) {
+  function buildDiscriminatePair(level, signId, categorySignIds, randomize) {
+    if (randomize) {
+      // Random on-topic partner from the mission's own chapter, never a
+      // physical duplicate of the target. Falls through to the curated/
+      // generic logic below only if the chapter has nothing else.
+      const pool = (categorySignIds || []).filter((id) => id !== signId && !areSameSign(id, signId));
+      if (pool.length) {
+        return { targetSignId: signId, neighborSignId: pool[Math.floor(Math.random() * pool.length)] };
+      }
+    }
     const neighbors = getNearNeighbors(level, signId);
     let neighborSignId = neighbors[0] || null;
     if (!neighborSignId) {
@@ -320,19 +385,19 @@
       return {
         loopStage: 'Recognize',
         render: 'booster-recognize',
-        options: item.signId ? buildRecognizeOptions(level, item.signId, categorySignIds, 4) : null,
+        options: item.signId ? buildRecognizeOptions(level, item.signId, categorySignIds, 4, true) : null,
       };
     }
 
     if (item.kind === 'PRACTICE') {
       const optionCount = (item.difficultyRamp && item.difficultyRamp[0] === '2-option') ? 2 : 3;
-      const pair = item.signId ? buildDiscriminatePair(level, item.signId, categorySignIds) : null;
+      const pair = item.signId ? buildDiscriminatePair(level, item.signId, categorySignIds, true) : null;
       return {
         loopStage: 'Discriminate + Contextualize',
         render: 'practice-scenario',
         scenarioTitle: item.scenarioTitle,
         discriminatePair: pair,
-        recognizeOptions: item.signId ? buildRecognizeOptions(level, item.signId, categorySignIds, optionCount) : null,
+        recognizeOptions: item.signId ? buildRecognizeOptions(level, item.signId, categorySignIds, optionCount, true) : null,
         contextPrompt: item.signId ? contextPromptFor(level, item.signId) : null,
       };
     }

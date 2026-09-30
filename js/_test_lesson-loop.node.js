@@ -106,8 +106,36 @@ check('HI LESSON cites HELLO as the reason', /HELLO/.test(planBySign['LESSON:HI'
 check('HI BOOSTER uses register discrimination, not handshape recognize',
   planBySign['BOOSTER:HI'].render === 'booster-register');
 check('HELLO BOOSTER uses normal recognize', planBySign['BOOSTER:HELLO'].render === 'booster-recognize');
-check('HELLO BOOSTER recognize options include a near-neighbor distractor (HI)',
-  planBySign['BOOSTER:HELLO'].options.options.indexOf('HI') !== -1);
+// Distractors are now a random on-topic sample from the chapter, and a
+// physical duplicate of the answer (HI for HELLO) is deliberately excluded.
+const helloOpts = planBySign['BOOSTER:HELLO'].options.options;
+const greetChapter = window.LWMissions.getCategorySigns(greetMission.level, greetMission.category);
+check('HELLO BOOSTER recognize options include HELLO', helloOpts.indexOf('HELLO') !== -1);
+check('HELLO BOOSTER recognize options exclude the identical sign HI', helloOpts.indexOf('HI') === -1);
+check('HELLO BOOSTER recognize options all come from the Greetings chapter',
+  helloOpts.every((id) => greetChapter.indexOf(id) !== -1));
+
+// Randomization: over many draws the distractor set and the correct
+// answer's position must both vary.
+{
+  const sets = new Set(), positions = new Set();
+  for (let t = 0; t < 200; t++) {
+    const r = window.LWMissionsLoop.buildRecognizeOptions('basic', 'A', catSigns, 4, true);
+    sets.add(r.options.slice().sort().join(','));
+    positions.add(r.options.indexOf('A'));
+    if (t === 0) {
+      check('random options include correct answer', r.options.indexOf('A') !== -1);
+      check('random options length == 4', r.options.length === 4);
+      check('random options unique', new Set(r.options).size === 4);
+      check('random options all from the chapter', r.options.every((id) => catSigns.indexOf(id) !== -1));
+    }
+  }
+  check('random distractor sets vary', sets.size > 3);
+  check('correct answer lands in all 4 positions', positions.size === 4);
+  const dp = window.LWMissionsLoop.buildDiscriminatePair('basic', 'HELLO', greetChapter, true);
+  check('random discriminate pair is on-topic and not the identical sign',
+    greetChapter.indexOf(dp.neighborSignId) !== -1 && dp.neighborSignId !== 'HI' && dp.neighborSignId !== 'HELLO');
+}
 
 const quizItem = greetMission.items.find((it) => it.kind === 'QUIZ');
 const quizPlan = window.LWMissionsLoop.planForItem(greetMission, greetMission.items.indexOf(quizItem), quizItem);

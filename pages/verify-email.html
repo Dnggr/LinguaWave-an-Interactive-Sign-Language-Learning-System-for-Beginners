@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/verify-email.html — "Check your email" (NEW, 2026-09-29)
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE  : The one place an AUTHENTICATED-BUT-UNVERIFIED account
+               lives. Sign-up and login both send people here when
+               Firebase reports emailVerified === false; nothing else in
+               the app is reachable until it flips to true.
+
+    CONTROLLER: js/verify-email.js (all logic; this file is markup only).
+               It talks to Firebase ONLY through window.LWAuth
+               (js/auth.js): getVerificationInfo(), sendVerificationEmail(),
+               checkVerificationNow(), getResendCooldownRemaining(),
+               logout(), describeAuthError().
+
+    STATES (all driven by js/verify-email.js, each is a hidden/shown block):
+               #verify-loading  first paint, while Firebase restores the
+                                session and we ask it whether the email
+                                got verified
+               #verify-content  the normal screen (address, 3 buttons,
+                                status line)
+               #verify-success  emailVerified came back true; auto-continues
+               error / info / success messages appear in #verify-status
+
+    NOT LOADED HERE ON PURPOSE:
+               - js/role-guard.js : an unverified account has no session
+                 cache, so there is nothing for it to route by, and after
+                 verification dashboard.html's own copy sends the admin
+                 account to the admin panel.
+               - js/main.js : its navbar/sidebar wiring assumes an
+                 app page; this page has its own Log Out button.
+               js/auth.js's AUTO-GUARD skips this page by file name, which
+               is what prevents a redirect loop (verify -> app -> verify).
+
+    CONNECTS : ← index.html (after sign-up / login of an unverified user)
+               ← js/auth.js requireAuth()/redirectIfLoggedIn() (any
+                 protected page visited while unverified)
+               → pages/dashboard.html (once verified)
+               → index.html (Log Out, or nobody is signed in)
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Verify your email | LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/verify-email.css" />
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css.
+       (js/mobile-nav.js is NOT loaded: this page has no sidebar/navbar to collapse.) -->
+  <link rel="stylesheet" href="../css/responsive.css" />
+
+  <!-- ORDER MATTERS: module scripts run in document order, so auth.js
+       (which creates window.LWAuth) is guaranteed to have run before
+       verify-email.js starts. -->
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/verify-email.js"></script>
+  <script src="../js/theme.js" defer></script>
+</head>
+<body class="verify-page">
+
+  <main class="verify-main">
+    <p class="verify-brand">Lingua<span>Wave</span></p>
+
+    <section class="auth-card verify-card" aria-labelledby="verify-title">
+
+      <!-- LOADING: shown until js/verify-email.js knows who is signed in. -->
+      <div id="verify-loading" class="verify-loading" role="status">
+        <span class="verify-spinner" aria-hidden="true"></span>
+        <p class="text-muted">Checking your account...</p>
+      </div>
+
+      <!-- MAIN SCREEN -->
+      <div id="verify-content" hidden>
+        <p class="auth-card__eyebrow">One more step</p>
+        <h1 id="verify-title" class="verify-title">Check your email</h1>
+
+        <p class="text-muted">We sent a verification link to:</p>
+        <p class="verify-address" id="verify-address"></p>
+        <p class="text-muted">Please verify your email before continuing.</p>
+
+        <!-- info / success / error messages. role + class are set by JS
+             (role="alert" for errors, role="status" otherwise). -->
+        <p id="verify-status" class="verify-status" hidden></p>
+
+        <div class="verify-actions">
+          <button type="button" class="btn btn--primary btn--full btn--lg" id="btn-resend">Resend Verification Email</button>
+          <button type="button" class="btn btn--secondary btn--full btn--lg" id="btn-check">I Already Verified</button>
+          <button type="button" class="btn btn--ghost btn--full" id="btn-logout">Log Out</button>
+        </div>
+
+        <p class="verify-hint text-muted">
+          Can't find it? Check your spam or junk folder. After you click the
+          link in the email, come back here and press
+          <strong>I Already Verified</strong>.
+        </p>
+      </div>
+
+      <!-- SUCCESS: emailVerified === true. Auto-continues; the link is the
+           fallback if the automatic redirect is ever blocked. -->
+      <div id="verify-success" class="verify-loading" role="status" hidden>
+        <h1 class="verify-title">Email verified</h1>
+        <p class="text-muted">Taking you to LinguaWave...</p>
+        <a class="btn btn--primary btn--lg" id="verify-continue" href="dashboard.html">Continue</a>
+      </div>
+
+    </section>
+  </main>
+
+</body>
+</html>

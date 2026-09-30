@@ -62,6 +62,20 @@ function getMissionParam() {
   return params.get('mission');
 }
 
+/* Real random (Math.random, Fisher-Yates) shuffle for answer options,
+ * applied at render time so the correct answer's position is
+ * unpredictable on every render. Returns a new array; never mutates
+ * the plan's own option list. Answers are matched by data-value, not
+ * by position, so order has no effect on grading. */
+function shuffleOptions(arr) {
+  const out = (arr || []).slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+  }
+  return out;
+}
+
 function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -231,7 +245,7 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
     ${reg ? `
       <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
       <div class="lesson-options" id="lesson-register-options">
-        ${reg.options.map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
+        ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
       </div>
       <p class="lesson-feedback" id="lesson-feedback" hidden></p>
     ` : `
@@ -269,7 +283,7 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
     <p class="lesson-prompt">Which word is this?</p>
     ${mediaBlockHtml(sign)}
     <div class="lesson-options" id="lesson-recognize-options">
-      ${opts.options.map((id) => {
+      ${shuffleOptions(opts.options).map((id) => {
         const s = window.LWMissions.getSign(mission.level, id);
         return `<button type="button" class="lesson-option" data-value="${escapeHtml(id)}">${escapeHtml((s && s.title) || id)}</button>`;
       }).join('')}
@@ -308,7 +322,7 @@ function renderBoosterRegister(mission, index, item, plan) {
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
     <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
     <div class="lesson-options" id="lesson-register-options">
-      ${reg.options.map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
+      ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
     </div>
     <p class="lesson-feedback" id="lesson-feedback" hidden></p>
   `;
@@ -331,11 +345,10 @@ function renderBoosterRegister(mission, index, item, plan) {
 function renderPracticeScenario(mission, index, item, plan) {
   const sign = window.LWMissions.getSign(mission.level, item.signId);
   const el = document.getElementById('lesson-content');
-  const bonus = item.bonusXP ? `<span class="badge badge--basic">+${item.bonusXP} bonus XP</span>` : '';
 
   el.innerHTML = `
     <div class="lesson-stage-label">Practice</div>
-    <h1>${escapeHtml(item.scenarioTitle || 'Practice')} ${bonus}</h1>
+    <h1>${escapeHtml(item.scenarioTitle || 'Practice')}</h1>
   `;
 
   if (plan.discriminatePair) {
@@ -392,7 +405,7 @@ function showContextStep(mission, index, item, plan) {
     </div>
   `;
   el.appendChild(wrap);
-  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  wrap.scrollIntoView({ behavior: (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || document.documentElement?.classList?.contains('lw-force-reduced-motion')) ? 'auto' : 'smooth', block: 'end' });
   document.getElementById('lesson-continue').addEventListener('click', () => {
     completeAndAdvance(mission, index, item);
   });

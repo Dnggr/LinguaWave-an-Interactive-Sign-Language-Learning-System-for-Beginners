@@ -1026,4 +1026,25 @@ find bugs."
   being live, `words[]` overlaps this session's new Actions/
   Communication content).
 
+### Email verification + Reacher pre-check — 2026-09-29 (auth.js touched at owner's explicit request)
+
+Implemented and tested against a **fake Firebase SDK** in a real browser
+(see "Not tested" for what that means):
+- [x] Signup: normalize -> format check -> Reacher pre-check (Cloud Function) -> Firebase create -> `sendEmailVerification`; no account if rejected
+- [x] Login: unverified -> `pages/verify-email.html`, no `lw_session`, no access; verified -> normal app
+- [x] `pages/verify-email.html`: loading/success/error, Resend with 60 s cooldown (survives refresh), "I Already Verified" does `reload()` then checks `emailVerified`, Log Out
+- [x] Guards: three-way `requireAuth()`, auto-guard on all non-public pages, no redirect loops (12 protected pages x logged-out / unverified checked)
+- [x] One normalized email (trim only, no lowercasing) for validation AND the value sent to Reacher/Firebase, in login and signup
+- [x] Google sign-in still works; gate only bites if Google returns an unverified account
+- [x] Existing unverified accounts kept; they verify on next login
+- [x] Node unit tests `js/_test_email-check.node.js` (all pass); Cloud Function wrapper checked with stubbed firebase modules; 83/83 browser checks
+
+**Not tested (needs manual pass before relying on it):**
+- [ ] Deploy `checkEmailDeliverability` (needs Blaze, `REACHER_SECRET`, `REACHER_URL`) and call it from the real site
+- [ ] A real Reacher server (never run here; response shape taken from the field names in the task, not from a live response)
+- [ ] Real Firebase: a real verification email arriving, the link, the return to LinguaWave, `emailVerified` flipping, Authorized-domains for the continue URL
+- [ ] Real `test@gmail.co` / `@gamil.com` / disposable / Outlook-Hotmail results from Reacher
+- [ ] Firestore rules: should require `request.auth.token.email_verified == true` for learner data (rules file is not in this repo)
+- [ ] Cross-browser / phone layout of `verify-email.html`
+
 *(Add new session's tasks here.)*

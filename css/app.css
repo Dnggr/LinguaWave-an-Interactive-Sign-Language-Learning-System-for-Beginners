@@ -310,6 +310,7 @@
   margin-bottom: var(--space-4);
 }
 .back-link:hover { color: var(--clr-text); }
+.back-link[hidden] { display: none; }
 
 .mo-header {
   display: flex;
@@ -1003,6 +1004,102 @@
 .quiz-hearts-row .heart--full { color: var(--clr-red); }
 .quiz-hearts-row .heart--empty { color: var(--clr-text-muted); opacity: .4; }
 
+/* ── Out-of-hearts popup (js/mastery-quiz.js's openOutOfHeartsDialog()) ──
+ * Native <dialog>.showModal(): centered in the top layer with a focus
+ * trap. It is the whole out-of-hearts screen. Same dimmed, see-through
+ * backdrop as .streak-dialog, so the question the learner just lost their
+ * last heart on stays visible behind it. It can't be dismissed (see the
+ * JS). Explicit `margin: auto` because a global reset could otherwise pin
+ * it to a corner. */
+.ooh-dialog {
+  margin: auto;
+  padding: 0;
+  width: min(92vw, 420px);
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--clr-text);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .45);
+}
+.ooh-dialog::backdrop {
+  background: rgba(15, 23, 42, .55);
+}
+.ooh-dialog[open] { animation: ooh-dialog-in var(--dur-slow) cubic-bezier(.2, .9, .3, 1.15); }
+.ooh-dialog[open]::backdrop { animation: ooh-fade-in var(--dur-base) var(--ease); }
+@keyframes ooh-dialog-in {
+  from { opacity: 0; transform: translateY(16px) scale(.88); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ooh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+body:has(.ooh-dialog[open]) { overflow: hidden; }
+
+.ooh-dialog__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) var(--space-6) var(--space-6);
+}
+
+/* Row of hearts: all grey ("empty") and popping in one after another.
+ * .ooh-heart--breaking (mid-quiz stop only) starts RED, holds for half a
+ * second so the learner sees what they had, then shakes and goes grey.
+ * .ooh-heart--full is the "hearts are back" state. Colours are the
+ * semantic tokens so both themes work. */
+.ooh-hearts { display: flex; justify-content: center; gap: var(--space-3); margin-bottom: var(--space-5); }
+.ooh-heart {
+  width: 48px;
+  height: 48px;
+  color: var(--clr-text-muted);
+  opacity: .55;
+  animation: ooh-heart-pop var(--dur-slow) cubic-bezier(.2, .9, .3, 1.3) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 120ms);
+}
+.ooh-heart svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.ooh-heart--full { color: var(--clr-red); opacity: 1; animation: none; }
+.ooh-heart--breaking {
+  animation: ooh-heart-break 900ms var(--ease) 550ms both;
+}
+@keyframes ooh-heart-pop {
+  from { opacity: 0; transform: scale(.3); }
+  to   { opacity: .55; transform: none; }
+}
+@keyframes ooh-heart-break {
+  0%   { color: var(--clr-red); opacity: 1; transform: scale(1); }
+  20%  { color: var(--clr-red); opacity: 1; transform: scale(1.25) rotate(-8deg); }
+  40%  { transform: scale(1.15) rotate(8deg); }
+  60%  { transform: scale(1.05) rotate(-4deg); }
+  100% { color: var(--clr-text-muted); opacity: .55; transform: none; }
+}
+
+.ooh-dialog__title { margin: 0 0 var(--space-2); font-size: var(--fs-2xl); line-height: 1.15; }
+.ooh-dialog__msg { margin: 0 0 var(--space-4); color: var(--clr-text-muted); }
+.ooh-dialog__timer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--clr-red-soft);
+  color: var(--clr-red-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.ooh-dialog__timer[hidden] { display: none; }
+.ooh-dialog__actions { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.ooh-dialog__actions .btn { width: 100%; justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ooh-dialog[open],
+  .ooh-dialog[open]::backdrop,
+  .ooh-heart,
+  .ooh-heart--breaking { animation: none; }
+  .ooh-heart { opacity: .55; }
+}
+
 .quiz-progress-bar { margin-bottom: var(--space-6); }
 
 .quiz-option-letter {
@@ -1448,6 +1545,15 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
 }
 .hearts-explainer[hidden] { display: none; }
 .hearts-explainer p { margin: var(--space-1) 0 0; color: var(--clr-text-muted); }
+.hearts-explainer .hearts-explainer__next { color: var(--clr-text); }
+
+/* Refill countdown line under the Mastery Hearts label. */
+.stat-tile__hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs, .75rem);
+  color: var(--clr-text-muted);
+}
 
 /* Mastery Hearts value: heart glyph + count ("❤ 3") instead of "3/3".
  * The SVG is sized in em so it tracks .stat-tile__value's font-size
@@ -1553,6 +1659,76 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 .streak-flame--idle .streak-flame__outer { fill: var(--clr-track); }
 .streak-flame--idle .streak-flame__inner { fill: var(--clr-surface); opacity: .6; }
 .streak-flame--idle .streak-flame__glow  { fill: var(--clr-surface); opacity: .9; }
+
+/* Flame motion — only for a LIVE streak (idle = fire's out, so it stays
+ * still). Layers move at different speeds so the loop never looks
+ * mechanical: outer body sways, inner core flickers faster, glow breathes,
+ * embers drift up. transform-box: fill-box makes each SVG shape pivot on
+ * its own bottom-centre instead of the SVG's top-left corner. All
+ * transform/opacity, so it's GPU-cheap; it only runs while the dialog is
+ * open (a closed <dialog> isn't rendered). */
+.streak-flame { overflow: visible; }
+.streak-flame:not(.streak-flame--idle) { animation: lw-flame-ignite .7s cubic-bezier(.34, 1.56, .64, 1) both; }
+.streak-flame:not(.streak-flame--idle) .streak-flame__outer,
+.streak-flame:not(.streak-flame--idle) .streak-flame__inner,
+.streak-flame:not(.streak-flame--idle) .streak-flame__glow,
+.streak-flame__spark { transform-box: fill-box; }
+.streak-flame:not(.streak-flame--idle) .streak-flame__outer {
+  transform-origin: 50% 100%;
+  animation: lw-flame-sway 1.4s ease-in-out infinite;
+}
+.streak-flame:not(.streak-flame--idle) .streak-flame__inner {
+  transform-origin: 50% 100%;
+  animation: lw-flame-flicker .8s ease-in-out infinite;
+}
+.streak-flame:not(.streak-flame--idle) .streak-flame__glow {
+  transform-origin: 50% 50%;
+  animation: lw-flame-glow 1.2s ease-in-out infinite;
+}
+.streak-flame__spark {
+  fill: var(--clr-orange);
+  opacity: 0;
+  animation: lw-flame-ember 1.8s ease-out infinite;
+}
+.streak-flame__spark--2 { animation-delay: .6s;  animation-duration: 2.1s; }
+.streak-flame__spark--3 { animation-delay: 1.2s; animation-duration: 1.6s; }
+
+@keyframes lw-flame-ignite {
+  0%   { transform: scale(.55); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes lw-flame-sway {
+  0%, 100% { transform: rotate(0)       scale(1, 1)      skewX(0); }
+  20%      { transform: rotate(-5deg)   scale(.9, 1.14)  skewX(-5deg); }
+  45%      { transform: rotate(3deg)    scale(1.07, .9)  skewX(3deg); }
+  70%      { transform: rotate(6deg)    scale(.92, 1.12) skewX(6deg); }
+  85%      { transform: rotate(-2deg)   scale(1.04, .96) skewX(-2deg); }
+}
+@keyframes lw-flame-flicker {
+  0%, 100% { transform: scale(1, 1)     translateY(0);   opacity: .38; }
+  25%      { transform: scale(.78, 1.25) translateY(-3px); opacity: .62; }
+  55%      { transform: scale(1.12, .82) translateY(2px);  opacity: .22; }
+  80%      { transform: scale(.88, 1.15) translateY(-2px); opacity: .55; }
+}
+@keyframes lw-flame-glow {
+  0%, 100% { transform: scale(1);   opacity: .5; }
+  50%      { transform: scale(1.45); opacity: .95; }
+}
+@keyframes lw-flame-ember {
+  0%   { transform: translate(0, 0)        scale(1.2); opacity: 0; }
+  12%  { opacity: 1; }
+  50%  { transform: translate(-7px, -28px) scale(.9); }
+  100% { transform: translate(8px, -56px)  scale(.2); opacity: 0; }
+}
+/* Vestibular safety: show the finished, still flame. Embers are pure
+   decoration, so they're hidden rather than frozen mid-air. */
+@media (prefers-reduced-motion: reduce) {
+  .streak-flame,
+  .streak-flame__outer,
+  .streak-flame__inner,
+  .streak-flame__glow { animation: none !important; }
+  .streak-flame__spark { display: none; }
+}
 
 .streak-dialog__title { margin: 0 0 var(--space-5); font-size: var(--fs-2xl); line-height: 1.15; }
 
@@ -1698,12 +1874,25 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   gap: var(--space-4);
 }
 .highlights-row { display: flex; align-items: center; gap: var(--space-3); }
+/* CHANGED — emoji → Lucide SVG in a soft tinted chip (same 2rem circle as
+   .review-row__icon, so the two cards read as one family). Colours are
+   token pairs, so light and dark themes both work with no extra rules. */
 .highlights-row__icon {
-  font-size: var(--fs-lg);
-  width: 28px;
   flex: 0 0 auto;
-  text-align: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--clr-accent-soft);
+  color: var(--clr-accent-text);
 }
+.highlights-row__icon svg { display: block; }
+.highlights-row__icon--orange  { background: var(--clr-orange-soft);  color: var(--clr-orange); }
+.highlights-row__icon--accent  { background: var(--clr-accent-soft);  color: var(--clr-accent-text); }
+.highlights-row__icon--success { background: var(--clr-success-soft); color: var(--clr-success); }
+.highlights-row__icon--violet  { background: var(--clr-violet-soft);  color: var(--clr-violet); }
 .highlights-row__body { display: flex; flex-direction: column; min-width: 0; }
 .highlights-row__label { font-size: var(--fs-xs); color: var(--clr-text-muted); }
 .highlights-row__value {

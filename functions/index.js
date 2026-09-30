@@ -22,10 +22,47 @@
  *   retry can finish cleaning up leftover Firestore data.
  *
  * Deploy: see ADMIN_SETUP.md ("Deleting learners"). Needs the Blaze plan.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * 2026-09-29 — checkEmailDeliverability({ email })  (NEW, PUBLIC callable)
+ *   Signup pre-check. js/auth.js register() calls this BEFORE creating the
+ *   Firebase account, so a clearly unusable address (bad syntax, a domain
+ *   with no mail server such as a mistyped "gmail.co", a disposable
+ *   address, a mailbox the SMTP probe says does not exist) never becomes
+ *   an account. All decision logic lives in functions/email-check.js.
+ *
+ *   ROLE OF REACHER: a pre-filter only. "Reacher says safe" does NOT mean
+ *   the person owns the mailbox — Firebase's verification email does that.
+ *
+ *   The browser never sees Reacher or its secret: browser -> this
+ *   function -> Reacher. The function returns ONLY { ok, reason?, checked }.
+ *
+ *   ONE-TIME SETUP (before deploying this function):
+ *     1. Run Reacher somewhere with outbound port 25 (NOT inside Cloud
+ *        Functions — GCP blocks port 25). e.g. Docker image
+ *        reacherhq/backend, and set its RCH__HEADER_SECRET.
+ *     2. firebase functions:secrets:set REACHER_SECRET      (that header value)
+ *     3. Create functions/.env containing:
+ *          REACHER_URL=https://your-reacher-host      (no trailing path)
+ *          REACHER_REJECT_DISPOSABLE=true             (optional, default true)
+ *     4. firebase deploy --only functions
+ *   With REACHER_URL empty/unset the function still works: it falls back
+ *   to a plain DNS MX/A lookup (weaker — no mailbox-level check).
+ *
+ *   FAILS OPEN: if Reacher is down/slow, the result is DNS-only, and if
+ *   DNS is inconclusive the address is allowed. That is safe because an
+ *   account with an unverified email gets NO learner access (js/auth.js).
+ *
+ *   ABUSE NOTE: it has to be callable by signed-out visitors (they have no
+ *   account yet), so it has a small per-IP limiter (in-memory, per
+ *   instance — best effort, not a hard guarantee). Consider Firebase App
+ *   Check if this ever gets abused.
  * ─────────────────────────────────────────────────────────────────
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const { defineSecret, defineString } = require("firebase-functions/params");
+const emailCheck = require("./email-check");
 
 admin.initializeApp();
 
@@ -73,3 +110,62 @@ exports.deleteLearnerAccount = onCall(async (request) => {
 
   return { ok: true, uid };
 });
+
+/* ── checkEmailDeliverability ───────────────────────────────────── */
+const REACHER_URL = defineString("REACHER_URL", { default: "" });
+const REACHER_SECRET = defineSecret("REACHER_SECRET"); // never sent to the browser
+const REACHER_REJECT_DISPOSABLE = defineString("REACHER_REJECT_DISPOSABLE", { default: "true" });
+
+// Best-effort per-IP limiter (memory is per function instance, so this
+// slows a single abuser rather than guaranteeing a global cap).
+const CHECK_WINDOW_MS = 60 * 1000;
+const CHECK_MAX_PER_WINDOW = 10;
+const checkHits = new Map();
+
+function tooManyChecks(ip) {
+  const now = Date.now();
+  if (checkHits.size > 2000) {
+    for (const [key, entry] of checkHits) if (entry.resetAt <= now) checkHits.delete(key);
+  }
+  const entry = checkHits.get(ip);
+  if (!entry || entry.resetAt <= now) {
+    checkHits.set(ip, { count: 1, resetAt: now + CHECK_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > CHECK_MAX_PER_WINDOW;
+}
+
+exports.checkEmailDeliverability = onCall(
+  { secrets: [REACHER_SECRET], timeoutSeconds: 30 },
+  async (request) => {
+    const raw = request.data && request.data.email;
+    if (typeof raw !== "string") {
+      throw new HttpsError("invalid-argument", "An email address is required.");
+    }
+
+    const ip = (request.rawRequest && request.rawRequest.ip) || "unknown";
+    if (tooManyChecks(ip)) {
+      throw new HttpsError("resource-exhausted", "Too many checks. Please wait a minute and try again.");
+    }
+
+    const email = emailCheck.normalizeEmail(raw);
+    const verdict = await emailCheck.checkEmailDeliverability(email, {
+      url: REACHER_URL.value(),
+      secret: REACHER_SECRET.value(),
+      rejectDisposable: String(REACHER_REJECT_DISPOSABLE.value()).toLowerCase() !== "false",
+      timeoutMs: 12000,
+      log: (msg) => console.warn(msg),
+    });
+
+    // Log the domain only — no full addresses in Cloud Logging.
+    console.log(JSON.stringify({
+      fn: "checkEmailDeliverability",
+      domain: email.includes("@") ? email.slice(email.lastIndexOf("@") + 1).toLowerCase() : null,
+      ok: verdict.ok, reason: verdict.reason || null, checked: verdict.checked,
+    }));
+
+    // Only these three fields ever reach the browser (no raw Reacher JSON).
+    return { ok: verdict.ok, reason: verdict.reason || null, checked: verdict.checked };
+  }
+);

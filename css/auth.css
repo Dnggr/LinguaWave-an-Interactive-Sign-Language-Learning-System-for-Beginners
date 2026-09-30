@@ -163,8 +163,19 @@
   pointer-events: none; /* purely decorative, same convention .hero-decor already uses below — belt-and-suspenders alongside z-index already keeping it under .container's clickable content */
 }
 .hero-rotor-frame {
-  --hero-rotor-size: 420cqw;   /* oversized square disc; see the comment above for why this has to clear both axes at once */
+  /* 2026-09-30 (mobile bg gap + shrinking bg on theme switch): both values used to be
+     pure cqw (hero WIDTH). That is fine on a wide desktop hero, but on a phone the hero
+     is ~2x taller than it is wide (min-height:100svh, responsive.css §8b), so the top of
+     the hero sat ~246cqw from the pivot while the disc only reached 210cqw: the top strip
+     of the hero had NO sky under it (the gap under the navbar), and while spinning the
+     hero's far corners left the disc, so the bg looked smaller than the screen.
+     Now the disc always spans the pivot + half the hero's height + half its width (an
+     upper bound on the distance from the pivot to the farthest hero corner), so every
+     hero pixel stays inside the disc at every angle. The pivot itself is unchanged, so
+     the sweep looks the same; max() keeps the old 420cqw on desktop, so desktop is
+     unchanged. */
   --hero-rotor-pivot: 150cqw;  /* distance from the disc's center to the hero's center (and to each anchor below) — pushed DOWN, toward .hero-waves, not up */
+  --hero-rotor-size: max(420cqw, calc(2 * (var(--hero-rotor-pivot) + 50cqh + 50cqw) + 20cqw));   /* oversized square disc; see the comment above for why this has to clear both axes at once */
   position: absolute;
   left: 50cqw;
   top: 50cqh;

@@ -722,10 +722,12 @@ linguawave/
 │   ├── lesson.html             # Sign lesson viewer + course sidebar (Rev 5)
 │   ├── quiz.html               # Assessment
 │   ├── feedback.html           # Post-level survey
-│   └── intro-to-asl.html       # Deaf-culture/background reading
+│   ├── intro-to-asl.html       # Deaf-culture/background reading
+│   └── verify-email.html       # "Check your email" — signed in but unverified (2026-09-29)
 ├── css/  (one file per page + style.css tokens + toast.css)
 ├── js/
-│   ├── auth.js                 # Real Firebase auth — teammate owns this
+│   ├── auth.js                 # Real Firebase auth — teammate owns this; email-verification gate added 2026-09-29 (§5)
+│   ├── verify-email.js         # Controller for pages/verify-email.html (2026-09-29)
 │   ├── data.js                 # UNITS/CATEGORIES/SIGNS content
 │   ├── main.js                 # Shared nav/progress-bar/user-detail utils
 │   ├── learn.js / lesson.js / quiz.js / feedback.js / dashboard.js / theme.js
@@ -767,8 +769,12 @@ linguawave/
   category=&sign=` params.
 - **`pages/quiz.html`** — 3-round category/level assessment, 80% pass
   threshold on the two graded MC/Identification rounds.
-- **`pages/feedback.html`** — 5-question survey; still just
-  `console.log`s answers (`TODO`: write to Firestore `surveys`).
+- **`pages/feedback.html`** — 5-question survey. `js/feedback.js` (ES module)
+  writes one `surveys/{uid}_{level}_{timestamp}` document per submission
+  using Firebase's live user for identity, and only redirects after the
+  write succeeds. Admins read them at `pages/admin-feedback.html`
+  (`js/admin-feedback.js`; question labels in `js/survey-schema.js`), plus
+  counts on the admin dashboard and reports.
 
 ---
 
@@ -782,7 +788,9 @@ users/{uid}/
 
 signs/{id}/        level, signId, title, description, imageUrl, videoUrl, order
 questions/{id}/     level, relatedSign?, prompt, options[], correctId, order
-surveys/{id}/       userId, level, timestamp, q1..q5
+surveys/{id}/       userId, userName, userEmail, level, submittedAt (ISO string),
+                    answers: { q1..q4 required, q5 optional comment | null }
+                    (create-only for learners; read/delete admin-only — firestore.rules)
 ```
 
 No `role` field, no admin collection — every account is a learner.
@@ -794,8 +802,86 @@ in-app upload flow.
 ## 5. Auth — `js/auth.js` (teammate-owned, out of scope for AI sessions)
 
 Real Firebase Auth (email+password) + a Firestore profile write/read.
-Route guards: `requireAuth(loginPath)`, `redirectIfLoggedIn(dashPath)`,
-used at the top of every guarded page.
+Route guards: `requireAuth(loginPath, verifyPath)`,
+`redirectIfLoggedIn(dashPath, verifyPath)`.
+
+> **Scope note (2026-09-29):** the header above still says "out of scope"
+> for normal sessions. The email-verification work below was done at the
+> project owner's explicit request, limited to signup / login / email
+> validation / verification / guards. Nothing else in `auth.js` (profile
+> edit, password change, account deletion, Google linking) was changed
+> except where the new gate had to touch it (see Google, below).
+
+### Email verification + signup pre-check (2026-09-29)
+
+Every visitor is in exactly one state, read from Firebase's live user
+(`auth.currentUser.emailVerified`), **never from localStorage**:
+
+| State | `LWAuth.getAuthState()` | Goes to |
+|---|---|---|
+| Not signed in | `logged-out` | `index.html` |
+| Signed in, email not verified | `unverified` | `pages/verify-email.html` |
+| Signed in, email verified | `verified` | the normal app |
+
+**Signup:** trim email -> local format check -> `checkEmailDeliverability`
+Cloud Function (Reacher) -> Firebase `createUserWithEmailAndPassword` ->
+`users/{uid}` profile -> `sendEmailVerification` -> user stays signed in
+but *unverified*, lands on `verify-email.html`. A rejected address never
+becomes a Firebase account.
+
+**Login:** Firebase checks credentials; `emailVerified === false` ->
+`verify-email.html` (still signed in, no `lw_session` cache, no access).
+Accounts created before this fix are *not* deleted; they verify on next
+login via the Resend button.
+
+**`lw_session` is written only for verified users.** That is what makes
+every existing `getCurrentUser()` caller (progress sync, missions sync,
+navbar, tour) treat an unverified user as logged out. A forged
+`lw_session` for an unverified account is wiped on the next auth event.
+
+**Guards:** `requireAuth()` is three-way. It also runs automatically on
+every page except `index`, `verify-email` and `admin-*` (AUTO-GUARD at
+the bottom of `auth.js`), because `dashboard`, `learn`, `lesson`,
+`progress`, `mastery-quiz` and `mission-overview` never called it before.
+Redirects use `location.replace()` + a once-only latch; each state has one
+home that never redirects that state elsewhere, so no loops.
+
+**`pages/verify-email.html`** (+ `js/verify-email.js`, `css/verify-email.css`):
+loading / main / success states; Resend (60 s cooldown, kept in
+localStorage so a refresh can't reset it; Firebase's own limit still
+applies); "I Already Verified" = `user.reload()` then `emailVerified`,
+then a forced ID-token refresh and session-cache write; Log Out. It also
+re-checks quietly when the tab regains focus (throttled to 5 s).
+
+**Reacher role:** pre-filter only. `Reacher safe != verified`; ownership
+is proven solely by Firebase's link. Logic lives in
+`functions/email-check.js` (no Firebase imports, unit-testable); the
+wrapper is `checkEmailDeliverability` in `functions/index.js`.
+Browser -> Cloud Function -> Reacher; the secret (`REACHER_SECRET`,
+Firebase secret) and `REACHER_URL` exist only server-side, and the
+function returns only `{ ok, reason, checked }`.
+- Rejected: invalid syntax, `mx.accepts_mail === false`, disposable
+  (policy flag `REACHER_REJECT_DISPOSABLE`, default true), `smtp.is_disabled`,
+  `is_deliverable === false` when SMTP connected, `is_reachable === 'invalid'`.
+- Accepted on purpose: `risky`, `unknown`, catch-all, role accounts, full
+  inboxes, errored/missing sub-objects.
+- Reacher down/slow/unreadable -> DNS MX/A fallback; DNS inconclusive ->
+  **fail open** (an unverified account gets no access anyway).
+- Reacher must run on a host with outbound port 25 (Cloud Functions
+  cannot); the function only calls its HTTP API.
+
+**Google sign-in:** Google normally returns a verified address, so the
+gate is a no-op. If one ever comes back unverified it is treated like any
+unverified account (no session cache, routed to `verify-email.html`).
+
+**Known limitations:** guards run once when auth is ready, so a protected
+page can flash briefly before an unverified user is redirected; page
+guards are routing, not a security boundary (Firestore rules must still
+protect data); the function's per-IP limiter is per-instance memory
+(best effort); the pre-check is callable by signed-out visitors, so
+consider Firebase App Check; Firebase's verification-link domain must be
+in Authorized domains for the "Continue" button (otherwise it is resent
+without a continue URL).
 
 ---
 

@@ -87,6 +87,24 @@ Until it's deployed, Delete shows "Delete service isn't deployed yet —
 nothing was deleted" and changes nothing (it never half-deletes).
 Only the admin account can call the function (checked server-side).
 
+## 6. Feedback & Surveys
+
+Learner feedback (`pages/feedback.html`) is stored in Firestore `surveys`
+and reviewed at `pages/admin-feedback.html` (sidebar → **Feedback**). The
+admin dashboard and Reports also show feedback counts.
+
+- **Re-publish `firestore.rules`** (step 3) after pulling this change: the
+  `surveys` rule now validates the document shape, requires the id to
+  start with the learner's uid and `userEmail` to match their login, and
+  keeps reads admin-only. Learners can create a survey but never read,
+  change or delete one.
+- Old survey documents (from before names/emails were stored) still show
+  up; the page fills in the learner from the `users` collection when it
+  can and otherwise shows "Unknown learner".
+- All feedback is loaded in one read and paged in the browser. If the
+  collection ever gets large, change `listSurveys()` in
+  `js/admin-firebase.js` to a `limit()`/`startAfter()` query.
+
 ## Scope, on purpose
 
 - **Lesson/Quiz Management are read-only views of the hardcoded

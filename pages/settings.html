@@ -11,6 +11,7 @@
       var root = document.documentElement;
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
       root.style.colorScheme = resolved;
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
@@ -32,8 +33,9 @@
     DATA     : same as before — #settings-user-name/-email/-initial via
                js/main.js's data-user-* attributes; theme via the
                existing .theme-switch/theme-segmented pattern
-               (js/theme.js); Notifications/Sound Effects/Reduced
-               Motion via localStorage (js/settings-page.js); the
+               (js/theme.js); Reduced Motion via localStorage
+               (js/settings-page.js). Notifications and Sound Effects
+               switches were removed: nothing in the app read them; the
                hidden dev block still reads/writes the SAME
                'lw-missions-enabled' key as js/missions.js.
 
@@ -68,7 +70,7 @@
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Settings | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -145,6 +147,9 @@
   </style>
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/mobile-nav.js" defer></script>
 </head>
 <body>
 
@@ -245,24 +250,6 @@
                   Dark
                 </button>
               </div>
-            </div>
-
-            <div class="pref-row">
-              <span class="pref-row__label">Notifications</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="pref-notifications" checked />
-                <span class="toggle-switch__track"></span>
-                <span class="toggle-switch__thumb"></span>
-              </label>
-            </div>
-
-            <div class="pref-row">
-              <span class="pref-row__label">Sound Effects</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="pref-sound-effects" checked />
-                <span class="toggle-switch__track"></span>
-                <span class="toggle-switch__thumb"></span>
-              </label>
             </div>
 
             <div class="pref-row">

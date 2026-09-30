@@ -29,6 +29,47 @@
  *            'lwauth-ready' event (fired once, after the first auth
  *            check resolves) instead of trusting localStorage alone
  *            on first paint.
+ *
+ * ── EMAIL VERIFICATION + SIGNUP PRE-CHECK (2026-09-29) ──────────────
+ * READ THIS BEFORE TOUCHING login()/register()/the guards below.
+ *
+ * Every visitor is in exactly ONE of three states, decided ONLY from
+ * Firebase's live user object (auth.currentUser.emailVerified) — never
+ * from localStorage, which anyone can edit in DevTools:
+ *
+ *     LOGGED OUT             -> index.html            (login / sign up)
+ *     LOGGED IN + UNVERIFIED -> pages/verify-email.html
+ *     LOGGED IN + VERIFIED   -> the normal app
+ *
+ *   getAuthState() returns 'logged-out' | 'unverified' | 'verified'.
+ *   isLoggedIn() now means "logged in AND verified" (see its comment).
+ *
+ * SIGNUP  : normalize email -> format check -> Reacher pre-check (via the
+ *   `checkEmailDeliverability` Cloud Function, see functions/index.js;
+ *   the Reacher secret only ever exists server-side) -> Firebase
+ *   createUserWithEmailAndPassword -> Firestore profile ->
+ *   sendEmailVerification -> stay signed in, go to verify-email.html.
+ *   If Reacher rejects, NO Firebase account is created. Reacher is a
+ *   pre-filter only: "safe" does NOT prove mailbox ownership — the
+ *   Firebase link does.
+ * LOGIN   : Firebase checks the password; if emailVerified is false the
+ *   user STAYS signed in (verify-email.html needs a real Firebase user
+ *   to resend / reload) but gets NO localStorage session and no access.
+ * SESSION CACHE: `lw_session` is written ONLY for verified users. That
+ *   makes getCurrentUser() return null for unverified users, so every
+ *   existing caller (progress sync, missions sync, navbar, tour...)
+ *   treats them as logged out even before a redirect lands.
+ * GUARDS  : requireAuth() implements the three-way routing above and is
+ *   also run automatically for every page except index / verify-email /
+ *   admin-* (see AUTO-GUARD at the bottom of this file), so pages that
+ *   never called requireAuth() (dashboard, learn, lesson, progress...)
+ *   are protected too. Redirects use location.replace() so the Back
+ *   button can't bounce someone into a redirect loop.
+ * LIMITATIONS (also in SYSTEM_ARCHITECTURE.md): guards run once when
+ *   auth is ready, not continuously; a protected page can flash for a
+ *   moment before an unverified user is redirected; page-level guards
+ *   are routing, not a security boundary — Firestore rules still have to
+ *   protect the data itself.
  * ─────────────────────────────────────────────────────────────────
  */
 // Import the functions you need from the SDKs you need
@@ -105,6 +146,19 @@ const MAX_NAME_LENGTH = 30;
 const MAX_EMAIL_LENGTH = 254;
 const DELETION_GRACE_PERIOD_DAYS = 30;
 
+// EMAIL VERIFICATION (2026-09-29) ─────────────────────────────────
+// Minimum gap between verification emails. Purely a UI courtesy on top
+// of Firebase's own server-side rate limit (auth/too-many-requests); the
+// last-sent time lives in localStorage so a page refresh can't reset the
+// countdown. It is NOT trusted for anything security-related.
+const RESEND_COOLDOWN_SECONDS = 60;
+const RESEND_KEY_PREFIX = 'lw_verify_resend_at:';
+
+// Resolved from THIS file's location (js/auth.js), so the redirect
+// targets are right no matter which folder the calling page lives in.
+const LOGIN_PAGE_URL = new URL('../index.html', import.meta.url).href;
+const VERIFY_PAGE_URL = new URL('../pages/verify-email.html', import.meta.url).href;
+
 // ── AUTH STATE SYNC ─────────────────────────────────────────────
 // Fires once on page load (after Firebase checks for an existing
 // session) and again any time login/logout state changes. Keeps
@@ -113,31 +167,49 @@ let authReady = false;
 let hasFiredReady = false;
 
 onAuthStateChanged(auth, async (firebaseUser) => {
-    if (firebaseUser) {
-    const existing = getCurrentUser();
+  // try/catch/finally-equivalent: authReady MUST be set and 'lwauth-ready'
+  // MUST fire even if the Firestore read below fails (offline, blocked
+  // gstatic, rules error). Before 2026-09-29 a rejected getDoc() threw out
+  // of this callback and every page's guard waited forever (see
+  // PIVOT_CHECKLIST.md Phase B). The guards now depend on this event, so
+  // it has to be reliable.
+  try {
+    if (firebaseUser && !firebaseUser.emailVerified) {
+      // AUTHENTICATED BUT UNVERIFIED — not a learner yet. Deliberately no
+      // session cache (and wipe any stale/forged one): getCurrentUser()
+      // must return null for this person so nothing treats them as logged
+      // in. verify-email.html reads Firebase directly, not this cache.
+      localStorage.removeItem(LW_SESSION_KEY);
+    } else if (firebaseUser) {
+      const existing = getCurrentUser();
 
-    if (existing && existing.uid === firebaseUser.uid) {
-      // Already cached — skip the Firestore fetch entirely
+      if (existing && existing.uid === firebaseUser.uid) {
+        // Already cached — skip the Firestore fetch entirely
+      } else {
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        const snapshot = await getDoc(userRef);
+        const profile = snapshot.exists() ? snapshot.data() : {};
+
+        const user = {
+          uid: firebaseUser.uid,
+          name: profile.name || (firebaseUser.email || '').split('@')[0] || 'Learner',
+          email: firebaseUser.email,
+          level: profile.level || 'basic',
+          joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
+        };
+        localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+      }
     } else {
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      const snapshot = await getDoc(userRef);
-      const profile = snapshot.exists() ? snapshot.data() : {};
-
-      const user = {
-        uid: firebaseUser.uid,
-        name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
-        email: firebaseUser.email,
-        level: profile.level || 'basic',
-        joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
-      };
-      localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+      localStorage.removeItem(LW_SESSION_KEY);
     }
-  } else {
-    localStorage.removeItem(LW_SESSION_KEY);
+  } catch (syncError) {
+    // Cache not written (nothing half-true is stored). The guards below
+    // still work because they read auth.currentUser, not the cache.
+    console.error('[auth] Could not sync the session cache:', syncError);
   }
 
   authReady = true;
-  
+
   if (!hasFiredReady) {
     hasFiredReady = true;
     window.dispatchEvent(new Event('lwauth-ready'));
@@ -155,6 +227,27 @@ function getCurrentUser() {
   }
 }
 
+/* Where the visitor stands, from Firebase's live user — NOT localStorage.
+ * Only meaningful once auth is ready (after 'lwauth-ready' / whenAuthReady()),
+ * because before that Firebase hasn't restored the saved session yet. */
+function getAuthState() {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return 'logged-out';
+  return firebaseUser.emailVerified ? 'verified' : 'unverified';
+}
+
+/* Non-sensitive info verify-email.html needs to render itself. Returns
+ * plain strings only — never the Firebase user object itself, so the
+ * console can't reach user.delete()/etc. through window.LWAuth. */
+function getVerificationInfo() {
+  const firebaseUser = auth.currentUser;
+  return {
+    state: getAuthState(),
+    email: firebaseUser ? firebaseUser.email : null,
+    uid: firebaseUser ? firebaseUser.uid : null,
+  };
+}
+
 function isLoggedIn() {
   // Authorization must be based on Firebase's own live auth state —
   // NOT the localStorage mirror. getCurrentUser() reads a cache that
@@ -165,39 +258,248 @@ function isLoggedIn() {
   // session and can't be forged that way. (Safe to read synchronously
   // here because every caller — requireAuth()/redirectIfLoggedIn() —
   // already waits for 'lwauth-ready' first; see whenAuthReady().)
-  return !!auth.currentUser;
+  //
+  // CHANGED 2026-09-29: "logged in" now means logged in AND email
+  // verified. An unverified account is authenticated with Firebase but is
+  // NOT a learner yet — use getAuthState() when you need to tell
+  // 'logged-out' and 'unverified' apart.
+  const firebaseUser = auth.currentUser;
+  return !!firebaseUser && firebaseUser.emailVerified === true;
 }
 
-/* ── LOG IN ───────────────────────────────────────────────────────
- * Signs in with Firebase Auth, then reads the matching Firestore
- * profile (falling back to sensible defaults if the document doesn't
- * exist yet) so the cached session always has a name/level/joined
- * date to show, not just an email.
- *
- * Also doubles as the "undo" for deleteAccount()'s grace-period soft
- * delete below: if the profile is flagged `deletionRequested`, logging
- * back in here clears it — coming back within the window IS the
- * cancellation, no separate "restore my account" flow needed.
- * ──────────────────────────────────────────────────────────────── */
-async function login(email, password) {
-  const result = await signInWithEmailAndPassword(auth, email, password);
-  const firebaseUser = result.user;
+/* ── SMALL HELPERS (2026-09-29) ───────────────────────────────── */
 
-  // EMAIL VERIFICATION (email/password accounts only — Google accounts
-  // are pre-verified by Google and always have emailVerified === true).
-  // Signing back out before returning means an unverified account never
-  // gets a cached session, never touches Firestore, and can't reach any
-  // page past the login form.
-  if (!firebaseUser.emailVerified) {
-    await signOut(auth);
-    const err = new Error(
-      'Please verify your email first. Check your inbox (and spam folder) ' +
-      'for the link we sent, or use "Resend verification email" below.'
-    );
-    err.code = 'lw/email-not-verified';
+// ONE canonical email value, used for BOTH validation and the value sent
+// to Firebase/Reacher, in login AND register (before, register validated
+// `trimmedEmail` but sent the untrimmed `email` to Firebase). Trim only —
+// deliberately NOT lowercased: the local part is technically
+// case-sensitive and Firebase already treats addresses case-insensitively.
+function normalizeEmail(email) {
+  return (email === null || email === undefined ? '' : String(email)).trim();
+}
+
+// Cheap client-side shape check (one "@", a dot in the domain, no spaces).
+// Intentionally permissive — Reacher and Firebase do the strict work; this
+// only stops obvious garbage before a network call. Mirrors looksLikeEmail()
+// in functions/email-check.js.
+function looksLikeEmail(email) {
+  if (!email || email.length > MAX_EMAIL_LENGTH) return false;
+  if (/\s/.test(email)) return false;
+  const at = email.lastIndexOf('@');
+  if (at < 1 || at !== email.indexOf('@') || at === email.length - 1) return false;
+  const domain = email.slice(at + 1);
+  return domain.indexOf('.') > 0 && !domain.endsWith('.') && !domain.includes('..');
+}
+
+// Errors THIS file throws on purpose: plain Error with a `lw/...` code and
+// a message that is already safe to show the learner as-is.
+function lwError(code, message) {
+  const err = new Error(message);
+  err.code = code;
+  return err;
+}
+
+const INVALID_EMAIL_MESSAGE = "That doesn't look like a valid email address. Please check it and try again.";
+const CANT_RECEIVE_MESSAGE = 'This email address does not appear to be able to receive email. Please check the address and try again.';
+const GENERIC_AUTH_MESSAGE = 'Something went wrong. Please try again.';
+
+/* Turns ANY error from this file / Firebase into a learner-safe sentence
+ * (index.html's modal and verify-email.html both use it). Our own errors
+ * pass through untouched; Firebase's raw "Firebase: Error (auth/...)."
+ * text is never shown. Pass context 'session' when the error came from
+ * reload()/getIdToken() on an already-signed-in user, where
+ * "user-not-found" means "this account is gone", not "wrong email". */
+function describeAuthError(err, context) {
+  if (!err) return GENERIC_AUTH_MESSAGE;
+  if (err.name !== 'FirebaseError') return err.message || GENERIC_AUTH_MESSAGE;
+
+  const code = err.code || '';
+  if (context === 'session' &&
+      ['auth/user-not-found', 'auth/user-token-expired', 'auth/invalid-user-token', 'auth/user-disabled'].includes(code)) {
+    return 'Your session has expired. Please log out and sign in again.';
+  }
+  switch (code) {
+    case 'auth/invalid-email':
+      return INVALID_EMAIL_MESSAGE;
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists. Try logging in instead. If you never verified it, logging in will take you to a page where you can get a new verification email.';
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+      // Firebase's email-enumeration protection returns this for BOTH a
+      // wrong password and a non-existent account, so the two can't be
+      // told apart here — one honest message covers both.
+      return 'Incorrect email or password. If you don\'t have an account yet, sign up first.';
+    case 'auth/wrong-password':
+      return 'Incorrect password. Please try again.';
+    case 'auth/user-not-found':
+      return 'No account found with that email. Check the address or sign up first.';
+    case 'auth/missing-email':
+    case 'auth/missing-password':
+      return 'Please enter your email and password.';
+    case 'auth/weak-password':
+      return 'That password is too weak. Please choose a longer one.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    case 'auth/network-request-failed':
+      return 'Network problem. Check your connection and try again.';
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the sign-in popup. Allow popups for this site and try again.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/requires-recent-login':
+      return 'For security, please log in again and retry.';
+    default:
+      console.error('[auth] Unhandled Firebase error:', code, err);
+      return GENERIC_AUTH_MESSAGE;
+  }
+}
+
+/* ── SIGNUP PRE-CHECK (Reacher, via Cloud Function) ──────────────
+ * Asks the `checkEmailDeliverability` Cloud Function (functions/index.js)
+ * whether the address looks usable BEFORE any Firebase account exists.
+ * The browser never talks to Reacher and never holds its secret.
+ *
+ *  - Function says ok:false -> throws lw/email-rejected (message tells
+ *    the learner what to fix). No account gets created.
+ *  - Function says ok:true (including risky/unknown) -> returns.
+ *  - Function unreachable / slow / errors -> returns (FAILS OPEN): an
+ *    account with an unverified email gets zero access anyway, so an
+ *    infrastructure hiccup must not lock real learners out of signing up.
+ *  - Rate limited (functions/resource-exhausted) -> throws; that one is
+ *    NOT failed open or the limiter would be pointless.
+ * Reacher "safe" != verified. Only Firebase's emailVerified proves that. */
+const EMAIL_REJECT_MESSAGES = {
+  'invalid-syntax': INVALID_EMAIL_MESSAGE,
+  'no-mail-server': CANT_RECEIVE_MESSAGE,
+  'undeliverable': CANT_RECEIVE_MESSAGE,
+  'disposable': "Temporary or disposable email addresses can't be used. Please use your regular email address.",
+};
+
+async function precheckEmail(normalizedEmail) {
+  let data = null;
+  try {
+    const checkEmailDeliverability = httpsCallable(functions, 'checkEmailDeliverability', { timeout: 20000 });
+    const response = await checkEmailDeliverability({ email: normalizedEmail });
+    data = response && response.data;
+  } catch (callErr) {
+    if (callErr && callErr.code === 'functions/resource-exhausted') {
+      throw lwError('lw/too-many-checks', 'Too many attempts. Please wait a minute and try again.');
+    }
+    console.warn('[auth] Email pre-check unavailable, continuing without it:', callErr);
+    return;
+  }
+  if (data && data.ok === false) {
+    throw lwError('lw/email-rejected', EMAIL_REJECT_MESSAGES[data.reason] || CANT_RECEIVE_MESSAGE);
+  }
+}
+
+/* ── VERIFICATION EMAIL: send / cooldown / re-check ──────────────── */
+function resendKey(uid) { return RESEND_KEY_PREFIX + uid; }
+
+/* Seconds left before another verification email may be requested
+ * (0 = allowed now). The `<= RESEND_COOLDOWN_SECONDS` clamp means a
+ * corrupted or hand-edited future timestamp can never lock the button
+ * for longer than one cooldown period. */
+function getResendCooldownRemaining(firebaseUser) {
+  const user = firebaseUser || auth.currentUser;
+  if (!user) return 0;
+  try {
+    const lastSent = Number(localStorage.getItem(resendKey(user.uid)) || 0);
+    if (!lastSent) return 0;
+    const remaining = Math.ceil((lastSent + RESEND_COOLDOWN_SECONDS * 1000 - Date.now()) / 1000);
+    return remaining > 0 && remaining <= RESEND_COOLDOWN_SECONDS ? remaining : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function markVerificationSent(firebaseUser) {
+  try { localStorage.setItem(resendKey(firebaseUser.uid), String(Date.now())); } catch (e) { /* storage blocked — Firebase's own limit still applies */ }
+}
+
+const CONTINUE_URL_ERRORS = ['auth/unauthorized-continue-uri', 'auth/invalid-continue-uri', 'auth/missing-continue-uri'];
+let verificationSendInFlight = false;
+
+/* Sends Firebase's built-in verification email to the signed-in user
+ * (no custom token system). Used by register() for the first send and by
+ * verify-email.html's Resend button.
+ *
+ * The link's "Continue" button is pointed back at verify-email.html so the
+ * learner lands where the auto-check runs. If that URL's domain isn't in
+ * Firebase Console → Authentication → Settings → Authorized domains (or the
+ * page is opened from file://), Firebase rejects the continue URL — we then
+ * retry once WITHOUT it rather than failing to send at all.
+ *
+ * Throws lw/already-verified, lw/resend-cooldown (err.remaining = seconds),
+ * or the Firebase error. Returns true when an email was actually sent,
+ * false when a send was already in flight (double-click guard). */
+async function sendVerificationEmail(firebaseUser) {
+  const user = firebaseUser || auth.currentUser;
+  if (!user) throw lwError('lw/not-signed-in', 'You need to be signed in to do that.');
+  if (user.emailVerified) throw lwError('lw/already-verified', 'Your email is already verified.');
+
+  const remaining = getResendCooldownRemaining(user);
+  if (remaining > 0) {
+    const err = lwError('lw/resend-cooldown', 'Please wait ' + remaining + ' second' + (remaining === 1 ? '' : 's') + ' before requesting another email.');
+    err.remaining = remaining;
     throw err;
   }
+  if (verificationSendInFlight) return false;
 
+  verificationSendInFlight = true;
+  try {
+    try {
+      await sendEmailVerification(user, { url: VERIFY_PAGE_URL, handleCodeInApp: false });
+    } catch (err) {
+      if (err && CONTINUE_URL_ERRORS.includes(err.code)) {
+        await sendEmailVerification(user);
+      } else {
+        throw err;
+      }
+    }
+    markVerificationSent(user);
+    return true;
+  } catch (err) {
+    // Firebase is already throttling us — start our own countdown too so
+    // the UI stops offering an immediate retry.
+    if (err && err.code === 'auth/too-many-requests') markVerificationSent(user);
+    throw err;
+  } finally {
+    verificationSendInFlight = false;
+  }
+}
+
+/* "I already verified" — the ONLY place a session flips to verified.
+ * Asks Firebase itself: reload() re-fetches the user record from the
+ * server (emailVerified is cached on the device and does NOT update by
+ * itself after the link is clicked, possibly in another tab/device), then
+ * checks it. localStorage is never consulted.
+ *
+ * When verified it also force-refreshes the ID token (so the
+ * `email_verified` claim that Firestore rules / Cloud Functions read is
+ * current) and writes the normal session cache, exactly like a fresh
+ * login. onAuthStateChanged does NOT fire after reload(), which is why
+ * this has to build the session itself.
+ * Returns { verified:false } or { verified:true, user }. Throws on
+ * network/session errors (use describeAuthError(err, 'session')). */
+async function checkVerificationNow() {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) throw lwError('lw/not-signed-in', 'You need to be signed in to do that.');
+
+  await firebaseUser.reload();
+  if (!firebaseUser.emailVerified) return { verified: false };
+
+  await firebaseUser.getIdToken(true);
+  const user = await finishVerifiedLogin(firebaseUser);
+  return { verified: true, user };
+}
+
+/* Shared tail of "this person is now a real, verified learner": read the
+ * Firestore profile, cancel a pending soft-delete (see deleteAccount()),
+ * write the session cache. Extracted from login() so login and
+ * checkVerificationNow() can't drift apart. Only ever called with a
+ * user whose emailVerified is true. */
+async function finishVerifiedLogin(firebaseUser) {
   // Fetch the real profile from Firestore instead of guessing
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
@@ -213,7 +515,7 @@ async function login(email, password) {
 
   const user = {
     uid: firebaseUser.uid,
-    name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
+    name: profile.name || (firebaseUser.email || '').split('@')[0] || 'Learner',
     email: firebaseUser.email,
     level: profile.level || 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
@@ -223,12 +525,68 @@ async function login(email, password) {
   return user;
 }
 
+/* ── LOG IN ───────────────────────────────────────────────────────
+ * Signs in with Firebase Auth, then branches on Firebase's OWN
+ * emailVerified flag (never localStorage):
+ *
+ *   verified   -> reads the matching Firestore profile (falling back to
+ *                 sensible defaults if the document doesn't exist yet) so
+ *                 the cached session always has a name/level/joined date,
+ *                 and returns { verified: true, user }.
+ *   unverified -> the user STAYS signed in (verify-email.html needs a
+ *                 real Firebase user to resend the link and reload()),
+ *                 but gets NO session cache and NO access. Returns
+ *                 { verified: false, user: null } — the caller sends
+ *                 them to pages/verify-email.html. Covers accounts that
+ *                 existed before verification was enforced: nothing is
+ *                 deleted, they just verify on their next login.
+ *
+ * (CHANGED 2026-09-29: used to sign unverified users straight back out
+ * and throw, and returned the bare user object.)
+ *
+ * The verified path also doubles as the "undo" for deleteAccount()'s
+ * grace-period soft delete below: see finishVerifiedLogin().
+ * ──────────────────────────────────────────────────────────────── */
+async function login(email, password) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail || !password) {
+    throw lwError('lw/missing-credentials', 'Please enter your email and password.');
+  }
+
+  const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+  const firebaseUser = result.user;
+
+  if (!firebaseUser.emailVerified) {
+    localStorage.removeItem(LW_SESSION_KEY); // never leave a session for an unverified account
+    return { verified: false, user: null };
+  }
+
+  const user = await finishVerifiedLogin(firebaseUser);
+  return { verified: true, user };
+}
+
 /* ── REGISTER ─────────────────────────────────────────────────────
- * Creates the Firebase Auth account, then writes a matching Firestore
- * profile document (`users/{uid}`). `level` has no signup-time picker
- * in index.html, so every new account is written with a fixed
- * 'basic' value — kept as a real field (rather than dropped) so
- * anything downstream that reads `user.level` never sees `undefined`.
+ * ORDER MATTERS (2026-09-29):
+ *   1. normalize + validate name/email/password locally
+ *   2. Reacher pre-check (precheckEmail) — a rejected address never
+ *      becomes a Firebase account
+ *   3. createUserWithEmailAndPassword (with the SAME normalized email)
+ *   4. Firestore profile write `users/{uid}` (rolled back on failure)
+ *   5. sendVerificationEmail
+ * The new user is then AUTHENTICATED BUT UNVERIFIED: still signed in
+ * (so verify-email.html can resend/reload) but with no session cache and
+ * no learner access until Firebase reports emailVerified === true.
+ *
+ * Returns { verificationSent, email }. verificationSent === false means
+ * the account WAS created but Firebase couldn't send the email (e.g. its
+ * per-hour send limit) — the caller must say so and route to
+ * verify-email.html, whose Resend button covers it; it must not act as if
+ * everything went normally.
+ *
+ * `level` has no signup-time picker in index.html, so every new account
+ * is written with a fixed 'basic' value — kept as a real field (rather
+ * than dropped) so anything downstream that reads `user.level` never
+ * sees `undefined`.
  *
  * Rejects an over-length `name` (> MAX_NAME_LENGTH) or `email`
  * (> MAX_EMAIL_LENGTH) before touching Firebase at all. index.html's
@@ -243,48 +601,38 @@ async function register(name, email, password) {
   if (trimmedName.length > MAX_NAME_LENGTH) {
     throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
   }
-  const trimmedEmail = (email || '').trim();
-  if (trimmedEmail.length > MAX_EMAIL_LENGTH) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw lwError('lw/invalid-email', 'Enter your email address.');
+  }
+  if (normalizedEmail.length > MAX_EMAIL_LENGTH) {
     throw new Error('Email must be ' + MAX_EMAIL_LENGTH + ' characters or fewer.');
   }
-
-  // DOMAIN CHECK (free — Node's built-in `dns` module inside a Cloud
-  // Function, no paid third-party email-verification API, no API key).
-  // "renejay@gmail.co" is a syntactically valid email, so Firebase's own
-  // format check lets it through; this catches it by actually looking up
-  // whether the domain has a mail server. See functions/index.js's
-  // checkEmailDomain(). Fails OPEN: if the function is unreachable
-  // (not deployed yet, cold-start network hiccup), signup still
-  // proceeds rather than locking everyone out over an infra issue —
-  // the email-verification link is still the real backstop either way.
-  let domainDeliverable = true;
-  try {
-    const checkEmailDomain = httpsCallable(functions, 'checkEmailDomain');
-    const domainCheck = await checkEmailDomain({ email: trimmedEmail });
-    domainDeliverable = !!(domainCheck.data && domainCheck.data.deliverable);
-  } catch (callErr) {
-    console.warn('Email domain check unavailable, continuing without it:', callErr);
+  if (!looksLikeEmail(normalizedEmail)) {
+    throw lwError('lw/invalid-email', INVALID_EMAIL_MESSAGE);
   }
-  if (!domainDeliverable) {
-    throw new Error(
-      "We couldn't find a mail server for that email's domain — double-check it for a typo " +
-      '(e.g. "gmail.co" instead of "gmail.com").'
-    );
+  if (!password) {
+    throw lwError('lw/missing-password', 'Please choose a password.');
   }
 
-  const result = await createUserWithEmailAndPassword(auth, email, password);
+  // Reacher pre-check FIRST — see precheckEmail() for what it rejects and
+  // why it fails open. (Replaces the earlier never-deployed
+  // `checkEmailDomain` DNS-only call.)
+  await precheckEmail(normalizedEmail);
+
+  const result = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
   const firebaseUser = result.user;
 
   const user = {
     uid: firebaseUser.uid,
-    name: trimmedName || firebaseUser.email.split('@')[0] || 'Learner',
+    name: trimmedName || (firebaseUser.email || '').split('@')[0] || 'Learner',
     email: firebaseUser.email,
     level: 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
 
   const userRef = doc(db, 'users', firebaseUser.uid);
-  
+
   try {
     await setDoc(userRef, user);
   } catch (firestoreError) {
@@ -296,29 +644,21 @@ async function register(name, email, password) {
       console.error('Failed to roll back orphaned auth account:', deleteError);
     }
     throw firestoreError; // still let the caller show the real error
-  }  
+  }
 
-  // EMAIL VERIFICATION (free, built into Firebase Auth — no extra
-  // service, no hardcoded code, no cost): send the link, then sign the
-  // browser back out. register() no longer logs the learner straight
-  // in — login() above refuses any password account until
-  // emailVerified is true, so there is no point caching a session here.
-  // Not fatal if this send fails (e.g. Firebase's per-hour send-rate
-  // limit) — the account still exists and resendVerificationEmail()
-  // below lets them request another one from the login screen.
+  // Firebase's built-in verification email (no custom token system).
+  // NOT fatal if it fails: the account exists, the caller is told via
+  // verificationSent:false, and verify-email.html's Resend button retries.
+  let verificationSent = true;
   try {
-    await sendEmailVerification(firebaseUser);
+    await sendVerificationEmail(firebaseUser);
   } catch (sendError) {
+    verificationSent = false;
     console.error('Failed to send verification email:', sendError);
   }
-  await signOut(auth);
 
-  const verifyErr = new Error(
-    'Account created! We sent a verification link to ' + firebaseUser.email +
-    ' — check your inbox (and spam folder), then log in.'
-  );
-  verifyErr.code = 'lw/verify-email-sent';
-  throw verifyErr;
+  // Intentionally NOT signed out and NOT cached — see header comment.
+  return { verificationSent, email: normalizedEmail };
 }
 
 /* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
@@ -381,7 +721,16 @@ async function loginWithGoogle() {
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
 
-  localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  // 2026-09-29: Google normally reports the address as verified (Firebase
+  // then sets emailVerified = true, so this gate is a no-op for almost
+  // everyone). If a Google account ever comes back UNverified, treat it
+  // exactly like an unverified password account: no session cache, and
+  // the caller routes to verify-email.html via getAuthState().
+  if (firebaseUser.emailVerified) {
+    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(LW_SESSION_KEY);
+  }
   return user;
 }
 
@@ -555,30 +904,65 @@ async function deleteAccount(currentPassword) {
 }
 
 /* ── ROUTE GUARDS ─────────────────────────────────────────────────
- * Call requireAuth() at the top of every protected page
- * (dashboard, learn, lesson, quiz, feedback).
- * Call redirectIfLoggedIn() on index.html so a returning user skips
- * straight past the login form.
+ * requireAuth() — three-way routing (2026-09-29):
+ *     logged out             -> loginPath  (default index.html)
+ *     logged in + unverified -> verifyPath (default pages/verify-email.html)
+ *     logged in + verified   -> stay
+ * Pages may still call it explicitly (settings, edit-profile, ... do),
+ * and it is ALSO run automatically for every non-public page — see
+ * AUTO-GUARD at the bottom of this file.
+ *
+ * redirectIfLoggedIn() — for index.html: a verified user skips straight
+ * past the login form, an UNVERIFIED signed-in user is sent to
+ * verify-email.html. Logged out: does nothing.
+ *
+ * NO REDIRECT LOOPS: each state has exactly one home, and that home
+ * never redirects that state anywhere else —
+ *     logged out -> index.html         (redirectIfLoggedIn: no-op)
+ *     unverified -> verify-email.html  (its own script: stays put)
+ *     verified   -> app pages          (requireAuth: no-op)
+ * All redirects use location.replace() so Back can't re-trigger one, and
+ * redirectOnce() makes sure two guards on the same page can't fight.
  * ──────────────────────────────────────────────────────────────── */
-function requireAuth(loginPath) {
+let redirecting = false;
+function redirectOnce(url) {
+  if (redirecting) return;
+  redirecting = true;
+  window.location.replace(url);
+}
+
+function enforceAccess(loginPath, verifyPath) {
+  const state = getAuthState();
+  if (state === 'logged-out') redirectOnce(loginPath || LOGIN_PAGE_URL);
+  else if (state === 'unverified') redirectOnce(verifyPath || VERIFY_PAGE_URL);
+}
+
+function requireAuth(loginPath, verifyPath) {
   if (authReady) {
-    if (!isLoggedIn()) window.location.href = loginPath || '/index.html';
+    enforceAccess(loginPath, verifyPath);
     return;
   }
   window.addEventListener('lwauth-ready', () => {
-    if (!isLoggedIn()) window.location.href = loginPath || '/index.html';
+    enforceAccess(loginPath, verifyPath);
   }, { once: true });
 }
 
-function redirectIfLoggedIn(dashboardPath) {
-  if (isLoggedIn()) {
+function redirectIfLoggedIn(dashboardPath, verifyPath) {
+  const state = getAuthState();
+  if (state === 'verified') {
     // Every actual caller already passes an explicit path (index.html
     // passes 'pages/dashboard.html'); this fallback just mirrors that
     // same default in case a future caller omits the argument.
-    window.location.href = dashboardPath || 'pages/dashboard.html';
+    redirectOnce(dashboardPath || 'pages/dashboard.html');
+  } else if (state === 'unverified') {
+    redirectOnce(verifyPath || VERIFY_PAGE_URL);
   }
 }
 
+/* Resolves once Firebase has restored (or found no) session. It does NOT
+ * say the user is verified — check getAuthState() afterwards if it
+ * matters. Callers that only read getCurrentUser() are already safe:
+ * that returns null for unverified users. */
 function whenAuthReady() {
   return new Promise((resolve) => {
     if (authReady) {
@@ -589,29 +973,6 @@ function whenAuthReady() {
   });
 }
 
-/* ── RESEND VERIFICATION EMAIL ───────────────────────────────────
- * For the login screen's "Resend verification email" link. Firebase
- * only lets an AUTHENTICATED user request their own verification
- * email (this stops anyone from spamming an arbitrary address they
- * don't own), so this briefly signs in with the password the learner
- * already typed, sends the link, and signs back out — it never
- * leaves a session behind, same as register() above.
- * ──────────────────────────────────────────────────────────────── */
-async function resendVerificationEmail(email, password) {
-  const result = await signInWithEmailAndPassword(auth, email, password);
-  const firebaseUser = result.user;
-
-  if (firebaseUser.emailVerified) {
-    await signOut(auth);
-    const err = new Error('This email is already verified — just log in.');
-    err.code = 'lw/already-verified';
-    throw err;
-  }
-
-  await sendEmailVerification(firebaseUser);
-  await signOut(auth);
-}
-
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
@@ -619,11 +980,17 @@ async function resendVerificationEmail(email, password) {
 window.LWAuth = {
   LW_SESSION_KEY,
   DELETION_GRACE_PERIOD_DAYS,
+  RESEND_COOLDOWN_SECONDS,
   getCurrentUser,
   isLoggedIn,
+  getAuthState,
+  getVerificationInfo,
   login,
   register,
-  resendVerificationEmail,
+  sendVerificationEmail,       // replaces resendVerificationEmail(email, password)
+  checkVerificationNow,
+  getResendCooldownRemaining,
+  describeAuthError,
   loginWithGoogle, 
   linkPendingGoogleCredential,
   logout,
@@ -636,6 +1003,25 @@ window.LWAuth = {
   redirectIfLoggedIn,
   whenAuthReady,
 };
+/* ── AUTO-GUARD (2026-09-29) ──────────────────────────────────────
+ * "No verified email, no normal LinguaWave access" has to hold for EVERY
+ * page, not just the ones that remembered to call requireAuth() —
+ * dashboard, learn, lesson, progress, mastery-quiz and mission-overview
+ * never did, which would have let an unverified (or signed-out) visitor
+ * simply walk in. Every page loads this file, so the guard runs from
+ * here, once, after auth is ready.
+ *
+ * Exempt: index.html (the login page — it has its own redirectIfLoggedIn),
+ * verify-email.html (it routes itself), and admin-*.html (own guards in
+ * js/admin-auth.js / js/role-guard.js; admin-login.html must stay public).
+ * Only the file name is matched, so it works under any hosting sub-path
+ * and with or without the .html extension. */
+(function autoGuardProtectedPages() {
+  const page = (window.location.pathname.split('/').pop() || 'index').toLowerCase().replace(/\.html$/, '');
+  if (page === '' || page === 'index' || page === 'verify-email' || page.indexOf('admin-') === 0) return;
+  requireAuth();
+})();
+
 // SECURITY (audit pass): `doc`, `db`, `getDoc`, `setDoc` used to be
 // re-exported here, which meant anyone with the browser console could
 // run LWAuth.setDoc(LWAuth.doc(LWAuth.db, 'users', uid), {level:'admin', ...})
@@ -663,4 +1049,8 @@ window.LWAuth = {
 // NOT properties of window.LWAuth, so the console-hijack risk described in
 // the SECURITY note above (LWAuth.setDoc / LWAuth.db) does not come back.
 // Real protection is still firestore.rules.
-export { app, auth, db, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy };
+// `setDoc` is exported for js/feedback.js ONLY (learner feedback -> surveys/{id}).
+// Still a module export, not a window.LWAuth property, so the console-write
+// concern above is unchanged; firestore.rules restricts surveys to create-only
+// with a validated shape and the caller's own uid.
+export { app, auth, db, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy };
