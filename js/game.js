@@ -1,6 +1,8 @@
 /*
   js/game.js — Wall Breaker (standalone game tab)
   Reuses: cameraUtils, mediapipe, classifier, dictionary, renderer.
+  Progress: pages/game.html loads engine/progress.js + missions.js so the wall is built from signs
+  the learner has finished (see getLearnedSignIds).
   Only engine change: classifier.js gained logNearMiss() (was undefined -> threw every
   frame, which is what broke detection) and getSignGroup() (twin signs like BRING/CARRY).
 
@@ -101,24 +103,87 @@ function dropHold() {
   heldBrick = null; holdSince = 0; wrongLabel = null; wrongSince = 0;
 }
 
-// ── sign pool: learned signs first, topped up with UNIQUE enabled signs ──
-async function buildPool(size) {
-  let learned = [];
+// ── sign pool: signs the learner has FINISHED, optionally topped up ──
+// "Finished" = the union of two progress stores (the game page never loaded either before,
+// which is why the pool was always random):
+//   - LWMissions: a sign's LESSON item is complete (passed in the lesson / camera check, or the
+//     whole mission was completed via the Mastery Quiz skip-path)
+//   - LWProgress: lw_progress_v3 "practiced" signs (camera-practice bridge)
+// Sign ids in both stores are the same uppercase keys as SIGN_DICTIONARY; signs the classifier
+// has no model for simply aren't in the dictionary, so they're filtered out below.
+const withTimeout = (p, ms) => Promise.race([Promise.resolve(p), new Promise((res) => setTimeout(res, ms))]);
+
+async function getLearnedSignIds() {
+  const ids = new Set();
+  // never let a slow/failed sync hang the Start button — waits are capped
+  try { await withTimeout(window.LWAuth?.whenAuthReady?.(), 4000); } catch { /* guest / no auth */ }
+  try { await withTimeout(window.LWMissions?.whenMissionsSyncReady?.(), 4000); } catch { /* local-only */ }
+  try { await withTimeout(window.LWProgress?.whenProgressReady?.(), 4000); } catch { /* local-only */ }
   try {
-    await window.LWProgress?.whenProgressReady?.();
-    learned = (window.LWProgress?.getAllLearnedSigns?.() || []).map(s => s.signId);
-  } catch { /* progress not ready — fall back below */ }
-  const active = new Set(getActiveSigns());
-  const motionOk = isMotionModelReady();
-  const usable = (s) => active.has(s) && (getDetectionType(s) !== 'motion' || motionOk);
-  let pool = shuffle([...new Set(learned)].filter(usable));
-  if (pool.length < size) {
-    const extra = shuffle(getActiveSigns().filter(usable).filter(s => !pool.includes(s)));
-    pool = pool.concat(extra.slice(0, size - pool.length));
+    const M = window.LWMissions;
+    (M?.getAllMissions?.() || []).forEach((m) => m.items.forEach((item, i) => {
+      if (item.kind === 'LESSON' && item.signId && M.isItemComplete(m, i, item)) ids.add(item.signId);
+    }));
+  } catch (e) { console.warn('[game] could not read mission progress:', e); }
+  try {
+    (window.LWProgress?.getAllLearnedSigns?.() || []).forEach((s) => { if (s?.signId) ids.add(s.signId); });
+  } catch (e) { console.warn('[game] could not read sign progress:', e); }
+  return ids;
+}
+
+// Signs that exist in the curriculum (missions.js LESSON items). SIGN_DICTIONARY also holds detector-only
+// entries that no lesson teaches (phrases like ILY, I AM LEARNING, WHERE IS...), so the game never draws
+// from the raw dictionary. If missions.js isn't available, returns null = no curriculum filter.
+function getCurriculumSignIds() {
+  try {
+    const M = window.LWMissions;
+    const all = M?.getAllMissions?.();
+    if (!all?.length) return null;
+    const ids = new Set();
+    all.forEach((m) => m.items.forEach((it) => { if (it.kind === 'LESSON' && it.signId) ids.add(it.signId); }));
+    return ids.size ? ids : null;
+  } catch { return null; }
+}
+
+// Playable = the classifier can detect it AND a lesson teaches it.
+function playableFilter() {
+  const active = new Set(getActiveSigns()), curriculum = getCurriculumSignIds(), motionOk = isMotionModelReady();
+  return (s) => active.has(s) && (!curriculum || curriculum.has(s)) && (getDetectionType(s) !== 'motion' || motionOk);
+}
+
+// source: 'learned' (default) = ONLY finished signs, wall shrinks if you have fewer than the wall size
+//         'mixed'   = finished signs first, then unlearned lesson signs to fill the wall
+//         'all'     = any lesson sign
+// returns { signs, learnedSet, note }
+async function buildPool(size, source) {
+  const learnedAll = await getLearnedSignIds();
+  const usable = playableFilter();
+  const learned = shuffle([...learnedAll].filter(usable));
+  const others = () => shuffle(getActiveSigns().filter(usable).filter((s) => !learnedAll.has(s)));
+  let signs, note = '';
+
+  if (source === 'all') {
+    signs = shuffle(getActiveSigns().filter(usable)).slice(0, size);
+  } else if (source === 'mixed') {
+    signs = learned.slice(0, size);
+    signs = signs.concat(others().slice(0, size - signs.length));
+    if (learned.length < size) note = `${learned.length} finished sign${learned.length === 1 ? '' : 's'} + ${signs.length - Math.min(learned.length, size)} new ones (click a brick for a hint).`;
+  } else {
+    signs = learned.slice(0, size);   // unique signs only: a smaller wall beats duplicate bricks
+    if (signs.length < size) note = `Your wall has ${signs.length} brick${signs.length === 1 ? '' : 's'} because you've finished ${signs.length} sign${signs.length === 1 ? '' : 's'}. Finish more lessons to grow it.`;
   }
-  const out = pool.slice(0, size);
-  while (out.length < size && pool.length) out.push(...shuffle([...pool]).slice(0, size - out.length));
-  return shuffle(out);
+  return { signs: shuffle(signs), learnedSet: new Set(learned), note };
+}
+
+async function refreshPoolNote() {
+  try {
+    const learned = await getLearnedSignIds();
+    const usable = playableFilter();
+    const n = [...learned].filter(usable).length;
+    $('gm-pool-note').textContent = n
+      ? `${n} finished sign${n === 1 ? '' : 's'} can appear on the wall.`
+      : "You haven't finished any signs yet. Complete a lesson first, or switch to 'learned + new signs' below.";
+  } catch { $('gm-pool-note').textContent = ''; }
 }
 
 // ── wall ──────────────────────────────────────────────────────────
@@ -145,7 +210,8 @@ function renderWall() {
 
 function showHint(b) {
   const d = getSignData(b.sign)?.description;
-  $('gm-hint').textContent = d ? `${b.sign}: ${d}` : `${b.sign}: open Learn to review this sign.`;
+  const tag = b.learned === false ? ' (new sign — not in your lessons yet)' : '';
+  $('gm-hint').textContent = d ? `${b.sign}${tag}: ${d}` : `${b.sign}${tag}: open Learn to review this sign.`;
 }
 
 function updateProgress() {
@@ -330,14 +396,20 @@ async function startGame() {
   $('gm-btn-start').disabled = true;
   if (!(await bootEngine())) { $('gm-btn-start').disabled = false; return; }
   clearTimers();
-  const signs = await buildPool(size);
-  bricks = signs.map(sign => ({ sign, type: getDetectionType(sign) === 'motion' ? 'motion' : 'static', el: null, broken: false }));
-  stats = { correct: 0, wrong: 0, size };
+  const { signs, learnedSet, note } = await buildPool(size, $('gm-source').value);
+  if (!signs.length) {
+    setStatus('');
+    $('gm-hint').textContent = '';
+    $('gm-pool-note').textContent = "No finished signs to play with yet. Complete a lesson first, or pick 'learned + new signs'.";
+    $('gm-btn-start').disabled = false; return;
+  }
+  bricks = signs.map(sign => ({ sign, type: getDetectionType(sign) === 'motion' ? 'motion' : 'static', learned: learnedSet.has(sign), el: null, broken: false }));
+  stats = { correct: 0, wrong: 0, size: signs.length };
   phase = 'static'; heldBrick = null; holdSince = 0; ignoreGroup = null; wrongLabel = null; wrongSince = 0; lastMissAt = 0; handLostAt = null;
   resetMotionBuffer();
   renderWall(); computeAllowed();
   $('gm-start').hidden = true; $('gm-result').hidden = true;
-  $('gm-log').innerHTML = ''; $('gm-hint').textContent = 'Tip: click any brick to see how to sign it.';
+  $('gm-log').innerHTML = ''; $('gm-hint').textContent = note || 'Tip: click any brick to see how to sign it.';
   $('gm-miss').textContent = '0'; $('gm-gems').textContent = load().gems; $('gm-time').textContent = '0:00';
   running = true; startedAt = Date.now();
   clearInterval(tickId); tickId = setInterval(() => { $('gm-time').textContent = fmt(Date.now() - startedAt); }, 500);
@@ -405,3 +477,5 @@ document.addEventListener('visibilitychange', () => {
 $('gm-gems').textContent = load().gems;
 resetTimers();
 showBest();
+refreshPoolNote();
+window.addEventListener('pageshow', (e) => { if (e.persisted) refreshPoolNote(); });   // back/forward cache: progress may have changed
