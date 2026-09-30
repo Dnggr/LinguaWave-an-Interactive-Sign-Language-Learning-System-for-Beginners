@@ -154,6 +154,130 @@ export const TOTAL_FEATURE_COUNT    = HAND_FEATURE_COUNT + PRESENCE_FEATURE_COUN
 
 const HAND_ZERO = new Array(63).fill(0);
 
+// ── Equivalent-sign groups (same motion OR same meaning) ──────────
+// NEW — some signs can NEVER be told apart by a landmark classifier:
+//   • literally identical gestures (0/O, PLANT/SPRING, COLD/WINTER)
+//   • one gesture with several English names (BRING/CARRY, HELLO/HI)
+// For these the model either splits its probability between the twins
+// (e.g. O=52%, 0=46%) or only ever learned ONE of them (BRING, no
+// CARRY class). Either way a correct attempt used to score ~50% or
+// return the "wrong" twin, failing MATCH_THRESHOLD / the runner-up
+// margin / the `result.label === sign` check in camera-practice.js.
+//
+// FIX — for each group:
+//   1. POOL: a candidate's confidence = its own probability + every
+//      other group member's probability (only members the model has).
+//   2. ADOPT THE TARGET: if the winner belongs to the same group as the
+//      sign the learner was asked for (targetSign), the result is
+//      reported AS targetSign — so BRING's model output counts for
+//      CARRY, and a 0/O split counts for whichever one is being taught.
+//   3. The winner's own group-mates are never treated as its "runner-up",
+//      so twins can't fail the RUNNER-UP margin against each other.
+//
+// Members do NOT all need a model class — untrained ones (CARRY, HI,
+// BYE, ...) simply stay dormant until a lesson uses them. Sources:
+// 0/O, BRING/CARRY (requested) and the "classifier conflict audit" notes
+// in data.js (signs that were removed from lessons for being identical
+// to a trained sign, listed here so they can be brought back).
+// DELIBERATELY EXCLUDED: MOM/DAD, GRANDMA/GRANDPA etc. — different
+// location on the body, the model already separates those.
+// To add a pair: add one array below. No retraining. A label may only
+// appear in ONE group (last one wins if repeated).
+const SIGN_GROUPS = [
+  ['0', 'O'],                          // same handshape (static model)
+  ['BRING', 'CARRY'],                  // same meaning (requested)
+  ['PLANT', 'SPRING'],                 // kept-alongside per data.js audit
+  ['COLD', 'WINTER'],                  // kept-alongside per data.js audit
+  ['HELLO', 'HI'],
+  ['GOODBYE', 'BYE'],
+  ['NIGHT', 'EVENING'],
+  ['SLEEP', 'SLEEPY'],
+  ['LOOK', 'SEE'],
+  ['CLEAN', 'NEAT', 'NICE'],
+  ['BIRD', 'CHICKEN'],
+  ['DRAW', 'ART'],
+  ['COOK', 'CHEF'],
+  ['BACK', 'BEHIND'],
+  ['NOW', 'TODAY'],
+  ['FORWARD', 'PUSH'],
+  ['SURE', 'TRUE', 'REALLY'],
+  ['SING', 'MUSIC'],
+  ['TABLE', 'DESK'],
+  ['DOOR', 'CABINET', 'CLOSET'],
+  ['BATHROOM', 'TOILET'],
+  ['HAT', 'CAP'],
+  ['BOAT', 'SHIP'],
+  ['MELON', 'PUMPKIN'],
+  ['CLOUD', 'CLOUDY'],
+  ['WIND', 'WINDY', 'STORMY'],
+  ['RAIN', 'RAINY'],
+  ['BITTER', 'SOUR'],
+];
+const GROUP_OF = (() => {
+  const m = new Map();
+  for (const g of SIGN_GROUPS) for (const l of g) m.set(l, g);
+  return m;
+})();
+
+/**
+ * Picks the winning label from a softmax output, pooling equivalent
+ * signs (see SIGN_GROUPS). Shared by static + motion inference so the
+ * "what counts as a winner" logic lives in exactly one place.
+ *
+ * @param {number[]} probs - raw softmax output
+ * @param {Object} labels  - index -> label map (labels.json)
+ * @param {Set<string>|null} allowedLabels - candidate filter, or null
+ * @param {string|null} targetSign - the sign the learner was asked to
+ *        perform; if the winner is equivalent to it, it is reported as it
+ * @returns {{label: string|null, confidence: number, runnerUpConfidence: number}}
+ */
+function pickWinnerPoolingTwins(probs, labels, allowedLabels, targetSign = null) {
+  const idxByLabel = new Map();
+  probs.forEach((_, i) => idxByLabel.set(labels[String(i)], i));
+  const targetGroup = targetSign ? (GROUP_OF.get(targetSign) || null) : null;
+
+  // Pooled score = own probability + probability of every equivalent
+  // sign the model has, even one that allowedLabels excludes (that's
+  // the whole point — e.g. 'O' while the numbers lesson wants '0').
+  const pooled = (i) => {
+    let p = probs[i];
+    for (const twin of (GROUP_OF.get(labels[String(i)]) || [])) {
+      const j = idxByLabel.get(twin);
+      if (j != null && j !== i) p += probs[j];
+    }
+    return Math.min(p, 1);
+  };
+
+  const candidates = probs
+    .map((_, i) => i)
+    // a member of the target's own group is always eligible, even if
+    // it lives in another category (0 vs O, or BRING under CARRY)
+    .filter(i => !allowedLabels
+      || allowedLabels.has(labels[String(i)])
+      || (targetGroup && targetGroup.includes(labels[String(i)])))
+    // pooled score first; raw probability breaks a tie between twins
+    .sort((a, b) => (pooled(b) - pooled(a)) || (probs[b] - probs[a]));
+
+  if (!candidates.length) return { label: null, confidence: 0, runnerUpConfidence: 0 };
+
+  const win = candidates[0];
+  const winLabel = labels[String(win)];
+  const winGroup = GROUP_OF.get(winLabel) || null;
+  // Runner-up = best candidate OUTSIDE the winner's group — otherwise
+  // equivalent signs would always look like a dead heat.
+  const runner = candidates.slice(1).find(i => !(winGroup && winGroup.includes(labels[String(i)])));
+
+  // The winner is equivalent to what the learner was asked to sign:
+  // report the requested sign so `result.label === sign` succeeds.
+  const outLabel = (targetGroup && winGroup === targetGroup) ? targetSign : winLabel;
+
+  return {
+    label: outLabel ?? null,
+    confidence: Math.round(pooled(win) * 100),
+    runnerUpConfidence: runner == null ? 0 : Math.round(pooled(runner) * 100),
+  };
+}
+
 // ── State ─────────────────────────────────────────────────────────
 let staticModel  = null;
 let staticLabels = null;
@@ -501,7 +625,7 @@ export function isMotionModelReady() {
 // SIGN_DICTIONARY[label].category) removes the cross-category
 // collision the same way context disambiguates it in real ASL. Pass
 // null (or omit) to keep the old unrestricted behavior.
-export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null) {
+export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null, targetSign = null) {
   if (!staticModel || !staticLabels) return { label: null, confidence: 0, matched: false };
   if (!leftLm && !rightLm) return { label: null, confidence: 0, matched: false };
 
@@ -513,6 +637,7 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   let rawLabel   = null;
   let confidence = 0;
   let runnerUpConfidence = 0;
+  let topRaw = '';
 
   // BUGFIX (PIVOT_CHECKLIST.md Phase C) — `input` is allocated OUTSIDE
   // tf.tidy() (tidy only auto-disposes tensors created inside its own
@@ -530,15 +655,12 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
       // Restrict to labels valid in the current context BEFORE picking a
       // winner — not filtered after — so a genuine '6' isn't discarded
       // just because the raw softmax briefly favored 'W' this frame.
-      const candidateIdxs = probs
-        .map((_, i) => i)
-        .filter(i => !allowedLabels || allowedLabels.has(staticLabels[String(i)]));
-      candidateIdxs.sort((a, b) => probs[b] - probs[a]);
-
-      const maxIdx = candidateIdxs[0];
-      confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
-      runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
-      rawLabel     = maxIdx == null ? null : (staticLabels[String(maxIdx)] ?? null);
+      // CHANGED: look-alike twins (0/O) are pooled — see TWIN_GROUPS.
+      const r = pickWinnerPoolingTwins(probs, staticLabels, allowedLabels, targetSign);
+      topRaw = r.topRaw;
+      confidence = r.confidence;
+      runnerUpConfidence = r.runnerUpConfidence;
+      rawLabel = r.label;
     });
   } finally {
     input.dispose();
@@ -553,6 +675,7 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   // NEW: both the absolute threshold AND the margin over the runner-up
   // must pass — see the block comment near MATCH_THRESHOLD above.
   const matched = confidence >= MATCH_THRESHOLD && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
+  logNearMiss('static', rawLabel, { matched, label: rawLabel, confidence }, topRaw);
 
   return {
     label:    rawLabel,
@@ -621,12 +744,13 @@ const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
 // have any static-model letter counterparts to collide with, since
 // they only exist as motion classes), but here so a future motion-side
 // collision doesn't require re-deriving this fix from scratch.
-function runMotionInference(frameWindow, allowedLabels = null) {
+function runMotionInference(frameWindow, allowedLabels = null, targetSign = null) {
   const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 138]
 
   let rawLabel   = null;
   let confidence = 0;
   let runnerUpConfidence = 0;
+  let topRaw = '';
 
   // BUGFIX (PIVOT_CHECKLIST.md Phase C) — same input-tensor leak as
   // classifyGesture() above, same fix: `input` lives outside tf.tidy()
@@ -638,15 +762,12 @@ function runMotionInference(frameWindow, allowedLabels = null) {
       const output = motionModel.predict(input);
       const probs  = Array.from(output.dataSync());
 
-      const candidateIdxs = probs
-        .map((_, i) => i)
-        .filter(i => !allowedLabels || allowedLabels.has(motionLabels[String(i)]));
-      candidateIdxs.sort((a, b) => probs[b] - probs[a]);
-
-      const maxIdx = candidateIdxs[0];
-      confidence   = maxIdx == null ? 0 : Math.round(probs[maxIdx] * 100);
-      runnerUpConfidence = candidateIdxs[1] == null ? 0 : Math.round(probs[candidateIdxs[1]] * 100);
-      rawLabel     = maxIdx == null ? null : (motionLabels[String(maxIdx)] ?? null);
+      // CHANGED: look-alike twins (0/O) are pooled — see TWIN_GROUPS.
+      const r = pickWinnerPoolingTwins(probs, motionLabels, allowedLabels, targetSign);
+      topRaw = r.topRaw;
+      confidence = r.confidence;
+      runnerUpConfidence = r.runnerUpConfidence;
+      rawLabel = r.label;
     });
   } finally {
     input.dispose();
@@ -687,6 +808,7 @@ function runMotionInference(frameWindow, allowedLabels = null) {
   // into window two, which predictably failed and overwrote the
   // correct first result with "no sign, 0%" a moment later. A single
   // clean window is the deliberate attempt now; accept it immediately.
+  logNearMiss('motion', rawLabel, { matched: passesThreshold, label: rawLabel, confidence }, topRaw);
   return { label: rawLabel, confidence, matched: passesThreshold, buffering: false };
 }
 
@@ -761,9 +883,10 @@ function resampleSequence(frames, targetLength) {
  * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set
  * @param {Set<string>|null} [allowedLabels]
  * @param {Array<{x,y,z}>|null} [poseLandmarks] - full pose landmark set
+ * @param {string|null} [targetSign] - sign the learner was asked for (see SIGN_GROUPS)
  * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean }}
  */
-export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null) {
+export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null, targetSign = null) {
   if (!motionModel || !motionLabels) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
@@ -795,7 +918,7 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = n
   if (!resampled) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
-  return runMotionInference(resampled, allowedLabels);
+  return runMotionInference(resampled, allowedLabels, targetSign);
 }
 
 /**
@@ -813,7 +936,7 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = n
  *
  * @returns {{label,confidence,matched,buffering}|null}
  */
-export function finalizeMotionWindow(allowedLabels = null) {
+export function finalizeMotionWindow(allowedLabels = null, targetSign = null) {
   if (!motionModel || !motionLabels) return null;
   if (motionBuffer.length < MOTION_MIN_FRAMES_TO_FINALIZE) {
     motionBuffer = [];
@@ -825,7 +948,7 @@ export function finalizeMotionWindow(allowedLabels = null) {
   motionBuffer = [];
   motionRecordStartAt = null;
   if (!resampled) return null;
-  return runMotionInference(resampled, allowedLabels);
+  return runMotionInference(resampled, allowedLabels, targetSign);
 }
 
 /**
