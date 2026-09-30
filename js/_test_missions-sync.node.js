@@ -87,7 +87,6 @@ function loadMissionsInFreshContext({ localStorageInitial = {}, loggedInUid = nu
   const windowMock = {
     localStorage,
     LWAuth,
-    LWData: undefined, // not needed for the stores under test
   };
   windowMock.window = windowMock; // some code paths might reference window.window; harmless
 

@@ -11,7 +11,7 @@
  *            the level layer was never load-bearing for storage, only
  *            for the old per-level unlock chain). The unlock chain
  *            itself is now ONE walk across every live category in
- *            `UNITS` order (via js/data.js's getUnits()/
+ *            `UNITS` order (via window.LWMissions.getUnits()/
  *            getCategoriesForUnit()), replacing the old per-level
  *            "first category, or previous category in this level
  *            passed" rule. Level-final assessments (recordLevelAssessment
@@ -24,7 +24,9 @@
  *            model changes" and PIVOT_CHECKLIST.md Phase 3.
  *
  * CONNECTS : Loaded as a plain <script> (not a module) on every page
- *            that needs it, AFTER js/data.js:
+ *            that needs it. It reads the curriculum lazily from
+ *            window.LWMissions (js/missions.js), so load that on the
+ *            same page:
  *              pages/camera-practice.html, pages/quiz.html
  *              (V1 pages/learn.html, pages/dashboard.html removed —
  *              see the V1-removal pass; equivalents don't use
@@ -176,8 +178,8 @@ async function hydrateStore() {
 
   // BUGFIX (this revision) — this used to destructure window.LWAuth
   // unguarded right after the optional-chained await above, so a page
-  // that loads progress.js without auth.js (e.g. pages/missions-compare.html,
-  // a dev-only diagnostic page) threw an unhandled TypeError here, and
+  // that loads progress.js without auth.js (e.g. a dev-only
+  // diagnostic page) threw an unhandled TypeError here, and
   // since hydrateStore() is fire-and-forget with no .catch() at its one
   // call site below, that was an unhandled promise rejection on every
   // load of such a page. Same defensive shape AGENTS.md's own QA
@@ -338,8 +340,8 @@ async function hydrateStore() {
 
   /** Categories in a level that actually have playable sign content. */
   function liveCategoriesFor(level) {
-    const cats = window.LWData?.getCategoriesForLevel?.(level) ?? [];
-    return cats.filter(c => !c.comingSoon && (window.LWData.getCategorySigns(level, c.id).length > 0));
+    const cats = window.LWMissions?.getCategoriesForLevel?.(level) ?? [];
+    return cats.filter(c => !c.comingSoon && (window.LWMissions.getCategorySigns(level, c.id).length > 0));
   }
 
   /**
@@ -364,14 +366,14 @@ async function hydrateStore() {
    * the correct general rule, not a unit-2-specific special case.
    */
   function getOrderedLiveCategories() {
-    const units = window.LWData?.getUnits?.() ?? [];
+    const units = window.LWMissions?.getUnits?.() ?? [];
     const out = [];
     units
       .filter(u => u.kind === 'category-group')
       .forEach(u => {
-        const cats = window.LWData?.getCategoriesForUnit?.(u.order) ?? [];
+        const cats = window.LWMissions?.getCategoriesForUnit?.(u.order) ?? [];
         cats.forEach(c => {
-          if (!c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0) {
+          if (!c.comingSoon && window.LWMissions.getCategorySigns(c.level, c.id).length > 0) {
             out.push(c);
           }
         });
@@ -381,14 +383,14 @@ async function hydrateStore() {
 
   /**
    * NEW (this session) — every 'interactive' unit tagged `gated: true`
-   * in data.js's UNITS array (currently just fingerspell_name), in
+   * in missions.js's UNITS_V2 array (currently just fingerspell_name), in
    * UNITS order. Data-driven per this repo's own convention (see
    * AI_MEMORY.md §3 "Data-driven over hardcoded") — adding a second
    * gated interactive unit later needs zero changes here, just the
    * `gated: true` flag on its UNITS entry.
    */
   function getOrderedGates() {
-    const units = window.LWData?.getUnits?.() ?? [];
+    const units = window.LWMissions?.getUnits?.() ?? [];
     return units.filter(u => u.kind === 'interactive' && u.gated === true);
   }
 
@@ -429,7 +431,7 @@ async function hydrateStore() {
     // logic (unchanged) still runs below when this is `false`.
     if (DEBUG_UNLOCK_ALL) return true;
 
-    const cat = (window.LWData?.CATEGORIES ?? []).find(c => c.id === categoryId);
+    const cat = (window.LWMissions?.content?.CATEGORIES ?? []).find(c => c.id === categoryId);
     if (cat && !gatesClearedBefore(cat.unit)) return false;
 
     const chain = getOrderedLiveCategories();
@@ -463,11 +465,11 @@ async function hydrateStore() {
   /** Aggregate stats for a level — powers dashboard cards + learn.js locks. */
   function getLevelStats(level) {
     const live    = liveCategoriesFor(level);
-    const allCats = window.LWData?.getCategoriesForLevel?.(level) ?? [];
+    const allCats = window.LWMissions?.getCategoriesForLevel?.(level) ?? [];
     let totalSigns = 0, practicedSigns = 0, passedCategories = 0;
 
     live.forEach(c => {
-      const signs = window.LWData.getCategorySigns(level, c.id);
+      const signs = window.LWMissions.getCategorySigns(level, c.id);
       const prog  = getCategoryProgress(level, c.id);
       totalSigns    += signs.length;
       practicedSigns += signs.filter(s => !!prog.signs[s]).length;
@@ -490,14 +492,14 @@ async function hydrateStore() {
   function getAllLearnedSigns() {
     // REV 4 PHASE 3 — CHANGED: walks the new flat `categories` map
     // instead of `levels[level].categories`. `level` in the returned
-    // objects is looked up from data.js so the return shape
+    // objects is looked up from missions.js so the return shape
     // ({level, category, signId}) stays identical for callers —
     // js/dashboard.js's renderRecap() only reads `signId` today, but
     // nothing else needed to change on its end either way.
     const store = loadStore();
     const out = [];
     Object.entries(store.categories || {}).forEach(([categoryId, catData]) => {
-      const catMeta = (window.LWData?.CATEGORIES ?? []).find(c => c.id === categoryId);
+      const catMeta = (window.LWMissions?.content?.CATEGORIES ?? []).find(c => c.id === categoryId);
       const level   = catMeta?.level ?? null;
       Object.keys(catData.signs || {}).forEach(signId => out.push({ level, category: categoryId, signId }));
     });

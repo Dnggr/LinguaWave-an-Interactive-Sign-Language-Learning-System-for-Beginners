@@ -24,9 +24,9 @@
  *           remaining 10 chapters is tracked as the next step in the
  *           analysis doc's own §5 (Next Steps) and is NOT done here.
  *
- * ISOLATION : reads window.LWMissions / window.LWData only, exactly the
+ * ISOLATION : reads window.LWMissions only, exactly the
  *           same discipline mission-overview.js etc. already
- *           follow. Does not touch js/data.js, js/engine/progress.js,
+ *           follow. Does not touch js/engine/progress.js,
  *           js/camera-practice.js, or js/quiz.js. No new localStorage key is
  *           introduced for progress — see hasSignLearnedElsewhere()
  *           below, which reads the EXISTING lw_missions_progress_v1

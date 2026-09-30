@@ -30,7 +30,7 @@ let currentCategoryId = 'essentials_greetings';
 
 function populateMissionPicker() {
   const select = document.getElementById('dev-mission-select');
-  const categories = (window.LWMissions && window.LWData) ? window.LWMissions.getLiveCategoryList() : [];
+  const categories = window.LWMissions ? window.LWMissions.getLiveCategoryList() : [];
 
   if (!categories.length) {
     select.innerHTML = `<option value="">No categories found</option>`;
@@ -203,8 +203,8 @@ function renderAll() {
     return;
   }
 
-  if (!window.LWData || typeof window.LWData.getCategorySigns !== 'function') {
-    root.innerHTML = `<div class="card dev-off-notice"><p>js/data.js did not load — cannot build the pilot mission.</p></div>`;
+  if (typeof window.LWMissions.getCategorySigns !== 'function') {
+    root.innerHTML = `<div class="card dev-off-notice"><p>js/missions.js did not expose the curriculum API — cannot build the pilot mission.</p></div>`;
     return;
   }
 
@@ -234,7 +234,7 @@ function renderAll() {
 }
 
 function initPage() {
-  populateMissionPicker(); // Phase 3 — no-op-safe if LWData/LWMissions aren't ready yet
+  populateMissionPicker(); // Phase 3 — no-op-safe if LWMissions isn't ready yet
   renderAll();
 }
 
