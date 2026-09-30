@@ -1099,6 +1099,18 @@ html.lw-force-reduced-motion *::after {
 .app-sidebar__link--locked { opacity: .55; cursor: default; }
 .app-sidebar__link--locked:hover { background: transparent; color: var(--clr-text-muted); }
 .app-sidebar__lock { margin-left: auto; display: flex; align-items: center; }
+/* Sidebar click feedback (js/main.js initSidebarNavGuard): shown instantly while the next
+   page loads. The spinner only animates `transform`, so it keeps spinning on the compositor
+   even when the main thread is busy parsing the next page. */
+.app-sidebar__link.is-loading { background: var(--clr-accent-soft); color: var(--clr-accent-text); }
+.app-sidebar__link.is-loading::after {
+  content: ''; margin-left: auto; width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: lw-nav-spin .7s linear infinite;
+}
+@keyframes lw-nav-spin { to { transform: rotate(360deg); } }
+html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
+@media (prefers-reduced-motion: reduce) { .app-sidebar__link.is-loading::after { animation-duration: 2s; } }
 .app-sidebar__icon svg { width: 100%; height: 100%; }
 .app-sidebar__foot {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
