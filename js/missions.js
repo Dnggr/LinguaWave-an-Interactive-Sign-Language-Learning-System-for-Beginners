@@ -9502,32 +9502,43 @@ function getCategoriesForUnitV2(unitOrder) {
     return done / signItems.length;
   }
 
-  /* ── Chapter gating (Task 1, this revision) ──────────────────────
-   * A learner must finish EVERY mission in a chapter (100% each)
-   * before the NEXT chapter (by CATEGORY_GROUPS_V2 `.order`) unlocks.
-   * Once a chapter is unlocked, every mission inside it is available
-   * at once, in whatever order the learner wants — there is no
-   * per-mission position lock *within* an unlocked chapter anymore
-   * (that old rule lived in learn.js/dashboard.js/
-   * mission-overview.js's own, now-removed, duplicated statusFor()
-   * functions — this is the single, shared replacement all three now
-   * call). A mission with no categoryGroup (data gap) is never gated,
-   * same "a data gap can't hide/lock a mission" rule
-   * buildMissionForCategory() already documents for that case.
+  /* ── Chapter gating ──────────────────────────────────────────────
+   * REVISED RULE (was: strictly sequential, each chapter needed every
+   * earlier chapter 100% done):
+   *   - Chapter 1 (asl_foundations)   : always open.
+   *   - Chapter 2 (introduce_yourself): opens once Chapter 1 is 100%.
+   *   - Chapters 3 and up             : ALL open at once as soon as
+   *                                     Chapter 2 (and so Chapter 1) is
+   *                                     100% — no more one-by-one unlock.
+   * "100%" still means EVERY mission in the chapter is done. Within an
+   * unlocked chapter every mission is available in any order (unchanged).
+   * A mission with no categoryGroup (data gap) is never gated, same
+   * "a data gap can't hide/lock a mission" rule buildMissionForCategory()
+   * documents. Single shared rule: learn.js/dashboard.js/progress-page.js/
+   * mission-overview.js/camera-practice.js all call this, so changing it
+   * here changes every page. js/game-gate.js reads isChapterComplete()
+   * below for the Game tab (Chapter 1 gate).
    */
+  const CHAPTER_1_ID = 'asl_foundations';
+  const CHAPTER_2_ID = 'introduce_yourself';
+
+  // True when every live mission in the chapter is 100% done. A chapter
+  // with no live missions can't block anything (vacuously complete).
+  function isChapterComplete(categoryGroupId, allMissions) {
+    return allMissions
+      .filter((m) => m.categoryGroup === categoryGroupId)
+      .every((m) => getMissionProgress(m) >= 1);
+  }
 
   function isChapterUnlocked(categoryGroupId, allMissions) {
     if (!categoryGroupId) return true;
-    const chapters = getCategoryGroupsV2();
-    const chapter = chapters.find((c) => c.id === categoryGroupId);
+    const chapter = getCategoryGroupsV2().find((c) => c.id === categoryGroupId);
     if (!chapter) return true; // unknown/unlisted chapter id — don't hide it
-    return chapters
-      .filter((c) => c.order < chapter.order)
-      .every((earlier) => {
-        const missionsInEarlier = allMissions.filter((m) => m.categoryGroup === earlier.id);
-        // A chapter with no live missions yet can't block anything.
-        return missionsInEarlier.every((m) => getMissionProgress(m) >= 1);
-      });
+    if (chapter.id === CHAPTER_1_ID) return true;
+    if (chapter.id === CHAPTER_2_ID) return isChapterComplete(CHAPTER_1_ID, allMissions);
+    // Chapter 3+: everything opens together once Chapters 1 AND 2 are done.
+    return isChapterComplete(CHAPTER_1_ID, allMissions)
+        && isChapterComplete(CHAPTER_2_ID, allMissions);
   }
 
   // A mission's real, chapter-aware status:
@@ -9900,7 +9911,8 @@ function getCategoriesForUnitV2(unitOrder) {
     consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the-native Mastery Quiz (js/mastery-quiz.js)
     getOrientation,          // NEW — Orientation row above the chapters
     whenMissionsSyncReady,     // NEW — cross-device Firestore sync (call once per page load)
-    isChapterUnlocked,       // NEW (Task 1) — chapter gating
+    isChapterUnlocked,       // NEW (Task 1) — chapter gating (revised: Ch1 -> Ch2 -> all others)
+    isChapterComplete,       // NEW — every mission in a chapter 100% (used by js/game-gate.js)
     getMissionStatus,        // NEW (Task 1) — single shared 'done'/'locked'/'current'/'available' rule
     getCurrentChapterId,     // NEW (Task 1) — which chapter section should default-open
     getTrailNumbers,         // NEW (light-mode UX pass) — category id -> trail position, shared by learn.js + mission-overview.js
