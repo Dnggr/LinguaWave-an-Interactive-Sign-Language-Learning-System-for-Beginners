@@ -1959,7 +1959,7 @@ function startRenderLoop() {
         if (handLostSinceArmedAt === null) handLostSinceArmedAt = now;
 
         if (now - handLostSinceArmedAt > HAND_LOST_GRACE_MS) {
-          const forced = finalizeMotionWindow(getActiveAllowedLabels());
+          const forced = finalizeMotionWindow(getActiveAllowedLabels(), getActiveSignId());
           motionArmed = false;
           handLostSinceArmedAt = null;
 
@@ -2001,7 +2001,7 @@ function startRenderLoop() {
       if (cooldown || !motionArmed) {
         result = { label: null, confidence: 0, matched: false, buffering: false };
       } else {
-        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks);
+        result = classifyMotion(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks, getActiveSignId());
 
         if (!result.buffering) {
           // A window just finished (matched or rejected) — this is a
@@ -2015,7 +2015,7 @@ function startRenderLoop() {
       }
       updateMotionBuffer();
     } else {
-      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks);
+      result = classifyGesture(leftHandLandmarks, rightHandLandmarks, faceLandmarks, getActiveAllowedLabels(), poseLandmarks, getActiveSignId());
     }
 
     updateConfidenceUI(result);
