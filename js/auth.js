@@ -973,6 +973,41 @@ function whenAuthReady() {
   });
 }
 
+/* ── PROGRESS CLOUD BRIDGE (fix: progress not reaching Firestore) ──
+ * The audit pass removed doc/db/getDoc/setDoc from window.LWAuth, but
+ * js/engine/progress.js, js/missions.js and js/game.js still called them,
+ * so every sync threw a (caught) TypeError and nothing ever reached
+ * Firestore. Instead of re-exporting the raw SDK, expose two FIXED-PURPOSE
+ * helpers: they only touch a whitelisted collection, only the signed-in
+ * user's OWN document (uid comes from Firebase Auth, never from the caller),
+ * and only after Firebase Auth has restored the session. firestore.rules
+ * enforces the same thing server-side. */
+const PROGRESS_COLLECTIONS = ['userProgress', 'userProgressV2', 'userGame'];
+
+async function progressRef(name) {
+  if (PROGRESS_COLLECTIONS.indexOf(name) === -1) throw new Error('progress collection not allowed: ' + name);
+  await whenAuthReady();
+  const u = auth.currentUser;               // request.auth on the server
+  if (!u || !u.emailVerified) return null;
+  return doc(db, name, u.uid);
+}
+
+/* → { exists: boolean, data: object|null } , or null when signed out */
+async function readProgressDoc(name) {
+  const ref = await progressRef(name);
+  if (!ref) return null;
+  const snap = await getDoc(ref);
+  return { exists: snap.exists(), data: snap.exists() ? snap.data() : null };
+}
+
+/* → true when written, false when signed out. opts.merge = setDoc merge. */
+async function writeProgressDoc(name, data, opts) {
+  const ref = await progressRef(name);
+  if (!ref) return false;
+  await setDoc(ref, data, opts && opts.merge ? { merge: true } : {});
+  return true;
+}
+
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
@@ -1002,6 +1037,8 @@ window.LWAuth = {
   requireAuth,
   redirectIfLoggedIn,
   whenAuthReady,
+  readProgressDoc,
+  writeProgressDoc,
 };
 /* ── AUTO-GUARD (2026-09-29) ──────────────────────────────────────
  * "No verified email, no normal LinguaWave access" has to hold for EVERY
