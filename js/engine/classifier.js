@@ -85,6 +85,25 @@ function logTfMemoryIfDue(label) {
   console.debug(`[tf.memory] after ${label} (call #${_memCheckCounter}): numTensors=${mem.numTensors}, numBytes=${(mem.numBytes / 1024 / 1024).toFixed(2)}MB`);
 }
 
+// BUGFIX — logNearMiss() was called from classifyGesture() and
+// runMotionInference() but its definition was lost (most likely removed
+// with a diagnostics cleanup). Every call threw
+// "ReferenceError: logNearMiss is not defined", which aborted BOTH static
+// and motion classification before a result could be returned (the motion
+// window was consumed, then the throw killed the result — so motion never
+// resolved). It is diagnostics-only, so it is defined here as a throttled
+// console.debug that never throws and never affects the returned result.
+let _lastNearMissAt = 0;
+function logNearMiss(kind, label, result, topRaw) {
+  try {
+    if (!result || result.matched || !(result.confidence >= 40)) return;
+    const now = performance.now();
+    if (now - _lastNearMissAt < 1000) return;   // max ~1 line/second
+    _lastNearMissAt = now;
+    console.debug(`[near-miss:${kind}] ${label} @ ${result.confidence}% (below match rules)${topRaw ? ' top: ' + topRaw : ''}`);
+  } catch { /* diagnostics must never break detection */ }
+}
+
 import { SIGN_DICTIONARY } from './dictionary.js';
 
 // ── Config ────────────────────────────────────────────────────────
@@ -218,6 +237,15 @@ const GROUP_OF = (() => {
   for (const g of SIGN_GROUPS) for (const l of g) m.set(l, g);
   return m;
 })();
+
+/**
+ * NEW — returns every sign equivalent to `label` (see SIGN_GROUPS),
+ * including `label` itself. Lets callers with several possible targets
+ * at once (game.js free-order wall) treat twins like BRING/CARRY as a match.
+ */
+export function getSignGroup(label) {
+  return GROUP_OF.get(label) ? [...GROUP_OF.get(label)] : [label];
+}
 
 /**
  * Picks the winning label from a softmax output, pooling equivalent
