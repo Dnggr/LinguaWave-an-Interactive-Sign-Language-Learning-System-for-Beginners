@@ -36,10 +36,9 @@
 (function () {
   'use strict';
 
-  /* Static copy of the 70 UNITS_V2 id/title pairs, in curriculum order. */
+  /* Static copy of the 67 UNITS_V2 id/title pairs, in curriculum order. */
   var UNITS = [
     { id: 'alphabet', title: 'The Alphabet' },
-    { id: 'fingerspell_name', title: 'Fingerspell Your Name' },
     { id: 'numbers', title: 'Numbers' },
     { id: 'greetings', title: 'Greetings' },
     { id: 'polite_words', title: 'Polite Words' },
@@ -105,9 +104,7 @@
     { id: 'questions', title: 'Questions' },
     { id: 'conversation', title: 'Conversation' },
     { id: 'requests_unit', title: 'Requests' },
-    { id: 'answers', title: 'Answers' },
-    { id: 'basic_phrases', title: 'Basic Phrases' },
-    { id: 'phrasebook', title: 'Phrasebook' }
+    { id: 'answers', title: 'Answers' }
   ];
 
   function buildChip(unit, accessible) {

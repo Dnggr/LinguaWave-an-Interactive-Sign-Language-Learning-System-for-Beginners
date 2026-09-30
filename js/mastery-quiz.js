@@ -59,12 +59,12 @@
  * See handleAnswer() below for all three.
  *
  * SAMPLE SCOPE (widened this revision — merged from three parallel
- * widenings) : ALL 12 chapters are now served here — 'asl_foundations'
+ * widenings) : ALL 11 chapters are now served here — 'asl_foundations'
  * (Ch.1), 'introduce_yourself' (Ch.2), 'express_feelings' (Ch.3),
  * 'daily_actions' (Ch.4), 'describing_things' (Ch.5), 'home_family'
  * (Ch.6), 'school_life' (Ch.7), 'food_nature' (Ch.8),
  * 'clothing_belongings' (Ch.9), 'people_places_time' (Ch.10),
- * 'having_a_conversation' (Ch.11), and 'putting_it_together' (Ch.12)
+ * and 'having_a_conversation' (Ch.11)
  * — see SAMPLE_CATEGORY_GROUPS below, originally just Chapters 1-2.
  * Chapters 3-12 have no hand-curated NEAR_NEIGHBORS/SAME_SIGN_AS
  * entries in js/lesson-loop.js (same as every other uncurated
@@ -81,14 +81,14 @@
  * mission (typed URL, stale link, or a future new chapter not yet
  * added here), in which case this page still says so and offers the
  * V1 quiz rather than silently failing. To widen the sample further
- * (e.g. a future 13th chapter), add the new chapter's id to
+ * (e.g. a future 12th chapter), add the new chapter's id to
  * SAMPLE_CATEGORY_GROUPS — nothing else here is chapter-specific.
  * SAMPLE_CATEGORY_GROUPS must stay in sync with
  * mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
  * lesson.js's own copy of that same const.
  *
  * Same data-source discipline as every other *.js file: reads only
- * window.LWData / window.LWMissions / window.LWMissionsLoop. Does not
+ * window.LWMissions / window.LWMissionsLoop. Does not
  * touch js/engine/progress.js or pages/quiz.js.
  * ─────────────────────────────────────────────────────────────────
  */
@@ -98,7 +98,7 @@ const SAMPLE_CATEGORY_GROUPS = [
   'asl_foundations', 'introduce_yourself',
   'express_feelings', 'daily_actions', 'describing_things',
   'home_family', 'school_life', 'food_nature',
-  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation',
 ];
 const MAX_QUESTIONS = 12;
 // Priority 1, Task 3 — "wait about 1-2 seconds" for the auto-continue
@@ -709,8 +709,8 @@ function renderQuizEntry(mission) {
 
 async function initPage() {
   const el = document.getElementById('mq-content');
-  if (!window.LWData || !window.LWMissions) {
-    el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js and js/missions.js both loaded.</p>`;
+  if (!window.LWMissions) {
+    el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/missions.js loaded.</p>`;
     return;
   }
 

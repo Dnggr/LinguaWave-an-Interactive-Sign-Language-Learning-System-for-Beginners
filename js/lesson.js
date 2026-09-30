@@ -42,7 +42,7 @@
  * opens such a mission at the start instead of at the quiz recap.
  *
  * Same data-source discipline as every other *.js file: reads only
- * window.LWData / window.LWMissions / window.LWMissionsLoop.
+ * window.LWMissions / window.LWMissionsLoop.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -54,7 +54,7 @@ const SAMPLE_MASTERY_QUIZ_CHAPTERS = [
   'asl_foundations', 'introduce_yourself',
   'express_feelings', 'daily_actions', 'describing_things',
   'home_family', 'school_life', 'food_nature',
-  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation',
 ];
 
 function getMissionParam() {
@@ -800,8 +800,8 @@ function renderResumePoint(mission) {
 
 async function initPage() {
   const el = document.getElementById('lesson-content');
-  if (!window.LWData || !window.LWMissions || !window.LWMissionsLoop) {
-    el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/data.js, js/missions.js, and js/lesson-loop.js all loaded.</p>`;
+  if (!window.LWMissions || !window.LWMissionsLoop) {
+    el.innerHTML = `<p class="text-muted">Loading real content failed — check that js/missions.js and js/lesson-loop.js both loaded.</p>`;
     return;
   }
 

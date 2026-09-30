@@ -38,7 +38,7 @@ const SAMPLE_MASTERY_QUIZ_CHAPTERS = [
   'asl_foundations', 'introduce_yourself',
   'express_feelings', 'daily_actions', 'describing_things',
   'home_family', 'school_life', 'food_nature',
-  'clothing_belongings', 'people_places_time', 'having_a_conversation', 'putting_it_together',
+  'clothing_belongings', 'people_places_time', 'having_a_conversation',
 ];
 
 function getMissionParam() {

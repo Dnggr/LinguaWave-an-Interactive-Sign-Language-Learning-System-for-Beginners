@@ -197,7 +197,7 @@
               <!--
                 Demo video — TWO players live here, and js/camera-practice.js
                 shows exactly one of them per sign, based on that sign's
-                `videoUrl` in js/data.js (applyLessonVideo()):
+                `videoUrl` in js/missions.js (applyLessonVideo()):
 
                   • videoUrl is a YouTube embed URL
                       (https://www.youtube.com/embed/<id>?si=...)
@@ -209,7 +209,7 @@
                       → the <video id="lesson-video"> is shown instead.
 
                 Do NOT hardcode a YouTube URL in this file — change the
-                sign's `videoUrl` in data.js and this page follows it.
+                sign's `videoUrl` in missions.js and this page follows it.
               -->
               <video
                 id="lesson-video"
@@ -222,7 +222,7 @@
                 <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-              <!-- src stays about:blank until camera-practice.js fills it from data.js `videoUrl`. -->
+              <!-- src stays about:blank until camera-practice.js fills it from missions.js `videoUrl`. -->
               <iframe
                 id="lesson-video-embed"
                 width="560" height="315"
@@ -509,11 +509,6 @@
   </div>
 
   <script src="../js/main.js"></script>
-  <!--
-    data.js must load before lesson.js — it provides per-letter lesson
-    content (title, description, tips, image) via window.LWData.getSign().
-  -->
-  <script defer src="../js/data.js"></script>
   <!-- Progress engine: tracks practiced signs / category & level assessments. -->
   <script defer src="../js/engine/progress.js"></script>
   <!--
@@ -522,15 +517,11 @@
     from's Mission Overview dictionary chips, so it also needs
     window.LWMissions loaded to mark the matching mission item
     complete (see markSignPracticedBridge() in missions.js and its call
-    sites in lesson.js). Must load before lesson.js, same as data.js.
+    sites in lesson.js). Also the source of per-sign lesson content
+    (title, description, tips, image) via window.LWMissions.getSign().
+    Must load before camera-practice.js.
   -->
   <script defer src="../js/missions.js"></script>
-  <!--
-    REMOVED (Impeccable pass): a second <script src="../js/data-v2.js">
-    lived here. That file was renamed to missions.js (loaded just above)
-    and the global it defined, window.LWDataV2, is now window.LWMissions,
-    so the tag only produced a 404 on every load.
-  -->
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).

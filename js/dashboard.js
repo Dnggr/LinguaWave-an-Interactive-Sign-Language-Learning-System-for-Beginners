@@ -101,7 +101,7 @@ function renderMissionBanner(missions) {
   const mission = pickCurrentMission(missions);
 
   if (!mission) {
-    el.innerHTML = `<p class="text-muted">No live missions found — is <code>js/data.js</code> loaded?</p>`;
+    el.innerHTML = `<p class="text-muted">No live missions found — is <code>js/missions.js</code> loaded?</p>`;
     return;
   }
 

@@ -9,7 +9,7 @@
              js/engine/classifier.js
              js/engine/renderer.js
              js/engine/dictionary.js
-             js/data.js (window.LWData — categories + sign order)
+             js/missions.js (window.LWMissions — categories + sign order)
   ─────────────────────────────────────────────────────────────────
 
   ══════════════════════════════════════════════════════════════════
@@ -27,7 +27,7 @@
           (family, places, ...) had nowhere to live
   ─────────────────────────────────────────────────────────────────
   WHERE:   module-level SIGN_ORDER constant
-  FIX:     Sign order for a lesson is now pulled from window.LWData
+  FIX:     Sign order for a lesson is now pulled from window.LWMissions
            .getCategorySigns(level, category) — the alphabet's order
            is unchanged (same A→Y, J, Z sequence as before), but
            level=medium/intermediate now branch by ?category=.
@@ -225,7 +225,7 @@ const lessonShieldEl      = document.getElementById('lesson-video-shield');
 const lessonSubtitleEl    = document.getElementById('lesson-subtitle');
 
 // ── Demo video: local file vs. YouTube embed ───────────────────────
-// js/data.js `videoUrl` can be EITHER a local file (../assets/videos/…mp4,
+// missions.js `videoUrl` can be EITHER a local file (../assets/videos/…mp4,
 // the default for almost every sign) OR a YouTube embed URL
 // (https://www.youtube.com/embed/<id>?si=…). A YouTube embed URL is a web
 // page, not a media file, so it can't go in <video>/<source> — it needs the
@@ -333,7 +333,7 @@ const category   = params.get('category') || defaultCategoryFor(level);
 
 function defaultCategoryFor(lvl) {
   if (lvl === 'basic') return 'alphabet';
-  const cats = window.LWData?.getCategoriesForLevel?.(lvl) ?? [];
+  const cats = window.LWMissions?.getCategoriesForLevel?.(lvl) ?? [];
   const firstLive = cats.find(c => !c.comingSoon);
   return firstLive ? firstLive.id : (cats[0]?.id ?? 'general');
 }
@@ -392,7 +392,7 @@ function computeSignOrder() {
   // C→A→R. This keeps every signIdx/totalSigns/Prev-Next assumption
   // elsewhere in this file completely unchanged.
   if (isNameDrill) return ['MY_NAME'];
-  const fromData = window.LWData?.getCategorySigns?.(level, category) ?? [];
+  const fromData = window.LWMissions?.getCategorySigns?.(level, category) ?? [];
   if (fromData.length > 0) return fromData;
   if (category === 'alphabet') return FALLBACK_ALPHABET_ORDER;
   return [];
@@ -540,7 +540,7 @@ function noteMotionPracticeOutcome(result) {
 // Kind 3 above: called every frame with whether a hand is in view, but
 // it only ever reports when a whole try has ended, never per frame.
 function trackStaticTry(now, handPresent) {
-  if (signNeedsExplicitStart === null && window.LWData) signNeedsExplicitStart = needsExplicitStart(sign);
+  if (signNeedsExplicitStart === null && window.LWMissions) signNeedsExplicitStart = needsExplicitStart(sign);
   const applies = mode === 'practice' && signNeedsExplicitStart === false && tipsCanCount(sign);
   if (!applies) { staticTry = null; return; }
 
@@ -676,7 +676,7 @@ function getPhraseSequence(signId) {
     const letters = getLearnerNameLetters();
     return letters.length > 0 ? letters : null;
   }
-  const data = window.LWData?.getSign?.(level, signId);
+  const data = window.LWMissions?.getSign?.(level, signId);
   return (data && Array.isArray(data.sequence) && data.sequence.length > 0) ? data.sequence : null;
 }
 
@@ -861,7 +861,7 @@ let lastHandCount  = 0;
 // else the current sign's own CATEGORIES.unit field).
 function currentUnitOrder() {
   if (isNameDrill) return 2;
-  return window.LWData?.getCategory?.(level, category)?.unit ?? null;
+  return window.LWMissions?.getCategory?.(level, category)?.unit ?? null;
 }
 
 // MISSION PROGRESS SYNC (this revision) — the course sidebar used to
@@ -903,7 +903,7 @@ function isSignLearnedInMission(mission, signId) {
 // file's existing pattern of re-deriving small pieces of shared logic
 // (see e.g. SAMPLE_MASTERY_QUIZ_CHAPTERS's own header note elsewhere
 // in this codebase for why). This is deliberately NOT the same array
-// as this page's own `signOrder` (window.LWData.getCategorySigns() —
+// as this page's own `signOrder` (window.LWMissions.getCategorySigns() —
 // V1 content) — gating below needs the identical order the mission's
 // own completedItemIds/isItemComplete() actually track against, not
 // V1's, so it can't silently disagree with mission-overview.js about
@@ -938,7 +938,7 @@ function isSignAccessible(mission, signId) {
 }
 
 function sidebarSignRow(cat, signId, mission, missionLocked) {
-  const signData = window.LWData?.getSign?.(cat.level, signId);
+  const signData = window.LWMissions?.getSign?.(cat.level, signId);
   const label = signData?.title ?? signId;
   const done = isSignLearnedInMission(mission, signId);
   const isCurrent = !isNameDrill && cat.id === category && signId === sign;
@@ -996,7 +996,7 @@ function sidebarSignRow(cat, signId, mission, missionLocked) {
 // entirely and list its signs directly — matches js/learn.js's own
 // "units with exactly one category skip the picker screen" rule.
 function sidebarCategoryBlock(cat, opts) {
-  const signs = window.LWData.getCategorySigns(cat.level, cat.id);
+  const signs = window.LWMissions.getCategorySigns(cat.level, cat.id);
   if (signs.length === 0) return '';
   const mission = missionForSidebarCategory(cat.id);
   const missionLocked = !!mission
@@ -1046,7 +1046,7 @@ function sidebarCategoryBlock(cat, opts) {
 // ── Sidebar fallback (Design pass, 2026-08-23) ──────────────────────
 // PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
 // yet matching dashboard", gap #4. Mirrors js/learn.js's
-// showLearnUnavailable() (same session) — same "only window.LWData is a
+// showLearnUnavailable() (same session) — same "only window.LWMissions is a
 // hard requirement, LWProgress calls already degrade gracefully via
 // `?.`/`?? default`" reasoning applies here too (see every
 // `window.LWProgress?.` call below). Reuses css/style.css's
@@ -1092,19 +1092,19 @@ function renderCourseSidebar() {
   const el = document.getElementById('course-sidebar');
   if (!el) return;
   wireSidebarProgressCapture(el);
-  // Design pass, 2026-08-23: previously `if (!el || !window.LWData)
+  // Design pass, 2026-08-23: previously `if (!el || !window.LWMissions)
   // return;` — a missing LWData silently left whatever was already in
   // #course-sidebar (this session's new static "Loading course
   // outline…" placeholder, pages/camera-practice.html) up forever, with no
   // explanation. Same failure mode + same fix as js/learn.js's matching
   // guard this session.
-  if (!window.LWData) {
-    showSidebarUnavailable(el, 'window.LWData did not load');
+  if (!window.LWMissions) {
+    showSidebarUnavailable(el, 'window.LWMissions did not load');
     return;
   }
 
   try {
-    const units = window.LWData.getUnits();
+    const units = window.LWMissions.getUnits();
     const curUnitOrder = currentUnitOrder();
 
     el.innerHTML = units.map(unit => {
@@ -1128,8 +1128,8 @@ function renderCourseSidebar() {
       }
 
       // kind: 'category-group' or 'reference' (Phrasebook)
-      const allCats  = window.LWData.getCategoriesForUnit(unit.order);
-      const liveCats = allCats.filter(c => !c.comingSoon && window.LWData.getCategorySigns(c.level, c.id).length > 0);
+      const allCats  = window.LWMissions.getCategoriesForUnit(unit.order);
+      const liveCats = allCats.filter(c => !c.comingSoon && window.LWMissions.getCategorySigns(c.level, c.id).length > 0);
 
       if (liveCats.length === 0) {
         return `<div class="course-sidebar__unit course-sidebar__unit--locked">` +
@@ -1201,7 +1201,7 @@ function renderCourseSidebar() {
     });
   } catch (e) {
     // Design pass, 2026-08-23: belt-and-suspenders, same reasoning as
-    // js/learn.js's matching try/catch this session. window.LWData IS
+    // js/learn.js's matching try/catch this session. window.LWMissions IS
     // guarded above, but a future data.js shape change or an
     // unexpected unit/category combo throwing partway through this
     // render shouldn't leave a half-built or stale sidebar up with
@@ -1426,7 +1426,7 @@ function updateLessonMeta() {
   // phrase "WHAT'S YOUR NAME?" crammed into the little "letter"
   // badge). Use the human-friendly title from data.js when we have
   // it, and only show the big single-letter badge for actual letters.
-  const signDataForTitle = isNameDrill ? null : (window.LWData?.getSign?.(level, sign) ?? null);
+  const signDataForTitle = isNameDrill ? null : (window.LWMissions?.getSign?.(level, sign) ?? null);
   const displayTitle = signDataForTitle?.title ?? sign;
   // The big badge shows the actual character for single-character signs
   // (letters and the 0-9 numbers category) and an icon otherwise. It used
@@ -1462,8 +1462,8 @@ function updateLessonMeta() {
   // source of truth for this drill's display name — read from there
   // instead of CATEGORIES.
   const categoryMeta = isNameDrill
-    ? (window.LWData?.getUnits?.()?.find(u => u.id === 'fingerspell_name') ?? null)
-    : (window.LWData?.getCategory?.(level, category) ?? null);
+    ? (window.LWMissions?.getUnits?.()?.find(u => u.id === 'fingerspell_name') ?? null)
+    : (window.LWMissions?.getCategory?.(level, category) ?? null);
   if (lessonSubtitleEl) {
     const label = categoryMeta?.title ?? category;
     // Level suffix ("· Basic Level" / "· Medium Level") removed per
@@ -1757,7 +1757,7 @@ function setupNavButtons() {
       //    separate ways that can fail, both checked below:
       //
       //    a) NOT TRACKED — the next sign in this page's own signOrder
-      //       (window.LWData.getCategorySigns() — data.js's full
+      //       (window.LWMissions.getCategorySigns() — data.js's full
       //       content list) isn't in missionSignOrder(mission) at all
       //       (missions.js's own, independently forked sign list —
       //       see the block comment on missionSignOrder() above). E.g.

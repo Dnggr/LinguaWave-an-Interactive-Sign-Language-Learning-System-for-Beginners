@@ -31,9 +31,9 @@
                ?dev=1 block, or typing the URL directly.
 
     ISOLATION : Does not touch js/learn.js, js/camera-practice.js, js/engine/
-               progress.js, or their pages. Loads js/data.js (for real
-               sign content) and js/missions.js (this pilot's own
-               module) only — no other app script. If the Missions
+               progress.js, or their pages. Loads js/missions.js (curriculum
+               content + this pilot's own module)
+               only — no other app script. If the Missions
                feature flag is off, this page still renders (it's the
                preview tool itself) but shows a banner saying so,
                rather than silently doing nothing.
@@ -99,7 +99,6 @@
     </div>
   </div>
 
-  <script defer src="../js/data.js"></script>
   <script defer src="../js/missions.js"></script>
   <script src="../js/missions-preview.js"></script>
 </body>
