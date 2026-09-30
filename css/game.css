@@ -109,7 +109,7 @@
 .gm-hint{min-height:1.5em;text-align:center;margin-top:var(--space-3)}
 
 /* overlays */
-.gm-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--backdrop);backdrop-filter:blur(6px);border-radius:var(--radius-xl)}
+.gm-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--backdrop);border-radius:var(--radius-xl)}   /* PERF FIX: backdrop-filter removed — re-blurring the live webcam every frame made the modal hang */
 .gm-overlay[hidden]{display:none}
 .gm-card{background:var(--clr-surface);color:var(--clr-text);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-8);max-width:440px;width:90%;text-align:center;display:flex;flex-direction:column;gap:var(--space-3);align-items:center;box-shadow:var(--shadow-card)}
 .gm-card h2{margin:0;font-family:var(--font-display)}

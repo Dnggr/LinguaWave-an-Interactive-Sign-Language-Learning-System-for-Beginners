@@ -85,9 +85,50 @@ function initSidebarNavGuard() {
   const links = document.querySelectorAll('.app-sidebar__link');
   if (!links.length) return;
 
-  let navigating = false;
+  let navigating = false, navTimer = null;
+  const root = document.documentElement;
+
+  function clearNavState() {
+    navigating = false;
+    clearTimeout(navTimer); navTimer = null;
+    root.classList.remove('lw-navigating');
+    links.forEach((l) => { l.classList.remove('is-loading'); l.removeAttribute('aria-busy'); });
+  }
+
+  // PERF — every sidebar link is a full page load (auth + Firebase + missions.js), so
+  // spam-clicking felt laggy. Two things fix the feel without touching the pages:
+  //  1. prefetch the target HTML as soon as the pointer is on the link, so the click
+  //     itself is (nearly) instant;
+  //  2. give immediate visual feedback on click (spinner + progress cursor) so the
+  //     wait never looks like a frozen UI.
+  const canSpeculate = !!(window.HTMLScriptElement && HTMLScriptElement.supports &&
+                          HTMLScriptElement.supports('speculationrules'));
+  if (canSpeculate) {
+    // Chromium: browser prefetches sidebar targets on hover/pointer-down.
+    // (prefetch only — NOT prerender, which would run each page's auth/Firestore code early.)
+    const rules = document.createElement('script');
+    rules.type = 'speculationrules';
+    rules.textContent = JSON.stringify({
+      prefetch: [{ source: 'document', where: { selector_matches: '.app-sidebar__link' }, eagerness: 'moderate' }],
+    });
+    document.head.appendChild(rules);
+  }
+  const prefetched = new Set();
+  function prefetchLink(link) {
+    if (canSpeculate) return;                       // handled by the rules above
+    const href = link.href;                         // '' / page URL for locked links (href removed)
+    if (!href || link.classList.contains('active') || prefetched.has(href)) return;
+    if (link.getAttribute('aria-disabled') === 'true') return;
+    prefetched.add(href);
+    const p = document.createElement('link');
+    p.rel = 'prefetch'; p.href = href; p.as = 'document';
+    document.head.appendChild(p);
+  }
 
   links.forEach((link) => {
+    ['pointerenter', 'focus', 'touchstart'].forEach((ev) =>
+      link.addEventListener(ev, () => prefetchLink(link), { passive: true }));
+
     link.addEventListener('click', (e) => {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
@@ -97,8 +138,16 @@ function initSidebarNavGuard() {
         e.preventDefault();
         return;
       }
+      // Locked links (game-gate.js) have no href and handle their own click.
+      if (!link.getAttribute('href')) return;
 
       navigating = true;
+      link.classList.add('is-loading');
+      link.setAttribute('aria-busy', 'true');
+      root.classList.add('lw-navigating');
+      // Safety net: if the navigation stalls (offline, blocked), don't leave the
+      // sidebar dead forever.
+      navTimer = setTimeout(clearNavState, 8000);
     });
   });
 
@@ -106,7 +155,7 @@ function initSidebarNavGuard() {
   // state back without DOMContentLoaded re-running — reset the flag
   // so a `navigating` left `true` from before the user left doesn't
   // permanently block the sidebar after they return.
-  window.addEventListener('pageshow', () => { navigating = false; });
+  window.addEventListener('pageshow', clearNavState);
 }
 
 

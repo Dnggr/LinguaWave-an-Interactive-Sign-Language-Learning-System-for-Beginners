@@ -390,30 +390,50 @@ async function bootEngine() {
   if (engineReady || booting) return engineReady;
   booting = true;
   try {
-    setStatus('Loading hand tracking…'); await initMediaPipe();
-    setStatus('Starting camera…');       await startCamera(videoEl, canvasEl);
-    setStatus('Loading sign models…');   await loadModels();
+    setStatus('Loading hand tracking, camera and sign models…');
+    // PERF FIX — these three used to run one after another (sum of all three waits).
+    // They don't depend on each other, so run them together (total = the slowest one).
+    await Promise.all([
+      initMediaPipe(),
+      startCamera(videoEl, canvasEl),
+      loadModels(),
+    ]);
     if (!isModelReady()) throw new Error('Hand tracking model failed to load');
     setStatus(''); engineReady = true;
   } catch (e) {
     console.error('[game] boot failed:', e);
+    stopCamera(videoEl);                       // don't leave the camera on after a failed boot
     setStatus(`Could not start: ${e.message}`);
+    // the start overlay covers #camera-status, so show the reason where the player can see it
+    $('gm-pool-note').textContent = `Could not start: ${e.message}`;
   }
   booting = false;
   return engineReady;
 }
 
 async function startGame() {
-  const size = +$('gm-size').value;
-  $('gm-btn-start').disabled = true;
-  if (!(await bootEngine())) { $('gm-btn-start').disabled = false; return; }
+  const size = +$('gm-size').value, btn = $('gm-btn-start');
+  // PERF/UX FIX — instant feedback. Before, the button just went dead for several seconds
+  // (boot + up to 3x4s progress waits) with the only status text hidden under the overlay.
+  btn.disabled = true; btn.textContent = 'Loading…';
+  $('gm-pool-note').textContent = 'Loading hand tracking, camera and sign models…';
+  let ok = false, pool = null;
+  try {
+    // engine boot and the sign-pool lookup are independent -> run them in parallel
+    [ok, pool] = await Promise.all([bootEngine(), buildPool(size, $('gm-source').value)]);
+  } catch (e) {
+    console.error('[game] start failed:', e);
+    $('gm-pool-note').textContent = `Could not start: ${e.message}`;
+  }
+  btn.textContent = 'Start';
+  if (!ok || !pool) { btn.disabled = false; return; }
   clearTimers();
-  const { signs, learnedSet, note } = await buildPool(size, $('gm-source').value);
+  const { signs, learnedSet, note } = pool;
   if (!signs.length) {
     setStatus('');
     $('gm-hint').textContent = '';
     $('gm-pool-note').textContent = "No finished signs to play with yet. Complete a lesson first, or pick 'learned + new signs'.";
-    $('gm-btn-start').disabled = false; return;
+    btn.disabled = false; return;
   }
   bricks = signs.map(sign => ({ sign, type: getDetectionType(sign) === 'motion' ? 'motion' : 'static', learned: learnedSet.has(sign), el: null, broken: false }));
   stats = { correct: 0, wrong: 0, size: signs.length };
@@ -431,6 +451,10 @@ async function startGame() {
 
 function finish() {
   running = false; clearInterval(tickId); clearTimers(); phase = 'static';
+  // PERF FIX — the rAF loop kept running MediaPipe + skeleton drawing behind the result modal.
+  // startGame() restarts it (`if (!rafId) loop()`), so it's safe to stop here.
+  if (rafId) cancelAnimationFrame(rafId); rafId = null;
+  clearCanvas(ctx, canvasEl.width, canvasEl.height);
   const ms = Date.now() - startedAt, total = stats.correct + stats.wrong;
   const acc = total ? stats.correct / total : 1;
   const stars = acc >= 0.85 ? 3 : acc >= 0.6 ? 2 : 1;
