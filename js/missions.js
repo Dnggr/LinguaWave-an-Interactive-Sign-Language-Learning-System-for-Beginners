@@ -8840,8 +8840,8 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (!user || !user.uid) return;
     try {
-      if (!auth.writeProgressDoc) return;
-      Promise.resolve(auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, { [field]: state }, { merge: true })).catch((e) => {
+      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
+      Promise.resolve(auth.setDoc(ref, { [field]: state }, { merge: true })).catch((e) => {
         console.warn('[missions.js] Missions Firestore write-through failed for', field, e);
       });
     } catch (e) {
@@ -8954,8 +8954,8 @@ function getCategoriesForUnitV2(unitOrder) {
     }
 
     try {
-      const snap = await auth.readProgressDoc(FIRESTORE_COLLECTION_V2);
-      if (!snap) return; // signed out / unverified — stay local-only
+      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
+      const snap = await auth.getDoc(ref);
 
       const localState = {
         progress: loadProgressState(),
@@ -8963,16 +8963,16 @@ function getCategoriesForUnitV2(unitOrder) {
         hearts: loadHeartsState(),
       };
 
-      if (!snap.exists) {
+      if (!snap || !snap.exists()) {
         // Returning/new user, nothing in Firestore yet — migration:
         // push whatever real local data exists UP, rather than
         // discarding it in favor of an empty remote doc.
-        await auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, localState);
+        await auth.setDoc(ref, localState);
         writeSessionSyncCache(user.uid);
         return;
       }
 
-      const merged = reconcileMissionsState(localState, snap.data || {});
+      const merged = reconcileMissionsState(localState, snap.data() || {});
       saveProgressState(merged.progress, { skipPush: true });
       saveStreakState(merged.streak, { skipPush: true });
       saveHeartsState(merged.hearts, { skipPush: true });
@@ -8980,7 +8980,7 @@ function getCategoriesForUnitV2(unitOrder) {
       // Push the merged (superset) result back so any OTHER device
       // that only had, say, the local-only half of the union also
       // converges next time it syncs.
-      await auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, merged, { merge: true });
+      await auth.setDoc(ref, merged, { merge: true });
       writeSessionSyncCache(user.uid);
     } catch (e) {
       console.warn('[missions.js] Missions Firestore sync failed, staying local-only:', e);
@@ -9421,7 +9421,10 @@ function getCategoriesForUnitV2(unitOrder) {
     if (!mission) return null;
     const index = mission.items.findIndex((item) => item.kind === 'LESSON' && item.signId === signId);
     if (index === -1) return null;
-    return markItemComplete(mission, index, mission.items[index]);
+    const done = markItemComplete(mission, index, mission.items[index]);
+    // XP (js/xp.js): same one-time, server-decided reward as finishing the lesson item in-app.
+    if (global.LWXP) global.LWXP.claimItem(mission, index);
+    return done;
   }
 
   // Phase 2 addition — when this item was completed, or null.

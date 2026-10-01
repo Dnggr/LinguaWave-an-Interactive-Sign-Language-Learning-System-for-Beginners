@@ -652,6 +652,9 @@ function renderItem(mission, index) {
 
 function completeAndAdvance(mission, index, item) {
   window.LWMissions.markItemComplete(mission, index, item);
+  // XP (js/xp.js): REPORT the item; the server decides the reward (one-time per item). Optional
+  // chaining on purpose — if xp.js failed to load the lesson flow must behave exactly as before.
+  if (window.LWXP) window.LWXP.claimItem(mission, index);
   const next = index + 1;
   if (next < mission.items.length) {
     renderItem(mission, next);

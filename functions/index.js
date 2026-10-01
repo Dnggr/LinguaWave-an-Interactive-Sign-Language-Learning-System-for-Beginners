@@ -58,11 +58,19 @@
  *   instance — best effort, not a hard guarantee). Consider Firebase App
  *   Check if this ever gets abused.
  * ─────────────────────────────────────────────────────────────────
+ * 2026-09-30 — XP / levels / badges / streaks / leaderboards  (NEW, see functions/xp.js)
+ *   claimLessonItem, claimMissionComplete, startGameSession, finishGameSession,
+ *   backfillLegacyProgress, setLeaderboardVisibility, expireStaleStreaks (scheduled hourly).
+ *   All XP state is written ONLY here (Admin SDK); firestore.rules deny client writes to it.
+ *   deleteLearnerAccount below also removes the learner's XP data.
+ * ─────────────────────────────────────────────────────────────────
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const emailCheck = require("./email-check");
+const xp = require("./xp");
+const { deleteXpData } = require("./xp-cleanup");
 
 admin.initializeApp();
 
@@ -108,8 +116,26 @@ exports.deleteLearnerAccount = onCall(async (request) => {
     );
   }
 
+  // 3) XP state, public leaderboard profile, game session, audit events.
+  try {
+    await deleteXpData(uid);
+  } catch (err) {
+    console.error("deleteXpData failed", uid, err);
+    throw new HttpsError("internal", "The login was deleted but some XP data couldn't be removed. Try deleting again.");
+  }
+
   return { ok: true, uid };
 });
+
+/* ── XP system (functions/xp.js) ─────────────────────────────────── */
+exports.claimLessonItem = xp.claimLessonItem;
+exports.claimMissionComplete = xp.claimMissionComplete;
+exports.startGameSession = xp.startGameSession;
+exports.finishGameSession = xp.finishGameSession;
+exports.backfillLegacyProgress = xp.backfillLegacyProgress;
+exports.setLeaderboardVisibility = xp.setLeaderboardVisibility;
+exports.expireStaleStreaks = xp.expireStaleStreaks;
+exports.syncPublicProfileFromUser = xp.syncPublicProfileFromUser;
 
 /* ── checkEmailDeliverability ───────────────────────────────────── */
 const REACHER_URL = defineString("REACHER_URL", { default: "" });

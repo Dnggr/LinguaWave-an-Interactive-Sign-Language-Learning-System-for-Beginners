@@ -897,3 +897,8 @@ without a continue URL).
 | `--font-display` | Space Grotesk | Headings |
 | `--font-body`    | Inter | Body text |
 | Pass threshold | 80% | Quiz assessment |
+
+## XP / leaderboard subsystem (2026-09-30)
+Browser (`js/xp.js`) -> callable Cloud Functions (`functions/xp.js`, pure rules in `xp-engine.js`, numbers in `xp-config.js`) ->
+Firestore `xpState` (private) + `publicProfiles` (leaderboard rows). Rules block all client writes to these. Details, economy,
+threat model and deploy steps: `XP_SYSTEM.md`.
