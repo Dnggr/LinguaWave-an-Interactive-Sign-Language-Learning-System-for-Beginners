@@ -421,6 +421,53 @@
     if (Object.prototype.hasOwnProperty.call(LUCIDE_LABELS, ll)) LABELS[ll] = LUCIDE_LABELS[ll];
   }
 
+  /* Learn-page chapter rail (css/learn.css .chapter-rail, js/learn.js). Lucide (https://lucide.dev, ISC
+   * licence) path bodies copied unchanged from lucide-static. Ids carry a 'chapter_' prefix on purpose:
+   * plain Lucide names such as 'school' already exist in BODIES for other screens, and the LUCIDE loop
+   * above would silently overwrite them. */
+  var LUCIDE_CHAPTERS = {
+    chapter_compass: '<circle cx="12" cy="12" r="10"/> <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
+    chapter_blocks: '<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/> <rect x="14" y="2" width="8" height="8" rx="1"/>',
+    chapter_hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    chapter_smile: '<path d="M15 10V9"/> <path d="M16.472 15a6 6 0 01-8.943 0"/> <path d="M9 10V9"/> <circle cx="12" cy="12" r="10"/>',
+    chapter_person_standing: '<circle cx="12" cy="5" r="1"/> <path d="m9 20 3-6 3 6"/> <path d="m6 8 6 2 6-2"/> <path d="M12 10v4"/>',
+    chapter_palette: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/> <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/> <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/> <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/> <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
+    chapter_house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    chapter_school: '<path d="M14 21v-3a2 2 0 0 0-4 0v3"/> <path d="M18 4.933V21"/> <path d="m4 6 7.106-3.79a2 2 0 0 1 1.788 0L20 6"/> <path d="m6 11-3.52 2.147a1 1 0 0 0-.48.854V19a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a1 1 0 0 0-.48-.853L18 11"/> <path d="M6 4.933V21"/> <circle cx="12" cy="9" r="2"/>',
+    chapter_apple: '<path d="M12 6.528V3a1 1 0 0 1 1-1h0"/> <path d="M18.237 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.472A6 6 0 0 0 2 11a15.1 15.1 0 0 0 3.763 10 3 3 0 0 0 3.648.648 5.5 5.5 0 0 1 5.178 0A3 3 0 0 0 18.237 21"/>',
+    chapter_shirt: '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+    chapter_map_pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/> <circle cx="12" cy="10" r="3"/>',
+    chapter_messages_square: '<path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/> <path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/>',
+    chapter_lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/> <path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    chapter_check: '<path d="M20 6 9 17l-5-5"/>'
+  };
+  for (var lcc in LUCIDE_CHAPTERS) {
+    if (Object.prototype.hasOwnProperty.call(LUCIDE_CHAPTERS, lcc)) BODIES[lcc] = LUCIDE_CHAPTERS[lcc];
+  }
+  var LUCIDE_CHAPTER_LABELS = {
+    chapter_compass: 'Orientation',
+    chapter_blocks: 'ASL Foundations',
+    chapter_hand: 'Introduce Yourself',
+    chapter_smile: 'Express How You Feel',
+    chapter_person_standing: 'Daily Actions',
+    chapter_palette: 'Describing People & Things',
+    chapter_house: 'Home & Family',
+    chapter_school: 'School Life',
+    chapter_apple: 'Food & Nature',
+    chapter_shirt: 'Clothing & Belongings',
+    chapter_map_pin: 'People, Places & Time',
+    chapter_messages_square: 'Having a Conversation',
+    chapter_lock: 'Locked',
+    chapter_check: 'Complete'
+  };
+  for (var lcl in LUCIDE_CHAPTER_LABELS) {
+    if (Object.prototype.hasOwnProperty.call(LUCIDE_CHAPTER_LABELS, lcl)) LABELS[lcl] = LUCIDE_CHAPTER_LABELS[lcl];
+  }
+
+  /* Mission Overview "Next" button (js/mission-overview.js). Lucide arrow-right, path body unchanged. */
+  BODIES.arrow_right = '<path d="M5 12h14"/> <path d="m12 5 7 7-7 7"/>';
+  LABELS.arrow_right = 'Next';
+
   /* Semantic aliases -> pack ids. These exist so call sites can name the
    * MEANING they want ('done', 'lock') without caring what the artwork
    * file happens to be called. Resolving three concepts that used to
@@ -600,4 +647,4 @@
   } else {
     root.LWIcons.hydrate();
   }
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : globalThis);

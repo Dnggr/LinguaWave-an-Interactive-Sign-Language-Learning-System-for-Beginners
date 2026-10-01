@@ -54,35 +54,16 @@
 */
 
 // ── Load TF.js from CDN (UMD bundle → sets window.tf) ────────────
-// PERF FIX — this used to be a top-level `await`, which blocks every module that
-// imports this file (game.js, camera-practice.js, …) until the ~1.5 MB script has
-// downloaded. Nothing in game.js ran in that time, so the Start button had no
-// click handler yet and the start modal looked frozen. Now the download starts
-// immediately in the background (no blocking) and loadModels() awaits it.
-let tf = window.tf || null;
-let _tfPromise = null;
-function ensureTf() {
-  if (tf) return Promise.resolve(tf);
-  if (_tfPromise) return _tfPromise;
-  _tfPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
-    s.async = true;
-    s.onload = () => {
-      tf = window.tf;
-      if (tf) resolve(tf);
-      else { _tfPromise = null; reject(new Error('[classifier] window.tf is undefined after script load.')); }
-    };
-    s.onerror = () => {
-      _tfPromise = null;   // allow a retry on the next loadModels() call
-      s.remove();
-      reject(new Error('[classifier] Failed to load TensorFlow.js from CDN.'));
-    };
-    document.head.appendChild(s);
-  });
-  return _tfPromise;
-}
-ensureTf().catch(() => { /* surfaced (and retried) by loadModels() */ });
+await new Promise((resolve, reject) => {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
+  s.onload  = resolve;
+  s.onerror = () => reject(new Error('[classifier] Failed to load TensorFlow.js from CDN.'));
+  document.head.appendChild(s);
+});
+
+const tf = window.tf;
+if (!tf) throw new Error('[classifier] window.tf is undefined after script load.');
 
 // NEW — diagnostic for the "gets laggier on retry, camera itself stays
 // smooth" symptom. Open the browser console and watch these lines: if
@@ -250,6 +231,10 @@ const SIGN_GROUPS = [
   ['WIND', 'WINDY', 'STORMY'],
   ['RAIN', 'RAINY'],
   ['BITTER', 'SOUR'],
+  // 2026-10-01: curriculum spelling vs trained-label spelling of the SAME sign
+  // (asl_motion_model has FINISHED / THANKS; the lessons teach FINISH / THANK YOU).
+  ['FINISH', 'FINISHED'],
+  ['THANK YOU', 'THANKS'],
 ];
 const GROUP_OF = (() => {
   const m = new Map();
@@ -616,7 +601,6 @@ async function loadKeras3CompatModel(modelJsonPath) {
 // ── Load ──────────────────────────────────────────────────────────
 
 export async function loadModels() {
-  await ensureTf();   // no-op if the background download already finished
   console.log('[classifier] Loading static model…');
   try {
     staticModel  = await loadKeras3CompatModel(STATIC_MODEL_PATH);

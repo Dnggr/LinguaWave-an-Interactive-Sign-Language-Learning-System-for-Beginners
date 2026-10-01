@@ -134,6 +134,15 @@
     </div>
   </div>
 
+  <!-- Chapter rail (NEW): fixed icon dock on the right edge of the viewport, one Lucide icon per
+       chapter (+ Orientation). Filled by js/learn.js (renderChapterRail), styled in css/learn.css.
+       The tooltip is a single shared element positioned by JS so the rail's own overflow can't clip it. -->
+  <nav class="chapter-rail" id="chapter-rail" aria-label="Jump to a chapter" hidden></nav>
+  <div class="chapter-rail__tip" id="chapter-rail-tip" aria-hidden="true">
+    <span class="chapter-rail__tip-title" id="chapter-rail-tip-title"></span>
+    <span class="chapter-rail__tip-sub" id="chapter-rail-tip-sub"></span>
+  </div>
+
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
@@ -155,4 +164,4 @@
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
 </body>
-</html>
+</html>

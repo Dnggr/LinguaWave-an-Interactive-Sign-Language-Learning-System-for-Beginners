@@ -449,6 +449,8 @@
   margin-top: var(--space-6);
 }
 .mo-actions .btn[disabled] { opacity: .55; cursor: not-allowed; }
+.mo-actions .btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.mo-actions .btn[aria-disabled="true"]:hover { background: var(--clr-secondary-soft); color: var(--clr-secondary-text); }
 .mo-actions .btn .badge { margin-left: var(--space-2); vertical-align: middle; }
 
 /* ── TEMPORARY: Feedback/Settings sidebar links disabled on all real
@@ -1901,4 +1903,4 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
+}
