@@ -416,8 +416,8 @@ export const SIGN_DICTIONARY = {
   // was previously marked disabled, so the classifier ran a doomed
   // match on every attempt. Now consistent with the 16 Essential
   // Words below (same pattern: real entry, disabled until retrained).
-  'HELLO':    { category:'word', imageFile:'hello.gif',    detectionType:'motion', disabled:true },
-  'THANK YOU':{ category:'word', imageFile:'thank-you.gif',detectionType:'motion', disabled:true },
+  'HELLO':    { category:'word', imageFile:'hello.gif',    detectionType:'motion' },
+  'THANK YOU':{ category:'word', imageFile:'thank-you.gif',detectionType:'motion' },
 
   // FIX (this session, PIVOT_CHECKLIST.md Phase 7 flagged item):
   // HOT/COLD (Unit 5, temperature) previously had NO SIGN_DICTIONARY
@@ -429,28 +429,28 @@ export const SIGN_DICTIONARY = {
   // way until real capture + retraining happens.
   'HOT':  { category:'temperature', imageFile:'hot.gif',  detectionType:'motion', disabled:true },
   'COLD': { category:'temperature', imageFile:'cold.gif', detectionType:'motion', disabled:true },
-  'YES':      { category:'word', imageFile:'yes.gif',      detectionType:'motion', disabled:true },
-  'NO':       { category:'word', imageFile:'no.gif',       detectionType:'motion', disabled:true },
-  'PLEASE':   { category:'word', imageFile:'please.gif',   detectionType:'motion', disabled:true },
-  'SORRY':    { category:'word', imageFile:'sorry.gif',    detectionType:'motion', disabled:true },
-  'HELP':     { category:'word', imageFile:'help.gif',     detectionType:'motion', disabled:true },
-  'WATER':    { category:'word', imageFile:'water.gif',    detectionType:'motion', disabled:true },
-  'FOOD':     { category:'word', imageFile:'food.gif',     detectionType:'motion', disabled:true },
-  'GOOD':     { category:'word', imageFile:'good.gif',     detectionType:'motion', disabled:true },
+  'YES':      { category:'word', imageFile:'yes.gif',      detectionType:'motion' },
+  'NO':       { category:'word', imageFile:'no.gif',       detectionType:'motion' },
+  'PLEASE':   { category:'word', imageFile:'please.gif',   detectionType:'motion' },
+  'SORRY':    { category:'word', imageFile:'sorry.gif',    detectionType:'motion' },
+  'HELP':     { category:'word', imageFile:'help.gif',     detectionType:'motion' },
+  'WATER':    { category:'word', imageFile:'water.gif',    detectionType:'motion' },
+  'FOOD':     { category:'word', imageFile:'food.gif',     detectionType:'motion' },
+  'GOOD':     { category:'word', imageFile:'good.gif',     detectionType:'motion' },
   'BAD':      { category:'word', imageFile:'bad.gif',      detectionType:'motion', disabled:true },
-  'GO':       { category:'word', imageFile:'go.gif',       detectionType:'motion', disabled:true },
-  'COME':     { category:'word', imageFile:'come.gif',     detectionType:'motion', disabled:true },
-  'WHERE':    { category:'word', imageFile:'where.gif',    detectionType:'motion', disabled:true },
-  'WHY':      { category:'word', imageFile:'why.gif',      detectionType:'motion', disabled:true },
-  'WHAT':     { category:'word', imageFile:'what.gif',     detectionType:'motion', disabled:true },
+  'GO':       { category:'word', imageFile:'go.gif',       detectionType:'motion' },
+  'COME':     { category:'word', imageFile:'come.gif',     detectionType:'motion' },
+  'WHERE':    { category:'word', imageFile:'where.gif',    detectionType:'motion' },
+  'WHY':      { category:'word', imageFile:'why.gif',      detectionType:'motion' },
+  'WHAT':     { category:'word', imageFile:'what.gif',     detectionType:'motion' },
   // BUGFIX (this session): this key used to be 'RESTROOM'. data.js has
   // no 'RESTROOM' signId — it has a 'BATHROOM' entry (in `health`,
   // moved to `requests` this session) with the identical T-hand-shake
   // description. Same real-world sign, two different labels, neither
   // file referencing the other — renamed to match data.js rather than
   // create a second, duplicate dictionary entry for one physical sign.
-  'BATHROOM': { category:'word', imageFile:'bathroom.gif', detectionType:'motion', disabled:true },
-  'HUNGRY':   { category:'word', imageFile:'hungry.gif',   detectionType:'motion', disabled:true },
+  'BATHROOM': { category:'word', imageFile:'bathroom.gif', detectionType:'motion' },
+  'HUNGRY':   { category:'word', imageFile:'hungry.gif',   detectionType:'motion' },
 
   // BUGFIX (this session, found auditing Phase 7 / Unit 4 for the
   // proposed reorder): data.js's 'requests' category (Unit 4) has 11
@@ -465,11 +465,11 @@ export const SIGN_DICTIONARY = {
   // silently missing looks like an oversight, not a decision, to the
   // next person reading this file. Added for parity with their 6
   // siblings and with the HELLO/THANK YOU/HOT/COLD fixes above.
-  'EXCUSE': { category:'word', imageFile:'excuse.gif', detectionType:'motion', disabled:true },
-  'WHO':    { category:'word', imageFile:'who.gif',    detectionType:'motion', disabled:true },
-  'WHEN':   { category:'word', imageFile:'when.gif',   detectionType:'motion', disabled:true },
-  'HOW':    { category:'word', imageFile:'how.gif',    detectionType:'motion', disabled:true },
-  'STOP':   { category:'word', imageFile:'stop.gif',   detectionType:'motion', disabled:true },
+  'EXCUSE': { category:'word', imageFile:'excuse.gif', detectionType:'motion' },
+  'WHO':    { category:'word', imageFile:'who.gif',    detectionType:'motion' },
+  'WHEN':   { category:'word', imageFile:'when.gif',   detectionType:'motion' },
+  'HOW':    { category:'word', imageFile:'how.gif',    detectionType:'motion' },
+  'STOP':   { category:'word', imageFile:'stop.gif',   detectionType:'motion' },
 
   // REV 8 (2026-08-25): disabled placeholders for the new data.js content
   // added this session (Actions/Hand Actions/Communication, Units 9-11).
@@ -480,73 +480,73 @@ export const SIGN_DICTIONARY = {
   // the next person reading this file. No new detection/training work
   // is implied by adding these — they stay disabled until Phase 7
   // capture + retraining actually happens for this content.
-  'WAIT':   { category:'word', imageFile:'wait.gif',   detectionType:'motion', disabled:true },
-  'SIT':    { category:'word', imageFile:'sit.gif',    detectionType:'motion', disabled:true },
-  'STAND':  { category:'word', imageFile:'stand.gif',  detectionType:'motion', disabled:true },
-  'WALK':   { category:'word', imageFile:'walk.gif',   detectionType:'motion', disabled:true },
-  'RUN':    { category:'word', imageFile:'run.gif',    detectionType:'motion', disabled:true },
-  'JUMP':   { category:'word', imageFile:'jump.gif',   detectionType:'motion', disabled:true },
+  'WAIT':   { category:'word', imageFile:'wait.gif',   detectionType:'motion' },
+  'SIT':    { category:'word', imageFile:'sit.gif',    detectionType:'motion' },
+  'STAND':  { category:'word', imageFile:'stand.gif',  detectionType:'motion' },
+  'WALK':   { category:'word', imageFile:'walk.gif',   detectionType:'motion' },
+  'RUN':    { category:'word', imageFile:'run.gif',    detectionType:'motion' },
+  'JUMP':   { category:'word', imageFile:'jump.gif',   detectionType:'motion' },
   'EAT':    { category:'word', imageFile:'eat.gif',    detectionType:'motion', disabled:true },
-  'DRINK':  { category:'word', imageFile:'drink.gif',  detectionType:'motion', disabled:true },
-  'SLEEP':  { category:'word', imageFile:'sleep.gif',  detectionType:'motion', disabled:true },
-  'WAKE':   { category:'word', imageFile:'wake.gif',   detectionType:'motion', disabled:true },
-  'PLAY':   { category:'word', imageFile:'play.gif',   detectionType:'motion', disabled:true },
-  'LOOK':   { category:'word', imageFile:'look.gif',   detectionType:'motion', disabled:true },
+  'DRINK':  { category:'word', imageFile:'drink.gif',  detectionType:'motion' },
+  'SLEEP':  { category:'word', imageFile:'sleep.gif',  detectionType:'motion' },
+  'WAKE':   { category:'word', imageFile:'wake.gif',   detectionType:'motion' },
+  'PLAY':   { category:'word', imageFile:'play.gif',   detectionType:'motion' },
+  'LOOK':   { category:'word', imageFile:'look.gif',   detectionType:'motion' },
   'SEE':    { category:'word', imageFile:'see.gif',    detectionType:'motion', disabled:true },
-  'LISTEN': { category:'word', imageFile:'listen.gif', detectionType:'motion', disabled:true },
-  'TALK':   { category:'word', imageFile:'talk.gif',   detectionType:'motion', disabled:true },
-  'READ':   { category:'word', imageFile:'read.gif',   detectionType:'motion', disabled:true },
-  'WRITE':  { category:'word', imageFile:'write.gif',  detectionType:'motion', disabled:true },
-  'DRAW':   { category:'word', imageFile:'draw.gif',   detectionType:'motion', disabled:true },
-  'SING':   { category:'word', imageFile:'sing.gif',   detectionType:'motion', disabled:true },
-  'DANCE':  { category:'word', imageFile:'dance.gif',  detectionType:'motion', disabled:true },
-  'COOK':   { category:'word', imageFile:'cook.gif',   detectionType:'motion', disabled:true },
-  'CLEAN':  { category:'word', imageFile:'clean.gif',  detectionType:'motion', disabled:true },
-  'THINK':  { category:'word', imageFile:'think.gif',  detectionType:'motion', disabled:true },
-  'CRY':    { category:'word', imageFile:'cry.gif',    detectionType:'motion', disabled:true },
-  'LAUGH':  { category:'word', imageFile:'laugh.gif',  detectionType:'motion', disabled:true },
-  'RIDE':   { category:'word', imageFile:'ride.gif',   detectionType:'motion', disabled:true },
-  'BATH':   { category:'word', imageFile:'bath.gif',   detectionType:'motion', disabled:true },
-  'GIVE':   { category:'word', imageFile:'give.gif',   detectionType:'motion', disabled:true },
-  'TAKE':   { category:'word', imageFile:'take.gif',   detectionType:'motion', disabled:true },
-  'PUT':    { category:'word', imageFile:'put.gif',    detectionType:'motion', disabled:true },
-  'GET':    { category:'word', imageFile:'get.gif',    detectionType:'motion', disabled:true },
-  'BRING':  { category:'word', imageFile:'bring.gif',  detectionType:'motion', disabled:true },
+  'LISTEN': { category:'word', imageFile:'listen.gif', detectionType:'motion' },
+  'TALK':   { category:'word', imageFile:'talk.gif',   detectionType:'motion' },
+  'READ':   { category:'word', imageFile:'read.gif',   detectionType:'motion' },
+  'WRITE':  { category:'word', imageFile:'write.gif',  detectionType:'motion' },
+  'DRAW':   { category:'word', imageFile:'draw.gif',   detectionType:'motion' },
+  'SING':   { category:'word', imageFile:'sing.gif',   detectionType:'motion' },
+  'DANCE':  { category:'word', imageFile:'dance.gif',  detectionType:'motion' },
+  'COOK':   { category:'word', imageFile:'cook.gif',   detectionType:'motion' },
+  'CLEAN':  { category:'word', imageFile:'clean.gif',  detectionType:'motion' },
+  'THINK':  { category:'word', imageFile:'think.gif',  detectionType:'motion' },
+  'CRY':    { category:'word', imageFile:'cry.gif',    detectionType:'motion' },
+  'LAUGH':  { category:'word', imageFile:'laugh.gif',  detectionType:'motion' },
+  'RIDE':   { category:'word', imageFile:'ride.gif',   detectionType:'motion' },
+  'BATH':   { category:'word', imageFile:'bath.gif',   detectionType:'motion' },
+  'GIVE':   { category:'word', imageFile:'give.gif',   detectionType:'motion' },
+  'TAKE':   { category:'word', imageFile:'take.gif',   detectionType:'motion' },
+  'PUT':    { category:'word', imageFile:'put.gif',    detectionType:'motion' },
+  'GET':    { category:'word', imageFile:'get.gif',    detectionType:'motion' },
+  'BRING':  { category:'word', imageFile:'bring.gif',  detectionType:'motion' },
   'CARRY':  { category:'word', imageFile:'carry.gif',  detectionType:'motion', disabled:true },
   'PUSH':   { category:'word', imageFile:'push.gif',   detectionType:'motion', disabled:true },
-  'PULL':   { category:'word', imageFile:'pull.gif',   detectionType:'motion', disabled:true },
-  'THROW':  { category:'word', imageFile:'throw.gif',  detectionType:'motion', disabled:true },
-  'CATCH':  { category:'word', imageFile:'catch.gif',  detectionType:'motion', disabled:true },
-  'PICK':   { category:'word', imageFile:'pick.gif',   detectionType:'motion', disabled:true },
-  'ASK':    { category:'word', imageFile:'ask.gif',    detectionType:'motion', disabled:true },
-  'ANSWER': { category:'word', imageFile:'answer.gif', detectionType:'motion', disabled:true },
-  'TELL':   { category:'word', imageFile:'tell.gif',   detectionType:'motion', disabled:true },
-  'SHOW':   { category:'word', imageFile:'show.gif',   detectionType:'motion', disabled:true },
-  'SHARE':  { category:'word', imageFile:'share.gif',  detectionType:'motion', disabled:true },
-  'TEACH':  { category:'word', imageFile:'teach.gif',  detectionType:'motion', disabled:true },
-  'SIGN':   { category:'word', imageFile:'sign.gif',   detectionType:'motion', disabled:true },
+  'PULL':   { category:'word', imageFile:'pull.gif',   detectionType:'motion' },
+  'THROW':  { category:'word', imageFile:'throw.gif',  detectionType:'motion' },
+  'CATCH':  { category:'word', imageFile:'catch.gif',  detectionType:'motion' },
+  'PICK':   { category:'word', imageFile:'pick.gif',   detectionType:'motion' },
+  'ASK':    { category:'word', imageFile:'ask.gif',    detectionType:'motion' },
+  'ANSWER': { category:'word', imageFile:'answer.gif', detectionType:'motion' },
+  'TELL':   { category:'word', imageFile:'tell.gif',   detectionType:'motion' },
+  'SHOW':   { category:'word', imageFile:'show.gif',   detectionType:'motion' },
+  'SHARE':  { category:'word', imageFile:'share.gif',  detectionType:'motion' },
+  'TEACH':  { category:'word', imageFile:'teach.gif',  detectionType:'motion' },
+  'SIGN':   { category:'word', imageFile:'sign.gif',   detectionType:'motion' },
 
   // CONTENT PASS (2026-08-26): parity placeholders for the new 'body'
   // category opened in data.js this session (Unit 12, 16 words). Same
   // convention as the REV 8 block above — disabled until Phase 7
   // capture + retraining, added now so getAllowedLabelsForSign() and
   // any SIGNS/SIGN_DICTIONARY parity check don't flag these as orphans.
-  'BODY':    { category:'word', imageFile:'body.gif',    detectionType:'motion', disabled:true },
-  'HEAD':    { category:'word', imageFile:'head.gif',    detectionType:'motion', disabled:true },
-  'HAIR':    { category:'word', imageFile:'hair.gif',    detectionType:'motion', disabled:true },
-  'FACE':    { category:'word', imageFile:'face.gif',    detectionType:'motion', disabled:true },
-  'EYE':     { category:'word', imageFile:'eye.gif',     detectionType:'motion', disabled:true },
-  'EAR':     { category:'word', imageFile:'ear.gif',     detectionType:'motion', disabled:true },
-  'NOSE':    { category:'word', imageFile:'nose.gif',    detectionType:'motion', disabled:true },
-  'MOUTH':   { category:'word', imageFile:'mouth.gif',   detectionType:'motion', disabled:true },
-  'TEETH':   { category:'word', imageFile:'teeth.gif',   detectionType:'motion', disabled:true },
-  'HAND':    { category:'word', imageFile:'hand.gif',    detectionType:'motion', disabled:true },
-  'FINGER':  { category:'word', imageFile:'finger.gif',  detectionType:'motion', disabled:true },
-  'ARM':     { category:'word', imageFile:'arm.gif',     detectionType:'motion', disabled:true },
-  'LEG':     { category:'word', imageFile:'leg.gif',     detectionType:'motion', disabled:true },
-  'FOOT':    { category:'word', imageFile:'foot.gif',    detectionType:'motion', disabled:true },
-  'STOMACH': { category:'word', imageFile:'stomach.gif', detectionType:'motion', disabled:true },
-  'BACK':    { category:'word', imageFile:'back.gif',    detectionType:'motion', disabled:true },
+  'BODY':    { category:'word', imageFile:'body.gif',    detectionType:'motion' },
+  'HEAD':    { category:'word', imageFile:'head.gif',    detectionType:'motion' },
+  'HAIR':    { category:'word', imageFile:'hair.gif',    detectionType:'motion' },
+  'FACE':    { category:'word', imageFile:'face.gif',    detectionType:'motion' },
+  'EYE':     { category:'word', imageFile:'eye.gif',     detectionType:'motion' },
+  'EAR':     { category:'word', imageFile:'ear.gif',     detectionType:'motion' },
+  'NOSE':    { category:'word', imageFile:'nose.gif',    detectionType:'motion' },
+  'MOUTH':   { category:'word', imageFile:'mouth.gif',   detectionType:'motion' },
+  'TEETH':   { category:'word', imageFile:'teeth.gif',   detectionType:'motion' },
+  'HAND':    { category:'word', imageFile:'hand.gif',    detectionType:'motion' },
+  'FINGER':  { category:'word', imageFile:'finger.gif',  detectionType:'motion' },
+  'ARM':     { category:'word', imageFile:'arm.gif',     detectionType:'motion' },
+  'LEG':     { category:'word', imageFile:'leg.gif',     detectionType:'motion' },
+  'FOOT':    { category:'word', imageFile:'foot.gif',    detectionType:'motion' },
+  'STOMACH': { category:'word', imageFile:'stomach.gif', detectionType:'motion' },
+  'BACK':    { category:'word', imageFile:'back.gif',    detectionType:'motion' },
 
   // CONTENT PASS (2026-08-26, later session): parity placeholders for
   // the new 'personal_information' category opened in data.js this
@@ -554,12 +554,12 @@ export const SIGN_DICTIONARY = {
   // existing SIGNS/dictionary.js coverage from 'family'/'people'/
   // 'places' and don't need new entries here). Same convention as the
   // 'body' block above — disabled until Phase 7 capture + retraining.
-  'NAME':     { category:'word', imageFile:'name.gif',     detectionType:'motion', disabled:true },
-  'AGE':      { category:'word', imageFile:'age.gif',      detectionType:'motion', disabled:true },
-  'FAMILY':   { category:'word', imageFile:'family.gif',   detectionType:'motion', disabled:true },
+  'NAME':     { category:'word', imageFile:'name.gif',     detectionType:'motion' },
+  'AGE':      { category:'word', imageFile:'age.gif',      detectionType:'motion' },
+  'FAMILY':   { category:'word', imageFile:'family.gif',   detectionType:'motion' },
   'BIRTHDAY': { category:'word', imageFile:'birthday.gif', detectionType:'motion', disabled:true },
-  'LIVE':     { category:'word', imageFile:'live.gif',     detectionType:'motion', disabled:true },
-  'FROM':     { category:'word', imageFile:'from.gif',     detectionType:'motion', disabled:true },
+  'LIVE':     { category:'word', imageFile:'live.gif',     detectionType:'motion' },
+  'FROM':     { category:'word', imageFile:'from.gif',     detectionType:'motion' },
 
   // ══════════════════════════════════════════════════════════
   // INTERMEDIATE LEVEL — PHRASES (all motion, disabled until model trained)
@@ -569,6 +569,180 @@ export const SIGN_DICTIONARY = {
   'WHERE IS':          { category:'phrase', imageFile:'where-is.gif',          detectionType:'motion', disabled:true },
   'I AM LEARNING':     { category:'phrase', imageFile:'i-am-learning.gif',     detectionType:'motion', disabled:true },
   'WHAT IS YOUR NAME': { category:'phrase', imageFile:'what-is-your-name.gif', detectionType:'motion', disabled:true },
+  // ══════════════════════════════════════════════════════════
+  // SYNC PASS (2026-10-01): every label in asl_motion_model/labels.json
+  // now has a LIVE entry here. Before this, getDetectionType() fell
+  // back to 'static' for any label with no entry, so these signs were
+  // read by the static (alphabet/number) model, and classifyMotion()
+  // dropped any label with no entry or disabled:true. Entries below
+  // were copied from js/dictionary.js (the unused root copy) so the
+  // category/imageFile values match what the lessons already use.
+  // ══════════════════════════════════════════════════════════
+
+  // Trained-label spelling of 'THANK YOU' (lessons teach THANK YOU;
+  // the model outputs THANKS). Needs the matching SIGN_GROUPS pair
+  // in js/engine/classifier.js — see note in the hand-off message.
+  'THANKS':   { category:'word', imageFile:'thank-you.gif', detectionType:'motion' },
+
+  // ─── animals ───
+  'BIRD':          { category:'animals', imageFile:'bird.png', detectionType:'motion' },
+  'CAT':           { category:'animals', imageFile:'cat.png', detectionType:'motion' },
+  'COW':           { category:'animals', imageFile:'cow.png', detectionType:'motion' },
+  'DOG':           { category:'animals', imageFile:'dog.png', detectionType:'motion' },
+  'DUCK':          { category:'animals', imageFile:'duck.png', detectionType:'motion' },
+  'FISH':          { category:'animals', imageFile:'fish.png', detectionType:'motion' },
+  'GOAT':          { category:'animals', imageFile:'goat.png', detectionType:'motion' },
+  'HORSE':         { category:'animals', imageFile:'horse.png', detectionType:'motion' },
+  'PIG':           { category:'animals', imageFile:'pig.png', detectionType:'motion' },
+  'RABBIT':        { category:'animals', imageFile:'rabbit.png', detectionType:'motion' },
+  'SHEEP':         { category:'animals', imageFile:'sheep.png', detectionType:'motion' },
+
+  // ─── answers ───
+  'KNOW':          { category:'answers', imageFile:'know.png', detectionType:'motion' },
+
+  // ─── directions ───
+  'DOWN':          { category:'directions', imageFile:'down.png', detectionType:'motion' },
+  'FORWARD':       { category:'directions', imageFile:'forward.png', detectionType:'motion' },
+  'LEFT':          { category:'directions', imageFile:'left.png', detectionType:'motion' },
+  'RIGHT':         { category:'directions', imageFile:'right.png', detectionType:'motion' },
+  'UP':            { category:'directions', imageFile:'up.png', detectionType:'motion' },
+
+  // ─── distance ───
+  'AWAY':          { category:'distance', imageFile:'away.png', detectionType:'motion' },
+  'FAR':           { category:'distance', imageFile:'far.png', detectionType:'motion' },
+  'HERE':          { category:'distance', imageFile:'here.png', detectionType:'motion' },
+  'NEAR':          { category:'distance', imageFile:'near.png', detectionType:'motion' },
+  'THERE':         { category:'distance', imageFile:'there.png', detectionType:'motion' },
+
+  // ─── drinks ───
+  'COFFEE':        { category:'drinks', imageFile:'coffee.png', detectionType:'motion' },
+  'JUICE':         { category:'drinks', imageFile:'juice.png', detectionType:'motion' },
+  'MILK':          { category:'drinks', imageFile:'milk.png', detectionType:'motion' },
+  'SODA':          { category:'drinks', imageFile:'soda.png', detectionType:'motion' },
+  'TEA':           { category:'drinks', imageFile:'tea.png', detectionType:'motion' },
+
+  // ─── essentials_greetings ───
+  'AFTERNOON':     { category:'essentials_greetings', imageFile:'afternoon.png', detectionType:'motion' },
+  'GOODBYE':       { category:'essentials_greetings', imageFile:'goodbye.png', detectionType:'motion' },
+  'MORNING':       { category:'essentials_greetings', imageFile:'morning.png', detectionType:'motion' },
+  'WELCOME':       { category:'essentials_greetings', imageFile:'welcome.png', detectionType:'motion' },
+
+  // ─── feelings ───
+  'ANGRY':         { category:'feelings', imageFile:'angry.png', detectionType:'motion' },
+  'BORED':         { category:'feelings', imageFile:'bored.png', detectionType:'motion' },
+  'EXCITED':       { category:'feelings', imageFile:'excited.png', detectionType:'motion' },
+  'FINE':          { category:'feelings', imageFile:'fine.png', detectionType:'motion' },
+  'HAPPY':         { category:'feelings', imageFile:'happy.png', detectionType:'motion' },
+  'LIKE':          { category:'feelings', imageFile:'like.png', detectionType:'motion' },
+  'LOVE':          { category:'feelings', imageFile:'love.png', detectionType:'motion' },
+  'NERVOUS':       { category:'feelings', imageFile:'nervous.png', detectionType:'motion' },
+  'OKAY':          { category:'feelings', imageFile:'okay.png', detectionType:'motion' },
+  'SAD':           { category:'feelings', imageFile:'sad.png', detectionType:'motion' },
+  'SCARED':        { category:'feelings', imageFile:'scared.png', detectionType:'motion' },
+  'SICK':          { category:'feelings', imageFile:'sick.png', detectionType:'motion' },
+  'THIRSTY':       { category:'feelings', imageFile:'thirsty.png', detectionType:'motion' },
+  'TIRED':         { category:'feelings', imageFile:'tired.png', detectionType:'motion' },
+  'WORRIED':       { category:'feelings', imageFile:'worried.png', detectionType:'motion' },
+
+  // ─── frequency ───
+  'ALWAYS':        { category:'frequency', imageFile:'always.png', detectionType:'motion' },
+  'DAILY':         { category:'frequency', imageFile:'daily.png', detectionType:'motion' },
+  'MONTHLY':       { category:'frequency', imageFile:'monthly.png', detectionType:'motion' },
+  'NEVER':         { category:'frequency', imageFile:'never.png', detectionType:'motion' },
+  'OFTEN':         { category:'frequency', imageFile:'often.png', detectionType:'motion' },
+  'RARELY':        { category:'frequency', imageFile:'rarely.png', detectionType:'motion' },
+  'SOMETIMES':     { category:'frequency', imageFile:'sometimes.png', detectionType:'motion' },
+  'WEEKLY':        { category:'frequency', imageFile:'weekly.png', detectionType:'motion' },
+
+  // ─── location ───
+  'FRONT':         { category:'location', imageFile:'front.png', detectionType:'motion' },
+
+  // ─── making_requests ───
+  'CAN':           { category:'making_requests', imageFile:'can.png', detectionType:'motion' },
+  'HAVE':          { category:'making_requests', imageFile:'have.png', detectionType:'motion' },
+  'THAT':          { category:'making_requests', imageFile:'that.png', detectionType:'motion' },
+  'THIS':          { category:'making_requests', imageFile:'this.png', detectionType:'motion' },
+
+  // ─── people ───
+  'CHILD':         { category:'people', imageFile:'child.png', detectionType:'motion' },
+  'FRIEND':        { category:'people', imageFile:'friend.png', detectionType:'motion' },
+  'MAN':           { category:'people', imageFile:'man.png', detectionType:'motion' },
+  'ME':            { category:'people', imageFile:'me.png', detectionType:'motion' },
+  'MY':            { category:'people', imageFile:'my.png', detectionType:'motion' },
+  'PERSON':        { category:'people', imageFile:'person.png', detectionType:'motion' },
+  'STUDENT':       { category:'people', imageFile:'student.png', detectionType:'motion' },
+  'TEACHER':       { category:'people', imageFile:'teacher.png', detectionType:'motion' },
+  'WOMAN':         { category:'people', imageFile:'woman.png', detectionType:'motion' },
+  'YOU':           { category:'people', imageFile:'you.png', detectionType:'motion' },
+  'YOUR':          { category:'people', imageFile:'your.png', detectionType:'motion' },
+
+  // ─── requests ───
+  'MORE':          { category:'requests', imageFile:'more.png', detectionType:'motion' },
+
+  // ─── responses ───
+  'MAYBE':         { category:'responses', imageFile:'maybe.png', detectionType:'motion' },
+  'SURE':          { category:'responses', imageFile:'sure.png', detectionType:'motion' },
+  'UNDERSTAND':    { category:'responses', imageFile:'understand.png', detectionType:'motion' },
+
+  // ─── sequence ───
+  'BEGINNING':     { category:'sequence', imageFile:'beginning.png', detectionType:'motion' },
+  'END':           { category:'sequence', imageFile:'end.png', detectionType:'motion' },
+  'FINALLY':       { category:'sequence', imageFile:'finally.png', detectionType:'motion' },
+  'FIRST':         { category:'sequence', imageFile:'first.png', detectionType:'motion' },
+  'MIDDLE':        { category:'sequence', imageFile:'middle.png', detectionType:'motion' },
+  'NEXT':          { category:'sequence', imageFile:'next.png', detectionType:'motion' },
+  'SECOND':        { category:'sequence', imageFile:'second.png', detectionType:'motion' },
+  'THEN':          { category:'sequence', imageFile:'then.png', detectionType:'motion' },
+  'THIRD':         { category:'sequence', imageFile:'third.png', detectionType:'motion' },
+
+  // ─── snacks ───
+  'CAKE':          { category:'snacks', imageFile:'cake.png', detectionType:'motion' },
+  'CANDY':         { category:'snacks', imageFile:'candy.png', detectionType:'motion' },
+  'CHOCOLATE':     { category:'snacks', imageFile:'chocolate.png', detectionType:'motion' },
+  'COOKIE':        { category:'snacks', imageFile:'cookie.png', detectionType:'motion' },
+  'DONUT':         { category:'snacks', imageFile:'donut.png', detectionType:'motion' },
+  'ICECREAM':      { category:'snacks', imageFile:'icecream.png', detectionType:'motion' },
+  'PIE':           { category:'snacks', imageFile:'pie.png', detectionType:'motion' },
+  'POPCORN':       { category:'snacks', imageFile:'popcorn.png', detectionType:'motion' },
+
+  // ─── social ───
+  'CLASSMATE':     { category:'social', imageFile:'classmate.png', detectionType:'motion' },
+  'MEET':          { category:'social', imageFile:'meet.png', detectionType:'motion' },
+  'NEIGHBOR':      { category:'social', imageFile:'neighbor.png', detectionType:'motion' },
+  'TOGETHER':      { category:'social', imageFile:'together.png', detectionType:'motion' },
+  'VISIT':         { category:'social', imageFile:'visit.png', detectionType:'motion' },
+
+  // ─── turn_taking ───
+  'FINISHED':      { category:'turn_taking', imageFile:'finished.png', detectionType:'motion' },
+  'TURN':          { category:'turn_taking', imageFile:'turn.png', detectionType:'motion' },
+
+  // ─── vegetables ───
+  'BEAN':          { category:'vegetables', imageFile:'bean.png', detectionType:'motion' },
+  'BROCCOLI':      { category:'vegetables', imageFile:'broccoli.png', detectionType:'motion' },
+  'CABBAGE':       { category:'vegetables', imageFile:'cabbage.png', detectionType:'motion' },
+  'CARROT':        { category:'vegetables', imageFile:'carrot.png', detectionType:'motion' },
+  'CORN':          { category:'vegetables', imageFile:'corn.png', detectionType:'motion' },
+  'GARLIC':        { category:'vegetables', imageFile:'garlic.png', detectionType:'motion' },
+  'ONION':         { category:'vegetables', imageFile:'onion.png', detectionType:'motion' },
+  'PEA':           { category:'vegetables', imageFile:'pea.png', detectionType:'motion' },
+  'POTATO':        { category:'vegetables', imageFile:'potato.png', detectionType:'motion' },
+  'TOMATO':        { category:'vegetables', imageFile:'tomato.png', detectionType:'motion' },
+
+  // ─── wild_animals ───
+  'LION':          { category:'wild_animals', imageFile:'lion.png', detectionType:'motion' },
+  'TIGER':         { category:'wild_animals', imageFile:'tiger.png', detectionType:'motion' },
+
+  // ─── in the motion model and the lesson word lists, but in NEITHER
+  // dictionary until now. imageFile names follow the <word>.png
+  // convention — CHECK these files exist in your images folder. ───
+  "DON'T":        { category:'answers', imageFile:'dont.png', detectionType:'motion' },
+  'LESS':         { category:'requests', imageFile:'less.png', detectionType:'motion' },
+  'MANY':         { category:'essentials_basic_responses', imageFile:'many.png', detectionType:'motion' },
+  'MUCH':         { category:'essentials_basic_responses', imageFile:'much.png', detectionType:'motion' },
+  'NEED':         { category:'requests', imageFile:'need.png', detectionType:'motion' },
+  'WANT':         { category:'requests', imageFile:'want.png', detectionType:'motion' },
+  'WHICH':        { category:'essentials_basic_responses', imageFile:'which.png', detectionType:'motion' },
+
 };
 
 // ── Helpers ────────────────────────────────────────────────────────

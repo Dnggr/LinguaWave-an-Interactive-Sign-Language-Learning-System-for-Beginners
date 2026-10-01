@@ -11,6 +11,13 @@
  * max 20,000). Fine for a capstone demo; NOT cheat-proof. To get real anti-cheat later: upgrade to
  * Blaze, deploy functions/xp.js, and restore the server version of this file (see XP_SYSTEM.md).
  *
+ * ACCOUNT LINK: XP lives in xpState/publicProfiles, separate from users/{uid} and the progress docs. If the
+ * database is wiped (users/progress cleaned) those two would keep the OLD XP and keep the learner on the
+ * leaderboards. reconcileWithAccount() fixes that: a signed-in learner whose users/{uid} profile is MISSING
+ * has their xpState + publicProfiles deleted (and the XP queue/backfill flags cleared) and the profile
+ * recreated, so XP/leaderboard always restart together with the account's progress.
+ *   Admin tool: LWXP.purgeOrphans() removes leaderboard rows whose users/{uid} no longer exists.
+ *
  * Same public API as before (window.LWXP), so lesson.js / missions.js / mastery-quiz.js / game.js /
  * leaderboard.js / xp-ui.js need NO changes.
  *
@@ -21,7 +28,7 @@
  * Needs on the page: <script src="../js/xp-config.js"> (display data) and js/auth.js (module).
  * ─────────────────────────────────────────────────────────────────
  */
-import { auth, db, doc, getDoc, collection, getDocs, query, orderBy } from './auth.js';
+import { auth, db, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, orderBy } from './auth.js';
 import { limit, where, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
 const CFG = window.LW_XP_CONFIG || { MAX_LEVEL: 30, LEVEL_XP: [0], TIERS: [], BADGES: {}, GAME: { MIN_LEARNED_BRICKS: 6, DAILY_XP_CAP: 90 } };
@@ -257,6 +264,60 @@ function reportProblem(kind, e) {
   if (text && typeof toastFn() === 'function') { warnedOnce = true; toastFn()(text, 'error'); }
 }
 
+/* ══════════════ keep XP tied to the account ══════════════ */
+let reconciledUid = null;
+let reconciling = null;
+async function reconcileWithAccount() {
+  await whenReady();
+  const u = auth.currentUser;
+  if (!u || (u.email || '').toLowerCase() === ADMIN_EMAIL || reconciledUid === u.uid) return;
+  if (reconciling) return reconciling;                        // one run at a time
+  reconciling = (async () => {
+    try {
+      const userRef = doc(db, 'users', u.uid);
+      if (!(await getDoc(userRef)).exists()) {
+        // Profile is gone => the account's data was wiped. Old XP must not survive it.
+        await Promise.all([deleteDoc(doc(db, 'xpState', u.uid)), deleteDoc(doc(db, 'publicProfiles', u.uid))]);
+        try {
+          localStorage.removeItem(`lw_xp_pending_v1:${u.uid}`);
+          localStorage.removeItem(`lw_xp_backfilled_v1:${u.uid}`);
+        } catch { /* private mode */ }
+        nameCache = null; latest = null;
+        const rawName = (u.displayName || (u.email || '').split('@')[0] || 'Learner') + '';
+        await setDoc(userRef, {                               // recreate the profile so this runs only once
+          uid: u.uid,
+          name: rawName.trim().slice(0, 30) || 'Learner',
+          email: u.email,
+          level: 'basic',
+          joined: new Date(u.metadata.creationTime).toISOString().slice(0, 10),
+        });
+        console.info('[xp] account data was wiped: XP and leaderboard entry reset.');
+      }
+      reconciledUid = u.uid;
+    } catch (e) {
+      console.warn('[xp] reconcile failed (will retry next load)', e);
+    } finally { reconciling = null; }
+  })();
+  return reconciling;
+}
+
+/** ADMIN ONLY (rules allow the admin to delete). Removes leaderboard rows whose users/{uid} is gone.
+ *  Run from the console on an admin page:  await LWXP.purgeOrphans()   (repeat if it returns 100) */
+async function purgeOrphans() {
+  await whenReady();
+  const u = auth.currentUser;
+  if (!u || (u.email || '').toLowerCase() !== ADMIN_EMAIL) return { ok: false, reason: 'admin_only' };
+  const snap = await getDocs(query(collection(db, 'publicProfiles'), limit(100)));
+  let removed = 0;
+  for (const d of snap.docs) {
+    if ((await getDoc(doc(db, 'users', d.id))).exists()) continue;
+    await deleteDoc(d.ref);
+    await deleteDoc(doc(db, 'xpState', d.id)).catch(() => {});
+    removed++;
+  }
+  return { ok: true, scanned: snap.size, removed };
+}
+
 /* ══════════════ the one writer: transaction on xpState + publicProfiles ══════════════ */
 async function whenReady() {
   try { await window.LWAuth?.whenAuthReady?.(); } catch { /* guest */ }
@@ -277,6 +338,7 @@ async function nameInfo() {
 /** fn(state, {now, today}) mutates state and returns `out`. out.reject / out.skipStateWrite as in the server version. */
 async function withState(fn) {
   await whenReady();
+  await reconcileWithAccount();
   const u = auth.currentUser;
   if (!u) return { ok: false, reason: 'signed_out' };
   if ((u.email || '').toLowerCase() === ADMIN_EMAIL) return { ok: false, reason: 'admin_account' };
@@ -307,6 +369,7 @@ const onUpdate = (fn) => { listeners.add(fn); return () => listeners.delete(fn);
 
 async function getMyState() {
   await whenReady();
+  await reconcileWithAccount();
   if (!uid()) return null;
   try {
     const snap = await getDoc(doc(db, 'xpState', uid()));
@@ -568,13 +631,14 @@ function notify(res) {
 }
 
 window.addEventListener('online', () => flush());
-whenReady().then(() => { flush(); backfillOnce(); });
+whenReady().then(async () => { await reconcileWithAccount(); flush(); backfillOnce(); });
 
 window.LWXP = {
   claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
   getMyState, loadBoard, BOARDS, setVisibility, onUpdate, notify,
   levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId, config: CFG, timezone: TZ,
   getLatest: () => latest,
+  purgeOrphans, reconcileWithAccount,
   debug: () => ({ uid: uid(), pending: readQ(), lastError, latest }),   // run LWXP.debug() in the console
 };
 document.dispatchEvent(new CustomEvent('lwxp-ready'));
