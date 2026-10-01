@@ -650,8 +650,23 @@ function renderItem(mission, index) {
   }
 }
 
+// DAY STREAK: which activity (if any) finishing this item counts as. Learning a sign
+// (LESSON), a recall/quick-check question (BOOSTER) and a practice question (PRACTICE)
+// qualify. Re-clicking through an already-finished LESSON slide (just paging through
+// review) does not; re-answering a finished BOOSTER/PRACTICE question counts as Review.
+function streakTypeForItem(item, wasComplete) {
+  if (!item) return null;
+  if (item.kind === 'LESSON') return wasComplete ? null : 'lesson';
+  if (item.kind === 'BOOSTER') return wasComplete ? 'review' : 'recall';
+  if (item.kind === 'PRACTICE') return wasComplete ? 'review' : 'practice';
+  return null;
+}
+
 function completeAndAdvance(mission, index, item) {
+  const wasComplete = window.LWMissions.isItemComplete(mission, index, item);
   window.LWMissions.markItemComplete(mission, index, item);
+  const streakType = streakTypeForItem(item, wasComplete);
+  if (streakType) window.LWMissions.recordActivity(streakType);
   // XP (js/xp.js): REPORT the item; the server decides the reward (one-time per item). Optional
   // chaining on purpose — if xp.js failed to load the lesson flow must behave exactly as before.
   if (window.LWXP) window.LWXP.claimItem(mission, index);

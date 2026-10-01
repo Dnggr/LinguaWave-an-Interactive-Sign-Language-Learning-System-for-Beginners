@@ -332,6 +332,7 @@ const SUPPORTED_EMAIL_DOMAIN_SET = new Set(SUPPORTED_EMAIL_DOMAINS);
 const MAX_LOCAL_PART_LENGTH = 64;   // RFC 5321 local-part limit
 const MIN_PASSWORD_LENGTH = 8;      // same minimum changePassword() uses
 const MAX_PASSWORD_LENGTH = 50;     // = "Maximum password length" in Firebase console > Authentication > Settings > Password policy
+const VERY_STRONG_MIN_LENGTH = 12;  // "Very strong" also needs at least this many characters (display only — signup still accepts Strong)
 
 const LOCAL_PART_CHARS_RE = /^[A-Za-z0-9._%+-]+$/;
 const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -400,15 +401,12 @@ function validateEmail(email) {
  *   length >= MIN_PASSWORD_LENGTH, lowercase, uppercase, number, and a
  *   special character from PASSWORD_SPECIAL_CHARS.
  *
- * LEVELS (getPasswordStrength().level):
- *   strong = all 5 requirements.
- *   medium = length + lowercase + uppercase + number, but no special char.
- *   weak   = anything else — and ALWAYS weak when the password is on the
- *            common list, contains the learner's own email/name, or is
- *            longer than MAX_PASSWORD_LENGTH (so a green bar never sits
- *            next to a rejection).
- *   (A plain 0-2 / 3-4 / 5 point split would call "Password" Medium; the
- *   requirement-based rule above keeps it Weak, as intended.)
+ * LEVELS (getPasswordStrength().level) come from a 0-100 PERCENT, not from
+ *   which boxes are ticked — see STRENGTH SCORE below (length, character
+ *   variety, uniqueness, minus patterns). Weak <40, Medium 40-69, Strong
+ *   70-89, Very strong 90+. Common / email-based / too-long passwords are
+ *   ALWAYS Weak, and Strong+ is only reachable once the signup requirements
+ *   are met, so a green bar never sits next to a rejection.
  *
  * WHAT SIGNUP ACCEPTS (PASSWORD_MIN_LEVEL): 'strong'. This mirrors the
  * Firebase console policy (uppercase + lowercase + numeric + special,
@@ -422,7 +420,10 @@ function validateEmail(email) {
  * when its Enforcement mode is "Require enforcement" (Notify lets weak
  * passwords through). Passwords are never trimmed, altered, logged,
  * stored, or placed in an error message here. */
-const PASSWORD_SPECIAL_CHARS = '!@#$%';
+// Firebase's own "non-alphanumeric" list (what its Require-special-character policy accepts).
+// Keep in sync with the console; the meter itself rewards ANY non-letter/non-digit (see scoring).
+const PASSWORD_SPECIAL_CHARS = '^$*.[]{}()?"!@#%&/\\,><\':;|_~`=+-';
+const PASSWORD_SPECIAL_EXAMPLES = '!@#$%&';   // short hint shown in labels/messages
 const PASSWORD_MIN_LEVEL = 'strong';          // 'strong' | 'medium' — see the note above before changing
 
 const PASSWORD_REQUIREMENTS = Object.freeze([
@@ -452,8 +453,8 @@ const PASSWORD_REQUIREMENTS = Object.freeze([
   }),
   Object.freeze({
     key: 'special',
-    label: 'Contains special character (' + PASSWORD_SPECIAL_CHARS + ')',
-    need: 'one special character (' + PASSWORD_SPECIAL_CHARS + ')',
+    label: 'Contains special character (e.g. ' + PASSWORD_SPECIAL_EXAMPLES + ')',
+    need: 'one special character (e.g. ' + PASSWORD_SPECIAL_EXAMPLES + ')',
     test: function (p) {
       for (let i = 0; i < p.length; i++) {
         if (PASSWORD_SPECIAL_CHARS.indexOf(p.charAt(i)) !== -1) return true;
@@ -518,35 +519,94 @@ function findPasswordWeakness(password, context) {
   return null;
 }
 
-/* How full the strength bar should be, 0..1. Unlike `level` (3 coarse steps)
- * this moves a little on EVERY keystroke, so the bar tracks what was actually
- * typed:
- *   - the length requirement fills gradually (3 of 8 chars = 3/8 of its share)
- *   - each other requirement adds its full share once met
- * Then it is fitted to the level so the bar and the label can never disagree:
- *   weak   -> scaled down by WEAK_PROGRESS_SCALE (so it still grows with every
- *             character, but a red bar can never look nearly full or pass Medium)
- *   medium -> whatever was earned (4 of 5 shares = 0.8)
- *   strong -> 1 */
-const WEAK_PROGRESS_SCALE = 0.6;
-function computePasswordProgress(pw, checks, level) {
-  if (!pw) return 0;
-  const lengthShare = Math.min(pw.length, MIN_PASSWORD_LENGTH) / MIN_PASSWORD_LENGTH;
-  let earned = lengthShare;
-  PASSWORD_REQUIREMENTS.forEach(function (r) {
-    if (r.key !== 'length' && checks[r.key]) earned += 1;
+/* STRENGTH SCORE (0..100) — what the bar fills to and what the label is read from.
+ * The label is no longer "did you tick the 5 boxes"; it is a percentage:
+ *
+ *   length     up to 40  (16+ characters = full; grows with EVERY character;
+ *                        counted as at most 1.5 x the number of DIFFERENT characters)
+ *   variety    up to 40  lowercase 8 + uppercase 8 + number 8 + symbol 16
+ *                        "symbol" = ANY character that is not a letter or digit
+ *                        (& _ - ? space, emoji ...), not just the signup set
+ *   uniqueness up to 20  distinct characters (12+ different = full), so
+ *                        "aaaaaaaaaaaa1!" does not score like a real password
+ *   penalties  up to -25 runs (aaa), sequences (abc / 321) and keyboard rows
+ *
+ *   0-39 Weak · 40-69 Medium · 70-89 Strong · 90-100 Very strong
+ *
+ * Caps keep the label honest:
+ *   - common / based-on-your-email / too long        -> max 25 (always Weak)
+ *   - shorter than MIN_PASSWORD_LENGTH               -> max 39 (still grows per char)
+ *   - signup requirements not all met                -> max 69 (never Strong, so a
+ *     green bar can't sit next to "Password needs …")
+ *   - Very strong additionally needs VERY_STRONG_MIN_LENGTH characters. */
+const STRENGTH_MEDIUM_AT = 40;
+const STRENGTH_STRONG_AT = 70;
+const STRENGTH_VERY_STRONG_AT = 90;
+
+const KEYBOARD_ROWS = Object.freeze(['qwertyuiop', 'asdfghjkl', 'zxcvbnm', '1234567890']);
+
+function patternPenalty(pw) {
+  const chars = Array.from(pw.toLowerCase());
+  let penalty = 0;
+
+  // Runs of 3+ identical characters: "aaa", "1111".
+  const runs = chars.join('').match(/(.)\1{2,}/gu);
+  if (runs) penalty += runs.length * 6;
+
+  // Ascending / descending letter-or-digit sequences: "abc", "789", "cba".
+  const isAlnum = function (c) { return /[a-z0-9]/.test(c); };
+  for (let i = 2; i < chars.length; i++) {
+    if (!isAlnum(chars[i]) || !isAlnum(chars[i - 1]) || !isAlnum(chars[i - 2])) continue;
+    const d1 = chars[i - 1].codePointAt(0) - chars[i - 2].codePointAt(0);
+    const d2 = chars[i].codePointAt(0) - chars[i - 1].codePointAt(0);
+    if (d1 === d2 && (d1 === 1 || d1 === -1)) penalty += 4;
+  }
+
+  // 4+ keys in a row on a keyboard row (either direction): "qwer", "asdf", "4321".
+  const lower = chars.join('');
+  const reversed = chars.slice().reverse().join('');
+  KEYBOARD_ROWS.forEach(function (row) {
+    for (let i = 0; i + 4 <= row.length; i++) {
+      const piece = row.slice(i, i + 4);
+      if (lower.indexOf(piece) !== -1 || reversed.indexOf(piece) !== -1) { penalty += 10; break; }
+    }
   });
-  const raw = earned / PASSWORD_REQUIREMENTS.length;
-  if (level === 'strong') return 1;
-  if (level === 'weak') return raw * WEAK_PROGRESS_SCALE;
-  return raw;
+
+  return Math.min(penalty, 25);
 }
 
-/* Scores a password against the 5 requirements. Pure and cheap (runs on
- * every keystroke): never throws, never logs, never stores.
- * Returns { score, max, level, progress, checks:{length,lower,upper,number,special},
- *           tooLong, weakReason } — see PASSWORD POLICY above for `level`;
- * `progress` (0..1) is what the strength bar's fill uses. */
+function computePasswordScore(pw) {
+  if (!pw) return 0;
+  const length = Array.from(pw).length;
+  const distinct = new Set(Array.from(pw)).size;
+
+  // Repeating the same few characters doesn't add length: 12 x "a" is not 12 characters of strength.
+  const effectiveLength = Math.min(length, distinct * 1.5);
+  let points = Math.min(effectiveLength, 16) / 16 * 40;
+  if (/\p{Ll}/u.test(pw)) points += 8;
+  if (/\p{Lu}/u.test(pw)) points += 8;
+  if (/\p{N}/u.test(pw)) points += 8;
+  if (/[^\p{L}\p{N}]/u.test(pw)) points += 16;
+  points += Math.min(distinct, 12) / 12 * 20;
+  points -= patternPenalty(pw);
+
+  return Math.max(0, Math.min(100, points));
+}
+
+function levelFromPercent(percent, length) {
+  if (percent >= STRENGTH_VERY_STRONG_AT && length >= VERY_STRONG_MIN_LENGTH) return 'very-strong';
+  if (percent >= STRENGTH_STRONG_AT) return 'strong';
+  if (percent >= STRENGTH_MEDIUM_AT) return 'medium';
+  return 'weak';
+}
+
+/* Scores a password. Pure and cheap (runs on every keystroke): never throws,
+ * never logs, never stores.
+ * Returns { score, max, percent, level, progress, checks:{length,lower,upper,number,special},
+ *           tooLong, weakReason }
+ *   score/max/checks = the 5 signup requirements (what the gate enforces)
+ *   percent (0..100) / level = the strength reading (see STRENGTH SCORE above)
+ *   progress (0..1)  = percent / 100, what the bar's fill uses. */
 function getPasswordStrength(password, context) {
   const pw = typeof password === 'string' ? password : '';
   const checks = {};
@@ -557,17 +617,21 @@ function getPasswordStrength(password, context) {
     if (ok) score += 1;
   });
 
+  const length = Array.from(pw).length;
   const tooLong = pw.length > MAX_PASSWORD_LENGTH;
   const weakReason = pw.length > 0 ? findPasswordWeakness(pw, context) : null;
 
-  let level = 'weak';
-  if (score === PASSWORD_REQUIREMENTS.length) level = 'strong';
-  else if (checks.length && checks.lower && checks.upper && checks.number) level = 'medium';
-  if (tooLong || weakReason) level = 'weak';
+  let percent = computePasswordScore(pw);
+  if (length < MIN_PASSWORD_LENGTH) percent = Math.min(percent, 39 * length / MIN_PASSWORD_LENGTH);
+  const meetsSignup = PASSWORD_REQUIRED_KEYS.every(function (k) { return checks[k]; });
+  if (!meetsSignup) percent = Math.min(percent, STRENGTH_STRONG_AT - 1);
+  if (tooLong || weakReason) percent = Math.min(percent, 25);
+  percent = Math.round(percent);
 
   return {
-    score: score, max: PASSWORD_REQUIREMENTS.length, level: level,
-    progress: computePasswordProgress(pw, checks, level),
+    score: score, max: PASSWORD_REQUIREMENTS.length,
+    percent: percent, level: levelFromPercent(percent, length),
+    progress: percent / 100,
     checks: checks, tooLong: tooLong, weakReason: weakReason,
   };
 }
@@ -582,7 +646,7 @@ const PASSWORD_NEED_NOUNS = Object.freeze({
   number:  'number',
   upper:   'uppercase letter',
   lower:   'lowercase letter',
-  special: 'special character (' + PASSWORD_SPECIAL_CHARS + ')',
+  special: 'special character (e.g. ' + PASSWORD_SPECIAL_EXAMPLES + ')',
 });
 function describePasswordNeeds(missingKeys) {
   const nouns = PASSWORD_NEED_ORDER
@@ -704,7 +768,7 @@ function describeAuthError(err, context) {
       // Firebase's own password policy said no (the server-side backstop —
       // see PASSWORD POLICY above). Generic on purpose: no password echoed.
       return 'That password doesn\'t meet the security requirements. Use at least ' + MIN_PASSWORD_LENGTH +
-        ' characters with an uppercase letter, a lowercase letter, a number and a special character (' + PASSWORD_SPECIAL_CHARS + ').';
+        ' characters with an uppercase letter, a lowercase letter, a number and a special character (e.g. ' + PASSWORD_SPECIAL_EXAMPLES + ').';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a few minutes and try again.';
     case 'auth/network-request-failed':
@@ -1463,6 +1527,7 @@ window.LWAuth = {
   SUPPORTED_EMAIL_DOMAINS,     // frozen array — the one provider list
   MIN_PASSWORD_LENGTH,
   MAX_PASSWORD_LENGTH,
+  VERY_STRONG_MIN_LENGTH,
   PASSWORD_SPECIAL_CHARS,
   PASSWORD_CHECKLIST,          // [{ key, label }] — no longer used by index.html (its checklist was replaced by the adaptive "Password needs …" message)
   validateEmail,               // same functions register() enforces,

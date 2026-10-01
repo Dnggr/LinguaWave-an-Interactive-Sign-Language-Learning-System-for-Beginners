@@ -22,6 +22,36 @@
   .profile-pair { grid-template-columns: 1fr; }
 }
 
+/* ── Level / XP card (top of the right column) ───────────────────────
+ * js/xp-ui.js draws the same stacked markup the Leaderboard side panel uses
+ * (.xp-card__top, .xp-card__progress, .xp-stats, .xp-card__link). Here the
+ * column is wide, so lay it out as one row instead of a tall narrow stack:
+ *     [ level badge + name ] [ progress bar + "31 / 125 XP" ........ ]
+ *     [ streak + badge chips .................. Leaderboard & badges → ]
+ * Scoped to .profile-main so css/xp.css (the Leaderboard card) is untouched.
+ * Specificity (2 classes) beats xp.css's single-class rules whatever the load order. */
+.profile-main .xp-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-6);
+  row-gap: var(--space-4);
+  padding: var(--space-6);
+}
+.profile-main .xp-card > .loading-pulse { grid-column: 1 / -1; margin: 0; }
+.profile-main .xp-card__top { grid-column: 1; flex-wrap: nowrap; }
+.profile-main .xp-card__progress { grid-column: 2 / -1; min-width: 0; }
+.profile-main .xp-card .xp-bar { height: 12px; }
+.profile-main .xp-card .xp-stats { grid-column: 1 / 3; }
+.profile-main .xp-card__link { grid-column: 3; justify-self: end; white-space: nowrap; }
+@media (max-width: 900px) {
+  .profile-main .xp-card { grid-template-columns: minmax(0, 1fr); padding: var(--space-5); }
+  .profile-main .xp-card__top,
+  .profile-main .xp-card__progress,
+  .profile-main .xp-card .xp-stats,
+  .profile-main .xp-card__link { grid-column: 1; }
+  .profile-main .xp-card__link { justify-self: start; }
+}
+
 /* ── Left column: picture, name, picker ─────────────────────────── */
 .profile-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .profile-side__avatar-wrap { position: relative; width: 100%; max-width: 280px; }
@@ -119,6 +149,17 @@ body:has(.avatar-dialog[open]) { overflow: hidden; }
 .achv--earned.achv--yellow  { color: var(--clr-yellow);      background: var(--clr-yellow-soft);  border-color: var(--clr-yellow); }
 .achv--earned.achv--violet  { color: var(--clr-violet);      background: var(--clr-violet-soft);  border-color: var(--clr-violet); }
 .achv--locked { color: var(--clr-text-muted); background: var(--clr-track); opacity: .45; }
+/* Each achievement is a link (see renderAchievements in js/profile-page.js). The <li> only holds the grid cell. */
+.achv-item { display: block; }
+a.achv { text-decoration: none; cursor: pointer; transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease); }
+a.achv:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 3px; }
+@media (hover: hover) {
+  a.achv:hover { transform: translateY(-2px) scale(1.06); box-shadow: 0 6px 16px color-mix(in srgb, currentColor 28%, transparent); }
+  a.achv.achv--locked:hover { opacity: .8; }   /* locked ones stay dimmer than earned, but clearly react */
+}
+@media (prefers-reduced-motion: reduce) { a.achv { transition: none; } a.achv:hover { transform: none; } }
+.lw-force-reduced-motion a.achv { transition: none; }
+.lw-force-reduced-motion a.achv:hover { transform: none; }
 .achv-next { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--clr-text-muted); }
 
 /* ── Learning Activity: one box per day, a full year (GitHub-style) ──
@@ -141,14 +182,14 @@ body:has(.avatar-dialog[open]) { overflow: hidden; }
 .gh-month {
   grid-row: 1;
   width: 0; min-width: 0; overflow: visible; white-space: nowrap;
-  font-size: var(--fs-xs); line-height: 1; padding-bottom: var(--space-1);
+  font-size: var(--fs-xs); line-height: 1; padding-bottom: var(--space-2);
   color: var(--clr-text-muted);
 }
 .gh-day {
   grid-column: 1; align-self: center;
   position: sticky; left: 0; z-index: 1; background: var(--clr-surface);   /* stay visible if the grid scrolls */
   padding-right: var(--space-2);
-  font-size: 10px; line-height: 1; white-space: nowrap;
+  font-size: var(--fs-xs); line-height: 1; white-space: nowrap;
   color: var(--clr-text-muted);
 }
 .gh-cell {
@@ -166,7 +207,7 @@ body:has(.avatar-dialog[open]) { overflow: hidden; }
 
 .gh-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); }
 .gh-foot__streak { margin: 0; font-size: var(--fs-xs); color: var(--clr-text-muted); }
-.gh-legend { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.gh-legend { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--clr-text-muted); }
 .gh-legend .gh-cell { width: 12px; height: 12px; aspect-ratio: auto; align-self: auto; }
 .gh-legend span:first-child { margin-right: 2px; }
 .gh-legend span:last-child { margin-left: 2px; }

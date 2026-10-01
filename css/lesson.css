@@ -73,6 +73,13 @@
 .course-sidebar__sign-icon { font-size: var(--fs-xs); flex-shrink: 0; width: 14px; }
 .course-sidebar__sign--done { color: var(--clr-text); }
 .course-sidebar__sign--done .course-sidebar__sign-icon { color: var(--clr-success); }
+
+/* Practicing — LESSON done, but BOOSTER/PRACTICE aren't. Orange so the
+ * sidebar never shows a green "done" check while the mission's own
+ * progress bar is still behind it. Turns green (--done) only once every
+ * item for the sign is complete. Same tokens as .sign-chip--practicing. */
+.course-sidebar__sign--practicing { color: var(--clr-text); }
+.course-sidebar__sign--practicing .course-sidebar__sign-icon { color: var(--clr-orange); }
 .course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent-text); font-weight: 600; } /* CHANGED (dark pass) was --clr-accent: 4.34:1 in dark */
 .course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent-text); }
 

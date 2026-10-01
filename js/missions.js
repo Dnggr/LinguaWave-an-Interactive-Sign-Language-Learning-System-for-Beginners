@@ -8795,11 +8795,9 @@ function getCategoriesForUnitV2(unitOrder) {
   // sharing a key with them.
   const PROGRESS_KEY = 'lw_missions_progress_v1';
   const STREAK_KEY = 'lw_missions_streak_v1';
-  // Marker on saved streak state: its `days` are LOCAL calendar days (see
-  // the TIMEZONE FIX block at todayStr()). Absent = legacy UTC-keyed days.
-  // Declared up here (not next to its helpers) so nothing that runs early
-  // can hit it in its temporal dead zone.
-  const STREAK_DAYKEYS = 'local-v2';
+  // Shape version of the saved streak state (see the Day Streak block). Absent /
+  // other = legacy `{ days: [...] }` state, migrated on first load.
+  const STREAK_VERSION = 2;
   const HEARTS_KEY = 'lw_missions_hearts_v1';
 
   // ── Cross-device Firestore sync (NEW, this revision) ────────────
@@ -8849,16 +8847,16 @@ function getCategoriesForUnitV2(unitOrder) {
     }
   }
 
-  // Union-merges local + remote. completedItemIds/streak days are
-  // unioned (nothing from either device is lost); forgivenessUsedThisWeek
-  // and hearts.lostAt are taken ENTIRELY from remote (authoritative —
+  // Union-merges local + remote. completedItemIds are unioned (nothing from
+  // either device is lost); the streak is merged by mergeStreakStates();
+  // hearts.lostAt is taken ENTIRELY from remote (authoritative —
   // both are "state as of last write," not accumulating history, so
   // merging them field-by-field like the id/day lists would would
   // resurrect stale local values a newer remote write already
   // superseded).
   function reconcileMissionsState(local, remote) {
     const remoteProgress = (remote && remote.progress) || { completedItemIds: [], completedAt: {} };
-    const remoteStreak = (remote && remote.streak) || { days: [], forgivenessUsedThisWeek: 0 };
+    const remoteStreak = (remote && remote.streak) || emptyStreakState();
     const remoteHearts = (remote && remote.hearts) || { lostAt: [] };
 
     const mergedIds = Array.from(new Set([
@@ -8869,20 +8867,18 @@ function getCategoriesForUnitV2(unitOrder) {
       ...(local.progress.completedAt || {}),
       ...(remoteProgress.completedAt || {}),
     };
-    // Either side may still hold legacy UTC-keyed days (an un-updated
-    // device can keep writing them) — normalise both to local day keys
-    // against the MERGED timestamps before unioning, so a stale device
-    // can't reintroduce the off-by-a-day entries.
-    const localStreakN = migrateStreakDaysToLocal(local.streak, mergedCompletedAt);
-    const remoteStreakN = migrateStreakDaysToLocal(remoteStreak, mergedCompletedAt);
-    const mergedDays = Array.from(new Set([
-      ...(localStreakN.days || []),
-      ...(remoteStreakN.days || []),
-    ])).sort();
+    // Either side may still hold the legacy `{ days }` shape (an un-updated
+    // device can keep writing it) - normalise both against the MERGED
+    // timestamps, then merge: the later lastActivityDate wins `current`,
+    // longest/recentDays only grow.
+    const mergedStreak = mergeStreakStates(
+      normalizeStreak(local.streak, mergedCompletedAt),
+      normalizeStreak(remoteStreak, mergedCompletedAt)
+    );
 
     return {
       progress: { ...local.progress, completedItemIds: mergedIds, completedAt: mergedCompletedAt },
-      streak: { ...local.streak, days: mergedDays, dayKeys: STREAK_DAYKEYS, forgivenessUsedThisWeek: remoteStreak.forgivenessUsedThisWeek },
+      streak: mergedStreak,
       hearts: { ...local.hearts, lostAt: (remoteHearts.lostAt || []).slice() },
     };
   }
@@ -9490,7 +9486,11 @@ function getCategoriesForUnitV2(unitOrder) {
       changed = true;
     }
     if (changed) saveProgressState(state);
-    recordActivityToday();
+    // STREAK: intentionally NOT recorded here any more. This function also runs
+    // for replays of finished items, for markMissionComplete()'s bulk marking and
+    // for the camera-practice bridge's "reconfirm" calls - none of those is
+    // necessarily new learning today. Call sites report real activity through
+    // recordActivity(type) instead (lesson.js, mastery-quiz.js, camera-practice.js).
     return getMissionProgress(mission);
   }
 
@@ -9707,24 +9707,57 @@ function getCategoriesForUnitV2(unitOrder) {
       .map(({ item }) => `You can now sign "${item.signId}"`);
   }
 
-  /* ── Streak / meta-progression (§3.15) — minimal, real, no fake
-   * numbers. A day counts once any item is marked complete that day.
-   */
+  /* ── Day Streak ─────────────────────────────────────────────────
+   * REWRITTEN (streak pass). One small, explicit state per learner:
+   *
+   *   { v: 2, current, longest, lastActivityDate, recentDays }
+   *
+   *   current           consecutive LOCAL calendar days ending on lastActivityDate
+   *   longest           best `current` ever reached (never decreases)
+   *   lastActivityDate  'YYYY-MM-DD', the learner's LOCAL date of the last
+   *                     qualifying activity
+   *   recentDays        the last STREAK_RECENT_DAYS active local dates, kept only so
+   *                     the weekday boxes in the UI can show what really happened
+   *                     (it never feeds `current`/`longest`)
+   *
+   * RULES
+   *  - Days are calendar days in the learner's own timezone, never 24-hour
+   *    windows and never UTC (see localDayKey()).
+   *  - Only recordActivity(type) with a type in STREAK_QUALIFYING_TYPES counts.
+   *    Logging in, opening a page, the Dictionary or browsing lessons never call it.
+   *  - First qualifying activity of a day: lastActivityDate was yesterday ->
+   *    current + 1; otherwise (first ever, or a full day missed) -> 1.
+   *    Any further activity the same day changes nothing.
+   *  - A streak is "live" through the end of the day AFTER lastActivityDate;
+   *    once a whole calendar day is missed it reads 0 (longest is kept).
+   *  - A device clock that reads EARLIER than lastActivityDate (travel west, a
+   *    changed clock) never resets or double counts: the day is treated as done.
+   *
+   * Pure rules live in applyStreakActivity()/liveStreak(); storage and Firestore
+   * sync sit below them. Call sites: js/lesson.js (lesson/recall/practice items),
+   * js/mastery-quiz.js (a PASS), js/camera-practice.js (a PASSED camera check).
+   * markItemComplete() deliberately does NOT record streak activity any more -
+   * it also fires on replays and on bridge/reconfirm calls. */
 
-  /* TIMEZONE FIX — every streak day key is the learner's LOCAL calendar
-   * day ('YYYY-MM-DD'), never the UTC date. This used to be
-   * `new Date().toISOString().slice(0, 10)` (UTC), which broke streaks
-   * for anyone ahead of UTC (e.g. the Philippines, UTC+8): activity
-   * before 8 AM local was filed under "yesterday", and the day-stepping
-   * helpers below (which also went through toISOString()) never found
-   * "the next day", so a streak could not grow past 1. Day arithmetic
-   * now goes through shiftDayKey(), which steps a local Date by whole
-   * calendar days (DST-safe) and never touches UTC. */
+  const STREAK_RECENT_DAYS = 14;
+  // Activity types that may extend a streak. Anything else is ignored.
+  const STREAK_QUALIFYING_TYPES = Object.freeze({
+    lesson: true,          // a LESSON item (learn a sign)
+    mission: true,         // finishing a mission
+    mastery_quiz: true,    // PASSING a Mastery Quiz
+    practice: true,        // a PRACTICE item
+    recall: true,          // a BOOSTER / quick-check recall question
+    review: true,          // re-answering a recall/practice question on a finished item
+    camera_practice: true, // PASSING the camera check
+  });
+
+  /* Local calendar day ('YYYY-MM-DD') of a Date/ISO string. Never UTC. */
   function localDayKey(dateLike) {
     const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  /* Steps a day key by whole calendar days (DST-safe, never touches UTC). */
   function shiftDayKey(key, deltaDays) {
     const [y, m, d] = key.split('-').map(Number);
     return localDayKey(new Date(y, m - 1, d + deltaDays));
@@ -9734,52 +9767,131 @@ function getCategoriesForUnitV2(unitOrder) {
     return localDayKey(new Date());
   }
 
-  /* One-time migration of saved streak days from UTC keys to local keys.
-   * Saved state written before this fix has no `dayKeys` marker and its
-   * days are UTC dates. Every item's completedAt is an ISO timestamp
-   * taken at the same instant recordActivityToday() ran, so a legacy
-   * day D is "explained" exactly when some completedAt's UTC date is D;
-   * those days are dropped and rebuilt as the LOCAL days of the same
-   * timestamps. Legacy days no timestamp explains (activity from before
-   * completedAt existed) are kept as-is — best effort, nothing lost.
-   * Idempotent: state already carrying the marker is returned untouched. */
-  function migrateStreakDaysToLocal(state, completedAtMap) {
-    if (!state || state.dayKeys === STREAK_DAYKEYS) return state;
-    const utcExplained = new Set();
-    const localDays = new Set();
-    Object.keys(completedAtMap || {}).forEach((k) => {
-      const t = new Date(completedAtMap[k]);
-      if (isNaN(t.getTime())) return;
-      utcExplained.add(t.toISOString().slice(0, 10));
-      localDays.add(localDayKey(t));
-    });
-    const kept = (state.days || []).filter((d) => !utcExplained.has(d));
-    const days = Array.from(new Set([...kept, ...localDays])).sort();
-    return { ...state, days, dayKeys: STREAK_DAYKEYS };
+  function emptyStreakState() {
+    return { v: STREAK_VERSION, current: 0, longest: 0, lastActivityDate: null, recentDays: [] };
   }
+
+  const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  /* ── pure rules ── */
+
+  /* State after a qualifying activity on local day `today`. Returns the SAME
+   * object when nothing changes, so callers can tell whether to save. */
+  function applyStreakActivity(state, today) {
+    const s = state || emptyStreakState();
+    // Already counted today (or the clock reads earlier than the last
+    // activity day): never increase twice, never reset.
+    if (s.lastActivityDate && s.lastActivityDate >= today) return s;
+    const continues = s.lastActivityDate === shiftDayKey(today, -1);
+    const current = continues ? (s.current || 0) + 1 : 1;
+    const recent = (s.recentDays || []).concat(today);
+    return {
+      v: STREAK_VERSION,
+      current,
+      longest: Math.max(s.longest || 0, current),
+      lastActivityDate: today,
+      recentDays: Array.from(new Set(recent)).sort().slice(-STREAK_RECENT_DAYS),
+    };
+  }
+
+  /* The streak to DISPLAY on local day `today`: live through the end of the
+   * day after the last activity, 0 once a full calendar day was missed. */
+  function liveStreak(state, today) {
+    if (!state || !state.lastActivityDate) return 0;
+    const last = state.lastActivityDate;
+    return (last >= today || last === shiftDayKey(today, -1)) ? (state.current || 0) : 0;
+  }
+
+  /* Builds a state from a list of active local day keys (used only to
+   * migrate pre-rewrite data). */
+  function streakFromDays(days) {
+    const uniq = Array.from(new Set((days || []).filter((d) => DAY_KEY_RE.test(d)))).sort();
+    if (!uniq.length) return emptyStreakState();
+    let longest = 1, run = 1;
+    for (let i = 1; i < uniq.length; i++) {
+      run = (uniq[i] === shiftDayKey(uniq[i - 1], 1)) ? run + 1 : 1;
+      if (run > longest) longest = run;
+    }
+    return {
+      v: STREAK_VERSION,
+      current: run,                       // run ending on the last active day
+      longest,
+      lastActivityDate: uniq[uniq.length - 1],
+      recentDays: uniq.slice(-STREAK_RECENT_DAYS),
+    };
+  }
+
+  /* Accepts a v2 state (sanitised) or a legacy `{ days, ... }` state.
+   *
+   * Legacy migration: the old model recorded a "streak day" every time
+   * markItemComplete() ran, INCLUDING replays of items that were already
+   * complete, so its days could include days with no real learning (that is
+   * how a "3 day streak" could sit next to only two checked days). Every
+   * first-time completion has a completedAt timestamp, so when timestamps
+   * exist the legacy streak is rebuilt from the LOCAL days of those; only
+   * when none exist are the old `days` trusted as they are. */
+  function normalizeStreak(raw, completedAtMap) {
+    if (raw && raw.v === STREAK_VERSION) {
+      const last = DAY_KEY_RE.test(raw.lastActivityDate) ? raw.lastActivityDate : null;
+      const current = last ? Math.max(0, Math.floor(Number(raw.current) || 0)) : 0;
+      return {
+        v: STREAK_VERSION,
+        current,
+        longest: Math.max(current, Math.floor(Number(raw.longest) || 0)),
+        lastActivityDate: last,
+        recentDays: (Array.isArray(raw.recentDays) ? raw.recentDays : []).filter((d) => DAY_KEY_RE.test(d)).sort().slice(-STREAK_RECENT_DAYS),
+      };
+    }
+    const stamps = Object.values(completedAtMap || {});
+    const stampDays = [];
+    stamps.forEach((iso) => {
+      const t = new Date(iso);
+      if (!isNaN(t.getTime())) stampDays.push(localDayKey(t));
+    });
+    if (stampDays.length) return streakFromDays(stampDays);
+    return streakFromDays(raw && raw.days);
+  }
+
+  /* Merge two states for cross-device sync. The state with the LATER
+   * lastActivityDate wins `current` (same day -> the larger); `longest` and
+   * recentDays only ever grow. */
+  function mergeStreakStates(a, b) {
+    const x = a || emptyStreakState();
+    const y = b || emptyStreakState();
+    const xd = x.lastActivityDate || '', yd = y.lastActivityDate || '';
+    let current, last;
+    if (xd === yd) { current = Math.max(x.current || 0, y.current || 0); last = x.lastActivityDate; }
+    else if (xd > yd) { current = x.current || 0; last = x.lastActivityDate; }
+    else { current = y.current || 0; last = y.lastActivityDate; }
+    return {
+      v: STREAK_VERSION,
+      current,
+      longest: Math.max(x.longest || 0, y.longest || 0, current),
+      lastActivityDate: last || null,
+      recentDays: Array.from(new Set([...(x.recentDays || []), ...(y.recentDays || [])])).sort().slice(-STREAK_RECENT_DAYS),
+    };
+  }
+
+  /* ── storage ── */
 
   function loadStreakState() {
     const uid = getCurrentUidV2();
     try {
       const raw = localStorage.getItem(STREAK_KEY);
-      const state = raw ? JSON.parse(raw) : null;
-      // Per-account scoping — see getCurrentUidV2()'s block comment.
-      if (!state || state.uid !== uid) {
-        return { uid, days: [], forgivenessUsedThisWeek: 0, dayKeys: STREAK_DAYKEYS };
-      }
-      if (state.dayKeys !== STREAK_DAYKEYS) {
-        // Legacy UTC-keyed days — migrate once and persist locally.
-        // skipPush: a load must never write to Firestore (it could
-        // clobber days another device added before the sync merge
-        // runs); the marker reaches Firestore on the next normal save
-        // or reconcile.
-        const migrated = migrateStreakDaysToLocal(state, loadProgressState().completedAt);
+      const stored = raw ? JSON.parse(raw) : null;
+      // Per-account scoping - see getCurrentUidV2()'s block comment.
+      if (!stored || stored.uid !== uid) return { ...emptyStreakState(), uid };
+      if (stored.v !== STREAK_VERSION) {
+        // Legacy shape - migrate once and persist locally. skipPush: a load
+        // must never write to Firestore (it could clobber another device's
+        // newer state before the sync merge runs).
+        const migrated = normalizeStreak(stored, loadProgressState().completedAt);
         saveStreakState(migrated, { skipPush: true });
         return migrated;
       }
-      return state;
+      return normalizeStreak(stored);
     } catch {
-      return { uid, days: [], forgivenessUsedThisWeek: 0, dayKeys: STREAK_DAYKEYS };
+      return { ...emptyStreakState(), uid };
     }
   }
 
@@ -9793,61 +9905,63 @@ function getCategoriesForUnitV2(unitOrder) {
     if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('streak', state);
   }
 
-  function recordActivityToday() {
-    const state = loadStreakState();
-    const today = todayStr();
-    if (!state.days.includes(today)) {
-      state.days.push(today);
-      state.days.sort();
-      saveStreakState(state);
+  /* THE one entry point. `type` must be one of STREAK_QUALIFYING_TYPES.
+   * Returns { counted, current, longest } - `counted` is true only when this
+   * call started or extended the streak (i.e. first qualifying activity today). */
+  function recordActivity(type) {
+    if (!STREAK_QUALIFYING_TYPES[type]) {
+      console.warn('[missions.js] recordActivity ignored non-qualifying type:', type);
+      return { counted: false, current: getStreakSummary().currentStreak, longest: getStreakSummary().longestStreak };
     }
-  }
-
-  function dayBefore(dateStr) {
-    return shiftDayKey(dateStr, -1);
+    const before = loadStreakState();
+    const after = applyStreakActivity(before, todayStr());
+    const counted = after !== before;
+    if (counted) saveStreakState(after);
+    return { counted, current: after.current, longest: after.longest };
   }
 
   function getStreakSummary() {
-    const { days } = loadStreakState();
-    if (!days.length) return { currentStreak: 0, longestStreak: 0, streakForgivenessRemaining: 1 };
-
-    // Longest run of consecutive days anywhere in history — walk
-    // forward, comparing each day to the previous day + 1.
-    let longest = 1, run = 1;
-    for (let i = 1; i < days.length; i++) {
-      run = (days[i] === shiftDayKey(days[i - 1], 1)) ? run + 1 : 1;
-      if (run > longest) longest = run;
-    }
-
-    // Current streak: consecutive days ending today or yesterday
-    // (yesterday still "counts" as live until today ends).
+    const state = loadStreakState();
     const today = todayStr();
-    const yesterday = dayBefore(today);
-    let anchor = null;
-    if (days[days.length - 1] === today) anchor = today;
-    else if (days[days.length - 1] === yesterday) anchor = yesterday;
-
-    let current = 0;
-    if (anchor) {
-      current = 1;
-      let cursor = anchor;
-      for (let i = days.length - 2; i >= 0; i--) {
-        const expectedPrev = dayBefore(cursor);
-        if (days[i] === expectedPrev) {
-          current++;
-          cursor = expectedPrev;
-        } else {
-          break;
-        }
-      }
-    }
-
-    const { forgivenessUsedThisWeek } = loadStreakState();
+    const current = liveStreak(state, today);
     return {
       currentStreak: current,
-      longestStreak: longest, // kept visible even if current is 0 — §3.15
-      streakForgivenessRemaining: Math.max(0, 1 - forgivenessUsedThisWeek),
+      longestStreak: Math.max(state.longest || 0, current), // stays visible after a break
+      lastActivityDate: state.lastActivityDate,
+      practicedToday: !!state.lastActivityDate && state.lastActivityDate >= today,
+      recentDays: (state.recentDays || []).slice(),
     };
+  }
+
+  /* Runs `cb` once whenever the learner's LOCAL calendar day changes while the
+   * page is open (midnight, or waking a sleeping tab / laptop). A page rendered
+   * before midnight otherwise keeps showing yesterday as "today". One timer
+   * at most; cleared on pagehide (AGENTS.md timer rule). Returns a stop fn. */
+  function onLocalDayChange(cb) {
+    let day = todayStr();
+    let timerId = null;
+    function check() {
+      const now = todayStr();
+      if (now !== day) { day = now; try { cb(now); } catch (e) { console.warn('[missions.js] day-change callback failed:', e); } }
+      arm();
+    }
+    function arm() {
+      if (timerId) clearTimeout(timerId);
+      const n = new Date();
+      const msToMidnight = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1).getTime() - n.getTime();
+      // +1s so we are safely past midnight; setTimeout caps near 24.8 days (we use <= 24h).
+      timerId = setTimeout(check, Math.min(msToMidnight + 1000, 2147483647));
+    }
+    function onVisible() { if (!document.hidden) check(); }
+    function stop() {
+      if (timerId) clearTimeout(timerId);
+      timerId = null;
+      document.removeEventListener('visibilitychange', onVisible);
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pagehide', stop, { once: true });
+    arm();
+    return stop;
   }
 
   /* ── Mastery Hearts (§6/§10) ─────────────────────────────────────
@@ -10034,7 +10148,8 @@ function getCategoriesForUnitV2(unitOrder) {
     canReviewMission,        // NEW — true once only the closing Mastery Quiz is left (or the mission is done); gates the lesson review nav + Overview's "Review Mission"
     getRecap,
     getStreakSummary,
-    recordActivityToday,
+    recordActivity,          // NEW (streak pass) - the ONLY way to extend the Day Streak; see the Day Streak block
+    onLocalDayChange,        // NEW (streak pass) - cb when the learner's local date rolls over while a page is open
     getHeartsState,          // NEW — Mission Overview + Hearts module
     consumeHeartForMastery,          // Mission Overview + Hearts module (unchanged — still used by the V1-quiz.js fallback path, see file header)
     consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the-native Mastery Quiz (js/mastery-quiz.js)

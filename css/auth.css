@@ -933,7 +933,7 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
    rules, labels and levels all come from js/auth.js; this is styling only.
 
    Colour is never the only signal: every level also has a text label
-   (Weak / Medium / Strong), a different bar LENGTH, and each requirement
+   (Weak / Medium / Strong / Very strong), a different bar LENGTH, and each requirement
    swaps a hollow circle for a check mark.
 
    --clr-success / --clr-error / --clr-warning aren't defined in the theme
@@ -999,9 +999,10 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 .pw-meter[data-level="weak"]   { --pw-color: var(--clr-error, #dc2626); }
 .pw-meter[data-level="medium"] { --pw-color: var(--clr-warning, #f59e0b); }
 .pw-meter[data-level="strong"] { --pw-color: var(--clr-success, #16a34a); }
-/* Fixed width so "Weak" -> "Medium" never nudges the bar. */
+.pw-meter[data-level="very-strong"] { --pw-color: var(--clr-success-strong, #0d9488); }
+/* Fixed width (sized for the longest label, "Very strong") so changing level never nudges the bar. */
 .pw-meter__label {
-  min-width: 4.5rem; text-align: right;
+  min-width: 6rem; text-align: right;
   font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text);
 }
 .pw-meter[data-level="empty"] .pw-meter__label { color: var(--clr-text-muted); font-weight: 500; }

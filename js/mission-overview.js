@@ -96,6 +96,23 @@ function isSignLearned(mission, signId) {
   return window.LWMissions.isItemComplete(mission, index, mission.items[index]);
 }
 
+// Per-sign color state for the "You'll practice" chips.
+//   'mastered'   -> every item for this sign is done (LESSON + BOOSTER + PRACTICE)
+//   'practicing' -> LESSON is done, but BOOSTER/PRACTICE are still left
+//   'none'       -> not started
+// Uses the same getLessonProgress() split the Progress page's Sign Mastery
+// grid uses, so a chip and that grid never disagree. isSignLearned() above is
+// left untouched on purpose: it still drives sequential gating
+// (isSignAccessible(), and camera-practice.js's matching check). A chip only
+// turns green once the whole sign is done, so it never reads as "completed"
+// while the mission's own progress bar is still behind it.
+function signChipState(mission, signId) {
+  if (!isSignLearned(mission, signId)) return 'none';
+  return window.LWMissions.getLessonProgress(mission, signId) >= 1
+    ? 'mastered'
+    : 'practicing';
+}
+
 // SEQUENTIAL SIGN GATING (this revision) — a mission being unlocked
 // (chapter-wise) doesn't mean every one of its signs is reachable yet:
 // a sign only opens up once every EARLIER sign in this same mission's
@@ -240,7 +257,6 @@ function render(mission, status) {
   const signs = signsInMission(mission);
   const chips = signs
     .map((id) => {
-      const learned = isSignLearned(mission, id);
       const label = signTitle(mission, id);
       if (locked) {
         return `<span class="sign-chip sign-chip--locked" aria-disabled="true" title="Locked: finish Chapter 1 and Chapter 2 to unlock this one">${label}</span>`;
@@ -249,7 +265,16 @@ function render(mission, status) {
         return `<span class="sign-chip sign-chip--pending" aria-disabled="true" title="Locked: finish the earlier signs in this mission first">${label}</span>`;
       }
       const dictUrl = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}&sign=${encodeURIComponent(id)}`;
-      return `<a href="${dictUrl}" class="sign-chip${learned ? ' sign-chip--learned' : ''}">${label}</a>`;
+      // Orange while Practicing (LESSON done, BOOSTER/PRACTICE left), green
+      // only once every item for this sign is complete — see signChipState().
+      const state = signChipState(mission, id);
+      const stateClass = state === 'mastered' ? ' sign-chip--learned'
+                       : state === 'practicing' ? ' sign-chip--practicing'
+                       : '';
+      const stateTitle = state === 'practicing'
+        ? ' title="Practicing: finish this sign\'s booster and practice to complete it"'
+        : '';
+      return `<a href="${dictUrl}" class="sign-chip${stateClass}"${stateTitle}>${label}</a>`;
     })
     .join('');
   // CHANGED — used to link straight to ../pages/camera-practice.html (V1).
@@ -456,4 +481,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPage);
 } else {
   initPage();
-}
+}

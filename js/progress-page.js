@@ -139,9 +139,8 @@ function collectLearnedSigns(missions) {
  * kind (LESSON/BOOSTER/PRACTICE/QUIZ), with its real completedAt. This
  * is the shared source for Recent Activity and the consistency heatmap
  * — both need "which real calendar days had activity," and this is the
- * same underlying signal missions.js's own recordActivityToday() uses
- * to build the streak (any item completing counts as that day's
- * activity), so the two pages' notions of "active day" never disagree.
+ * heatmap signal. NOTE: this is NOT the Day Streak's source any more -
+ * the streak only counts qualifying activity (missions.js recordActivity()).
  * Kept separate from collectLearnedSigns() (LESSON-only, used by Needs
  * Review) since Recent Activity/the heatmap should reflect ALL practice,
  * not just first-time teaching moments. */
@@ -198,13 +197,14 @@ function tallySigns(missions) {
 const RING_MIN_PX = 140;
 const RING_MAX_PX = 200;
 
-/* Set of local-day keys (YYYY-MM-DD) on which the learner completed at
- * least one item — the ONE "was this day active?" signal shared by the
- * Learning Activity heatmap (renderConsistency, now in js/profile-page.js) and the Day Streak
- * tile's week strip (buildStreakWeek), so the two can never disagree
- * about which days count. */
-function getActiveDaySet(missions) {
-  return new Set(collectAllCompletions(missions).map((c) => localDateKey(c.completedAt)));
+/* Set of local-day keys (YYYY-MM-DD) that count as Day Streak days - read from
+ * the streak state itself (LWMissions.getStreakSummary().recentDays), NOT derived
+ * from item timestamps. The number ("3 Day Streak"), the tile's week strip and
+ * the dialog's check boxes therefore all come from ONE source and cannot
+ * disagree. (The Learning Activity heatmap on the profile page is a different
+ * widget: it counts completions per day, not streak days.) */
+function getActiveDaySet(streak) {
+  return new Set((streak && streak.recentDays) || []);
 }
 
 /* Day Streak tile's visual: this calendar week (Mon–Sun), one cell per
@@ -352,7 +352,7 @@ function renderHero(missions, learnedSigns) {
     : '';
   const explainerNext = refillText
   // Day Streak tile: number + this-week strip (see buildStreakWeek()).
-  const streakWeek = buildStreakWeek(getActiveDaySet(missions));
+  const streakWeek = buildStreakWeek(getActiveDaySet(streak));
 
   el.innerHTML = `
     <div class="progress-hero__ring" id="progress-ring">
@@ -422,7 +422,7 @@ function renderHero(missions, learnedSigns) {
  * top layer for free; backdrop click and the X button are wired below.
  *
  * Data is the same as the tile: getStreakSummary() for the number and
- * getActiveDaySet() (per-item completedAt, local days) for the boxes, so
+ * getActiveDaySet() (the streak's own recent active days) for the boxes, so
  * the two can't disagree. The old tile's tooltip ("Longest streak: N
  * days") is now a visible line here — a hover-only title was invisible
  * on touch screens. The dashboard link the tile used to be is kept as
@@ -448,9 +448,8 @@ function streakFlameSvg(idle) {
 }
 
 function buildStreakDialogContent() {
-  const missions = window.LWMissions.getAllMissions();
-  const activeDays = getActiveDaySet(missions);
   const streak = window.LWMissions.getStreakSummary();
+  const activeDays = getActiveDaySet(streak);
   const n = streak.currentStreak;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1130,7 +1129,8 @@ function renderSnapshot(missions) {
 
 /* Recent Activity (renderActivity), Learning Activity heatmap (renderConsistency) and Your Highlights (renderHighlights)
  * MOVED to js/profile-page.js / pages/profile.html. Nothing else on this page used them;
- * getActiveDaySet() above stays because the Day Streak tile's week strip still needs it. */
+ * getActiveDaySet() above stays because the Day Streak tile's week strip still needs it
+ * (now backed by the streak state, not by item timestamps). */
 
 function showProgressUnavailable(reason) {
   console.error('[progress-page.js] Missions unavailable, showing fallback UI. Reason:', reason);
@@ -1185,6 +1185,15 @@ function initPage() {
   renderProgressPage();
   window.LWMissions.whenMissionsSyncReady().then(renderProgressPage);
   startHeartsCountdown();
+
+  // A tab left open past local midnight (or woken from sleep) would keep
+  // showing yesterday as "today" and "Come back tomorrow". Re-render on a date
+  // change, and refresh the streak dialog too if it happens to be open.
+  window.LWMissions.onLocalDayChange(() => {
+    renderProgressPage();
+    const dlg = document.getElementById('streak-dialog');
+    if (dlg && dlg.open) dlg.innerHTML = buildStreakDialogContent();
+  });
 }
 
 if (document.readyState === 'loading') {

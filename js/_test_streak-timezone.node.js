@@ -1,14 +1,17 @@
 'use strict';
 /**
- * Regression test for the Day Streak timezone bug (js/missions.js).
+ * Tests for the Day Streak rules and timezone handling (js/missions.js).
  *
- * THE BUG: streak day keys were UTC dates (`toISOString().slice(0,10)`)
- * and the day-stepping helpers also went through toISOString(). For
- * anyone ahead of UTC (e.g. the Philippines, UTC+8):
- *   - activity before 8 AM local was filed under the PREVIOUS day, so
- *     two real days could collapse into one, and
- *   - dayBefore()/"next day" never matched, so a streak could not grow
- *     past 1 day.
+ * RULES UNDER TEST (see the "Day Streak" block in missions.js):
+ *   - calendar days in the learner's LOCAL timezone, never 24h windows / UTC
+ *   - only recordActivity(<qualifying type>) counts; markItemComplete() alone does not
+ *   - 2nd activity the same day changes nothing; yesterday -> +1; a missed day -> reset
+ *   - state = { current, longest, lastActivityDate, recentDays }
+ *   - legacy `{ days }` saves are migrated from real completion timestamps
+ *
+ * HISTORY: the old streak keyed days by UTC (`toISOString().slice(0,10)`), which
+ * broke anyone ahead of UTC (e.g. the Philippines, UTC+8). That is why every
+ * scenario runs in several timezones.
  *
  * Node fixes the process timezone at startup, so this file re-runs
  * itself once per timezone in a child process (TZ=...), and each child
@@ -77,101 +80,203 @@ function makeEnv({ localStorageInitial = {} } = {}) {
   vm.runInContext(SOURCE, sandbox, { filename: 'missions.js' });
   return {
     L: sandbox.window.LWMissions,
+    sandbox,
     store,
     setNow: (y, m, d, hh = 12, mm = 0) => { nowMs = new RealDate(y, m - 1, d, hh, mm).getTime(); },
   };
 }
 
 const key = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const act = (L, type = 'lesson') => L.recordActivity(type);
+const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
 
-// 1. Consecutive days, activity in the EARLY MORNING local time (06:07) —
+// 1. Consecutive days, activity in the EARLY MORNING local time (06:07) -
 //    the exact window that broke UTC+ zones. 5 days in a row -> streak 5.
 {
   const { L, setNow } = makeEnv();
-  for (let d = 25; d <= 29; d++) { setNow(2026, 9, d, 6, 7); L.recordActivityToday(); }
+  for (let d = 25; d <= 29; d++) { setNow(2026, 9, d, 6, 7); act(L); }
   const s = L.getStreakSummary();
   assert(s.currentStreak === 5 && s.longestStreak === 5, `5 consecutive early-morning days -> streak 5 (got ${s.currentStreak}/${s.longestStreak})`);
 }
 
-// 2. Late-night activity (23:50) on consecutive days — the mirror case
-//    for zones behind UTC.
+// 2. Late-night activity (23:50) on consecutive days - the mirror case.
 {
   const { L, setNow } = makeEnv();
-  for (let d = 25; d <= 29; d++) { setNow(2026, 9, d, 23, 50); L.recordActivityToday(); }
-  const s = L.getStreakSummary();
-  assert(s.currentStreak === 5, `5 consecutive late-night days -> streak 5 (got ${s.currentStreak})`);
+  for (let d = 25; d <= 29; d++) { setNow(2026, 9, d, 23, 50); act(L); }
+  assert(L.getStreakSummary().currentStreak === 5, '5 consecutive late-night days -> streak 5');
 }
 
-// 3. A gap breaks the current streak but not the longest one.
+// 3. CALENDAR days, not 24h periods: 23:50 on the 1st then 00:10 on the 2nd is
+//    only 20 minutes apart but is a NEW day -> 2. And 00:10 -> 23:50 the SAME
+//    day (23h40m apart) must stay 1.
 {
   const { L, setNow } = makeEnv();
-  [21, 22, 23, 25, 26].forEach((d) => { setNow(2026, 9, d, 8, 0); L.recordActivityToday(); });
-  setNow(2026, 9, 26, 20, 0);
-  const s = L.getStreakSummary();
-  assert(s.currentStreak === 2 && s.longestStreak === 3, `gap on the 24th -> current 2, longest 3 (got ${s.currentStreak}/${s.longestStreak})`);
+  setNow(2026, 9, 1, 23, 50); act(L);
+  setNow(2026, 9, 2, 0, 10);  act(L);
+  assert(L.getStreakSummary().currentStreak === 2, '20 minutes apart across midnight -> new calendar day -> streak 2');
+  const e2 = makeEnv();
+  e2.setNow(2026, 9, 2, 0, 10);  act(e2.L);
+  e2.setNow(2026, 9, 2, 23, 50); act(e2.L);
+  assert(e2.L.getStreakSummary().currentStreak === 1, '23h40m apart on the SAME calendar day -> still streak 1');
 }
 
-// 4. Yesterday still counts as "live" until today ends; two days ago does not.
+// 4. Several activities on the same day count as ONE streak day, and the
+//    first one reports counted:true while the rest report counted:false.
 {
   const { L, setNow } = makeEnv();
-  setNow(2026, 9, 27, 6, 7); L.recordActivityToday();
-  setNow(2026, 9, 28, 6, 7); L.recordActivityToday();
+  setNow(2026, 9, 10, 9, 0);
+  const r1 = act(L, 'lesson'), r2 = act(L, 'recall'), r3 = act(L, 'practice'), r4 = act(L, 'camera_practice');
+  assert(r1.counted === true && r2.counted === false && r3.counted === false && r4.counted === false, 'only the first activity of a day is "counted"');
+  const s = L.getStreakSummary();
+  assert(s.currentStreak === 1 && s.longestStreak === 1, 'four activities the same day -> streak 1');
+  setNow(2026, 9, 11, 9, 0); act(L); act(L); act(L);
+  assert(L.getStreakSummary().currentStreak === 2, 'next day, three activities -> streak 2 (not 5)');
+}
+
+// 5. Every qualifying type works; unknown / non-learning types are ignored.
+['lesson', 'mission', 'mastery_quiz', 'practice', 'recall', 'review', 'camera_practice'].forEach((t) => {
+  const { L, setNow } = makeEnv();
+  setNow(2026, 9, 10, 9, 0);
+  assert(act(L, t).counted === true && L.getStreakSummary().currentStreak === 1, `qualifying type "${t}" starts a streak`);
+});
+['login', 'page_view', 'dictionary', 'browse', '', undefined, null].forEach((t) => {
+  const { L, setNow, store } = makeEnv();
+  setNow(2026, 9, 10, 9, 0);
+  const r = L.recordActivity(t);
+  assert(r.counted === false && L.getStreakSummary().currentStreak === 0 && !store.lw_missions_streak_v1, `non-qualifying type ${JSON.stringify(t)} never counts`);
+});
+
+// 6. markItemComplete() by itself (replays, bridge, bulk mission marking) must
+//    NOT touch the streak any more.
+{
+  const { L, setNow } = makeEnv();
+  setNow(2026, 9, 10, 9, 0);
+  const m = L.getPilotMission();
+  L.markItemComplete(m, 0, m.items[0]);
+  L.markMissionComplete(m);
+  assert(L.getStreakSummary().currentStreak === 0, 'markItemComplete / markMissionComplete alone do not extend the streak');
+}
+
+// 7. A missed full calendar day resets: current -> 1 on return, longest kept.
+{
+  const { L, setNow } = makeEnv();
+  [21, 22, 23].forEach((d) => { setNow(2026, 9, d, 8, 0); act(L); });
+  setNow(2026, 9, 25, 8, 0); // the 24th was missed entirely
+  assert(L.getStreakSummary().currentStreak === 0, 'after a missed day the streak reads 0');
+  assert(L.getStreakSummary().longestStreak === 3, 'longest streak is kept after the reset');
+  act(L);
+  const s = L.getStreakSummary();
+  assert(s.currentStreak === 1 && s.longestStreak === 3, `returning after a gap restarts at 1 (got ${s.currentStreak}/${s.longestStreak})`);
+}
+
+// 8. Yesterday still counts as live until today ends; two days ago does not.
+{
+  const { L, setNow } = makeEnv();
+  setNow(2026, 9, 27, 6, 7); act(L);
+  setNow(2026, 9, 28, 6, 7); act(L);
   setNow(2026, 9, 29, 6, 7);
-  assert(L.getStreakSummary().currentStreak === 2, 'streak from yesterday is still live this morning');
+  const s = L.getStreakSummary();
+  assert(s.currentStreak === 2 && s.practicedToday === false, 'streak from yesterday is live this morning, practicedToday false');
   setNow(2026, 9, 30, 6, 7);
   assert(L.getStreakSummary().currentStreak === 0, 'streak is 0 once a full day has been missed');
 }
 
-// 5. DST boundaries (spring-forward, fall-back, EU + US): consecutive
-//    calendar days must still chain, even though a "day" is 23 or 25 hours.
+// 9. Stored shape: exactly current / longest / lastActivityDate (+ recentDays).
+{
+  const { L, setNow, store } = makeEnv();
+  setNow(2026, 9, 10, 9, 0); act(L);
+  setNow(2026, 9, 11, 9, 0); act(L);
+  const r = raw(store);
+  assert(r.current === 2 && r.longest === 2 && r.lastActivityDate === key(2026, 9, 11) && r.v === 2,
+    `saved state has current/longest/lastActivityDate (got ${JSON.stringify(r)})`);
+  assert(JSON.stringify(r.recentDays) === JSON.stringify([key(2026, 9, 10), key(2026, 9, 11)]), 'recentDays lists the active local dates');
+}
+
+// 10. Clock reads EARLIER than lastActivityDate (travel west / clock change):
+//     no reset, no double count.
+{
+  const { L, setNow } = makeEnv();
+  setNow(2026, 9, 10, 9, 0); act(L);
+  setNow(2026, 9, 11, 9, 0); act(L);
+  setNow(2026, 9, 10, 20, 0); // clock went back a day
+  const r = act(L);
+  const s = L.getStreakSummary();
+  assert(r.counted === false && s.currentStreak === 2, 'clock earlier than lastActivityDate: not counted again, streak intact');
+}
+
+// 11. DST boundaries (spring-forward, fall-back, EU + US): consecutive
+//     calendar days must still chain, even though a "day" is 23 or 25 hours.
 [[2026, 3, 6, 5], [2026, 3, 27, 4], [2026, 10, 30, 4], [2026, 11, 1, 3]].forEach(([y, m, d0, n]) => {
   const { L, setNow } = makeEnv();
-  // walk n consecutive calendar days starting at d0 (Date rolls over month ends itself)
   for (let i = 0; i < n; i++) {
     const dt = new RealDate(y, m - 1, d0 + i);
     setNow(dt.getFullYear(), dt.getMonth() + 1, dt.getDate(), 12, 0);
-    L.recordActivityToday();
+    act(L);
   }
   const s = L.getStreakSummary();
   assert(s.currentStreak === n, `${n} consecutive days from ${key(y, m, d0)} chain across DST (got ${s.currentStreak})`);
 });
 
-// 6. THE REPORTED CASE: legacy saved data. Monday 10:00 and Tuesday 06:07
-//    local, both stored under UTC keys (in UTC+8 they collapsed into one
-//    day -> "1d"). After migration the streak must be 2 and the saved
-//    days must be the LOCAL days.
+// 12. LEGACY MIGRATION: old `{ days }` state. The old code also recorded a
+//     "streak day" when an ALREADY-COMPLETE item was replayed, so `days` can hold
+//     days with no real learning. Real first-time completions have completedAt,
+//     so the migrated streak is rebuilt from those (local days).
+//     Here: real learning Mon + Tue, plus a bogus Wed from a replay.
 {
   const mon = new RealDate(2026, 8, 28, 10, 0).toISOString();
   const tue = new RealDate(2026, 8, 29, 6, 7).toISOString();
-  const legacyDays = Array.from(new Set([mon.slice(0, 10), tue.slice(0, 10)])).sort();
+  const legacyDays = [key(2026, 9, 28), key(2026, 9, 29), key(2026, 9, 30)];
   const { L, store, setNow } = makeEnv({
     localStorageInitial: {
       lw_missions_progress_v1: JSON.stringify({ uid: null, completedItemIds: ['a', 'b'], completedAt: { a: mon, b: tue } }),
-      lw_missions_streak_v1: JSON.stringify({ uid: null, days: legacyDays, forgivenessUsedThisWeek: 0 }), // no dayKeys marker = legacy
+      lw_missions_streak_v1: JSON.stringify({ uid: null, days: legacyDays, dayKeys: 'local-v2', forgivenessUsedThisWeek: 0 }),
     },
   });
-  setNow(2026, 9, 29, 6, 30);
+  setNow(2026, 9, 29, 12, 0);
   const s = L.getStreakSummary();
-  assert(s.currentStreak === 2 && s.longestStreak === 2, `legacy UTC-keyed data migrates: Mon+Tue -> streak 2 (got ${s.currentStreak}/${s.longestStreak})`);
-  const saved = JSON.parse(store.lw_missions_streak_v1);
-  assert(JSON.stringify(saved.days) === JSON.stringify(['2026-09-28', '2026-09-29']) && saved.dayKeys === 'local-v2',
-    `migration persisted local day keys + marker (got ${JSON.stringify(saved.days)}, ${saved.dayKeys})`);
-  // Migration is idempotent.
+  assert(s.currentStreak === 2 && s.longestStreak === 2 && s.lastActivityDate === key(2026, 9, 29),
+    `legacy data is rebuilt from real completions: Mon+Tue -> 2, the replay-only Wed is dropped (got ${s.currentStreak}/${s.longestStreak}/${s.lastActivityDate})`);
+  const r = raw(store);
+  assert(r.v === 2 && r.current === 2 && r.lastActivityDate === key(2026, 9, 29) && !('days' in r), 'migration persisted the new shape');
   L.getStreakSummary();
-  assert(JSON.stringify(JSON.parse(store.lw_missions_streak_v1).days) === JSON.stringify(['2026-09-28', '2026-09-29']), 'migration is idempotent');
+  assert(raw(store).current === 2, 'migration is idempotent');
 }
 
-// 7. Legacy days that NO timestamp explains (activity from before
-//    completedAt existed) are kept, not thrown away.
+// 13. Legacy data with NO timestamps at all keeps the old days as they are.
 {
   const { L, setNow } = makeEnv({
     localStorageInitial: {
       lw_missions_progress_v1: JSON.stringify({ uid: null, completedItemIds: [], completedAt: {} }),
-      lw_missions_streak_v1: JSON.stringify({ uid: null, days: ['2026-09-27', '2026-09-28'], forgivenessUsedThisWeek: 0 }),
+      lw_missions_streak_v1: JSON.stringify({ uid: null, days: [key(2026, 9, 27), key(2026, 9, 28)], forgivenessUsedThisWeek: 0 }),
     },
   });
   setNow(2026, 9, 28, 12, 0);
-  assert(L.getStreakSummary().currentStreak === 2, 'unexplained legacy days are preserved as-is');
+  assert(L.getStreakSummary().currentStreak === 2, 'timestamp-less legacy days are preserved');
+}
+
+// 14. onLocalDayChange fires once when the local date rolls over - this is
+//     what stops a page left open past midnight from showing yesterday as
+//     "today" - and not before. Timers are faked and captured.
+{
+  const { L, setNow, sandbox } = makeEnv();
+  const timers = [];
+  sandbox.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+  sandbox.clearTimeout = () => {};
+  let visHandler = null;
+  sandbox.document = { hidden: false, addEventListener: (ev, fn) => { if (ev === 'visibilitychange') visHandler = fn; }, removeEventListener() {} };
+  sandbox.window.addEventListener = () => {};
+  const calls = [];
+  setNow(2026, 9, 10, 23, 59);
+  const stop = L.onLocalDayChange((d) => calls.push(d));
+  assert(timers.length === 1 && timers[0].ms > 0 && timers[0].ms <= 61 * 1000, `timer is armed for just past local midnight (got ${timers[0] && timers[0].ms}ms)`);
+  visHandler();
+  assert(calls.length === 0, 'tab becoming visible on the same date does not fire the callback');
+  setNow(2026, 9, 11, 0, 0);
+  timers[0].fn();
+  assert(calls.length === 1 && calls[0] === key(2026, 9, 11), 'callback fires once with the new local date after midnight');
+  visHandler();
+  assert(calls.length === 1, 'no repeat firing for the same date');
+  stop();
 }
 
 if (failures) { console.error(`${failures} failure(s) in ${TZ}`); process.exit(1); }

@@ -30,6 +30,10 @@
               (initSidebarAccountLinks) pins Settings to the bottom and adds
               the Profile link under it — nothing to hand-edit here.
     DATA    : window.LWMissions (js/missions.js) for the two stat cards.
+    LEVEL   : The Level / XP card (#xp-card) at the top of the right column MOVED
+              here from pages/dashboard.html. js/xp-ui.js fills it from the
+              server-written xpState doc (window.LWXP); css/profile.css lays it
+              out as one wide row (it stays the stacked card on the Leaderboard).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -149,6 +153,11 @@
 
             <!-- Right column -->
             <div class="profile-main">
+              <!-- Level / XP card: filled by js/xp-ui.js. The placeholder is replaced on first draw. -->
+              <div class="card xp-card" id="xp-card" aria-live="polite" style="--tier: #38bdf8;">
+                <p class="text-muted loading-pulse">Loading your level…</p>
+              </div>
+
               <div class="card" id="profile-activity">
                 <p class="text-muted loading-pulse">Loading your learning activity…</p>
               </div>
@@ -179,5 +188,6 @@
   <script src="../js/main.js"></script>
   <script src="../js/avatars.js"></script>
   <script src="../js/profile-page.js"></script>
+  <script src="../js/xp-ui.js"></script>
 </body>
 </html>

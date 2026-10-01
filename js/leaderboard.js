@@ -12,7 +12,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let X, me = null, myState = null, view = 'xp', lastBoard = 'xp', dir = 'desc', token = 0;
+  let X, me = null, myState = null, view = 'xp', lastBoard = 'xp', dir = 'desc', token = 0, mineFilter = 'all';   // mineFilter: 'all' | 'owned' (My badges view)
   const cache = {};                              // kind -> rows (always best-first, as loaded); flipping the order never refetches
   // Lucide icons come from the shared registry in js/icons.js (inline SVG, currentColor). If it ever failed to load the
   // text next to each icon still reads on its own, so a missing icon degrades to "no icon", never to a broken glyph.
@@ -98,7 +98,7 @@
     const m = /^(.*?)\s·\sLv\s(\d+)$/.exec(b.name || '');
     const title = m ? m[1] : b.name, lv = m ? m[2] : '';
     const mark = st === 'earned' ? ico('check', { size: 'status' }) : st === 'locked' ? ico('locked', { size: 'status' }) : '';
-    return `<div class="bd is-${st}" style="--bd:${esc(b.color || '#38bdf8')}">
+    return `<div class="bd is-${st}" id="badge-${esc(b.id)}" tabindex="-1" style="--bd:${esc(b.color || '#38bdf8')}">
       <div class="bd__icon" aria-hidden="true">${ico(X.badgeIconId(b.id), { size: 'nav' })}</div>
       <div class="bd__name">${esc(title)}</div>${lv ? `<div class="bd__lv">Lv ${esc(lv)}</div>` : ''}
       <div class="bd__desc">${esc(b.desc)}</div><div class="bd__state">${mark}${BD_STATE[st]}</div></div>`;
@@ -109,16 +109,49 @@
     const byGroup = (g) => Object.keys(all).filter((id) => all[id].group === g && !all[id].level);
     const perLevel = (g) => Object.keys(all).filter((id) => all[id].group === g && all[id].level).sort((a, b) => all[a].level - all[b].level);
     const lowest = (g) => perLevel(g).find((id) => !owned[id] && all[id].level <= level);
-    const group = (title, ids) => `<section class="bd-group"><h3>${esc(title)}</h3><div class="bd-grid">${ids.map((id) => badgeCell(all[id], owned[id] ? 'earned' : 'todo')).join('')}</div></section>`;
+    // Each group is a <details>, open by default (the reader can collapse any of them). The summary holds the <h2> (h1 > h2,
+    // no skipped level) and an earned count. data-earned feeds the "Owned" filter, which hides empty groups.
+    // revealTarget() re-opens a group a deep link points into.
+    const group = (title, ids, key) => `<details class="bd-group" open data-earned="${ids.filter((id) => owned[id]).length}"${key ? ` id="bd-group-${key}" tabindex="-1"` : ''}><summary><h2 class="heading-md">${esc(title)} <span class="bd-count">${ids.filter((id) => owned[id]).length}/${ids.length} earned</span></h2></summary><div class="bd-grid">${ids.map((id) => badgeCell(all[id], owned[id] ? 'earned' : 'todo')).join('')}</div></details>`;
     const lvGrid = (title, g) => {
       const nx = lowest(g), ids = perLevel(g), got = ids.filter((id) => owned[id]).length;
       const stateOf = (id) => owned[id] ? 'earned' : id === nx ? 'next' : all[id].level <= level ? 'ready' : 'locked';
-      return `<section class="bd-group"><h3>${esc(title)} <span class="bd-count">${got}/${ids.length} earned</span></h3><div class="bd-grid">${ids.map((id) => badgeCell(all[id], stateOf(id))).join('')}</div></section>`;
+      return `<details class="bd-group" open data-earned="${got}"><summary><h2 class="heading-md">${esc(title)} <span class="bd-count">${got}/${ids.length} earned</span></h2></summary><div class="bd-grid">${ids.map((id) => badgeCell(all[id], stateOf(id))).join('')}</div></details>`;
     };
+    const ownedN = Object.keys(all).filter((id) => owned[id]).length;
     $('lb-panel').innerHTML =
       `<p class="lb-note">You are Level ${level}. Finish a lesson or clear a wall to earn your next badge. Badges for levels you have already reached are handed out lowest first, so you can catch up on any you missed; higher levels unlock as you level up.</p>` +
+      `<div class="lb-toolbar"><span class="lb-toolbar__label" id="bd-filter-label">Show</span><div class="lb-sort" role="group" aria-labelledby="bd-filter-label" id="bd-filter"><button type="button" class="lb-sort__btn" data-filter="all" aria-pressed="true">All badges</button><button type="button" class="lb-sort__btn" data-filter="owned" aria-pressed="false">Owned (${ownedN})</button></div></div>` +
       lvGrid('Lesson badges by level', 'lesson') + lvGrid('Wall Breaker badges by level', 'game') +
-      group('Streaks', byGroup('streak')) + group('Milestones', [...byGroup('lesson'), ...byGroup('game')]);
+      group('Streaks', byGroup('streak'), 'streak') + group('Milestones', [...byGroup('lesson'), ...byGroup('game')], 'milestones') +
+      '<p class="lb-empty bd-none" hidden>You have not earned any badges yet. Finish a lesson or clear a wall to get your first.</p>';
+    applyMineFilter();
+  }
+  // "Owned" filter: pure show/hide (no re-render), so groups the reader collapsed stay collapsed. Empty groups are hidden by CSS
+  // (data-earned="0"); if nothing at all is owned, a short message shows instead.
+  function applyMineFilter() {
+    const panel = $('lb-panel'), owned = mineFilter === 'owned';
+    panel.classList.toggle('is-owned-only', owned);
+    panel.querySelectorAll('#bd-filter .lb-sort__btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === mineFilter)));
+    const none = panel.querySelector('.bd-none');
+    if (none) none.hidden = !(owned && !panel.querySelector('.bd.is-earned'));
+  }
+
+  // Deep link into "My badges": leaderboard.html#mine/<element id>, e.g. #mine/badge-streak_7 (one tile) or
+  // #mine/bd-group-streak (a whole group). Links come from the Profile page (js/profile-page.js, js/xp-ui.js).
+  // Only elements inside #lb-panel are honoured, so a hash can never focus something elsewhere on the page.
+  let linkTimer = 0;
+  function revealTarget(id) {
+    clearTimeout(linkTimer);
+    document.querySelectorAll('#lb-panel .is-linked').forEach((n) => n.classList.remove('is-linked'));
+    const el = id ? $(id) : null;
+    if (!el || !$('lb-panel').contains(el)) return;
+    const grp = el.closest('details'); if (grp) grp.open = true;   // badge groups are collapsed by default; a deep link must open its group before scrolling
+    const calm = document.documentElement.classList.contains('lw-force-reduced-motion') || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    el.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+    try { el.focus({ preventScroll: true }); } catch { /* old browsers: the ring below still shows */ }
+    el.classList.add('is-linked');
+    linkTimer = setTimeout(() => el.classList.remove('is-linked'), 3500);
   }
 
   function drawMe() {
@@ -128,7 +161,7 @@
     el.innerHTML = `<div class="xp-card__top"><div class="xp-level" aria-hidden="true">${p.level}</div>
       <div><p class="xp-card__name">${esc((me && me.name) || 'You')} · Level ${p.level} <span class="xp-tier">${ico(X.tierIconId(p.level), { size: 'sm' })}${esc(t.name)}</span></p>
       <p class="xp-card__sub">${xp.toLocaleString()} XP · ${badgeN} badge${badgeN === 1 ? '' : 's'}</p></div></div>
-      <div><div class="xp-bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p.pct}"><i style="width:${p.pct}%"></i></div>
+      <div><div class="xp-bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p.pct}"><i style="--p:${p.pct / 100}"></i></div>
       <div class="xp-bar__label"><span>${p.maxed ? 'Max level' : `${p.into} / ${p.need} XP to Level ${p.level + 1}`}</span></div></div>
       <button type="button" class="btn btn--ghost lb-mine-btn" id="lb-mine-btn" aria-pressed="${view === 'mine'}" aria-controls="lb-panel">${ico('medal', { size: 'sm' })}My badges <span class="lb-mine-btn__n">${badgeN}</span></button>`;
   }
@@ -162,7 +195,7 @@
 
   // v is a board ('xp' | 'weekly' | 'streak' | 'badges') or 'mine'. On 'mine' no tab is selected (it lives under the level
   // card, not in the tab row) and the order control is hidden because the badge grid has no ranking.
-  function select(v) {
+  function select(v, target) {
     view = v; if (v !== 'mine') lastBoard = v;
     document.querySelectorAll('#lb-tabs .lb-tab').forEach((b) => {
       const on = b.dataset.view === v;
@@ -174,8 +207,9 @@
     if (mineBtn) mineBtn.setAttribute('aria-pressed', String(v === 'mine'));
     $('lb-toolbar').hidden = v === 'mine';
     $('lb-panel').setAttribute('aria-labelledby', v === 'mine' ? 'lb-mine-btn' : `tab-${v}`);
-    try { history.replaceState(null, '', `#${v}`); } catch { /* file:// or sandboxed frame */ }   // so a refresh or a shared link reopens the same view
-    if (v === 'mine') showMine(); else showBoard(v);
+    try { history.replaceState(null, '', `#${v}${v === 'mine' && target ? '/' + target : ''}`); } catch { /* file:// or sandboxed frame */ }   // so a refresh or a shared link reopens the same view
+    // A deep link may point at a badge you do not own yet, so it always resets the Owned filter to "all".
+    if (v === 'mine') { if (target) mineFilter = 'all'; showMine(); revealTarget(target); } else { revealTarget(); showBoard(v); }
   }
 
   async function init() {
@@ -186,6 +220,7 @@
     try { myState = await X.getMyState(); } catch (e) { console.warn('[leaderboard] state failed', e); myState = null; }
     try { drawMe(); drawPrivacy(); } catch (e) { console.warn('[leaderboard] header failed', e); }
     wireHow();
+    $('lb-panel').addEventListener('click', (e) => { const b = e.target.closest('#bd-filter .lb-sort__btn'); if (b && b.dataset.filter !== mineFilter) { mineFilter = b.dataset.filter; applyMineFilter(); } });
     $('lb-tabs').addEventListener('click', (e) => { const b = e.target.closest('.lb-tab'); if (b) select(b.dataset.view); });
     // "My badges" button under the level card: opens the badge grid; pressing it again returns to the board you were on.
     $('lb-me').addEventListener('click', (e) => { if (e.target.closest('#lb-mine-btn')) select(view === 'mine' ? lastBoard : 'mine'); });
@@ -199,7 +234,8 @@
       const tabs = [...document.querySelectorAll('#lb-tabs .lb-tab')], i = tabs.findIndex((t) => t.dataset.view === (view === 'mine' ? lastBoard : view));
       const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); select(n.dataset.view);
     });
-    const hash = location.hash.replace('#', ''); select(['xp', 'weekly', 'streak', 'badges', 'mine'].includes(hash) ? hash : 'xp');
+    const [hashView, hashTarget] = location.hash.replace('#', '').split('/');   // "#mine" or "#mine/badge-streak_7"
+    select(['xp', 'weekly', 'streak', 'badges', 'mine'].includes(hashView) ? hashView : 'xp', hashView === 'mine' ? hashTarget : undefined);
   }
   if (window.LWXP) init(); else document.addEventListener('lwxp-ready', init, { once: true });
 })();
