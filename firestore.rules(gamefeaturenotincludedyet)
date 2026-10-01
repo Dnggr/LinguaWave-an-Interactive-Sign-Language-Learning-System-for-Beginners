@@ -1,0 +1,216 @@
+// ─────────────────────────────────────────────────────────────────
+// firestore.rules — LinguaWave Firestore Security Rules
+//
+// PUBLISH: Firebase console -> Firestore Database -> Rules tab ->
+//          paste this whole file -> Publish. (Or: firebase deploy
+//          --only firestore:rules if you use the Firebase CLI.)
+//          Rules are per database: publish to the (default) database
+//          of project linguawave-63911.
+//
+// WHY: The site is static, so the browser talks to Firestore directly.
+//      Hiding admin pages is only cosmetic — anyone can open DevTools
+//      and call the Firestore SDK. These rules are the real lock.
+//
+// ADMIN = the one account whose Firebase Auth email matches the string
+//      in isAdmin() below. Keep it in sync with ADMIN_EMAIL in
+//      js/admin-auth.js, js/role-guard.js, js/admin-login.js,
+//      js/admin-firebase.js, functions/index.js and index.html.
+//      (request.auth.token.email comes from Firebase, not from user data.)
+//
+// COLLECTIONS COVERED (everything else is denied by default):
+//   users/{uid}            learner profile   (js/auth.js, admin panel)
+//   signs/{id}             lesson content    (admin panel)
+//   questions/{id}         quiz questions    (admin panel)
+//   userProgress/{uid}     progress          (js/engine/progress.js)
+//   userProgressV2/{uid}   missions sync     (js/missions.js)
+//   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
+//   xpState/{uid}          XP/level/badges/streak  (functions/xp.js ONLY writes it)
+//   publicProfiles/{uid}   leaderboard row         (functions/xp.js ONLY writes it)
+//   xpSessions/{uid}       Wall Breaker session    (functions only; no client access)
+//   xpEvents/{id}          XP audit/anti-cheat log (functions only; admin reads)
+//
+// XP SYSTEM (2026-09-30): every field that feeds levels, badges, streaks or the leaderboards is
+//      written ONLY by Cloud Functions through the Admin SDK (which bypasses these rules). The
+//      rules below therefore give clients read access at most, and NEVER write access. That is
+//      the whole anti-cheat guarantee for stored XP: there is no client path to edit it, so
+//      DevTools / a modified SDK call gets "permission-denied". Do NOT loosen these to "let the
+//      browser save its own XP" — it would make the public leaderboards forgeable.
+//      users/{uid} rules above are unchanged, so an XP level can't be smuggled into a profile
+//      either (owner updates are limited to name + deletion fields).
+//
+// CHANGED (feedback -> admin panel): surveys/{id} used to accept ANY
+//      document as long as userId matched. It now also requires:
+//        - the document id to start with the caller's uid
+//          (js/feedback.js ids are `${uid}_${level}_${Date.now()}`),
+//          so nobody can create or collide with another learner's id;
+//        - userEmail to equal the email on the caller's Firebase token,
+//          so the admin panel can trust who sent it;
+//        - exact field set + value whitelist for level and q1..q4, and
+//          length caps on name/comment/timestamp, so junk or oversized
+//          documents can't be stored.
+//      Learners: create only (no read, no update, no delete).
+//      Admin:    read (get + list) and delete.
+//      Not enforceable here: submittedAt is an ISO *string* written by
+//      the browser, so its value can't be checked against request.time.
+//      (Switch feedback.js to serverTimestamp() if that ever matters.)
+// ─────────────────────────────────────────────────────────────────
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Verified e-mail (password accounts must verify; Google accounts always are). The XP
+    // Cloud Functions require the same, so leaderboard reads use it too.
+    function verified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == 'linguawave.project@gmail.com';
+    }
+
+    // ── users/{uid} ────────────────────────────────────────────
+    match /users/{uid} {
+      // Single-document read: a learner reads their own profile, the
+      // admin reads any.
+      allow get: if isOwner(uid) || isAdmin();
+
+      // Listing the collection (User Management, Reports): admin only.
+      allow list: if isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'level', 'joined'])
+        && request.resource.data.uid == uid
+        && request.resource.data.level == 'basic'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 30;
+
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['name', 'deletionRequested', 'deletionRequestedAt'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() <= 30);
+
+      allow delete: if isAdmin();
+    }
+
+    // ── signs/{id}  (Lesson Management) ────────────────────────
+    match /signs/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── questions/{id}  (Quiz Management) ──────────────────────
+    match /questions/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── userProgress/{uid}  (js/engine/progress.js) ────────────
+    match /userProgress/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ── userProgressV2/{uid}  (js/missions.js) ─────────────────
+    match /userProgressV2/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ── xpState/{uid}  (functions/xp.js) ───────────────────────
+    // Private full state (badge times, per-item ledger, daily counters).
+    // Owner may READ their own; nobody may write from a client.
+    match /xpState/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // ── publicProfiles/{uid}  (leaderboards) ───────────────────
+    // A deliberately small public projection: name, xp, level, weeklyXp, streak, badge count,
+    // last few badge ids. No email, no uid-linked private data. Any signed-in learner may read a
+    // profile or list the collection, but a list MUST carry a limit <= 100 so nobody can dump
+    // every row in one query. Write access: none (Cloud Functions only).
+    match /publicProfiles/{uid} {
+      allow get: if verified();
+      allow list: if verified() && request.query.limit <= 100;
+      allow write: if false;
+    }
+
+    // ── xpSessions/{uid}  (Wall Breaker server timer) ──────────
+    // Holds the server-side start time of the current wall. Clients must never see or edit it.
+    match /xpSessions/{uid} {
+      allow read, write: if false;
+    }
+
+    // ── xpEvents/{id}  (audit + rejected-cheat log) ────────────
+    match /xpEvents/{id} {
+      allow get, list: if isAdmin();
+      allow write: if false;
+    }
+
+    // ── surveys/{id}  (js/feedback.js -> pages/admin-feedback.html) ──
+    match /surveys/{id} {
+
+      // Mirrors pages/feedback.html (radio values) and js/survey-schema.js.
+      // q1..q4 are required radios; q5 is the optional comment (null when
+      // left empty, so a missing q5 key is tolerated too).
+      function validAnswers(a) {
+        return a is map
+          && a.keys().hasAll(['q1', 'q2', 'q3', 'q4'])
+          && a.keys().hasOnly(['q1', 'q2', 'q3', 'q4', 'q5'])
+          && a.q1 in ['1', '2', '3', '4', '5']
+          && a.q2 in ['1', '2', '3', '4', '5']
+          && a.q3 in ['too_easy', 'just_right', 'too_hard']
+          && a.q4 in ['yes', 'maybe', 'no']
+          && (!('q5' in a) || a.q5 == null
+              || (a.q5 is string && a.q5.size() <= 2000));
+      }
+
+      function validSurvey(d) {
+        return d.keys().hasOnly(['userId', 'userName', 'userEmail', 'level', 'answers', 'submittedAt'])
+          && d.keys().hasAll(['userId', 'userName', 'userEmail', 'level', 'answers', 'submittedAt'])
+          && d.userId == request.auth.uid
+          && d.userName is string
+          && d.userName.size() >= 1 && d.userName.size() <= 60
+          && d.userEmail is string
+          && request.auth.token.email != null
+          && d.userEmail.lower() == request.auth.token.email.lower()
+          && d.level in ['basic', 'medium', 'intermediate']
+          && validAnswers(d.answers)
+          && d.submittedAt is string
+          && d.submittedAt.size() <= 40;
+      }
+
+      // Learner: create their OWN survey, once per document id.
+      // (setDoc() onto an existing id is an *update*, which is denied
+      // below — so a retry after a write that already landed is rejected
+      // instead of overwriting, and nobody can overwrite anyone else.)
+      allow create: if signedIn()
+        && id.matches(request.auth.uid + '_.+')
+        && validSurvey(request.resource.data);
+
+      // Admin only: list + read every submission, and delete if needed.
+      allow get, list, delete: if isAdmin();
+
+      // Nobody edits a submitted survey.
+      allow update: if false;
+    }
+
+    // ── everything else: denied ────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

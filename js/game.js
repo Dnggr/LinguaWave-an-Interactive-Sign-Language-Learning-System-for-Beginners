@@ -42,6 +42,8 @@ let stats = { correct: 0, wrong: 0, size: 0 }, startedAt = 0, tickId = null, eng
 let phase = 'static';             // 'static' | 'countdown' | 'waiting' | 'recording' | 'cooldown'
 let heldBrick = null, holdSince = 0, lastGoodAt = 0, ignoreGroup = null;
 let wrongLabel = null, wrongSince = 0, lastMissAt = 0;
+// XP (js/xp.js): the server times each wall. We only REPORT when bricks broke; it decides the reward.
+let xpSessionP = Promise.resolve(null), brokenLog = [];
 let waitStart = 0, handLostAt = null, motionMs = 2500;
 let allowedStatic = { active: false, set: null }, allowedMotion = { active: false, set: null };
 
@@ -54,59 +56,9 @@ function load() {
   try { return Object.assign({ gems: 0, walls: 0, badges: [], best: {} }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
   catch { return { gems: 0, walls: 0, badges: [], best: {} }; }
 }
-function save(d, opts) {
+function save(d) {
   if (dev('blockSave')) return;   // DEV-TEST
   try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ }
-  if (!(opts && opts.skipPush)) pushGameToCloud(d);
-}
-
-// ── cloud sync: userGame/{uid} (gems / walls / badges / best) ──────
-// Goes through window.LWAuth.readProgressDoc/writeProgressDoc (own uid only,
-// whitelisted collection) — never raw Firestore. Local save always happens
-// first; a failed/blocked sync just leaves the game local-only.
-const emptyGame = () => ({ gems: 0, walls: 0, badges: [], best: {} });
-const betterBest = (a, b) => !a ? b : !b ? a : (b.stars > a.stars || (b.stars === a.stars && b.ms < a.ms)) ? b : a;
-
-function mergeGame(local, remote) {
-  const l = Object.assign(emptyGame(), local || {}), r = Object.assign(emptyGame(), remote || {});
-  const best = {};
-  new Set([...Object.keys(l.best || {}), ...Object.keys(r.best || {})]).forEach((k) => { best[k] = betterBest(l.best[k], r.best[k]); });
-  return {
-    gems: Math.max(l.gems | 0, r.gems | 0),
-    walls: Math.max(l.walls | 0, r.walls | 0),
-    badges: Array.from(new Set([...(l.badges || []), ...(r.badges || [])])),
-    best,
-  };
-}
-
-function pushGameToCloud(d) {
-  try {
-    const A = window.LWAuth;
-    if (!A?.writeProgressDoc) return;
-    const { gems, walls, badges, best } = mergeGame(d, null);
-    Promise.resolve(A.writeProgressDoc('userGame', { gems, walls, badges, best })).catch((e) => console.warn('[game] cloud save failed:', e));
-  } catch (e) { console.warn('[game] cloud save failed:', e); }
-}
-
-async function syncGameFromCloud() {
-  try {
-    const A = window.LWAuth;
-    if (!A?.readProgressDoc) return;
-    await withTimeout(A.whenAuthReady?.(), 4000);
-    const uid = A.getCurrentUser?.()?.uid;
-    if (!uid) return;                                   // guest: local-only
-    const snap = await A.readProgressDoc('userGame');
-    if (!snap) return;
-    let local = load();
-    // the local slot isn't per-account: never fold another account's gems into this one
-    if (local.uid && local.uid !== uid) local = emptyGame();
-    const merged = mergeGame(local, snap.exists ? snap.data : null);
-    merged.uid = uid;
-    save(merged, { skipPush: true });
-    await A.writeProgressDoc('userGame', { gems: merged.gems, walls: merged.walls, badges: merged.badges, best: merged.best });
-    $('gm-gems').textContent = merged.gems;
-    showBest();
-  } catch (e) { console.warn('[game] cloud sync failed, staying local-only:', e); }
 }
 
 // ── helpers ───────────────────────────────────────────────────────
@@ -305,6 +257,7 @@ function findBrick(label, type) {
 function smash(b, viaMotion) {
   if (!b || b.broken) return;
   b.broken = true; stats.correct++;
+  brokenLog.push({ s: b.sign, t: Date.now() - startedAt, m: b.type === 'motion' });
   dev('onSmash', b.sign, viaMotion);   // DEV-TEST
   b.el.classList.remove('is-held'); b.el.classList.add('is-broken'); b.el.disabled = true;
   log(`✓ ${b.sign}`, 'ok');
@@ -494,6 +447,11 @@ async function startGame() {
   $('gm-log').innerHTML = ''; $('gm-hint').textContent = note || 'Tip: click any brick to see how to sign it.';
   $('gm-miss').textContent = '0'; $('gm-gems').textContent = load().gems; $('gm-time').textContent = '0:00';
   running = true; startedAt = Date.now();
+  brokenLog = [];
+  xpSessionP = window.LWXP ? window.LWXP.startGame(signs.slice()) : Promise.resolve(null);   // never throws
+  xpSessionP.then((s) => {
+    if (s && !s.xpEligible) $('gm-pool-note').textContent = `XP & badges count when ${s.minLearned}+ bricks are signs you've learned - this wall has ${s.learnedBricks}.`;
+  });
   clearInterval(tickId); tickId = setInterval(() => { $('gm-time').textContent = fmt(Date.now() - startedAt); }, 500);
   resetTimers(); refreshIdleUi();
   if (!rafId) loop();
@@ -510,15 +468,11 @@ function finish() {
   const stars = acc >= 0.85 ? 3 : acc >= 0.6 ? 2 : 1;
   const gems = stats.size + stars * 5;
   const d = load(), earned = [];
-  const add = (id, label) => { if (!d.badges.includes(id)) { d.badges.push(id); earned.push(label); } };
+  // Badges are now awarded by the SERVER (functions/xp.js) and shown below via reportWall();
+  // the old local-only badge list (lw_game_v1.badges) was forgeable, so it no longer grants anything.
   d.gems += gems; d.walls++;
-  add('first', '🧱 First Wall');
-  if (stats.wrong === 0) add('flawless', '💎 Flawless');
-  if (ms / stats.size <= 6000) add('speed', '⚡ Speed Breaker');
-  if (d.walls >= 5) add('veteran', '🏗️ Wall Veteran');
   const prev = d.best[stats.size];
   if (!prev || stars > prev.stars || (stars === prev.stars && ms < prev.ms)) d.best[stats.size] = { stars, ms };
-  try { const u = window.LWAuth?.getCurrentUser?.()?.uid; if (u) d.uid = u; } catch { /* guest */ }
   save(d);
 
   $('gm-gems').textContent = d.gems;
@@ -532,6 +486,34 @@ function finish() {
   $('gm-result').hidden = false; $('gm-btn-start').disabled = false;
   setCamMode('idle'); $('gm-btn-motion').disabled = true;
   showBest();
+  reportWall();
+}
+
+// Report the cleared wall and show what the server decided. Gems/stars above stay local
+// and cosmetic; XP and badges only ever come from this server answer.
+async function reportWall() {
+  const box = $('gm-xp'), badges = $('gm-badges');
+  if (!box) return;
+  box.textContent = 'Counting XP...'; box.className = 'gm-result__xp';
+  const sess = await xpSessionP;
+  const r = sess && window.LWXP ? await window.LWXP.finishGame(sess.sessionId, brokenLog, stats.wrong) : null;
+  if (!r || !r.ok) {
+    const why = r && r.reason;
+    box.textContent = !sess ? 'XP unavailable right now (offline or signed out).'
+      : why === 'too_fast' || why === 'clock_mismatch' ? "That run couldn't be verified, so no XP this time."
+      : 'XP could not be counted for this wall.';
+    return;
+  }
+  const B = (window.LWXP && window.LWXP.badgeInfo) || (() => ({}));
+  (r.newBadges || []).forEach((id) => { const b = B(id), s = document.createElement('span'); s.textContent = `${b.icon || ''} ${b.name || id}`; badges.appendChild(s); });
+  if (!r.counted) {
+    box.textContent = r.reason === 'not_enough_learned' ? `No XP: a wall needs ${window.LW_XP_CONFIG ? window.LW_XP_CONFIG.GAME.MIN_LEARNED_BRICKS : 6}+ signs you've learned.` : 'No XP for this wall.';
+  } else if (r.xpGained > 0) {
+    box.textContent = `+${r.xpGained} XP` + (r.multiplier < 1 ? ' (reduced - lots of walls today)' : '') + (r.levelUps && r.levelUps.length ? ` · Level ${r.level}!` : '');
+    box.classList.add('is-gain');
+  } else {
+    box.textContent = r.reason === 'daily_cap' ? `Daily game XP limit reached (${r.dailyGameCap}). Lessons still earn XP.` : 'No more XP from walls today. Lessons still earn XP.';
+  }
 }
 
 function showBest() {
@@ -565,7 +547,6 @@ $('gm-gems').textContent = load().gems;
 resetTimers();
 showBest();
 refreshPoolNote();
-syncGameFromCloud();   // pull + merge userGame/{uid}, then push the merged result back
 window.addEventListener('pageshow', (e) => { if (e.persisted) refreshPoolNote(); });   // back/forward cache: progress may have changed
 dev('attach', {   // DEV-TEST — lets the dev panel read the wall and force-break bricks
   isRunning: () => running,   // DEV-TEST

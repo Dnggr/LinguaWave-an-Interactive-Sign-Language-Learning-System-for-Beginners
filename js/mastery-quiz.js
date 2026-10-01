@@ -640,6 +640,9 @@ function finishQuiz(state) {
   // it (dashboard/learn/mission-overview/progress, all of which read
   // getMissionProgress()/getMissionStatus(), not this file).
   window.LWMissions.markMissionComplete(state.mission);
+  // XP (js/xp.js): report the pass. The server pays the full mission bonus only if the lesson
+  // items were really done in-app; otherwise the reduced skip-path rate. Not a client decision.
+  if (window.LWXP) window.LWXP.claimMission(state.mission);
   const recap = window.LWMissions.getRecap(state.mission);
 
   renderSummary(state, { scoreFraction, recap });

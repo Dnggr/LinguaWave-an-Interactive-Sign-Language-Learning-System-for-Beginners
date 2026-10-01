@@ -26,3 +26,13 @@ Before submitting code changes, agents must verify:
 - Run a static check for syntax errors or invalid imports across all JS files.
 - Test both user authentication flows (login, register, logout) and guest/error states.
 - Test static letter detection, motion word detection, multi-step fingerspelling, and category quiz assessments.
+
+## XP / levels / badges / leaderboards (added 2026-09-30) — READ XP_SYSTEM.md FIRST
+* Server-authoritative. XP/level/badge/streak data is written ONLY by Cloud Functions (`functions/xp.js`); `firestore.rules`
+  deny every client write to `xpState`, `publicProfiles`, `xpSessions`, `xpEvents`. Never add a client write path for XP.
+* Browser side is `js/xp.js` (window.LWXP): it only *reports* lesson items / quiz pass / cleared wall and *reads* results.
+  Hooks: `lesson.js completeAndAdvance`, `mastery-quiz.js` (after markMissionComplete), `missions.js markSignPracticedBridge`, `game.js`.
+* `js/xp-config.js` is GENERATED from `functions/xp-config.js` (`npm run build:client`). `functions/curriculum-manifest.json` is
+  GENERATED from `js/missions.js` (`npm run build:manifest`) - re-run after any curriculum change.
+* "Level" in XP code means the XP level 1-30, unrelated to `users.level` (basic/medium/intermediate).
+* Tests: `cd functions && npm test` (fake Firestore, no emulator).
