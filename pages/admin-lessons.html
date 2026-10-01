@@ -18,11 +18,12 @@
   <!--
     pages/admin-lessons.html — Lesson Management
     ─────────────────────────────────────────────────────────────────
-    READ-ONLY view of the HARDCODED lessons in js/missions.js (the same
-    content the learner pages use) via js/admin-content.js. Not backed by
-    Firestore and has no level — the app is one linear trail. To change a
-    lesson, edit js/missions.js. Motion/gesture-detection models are out
-    of scope here (known capstone limitation).
+    Built-in lessons (js/missions.js via js/admin-content.js) are shown
+    view-only. Lessons the admin ADDS here are saved to Firestore `signs`
+    and can be created, edited and deleted. Uploaded MP4s are written to
+    assets/videos/basic/asl_vid_diy_raw/ (js/admin-video-store.js) and the
+    real path is stored on the lesson. No level, no image, and admin-added
+    lessons have no motion detection.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -102,8 +103,9 @@
           <div class="admin-header">
             <div>
               <h1>Lesson Management</h1>
-              <p>Lessons built into the app (from <code>js/missions.js</code>). View only &mdash; edit the source file to change them.</p>
+              <p>Add, edit and delete your own lessons. Built-in lessons (from <code>js/missions.js</code>) are view only.</p>
             </div>
+            <button class="btn btn--primary" type="button" id="lesson-add">+ Add Lesson</button>
           </div>
 
           <div class="admin-toolbar">
@@ -123,11 +125,12 @@
                   <th>Mission</th>
                   <th>Chapter</th>
                   <th>Order</th>
+                  <th>Source</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody id="sign-table-body">
-                <tr><td colspan="6" class="admin-table__loading">Loading lessons&hellip;</td></tr>
+                <tr><td colspan="7" class="admin-table__loading">Loading lessons&hellip;</td></tr>
               </tbody>
             </table>
           </div>
@@ -136,7 +139,7 @@
     </div>
   </div>
 
-  <!-- View modal (read-only) -->
+  <!-- View modal (built-in lessons, read-only) -->
   <div class="admin-modal-backdrop" id="sign-modal-backdrop" hidden>
     <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="sign-modal-title">
       <div class="admin-modal__head">
@@ -146,6 +149,76 @@
       <div id="sign-modal-body"></div>
       <div class="admin-modal__foot">
         <button class="btn btn--primary" type="button" id="sign-modal-done">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / edit lesson -->
+  <div class="admin-modal-backdrop" id="lesson-form-backdrop" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="lesson-form-heading">
+      <div class="admin-modal__head">
+        <h2 id="lesson-form-heading">Add Lesson</h2>
+        <button class="admin-modal__close" id="lesson-form-close" type="button" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="alert alert--error" id="lesson-form-error" role="alert" hidden></div>
+
+      <div class="admin-form-grid">
+        <div class="form-group form-group--full">
+          <label for="f-title">Title</label>
+          <input class="form-input" id="f-title" type="text" maxlength="60" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="f-signid">Sign ID</label>
+          <input class="form-input" id="f-signid" type="text" maxlength="40" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label for="f-order">Order</label>
+          <input class="form-input" id="f-order" type="number" min="0" max="9999" step="1" placeholder="Next in mission" />
+        </div>
+        <div class="form-group form-group--full">
+          <label for="f-mission">Mission</label>
+          <select class="form-input" id="f-mission"></select>
+        </div>
+        <div class="form-group form-group--full">
+          <label for="f-desc">Description</label>
+          <textarea class="form-input" id="f-desc" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="form-group form-group--full">
+          <label for="f-tips">Tips <span class="text-muted">(one per line)</span></label>
+          <textarea class="form-input" id="f-tips" rows="3"></textarea>
+        </div>
+        <div class="form-group form-group--full">
+          <label for="f-video">Video <span class="text-muted">(MP4, max 50 MB)</span></label>
+          <input class="form-input" id="f-video" type="file" accept="video/mp4,.mp4" />
+          <p class="text-muted admin-form-hint" id="f-video-current"></p>
+          <video class="admin-video-preview" id="f-video-preview" controls muted playsinline hidden></video>
+          <div class="admin-folder-row">
+            <span class="text-muted admin-form-hint" id="f-folder-status"></span>
+            <button class="btn btn--ghost btn--sm" type="button" id="f-folder-btn">Choose project folder</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal__foot">
+        <button class="btn btn--ghost" type="button" id="lesson-form-cancel">Cancel</button>
+        <button class="btn btn--primary" type="button" id="lesson-form-save">Save Lesson</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="admin-modal-backdrop" id="lesson-delete-backdrop" hidden>
+    <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="lesson-delete-title">
+      <div class="admin-modal__head">
+        <h2 id="lesson-delete-title">Delete this lesson?</h2>
+        <button class="admin-modal__close" id="lesson-delete-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p id="lesson-delete-body" class="text-muted">This can't be undone.</p>
+      <p class="admin-danger-note">The lesson is deleted from Firestore. Its video file stays in the assets folder.</p>
+      <div class="admin-modal__foot">
+        <button class="btn btn--ghost" type="button" id="lesson-delete-cancel">Cancel</button>
+        <button class="btn btn--danger" type="button" id="lesson-delete-confirm">Delete Lesson</button>
       </div>
     </div>
   </div>

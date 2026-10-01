@@ -8994,7 +8994,13 @@ function getCategoriesForUnitV2(unitOrder) {
   // needs to be cross-device-accurate. Cached so a page calling it
   // from multiple places only ever runs the reconcile once.
   function whenMissionsSyncReady() {
-    if (!MissionsSyncPromise) MissionsSyncPromise = performMissionsSync();
+    // Progress sync and the admin-added-lessons fetch run in parallel; pages
+    // repaint once both are done, so a freshly added lesson shows up in the
+    // mission without a manual refresh. loadCustomLessonsOnce() never rejects.
+    if (!MissionsSyncPromise) {
+      MissionsSyncPromise = Promise.all([performMissionsSync(), loadCustomLessonsOnce()])
+        .then(() => undefined);
+    }
     return MissionsSyncPromise;
   }
 
@@ -9099,10 +9105,25 @@ function getCategoriesForUnitV2(unitOrder) {
     return indexAmongPracticeItems % 3 === 2;
   }
 
+  // ADMIN-ADDED LESSONS (Lesson Management → Firestore `signs`, see
+  // registerCustomSigns() below) are flagged `custom: true`. They are built
+  // AFTER every built-in sign, using the exact same LESSON → BOOSTER →
+  // PRACTICE rhythm, and the built-in signs are built by the exact same loop
+  // as before. That matters: itemId() is index-based, and so is the XP
+  // manifest (functions/curriculum-manifest.json), so appending keeps every
+  // existing learner's saved progress and XP claims pointing at the same items.
+  // Only the closing QUIZ item moves down by the number of added items.
+  function isCustomSignV2(level, signId) {
+    const sg = getSignV2(level, signId);
+    return !!(sg && sg.custom);
+  }
+
   function buildItemsForCategory(level, categoryId, categoryTitle, signIds, curated) {
     const items = [];
     let practiceCount = 0;
-    signIds.forEach((signId, i) => {
+    const builtInIds = signIds.filter((id) => !isCustomSignV2(level, id));
+    const customIds = signIds.filter((id) => isCustomSignV2(level, id));
+    [builtInIds, customIds].forEach((ids) => ids.forEach((signId, i, arr) => {
       const sign = getSignV2(level, signId);
       const signTitle = (sign && sign.title) || signId;
 
@@ -9112,7 +9133,7 @@ function getCategoriesForUnitV2(unitOrder) {
       items.push({ kind: 'LESSON', signId, scenarioTitle: null });
       items.push({ kind: 'BOOSTER', signId });
 
-      if (i % 2 === 1 || i === signIds.length - 1) {
+      if (i % 2 === 1 || i === arr.length - 1) {
         const isBonus = curated
           ? curated.bonusSignIds.has(signId)
           : genericBonusEligible(practiceCount);
@@ -9128,7 +9149,7 @@ function getCategoriesForUnitV2(unitOrder) {
           difficultyRamp: ['2-option', '3-option+distractor'], // §3.6
         });
       }
-    });
+    }));
 
     // Mastery Quiz — unchanged concept, reuses the existing category
     // assessment (pages/quiz.html?level=<level>&category=<categoryId>).
@@ -9230,6 +9251,109 @@ function getCategoriesForUnitV2(unitOrder) {
   // once per page load" instead of "build every call," with stable
   // object identity as the added benefit.
   let _missionsCache = null;
+
+  /* ══════════════════════════════════════════════════════════════
+   * ADMIN-ADDED LESSONS (Lesson Management → Firestore `signs`)
+   * ──────────────────────────────────────────────────────────────
+   * The admin panel (pages/admin-lessons.html) saves lessons to the
+   * Firestore `signs` collection with source === 'admin'. They are NOT
+   * part of the hardcoded SIGNS_V2 above, so this block merges them in:
+   *
+   *   1. At load, the last-known list is read from localStorage
+   *      (CUSTOM_SIGNS_CACHE_KEY) and registered synchronously, so the
+   *      very first paint of a page already includes them.
+   *   2. whenMissionsSyncReady() then calls loadCustomLessonsOnce(), which
+   *      lazy-loads js/custom-lessons.js (Firestore read + cache write) and
+   *      calls registerCustomSigns() again with the fresh list. Pages that
+   *      repaint after whenMissionsSyncReady() pick the change up.
+   *
+   * Each admin lesson becomes a normal SIGNS_V2-shaped entry (flagged
+   * `custom: true`, detectionType 'none' — no motion/gesture detection,
+   * `order` pushed past every built-in sign), so getSign(),
+   * getCategorySigns(), mission item generation, the Lesson page, Quick
+   * Check and the Mastery Quiz all treat it like any other sign. Its video
+   * is the Firebase Storage URL the admin panel saved in `videoUrl`.
+   * ══════════════════════════════════════════════════════════════ */
+  const CUSTOM_SIGNS_CACHE_KEY = 'lw_custom_signs_v1';
+  const CUSTOM_ORDER_BASE = 100000; // keeps admin lessons after every built-in sign
+  const CUSTOM_SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
+
+  function normalizeCustomSign(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const signKey = typeof raw.signId === 'string' ? raw.signId.trim() : '';
+    const level = typeof raw.level === 'string' ? raw.level : '';
+    const category = typeof raw.category === 'string' ? raw.category : '';
+    if (!CUSTOM_SIGN_ID_RE.test(signKey) || !getCategoryV2(level, category)) return null;
+    const signId = signKey.toUpperCase();
+    // Never shadow a built-in sign that already uses this id in this level.
+    if (SIGNS_V2.some((sg) => !sg.custom && sg.level === level && sg.signId === signId)) return null;
+    // Video: the Storage download URL the admin saved; fall back to the local
+    // assets path if only that exists. Anything else is ignored.
+    const pick = [raw.videoUrl, raw.localVideoPath].find(
+      (u) => typeof u === 'string' && (/^https:\/\//i.test(u) || u.indexOf('../assets/') === 0)
+    ) || '';
+    return {
+      id: `custom_${signKey.toLowerCase()}`,
+      level,
+      category,
+      signId,
+      title: (typeof raw.title === 'string' && raw.title.trim()) ? raw.title.trim().slice(0, 60) : signId,
+      order: CUSTOM_ORDER_BASE + (Number.isFinite(raw.order) ? raw.order : 0),
+      description: typeof raw.description === 'string' ? raw.description.slice(0, 500) : '',
+      tips: Array.isArray(raw.tips) ? raw.tips.filter((t) => typeof t === 'string').slice(0, 10) : [],
+      imageUrl: '',
+      videoUrl: pick,
+      detectionType: 'none',
+      custom: true,
+    };
+  }
+
+  // Replaces ALL previously registered admin lessons with `list`.
+  function registerCustomSigns(list) {
+    for (let i = SIGNS_V2.length - 1; i >= 0; i--) {
+      if (SIGNS_V2[i].custom) SIGNS_V2.splice(i, 1);
+    }
+    let added = 0;
+    (Array.isArray(list) ? list : []).forEach((raw) => {
+      const sg = normalizeCustomSign(raw);
+      if (sg && !SIGNS_V2.some((x) => x.level === sg.level && x.signId === sg.signId)) {
+        SIGNS_V2.push(sg);
+        added++;
+      }
+    });
+    _missionsCache = null; // missions are built from SIGNS_V2 — rebuild on next getAllMissions()
+    return added;
+  }
+
+  function hydrateCustomSignsFromCache() {
+    try {
+      const raw = localStorage.getItem(CUSTOM_SIGNS_CACHE_KEY);
+      if (raw) registerCustomSigns(JSON.parse(raw));
+    } catch {
+      // No storage / corrupt cache: the Firestore load below still runs.
+    }
+  }
+
+  let _customLessonsPromise = null;
+  function loadCustomLessonsOnce() {
+    if (typeof document === 'undefined') return Promise.resolve(); // Node tests
+    if (!_customLessonsPromise) {
+      _customLessonsPromise = (async () => {
+        const auth = getLWAuthV2();
+        if (!auth) return; // js/auth.js not on this page (dev previews) — cache only.
+        try { if (auth.whenAuthReady) await auth.whenAuthReady(); } catch { return; }
+        let user = null;
+        try { user = auth.getCurrentUser ? auth.getCurrentUser() : null; } catch { user = null; }
+        if (!user || !user.uid) return; // `signs` is readable by signed-in users only.
+        const mod = await import('./custom-lessons.js');
+        await mod.loadCustomLessons(registerCustomSigns, CUSTOM_SIGNS_CACHE_KEY);
+      })().catch((e) => {
+        console.warn('[missions.js] could not load admin-added lessons, using cached copy:', e);
+      });
+    }
+    // Never let a slow/blocked Firestore read hold a page's first repaint for long.
+    return Promise.race([_customLessonsPromise, new Promise((resolve) => setTimeout(resolve, 5000))]);
+  }
 
   function getAllMissions() {
     if (!_missionsCache) {
@@ -9888,6 +10012,8 @@ function getCategoriesForUnitV2(unitOrder) {
 
   /* ── Public export ───────────────────────────────────────────── */
 
+  hydrateCustomSignsFromCache();
+
   global.LWMissions = {
     schemaVersion: 2,
     featureFlagKey: FEATURE_FLAG_KEY,
@@ -9914,6 +10040,7 @@ function getCategoriesForUnitV2(unitOrder) {
     consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the-native Mastery Quiz (js/mastery-quiz.js)
     getOrientation,          // NEW — Orientation row above the chapters
     whenMissionsSyncReady,     // NEW — cross-device Firestore sync (call once per page load)
+    registerCustomSigns,       // NEW — merges admin-added lessons (Firestore `signs`) into SIGNS_V2; used by js/custom-lessons.js
     isChapterUnlocked,       // NEW (Task 1) — chapter gating (revised: Ch1 -> Ch2 -> all others)
     isChapterComplete,       // NEW — every mission in a chapter 100% (used by js/game-gate.js)
     getMissionStatus,        // NEW (Task 1) — single shared 'done'/'locked'/'current'/'available' rule

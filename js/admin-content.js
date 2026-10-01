@@ -23,9 +23,10 @@
  *            missions.js), so a "quiz" row here is the mission plus the
  *            sample question set the quiz would draw from.
  *
- * READ-ONLY ON PURPOSE : content lives in source (missions.js), so
- *            there is nothing to save to. To change a lesson, edit
- *            missions.js and redeploy.
+ * READ-ONLY ON PURPOSE : the built-in content lives in source (missions.js),
+ *            so there is nothing to save to. Lessons the admin ADDS are
+ *            stored in Firestore `signs` (see js/admin-firebase.js and
+ *            js/admin-lessons.js).
  *
  * REQUIRES : js/missions.js and js/lesson-loop.js loaded (plain
  *            <script defer>) before the page controller runs.
@@ -77,7 +78,7 @@ export function getChapters() {
 
 /**
  * Every lesson (sign) in trail order.
- * [{ key, signId, title, description, tips[], imageUrl, videoUrl,
+ * [{ key, signId, title, description, tips[], videoUrl,
  *    detectionType, order, missionId, missionTitle, missionNumber,
  *    chapterId, chapterTitle }]
  */
@@ -98,7 +99,6 @@ export function getLessons() {
           title: s.title || s.signId,
           description: s.description || "",
           tips: Array.isArray(s.tips) ? s.tips : [],
-          imageUrl: s.imageUrl || "",
           videoUrl: s.videoUrl || "",
           detectionType: s.detectionType || "",
           order: s.order ?? null,

@@ -34,11 +34,13 @@
  *            don't issue duplicate queries. Row shaping lives in
  *            js/survey-schema.js.
  *
- * SCOPE    : Lessons and quizzes are NO LONGER stored in / read from
- *            Firestore here. The admin Lesson/Quiz screens read the
- *            hardcoded curriculum (js/missions.js) through
- *            js/admin-content.js — the same content learners see.
- *            This file now only handles `users` (list, level edit,
+ * SCOPE    : Built-in lessons/quizzes are NOT stored in Firestore: the admin
+ *            screens read the hardcoded curriculum (js/missions.js) through
+ *            js/admin-content.js. The ONE exception is `signs`: lessons the
+ *            admin creates in Lesson Management are saved there (create /
+ *            update / delete below). Each doc keeps the video's real path
+ *            (e.g. ../assets/videos/basic/asl_vid_diy_raw/hello.mp4).
+ *            Besides that, this file handles `users` (list, level edit,
  *            full account delete) and the dashboard/report numbers.
  * ─────────────────────────────────────────────────────────────────
  */
@@ -56,6 +58,16 @@ import {
   getFunctions,
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
+// Same SDK build as auth.js, so these share its Firestore instance (`db`).
+import {
+  query,
+  where,
+  writeBatch,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { getContentStats } from "./admin-content.js";
 import {
   normalizeSurvey,
@@ -78,10 +90,10 @@ function withId(snapshot) {
  * here on purpose — accounts are created through the real sign-up
  * flow, not by the admin. Deleting a learner removes BOTH their Firebase
  * Auth login and their Firestore data. A browser can't delete someone
- * else's Auth account (that needs the Admin SDK), so it goes through the
- * `deleteLearnerAccount` Cloud Function in /functions — deploy it first
- * (see ADMIN_SETUP.md). If the function isn't reachable, NOTHING is
- * deleted, so a learner is never left half-deleted.
+ * else's Auth account (that needs the Admin SDK), so that part goes through
+ * the `deleteLearnerAccount` Cloud Function in /functions (Blaze plan, see
+ * ADMIN_SETUP.md). Without it, only the Firestore data is deleted and the
+ * admin is told to remove the login in the Firebase console.
  * ──────────────────────────────────────────────────────────────── */
 // The admin is not a learner: hide the admin's own profile doc (if it has
 // one) so User Management and Reports only count real learners.
@@ -95,17 +107,120 @@ export async function listUsers() {
 export function updateUserLevel(uid, level) {
   return updateDoc(doc(db, "users", uid), { level });
 }
+// Every collection keyed by the learner's uid (doc id === uid).
+// Keep in sync with firestore.rules AND functions/index.js.
+const PER_UID_COLLECTIONS = [
+  "userProgress",
+  "userProgressV2",
+  "userGame",
+  "xpState",
+  "publicProfiles", // leaderboard copy — must go, or the deleted learner stays on it
+];
+
+// Callable errors that mean "the Cloud Function isn't there / can't run".
+const FUNCTION_UNREACHABLE = [
+  "functions/not-found",
+  "functions/unavailable",
+  "functions/internal",
+  "functions/deadline-exceeded",
+];
+
 /**
- * Deletes the learner's Firebase Auth account AND their Firestore data
- * (users/{uid} and everything under it) via the admin-only Cloud
- * Function. Throws with err.code === "functions/not-found" (or
- * "functions/unavailable"/"functions/internal") if the function isn't
- * deployed — callers should surface that, not fall back to a partial delete.
+ * Deletes ALL of a learner's Firestore data from the browser (the admin's
+ * rules allow it): users/{uid}, the per-uid collections above, and every
+ * surveys/* document they submitted. One atomic batch — all or nothing.
+ */
+async function deleteLearnerFirestoreData(uid) {
+  const surveys = await getDocs(
+    query(collection(db, "surveys"), where("userId", "==", uid))
+  );
+  const batch = writeBatch(db);
+  PER_UID_COLLECTIONS.forEach((c) => batch.delete(doc(db, c, uid)));
+  surveys.forEach((s) => batch.delete(s.ref));
+  batch.delete(doc(db, "users", uid)); // profile last in the list (the row the admin sees)
+  await batch.commit();
+}
+
+/**
+ * Deletes a learner COMPLETELY.
+ *  1. Preferred: the admin-only `deleteLearnerAccount` Cloud Function removes
+ *     the Firebase Auth login AND all Firestore data server-side.
+ *  2. If the function isn't reachable (not deployed / project on the free
+ *     Spark plan), the Firestore data is still deleted from the browser, and
+ *     the result says `authDeleted: false` so the UI can tell the admin to
+ *     remove the login in Firebase console -> Authentication.
+ * A browser CANNOT delete another user's Auth login (needs the Admin SDK) —
+ * that part only ever happens in the Cloud Function.
+ *
+ * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function"|"browser"}>}
+ * Other errors (e.g. permission-denied) are re-thrown untouched.
  */
 export async function deleteLearnerAccount(uid) {
-  const call = httpsCallable(getFunctions(auth.app), "deleteLearnerAccount");
-  const res = await call({ uid });
-  return res.data;
+  try {
+    const call = httpsCallable(getFunctions(auth.app), "deleteLearnerAccount");
+    await call({ uid });
+    return { authDeleted: true, firestoreDeleted: true, via: "function" };
+  } catch (err) {
+    if (!FUNCTION_UNREACHABLE.includes(err?.code)) throw err;
+    console.warn("[deleteLearnerAccount] Cloud Function unreachable:", err?.code, err?.message);
+  }
+  await deleteLearnerFirestoreData(uid);
+  return { authDeleted: false, firestoreDeleted: true, via: "browser" };
+}
+
+/* ── LESSONS (Lesson Management → `signs`) ────────────────────────
+ * Lessons the admin adds. Doc id === signId (a lowercase slug), so a
+ * lesson can never be created twice. Fields:
+ *   signId, title, description, tips[], missionId, chapterId, order,
+ *   videoUrl  (real path, e.g. "../assets/videos/basic/asl_vid_diy_raw/hello.mp4"),
+ *   detectionType ("none" — admin-added lessons have no motion detection),
+ *   source ("admin"), createdAt, updatedAt.
+ * Writes are admin-only (firestore.rules: signs -> allow write: isAdmin()).
+ * The video FILE itself is not stored in Firestore — only its path is.
+ * ──────────────────────────────────────────────────────────────── */
+export async function listAdminLessons() {
+  const snap = await getDocs(collection(db, "signs"));
+  return withId(snap);
+}
+
+function lessonPayload(data) {
+  return {
+    signId: data.signId,
+    title: data.title,
+    description: data.description || "",
+    tips: Array.isArray(data.tips) ? data.tips : [],
+    missionId: data.missionId || "",
+    chapterId: data.chapterId || "",
+    order: Number.isFinite(data.order) ? data.order : 0,
+    videoUrl: data.videoUrl || "",
+    detectionType: "none",
+    source: "admin",
+  };
+}
+
+/** Creates signs/{signId}. Throws {code:"lesson/exists"} if the id is taken. */
+export async function createLesson(data) {
+  const ref = doc(db, "signs", data.signId);
+  if ((await getDoc(ref)).exists()) {
+    const err = new Error("A lesson with this Sign ID already exists.");
+    err.code = "lesson/exists";
+    throw err;
+  }
+  await setDoc(ref, {
+    ...lessonPayload(data),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Updates an existing lesson (Sign ID never changes). */
+export function updateLesson(signId, data) {
+  const { signId: _ignored, ...rest } = lessonPayload({ ...data, signId });
+  return updateDoc(doc(db, "signs", signId), { ...rest, updatedAt: serverTimestamp() });
+}
+
+export function deleteLesson(signId) {
+  return deleteDoc(doc(db, "signs", signId));
 }
 
 /* ── SURVEYS (Feedback & Surveys) ─────────────────────────────────
