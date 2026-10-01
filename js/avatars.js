@@ -4,14 +4,14 @@
  * Learners CHOOSE from this list; they can never upload their own picture.
  * Only the picture's ID is stored: users/{uid}.avatar (their account) and
  * publicProfiles/{uid}.avatar (the leaderboard row). The image itself always
- * comes from assets/avatars/, so a stored ID can never point anywhere else.
+ * comes from assets/profile_images/, so a stored ID can never point anywhere else.
  *
- * TO ADD / CHANGE PICTURES: put the image in assets/avatars/ and edit LIST.
+ * TO ADD / CHANGE PICTURES: put the image in assets/profile_images/ and edit LIST.
  *   - `id`   must match /^avatar-\d{2}$/ (firestore.rules enforces the same
  *            pattern). Never reuse or renumber an ID — learners already have
  *            it saved.
- *   - `file` is the real file name inside assets/avatars/ (change the
- *            placeholder names below to match your actual files).
+ *   - `file` is the real file name inside assets/profile_images/ (any name,
+ *            e.g. '7.png' or 'aki.png' — it does not have to match the id).
  *
  * Exposes window.LWAvatars. Plain script (not a module); load it before the
  * page script that uses it. All pages that use it live in /pages, hence BASE.
@@ -20,22 +20,21 @@
 (function () {
   'use strict';
 
-  var BASE = '../assets/avatars/';
+  var BASE = '../assets/profile_images/';
   var ID_RE = /^avatar-\d{2}$/;
 
   var LIST = [
-    { id: 'avatar-01', file: 'avatar-01.png', label: 'Avatar 1' },
-    { id: 'avatar-02', file: 'avatar-02.png', label: 'Avatar 2' },
-    { id: 'avatar-03', file: 'avatar-03.png', label: 'Avatar 3' },
-    { id: 'avatar-04', file: 'avatar-04.png', label: 'Avatar 4' },
-    { id: 'avatar-05', file: 'avatar-05.png', label: 'Avatar 5' },
-    { id: 'avatar-06', file: 'avatar-06.png', label: 'Avatar 6' },
-    { id: 'avatar-07', file: 'avatar-07.png', label: 'Avatar 7' },
-    { id: 'avatar-08', file: 'avatar-08.png', label: 'Avatar 8' },
-    { id: 'avatar-09', file: 'avatar-09.png', label: 'Avatar 9' },
-    { id: 'avatar-10', file: 'avatar-10.png', label: 'Avatar 10' },
-    { id: 'avatar-11', file: 'avatar-11.png', label: 'Avatar 11' },
-    { id: 'avatar-12', file: 'avatar-12.png', label: 'Avatar 12' },
+    { id: 'avatar-01', file: '1.png',   label: 'Profile picture 1' },
+    { id: 'avatar-02', file: '2.png',   label: 'Profile picture 2' },
+    { id: 'avatar-03', file: '3.png',   label: 'Profile picture 3' },
+    { id: 'avatar-04', file: '4.png',   label: 'Profile picture 4' },
+    { id: 'avatar-05', file: '5.png',   label: 'Profile picture 5' },
+    { id: 'avatar-06', file: '6.png',   label: 'Profile picture 6' },
+    { id: 'avatar-07', file: '7.png',   label: 'Profile picture 7' },
+    { id: 'avatar-08', file: '8.png',   label: 'Profile picture 8' },
+    { id: 'avatar-09', file: '9.png',   label: 'Profile picture 9' },
+    { id: 'avatar-10', file: 'aki.png', label: 'Aki' },
+    // Add more here: next free id is 'avatar-11'.
   ];
 
   function esc(s) {

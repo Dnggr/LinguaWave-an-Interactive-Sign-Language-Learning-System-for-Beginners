@@ -48,20 +48,9 @@
 .profile-side__name { margin: var(--space-2) 0 0; font-size: var(--fs-2xl); line-height: 1.2; overflow-wrap: anywhere; }
 .profile-side__sub { margin: 0; font-size: var(--fs-sm); }
 
-.profile-side__panel {
-  margin-top: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-md);
-  background: var(--clr-surface);
-  display: flex; flex-direction: column; gap: var(--space-3);
-}
-.profile-side__panel[hidden] { display: none; }
-.profile-side__panel h3 { margin: 0; font-size: var(--fs-base); }
-
 .avatar-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: var(--space-3);
 }
 /* Real radio inputs (native keyboard + screen-reader behaviour), made invisible and stretched over the picture. */
@@ -83,6 +72,55 @@
 
 .profile-hero__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 
+/* ── Picture picker as a floating modal ──────────────────────────────
+ * Same pattern as .streak-dialog in app.css: zero padding on the <dialog>
+ * so a click on the dialog element itself counts as a backdrop click, and
+ * an explicit margin:auto because the global reset zeroes margins. */
+.avatar-dialog {
+  margin: auto; padding: 0;
+  width: min(92vw, 460px); max-height: 90vh; overflow-y: auto;
+  color: var(--clr-text); background: var(--clr-surface);
+  border: 1px solid var(--clr-border); border-radius: var(--radius-xl);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .35);
+}
+.avatar-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+.avatar-dialog[open] { animation: avatar-dialog-in var(--dur-base) var(--ease); }
+@keyframes avatar-dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .avatar-dialog[open] { animation: none; } }
+body:has(.avatar-dialog[open]) { overflow: hidden; }
+
+.avatar-dialog__body { position: relative; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-6); }
+.avatar-dialog__head { display: flex; align-items: center; gap: var(--space-4); padding-right: var(--space-8); }
+.avatar-dialog__head h3 { margin: 0; font-size: var(--fs-xl); }
+.avatar-dialog__head p { margin: var(--space-1) 0 0; font-size: var(--fs-sm); }
+.avatar-dialog__close {
+  position: absolute; top: var(--space-3); right: var(--space-3);
+  width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; color: var(--clr-text-muted); background: transparent; border: none; border-radius: 50%; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.avatar-dialog__close:hover { color: var(--clr-text); background: var(--clr-track); }
+.avatar-dialog__close:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 2px; }
+
+/* ── Achievements (under the picture) ─────────────────────────────── */
+.profile-achievements { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--clr-border); }
+.achv-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.achv-head h3 { margin: 0; font-size: var(--fs-base); }
+.achv-head span { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.achv-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); }
+.achv { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; }
+.achv svg { width: 46%; height: 46%; }
+.achv--earned.achv--accent  { color: var(--clr-accent-text); background: var(--clr-accent-soft);  border-color: var(--clr-accent); }
+.achv--earned.achv--success { color: var(--clr-success);     background: var(--clr-success-soft); border-color: var(--clr-success); }
+.achv--earned.achv--orange  { color: var(--clr-orange);      background: var(--clr-orange-soft);  border-color: var(--clr-orange); }
+.achv--earned.achv--yellow  { color: var(--clr-yellow);      background: var(--clr-yellow-soft);  border-color: var(--clr-yellow); }
+.achv--earned.achv--violet  { color: var(--clr-violet);      background: var(--clr-violet-soft);  border-color: var(--clr-violet); }
+.achv--locked { color: var(--clr-text-muted); background: var(--clr-track); opacity: .45; }
+.achv-next { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--clr-text-muted); }
+
 /* ── Learning Activity: one box per day, a full year (GitHub-style) ──
  * Separate from the .heatmap-cell styles in app.css, which the Progress
  * page's Day Streak week strip still uses. */
@@ -98,6 +136,7 @@
   column-gap: var(--gh-gap);
   row-gap: var(--gh-gap);
   min-width: 720px;
+  padding-right: 20px;   /* room for the last month name so it never adds a scroll area */
 }
 .gh-month {
   grid-row: 1;
@@ -107,6 +146,7 @@
 }
 .gh-day {
   grid-column: 1; align-self: center;
+  position: sticky; left: 0; z-index: 1; background: var(--clr-surface);   /* stay visible if the grid scrolls */
   padding-right: var(--space-2);
   font-size: 10px; line-height: 1; white-space: nowrap;
   color: var(--clr-text-muted);
