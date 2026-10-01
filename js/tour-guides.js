@@ -257,6 +257,40 @@
       ],
     },
 
+    /* ── Leaderboard ───────────────────────────────────────────── */
+    leaderboard: {
+      steps: [
+        {
+          title: 'Welcome to the leaderboard',
+          body: 'See how your XP compares with other learners. This tour takes under a minute and you can skip it at any time.',
+        },
+        {
+          target: '#lb-me',
+          placement: 'left',
+          title: 'Your level at a glance',
+          body: 'This panel shows your level, XP and badges, and how much XP is left until your next level. Press My badges to see the ones you have earned and the ones still ahead.',
+        },
+        {
+          target: '#lb-tabs',
+          placement: 'bottom',
+          title: 'Switch between boards',
+          body: 'Rank by all-time XP, this week\u2019s XP, streaks or badges, then flip between highest first and lowest first.',
+        },
+        {
+          target: '#lb-panel',
+          placement: 'top',
+          title: 'Find yourself on the board',
+          body: 'Your row is highlighted. Lessons are worth far more XP than games, so steady lessons are the way up.',
+        },
+        {
+          target: '#lb-how-btn',
+          placement: 'bottom',
+          title: 'Check how XP works',
+          body: 'Open this any time to see what earns XP, how streaks count, and when the weekly rankings reset.',
+        },
+      ],
+    },
+
   };
 
   /* ── Reminders (NEW) ─────────────────────────────────────────────

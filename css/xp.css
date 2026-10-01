@@ -8,11 +8,13 @@
   transition: transform .35s var(--ease, ease), opacity .35s var(--ease, ease); }
 .xp-pop--in { transform: translate(-50%, 0); opacity: 1; }
 .xp-pop__level { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: var(--tier, var(--clr-accent)); line-height: 1.1; }
-.xp-pop__level span { margin-right: 6px; }
+.xp-pop__level .xp-pop__tier { display: inline-grid; vertical-align: -4px; margin-right: 6px; }
+.xp-pop__level .xp-pop__tier .lw-icon { width: 26px; height: 26px; }
 .xp-pop__level small { display: block; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--clr-text-muted, #586780); margin-top: 4px; }
 .xp-pop__xp { margin-top: 8px; font-weight: 700; color: var(--clr-success, #047857); }
 .xp-pop__badges { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .xp-pop__badges li { display: flex; gap: 8px; align-items: center; justify-content: center; font-size: .9rem; }
+.xp-pop__badge { display: inline-grid; place-items: center; color: var(--clr-violet, #7c3aed); }
 @media (prefers-reduced-motion: reduce) { .xp-pop, .xp-bar > i { transition: none; } }
 .lw-force-reduced-motion .xp-pop, .lw-force-reduced-motion .xp-bar > i { transition: none; }
 
@@ -27,6 +29,8 @@
   font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: #fff;
   background: var(--tier, var(--clr-accent)); box-shadow: 0 0 0 4px var(--clr-surface-2, #eff6ff); }
 .xp-card__name { font-family: var(--font-display, inherit); font-weight: 700; font-size: var(--fs-lg, 1.125rem); margin: 0; }
+.xp-tier { display: inline-flex; align-items: center; gap: 4px; vertical-align: bottom; color: var(--tier, var(--clr-accent-text)); }
+.xp-tier .lw-icon { width: 16px; height: 16px; }
 .xp-card__sub { margin: 2px 0 0; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
 .xp-bar { height: 10px; border-radius: 9999px; background: var(--clr-track, #e2e8f0); overflow: hidden; }
 .xp-bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--tier, var(--clr-accent)); transition: width .6s var(--ease, ease); }
@@ -46,31 +50,127 @@
   padding: 10px 14px; border-radius: var(--radius-md, 16px); background: var(--clr-surface, #fff); border: 1px solid var(--clr-border, #e2e8f0); }
 .lb-row.is-me { border-color: var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); }
 .lb-rank { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; text-align: center; color: var(--clr-text-muted, #586780); }
-.lb-row:nth-child(-n+3) .lb-rank { color: var(--clr-yellow, #b45309); }
+.lb-row.is-top .lb-rank { color: var(--clr-yellow, #b45309); }   /* real top 3 (a class, not :nth-child, so "Lowest first" does not paint the bottom three gold) */
 .lb-lv { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; background: var(--tier, var(--clr-accent)); }
 .lb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lb-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
-.lb-badges { letter-spacing: 2px; }
+.lb-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
+.lb-stat { display: inline-flex; align-items: center; gap: 4px; }
+.lb-stat--streak .lw-icon { color: var(--clr-orange, #f97316); }
+.lb-badges { display: inline-flex; align-items: center; gap: 4px; }
+/* A recent-badge icon: small tinted disc in the badge's own colour, dark glyph so it reads on every tier colour. */
+.lb-badge { width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--bd, var(--clr-accent)); color: #0b1220; }
+.lb-badge .lw-icon { width: 14px; height: 14px; }
+.lb-meta [title] { cursor: help; }
 .lb-score { text-align: right; font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; }
 .lb-score small { display: block; font-family: var(--font-body, inherit); font-weight: 400; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
 .lb-empty, .lb-note { color: var(--clr-text-muted, #586780); padding: var(--space-4, 1rem) 0; }
 .lb-me-pin { margin-top: var(--space-3, .75rem); }
 .lb-privacy { display: flex; gap: var(--space-3, .75rem); align-items: center; flex-wrap: wrap; font-size: var(--fs-sm, .875rem); color: var(--clr-text-muted, #586780); margin-top: var(--space-3, .75rem); }
-.lb-how { margin-top: var(--space-6, 1.5rem); }
-.lb-how ul { margin: var(--space-2, .5rem) 0 0; padding-left: 1.2rem; display: grid; gap: 4px; color: var(--clr-text-muted, #586780); }
+/* Top-align this page. css/app.css gives #main `justify-content: center` (built for short
+   dashboard-style pages), which floated this shorter layout into the middle of the screen.
+   #main.lb-page out-ranks the plain #main rule, and this file's rule only touches this page. */
+#main.lb-page { justify-content: flex-start; }
+
+/* Header row: title + intro on the left, "How XP works" button on the right. */
+.lb-head { display: flex; gap: var(--space-4, 1rem); align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.lb-head__text { flex: 1 1 320px; min-width: 0; }
+.lb-how-btn { flex: none; }
+
+/* Two columns: boards (left, fluid) + the learner's own level card (right, sticky side panel).
+   Under 960px the side panel stacks ABOVE the boards. */
+.lb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6, 1.5rem); align-items: start; margin-top: var(--space-4, 1rem); }
+.lb-main { min-width: 0; }
+.lb-main .lb-tabs { margin-top: 0; }
+.lb-side { position: sticky; top: var(--space-6, 1.5rem); }
+.lb-me { text-align: center; justify-items: center; }
+.lb-me .xp-card__top { flex-direction: column; text-align: center; gap: var(--space-3, .75rem); }
+.lb-me .xp-level { width: 72px; height: 72px; font-size: 1.75rem; }
+.lb-me > div { width: 100%; }
+.lb-me .xp-bar, .lb-me .xp-bar__label { width: 100%; }
+.lb-me .xp-bar__label { justify-content: center; }
+@media (max-width: 960px) {
+  .lb-layout { grid-template-columns: minmax(0, 1fr); }
+  .lb-side { position: static; order: -1; }
+  .lb-me { text-align: left; justify-items: stretch; }
+  .lb-me .xp-card__top { flex-direction: row; text-align: left; }
+  .lb-me .xp-level { width: 56px; height: 56px; font-size: 1.35rem; }
+  .lb-me .xp-bar__label { justify-content: flex-start; }
+}
+
+/* ── "How XP works" modal (native <dialog>, same pattern as the Day Streak dialog) ── */
+.lb-how-dialog { margin: auto; padding: 0; width: min(92vw, 520px); max-height: 90vh; overflow-y: auto;
+  color: var(--clr-text, #0f172a); background: var(--clr-surface, #fff); border: 1px solid var(--clr-border, #e2e8f0);
+  border-radius: var(--radius-xl, 28px); box-shadow: 0 20px 60px rgba(15, 23, 42, .35); }
+.lb-how-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+.lb-how-dialog[open] { animation: lb-how-in var(--dur-base, .2s) var(--ease, ease); }
+@keyframes lb-how-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .lb-how-dialog[open] { animation: none; } }
+.lw-force-reduced-motion .lb-how-dialog[open] { animation: none; }
+body:has(.lb-how-dialog[open]) { overflow: hidden; }
+.lb-how-dialog__close { position: absolute; top: var(--space-3, .75rem); right: var(--space-3, .75rem); width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 1.5rem; line-height: 1;
+  color: var(--clr-text-muted, #586780); background: transparent; border: none; border-radius: 50%; cursor: pointer; }
+.lb-how-dialog__close:hover { color: var(--clr-text, #0f172a); background: var(--clr-track, #e2e8f0); }
+.lb-how-dialog__close:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
+.lb-how-dialog__body { padding: var(--space-6, 1.5rem); }
+.lb-how-dialog__body h2 { margin: 0 var(--space-6, 1.5rem) 0 0; font-family: var(--font-display, inherit); font-size: var(--fs-xl, 1.35rem); }
+.lb-how-dialog__body ul { margin: var(--space-3, .75rem) 0 var(--space-5, 1.25rem); padding-left: 1.2rem; display: grid; gap: var(--space-2, .5rem); color: var(--clr-text-muted, #586780); }
+.lb-how-dialog__ok { width: 100%; justify-content: center; }
 @media (max-width: 560px) { .lb-row { grid-template-columns: 32px 36px minmax(0, 1fr) auto; padding: 8px 10px; gap: 8px; } .lb-lv { width: 34px; height: 34px; } }
 
-/* ── badge grid ── */
+/* ── badge grid ──
+   States (set by js/leaderboard.js badgeCell): is-earned · is-next · is-ready · is-locked · is-todo.
+   Layout notes: tiles stretch to the tallest tile in their row and push the state label to the bottom, so a row never
+   looks ragged; the level lives in its own chip so a long tier name cannot wrap it onto a second line; and only the ICON
+   is dimmed for locked tiles (the old whole-tile opacity:.55 made the text hard to read). The icon disc is a solid tier
+   colour with a dark glyph, which keeps contrast on all six tier colours in both themes. */
 .bd-group { margin-top: var(--space-6, 1.5rem); }
-.bd-group h3 { margin: 0 0 var(--space-2, .5rem); font-family: var(--font-display, inherit); }
-.bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3, .75rem); }
-.bd { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 12px 8px; border-radius: var(--radius-md, 16px);
+.bd-group h3 { display: flex; align-items: baseline; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0 0 var(--space-3, .75rem); font-family: var(--font-display, inherit); }
+.bd-count { font-family: var(--font-body, inherit); font-size: var(--fs-xs, .75rem); font-weight: 600; color: var(--clr-text-muted, #586780); }
+.bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3, .75rem); align-items: stretch; }
+.bd { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 10px 12px; border-radius: var(--radius-md, 16px);
   background: var(--clr-surface, #fff); border: 1px solid var(--clr-border, #e2e8f0); }
-.bd__icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; background: var(--bd, var(--clr-accent)); }
-.bd__name { font-weight: 700; font-size: var(--fs-sm, .875rem); }
-.bd__desc { font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
-.bd.is-locked { opacity: .55; }
-.bd.is-locked .bd__icon { background: var(--clr-locked-soft, rgba(148, 163, 184, .14)); filter: grayscale(1); }
-.bd__state { font-size: var(--fs-xs, .75rem); font-weight: 700; color: var(--clr-success, #047857); }
-.bd.is-locked .bd__state { color: var(--clr-locked, #94a3b8); }
-.bd.is-next { outline: 2px dashed var(--clr-accent, #2563eb); opacity: 1; }
+.bd__icon { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--bd, var(--clr-accent)); color: #0b1220; }
+.bd__icon .lw-icon { width: 24px; height: 24px; }
+.bd__name { font-weight: 700; font-size: var(--fs-sm, .875rem); line-height: 1.25; }
+.bd__lv { padding: 1px 10px; border-radius: 9999px; font-size: var(--fs-xs, .75rem); font-weight: 700; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text, #0f172a); }
+.bd__desc { font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); line-height: 1.35; }
+.bd__state { margin-top: auto; padding-top: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs, .75rem); font-weight: 700; color: var(--clr-text-muted, #586780); }
+.bd__state .lw-icon { width: 14px; height: 14px; }
+.bd.is-earned .bd__state { color: var(--clr-success, #047857); }
+.bd.is-next { border: 2px dashed var(--clr-accent, #2563eb); padding: 13px 9px 11px; }
+.bd.is-next .bd__state { color: var(--clr-accent-text, #1d4ed8); }
+/* Available: the level allows it and it is queued behind "Up next" - tier colour kept, just softened. */
+.bd.is-ready .bd__icon { background: color-mix(in srgb, var(--bd, var(--clr-accent)) 28%, var(--clr-surface, #fff)); color: var(--clr-text, #0f172a); }
+.bd.is-ready .bd__state { color: var(--clr-accent-text, #1d4ed8); }
+/* Locked / not yet: grey disc + muted glyph; the text keeps full contrast. */
+.bd.is-locked .bd__icon, .bd.is-todo .bd__icon { background: var(--clr-locked-soft, rgba(148, 163, 184, .18)); color: var(--clr-text-muted, #586780); }
+.bd.is-locked .bd__lv { color: var(--clr-text-muted, #586780); background: transparent; border: 1px solid var(--clr-border, #e2e8f0); }
+
+/* ── sort order (Highest first / Lowest first) ── */
+.lb-toolbar { display: flex; align-items: center; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0 0 var(--space-3, .75rem); }
+.lb-toolbar[hidden] { display: none; }
+.lb-toolbar__label { font-size: var(--fs-xs, .75rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--clr-text-muted, #586780); }
+.lb-sort { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9999px; border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); }
+.lb-sort__btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--clr-text, #0f172a);
+  font: inherit; font-size: var(--fs-sm, .875rem); font-weight: 600; padding: 5px 14px; border-radius: 9999px; cursor: pointer; }
+.lb-sort__btn[aria-pressed="true"] { background: var(--clr-accent-soft, rgba(37, 99, 235, .12)); color: var(--clr-accent-text, #1d4ed8); box-shadow: inset 0 0 0 1px var(--clr-accent, #2563eb); }
+.lb-sort__btn:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
+
+/* ── "My badges" button (under the level card) ── */
+.lb-mine-btn { width: 100%; justify-content: center; gap: 8px; margin-top: var(--space-1, .25rem); }
+.lb-mine-btn .lw-icon { width: 16px; height: 16px; }
+.lb-mine-btn__n { min-width: 22px; padding: 0 7px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text, #0f172a); font-size: var(--fs-xs, .75rem); font-weight: 700; line-height: 20px; }
+.lb-mine-btn[aria-pressed="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: #fff; }
+.lb-mine-btn[aria-pressed="true"] .lb-mine-btn__n { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* ── Badges board: bigger badge discs + a "+N" chip for the ones past the 5 shown ── */
+.lb-row--badges .lb-badges { gap: 5px; margin-left: 2px; }
+.lb-row--badges .lb-badge { width: 28px; height: 28px; }
+.lb-row--badges .lb-badge .lw-icon { width: 16px; height: 16px; }
+.lb-more { padding: 2px 8px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text-muted, #586780); font-size: var(--fs-xs, .75rem); font-weight: 700; cursor: help; }
+
+/* ── My badges: an earned tile is tinted with its own badge colour so it stands out from Available / Locked ── */
+.bd.is-earned { border-color: color-mix(in srgb, var(--bd, var(--clr-accent)) 60%, var(--clr-border, #e2e8f0));
+  background: color-mix(in srgb, var(--bd, var(--clr-accent)) 9%, var(--clr-surface, #fff));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bd, var(--clr-accent)) 22%, transparent); }
