@@ -1049,6 +1049,22 @@ async function register(name, email, password, confirmPassword) {
   return { verificationSent, email: normalizedEmail };
 }
 
+/* A users/{uid} profile was just (re)created. XP lives in separate docs (xpState / publicProfiles), so if the
+ * database was wiped they would still hold the OLD XP and the learner would stay on the leaderboards.
+ * Delete them so XP is always tied to the account's current profile. Owner delete is allowed by firestore.rules. */
+async function resetXpForNewProfile(uid) {
+  try {
+    await Promise.all([
+      deleteDoc(doc(db, 'xpState', uid)),
+      deleteDoc(doc(db, 'publicProfiles', uid)),
+    ]);
+    localStorage.removeItem('lw_xp_pending_v1:' + uid);
+    localStorage.removeItem('lw_xp_backfilled_v1:' + uid);
+  } catch (e) {
+    console.warn('[auth] could not reset XP for the new profile:', e);
+  }
+}
+
 /* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
  * Handles both first-time sign-up AND returning login through the
  * same call — signInWithPopup() creates the Firebase Auth user
@@ -1099,6 +1115,7 @@ async function loginWithGoogle() {
       joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
     };
     await setDoc(userRef, profile);
+    await resetXpForNewProfile(firebaseUser.uid);   // brand-new profile => XP/leaderboard start fresh too
   }
 
   const user = {
