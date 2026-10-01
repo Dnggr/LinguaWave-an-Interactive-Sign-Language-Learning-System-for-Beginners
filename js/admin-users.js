@@ -3,7 +3,9 @@
  * Lists learner profiles from Firestore `users`, lets the admin
  * change a learner's level inline, and lets them delete a learner
  * COMPLETELY — Firebase Auth login + Firestore data — through the
- * `deleteLearnerAccount` Cloud Function (see js/admin-firebase.js).
+ * `deleteLearnerAccount` Cloud Function (see js/admin-firebase.js); without
+ * the function only the Firestore data goes and the admin is told to remove
+ * the login in the Firebase console.
  * The admin's own row (matched by ADMIN_EMAIL) has no delete button,
  * so a stray click can't delete the admin account.
  */
@@ -118,19 +120,28 @@ function closeDeleteConfirm() {
 
 async function confirmDelete() {
   if (!pendingDeleteUid) return;
+  const uid = pendingDeleteUid;
+  const target = allUsers.find((x) => x.id === uid);
   els.deleteConfirm.disabled = true;
   try {
-    // Deletes the Auth login AND the Firestore data server-side.
-    await deleteLearnerAccount(pendingDeleteUid);
-    window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
+    // Cloud Function: Auth login + Firestore data. Falls back to Firestore-only.
+    const res = await deleteLearnerAccount(uid);
     closeDeleteConfirm();
+    if (res.authDeleted) {
+      window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
+    } else {
+      window.LinguaWave?.showToast?.(
+        `Data deleted, but the login still exists — remove ${target?.email || "it"} in Firebase console → Authentication → Users (the delete service isn't deployed).`,
+        "error"
+      );
+    }
     await loadUsers();
   } catch (err) {
     console.error("Failed to delete learner:", err);
-    const notDeployed = ["functions/not-found", "functions/unavailable", "functions/internal"].includes(err?.code);
+    const denied = ["functions/permission-denied", "permission-denied"].includes(err?.code);
     window.LinguaWave?.showToast?.(
-      notDeployed
-        ? "Delete service isn't deployed yet — nothing was deleted. See ADMIN_SETUP.md."
+      denied
+        ? "Not allowed: only the admin account can delete learners."
         : (err?.message || "Couldn't delete this learner."),
       "error"
     );

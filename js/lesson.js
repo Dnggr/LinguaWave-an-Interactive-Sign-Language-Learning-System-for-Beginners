@@ -221,7 +221,7 @@ function renderLessonWatch(mission, index, item, plan, ctx) {
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
     ${mediaBlockHtml(sign)}
     ${descriptionHtml(sign)}
-    ${cameraPracticeLinkHtml(mission, item.signId)}
+    ${sign && sign.detectionType === 'none' ? '' : cameraPracticeLinkHtml(mission, item.signId)}
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Got it, continue</button>
     </div>
