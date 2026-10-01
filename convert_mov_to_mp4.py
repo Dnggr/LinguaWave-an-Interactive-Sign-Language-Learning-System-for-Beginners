@@ -123,3 +123,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+# how to use, just paste it to the terminal/git bash/ etc..
+#  python convert_mov_to_mp4.py --dry-run   # preview first
+#    python convert_mov_to_mp4.py             # convert + delete .MOV

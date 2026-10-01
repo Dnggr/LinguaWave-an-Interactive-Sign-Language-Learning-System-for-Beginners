@@ -39,6 +39,7 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/xp.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
   <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
@@ -46,7 +47,7 @@
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
 </head>
-<body>
+<body data-tour="leaderboard">
 
   <a href="#main" class="skip-link">Skip to Leaderboard</a>
 
@@ -70,6 +71,10 @@
           <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="5" rx="1"/><rect x="13" y="4" width="8" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><rect x="10" y="11" width="8" height="5" rx="1"/><path d="M4 20h16"/></svg></span>
           Game
         </a>
+        <a href="leaderboard.html" class="app-sidebar__link app-sidebar__link--active" aria-current="page">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span>
+          Leaderboard
+        </a>
         <a href="feedback.html" class="app-sidebar__link">
           <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
           Feedback
@@ -91,36 +96,64 @@
       </div>
     </aside>
 
-    <div class="app-main" id="main">
+    <div class="app-main lb-page" id="main">
       <section class="section section--sm section--tight">
         <div class="container">
-          <h1>Leaderboard</h1>
-          <p class="mt-2 text-muted">Earn XP from lessons and the Wall Breaker game. Lessons are worth far more than games, so there is no shortcut to the top.</p>
+          <header class="lb-head">
+            <div class="lb-head__text">
+              <h1>Leaderboard</h1>
+              <p class="mt-2 text-muted">Earn XP from lessons and the Wall Breaker game. Lessons are worth far more than games, so there is no shortcut to the top.</p>
+            </div>
+            <button type="button" class="btn btn--ghost btn--sm lb-how-btn" id="lb-how-btn" aria-haspopup="dialog" aria-controls="lb-how-dialog">How XP works</button>
+          </header>
 
-          <div class="card xp-card mt-4" id="lb-me" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
+          <div class="lb-layout">
+            <!-- Main column: the boards themselves. -->
+            <div class="lb-main">
+              <div class="lb-tabs" role="tablist" aria-label="Leaderboard views" id="lb-tabs">
+                <button class="lb-tab" role="tab" id="tab-xp" data-view="xp" aria-selected="true">All-time XP</button>
+                <button class="lb-tab" role="tab" id="tab-weekly" data-view="weekly" aria-selected="false">This week</button>
+                <button class="lb-tab" role="tab" id="tab-streak" data-view="streak" aria-selected="false">Streaks</button>
+                <button class="lb-tab" role="tab" id="tab-badges" data-view="badges" aria-selected="false">Badges</button>
+              </div>
 
-          <div class="lb-tabs" role="tablist" aria-label="Leaderboard views" id="lb-tabs">
-            <button class="lb-tab" role="tab" id="tab-xp" data-view="xp" aria-selected="true">All-time XP</button>
-            <button class="lb-tab" role="tab" id="tab-weekly" data-view="weekly" aria-selected="false">This week</button>
-            <button class="lb-tab" role="tab" id="tab-streak" data-view="streak" aria-selected="false">Streaks</button>
-            <button class="lb-tab" role="tab" id="tab-badges" data-view="badges" aria-selected="false">Badges</button>
-            <button class="lb-tab" role="tab" id="tab-mine" data-view="mine" aria-selected="false">My badges</button>
+              <!-- Order control: flips every board between highest-first (default) and lowest-first. Hidden on "My badges". -->
+              <div class="lb-toolbar" id="lb-toolbar">
+                <span class="lb-toolbar__label" id="lb-sort-label">Order</span>
+                <div class="lb-sort" role="group" aria-labelledby="lb-sort-label" id="lb-sort">
+                  <button type="button" class="lb-sort__btn" data-dir="desc" aria-pressed="true"><span aria-hidden="true">&darr;</span> Highest first</button>
+                  <button type="button" class="lb-sort__btn" data-dir="asc" aria-pressed="false"><span aria-hidden="true">&uarr;</span> Lowest first</button>
+                </div>
+              </div>
+
+              <div id="lb-panel" role="tabpanel" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
+
+              <div class="lb-privacy" id="lb-privacy"></div>
+            </div>
+
+            <!-- Side panel: the learner's own level card, with the "My badges" button under its XP bar (drawMe() in js/leaderboard.js).
+                 Sits to the right on desktop; stacks ABOVE the boards on tablets and phones. -->
+            <aside class="lb-side" aria-label="Your level">
+              <div class="card xp-card lb-me" id="lb-me" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
+            </aside>
           </div>
 
-          <div id="lb-panel" role="tabpanel" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
-
-          <div class="lb-privacy" id="lb-privacy"></div>
-
-          <div class="card lb-how" style="padding: var(--space-5, 1.25rem);">
-            <h2 style="margin:0;font-size:var(--fs-lg,1.125rem)">How XP works</h2>
-            <ul>
-              <li>Every lesson step earns XP once. Finishing a whole lesson and passing its Mastery Quiz pays a bonus (the largest reward).</li>
-              <li>Wall Breaker earns a little XP, and less each wall you clear in a day. It stops paying after the daily limit.</li>
-              <li>A wall only counts when at least 6 of its bricks are signs you have already learned in lessons.</li>
-              <li>Streaks count days you earn XP, using your own time zone. Week rankings reset every Monday (UTC).</li>
-              <li>Each level has a lesson badge and a wall badge. Earn them by finishing a lesson or a wall once you reach that level.</li>
-            </ul>
-          </div>
+          <!-- "How XP works": was an always-visible card under the board. Now a modal opened from the
+               header button (native <dialog>: focus trap + Esc come from the browser). -->
+          <dialog class="lb-how-dialog" id="lb-how-dialog" aria-labelledby="lb-how-title">
+            <button type="button" class="lb-how-dialog__close" id="lb-how-close" aria-label="Close">&times;</button>
+            <div class="lb-how-dialog__body">
+              <h2 id="lb-how-title">How XP works</h2>
+              <ul>
+                <li>Every lesson step earns XP once. Finishing a whole lesson and passing its Mastery Quiz pays a bonus (the largest reward).</li>
+                <li>Wall Breaker earns a little XP, and less each wall you clear in a day. It stops paying after the daily limit.</li>
+                <li>A wall only counts when at least 6 of its bricks are signs you have already learned in lessons.</li>
+                <li>Streaks count days you earn XP, using your own time zone. Week rankings reset every Monday (UTC).</li>
+                <li>Each level has a lesson badge and a wall badge. Earn them by finishing a lesson or a wall once you reach that level.</li>
+              </ul>
+              <button type="button" class="btn btn--primary lb-how-dialog__ok" id="lb-how-ok">Got it</button>
+            </div>
+          </dialog>
         </div>
       </section>
     </div>
@@ -132,6 +165,10 @@
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script src="../js/main.js"></script>
+  <!-- Guided tour: copy in js/tour-guides.js, engine in js/tour.js, look in css/tour.css.
+       This page opts in via <body data-tour="leaderboard">. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
   <script src="../js/leaderboard.js"></script>
 </body>
 </html>

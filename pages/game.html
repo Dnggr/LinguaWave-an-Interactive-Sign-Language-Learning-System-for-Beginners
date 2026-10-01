@@ -119,8 +119,8 @@
 
         <div class="gm-progress" id="gm-progress" aria-hidden="true">
           <div class="gm-progress__track"><i class="gm-progress__fill"></i></div>
-          <span class="gm-progress__hero" id="gm-hero">🧑</span>
-          <span class="gm-progress__reward" id="gm-reward">🎁</span>
+          <span class="gm-progress__hero" id="gm-hero" data-lw-icon="user_round"></span>
+          <span class="gm-progress__reward" id="gm-reward" data-lw-icon="gift"></span>
         </div>
 
         <div class="gm-top">
@@ -145,14 +145,39 @@
             </div>
           </section>
 
-          <aside class="gm-log">
-            <h2>Signs log</h2>
-            <ul id="gm-log"></ul>
-            <div class="gm-legend" aria-label="Legend">
-              <span><i class="gm-dot gm-dot--static"></i>Static · HOLD</span>
-              <span><i class="gm-dot gm-dot--motion"></i>Motion · MOVE</span>
-            </div>
-          </aside>
+          <div class="gm-side">
+            <section class="gm-setup" id="gm-start" aria-labelledby="gm-setup-title">
+              <h2 id="gm-setup-title">Setup</h2>
+              <p class="text-muted gm-setup__how">Bricks come from signs you've finished in your lessons. Sign them in any order. <b class="gm-tag-static">HOLD</b> = hold the sign steady. <b class="gm-tag-motion">MOVE</b> = press Space, wait for 3-2-1, then sign.</p>
+              <p class="text-muted gm-setup__note" id="gm-pool-note" aria-live="polite">Checking your learned signs…</p>
+              <label class="gm-field-row">Signs on the wall
+                <select id="gm-source">
+                  <option value="learned" selected>Only signs I've learned</option>
+                  <option value="mixed">Learned + new signs</option>
+                  <option value="all">Any lesson sign</option>
+                </select>
+              </label>
+              <label class="gm-field-row">Wall size
+                <select id="gm-size">
+                  <option value="9">Small (9 bricks)</option>
+                  <option value="15" selected>Medium (15 bricks)</option>
+                  <option value="21">Large (21 bricks)</option>
+                </select>
+              </label>
+              <button class="btn btn--primary" id="gm-btn-start" type="button">Start</button>
+              <p class="text-muted gm-setup__best" id="gm-best"></p>
+            </section>
+
+            <aside class="gm-log">
+              <h2>Signs log</h2>
+              <ul id="gm-log"></ul>
+              <div class="gm-legend" aria-label="Legend">
+                <span><i class="gm-dot gm-dot--static"></i>Static · HOLD</span>
+                <span><i class="gm-dot gm-dot--motion"></i>Motion · MOVE</span>
+              </div>
+              <button class="btn btn--ghost btn--sm gm-quit" id="gm-quit" type="button" hidden>Quit this wall</button>
+            </aside>
+          </div>
         </div>
 
         <div class="gm-field" id="gm-field">
@@ -160,33 +185,9 @@
         </div>
         <p class="gm-hint text-muted" id="gm-hint"></p>
 
-        <div class="gm-overlay" id="gm-start">
-          <div class="gm-card">
-            <h2>Ready to break the wall?</h2>
-            <p class="text-muted">Bricks come from signs you've finished in your lessons (extras fill in if you've learned few). Sign them in any order. <b class="gm-tag-static">HOLD</b> (solid blue) = hold the sign steady. <b class="gm-tag-motion">MOVE</b> (dashed orange) = press Space, wait for 3-2-1, then sign.</p>
-            <p class="text-muted" id="gm-pool-note" aria-live="polite">Checking your learned signs…</p>
-            <label class="gm-field-row">Signs on the wall
-              <select id="gm-source">
-                <option value="learned" selected>Only signs I've learned</option>
-                <option value="mixed">Learned + new signs</option>
-                <option value="all">Any lesson sign</option>
-              </select>
-            </label>
-            <label class="gm-field-row">Wall size
-              <select id="gm-size">
-                <option value="9">Small (9 bricks)</option>
-                <option value="15" selected>Medium (15 bricks)</option>
-                <option value="21">Large (21 bricks)</option>
-              </select>
-            </label>
-            <button class="btn btn--primary" id="gm-btn-start" type="button">Start</button>
-            <p class="text-muted" id="gm-best"></p>
-          </div>
-        </div>
-
         <div class="gm-overlay" id="gm-result" hidden>
           <div class="gm-card">
-            <div class="gm-chest" id="gm-chest">🎁</div>
+            <div class="gm-chest" id="gm-chest" aria-hidden="true" data-lw-icon="gift"></div>
             <h2 id="gm-result-title">Wall cleared!</h2>
             <div class="gm-stars" id="gm-stars"></div>
             <p id="gm-result-text"></p>

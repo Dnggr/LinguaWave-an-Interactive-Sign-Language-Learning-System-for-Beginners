@@ -70,9 +70,16 @@ const setStatus = (msg) => { const el = $('camera-status'); el.textContent = msg
 const remaining = (type) => bricks.filter(b => !b.broken && (!type || b.type === type));
 const secs = (ms) => (ms / 1000).toFixed(1) + 's';
 
+// Lucide icons from the shared registry (js/icons.js). Returns '' if that script is missing, so text still renders.
+const lwIcon = (id, o) => (window.LWIcons ? window.LWIcons.markup(id, o) : '');
+// 3 star icons, `n` of them lit. Counts are clamped because the best-run record comes from localStorage.
+const starsHtml = (n) => { n = Math.max(0, Math.min(3, Number(n) || 0)); return [1, 2, 3].map((i) => `<span class="gm-star${i <= n ? ' is-on' : ''}">${lwIcon('star')}</span>`).join(''); };
+
 function log(text, cls) {
   const ul = $('gm-log'), li = document.createElement('li');
-  li.className = cls; li.textContent = text;
+  li.className = cls;
+  // check / x icon instead of a typed ✓ / ✗; setLabel puts the text in with textContent, so model labels are never parsed as HTML.
+  if (window.LWIcons) window.LWIcons.setLabel(li, cls === 'ok' ? 'check' : 'x', text, { size: 'sm' }); else li.textContent = text;
   ul.prepend(li);
   while (ul.children.length > 30) ul.lastChild.remove();
 }
@@ -193,7 +200,7 @@ async function refreshPoolNote() {
     const n = [...learned].filter(usable).length;
     $('gm-pool-note').textContent = n
       ? `${n} finished sign${n === 1 ? '' : 's'} can appear on the wall.`
-      : "You haven't finished any signs yet. Complete a lesson first, or switch to 'learned + new signs' below.";
+      : "You haven't finished any signs yet. Complete a lesson first, or switch to 'learned + new signs' in Setup.";
   } catch { $('gm-pool-note').textContent = ''; }
 }
 
@@ -260,7 +267,7 @@ function smash(b, viaMotion) {
   brokenLog.push({ s: b.sign, t: Date.now() - startedAt, m: b.type === 'motion' });
   dev('onSmash', b.sign, viaMotion);   // DEV-TEST
   b.el.classList.remove('is-held'); b.el.classList.add('is-broken'); b.el.disabled = true;
-  log(`✓ ${b.sign}`, 'ok');
+  log(b.sign, 'ok');
   dropHold();
   if (!viaMotion) ignoreGroup = getSignGroup(b.sign);   // still holding it? don't count that as a miss
   updateProgress(); computeAllowed();
@@ -305,7 +312,7 @@ function stepStatic(L, R, F, P, anyHandPresent, now) {
   if (heldBrick && now - lastGoodAt > HOLD_GRACE_MS) release();
   if (r.matched && r.label && !heldBrick && !ignoreGroup) {
     if (r.label !== wrongLabel) { wrongLabel = r.label; wrongSince = now; }
-    if (now - wrongSince >= WRONG_HOLD_MS && now - lastMissAt > MISS_COOLDOWN_MS) miss(`✗ ${r.label} isn't on the wall`);
+    if (now - wrongSince >= WRONG_HOLD_MS && now - lastMissAt > MISS_COOLDOWN_MS) miss(`${r.label} isn't on the wall`);
   } else if (!r.matched) { wrongLabel = null; wrongSince = 0; }
 }
 
@@ -337,9 +344,9 @@ function endMotion(text) {
 function motionResult(r) {
   dev('onMotion', r);   // DEV-TEST
   const b = r && r.matched ? findBrick(r.label, 'motion') : null;
-  if (b) { setTimer('motion', 1, 'Done', true); smash(b, true); return endMotion(`✓ ${b.sign}`); }
+  if (b) { setTimer('motion', 1, 'Done', true); smash(b, true); return endMotion(`Matched ${b.sign}`); }
   setTimer('motion', 1, 'Done', true);
-  miss(`✗ Motion not recognised (${r?.label ? `${r.label} ${r.confidence}%` : 'no clear sign'})`);
+  miss(`Motion not recognised (${r?.label ? `${r.label} ${r.confidence}%` : 'no clear sign'})`);
   endMotion('Not recognised — press Space to try again');
 }
 function stepMotion(L, R, F, P, anyHandPresent, now) {
@@ -443,14 +450,14 @@ async function startGame() {
   phase = 'static'; heldBrick = null; holdSince = 0; ignoreGroup = null; wrongLabel = null; wrongSince = 0; lastMissAt = 0; handLostAt = null;
   resetMotionBuffer();
   renderWall(); computeAllowed();
-  $('gm-start').hidden = true; $('gm-result').hidden = true;
+  $('gm-start').hidden = true; $('gm-result').hidden = true; $('gm-quit').hidden = false;
   $('gm-log').innerHTML = ''; $('gm-hint').textContent = note || 'Tip: click any brick to see how to sign it.';
   $('gm-miss').textContent = '0'; $('gm-gems').textContent = load().gems; $('gm-time').textContent = '0:00';
   running = true; startedAt = Date.now();
   brokenLog = [];
   xpSessionP = window.LWXP ? window.LWXP.startGame(signs.slice()) : Promise.resolve(null);   // never throws
   xpSessionP.then((s) => {
-    if (s && !s.xpEligible) $('gm-pool-note').textContent = `XP & badges count when ${s.minLearned}+ bricks are signs you've learned - this wall has ${s.learnedBricks}.`;
+    if (s && !s.xpEligible) $('gm-hint').textContent = `XP & badges count when ${s.minLearned}+ bricks are signs you've learned - this wall has ${s.learnedBricks}.`;
   });
   clearInterval(tickId); tickId = setInterval(() => { $('gm-time').textContent = fmt(Date.now() - startedAt); }, 500);
   resetTimers(); refreshIdleUi();
@@ -476,14 +483,15 @@ function finish() {
   save(d);
 
   $('gm-gems').textContent = d.gems;
-  $('gm-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  $('gm-stars').innerHTML = starsHtml(stars); $('gm-stars').setAttribute('role', 'img'); $('gm-stars').setAttribute('aria-label', `${stars} out of 3 stars`);
   $('gm-result-title').textContent = 'Wall cleared!';
   $('gm-result-text').textContent = `${fmt(ms)} · ${Math.round(acc * 100)}% accuracy · +${gems} gems`;
   $('gm-badges').innerHTML = ''; earned.forEach(t => { const s = document.createElement('span'); s.textContent = t; $('gm-badges').appendChild(s); });
   $('gm-chest').classList.remove('is-open'); void $('gm-chest').offsetWidth;
-  $('gm-chest').textContent = '🎉'; $('gm-chest').classList.add('is-open');
+  $('gm-chest').innerHTML = lwIcon('party_popper'); $('gm-chest').classList.add('is-open');
   $('gm-progress').classList.add('is-done');
   $('gm-result').hidden = false; $('gm-btn-start').disabled = false;
+  $('gm-start').hidden = false; $('gm-quit').hidden = true;   // setup panel returns so size/source can be changed
   setCamMode('idle'); $('gm-btn-motion').disabled = true;
   showBest();
   reportWall();
@@ -505,7 +513,11 @@ async function reportWall() {
     return;
   }
   const B = (window.LWXP && window.LWXP.badgeInfo) || (() => ({}));
-  (r.newBadges || []).forEach((id) => { const b = B(id), s = document.createElement('span'); s.textContent = `${b.icon || ''} ${b.name || id}`; badges.appendChild(s); });
+  (r.newBadges || []).forEach((id) => {
+    const b = B(id), s = document.createElement('span'), name = document.createElement('span');
+    s.innerHTML = lwIcon(window.LWXP.badgeIconId ? window.LWXP.badgeIconId(id) : 'medal', { size: 'sm' });
+    name.textContent = b.name || id; s.appendChild(name); badges.appendChild(s);
+  });
   if (!r.counted) {
     box.textContent = r.reason === 'not_enough_learned' ? `No XP: a wall needs ${window.LW_XP_CONFIG ? window.LW_XP_CONFIG.GAME.MIN_LEARNED_BRICKS : 6}+ signs you've learned.` : 'No XP for this wall.';
   } else if (r.xpGained > 0) {
@@ -518,7 +530,7 @@ async function reportWall() {
 
 function showBest() {
   const b = load().best[$('gm-size').value];
-  $('gm-best').textContent = b ? `Best: ${'★'.repeat(b.stars)} in ${fmt(b.ms)}` : '';
+  $('gm-best').innerHTML = b ? `Best: <span class="gm-best__stars" role="img" aria-label="${Math.max(0, Math.min(3, Number(b.stars) || 0))} out of 3 stars">${starsHtml(b.stars)}</span> in ${fmt(b.ms)}` : '';
 }
 
 function shutdown() {
@@ -526,6 +538,16 @@ function shutdown() {
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
   stopCamera(videoEl); engineReady = false; phase = 'static';
   resetMotionBuffer();
+  const q = $('gm-quit'); if (q) q.hidden = true;
+}
+
+// Abandon the current wall: stops the camera, nothing is paid, setup panel comes back.
+function quitRun() {
+  if (!running) return;
+  shutdown();
+  $('gm-start').hidden = false; $('gm-btn-start').disabled = false;
+  $('gm-hint').textContent = ''; setPill('—'); setCamMode('idle'); resetTimers();
+  setStatus('Wall abandoned. Press Start to try again.');
 }
 
 // ── wire up ───────────────────────────────────────────────────────
@@ -533,6 +555,7 @@ const clearDone = () => $('gm-progress').classList.remove('is-done');
 $('gm-btn-start').addEventListener('click', () => { clearDone(); startGame(); });
 $('gm-btn-again').addEventListener('click', () => { $('gm-result').hidden = true; clearDone(); startGame(); });
 $('gm-btn-motion').addEventListener('click', startMotion);
+$('gm-quit').addEventListener('click', quitRun);
 $('gm-size').addEventListener('change', showBest);
 document.addEventListener('keydown', (e) => {
   if (e.code !== 'Space' || e.repeat || !running) return;
