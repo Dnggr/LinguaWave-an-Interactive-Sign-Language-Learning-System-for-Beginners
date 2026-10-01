@@ -44,14 +44,25 @@
  *   getAuthState() returns 'logged-out' | 'unverified' | 'verified'.
  *   isLoggedIn() now means "logged in AND verified" (see its comment).
  *
- * SIGNUP  : normalize email -> format check -> Reacher pre-check (via the
+ * SIGNUP  : normalize email -> validate email FORMAT -> validate PROVIDER
+ *   domain (SUPPORTED_EMAIL_DOMAINS) -> validate password (5-rule policy
+ *   + common/personal-password block, see PASSWORD POLICY + STRENGTH
+ *   below) -> validate confirm password -> Reacher pre-check (via the
  *   `checkEmailDeliverability` Cloud Function, see functions/index.js;
  *   the Reacher secret only ever exists server-side) -> Firebase
- *   createUserWithEmailAndPassword -> Firestore profile ->
- *   sendEmailVerification -> stay signed in, go to verify-email.html.
- *   If Reacher rejects, NO Firebase account is created. Reacher is a
- *   pre-filter only: "safe" does NOT prove mailbox ownership — the
- *   Firebase link does.
+ *   createUserWithEmailAndPassword (this IS the "account already exists?"
+ *   check: it throws auth/email-already-in-use before anything is sent)
+ *   -> Firestore profile -> sendEmailVerification -> stay signed in, go
+ *   to verify-email.html. A verification email is sent ONLY after every
+ *   earlier step has passed. If any step rejects, NO Firebase account is
+ *   created (except the last two, which only run after creation).
+ *   Reacher is a pre-filter only: "safe" does NOT prove mailbox
+ *   ownership — the Firebase link does.
+ *   Keep these three facts separate (see SIGNUP VALIDATION below):
+ *     1. valid FORMAT        2. SUPPORTED PROVIDER        3. VERIFIED
+ *   1 and 2 say nothing about whether the mailbox exists or belongs to
+ *   this person. Only 3 (Firebase's emailVerified, set by the emailed
+ *   link) proves that.
  * LOGIN   : Firebase checks the password; if emailVerified is false the
  *   user STAYS signed in (verify-email.html needs a real Firebase user
  *   to resend / reload) but gets NO localStorage session and no access.
@@ -278,19 +289,6 @@ function normalizeEmail(email) {
   return (email === null || email === undefined ? '' : String(email)).trim();
 }
 
-// Cheap client-side shape check (one "@", a dot in the domain, no spaces).
-// Intentionally permissive — Reacher and Firebase do the strict work; this
-// only stops obvious garbage before a network call. Mirrors looksLikeEmail()
-// in functions/email-check.js.
-function looksLikeEmail(email) {
-  if (!email || email.length > MAX_EMAIL_LENGTH) return false;
-  if (/\s/.test(email)) return false;
-  const at = email.lastIndexOf('@');
-  if (at < 1 || at !== email.indexOf('@') || at === email.length - 1) return false;
-  const domain = email.slice(at + 1);
-  return domain.indexOf('.') > 0 && !domain.endsWith('.') && !domain.includes('..');
-}
-
 // Errors THIS file throws on purpose: plain Error with a `lw/...` code and
 // a message that is already safe to show the learner as-is.
 function lwError(code, message) {
@@ -302,6 +300,371 @@ function lwError(code, message) {
 const INVALID_EMAIL_MESSAGE = "That doesn't look like a valid email address. Please check it and try again.";
 const CANT_RECEIVE_MESSAGE = 'This email address does not appear to be able to receive email. Please check the address and try again.';
 const GENERIC_AUTH_MESSAGE = 'Something went wrong. Please try again.';
+
+/* ── SIGNUP VALIDATION (2026-10-01) ───────────────────────────────
+ * ONE implementation, used twice: register() below enforces it (the
+ * authentication layer — a hand-edited page can't skip it), and index.html
+ * calls the same functions through window.LWAuth for inline feedback, so
+ * the UI and the real check can never disagree.
+ *
+ * SUPPORTED_EMAIL_DOMAINS is the single provider list. To accept another
+ * legitimate provider, add its domain here (lowercase) — nothing else in
+ * this file or in index.html needs to change. functions/email-check.js
+ * (the Cloud Function) should be given the same list; it is a separate
+ * deployment and can't import this file.
+ *
+ * Domains are matched EXACTLY after lowercasing — never with
+ * includes()/endsWith()/startsWith() — so "gmail.com.evil.io",
+ * "notgmail.com" and "gmail.co" are all rejected. */
+const SUPPORTED_EMAIL_DOMAINS = Object.freeze([
+  'gmail.com',
+  'yahoo.com',
+  'yahoo.co.uk',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'icloud.com',
+  'proton.me',
+  'protonmail.com',
+]);
+const SUPPORTED_EMAIL_DOMAIN_SET = new Set(SUPPORTED_EMAIL_DOMAINS);
+
+const MAX_LOCAL_PART_LENGTH = 64;   // RFC 5321 local-part limit
+const MIN_PASSWORD_LENGTH = 8;      // same minimum changePassword() uses
+const MAX_PASSWORD_LENGTH = 50;     // = "Maximum password length" in Firebase console > Authentication > Settings > Password policy
+
+const LOCAL_PART_CHARS_RE = /^[A-Za-z0-9._%+-]+$/;
+const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const TLD_RE = /^[a-z]{2,}$/;
+
+const UNSUPPORTED_PROVIDER_MESSAGE =
+  'Please use an email address from a supported provider (' +
+  SUPPORTED_EMAIL_DOMAINS.map(function (d) { return '@' + d; }).join(', ') + ').';
+
+/* Checks an email in two separate steps and reports each one:
+ *   formatValid       -> well-formed username@domain.tld
+ *   providerSupported -> the domain (lowercased) is in SUPPORTED_EMAIL_DOMAINS
+ *   valid             -> both. Still does NOT mean the mailbox exists.
+ * reason: null | 'empty' | 'format' | 'provider'. Never throws. */
+function validateEmail(email) {
+  const normalized = normalizeEmail(email);
+  const result = {
+    normalized: normalized,
+    domain: '',
+    formatValid: false,
+    providerSupported: false,
+    valid: false,
+    reason: null,
+  };
+
+  if (!normalized) { result.reason = 'empty'; return result; }
+  if (normalized.length > MAX_EMAIL_LENGTH || /\s/.test(normalized)) { result.reason = 'format'; return result; }
+
+  const parts = normalized.split('@');            // "user@@x.com" -> 3 parts
+  if (parts.length !== 2) { result.reason = 'format'; return result; }
+
+  const local = parts[0];
+  const domain = parts[1].toLowerCase();          // case-insensitive domain compare
+
+  const localOk = local.length > 0 &&
+    local.length <= MAX_LOCAL_PART_LENGTH &&
+    LOCAL_PART_CHARS_RE.test(local) &&
+    local.charAt(0) !== '.' &&
+    local.charAt(local.length - 1) !== '.' &&
+    local.indexOf('..') === -1;
+
+  const labels = domain.split('.');               // "gmail..com" -> an empty label
+  const domainOk = labels.length >= 2 &&
+    labels.every(function (label) { return DOMAIN_LABEL_RE.test(label); }) &&
+    TLD_RE.test(labels[labels.length - 1]);
+
+  if (!localOk || !domainOk) { result.reason = 'format'; return result; }
+
+  result.formatValid = true;
+  result.domain = domain;
+
+  if (!SUPPORTED_EMAIL_DOMAIN_SET.has(domain)) { result.reason = 'provider'; return result; }
+
+  result.providerSupported = true;
+  result.valid = true;
+  return result;
+}
+
+/* ── PASSWORD POLICY + STRENGTH (2026-10-01) ─────────────────────
+ * ONE implementation, three users: register() and changePassword() below
+ * enforce it, and index.html's strength bar / requirement checklist read
+ * the very same functions through window.LWAuth — so the meter, the
+ * checklist, the inline message and the real signup check cannot disagree.
+ *
+ * THE 5 REQUIREMENTS (PASSWORD_REQUIREMENTS, one point each):
+ *   length >= MIN_PASSWORD_LENGTH, lowercase, uppercase, number, and a
+ *   special character from PASSWORD_SPECIAL_CHARS.
+ *
+ * LEVELS (getPasswordStrength().level):
+ *   strong = all 5 requirements.
+ *   medium = length + lowercase + uppercase + number, but no special char.
+ *   weak   = anything else — and ALWAYS weak when the password is on the
+ *            common list, contains the learner's own email/name, or is
+ *            longer than MAX_PASSWORD_LENGTH (so a green bar never sits
+ *            next to a rejection).
+ *   (A plain 0-2 / 3-4 / 5 point split would call "Password" Medium; the
+ *   requirement-based rule above keeps it Weak, as intended.)
+ *
+ * WHAT SIGNUP ACCEPTS (PASSWORD_MIN_LEVEL): 'strong'. This mirrors the
+ * Firebase console policy (uppercase + lowercase + numeric + special,
+ * 8-50 chars). To accept Medium you must change BOTH this constant to
+ * 'medium' AND untick "Require special character" in the console —
+ * otherwise Firebase would reject (Require mode) or silently accept
+ * (Notify mode) what this file just let through.
+ *
+ * SECURITY: this is a UX + first-line check. The real server-side
+ * boundary is the Firebase password policy, and it only blocks signups
+ * when its Enforcement mode is "Require enforcement" (Notify lets weak
+ * passwords through). Passwords are never trimmed, altered, logged,
+ * stored, or placed in an error message here. */
+const PASSWORD_SPECIAL_CHARS = '!@#$%';
+const PASSWORD_MIN_LEVEL = 'strong';          // 'strong' | 'medium' — see the note above before changing
+
+const PASSWORD_REQUIREMENTS = Object.freeze([
+  Object.freeze({
+    key: 'length',
+    label: 'At least ' + MIN_PASSWORD_LENGTH + ' characters',
+    need: 'at least ' + MIN_PASSWORD_LENGTH + ' characters',
+    test: function (p) { return p.length >= MIN_PASSWORD_LENGTH; },
+  }),
+  Object.freeze({
+    key: 'lower',
+    label: 'Contains lowercase',
+    need: 'one lowercase letter',
+    test: function (p) { return /[a-z]/.test(p); },
+  }),
+  Object.freeze({
+    key: 'upper',
+    label: 'Contains uppercase',
+    need: 'one uppercase letter',
+    test: function (p) { return /[A-Z]/.test(p); },
+  }),
+  Object.freeze({
+    key: 'number',
+    label: 'Contains number',
+    need: 'one number',
+    test: function (p) { return /[0-9]/.test(p); },
+  }),
+  Object.freeze({
+    key: 'special',
+    label: 'Contains special character (' + PASSWORD_SPECIAL_CHARS + ')',
+    need: 'one special character (' + PASSWORD_SPECIAL_CHARS + ')',
+    test: function (p) {
+      for (let i = 0; i < p.length; i++) {
+        if (PASSWORD_SPECIAL_CHARS.indexOf(p.charAt(i)) !== -1) return true;
+      }
+      return false;
+    },
+  }),
+]);
+
+// Only { key, label } — what the checklist UI needs; the test functions stay private.
+const PASSWORD_CHECKLIST = Object.freeze(PASSWORD_REQUIREMENTS.map(function (r) {
+  return Object.freeze({ key: r.key, label: r.label });
+}));
+
+// Which requirements signup insists on at PASSWORD_MIN_LEVEL.
+const PASSWORD_REQUIRED_KEYS = PASSWORD_MIN_LEVEL === 'medium'
+  ? ['length', 'lower', 'upper', 'number']
+  : PASSWORD_REQUIREMENTS.map(function (r) { return r.key; });
+
+// Obvious passwords, compared lowercase and EXACT (never "contains", so a
+// long passphrase that happens to include a word is fine). Not a breach
+// list — it catches the lazy picks; Firebase + the strength rules do the rest.
+const COMMON_PASSWORDS = new Set([
+  'password', 'password12', 'password123', 'password1234',
+  'passw0rd', 'p@ssw0rd', 'p@ssword', 'pass1234', 'passpass',
+  '12345678', '123456789', '1234567890', '123123123', '11111111', '00000000',
+  '87654321', '12341234', '1q2w3e4r', '1qaz2wsx',
+  'qwerty', 'qwerty12', 'qwerty123', 'qwertyui', 'qwertyuiop', 'asdfghjk', 'zxcvbnm1',
+  'abcdefgh', 'abcd1234', 'abc12345', 'abcdefg1',
+  'iloveyou', 'letmein1', 'welcome1', 'welcome123', 'admin123', 'administrator',
+  'changeme', 'trustno1', 'football', 'baseball', 'monkey123', 'dragon123',
+  'linguawave', 'linguawave1', 'linguawave123', 'linguawave2026', 'learnasl', 'asl12345',
+]);
+
+// Lowercase letters + digits only: "John.Smith_1" -> "johnsmith1".
+function squashForCompare(value) {
+  return String(value === null || value === undefined ? '' : value).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/* Why a password that satisfies every rule is STILL a bad pick:
+ *   'common'   -> on COMMON_PASSWORDS
+ *   'personal' -> is, or is built from, the learner's own email / name
+ *                 (case, punctuation and trailing digits ignored)
+ *   null       -> neither.
+ * `context` is optional: { email, name }. */
+function findPasswordWeakness(password, context) {
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) return 'common';
+  if (!context) return null;
+
+  const pw = squashForCompare(password);
+  const pwStem = pw.replace(/[0-9]+$/, '');       // "johnsmith2026" -> "johnsmith"
+  const email = String(context.email || '').trim().toLowerCase();
+  const local = email.split('@')[0];
+
+  const parts = [local, email, context.name];
+  for (let i = 0; i < parts.length; i++) {
+    const part = squashForCompare(parts[i]);
+    if (part.length < 3) continue;                // too short to be a meaningful match
+    if (pw === part || pwStem === part) return 'personal';
+    if (part.length >= 6 && pw.indexOf(part) !== -1) return 'personal';
+  }
+  return null;
+}
+
+/* How full the strength bar should be, 0..1. Unlike `level` (3 coarse steps)
+ * this moves a little on EVERY keystroke, so the bar tracks what was actually
+ * typed:
+ *   - the length requirement fills gradually (3 of 8 chars = 3/8 of its share)
+ *   - each other requirement adds its full share once met
+ * Then it is fitted to the level so the bar and the label can never disagree:
+ *   weak   -> scaled down by WEAK_PROGRESS_SCALE (so it still grows with every
+ *             character, but a red bar can never look nearly full or pass Medium)
+ *   medium -> whatever was earned (4 of 5 shares = 0.8)
+ *   strong -> 1 */
+const WEAK_PROGRESS_SCALE = 0.6;
+function computePasswordProgress(pw, checks, level) {
+  if (!pw) return 0;
+  const lengthShare = Math.min(pw.length, MIN_PASSWORD_LENGTH) / MIN_PASSWORD_LENGTH;
+  let earned = lengthShare;
+  PASSWORD_REQUIREMENTS.forEach(function (r) {
+    if (r.key !== 'length' && checks[r.key]) earned += 1;
+  });
+  const raw = earned / PASSWORD_REQUIREMENTS.length;
+  if (level === 'strong') return 1;
+  if (level === 'weak') return raw * WEAK_PROGRESS_SCALE;
+  return raw;
+}
+
+/* Scores a password against the 5 requirements. Pure and cheap (runs on
+ * every keystroke): never throws, never logs, never stores.
+ * Returns { score, max, level, progress, checks:{length,lower,upper,number,special},
+ *           tooLong, weakReason } — see PASSWORD POLICY above for `level`;
+ * `progress` (0..1) is what the strength bar's fill uses. */
+function getPasswordStrength(password, context) {
+  const pw = typeof password === 'string' ? password : '';
+  const checks = {};
+  let score = 0;
+  PASSWORD_REQUIREMENTS.forEach(function (r) {
+    const ok = r.test(pw);
+    checks[r.key] = ok;
+    if (ok) score += 1;
+  });
+
+  const tooLong = pw.length > MAX_PASSWORD_LENGTH;
+  const weakReason = pw.length > 0 ? findPasswordWeakness(pw, context) : null;
+
+  let level = 'weak';
+  if (score === PASSWORD_REQUIREMENTS.length) level = 'strong';
+  else if (checks.length && checks.lower && checks.upper && checks.number) level = 'medium';
+  if (tooLong || weakReason) level = 'weak';
+
+  return {
+    score: score, max: PASSWORD_REQUIREMENTS.length, level: level,
+    progress: computePasswordProgress(pw, checks, level),
+    checks: checks, tooLong: tooLong, weakReason: weakReason,
+  };
+}
+
+/* "Password needs …" wording (GitHub style). The message names ONLY what is
+ * still missing, so it shrinks as the learner fixes things:
+ *   "a number, uppercase letter and lowercase letter" -> "a number" -> (valid)
+ * Listed in this order; only the first item gets an article (a / an);
+ * no Oxford comma. */
+const PASSWORD_NEED_ORDER = Object.freeze(['number', 'upper', 'lower', 'special']);
+const PASSWORD_NEED_NOUNS = Object.freeze({
+  number:  'number',
+  upper:   'uppercase letter',
+  lower:   'lowercase letter',
+  special: 'special character (' + PASSWORD_SPECIAL_CHARS + ')',
+});
+function describePasswordNeeds(missingKeys) {
+  const nouns = PASSWORD_NEED_ORDER
+    .filter(function (k) { return missingKeys.indexOf(k) !== -1; })
+    .map(function (k) { return PASSWORD_NEED_NOUNS[k]; });
+  if (nouns.length === 0) return '';
+  nouns[0] = (/^[aeiou]/i.test(nouns[0]) ? 'an ' : 'a ') + nouns[0];
+  if (nouns.length === 1) return nouns[0];
+  return nouns.slice(0, -1).join(', ') + ' and ' + nouns[nouns.length - 1];
+}
+
+/* The one password gate. Returns { valid, message, score, level, checks,
+ * missing } — `message` is already safe to show (it never contains the
+ * password) and is the success sentence when valid. `context` is optional
+ * { email, name } so a password built from the learner's own details is
+ * rejected. Never trims or alters the password. */
+function validatePassword(password, context) {
+  const strength = getPasswordStrength(password, context);
+  const result = {
+    valid: false,
+    message: '',
+    score: strength.score,
+    level: strength.level,
+    checks: strength.checks,
+    missing: [],
+  };
+
+  if (typeof password !== 'string' || password.length === 0) {
+    result.message = 'Please choose a password.';
+    return result;
+  }
+  if (strength.tooLong) {
+    result.message = 'Password must be ' + MAX_PASSWORD_LENGTH + ' characters or fewer.';
+    return result;
+  }
+
+  // What is still missing, by requirement key (length included).
+  const missing = PASSWORD_REQUIREMENTS.filter(function (r) {
+    return PASSWORD_REQUIRED_KEYS.indexOf(r.key) !== -1 && !strength.checks[r.key];
+  });
+  const missingKeys = missing.map(function (r) { return r.key; });
+
+  // Length is reported before anything else (live, while typing: "ab" is
+  // "too short", not "too common"). Once it is long enough the message
+  // switches to whatever is still missing.
+  if (!strength.checks.length) {
+    result.missing = missingKeys;
+    result.message = 'Password is too short';
+    return result;
+  }
+
+  // Common / personal picks come next: telling someone to "add a
+  // special character" to Password123 would just walk them to another bad one.
+  if (strength.weakReason === 'common') {
+    result.message = 'That password is too common. Choose something harder to guess.';
+    return result;
+  }
+  if (strength.weakReason === 'personal') {
+    result.message = 'Your password can\'t be based on your email address or name.';
+    return result;
+  }
+
+  result.missing = missingKeys;
+  if (missingKeys.length > 0) {
+    result.message = 'Password needs ' + describePasswordNeeds(missingKeys);
+    return result;
+  }
+
+  result.valid = true;
+  result.message = 'Password meets all security requirements.';
+  return result;
+}
+
+function validateConfirmPassword(password, confirmPassword) {
+  if (typeof confirmPassword !== 'string' || confirmPassword.length === 0) {
+    return { valid: false, message: 'Please confirm your password.' };
+  }
+  if (confirmPassword !== password) {
+    return { valid: false, message: 'Passwords do not match.' };
+  }
+  return { valid: true, message: '' };
+}
 
 /* Turns ANY error from this file / Firebase into a learner-safe sentence
  * (index.html's modal and verify-email.html both use it). Our own errors
@@ -337,7 +700,11 @@ function describeAuthError(err, context) {
     case 'auth/missing-password':
       return 'Please enter your email and password.';
     case 'auth/weak-password':
-      return 'That password is too weak. Please choose a longer one.';
+    case 'auth/password-does-not-meet-requirements':
+      // Firebase's own password policy said no (the server-side backstop —
+      // see PASSWORD POLICY above). Generic on purpose: no password echoed.
+      return 'That password doesn\'t meet the security requirements. Use at least ' + MIN_PASSWORD_LENGTH +
+        ' characters with an uppercase letter, a lowercase letter, a number and a special character (' + PASSWORD_SPECIAL_CHARS + ').';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a few minutes and try again.';
     case 'auth/network-request-failed':
@@ -566,13 +933,17 @@ async function login(email, password) {
 }
 
 /* ── REGISTER ─────────────────────────────────────────────────────
- * ORDER MATTERS (2026-09-29):
- *   1. normalize + validate name/email/password locally
+ * ORDER MATTERS (2026-09-29, validation steps extended 2026-10-01):
+ *   1. normalize + validate, in this order: email format -> email
+ *      provider -> password -> confirm password. The first failure
+ *      throws; nothing is created and nothing is sent.
  *   2. Reacher pre-check (precheckEmail) — a rejected address never
  *      becomes a Firebase account
- *   3. createUserWithEmailAndPassword (with the SAME normalized email)
+ *   3. createUserWithEmailAndPassword (with the SAME normalized email).
+ *      This is the "account already exists?" check: Firebase throws
+ *      auth/email-already-in-use here, before step 5 can run.
  *   4. Firestore profile write `users/{uid}` (rolled back on failure)
- *   5. sendVerificationEmail
+ *   5. sendVerificationEmail — reachable ONLY if steps 1-4 all passed
  * The new user is then AUTHENTICATED BUT UNVERIFIED: still signed in
  * (so verify-email.html can resend/reload) but with no session cache and
  * no learner access until Firebase reports emailVerified === true.
@@ -596,7 +967,7 @@ async function login(email, password) {
  * Firestore in the first place. updateUsername()/updateUserEmail()
  * below apply the matching checks for changes made after signup.
  * ──────────────────────────────────────────────────────────────── */
-async function register(name, email, password) {
+async function register(name, email, password, confirmPassword) {
   const trimmedName = (name || '').trim();
   if (trimmedName.length > MAX_NAME_LENGTH) {
     throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
@@ -608,24 +979,41 @@ async function register(name, email, password) {
   if (normalizedEmail.length > MAX_EMAIL_LENGTH) {
     throw new Error('Email must be ' + MAX_EMAIL_LENGTH + ' characters or fewer.');
   }
-  if (!looksLikeEmail(normalizedEmail)) {
+  // Format first, then provider — two separate checks (see validateEmail).
+  const emailCheck = validateEmail(normalizedEmail);
+  if (!emailCheck.formatValid) {
     throw lwError('lw/invalid-email', INVALID_EMAIL_MESSAGE);
   }
-  if (!password) {
-    throw lwError('lw/missing-password', 'Please choose a password.');
+  if (!emailCheck.providerSupported) {
+    throw lwError('lw/unsupported-email-provider', UNSUPPORTED_PROVIDER_MESSAGE);
   }
 
-  // Reacher pre-check FIRST — see precheckEmail() for what it rejects and
+  const passwordCheck = validatePassword(password, { email: normalizedEmail, name: trimmedName });
+  if (!passwordCheck.valid) {
+    throw lwError('lw/invalid-password', passwordCheck.message);
+  }
+  // confirmPassword is REQUIRED: a caller that omits it fails here rather
+  // than silently skipping the check.
+  const confirmCheck = validateConfirmPassword(password, confirmPassword);
+  if (!confirmCheck.valid) {
+    throw lwError('lw/password-mismatch', confirmCheck.message);
+  }
+
+  // Reacher pre-check — see precheckEmail() for what it rejects and
   // why it fails open. (Replaces the earlier never-deployed
   // `checkEmailDomain` DNS-only call.)
   await precheckEmail(normalizedEmail);
 
+  // Also the "account already exists?" check: throws
+  // auth/email-already-in-use (see describeAuthError) and no email is sent.
   const result = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
   const firebaseUser = result.user;
 
   const user = {
     uid: firebaseUser.uid,
-    name: trimmedName || (firebaseUser.email || '').split('@')[0] || 'Learner',
+    // Signup has no name field: the display name is the part of the email before
+    // the @ (capped so it stays valid for updateUsername()'s MAX_NAME_LENGTH).
+    name: trimmedName || (firebaseUser.email || '').split('@')[0].slice(0, MAX_NAME_LENGTH) || 'Learner',
     email: firebaseUser.email,
     level: 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
@@ -858,15 +1246,19 @@ async function updateUserEmail(newEmail, currentPassword) {
  * sendPasswordReset() above, which is for someone who's locked out).
  * Reauthenticates with the CURRENT password first — same
  * requires-recent-login reasoning as updateUserEmail()/deleteAccount()
- * — then hands the new one to Firebase. Firebase itself enforces a
- * 6-character minimum and throws auth/weak-password below that; the
- * length check here just gives a faster, friendlier message before
- * making the round-trip. */
+ * — then hands the new one to Firebase. The new password must pass the
+ * SAME validatePassword() policy as signup (2026-10-01; this used to be
+ * a length-only check, which let someone change to "password" right
+ * after signing up with a strong one). The check runs before the
+ * round-trip so the message is fast and friendly; Firebase's own
+ * password policy is the server-side backstop. */
 async function changePassword(currentPassword, newPassword) {
-  const trimmed = newPassword || '';
-  if (trimmed.length < 8) throw new Error('Use at least 8 characters.');
+  const check = validatePassword(newPassword, {
+    email: auth.currentUser ? auth.currentUser.email : '',
+  });
+  if (!check.valid) throw lwError('lw/invalid-password', check.message);
   const firebaseUser = await reauthenticate(currentPassword);
-  await updatePassword(firebaseUser, trimmed);
+  await updatePassword(firebaseUser, newPassword);
 }
 
 /* GRACE-PERIOD SOFT DELETE — not an instant hard delete. Reauthenticates,
@@ -1016,6 +1408,15 @@ window.LWAuth = {
   LW_SESSION_KEY,
   DELETION_GRACE_PERIOD_DAYS,
   RESEND_COOLDOWN_SECONDS,
+  SUPPORTED_EMAIL_DOMAINS,     // frozen array — the one provider list
+  MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
+  PASSWORD_SPECIAL_CHARS,
+  PASSWORD_CHECKLIST,          // [{ key, label }] — no longer used by index.html (its checklist was replaced by the adaptive "Password needs …" message)
+  validateEmail,               // same functions register() enforces,
+  validatePassword,            // exposed so index.html's inline feedback
+  getPasswordStrength,         // (strength bar + checklist) and
+  validateConfirmPassword,     // can't drift from the real check
   getCurrentUser,
   isLoggedIn,
   getAuthState,

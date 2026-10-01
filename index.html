@@ -114,6 +114,52 @@
                script just before </head> turns off the browser's scroll
                restoration and drops a leftover #about-asl hash on
                reload. Deliberate hash links still work.
+
+    2026-10-01 (SIGNUP VALIDATION): the Sign Up form now validates the
+               email (format, then supported provider), password and a
+               NEW "Confirm password" field before anything is sent.
+               The rules live in js/auth.js (validateEmail /
+               validatePassword / validateConfirmPassword, exposed on
+               window.LWAuth) and register() enforces them again, so
+               this file only DISPLAYS the result — it has no rules of
+               its own. Inline feedback appears on blur or after the
+               learner pauses typing, never while they are mid-word;
+               submit is blocked (and the first bad field focused) when
+               anything fails. The "did you mean...?" typo hint now reads
+               LWAuth.SUPPORTED_EMAIL_DOMAINS instead of its own list.
+
+    2026-10-01 (PASSWORD STRENGTH + SHOW/HIDE): the Sign Up password
+               field now has a live strength bar (Weak / Medium / Strong),
+               a 5-item requirement checklist, an eye / eye-off toggle
+               (Lucide icons, inline — also on Confirm password and the
+               Log In password), and live "Passwords match" feedback.
+               Like the rest of signup, this file only DISPLAYS: every
+               rule, label and level comes from js/auth.js
+               (LWAuth.getPasswordStrength / validatePassword /
+               PASSWORD_CHECKLIST*), which register() enforces again.
+               (*the checklist was later replaced, see the entries below.)
+               See "PASSWORD PANEL" in the script below. The sign-in
+               modal now scrolls (css/auth.css) because the Sign Up card
+               is taller.
+
+    2026-10-01 (PASSWORD PANEL ON DEMAND): the strength bar + checklist
+               stay collapsed until the password field has input and
+               collapse again when it is emptied. The bar's fill follows
+               LWAuth.getPasswordStrength().progress (0..1, moves on every
+               keystroke) instead of 3 fixed steps; the level only picks
+               the colour.
+
+    2026-10-01 (ERROR LINES): the Sign Up field-status error lines use the
+               Octicons alert-fill icon instead of a "✕" and only appear
+               for fields that have input.
+
+    2026-10-01 (NO NAME FIELD + ADAPTIVE PASSWORD MESSAGE): Sign Up no
+               longer asks for a name; the display name is the part of the
+               email before the @ (register() in js/auth.js does this and
+               caps it at MAX_NAME_LENGTH). The 5-item requirement checklist
+               is replaced by one line that says only what is still missing
+               ("Password is too short" / "Password needs a number and
+               lowercase letter" ...), written by LWAuth.validatePassword().
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -437,8 +483,12 @@
             <label for="login-email">Email</label>
           </div>
           <div class="form-group mt-4">
-            <input type="password" id="login-password" class="form-input" placeholder=" " autocomplete="current-password" />
+            <input type="password" id="login-password" class="form-input form-input--has-toggle" placeholder=" " autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
             <label for="login-password">Password</label>
+            <button type="button" class="pw-toggle" data-pw-toggle="login-password" aria-label="Show password" aria-pressed="false" aria-controls="login-password">
+              <svg class="pw-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+            </button>
           </div>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
           <p class="auth-switch text-muted">
@@ -447,20 +497,58 @@
         </form>
 
         <!-- ── REGISTER FORM ────────────────────────────────────── -->
-        <form class="auth-form" id="register-form" style="display:none;" onsubmit="event.preventDefault(); handleRegister();">
+        <!-- novalidate: the browser's own type="email" bubble would pre-empt
+             our inline messages; LWAuth's validators are the single source. -->
+        <form class="auth-form" id="register-form" style="display:none;" novalidate onsubmit="event.preventDefault(); handleRegister();">
           <div class="form-group">
-            <input type="text" id="reg-name" class="form-input" placeholder=" " autocomplete="name" />
-            <label for="reg-name">Full name</label>
-          </div>
-          <div class="form-group mt-4">
-            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" onblur="checkEmailTypo()" />
+            <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" aria-describedby="reg-email-status" oninput="onRegFieldInput('email')" onblur="onRegFieldBlur('email')" />
             <label for="reg-email">Email</label>
-            <small id="reg-email-hint" class="text-muted" style="display:none;"></small>
+          </div>
+          <!-- Status/hint sit OUTSIDE .form-group on purpose: the floating
+               label is centred on the group's height, so extra lines inside
+               it would push the label off the input. -->
+          <small id="reg-email-status" class="field-status" role="status" aria-live="polite" hidden></small>
+          <small id="reg-email-hint" class="field-status text-muted" style="display:none;"></small>
+          <div class="form-group mt-4">
+            <input type="password" id="reg-password" class="form-input form-input--has-toggle" placeholder=" " autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="reg-password-strength reg-password-summary" oninput="onRegFieldInput('password')" onblur="onRegFieldBlur('password')" />
+            <label for="reg-password">Password</label>
+            <button type="button" class="pw-toggle" data-pw-toggle="reg-password" aria-label="Show password" aria-pressed="false" aria-controls="reg-password">
+              <svg class="pw-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+            </button>
+          </div>
+          <!-- PASSWORD PANEL: strength bar + one line saying what the password
+               still needs. Hidden until the password field has input
+               (renderRegPasswordPanel() sets data-open), then slides open; it
+               closes again if the field is emptied. The message is the
+               text from LWAuth.validatePassword(), so it can never disagree
+               with what register() enforces: "Password is too short", then
+               "Password needs a number and lowercase letter" shrinking as each
+               gap is fixed, and it disappears once nothing is missing. The bar
+               is decorative (aria-hidden); the text label carries the same
+               information. -->
+          <div class="pw-panel" id="reg-password-panel" data-open="false">
+            <div class="pw-panel__inner">
+              <div class="pw-meter" id="reg-password-meter" data-level="empty">
+                <div class="pw-meter__track" aria-hidden="true"><div class="pw-meter__fill"></div></div>
+                <span class="pw-meter__label" id="reg-password-strength" role="status" aria-live="polite"><span class="pw-sr">Password strength: </span><span id="reg-password-strength-text">Strength</span></span>
+              </div>
+              <div class="pw-panel" id="reg-password-summary-wrap" data-open="false">
+                <div class="pw-panel__inner">
+                  <p class="field-status field-status--error pw-summary" id="reg-password-summary" role="status" aria-live="polite"></p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-group mt-4">
-            <input type="password" id="reg-password" class="form-input" placeholder=" " autocomplete="new-password" />
-            <label for="reg-password">Password</label>
+            <input type="password" id="reg-confirm-password" class="form-input form-input--has-toggle" placeholder=" " autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="reg-confirm-status" oninput="onRegFieldInput('confirm')" onblur="onRegFieldBlur('confirm')" />
+            <label for="reg-confirm-password">Confirm password</label>
+            <button type="button" class="pw-toggle" data-pw-toggle="reg-confirm-password" aria-label="Show confirm password" aria-pressed="false" aria-controls="reg-confirm-password">
+              <svg class="pw-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+            </button>
           </div>
+          <small id="reg-confirm-status" class="field-status" role="status" aria-live="polite" hidden></small>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
           <p class="auth-switch text-muted">
             Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
@@ -637,6 +725,8 @@
       // Already on this tab (or mid-transition into it) — nothing to animate.
       if (showEl.style.display === 'flex' && !showEl.classList.contains('auth-form--fade-in-start')) return;
 
+      hideAllPasswords(); // a revealed password never follows you to the other tab
+
       // Cancel any in-flight transition on either form so rapid tab
       // clicks can't leave things in a half-faded state.
       loginForm.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start');
@@ -666,12 +756,14 @@
 
     function openAuthModal(tab) {
       showAuthTab(tab);
+      renderRegPasswordPanel(); // first open builds the checklist (no-op if auth.js isn't ready yet)
       signinModal.classList.remove('hidden');
       positionAuthTabsIndicator(false); // modal was hidden during showAuthTab(), so snap now that it's visible
-      document.getElementById(tab === 'login' ? 'login-email' : 'reg-name').focus();
+      document.getElementById(tab === 'login' ? 'login-email' : 'reg-email').focus();
     }
     function closeAuthModal() {
       signinModal.classList.add('hidden');
+      hideAllPasswords(); // don't leave a typed password visible behind a closed modal
     }
 
     // Logo + "Home" nav link click — this is the landing page itself,
@@ -764,10 +856,12 @@
     // `checkEmailDeliverability` Cloud Function, called inside
     // LWAuth.register() before any Firebase account is created), and after
     // that Firebase's verification email.
-    const COMMON_EMAIL_DOMAINS = [
-      'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com',
-      'icloud.com', 'aol.com', 'protonmail.com', 'live.com'
-    ];
+    // The provider list is NOT repeated here — it comes from js/auth.js
+    // (LWAuth.SUPPORTED_EMAIL_DOMAINS). Read lazily: auth.js is a module and
+    // loads after this classic script has already run.
+    function commonEmailDomains() {
+      return (window.LWAuth && LWAuth.SUPPORTED_EMAIL_DOMAINS) || [];
+    }
 
     // Plain Levenshtein edit distance — small, dependency-free.
     function editDistance(a, b) {
@@ -790,11 +884,12 @@
       const at = email.lastIndexOf('@');
       if (at < 1 || at === email.length - 1) return null;
       const domain = email.slice(at + 1).toLowerCase();
-      if (COMMON_EMAIL_DOMAINS.includes(domain)) return null; // already correct
+      const candidates = commonEmailDomains();
+      if (candidates.includes(domain)) return null; // already correct
 
       let best = null;
       let bestDist = Infinity;
-      for (const candidate of COMMON_EMAIL_DOMAINS) {
+      for (const candidate of candidates) {
         const dist = editDistance(domain, candidate);
         if (dist < bestDist) { bestDist = dist; best = candidate; }
       }
@@ -809,8 +904,15 @@
       const suggestion = suggestEmailDomain(input.value.trim());
       if (suggestion) {
         const [local] = input.value.trim().split('@');
-        hint.innerHTML = 'Did you mean <a href="#" onclick="fixEmailDomain(\'' + suggestion + '\'); return false;">' +
-          local + '@' + suggestion + '</a>?';
+        // Built with DOM nodes (not innerHTML) so whatever was typed before
+        // the "@" is shown as plain text and can never be parsed as markup.
+        const link = document.createElement('a');
+        link.href = '#';
+        link.textContent = local + '@' + suggestion;
+        link.addEventListener('click', (event) => { event.preventDefault(); fixEmailDomain(suggestion); });
+        hint.textContent = 'Did you mean ';
+        hint.appendChild(link);
+        hint.appendChild(document.createTextNode('?'));
         hint.style.display = 'block';
       } else {
         hint.style.display = 'none';
@@ -822,20 +924,234 @@
       const [local] = input.value.trim().split('@');
       input.value = local + '@' + domain;
       document.getElementById('reg-email-hint').style.display = 'none';
+      regTouched.email = true;
+      showRegStatus('email', REG_FIELDS.email.check());
+    }
+
+    // ── SIGNUP FIELD VALIDATION UI (2026-10-01) ─────────────────────
+    // Display only. Every rule comes from LWAuth (js/auth.js), the same
+    // functions register() enforces, so this can't disagree with the real
+    // check. Each check() returns { ok, message }; an ok result with an empty
+    // message shows nothing.
+    //
+    // WHEN feedback shows (so nobody is scolded mid-word):
+    //   - blur: validate and show, once the field has had content;
+    //   - typing: stale feedback is cleared at once, then after a 700ms
+    //     pause a VALID value shows its ✓, and an invalid one shows the alert
+    //     icon + message only if the field was already blurred once;
+    //   - an EMPTY field never shows a status line (nothing was entered to
+    //     judge); on submit it just gets the red border and focus;
+    //   - submit: every field is validated and the first bad one focused.
+    const REG_FIELDS = {
+      email: {
+        input: 'reg-email', status: 'reg-email-status',
+        check() {
+          const r = LWAuth.validateEmail(document.getElementById('reg-email').value);
+          return r.valid
+            ? { ok: true,  message: '✓ Valid email address' }
+            : { ok: false, message: 'Please enter a valid email address.' };
+        },
+      },
+      password: {
+        input: 'reg-password', status: null, // its message is the live summary in the password panel
+        check() {
+          // Same call register() makes, with the same { email, name } context.
+          const r = LWAuth.validatePassword(document.getElementById('reg-password').value, regPasswordContext());
+          return r.valid ? { ok: true, message: '✓ ' + r.message } : { ok: false, message: r.message };
+        },
+      },
+      confirm: {
+        input: 'reg-confirm-password', status: 'reg-confirm-status',
+        check() {
+          const r = LWAuth.validateConfirmPassword(
+            document.getElementById('reg-password').value,
+            document.getElementById('reg-confirm-password').value
+          );
+          return r.valid ? { ok: true, message: '✓ Passwords match.' } : { ok: false, message: r.message };
+        },
+      },
+    };
+    const regTouched = { email: false, password: false, confirm: false };
+    const regTimers = {};
+    const REG_TYPING_PAUSE_MS = 700;
+
+    // GitHub Octicons "alert-fill", shown before every error message.
+    const REG_ALERT_ICON = '<svg aria-hidden="true" data-component="Octicon" height="12" viewBox="0 0 12 12" version="1.1" width="12" data-view-component="true" class="octicon octicon-alert-fill"><path d="M4.855.708c.5-.896 1.79-.896 2.29 0l4.675 8.351a1.312 1.312 0 0 1-1.146 1.954H1.33A1.313 1.313 0 0 1 .183 9.058ZM7 7V3H5v4Zm-1 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg>';
+
+    // Error line = alert icon + message (text set via textContent, never as HTML).
+    function setRegErrorContent(el, message) {
+      el.textContent = '';
+      el.insertAdjacentHTML('afterbegin', REG_ALERT_ICON);
+      const text = document.createElement('span');
+      text.textContent = message;
+      el.appendChild(text);
+    }
+
+    function showRegStatus(key, result) {
+      const f = REG_FIELDS[key];
+      const input = document.getElementById(f.input);
+      const status = f.status ? document.getElementById(f.status) : null;
+      // No input, no status line: only fields that actually have something in
+      // them get a message (empty ones are handled by the red border on submit).
+      if (!result.message || input.value === '') { clearRegStatus(key); return; }
+      if (status) {
+        if (result.ok) status.textContent = result.message;
+        else setRegErrorContent(status, result.message);
+        status.classList.toggle('field-status--ok', result.ok);
+        status.classList.toggle('field-status--error', !result.ok);
+        status.hidden = false;
+      }
+      input.setAttribute('aria-invalid', result.ok ? 'false' : 'true');
+    }
+
+    function clearRegStatus(key) {
+      const f = REG_FIELDS[key];
+      const status = f.status ? document.getElementById(f.status) : null;
+      if (status) {
+        status.textContent = '';
+        status.classList.remove('field-status--ok', 'field-status--error');
+        status.hidden = true;
+      }
+      document.getElementById(f.input).removeAttribute('aria-invalid');
+    }
+
+    function onRegFieldInput(key) {
+      if (!window.LWAuth || !LWAuth.validateEmail) return; // auth.js not loaded yet
+      clearTimeout(regTimers[key]);
+      clearRegStatus(key);
+      if (key === 'email') document.getElementById('reg-email-hint').style.display = 'none';
+      // The strength bar + checklist are a live readout, not a scolding, so
+      // they update on every keystroke; only the message line below waits
+      // for a pause (see WHEN feedback shows, above).
+      if (key === 'password' || key === 'email') renderRegPasswordPanel();
+      regTimers[key] = setTimeout(() => {
+        const r = REG_FIELDS[key].check();
+        // Confirm password is "real-time" once something is typed in it:
+        // after the pause it says Passwords match / do not match without
+        // waiting for a blur.
+        const liveConfirm = key === 'confirm' && document.getElementById(REG_FIELDS.confirm.input).value !== '';
+        if (r.ok || regTouched[key] || liveConfirm) showRegStatus(key, r);
+      }, REG_TYPING_PAUSE_MS);
+      // Changing the password changes whether "confirm" matches.
+      if (key === 'password' &&
+          (regTouched.confirm || document.getElementById(REG_FIELDS.confirm.input).value !== '')) {
+        onRegFieldInput('confirm');
+      }
+      // A password built from the email/name is rejected, so editing the
+      // email re-checks an already-typed password.
+      if (key === 'email' && document.getElementById('reg-password').value !== '') onRegFieldInput('password');
+    }
+
+    function onRegFieldBlur(key) {
+      if (!window.LWAuth || !LWAuth.validateEmail) return;
+      clearTimeout(regTimers[key]);
+      const hasValue = document.getElementById(REG_FIELDS[key].input).value !== '';
+      // Tabbing through an untouched empty field isn't an error; submit flags it.
+      if (!hasValue && !regTouched[key]) return;
+      regTouched[key] = true;
+      showRegStatus(key, REG_FIELDS[key].check());
+      if (key === 'email') checkEmailTypo();
+    }
+
+    // ── PASSWORD PANEL (2026-10-01) ─────────────────────────────────
+    // Strength bar + requirement checklist under the Sign Up password.
+    // DISPLAY ONLY: getPasswordStrength() / validatePassword() come from
+    // js/auth.js, the same module register() enforces, so a requirement
+    // that shows ✓ here is the same one the real check counts. Nothing
+    // typed is logged, stored or sent anywhere from this code.
+    const PW_LEVEL_TEXT = { empty: 'Strength', weak: 'Weak', medium: 'Medium', strong: 'Strong' };
+    // What the "can't be based on your email" rule compares against. Signup
+    // has no name field: the display name is taken from the email.
+    function regPasswordContext() {
+      return { email: document.getElementById('reg-email').value };
+    }
+
+    function renderRegPasswordPanel() {
+      if (!window.LWAuth || !LWAuth.getPasswordStrength) return; // auth.js not loaded yet
+      const pw = document.getElementById('reg-password').value;
+      const s = LWAuth.getPasswordStrength(pw, regPasswordContext());
+      const level = pw ? s.level : 'empty';
+      // Panel only exists on screen while there is something to report on.
+      document.getElementById('reg-password-panel').dataset.open = pw ? 'true' : 'false';
+      const meter = document.getElementById('reg-password-meter');
+      meter.dataset.level = level;
+      // Continuous 0..1 from LWAuth (moves on every keystroke); CSS slides the fill to it.
+      meter.style.setProperty('--pw-fill', pw ? s.progress.toFixed(3) : '0');
+      document.getElementById('reg-password-strength-text').textContent = PW_LEVEL_TEXT[level];
+      // One line saying what is still missing (or nothing, once the password
+      // is acceptable). The text is only rewritten when it changes, so screen
+      // readers aren't re-announced on every keystroke, and it is left in
+      // place while the line collapses so it doesn't blank out mid-animation.
+      const v = LWAuth.validatePassword(pw, regPasswordContext());
+      const summary = document.getElementById('reg-password-summary');
+      const needsMessage = pw !== '' && !v.valid;
+      if (needsMessage && summary.dataset.msg !== v.message) {
+        setRegErrorContent(summary, v.message);
+        summary.dataset.msg = v.message;
+      }
+      document.getElementById('reg-password-summary-wrap').dataset.open = needsMessage ? 'true' : 'false';
+    }
+
+    // Eye / eye-off toggle (Lucide icons are inline in the markup; CSS swaps
+    // them on aria-pressed). mousedown is cancelled so clicking the button
+    // doesn't pull focus out of the field (which would fire its blur check).
+    function setPasswordVisible(btn, visible) {
+      const input = document.getElementById(btn.dataset.pwToggle);
+      if (!input) return;
+      input.type = visible ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    }
+    function hideAllPasswords() {
+      document.querySelectorAll('[data-pw-toggle]').forEach((btn) => setPasswordVisible(btn, false));
+    }
+    document.querySelectorAll('[data-pw-toggle]').forEach((btn) => {
+      btn.addEventListener('mousedown', (event) => event.preventDefault());
+      btn.addEventListener('click', () => {
+        setPasswordVisible(btn, btn.getAttribute('aria-pressed') !== 'true');
+      });
+    });
+
+    // true only when every field passes; otherwise shows every problem and
+    // focuses the first one. handleRegister() stops here, so nothing at all
+    // (no Reacher call, no Firebase account, no email) happens on failure.
+    function validateRegisterForm() {
+      let firstBad = null;
+      for (const key of ['email', 'password', 'confirm']) {
+        clearTimeout(regTimers[key]);
+        regTouched[key] = true;
+        const r = REG_FIELDS[key].check();
+        showRegStatus(key, r);
+        // An empty field shows no message (see showRegStatus); flag it with the
+        // red border instead so it's still obvious why submit did nothing.
+        if (!r.ok && document.getElementById(REG_FIELDS[key].input).value === '') {
+          document.getElementById(REG_FIELDS[key].input).setAttribute('aria-invalid', 'true');
+        }
+        if (!r.ok && !firstBad) firstBad = key;
+      }
+      if (firstBad) {
+        document.getElementById(REG_FIELDS[firstBad].input).focus();
+        return false;
+      }
+      return true;
     }
 
     async function handleRegister() {
       if (authRequestInFlight) return;
-      const name     = document.getElementById('reg-name').value;
-      const email    = document.getElementById('reg-email').value; // raw: register() trims + validates + sends the SAME normalized value
-      const password = document.getElementById('reg-password').value;
+      // Frontend gate: email format -> provider -> password -> confirm.
+      // On failure nothing is sent anywhere. register() re-checks all of it.
+      if (!validateRegisterForm()) return;
+      const name            = ''; // no name field: register() uses the part of the email before the @ as the display name
+      const email           = document.getElementById('reg-email').value; // raw: register() trims + validates + sends the SAME normalized value
+      const password        = document.getElementById('reg-password').value;
+      const confirmPassword = document.getElementById('reg-confirm-password').value;
       authRequestInFlight = true;
       setSubmitBusy('register-form', true, 'Checking email...');
       try {
-        // Order inside register(): validate -> Reacher pre-check -> create
-        // Firebase account -> send verification email. A rejected address
-        // throws BEFORE any account exists.
-        const result = await LWAuth.register(name, email, password);
+        // Order inside register(): validate (format, provider, password,
+        // confirm) -> Reacher pre-check -> create Firebase account (fails
+        // here if the email is already registered) -> send verification
+        // email. A rejected signup throws BEFORE any account or email exists.
+        const result = await LWAuth.register(name, email, password, confirmPassword);
         // The account now exists but is UNVERIFIED: signed in, no learner
         // access. verify-email.html shows the "Check your email" screen
         // (or, for send-failed, says the email didn't go out and offers Resend).

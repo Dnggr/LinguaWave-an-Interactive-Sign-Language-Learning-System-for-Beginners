@@ -3,6 +3,9 @@
  * ─────────────────────────────────────────────────────────────────
  * CONNECTS : index.html (hero, topic preview, About ASL section, and
  *            the inline login/register card)
+ * 2026-10-01 : added the PASSWORD STRENGTH + SHOW/HIDE section at the very
+ *            bottom (strength bar, requirement checklist, eye toggle) and
+ *            made #signin-modal scrollable (the Sign Up card grew taller).
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -883,3 +886,137 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   border-bottom: 1px solid var(--clr-border, #ddd);
 }
 .auth-divider span { padding: 0 0.75rem; font-size: 0.85rem; }
+
+/* ── SIGNUP INLINE VALIDATION (2026-10-01) ─────────────────────────
+   Feedback lines under the Sign Up fields (see index.html,
+   "SIGNUP FIELD VALIDATION UI"). They sit OUTSIDE .form-group so they
+   don't shift the floating label, which is centred on the group's height.
+   --clr-success / --clr-error aren't defined in the theme yet, so the
+   fallbacks below are what actually render; define the tokens in
+   css/style.css later to retheme them. */
+.field-status {
+  display: block;
+  margin: var(--space-1) var(--space-1) 0;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.field-status[hidden] { display: none; }
+.field-status--ok    { color: var(--clr-success, #16a34a); }
+.field-status--error { color: var(--clr-error, #dc2626); }
+/* Error line = Octicons alert-fill + message, icon pinned to the first line
+   so a wrapped message hangs neatly beside it. */
+.field-status--error:not([hidden]) { display: flex; align-items: flex-start; gap: var(--space-2); }
+.field-status .octicon {
+  flex: none; margin-top: 4px;
+  display: inline-block; overflow: visible; fill: currentColor;
+}
+.auth-form .form-input[aria-invalid="true"] { border-color: var(--clr-error, #dc2626); }
+
+/* ── SIGN IN MODAL: scroll when the card is taller than the screen ─
+   The Sign Up tab now carries a strength bar + 5-item checklist, so on a
+   short laptop screen or a phone the card can exceed the viewport. The
+   backdrop used to be a plain flex-centred box with no overflow, which
+   would have clipped the top and bottom with no way to scroll. `margin:
+   auto` on the box (instead of align-items:center) keeps it centred when
+   it fits and lets it start at the top, scrollable, when it doesn't. */
+#signin-modal {
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-8) var(--space-4);
+}
+#signin-modal .auth-modal__box--form { margin: auto; }
+
+/* ── PASSWORD STRENGTH + SHOW/HIDE (2026-10-01) ────────────────────
+   Used by the Sign Up password field (index.html, "PASSWORD PANEL"). The
+   rules, labels and levels all come from js/auth.js; this is styling only.
+
+   Colour is never the only signal: every level also has a text label
+   (Weak / Medium / Strong), a different bar LENGTH, and each requirement
+   swaps a hollow circle for a check mark.
+
+   --clr-success / --clr-error / --clr-warning aren't defined in the theme
+   yet (same note as .field-status above), so the fallbacks render; define
+   the tokens in css/style.css later to retheme. */
+
+/* Eye / eye-off button inside the field (Lucide `eye` / `eye-off`). */
+.auth-form .form-input--has-toggle { padding-right: 52px; }
+.form-input::-ms-reveal,
+.form-input::-ms-clear { display: none; } /* Edge draws its own reveal icon; we have ours */
+.pw-toggle {
+  position: absolute; top: 50%; right: var(--space-2); transform: translateY(-50%);
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--clr-text-muted); cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.pw-toggle:hover { color: var(--clr-text); background: var(--clr-surface-2); }
+.pw-toggle:focus-visible { outline: 2px solid var(--clr-accent); outline-offset: 1px; }
+.pw-toggle svg { width: 20px; height: 20px; display: block; }
+.pw-toggle .pw-toggle__icon--hide { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-toggle__icon--show { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-toggle__icon--hide { display: block; }
+
+/* Password panel (bar + checklist) is collapsed until the field has input.
+   grid-template-rows 0fr -> 1fr animates to the content's natural height
+   without hard-coding it. While closed it is visibility:hidden (the delay
+   waits for the collapse to finish) so screen readers and tabbing skip it. */
+.pw-panel {
+  display: grid; grid-template-rows: 0fr;
+  opacity: 0; visibility: hidden;
+  transition: grid-template-rows 300ms var(--ease), opacity 200ms var(--ease), visibility 0s linear 300ms;
+}
+.pw-panel[data-open="true"] {
+  grid-template-rows: 1fr; opacity: 1; visibility: visible;
+  transition-delay: 0s;
+}
+.pw-panel__inner { min-height: 0; overflow: hidden; }
+
+/* Strength bar. The fill is a full-width bar slid sideways with `transform`
+   (not animated `width`, which re-lays-out the page every frame and which
+   the Impeccable scan flags), so changing strength never shifts anything below the panel. */
+.pw-meter {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-3) var(--space-1) 0;
+}
+.pw-meter__track {
+  flex: 1; height: 6px; border-radius: 999px; overflow: hidden;
+  background: var(--clr-surface-2);
+}
+.pw-meter__fill {
+  height: 100%; width: 100%; border-radius: 999px;
+  background: var(--pw-color, var(--clr-border));
+  transform: translateX(calc((var(--pw-fill, 0) - 1) * 100%));
+  transition: transform 450ms cubic-bezier(.22, 1, .36, 1), background-color 300ms var(--ease);
+  will-change: transform;
+}
+/* Level only picks the COLOUR. How full the bar is comes from --pw-fill (0..1),
+   set inline by renderRegPasswordPanel() from LWAuth.getPasswordStrength().progress,
+   so the fill moves a little on every keystroke instead of jumping in 3 steps. */
+.pw-meter { --pw-fill: 0; }
+.pw-meter[data-level="weak"]   { --pw-color: var(--clr-error, #dc2626); }
+.pw-meter[data-level="medium"] { --pw-color: var(--clr-warning, #f59e0b); }
+.pw-meter[data-level="strong"] { --pw-color: var(--clr-success, #16a34a); }
+/* Fixed width so "Weak" -> "Medium" never nudges the bar. */
+.pw-meter__label {
+  min-width: 4.5rem; text-align: right;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text);
+}
+.pw-meter[data-level="empty"] .pw-meter__label { color: var(--clr-text-muted); font-weight: 500; }
+
+/* "Password needs …" line under the strength bar. Reuses the .field-status
+   error look (red text + Octicons alert-fill, see above); this only adds the
+   gap under the bar. */
+.pw-summary { margin-top: var(--space-2); }
+
+/* Text for screen readers only ("Password strength:", "(met)"). */
+.pw-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-meter__fill, .pw-toggle, .pw-panel { transition: none; }
+}
