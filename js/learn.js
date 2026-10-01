@@ -80,6 +80,174 @@ function statusMeta(status) {
   }
 }
 
+// CHAPTER RAIL (this session) — the Learn page is long (11 chapters + Orientation), so a fixed
+// icon dock on the right edge jumps straight to a chapter. One Lucide icon per chapter (ids live in
+// js/icons.js under the 'chapter_' prefix), a name tooltip on hover/focus, and a scroll-spy that
+// highlights the chapter currently on screen.
+//   - Click  : opens that chapter, collapses the others (unless a search is active — then every
+//              match stays open), and scrolls it to the middle of the viewport. A chapter taller
+//              than the viewport is aligned to the top instead so its header is never cut off.
+//   - Locked : still clickable (the learner can preview what's coming); the icon just carries a
+//              small lock and the tooltip says "Locked". Icons only — no borders, no check badges.
+//   - Tooltip: ONE shared #chapter-rail-tip positioned with fixed coordinates; per-button CSS
+//              tooltips would be clipped by the rail's own overflow-y scrolling on short screens.
+const COLLAPSE_OTHERS_ON_JUMP = true;   // false = jumping only opens + scrolls, never closes anything
+
+const CHAPTER_ICONS = {
+  asl_foundations: 'chapter_blocks',
+  introduce_yourself: 'chapter_hand',
+  express_feelings: 'chapter_smile',
+  daily_actions: 'chapter_person_standing',
+  describing_things: 'chapter_palette',
+  home_family: 'chapter_house',
+  school_life: 'chapter_school',
+  food_nature: 'chapter_apple',
+  clothing_belongings: 'chapter_shirt',
+  people_places_time: 'chapter_map_pin',
+  having_a_conversation: 'chapter_messages_square'
+};
+
+let activeQuery = '';        // current search text (set by renderList)
+let railItems = [];          // [{ key, el, btn, label, sub }] in page order
+let railPinnedKey = null;    // set by a rail click; released on the learner's own scroll input
+let railBound = false;
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+    document.documentElement.classList.contains('lw-force-reduced-motion');
+}
+
+function setRailActive(key) {
+  railItems.forEach((it) => {
+    const on = it.key === key;
+    it.btn.classList.toggle('is-active', on);
+    if (on) it.btn.setAttribute('aria-current', 'location');
+    else it.btn.removeAttribute('aria-current');
+  });
+}
+
+// Active = the last item whose top has scrolled past the middle of the viewport.
+function updateRailActive() {
+  if (!railItems.length || railPinnedKey) return;
+  const line = window.innerHeight * 0.5;
+  let active = railItems[0];
+  for (const it of railItems) {
+    if (it.el.getBoundingClientRect().top <= line) active = it;
+  }
+  setRailActive(active.key);
+}
+
+function hideRailTip() {
+  const tip = document.getElementById('chapter-rail-tip');
+  if (tip) tip.classList.remove('is-visible');
+}
+
+function showRailTip(item) {
+  const tip = document.getElementById('chapter-rail-tip');
+  if (!tip) return;
+  document.getElementById('chapter-rail-tip-title').textContent = item.label;
+  const sub = document.getElementById('chapter-rail-tip-sub');
+  sub.textContent = item.sub || '';
+  sub.hidden = !item.sub;
+  const r = item.btn.getBoundingClientRect();
+  tip.style.top = (r.top + r.height / 2) + 'px';
+  tip.style.right = (document.documentElement.clientWidth - r.left + 12) + 'px';
+  tip.classList.add('is-visible');
+}
+
+function goToRailItem(item) {
+  railPinnedKey = item.key;
+  setRailActive(item.key);
+  hideRailTip();
+
+  if (item.key !== 'orientation') {
+    if (COLLAPSE_OTHERS_ON_JUMP && !activeQuery) {
+      document.querySelectorAll('#path-list .trail-group[open]').forEach((d) => {
+        if (d !== item.el) d.open = false;
+      });
+    }
+    item.el.open = true;
+  }
+
+  const behavior = prefersReducedMotion() ? 'auto' : 'smooth';
+  if (item.key === 'orientation') {
+    window.scrollTo({ top: 0, behavior });   // back to the heading + search, not just the card
+  } else {
+    // Measure AFTER the open/close above so the height is the chapter's real, expanded height.
+    const fits = item.el.getBoundingClientRect().height <= window.innerHeight - 48;
+    item.el.scrollIntoView({ block: fits ? 'center' : 'start', behavior });
+  }
+  userTookOverScroll = true;   // don't let the background sync repaint re-aim the scroll
+}
+
+function renderChapterRail(model) {
+  const rail = document.getElementById('chapter-rail');
+  if (!rail || !window.LWIcons) return;
+
+  railItems = [];
+  rail.textContent = '';
+  hideRailTip();
+
+  const orientationEl = document.getElementById('orientation-slot');
+  if (orientationEl && orientationEl.firstElementChild) {
+    railItems.push({ key: 'orientation', el: orientationEl, label: 'Orientation', sub: 'Start here', icon: 'chapter_compass' });
+  }
+  model.forEach((m) => {
+    const el = document.querySelector(`#path-list .trail-group[data-chapter="${m.id}"]`);
+    if (!el) return;
+    railItems.push({
+      key: m.id,
+      el,
+      label: `Chapter ${m.order} · ${m.title}`,
+      sub: m.locked ? 'Locked' : `${m.done}/${m.total} complete`,
+      icon: CHAPTER_ICONS[m.id] || 'book_open',
+      locked: m.locked,
+      complete: m.complete
+    });
+  });
+
+  railItems.forEach((it) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chapter-rail__btn' + (it.locked ? ' is-locked' : '');
+    btn.setAttribute('aria-label', it.sub ? `${it.label} — ${it.sub}` : it.label);
+    btn.appendChild(window.LWIcons.node(it.icon));
+    if (it.locked) {
+      const badge = document.createElement('span');
+      badge.className = 'chapter-rail__badge';
+      badge.appendChild(window.LWIcons.node('chapter_lock', { size: 'status' }));
+      btn.appendChild(badge);
+    }
+    btn.addEventListener('click', () => goToRailItem(it));
+    btn.addEventListener('mouseenter', () => showRailTip(it));
+    btn.addEventListener('focus', () => showRailTip(it));
+    btn.addEventListener('mouseleave', hideRailTip);
+    btn.addEventListener('blur', hideRailTip);
+    it.btn = btn;
+    rail.appendChild(btn);
+  });
+
+  rail.hidden = railItems.length === 0;
+  railPinnedKey = null;
+  updateRailActive();
+
+  if (!railBound) {
+    railBound = true;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      hideRailTip();
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { ticking = false; updateRailActive(); });
+    }, { passive: true });
+    window.addEventListener('resize', () => { hideRailTip(); updateRailActive(); }, { passive: true });
+    // The learner scrolling themselves releases the pin a rail click set, so the highlight follows them again.
+    ['wheel', 'touchmove', 'keydown'].forEach((evt) => {
+      window.addEventListener(evt, () => { if (railPinnedKey) { railPinnedKey = null; updateRailActive(); } }, { passive: true });
+    });
+  }
+}
+
 function renderRow(mission, index, status, displayNumber) {
   const meta = statusMeta(status);
   const pct = Math.round(window.LWMissions.getMissionProgress(mission) * 100);
@@ -150,12 +318,14 @@ function renderList(filterText) {
   const listEl = document.getElementById('path-list');
 
   const query = (filterText || '').trim().toLowerCase();
+  activeQuery = query;
   const filtered = query
     ? allMissions.filter((m) => m.title.toLowerCase().includes(query) || m.goal.toLowerCase().includes(query))
     : allMissions;
 
   if (!filtered.length) {
     listEl.innerHTML = `<p class="text-muted">No missions match "${filterText}".</p>`;
+    renderChapterRail([]);
     return;
   }
 
@@ -198,6 +368,7 @@ function renderList(filterText) {
     byChapter.get(m.categoryGroup).push(m);
   });
 
+  const railModel = [];   // one entry per chapter actually rendered below — feeds renderChapterRail()
   const chapterSections = chapters
     .filter((ch) => byChapter.has(ch.id))
     .map((ch) => {
@@ -218,8 +389,9 @@ function renderList(filterText) {
       const chapterMeta = chapterLocked
         ? `<span class="badge badge--locked trail-group__lock-badge">Locked</span>`
         : `<span class="trail-group__meta">${doneCount}/${missionsInChapter.length} complete</span>`;
+      railModel.push({ id: ch.id, order: ch.order, title: ch.title, locked: chapterLocked, complete: chapterComplete, done: doneCount, total: missionsInChapter.length });
       return `
-        <details class="trail-group${chapterComplete ? ' trail-group--complete' : ''}"${isOpen ? ' open' : ''}>
+        <details class="trail-group${chapterComplete ? ' trail-group--complete' : ''}" data-chapter="${ch.id}"${isOpen ? ' open' : ''}>
           <summary class="trail-group__summary">
             <span class="trail-group__label">
               <span class="trail-group__title">Chapter ${ch.order} · ${ch.title}</span>
@@ -235,6 +407,7 @@ function renderList(filterText) {
     });
 
   listEl.innerHTML = chapterSections.join('') + rowsFor(ungrouped);
+  renderChapterRail(railModel);
 }
 
 function initPage() {

@@ -121,6 +121,8 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <!-- Compact layout for this page; overrides a few app.css rules, so it must come after it. -->
+  <link rel="stylesheet" href="../css/progress.css" />
   <link rel="stylesheet" href="../css/tour.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
@@ -230,15 +232,18 @@
                left out of the picker entirely — nothing to show mastery
                of yet. Hidden (not just empty) until there's at least one
                live, unlocked chapter to show. -->
+          <!-- Sign Mastery and the Learning Snapshot share one row (css/progress.css .progress-lower). -->
+          <div class="progress-lower">
           <div class="card sign-mastery" id="sign-mastery" hidden></div>
 
           <!-- PHASE 2 — "make progress feel personal" sections. Each card
                below handles its own empty state inline (same convention
                as #next-milestone / #needs-review / #progress-chapters
                above) rather than one big all-or-nothing empty overlay. -->
-          <div class="card snapshot-card mt-8" id="progress-snapshot">
+          <div class="card snapshot-card" id="progress-snapshot">
             <p class="text-muted loading-pulse">Loading your strengths…</p>
           </div>
+          </div><!-- /.progress-lower -->
         </div>
       </section>
 

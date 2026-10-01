@@ -147,6 +147,20 @@ function formatCountdown(targetIso) {
   return `${m}m`;
 }
 
+// NEXT MISSION (this session) — the mission that follows this one on the TRAIL (chapter order, then
+// order within the chapter — LWMissions.getTrailNumbers(), the same numbering Learn and this page's
+// header show), NOT the next slot in getAllMissions(), which is in unit order and regrouped by
+// chapters. Returns null for the very last mission.
+function getNextMission(mission, allMissions) {
+  if (!window.LWMissions.getTrailNumbers) return null;
+  const numbers = window.LWMissions.getTrailNumbers(allMissions);
+  const here = numbers.get(mission.category);
+  if (!here) return null;
+  let nextCategory = null;
+  numbers.forEach((n, category) => { if (n === here + 1) nextCategory = category; });
+  return nextCategory ? (allMissions.find((m) => m.category === nextCategory) || null) : null;
+}
+
 function heartIcon(filled) {
   return `
     <svg class="heart ${filled ? 'heart--full' : 'heart--empty'}" width="22" height="22" viewBox="0 0 24 24"
@@ -277,8 +291,36 @@ function render(mission, status) {
   // enforced in lesson.js itself, not by this label.
   // Icon comes from the same `canReview` the label branches on: a
   // repeat glyph for a review pass, a play glyph for a first run.
+  // CONTINUE (this session) — a mission that's been started but isn't finished (and isn't in the
+  // review-before-quiz state above) says "Continue" instead of "Start Mission". lesson.html already
+  // resumes where the learner left off, so only the label was wrong. Same play glyph as Start.
+  const inProgress = !canReview && pct > 0 && pct < 100;
+  const startText = canReview ? 'Review Mission' : (inProgress ? 'Continue' : 'Start Mission');
   const startLabel = window.LWIcons.markup(canReview ? 'frequency' : 'current', { size: 'sm' })
-    + `<span class="lw-icon-label">${canReview ? 'Review Mission' : 'Start Mission'}</span>`;
+    + `<span class="lw-icon-label">${startText}</span>`;
+
+  // NEXT (this session) — a finished mission gets a third button that moves on to the next mission
+  // on the trail. If that mission is still locked (the next chapter's gate isn't met yet) the button
+  // renders disabled with a lock and shakes on click, same locked-state feedback as the sign chips.
+  // Nothing renders for the last mission on the trail.
+  let nextBtn = '';
+  if (status === 'done') {
+    const nextMission = getNextMission(mission, window.LWMissions.getAllMissions());
+    if (nextMission) {
+      const nextStatus = window.LWMissions.getMissionStatus(nextMission, window.LWMissions.getAllMissions());
+      if (nextStatus === 'locked') {
+        nextBtn = `<button type="button" class="btn btn--secondary btn--lg" id="mo-next-locked" aria-disabled="true"
+                title="Locked: finish every mission in this chapter to unlock the next one">
+          <span>Next</span>${window.LWIcons.markup('locked', { size: 'sm' })}
+        </button>`;
+      } else {
+        nextBtn = `<a href="mission-overview.html?mission=${encodeURIComponent(nextMission.category)}" class="btn btn--secondary btn--lg"
+                title="Next: ${nextMission.title}">
+          <span>Next</span>${window.LWIcons.markup('arrow_right', { size: 'sm' })}
+        </a>`;
+      }
+    }
+  }
 
   // BUGFIX (light-mode UX pass) — was `mission._index + 1` (array position), which
   // no longer matches the number Learn shows for the same mission; both now read
@@ -333,8 +375,12 @@ function render(mission, status) {
           ${window.LWIcons.markup('current', { size: 'sm' })}<span class="lw-icon-label">Start Mastery Quiz</span>
         </button>
       `}
+      ${nextBtn}
     </div>
   `;
+
+  const nextLocked = document.getElementById('mo-next-locked');
+  if (nextLocked) nextLocked.addEventListener('click', () => window.LinguaWave?.triggerLockedFeedback?.(nextLocked));
 
   const quizBtn = document.getElementById('mo-start-quiz');
   if (quizBtn) {
@@ -410,4 +456,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPage);
 } else {
   initPage();
-}
+}

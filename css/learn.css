@@ -351,3 +351,80 @@ button.category-card {
   .congrats-modal__box { animation: none; }
   .congrats-modal__confetti { display: none; }
 }
+
+/* ── Chapter rail ────────────────────────────────────────────────────
+   Fixed icon dock on the right edge of the Learn page (markup: learn.html #chapter-rail,
+   built by js/learn.js renderChapterRail()). One round Lucide icon per chapter, a shared
+   tooltip (#chapter-rail-tip) with the chapter name, and an .is-active state that follows
+   the scroll position. Hidden on the stacked mobile layout (<= 900px), where the sidebar
+   collapses to a top bar and there is no free gutter beside the list. */
+.chapter-rail {
+  position: fixed;
+  top: 50%;
+  right: var(--space-4);
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  max-height: calc(100vh - var(--space-6) * 2);
+  overflow-y: auto; scrollbar-width: none;
+}
+.chapter-rail::-webkit-scrollbar { display: none; }
+.chapter-rail[hidden] { display: none; }
+
+/* Icon-only buttons: no borders, no container. Hover tints the icon; the active chapter gets the
+   accent colour plus a soft circle behind it. */
+.chapter-rail__btn {
+  position: relative; flex: none;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  padding: 0; cursor: pointer;
+  color: var(--clr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.chapter-rail__btn .lw-icon { width: 22px; height: 22px; }
+.chapter-rail__btn:hover { color: var(--clr-accent); background: var(--clr-accent-soft); transform: scale(1.1); }
+.chapter-rail__btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
+.chapter-rail__btn.is-active { color: var(--clr-accent); background: var(--clr-accent-soft); }
+.chapter-rail__btn.is-locked:not(.is-active) { opacity: .65; }
+.chapter-rail__btn.is-locked:not(.is-active):hover { opacity: 1; }
+
+/* Lock glyph pinned to the icon's bottom-right corner (locked chapters only). */
+.chapter-rail__badge {
+  position: absolute; right: 2px; bottom: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--clr-bg); color: var(--clr-text-muted);
+}
+.chapter-rail__badge .lw-icon { width: 10px; height: 10px; }
+
+/* Shared tooltip — positioned by JS (fixed top/right), so it never gets clipped by the rail. */
+.chapter-rail__tip {
+  position: fixed; z-index: 41;
+  transform: translateY(-50%) translateX(4px);
+  display: flex; flex-direction: column; gap: 2px;
+  max-width: 260px; padding: var(--space-2) var(--space-3);
+  background: var(--clr-surface); color: var(--clr-text);
+  border: 1px solid var(--clr-border); border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .18);
+  font-size: var(--fs-sm); line-height: 1.3;
+  pointer-events: none; opacity: 0; visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), visibility 0s linear var(--dur-fast);
+}
+.chapter-rail__tip.is-visible {
+  opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
+  transition-delay: 0s;
+}
+.chapter-rail__tip-title { font-family: var(--font-display); font-weight: 700; }
+.chapter-rail__tip-sub { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+
+@media (max-width: 900px) {
+  .chapter-rail, .chapter-rail__tip { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chapter-rail__btn, .chapter-rail__tip { transition: none; }
+  .chapter-rail__btn:hover { transform: none; }
+}

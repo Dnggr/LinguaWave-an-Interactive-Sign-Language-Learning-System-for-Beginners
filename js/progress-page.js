@@ -65,6 +65,11 @@ const SNAPSHOT_MAX_ROWS = 2;       // strengths shown, and focus areas shown
 // Not a spec'd number anywhere; 24h reads as "you just did this" without
 // needing its own settings toggle.
 const RECENTLY_DONE_MS = MS_PER_DAY;
+// The Learning Journey lists every chapter the learner can open plus this many
+// locked ones ("up next"); the rest sit behind a "Show N more" button so the
+// page isn't a wall of Locked rows. The choice survives re-renders.
+const LOCKED_PREVIEW = 1;
+let showAllLockedChapters = false;
 
 function escapeHtml(str) {
   return String(str)
@@ -190,8 +195,8 @@ function tallySigns(missions) {
 /* Ring size, in px, is clamped to this range by syncRingSizeToStatsCard()
  * below — a floor so it never shrinks illegibly small next to a short
  * stats card, and a ceiling so it never dwarfs a tall one. */
-const RING_MIN_PX = 160;
-const RING_MAX_PX = 280;
+const RING_MIN_PX = 140;
+const RING_MAX_PX = 200;
 
 /* Set of local-day keys (YYYY-MM-DD) on which the learner completed at
  * least one item — the ONE "was this day active?" signal shared by the
@@ -872,10 +877,16 @@ function renderChapters(missions) {
     return;
   }
 
-  const rowsHtml = liveChapters.map(({ chapter, chapterMissions }, i) => {
-    const status = chapterStatus(chapter, chapterMissions, missions);
+  const withStatus = liveChapters.map((entry) => ({ ...entry, status: chapterStatus(entry.chapter, entry.chapterMissions, missions) }));
+  const lockedCount = withStatus.filter((e) => e.status === 'locked').length;
+  let lockedSeen = 0;
+  const visibleChapters = showAllLockedChapters
+    ? withStatus
+    : withStatus.filter((e) => e.status !== 'locked' || ++lockedSeen <= LOCKED_PREVIEW);
+
+  const rowsHtml = visibleChapters.map(({ chapter, chapterMissions, status }, i) => {
     const items = tallyItems(chapterMissions);
-    const isLast = i === liveChapters.length - 1;
+    const isLast = i === visibleChapters.length - 1;
     // Only the currently-open chapter shows a live bar — a 100% bar
     // on a done chapter or a 0% bar on one the learner can't open yet
     // is redundant/misleading (same rule js/learn.js's renderRow()
@@ -930,7 +941,25 @@ function renderChapters(missions) {
     `;
   }).join('');
 
-  el.innerHTML = `<div class="chapter-timeline">${rowsHtml}</div>`;
+  const hiddenCount = lockedCount - LOCKED_PREVIEW;
+  const toggleHtml = hiddenCount > 0
+    ? `<button type="button" class="chapter-timeline__toggle" id="chapter-toggle" aria-expanded="${showAllLockedChapters}" aria-controls="progress-chapters">
+         <span>${showAllLockedChapters ? 'Hide locked chapters' : `Show ${hiddenCount} more locked chapter${hiddenCount === 1 ? '' : 's'}`}</span>
+         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+       </button>`
+    : '';
+
+  el.innerHTML = `<div class="chapter-timeline">${rowsHtml}</div>${toggleHtml}`;
+
+  const toggle = document.getElementById('chapter-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      showAllLockedChapters = !showAllLockedChapters;
+      renderChapters(missions);
+      const again = document.getElementById('chapter-toggle');
+      if (again) again.focus();
+    });
+  }
 }
 
 /* ── Phase 3 — Sign Mastery ───────────────────────────────────────────
