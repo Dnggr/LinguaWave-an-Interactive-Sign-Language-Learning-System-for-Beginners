@@ -154,9 +154,6 @@ function renderMission(mission) {
       <span class="dev-stat" title="Longest streak stays visible even after a break">
         \u{1F525} ${streak.currentStreak}-day streak (best: ${streak.longestStreak})
       </span>
-      <span class="dev-stat" title="Simple weekly allowance, not a purchasable item">
-        Streak saver: ${streak.streakForgivenessRemaining}
-      </span>
     </div>
 
     <div class="card dev-progress-card">

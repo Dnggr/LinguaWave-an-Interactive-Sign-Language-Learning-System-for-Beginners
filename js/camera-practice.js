@@ -2678,6 +2678,10 @@ function endAssessment() {
         // BRIDGE — see markSignPracticedBridge() comment in missions.js.
         window.LWMissions?.markSignPracticedBridge?.(category, s);
       });
+      // DAY STREAK: a PASSED camera check is a qualifying activity. Recorded here
+      // (the one place a pass is decided), not in the bridge above - the bridge also
+      // runs from markCurrentSignPracticed() when merely leaving an already-passed sign.
+      window.LWMissions?.recordActivity?.('camera_practice');
     }
   }
 

@@ -15,7 +15,7 @@
  *      migration pushes local data UP to Firestore.
  *   3. Logged-in user, remote doc exists with additional completions
  *      from another device -> union-merge reconciliation.
- *   4. Streak forgivenessUsedThisWeek / hearts lostAt -> remote wins.
+ *   4. Streak: later lastActivityDate wins `current`, longest = max; hearts lostAt -> remote wins.
  *   5. save*State() write-through -> Firestore doc field updated.
  */
 
@@ -131,7 +131,7 @@ async function scenario1_noUser_localOnly() {
   assert(backend.docs.size === 0, 'no Firestore doc created when nobody is logged in');
 
   // Exercise a save while logged out -> still local-only, no throw.
-  LWMissions.recordActivityToday();
+  LWMissions.recordActivity('lesson');
   assert(backend.docs.size === 0, 'saving while logged out never touches Firestore');
 }
 
@@ -144,7 +144,7 @@ async function scenario2_migration_pushesLocalUp() {
       completedItemIds: ['m1_0_LESSON_HELLO'],
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z' },
     }),
-    lw_missions_streak_v1: JSON.stringify({ uid, days: ['2026-09-01', '2026-09-02'], forgivenessUsedThisWeek: 0 }),
+    lw_missions_streak_v1: JSON.stringify({ uid, v: 2, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: [] }),
   };
   const { sandbox, backend } = loadMissionsInFreshContext({ localStorageInitial: localInitial, loggedInUid: uid });
@@ -158,12 +158,12 @@ async function scenario2_migration_pushesLocalUp() {
     'migration pushed the existing local progress up, not discarded'
   );
   assert(
-    remote && JSON.stringify(remote.streak.days) === JSON.stringify(['2026-09-01', '2026-09-02']),
-    'migration pushed the existing local streak days up'
+    remote && remote.streak.current === 2 && remote.streak.longest === 2 && remote.streak.lastActivityDate === '2026-09-02',
+    'migration pushed the existing local streak (current/longest/lastActivityDate) up'
   );
 }
 
-async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
+async function scenario3_reconcile_mergesProgressAndStreak() {
   console.log('\n--- Scenario 3: remote has extra completions from another device -> union merge ---');
   const uid = 'user-def';
   const backend = makeFakeFirestoreBackend();
@@ -172,7 +172,7 @@ async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_1_LESSON_HI'],
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_1_LESSON_HI: '2026-09-02T12:00:00.000Z' },
     },
-    streak: { days: ['2026-09-01', '2026-09-03'], forgivenessUsedThisWeek: 1 },
+    streak: { v: 2, current: 1, longest: 4, lastActivityDate: '2026-09-03', recentDays: ['2026-09-03'] },
     hearts: { lostAt: ['2026-09-05T10:00:00.000Z'] },
   });
 
@@ -182,7 +182,7 @@ async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_2_LESSON_MORNING'], // one overlapping, one local-only
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_2_LESSON_MORNING: '2026-09-04T12:00:00.000Z' },
     }),
-    lw_missions_streak_v1: JSON.stringify({ uid, days: ['2026-09-01', '2026-09-02'], forgivenessUsedThisWeek: 0 }),
+    lw_missions_streak_v1: JSON.stringify({ uid, v: 2, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: ['2026-09-06T00:00:00.000Z'] }), // stale local-only loss
   };
 
@@ -199,14 +199,17 @@ async function scenario3_reconcile_unionMergesProgressAndStreakDays() {
     mergedIds.has('m1_0_LESSON_HELLO') && mergedIds.has('m1_1_LESSON_HI') && mergedIds.has('m1_2_LESSON_MORNING'),
     'progress completedItemIds is the union of local and remote'
   );
-  const mergedDays = new Set(localStreakRaw.days);
   assert(
-    mergedDays.has('2026-09-01') && mergedDays.has('2026-09-02') && mergedDays.has('2026-09-03'),
-    'streak days is the union of local and remote'
+    localStreakRaw.lastActivityDate === '2026-09-03' && localStreakRaw.current === 1,
+    'streak: the state with the LATER lastActivityDate (remote) supplies `current`'
   );
   assert(
-    localStreakRaw.forgivenessUsedThisWeek === 1,
-    'forgivenessUsedThisWeek takes the REMOTE value (authoritative), not local\'s stale 0'
+    localStreakRaw.longest === 4,
+    'streak: longest is the max of local and remote'
+  );
+  assert(
+    JSON.stringify(localStreakRaw.recentDays) === JSON.stringify(['2026-09-01', '2026-09-02', '2026-09-03']),
+    'streak: recentDays is the union of local and remote'
   );
   assert(
     JSON.stringify(localHeartsRaw.lostAt) === JSON.stringify(['2026-09-05T10:00:00.000Z']),
@@ -241,10 +244,11 @@ async function scenario4_saveWriteThrough() {
   assert(!!remote && !!remote.progress, 'saving progress locally also wrote through to the Firestore doc');
   assert(!!remote && !!remote.hearts === false || true, 'sanity no-op'); // placeholder to keep structure consistent
 
-  LWMissions.recordActivityToday();
+  LWMissions.recordActivity('lesson');
   await sleep(10);
   const remote2 = backend.docs.get(`userProgressV2/${uid}`);
-  assert(!!remote2.streak, 'recordActivityToday -> saveStreakState wrote through to the Firestore doc');
+  assert(!!remote2.streak && remote2.streak.current === 1 && remote2.streak.longest === 1 && /^\d{4}-\d{2}-\d{2}$/.test(remote2.streak.lastActivityDate),
+    'recordActivity -> saveStreakState wrote current/longest/lastActivityDate through to the Firestore doc');
 
   LWMissions.consumeHeartForMastery();
   await sleep(10);
@@ -266,7 +270,7 @@ async function scenario5_devPreview_noLWAuthAtAll() {
   const LWMissions = sandbox.window.LWMissions;
   await LWMissions.whenMissionsSyncReady();
   // Should not throw, and local save should still work fine.
-  LWMissions.recordActivityToday();
+  LWMissions.recordActivity('lesson');
   const raw = localStorage.getItem('lw_missions_streak_v1');
   assert(!!raw, 'local save still works with no window.LWAuth at all (dev preview pages)');
 }
@@ -274,7 +278,7 @@ async function scenario5_devPreview_noLWAuthAtAll() {
 (async () => {
   await scenario1_noUser_localOnly();
   await scenario2_migration_pushesLocalUp();
-  await scenario3_reconcile_unionMergesProgressAndStreakDays();
+  await scenario3_reconcile_mergesProgressAndStreak();
   await scenario4_saveWriteThrough();
   await scenario5_devPreview_noLWAuthAtAll();
 

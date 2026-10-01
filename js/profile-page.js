@@ -330,15 +330,22 @@ function renderAchievements(missions, learnedSigns) {
   const missionsDone = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
   const signs = learnedSigns.length;
 
+  // Each achievement links to where you can read more about it:
+  //  - a badge that also exists in the XP system (js/xp-config.js) opens that exact tile on Leaderboard -> My badges
+  //    (leaderboard.html#mine/badge-<id>, handled by revealTarget() in js/leaderboard.js);
+  //  - the "signs learned" / "3 missions" achievements have no XP-badge twin, so they open Progress -> Your Learning Journey.
+  // To repoint one, change only its `href`.
+  const toBadge = (id) => `leaderboard.html#mine/badge-${id}`;
+  const toJourney = 'progress.html#progress-chapters';
   const badges = [
-    { icon: 'hand',   tone: 'accent',  title: 'First sign',     hint: 'Learn your first sign',       earned: signs >= 1 },
-    { icon: 'book',   tone: 'accent',  title: '10 signs',       hint: 'Learn 10 signs',              earned: signs >= 10 },
-    { icon: 'star',   tone: 'yellow',  title: '25 signs',       hint: 'Learn 25 signs',              earned: signs >= 25 },
-    { icon: 'trophy', tone: 'violet',  title: '50 signs',       hint: 'Learn 50 signs',              earned: signs >= 50 },
-    { icon: 'check',  tone: 'success', title: 'First mission',  hint: 'Complete a mission',          earned: missionsDone >= 1 },
-    { icon: 'award',  tone: 'violet',  title: '3 missions',     hint: 'Complete 3 missions',         earned: missionsDone >= 3 },
-    { icon: 'flame',  tone: 'orange',  title: '3-day streak',   hint: 'Practice 3 days in a row',    earned: streak.longestStreak >= 3 },
-    { icon: 'zap',    tone: 'orange',  title: '7-day streak',   hint: 'Practice 7 days in a row',    earned: streak.longestStreak >= 7 },
+    { icon: 'hand',   tone: 'accent',  title: 'First sign',     hint: 'Learn your first sign',       earned: signs >= 1,                   href: toJourney },
+    { icon: 'book',   tone: 'accent',  title: '10 signs',       hint: 'Learn 10 signs',              earned: signs >= 10,                  href: toJourney },
+    { icon: 'star',   tone: 'yellow',  title: '25 signs',       hint: 'Learn 25 signs',              earned: signs >= 25,                  href: toJourney },
+    { icon: 'trophy', tone: 'violet',  title: '50 signs',       hint: 'Learn 50 signs',              earned: signs >= 50,                  href: toJourney },
+    { icon: 'check',  tone: 'success', title: 'First mission',  hint: 'Complete a mission',          earned: missionsDone >= 1,            href: toBadge('missions_1') },
+    { icon: 'award',  tone: 'violet',  title: '3 missions',     hint: 'Complete 3 missions',         earned: missionsDone >= 3,            href: toJourney },
+    { icon: 'flame',  tone: 'orange',  title: '3-day streak',   hint: 'Practice 3 days in a row',    earned: streak.longestStreak >= 3,    href: toBadge('streak_3') },
+    { icon: 'zap',    tone: 'orange',  title: '7-day streak',   hint: 'Practice 7 days in a row',    earned: streak.longestStreak >= 7,    href: toBadge('streak_7') },
   ];
   const earnedCount = badges.filter((b) => b.earned).length;
   const next = badges.find((b) => !b.earned);
@@ -347,9 +354,11 @@ function renderAchievements(missions, learnedSigns) {
     <div class="achv-head"><h3>Achievements</h3><span>${earnedCount} of ${badges.length}</span></div>
     <ul class="achv-grid">
       ${badges.map((b) => `
-        <li class="achv ${b.earned ? `achv--earned achv--${b.tone}` : 'achv--locked'}" title="${escapeHtml(b.title)} — ${b.earned ? 'earned' : escapeHtml(b.hint)}">
-          ${BADGE_ICONS[b.icon]}
-          <span class="sr-only">${escapeHtml(b.title)}: ${b.earned ? 'earned' : 'locked. ' + escapeHtml(b.hint)}</span>
+        <li class="achv-item">
+          <a class="achv ${b.earned ? `achv--earned achv--${b.tone}` : 'achv--locked'}" href="${escapeHtml(b.href)}" title="${escapeHtml(b.title)} — ${b.earned ? 'earned' : escapeHtml(b.hint)}">
+            ${BADGE_ICONS[b.icon]}
+            <span class="sr-only">${escapeHtml(b.title)}: ${b.earned ? 'earned' : 'locked. ' + escapeHtml(b.hint)}</span>
+          </a>
         </li>`).join('')}
     </ul>
     ${next ? `<p class="achv-next">Next: ${escapeHtml(next.hint.charAt(0).toLowerCase() + next.hint.slice(1))}</p>` : '<p class="achv-next">You\'ve earned every achievement.</p>'}

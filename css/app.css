@@ -379,6 +379,23 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Practicing — LESSON done, but this sign's BOOSTER/PRACTICE items aren't.
+ * Orange so a chip never reads as "done" (green) while the mission's own
+ * progress bar is still behind it. Turns green (.sign-chip--learned) only
+ * once every item for the sign is complete. Hover keeps its own color and
+ * gains the same lift as the other chip states. */
+.sign-chip--practicing {
+  border-color: var(--clr-orange);
+  background: var(--clr-orange-soft);
+  color: var(--clr-orange);
+}
+.sign-chip--practicing:hover {
+  border-color: var(--clr-orange);
+  background: var(--clr-orange-soft);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
 /* NEW — locked chips (mission-overview.js renders these as a plain
  * `<span>`, not an `<a>`, while the mission's chapter is still
  * locked — see render()'s `locked` branch there). Still hoverable —
@@ -1903,4 +1920,4 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
+}

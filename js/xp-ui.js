@@ -1,5 +1,5 @@
 /**
- * js/xp-ui.js — the small "Your level" card on the dashboard (#xp-card). Display only: every number
+ * js/xp-ui.js — the "Your level" card on the Profile page (#xp-card; it used to be on the dashboard). Display only: every number
  * comes from the server-written xpState doc via window.LWXP. Classic script, safe if LWXP is absent.
  */
 (function () {
@@ -24,13 +24,13 @@
           <p class="xp-card__sub">${xp.toLocaleString()} XP total</p>
         </div>
       </div>
-      <div>
-        <div class="xp-bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p.pct}"><i style="width:${p.pct}%"></i></div>
+      <div class="xp-card__progress">
+        <div class="xp-bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p.pct}"><i style="--p:${p.pct / 100}"></i></div>
         <div class="xp-bar__label"><span>${p.maxed ? 'Max level reached' : `${p.into} / ${p.need} XP to Level ${p.level + 1}`}</span></div>
       </div>
       <div class="xp-stats">
-        <span class="xp-chip">🔥 ${streak}-day streak</span>
-        <span class="xp-chip">🏅 ${badges} badge${badges === 1 ? '' : 's'}</span>
+        <a class="xp-chip xp-chip--link" href="leaderboard.html#mine/bd-group-streak">🔥 ${streak}-day streak</a>
+        <a class="xp-chip xp-chip--link" href="leaderboard.html#mine">🏅 ${badges} badge${badges === 1 ? '' : 's'}</a>
       </div>
       <a class="xp-card__link" href="leaderboard.html">Leaderboard &amp; badges →</a>`;
   }

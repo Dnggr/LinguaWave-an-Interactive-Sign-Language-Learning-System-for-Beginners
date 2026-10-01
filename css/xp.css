@@ -26,24 +26,33 @@
 .xp-card { display: grid; gap: var(--space-3, .75rem); padding: var(--space-5, 1.25rem); }
 .xp-card__top { display: flex; align-items: center; gap: var(--space-4, 1rem); flex-wrap: wrap; }
 .xp-level { width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: #fff;
+  font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: #0b1220; /* dark on every tier colour; #fff on #38bdf8 was ~2:1 */
   background: var(--tier, var(--clr-accent)); box-shadow: 0 0 0 4px var(--clr-surface-2, #eff6ff); }
 .xp-card__name { font-family: var(--font-display, inherit); font-weight: 700; font-size: var(--fs-lg, 1.125rem); margin: 0; }
-.xp-tier { display: inline-flex; align-items: center; gap: 4px; vertical-align: bottom; color: var(--tier, var(--clr-accent-text)); }
+.xp-tier { display: inline-flex; align-items: center; gap: 6px; vertical-align: bottom; color: var(--clr-text); }
+.xp-tier .lw-icon { color: var(--tier, var(--clr-accent-text)); }   /* neon tier colour only on the small icon, not the label text */
 .xp-tier .lw-icon { width: 16px; height: 16px; }
 .xp-card__sub { margin: 2px 0 0; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
 .xp-bar { height: 10px; border-radius: 9999px; background: var(--clr-track, #e2e8f0); overflow: hidden; }
-.xp-bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--tier, var(--clr-accent)); transition: width .6s var(--ease, ease); }
-.xp-bar__label { display: flex; justify-content: space-between; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); margin-top: 4px; }
+/* Fill is always full width and scaled by --p (0 to 1), so the animation runs on transform (compositor) instead of width (layout).
+   No border-radius here: scaleX would squash it. .xp-bar has overflow:hidden + a pill radius, so the left cap is still round. */
+.xp-bar > i { display: block; height: 100%; width: 100%; background: var(--tier, var(--clr-accent)); transform: scaleX(var(--p, 0)); transform-origin: left center; transition: transform .6s var(--ease, ease); }
+.xp-bar__label { display: flex; justify-content: space-between; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); margin-top: var(--space-2, .5rem); }
 .xp-stats { display: flex; gap: var(--space-2, .5rem); flex-wrap: wrap; }
-.xp-chip { padding: 4px 12px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); font-size: var(--fs-sm, .875rem); font-weight: 600; white-space: nowrap; }
+.xp-chip { padding: var(--space-2, .5rem) var(--space-4, 1rem); border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); font-size: var(--fs-sm, .875rem); font-weight: 600; white-space: nowrap; }
+/* Chips on the Profile card are links into Leaderboard -> My badges (js/xp-ui.js). */
+a.xp-chip { color: inherit; text-decoration: none; box-shadow: inset 0 0 0 1px transparent; transition: background var(--dur-fast, .15s) var(--ease, ease), color var(--dur-fast, .15s) var(--ease, ease), box-shadow var(--dur-fast, .15s) var(--ease, ease); }
+a.xp-chip:hover { background: var(--clr-accent-soft, rgba(37, 99, 235, .12)); color: var(--clr-accent-text, #1d4ed8); box-shadow: inset 0 0 0 1px var(--clr-accent, #2563eb); }
+a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { a.xp-chip { transition: none; } }
+.lw-force-reduced-motion a.xp-chip { transition: none; }
 .xp-card__link { justify-self: start; font-size: var(--fs-sm, .875rem); font-weight: 600; color: var(--clr-accent-text, #1d4ed8); }
 
 /* ── leaderboard page ── */
 .lb-tabs { display: flex; gap: var(--space-2, .5rem); flex-wrap: wrap; margin: var(--space-4, 1rem) 0; }
 .lb-tab { border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); color: var(--clr-text, #0f172a);
   padding: 8px 16px; border-radius: 9999px; font: inherit; font-weight: 600; cursor: pointer; }
-.lb-tab[aria-selected="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: #fff; }
+.lb-tab[aria-selected="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: var(--clr-text-invert, #fff); }
 .lb-tab:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
 .lb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2, .5rem); }
 .lb-row { display: grid; grid-template-columns: 44px 44px 44px minmax(0, 1fr) auto; gap: var(--space-3, .75rem); align-items: center;
@@ -51,7 +60,7 @@
 .lb-row.is-me { border-color: var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); }
 .lb-rank { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; text-align: center; color: var(--clr-text-muted, #586780); }
 .lb-row.is-top .lb-rank { color: var(--clr-yellow, #b45309); }   /* real top 3 (a class, not :nth-child, so "Lowest first" does not paint the bottom three gold) */
-.lb-lv { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; background: var(--tier, var(--clr-accent)); }
+.lb-lv { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #0b1220; font-weight: 700; background: var(--tier, var(--clr-accent)); }
 .lb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
 .lb-stat { display: inline-flex; align-items: center; gap: 4px; }
@@ -64,6 +73,7 @@
 .lb-score { text-align: right; font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; }
 .lb-score small { display: block; font-family: var(--font-body, inherit); font-weight: 400; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
 .lb-empty, .lb-note { color: var(--clr-text-muted, #586780); padding: var(--space-4, 1rem) 0; }
+.lb-head__text p, .lb-note { max-width: 65ch; }   /* line length: ~65 characters reads comfortably */
 .lb-me-pin { margin-top: var(--space-3, .75rem); }
 .lb-privacy { display: flex; gap: var(--space-3, .75rem); align-items: center; flex-wrap: wrap; font-size: var(--fs-sm, .875rem); color: var(--clr-text-muted, #586780); margin-top: var(--space-3, .75rem); }
 /* Top-align this page. css/app.css gives #main `justify-content: center` (built for short
@@ -125,7 +135,19 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
    is dimmed for locked tiles (the old whole-tile opacity:.55 made the text hard to read). The icon disc is a solid tier
    colour with a dark glyph, which keeps contrast on all six tier colours in both themes. */
 .bd-group { margin-top: var(--space-6, 1.5rem); }
-.bd-group h3 { display: flex; align-items: baseline; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0 0 var(--space-3, .75rem); font-family: var(--font-display, inherit); }
+.bd-group > summary { display: flex; align-items: center; gap: var(--space-3, .75rem); cursor: pointer; list-style: none; padding: var(--space-2, .5rem) 0; border-radius: var(--radius-sm, 8px); }
+.bd-group > summary::-webkit-details-marker { display: none; }
+.bd-group > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; border-right: 2px solid var(--clr-text-muted, #586780); border-bottom: 2px solid var(--clr-text-muted, #586780); transform: rotate(-45deg); transition: transform .2s var(--ease, ease); }
+.bd-group[open] > summary::before { transform: rotate(45deg); }
+.bd-group > summary:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
+.bd-group > summary h2 { display: flex; align-items: baseline; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0; font-family: var(--font-display, inherit); }
+.bd-group > .bd-grid { margin-top: var(--space-3, .75rem); }
+/* "Owned" filter on My badges: hide every tile that is not earned, and any group with none earned. */
+.is-owned-only .bd:not(.is-earned) { display: none; }
+.is-owned-only .bd-group[data-earned="0"] { display: none; }
+.bd-none[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .bd-group > summary::before { transition: none; } }
+.lw-force-reduced-motion .bd-group > summary::before { transition: none; }
 .bd-count { font-family: var(--font-body, inherit); font-size: var(--fs-xs, .75rem); font-weight: 600; color: var(--clr-text-muted, #586780); }
 .bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3, .75rem); align-items: stretch; }
 .bd { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 10px 12px; border-radius: var(--radius-md, 16px);
@@ -147,6 +169,11 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .bd.is-locked .bd__icon, .bd.is-todo .bd__icon { background: var(--clr-locked-soft, rgba(148, 163, 184, .18)); color: var(--clr-text-muted, #586780); }
 .bd.is-locked .bd__lv { color: var(--clr-text-muted, #586780); background: transparent; border: 1px solid var(--clr-border, #e2e8f0); }
 
+/* Deep link target (leaderboard.html#mine/badge-<id> or #mine/bd-group-<group>): ring the tile or group for a few seconds.
+   An outline, not an animation, so reduced-motion users get the same cue. */
+.bd.is-linked, .bd-group.is-linked { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 4px; border-radius: var(--radius-md, 16px); }
+.bd, .bd-group { scroll-margin-top: var(--space-6, 1.5rem); }
+
 /* ── sort order (Highest first / Lowest first) ── */
 .lb-toolbar { display: flex; align-items: center; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0 0 var(--space-3, .75rem); }
 .lb-toolbar[hidden] { display: none; }
@@ -161,8 +188,8 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .lb-mine-btn { width: 100%; justify-content: center; gap: 8px; margin-top: var(--space-1, .25rem); }
 .lb-mine-btn .lw-icon { width: 16px; height: 16px; }
 .lb-mine-btn__n { min-width: 22px; padding: 0 7px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text, #0f172a); font-size: var(--fs-xs, .75rem); font-weight: 700; line-height: 20px; }
-.lb-mine-btn[aria-pressed="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: #fff; }
-.lb-mine-btn[aria-pressed="true"] .lb-mine-btn__n { background: rgba(255, 255, 255, .22); color: #fff; }
+.lb-mine-btn[aria-pressed="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: var(--clr-text-invert, #fff); }
+.lb-mine-btn[aria-pressed="true"] .lb-mine-btn__n { background: var(--clr-text-invert, #fff); color: var(--clr-accent-text, #1d4ed8); }
 
 /* ── Badges board: bigger badge discs + a "+N" chip for the ones past the 5 shown ── */
 .lb-row--badges .lb-badges { gap: 5px; margin-left: 2px; }
