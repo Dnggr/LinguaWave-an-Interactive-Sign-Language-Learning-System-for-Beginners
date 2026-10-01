@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Same theme-flash-prevention snippet every page in this repo uses.
+       Must stay first in <head>. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/profile.html — Profile page
+    ─────────────────────────────────────────────────────────────────
+    PURPOSE : The learner's own page, laid out like a GitHub profile: picture
+              and name on the left; on the right a year-long Learning Activity
+              grid, Your Highlights and Recent Activity (all three MOVED here
+              from pages/progress.html).
+    PICTURES: Chosen from js/avatars.js (no uploads). Only the picture ID is
+              stored; the leaderboard shows it.
+    SIDEBAR : Same markup as every other page. js/main.js
+              (initSidebarAccountLinks) pins Settings to the bottom and adds
+              the Profile link under it — nothing to hand-edit here.
+    DATA    : window.LWMissions (js/missions.js) for the two stat cards.
+    ─────────────────────────────────────────────────────────────────
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Profile | LinguaWave</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/profile.css" />
+  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  <script src="../js/role-guard.js"></script>
+  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/mobile-nav.js" defer></script>
+  <script src="../js/game-gate.js" defer></script>
+  <link rel="stylesheet" href="../css/xp.css" />
+</head>
+<body>
+
+  <a href="#main" class="skip-link">Skip to Profile</a>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>
+          Dashboard
+        </a>
+        <a href="learn.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>
+          Learn
+        </a>
+        <a href="progress.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>
+          Progress
+        </a>
+        <a href="game.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="5" rx="1"/><rect x="13" y="4" width="8" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><rect x="10" y="11" width="8" height="5" rx="1"/><path d="M4 20h16"/></svg></span>
+          Game
+        </a>
+        <a href="leaderboard.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span>
+          Leaderboard
+        </a>
+        <a href="feedback.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>
+          Feedback
+        </a>
+        <a href="settings.html" class="app-sidebar__link">
+          <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>
+          Settings
+        </a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch"
+                aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-switch__check">
+            <span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span>
+            <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
+          </span>
+        </button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+
+    <div class="app-main" id="main">
+
+      <section class="section section--sm">
+        <div class="container">
+          <h1 class="sr-only">Your Profile</h1>
+
+          <div class="profile-layout">
+
+            <!-- Left column: picture + name. The picker opens from the round button on the picture. -->
+            <aside class="profile-side" aria-label="Your profile">
+              <div class="profile-side__avatar-wrap">
+                <div id="profile-avatar" aria-hidden="true"></div>
+                <button type="button" class="profile-side__change" id="btn-change-avatar"
+                        aria-expanded="false" aria-controls="avatar-panel"
+                        aria-label="Change your picture" title="Change your picture">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>
+                </button>
+              </div>
+              <h2 class="profile-side__name" data-user-name></h2>
+              <p class="text-muted profile-side__sub">Your picture shows next to your name on the leaderboard.</p>
+
+              <div class="profile-side__panel" id="avatar-panel" hidden>
+                <h3 id="avatar-picker-label">Choose your picture</h3>
+                <div class="avatar-picker" id="avatar-picker" role="radiogroup" aria-labelledby="avatar-picker-label"></div>
+                <div class="profile-hero__actions">
+                  <button type="button" class="btn btn--primary btn--sm" id="btn-save-avatar" disabled>Save picture</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="btn-cancel-avatar">Cancel</button>
+                </div>
+              </div>
+            </aside>
+
+            <!-- Right column -->
+            <div class="profile-main">
+              <div class="card" id="profile-activity">
+                <p class="text-muted loading-pulse">Loading your learning activity…</p>
+              </div>
+
+              <div class="profile-pair">
+                <div class="card" id="profile-highlights">
+                  <p class="text-muted loading-pulse">Loading your highlights…</p>
+                </div>
+                <div class="card activity-card" id="profile-recent">
+                  <p class="text-muted loading-pulse">Loading recent activity…</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="../js/xp-config.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/xp.js"></script>
+  <script defer src="../js/missions.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/avatars.js"></script>
+  <script src="../js/profile-page.js"></script>
+</body>
+</html>

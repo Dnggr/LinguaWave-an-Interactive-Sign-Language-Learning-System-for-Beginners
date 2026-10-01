@@ -21,27 +21,9 @@
  *                           — this app's missions ARE the categories
  *                           (Greetings, Numbers, ...), so ranking
  *                           missions by % is the real equivalent.
- *   #progress-activity    → renderActivity()    Recent Activity, grouped
- *                           by the real calendar day items were
- *                           completed on ("+N signs learned" / mission
- *                           completions) — no streak-reached entries,
- *                           since the exact day a streak threshold was
- *                           crossed isn't stored anywhere. Replaces the
- *                           earlier single-list renderRecentActivity().
- *   #progress-consistency → renderConsistency() 5-week GitHub-style
- *                           activity heatmap, built from the same set
- *                           of completedAt dates as Recent Activity
- *                           (a day is "active" if ANY item completed
- *                           that day — matching missions.js's own
- *                           recordActivityToday() rule exactly).
- *   #progress-highlights  → renderHighlights()  Personal bests: longest
- *                           streak, most-practiced mission, missions
- *                           completed, signs mastered. The mockup's
- *                           "Best assessment %" is deliberately omitted
- *                           — js/mastery-quiz.js never persists a score,
- *                           only pass/fail, so there is nothing real to
- *                           show there.
- * Every one of the four handles its own "nothing yet" copy inline, the
+ *   (Recent Activity, the Learning Activity heatmap and Your Highlights used to be
+ *   here — they now live on pages/profile.html, rendered by js/profile-page.js.)
+ * Every one of these handles its own "nothing yet" copy inline, the
  * same convention #next-milestone/#needs-review/#progress-chapters
  * already use, rather than one all-or-nothing empty overlay.
  *
@@ -59,7 +41,7 @@
  * Render order (renderProgressPage()) mirrors the page's visual
  * hierarchy: hero (ring + stats) → celebration banner → contextual
  * recommendation → needs review → chapter timeline → sign mastery →
- * snapshot → recent activity + consistency + highlights.
+ * snapshot.
  * Every renderer reads off the same `missions`/`learnedSigns` arrays
  * computed once per pass, so numbers agree with each other by
  * construction (same rule the original file used for the ring vs.
@@ -78,8 +60,6 @@ const NEEDS_REVIEW_LIMIT = 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Phase 2
 const SNAPSHOT_MAX_ROWS = 2;       // strengths shown, and focus areas shown
-const RECENT_ACTIVITY_MAX_DAYS = 6;
-const HEATMAP_WEEKS = 5;
 // Phase 3 — a chapter's "Just completed" badge (renderChapters()) only
 // shows while its most recent real completedAt is within this window.
 // Not a spec'd number anywhere; 24h reads as "you just did this" without
@@ -215,7 +195,7 @@ const RING_MAX_PX = 280;
 
 /* Set of local-day keys (YYYY-MM-DD) on which the learner completed at
  * least one item — the ONE "was this day active?" signal shared by the
- * Learning Activity heatmap (renderConsistency) and the Day Streak
+ * Learning Activity heatmap (renderConsistency, now in js/profile-page.js) and the Day Streak
  * tile's week strip (buildStreakWeek), so the two can never disagree
  * about which days count. */
 function getActiveDaySet(missions) {
@@ -236,7 +216,7 @@ const WEEKDAY_LETTER = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 function buildStreakWeek(activeDays) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const todayDow = (now.getDay() + 6) % 7; // Mon=0..Sun=6, same as renderConsistency()
+  const todayDow = (now.getDay() + 6) % 7; // Mon=0..Sun=6, same as profile-page.js's renderConsistency()
   const monday = new Date(now);
   monday.setDate(monday.getDate() - todayDow);
 
@@ -1119,192 +1099,9 @@ function renderSnapshot(missions) {
   `;
 }
 
-/* ── PHASE 2 §2 Recent Activity ──────────────────────────────────────
- * Groups every completed item (collectAllCompletions()) by the real
- * calendar day it was completed on. Two kinds of line per day, both
- * derived, nothing invented: "+N signs learned" (count of LESSON items
- * completed that day) and "Completed <mission>" (a mission whose LAST
- * item finished that day — a reasonable stand-in for "the day it was
- * completed," since the app doesn't store a separate mission-completion
- * timestamp). Days with only BOOSTER/PRACTICE/QUIZ activity and no
- * LESSON or mission-completion still show as a lighter "Practiced" line
- * so a day with real activity never renders as an empty entry. */
-function renderActivity(missions) {
-  const el = document.getElementById('progress-activity');
-  const completions = collectAllCompletions(missions);
-
-  if (completions.length === 0) {
-    el.innerHTML = `
-      <h2 class="mb-2">Recent Activity</h2>
-      <p class="text-muted" style="font-size: var(--fs-sm);">
-        Your practice history will show up here once you complete your first lesson.
-      </p>
-    `;
-    return;
-  }
-
-  const byDay = new Map(); // dateKey -> { signs, missionTitles: Set, anyActivity }
-  const dayOf = (c) => byDay.get(localDateKey(c.completedAt))
-    || (byDay.set(localDateKey(c.completedAt), { signs: 0, missionTitles: new Set(), anyActivity: 0 }), byDay.get(localDateKey(c.completedAt)));
-
-  completions.forEach((c) => {
-    const bucket = dayOf(c);
-    bucket.anyActivity++;
-    if (c.item.kind === 'LESSON') bucket.signs++;
-  });
-
-  // Mission-completed lines attach to the day the mission's LAST item finished.
-  missions.forEach((m) => {
-    if (window.LWMissions.getMissionProgress(m) < 1 || !m.items.length) return;
-    let latest = null;
-    m.items.forEach((item, i) => {
-      const at = window.LWMissions.getItemCompletedAt(m, i, item);
-      if (at && (!latest || new Date(at) > new Date(latest))) latest = at;
-    });
-    if (latest) dayOf({ completedAt: latest }).missionTitles.add(m.title);
-  });
-
-  const today = todayKey();
-  const yesterday = localDateKey(new Date(Date.now() - MS_PER_DAY).toISOString());
-  const dayLabel = (key) => {
-    if (key === today) return 'Today';
-    if (key === yesterday) return 'Yesterday';
-    const [y, mo, d] = key.split('-').map(Number);
-    return new Date(y, mo - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-
-  const days = Array.from(byDay.keys()).sort().reverse().slice(0, RECENT_ACTIVITY_MAX_DAYS);
-
-  const rowsHtml = days.map((key) => {
-    const b = byDay.get(key);
-    const lines = [];
-    b.missionTitles.forEach((title) => lines.push(`Completed “${escapeHtml(title)}”`));
-    if (b.signs > 0) lines.push(`+${b.signs} sign${b.signs === 1 ? '' : 's'} learned`);
-    if (!lines.length) lines.push('Practiced existing signs');
-    return `
-      <div class="activity-day">
-        <p class="activity-day__label">${dayLabel(key)}</p>
-        <ul class="activity-day__list">
-          ${lines.map((l) => `<li>✓ ${l}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }).join('');
-
-  el.innerHTML = `<h2 class="mb-3">Recent Activity</h2><div class="activity-list">${rowsHtml}</div>`;
-}
-
-/* ── PHASE 2 §3 Learning consistency heatmap ─────────────────────────
- * GitHub-style grid over the last HEATMAP_WEEKS weeks (Mon–Sun rows,
- * oldest week on the left). "Active" reuses the exact same signal
- * missions.js's recordActivityToday() uses — any item completed that
- * day — via collectAllCompletions(), so this never disagrees with the
- * streak the hero stat tile already shows. */
-function renderConsistency(missions) {
-  const el = document.getElementById('progress-consistency');
-  const activeDays = getActiveDaySet(missions);
-  const streak = window.LWMissions.getStreakSummary();
-
-  const totalDays = HEATMAP_WEEKS * 7;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  // Walk back to the Monday that starts the oldest visible week.
-  const todayDow = (now.getDay() + 6) % 7; // Mon=0..Sun=6
-  const start = new Date(now);
-  start.setDate(start.getDate() - todayDow - (HEATMAP_WEEKS - 1) * 7);
-
-  const cells = [];
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const key = localDateKey(d.toISOString());
-    const isFuture = d > now;
-    cells.push({ key, active: activeDays.has(key), isFuture });
-  }
-  // Transpose into 7 rows (Mon..Sun) × HEATMAP_WEEKS columns for the grid.
-  const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const rows = DOW.map((label, row) => {
-    const rowCells = [];
-    for (let w = 0; w < HEATMAP_WEEKS; w++) {
-      const cell = cells[w * 7 + row];
-      rowCells.push(
-        `<span class="heatmap-cell ${cell.isFuture ? 'heatmap-cell--future' : cell.active ? 'heatmap-cell--active' : 'heatmap-cell--inactive'}" title="${cell.key}"></span>`
-      );
-    }
-    return `<div class="heatmap-row"><span class="heatmap-row__label">${label}</span>${rowCells.join('')}</div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <h2 class="mb-1">Learning Activity</h2>
-    <p class="text-muted mb-3" style="font-size: var(--fs-xs);">Last ${HEATMAP_WEEKS} weeks</p>
-    <div class="heatmap">${rows}</div>
-    <p class="text-muted mt-3" style="font-size: var(--fs-xs);">${streak.currentStreak} day${streak.currentStreak === 1 ? '' : 's'} current streak</p>
-  `;
-}
-
-/* Lucide icons (https://lucide.dev, ISC licence), inlined so the page needs no
- * icon font or network request. All use the 24×24 / stroke-2 / round-cap
- * defaults; colour comes from currentColor via .highlights-row__icon--<tone>.
- * Tones are semantic, not decorative: flame = streak (orange, same token as
- * the "current chapter" dot), check = done (green), award = mastery (violet,
- * which style.css reserves for achievement), hand = sign practice (accent). */
-const HIGHLIGHT_ICON_SVG = (inner) =>
-  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
-const HIGHLIGHT_ICONS = {
-  flame: HIGHLIGHT_ICON_SVG('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
-  hand: HIGHLIGHT_ICON_SVG('<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'),
-  check: HIGHLIGHT_ICON_SVG('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
-  award: HIGHLIGHT_ICON_SVG('<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>'),
-};
-
-/* ── PHASE 2 §4 Personal Bests ────────────────────────────────────────
- * Deliberately 3–4 real numbers, no invented "Best assessment %" — see
- * the file-header note on why that one's left out. "Most practiced"
- * ranks missions by total items completed (an absolute count, unlike
- * Strengths' %), so a big, well-drilled mission can win even if a
- * smaller mission is at a higher percentage. */
-function renderHighlights(missions, learnedSigns) {
-  const el = document.getElementById('progress-highlights');
-  const streak = window.LWMissions.getStreakSummary();
-  const missionsCompleted = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
-  const signs = tallySigns(missions);
-
-  let mostPracticed = null;
-  missions.forEach((m) => {
-    const done = tallyItems([m]).done;
-    if (done > 0 && (!mostPracticed || done > mostPracticed.done)) mostPracticed = { title: m.title, done };
-  });
-
-  if (learnedSigns.length === 0 && streak.longestStreak === 0) {
-    el.innerHTML = `
-      <h2 class="mb-2">Your Highlights</h2>
-      <p class="text-muted" style="font-size: var(--fs-sm);">Keep learning — your personal bests will show up here.</p>
-    `;
-    return;
-  }
-
-  const rows = [
-    { icon: 'flame', tone: 'orange', label: 'Longest streak', value: `${streak.longestStreak} day${streak.longestStreak === 1 ? '' : 's'}` },
-    mostPracticed ? { icon: 'hand', tone: 'accent', label: 'Most practiced', value: mostPracticed.title } : null,
-    { icon: 'check', tone: 'success', label: 'Missions completed', value: String(missionsCompleted) },
-    { icon: 'award', tone: 'violet', label: 'Signs mastered', value: String(signs.mastered) },
-  ].filter(Boolean);
-
-  el.innerHTML = `
-    <h2 class="mb-3">Your Highlights</h2>
-    <ul class="highlights-list">
-      ${rows.map((r) => `
-        <li class="highlights-row">
-          <span class="highlights-row__icon highlights-row__icon--${r.tone}" aria-hidden="true">${HIGHLIGHT_ICONS[r.icon]}</span>
-          <span class="highlights-row__body">
-            <span class="highlights-row__label">${escapeHtml(r.label)}</span>
-            <span class="highlights-row__value">${escapeHtml(r.value)}</span>
-          </span>
-        </li>
-      `).join('')}
-    </ul>
-  `;
-}
+/* Recent Activity (renderActivity), Learning Activity heatmap (renderConsistency) and Your Highlights (renderHighlights)
+ * MOVED to js/profile-page.js / pages/profile.html. Nothing else on this page used them;
+ * getActiveDaySet() above stays because the Day Streak tile's week strip still needs it. */
 
 function showProgressUnavailable(reason) {
   console.error('[progress-page.js] Missions unavailable, showing fallback UI. Reason:', reason);
@@ -1320,10 +1117,8 @@ function showProgressUnavailable(reason) {
   const mastery = document.getElementById('sign-mastery');
   if (mastery) { mastery.hidden = true; mastery.innerHTML = ''; }
   // Phase 2 sections
-  ['progress-snapshot', 'progress-activity', 'progress-consistency', 'progress-highlights'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
-  });
+  const snapshot = document.getElementById('progress-snapshot');
+  if (snapshot) snapshot.innerHTML = `<p class="text-muted">${FALLBACK_MSG}</p>`;
 }
 
 function renderProgressPage() {
@@ -1339,9 +1134,6 @@ function renderProgressPage() {
     renderSignMastery(missions);
     // Phase 2 — "make progress feel personal"
     renderSnapshot(missions);
-    renderActivity(missions);
-    renderConsistency(missions);
-    renderHighlights(missions, learnedSigns);
   } catch (e) {
     console.error('[progress-page.js] rendering failed partway through:', e);
     showProgressUnavailable('render threw: ' + (e && e.message));

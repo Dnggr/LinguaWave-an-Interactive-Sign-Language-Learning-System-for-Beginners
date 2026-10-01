@@ -159,6 +159,44 @@ function initSidebarNavGuard() {
 }
 
 
+/* ── SIDEBAR ACCOUNT LINKS ────────────────────────────────────────
+ * Settings no longer sits in the main list. It is pinned to the bottom
+ * of the sidebar, a thin divider under it, then the Profile link — so the
+ * bottom of the sidebar reads  Settings / ─── / Profile  and then the
+ * theme switch + Log out.
+ * Done here (not in each page's markup) so every learner page gets it from
+ * one place. It only acts on a sidebar that already has a Settings link, so
+ * admin sidebars are untouched; running twice does nothing. Must run BEFORE
+ * initSidebarNavGuard() so the new link is covered by it, which is why it is
+ * called straight away (this script sits at the end of <body>) and again at
+ * the top of DOMContentLoaded for pages that load it differently.
+ * CSS: .app-sidebar__link--pin / .app-sidebar__divider in css/style.css.
+ */
+function initSidebarAccountLinks() {
+  const nav = document.querySelector('.app-sidebar__nav');
+  if (!nav || nav.querySelector('.app-sidebar__link--pin')) return;   // no sidebar, or already done
+  const settings = nav.querySelector('a[href="settings.html"]');
+  if (!settings) return;
+
+  nav.appendChild(settings);                       // make sure it is the last item…
+  settings.classList.add('app-sidebar__link--pin'); // …so its auto top margin pushes the pair to the bottom
+
+  const divider = document.createElement('div');
+  divider.className = 'app-sidebar__divider';
+  divider.setAttribute('role', 'separator');
+  nav.appendChild(divider);
+
+  const onProfile = /^profile(\.html)?$/.test(currentPage());
+  const profile = document.createElement('a');
+  profile.href = 'profile.html';
+  profile.className = 'app-sidebar__link' + (onProfile ? ' active' : '');
+  profile.innerHTML = '<span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="user_round"></span>Profile';
+  nav.appendChild(profile);
+  if (window.LWIcons && typeof window.LWIcons.hydrate === 'function') window.LWIcons.hydrate(nav);
+}
+initSidebarAccountLinks();
+
+
 /* ── PROGRESS BARS: animate fill on page load ────────────────────── */
 /*
  * Reads [data-progress="0-100"] on any .progress-bar__fill element
@@ -266,6 +304,7 @@ function initUserDetails() {
 /* ── INIT ────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
+  initSidebarAccountLinks();
   initSidebarNavGuard();
   initProgressBars();
   initUserDetails();

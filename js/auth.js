@@ -1225,6 +1225,58 @@ async function updateUsername(newName) {
   }
 }
 
+/* ── PROFILE PICTURE ──────────────────────────────────────────────
+ * Learners pick one of the fixed pictures in js/avatars.js; only its ID is
+ * stored (users/{uid}.avatar), never an image or URL. The same pattern is
+ * enforced by firestore.rules, so a console-written value that isn't an
+ * ID is rejected there too.
+ * updateAvatar() also copies the ID onto the learner's leaderboard row
+ * (publicProfiles/{uid}) so the new picture shows up without waiting for
+ * their next XP save. That row only exists for learners who have earned XP
+ * and aren't hidden, so "no row yet" is expected and ignored — js/xp.js puts
+ * the avatar on the row whenever it creates or rewrites it.
+ * getAvatar() reads the stored ID (the session cache can be stale if it was
+ * changed on another device) and refreshes the cache. */
+const AVATAR_ID_RE = /^avatar-\d{2}$/;
+
+async function getAvatar() {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
+  const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+  const id = snap.exists() ? snap.data().avatar : null;
+  const valid = (typeof id === 'string' && AVATAR_ID_RE.test(id)) ? id : null;
+  const cached = getCurrentUser();
+  if (cached && cached.uid === firebaseUser.uid) {
+    cached.avatar = valid;
+    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(cached));
+  }
+  return valid;
+}
+
+async function updateAvatar(avatarId) {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) throw new Error('Not signed in.');
+  if (typeof avatarId !== 'string' || !AVATAR_ID_RE.test(avatarId)) {
+    throw new Error('Pick one of the available profile pictures.');
+  }
+
+  await updateDoc(doc(db, 'users', firebaseUser.uid), { avatar: avatarId });
+
+  try {
+    await updateDoc(doc(db, 'publicProfiles', firebaseUser.uid), { avatar: avatarId });
+  } catch (e) {
+    // not-found = no leaderboard row (yet / hidden / pending deletion). Anything else is
+    // logged but never fails the save: the account itself already has the new picture.
+    if (!e || e.code !== 'not-found') console.warn('[auth] could not update the leaderboard picture:', e);
+  }
+
+  const cached = getCurrentUser();
+  if (cached && cached.uid === firebaseUser.uid) {
+    cached.avatar = avatarId;
+    localStorage.setItem(LW_SESSION_KEY, JSON.stringify(cached));
+  }
+}
+
 /* Changes the learner's login email. Uses verifyBeforeUpdateEmail
  * rather than a bare updateEmail() — Firebase sends a confirmation
  * link to the NEW address, and the login email only actually changes
@@ -1432,6 +1484,8 @@ window.LWAuth = {
   logout,
   sendPasswordReset,
   updateUsername,
+  updateAvatar,
+  getAvatar,
   updateUserEmail,
   changePassword,
   deleteAccount,

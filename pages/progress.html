@@ -84,20 +84,18 @@
         than omitting data that already exists. The Hearts tile shows a
         heart glyph + count ("♥ 3") and the Streak tile shows the day
         count beside this week's Mon–Sun strip (same cell styles as the
-        #progress-consistency heatmap) — see renderHero() /
+        Learning Activity heatmap, now on profile.html) — see renderHero() /
         buildStreakWeek() in js/progress-page.js. Clicking the Streak
         tile opens a dialog (flame, "N Day Streak", last 5 days as check
         boxes) built by openStreakDialog() in the same file; it is
         appended to <body> on demand, so nothing is needed in this markup.
 
-    PHASE 2 : "Make progress feel personal" — four sections added below
+    PHASE 2 : "Make progress feel personal" — sections added below
               the Learning Journey, all derived from the same real data
               (per-item completedAt timestamps + the streak module), same
               "no fabricated data" discipline as Phase 1:
                 #progress-snapshot     Strengths & Focus Areas (per mission)
-                #progress-activity     Recent Activity timeline
-                #progress-consistency  5-week learning-activity heatmap
-                #progress-highlights   Personal bests
+              (Recent Activity, Learning Activity heatmap and Your Highlights moved to pages/profile.html.)
               Each card handles its own "nothing yet" copy inline, the
               same convention #next-milestone/#needs-review/
               #progress-chapters already use — no separate brand-new-
@@ -240,20 +238,6 @@
                above) rather than one big all-or-nothing empty overlay. -->
           <div class="card snapshot-card mt-8" id="progress-snapshot">
             <p class="text-muted loading-pulse">Loading your strengths…</p>
-          </div>
-
-          <div class="progress-activity-row">
-            <div class="card activity-card" id="progress-activity">
-              <p class="text-muted loading-pulse">Loading recent activity…</p>
-            </div>
-            <div class="progress-stack">
-              <div class="card" id="progress-consistency">
-                <p class="text-muted loading-pulse">Loading your learning activity…</p>
-              </div>
-              <div class="card" id="progress-highlights">
-                <p class="text-muted loading-pulse">Loading your highlights…</p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
