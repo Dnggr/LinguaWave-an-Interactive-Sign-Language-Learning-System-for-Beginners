@@ -1117,6 +1117,28 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   padding-top: var(--space-4); margin-top: var(--space-4);
   border-top: 1px solid var(--clr-border);
 }
+/* Account links (js/main.js initSidebarAccountLinks): Settings is pinned to the bottom of the
+   nav (auto top margin; the nav is flex:1), then a thin divider, then Profile. */
+.app-sidebar__link--pin { margin-top: auto; }
+.app-sidebar__divider { height: 1px; margin: var(--space-1) var(--space-3); background: var(--clr-border); flex-shrink: 0; }
+@media (max-width: 900px) {
+  /* Old horizontal-row fallback (menu script not ready): a 1px-tall divider would look like a glitch. */
+  .app-sidebar:not(.lw-nav-ready) .app-sidebar__divider { display: none; }
+}
+
+/* Profile pictures (js/avatars.js). Round, fixed-size; no picture picked -> initial on the accent tint. */
+.lw-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: block;
+  object-fit: cover; background: var(--clr-surface-2); border: 2px solid var(--clr-border);
+}
+.lw-avatar--initial {
+  display: grid; place-items: center; font-weight: 700; line-height: 1;
+  color: var(--clr-accent-text); background: var(--clr-accent-soft);
+}
+.lw-avatar--lg { width: 64px; height: 64px; }
+.lw-avatar--xl { width: 96px; height: 96px; }
+.lw-avatar--lg.lw-avatar--initial { font-size: 1.5rem; }
+.lw-avatar--xl.lw-avatar--initial { font-size: 2.25rem; }
 .app-main { flex: 1; min-width: 0; }
 
 /* ── 18. TOGGLE SWITCH (shared form control) ────────────────────────

@@ -27,6 +27,12 @@
 
   function levelRowLabel(level) { const t = X.tierOf(level); return `<div class="lb-lv" style="--tier:${esc(t.color)}" title="${esc(t.name)}">${level}</div>`; }
 
+  // Profile picture (learner's chosen ID from js/avatars.js). No pick yet -> a circle with their initial.
+  function avatarCell(r) {
+    if (window.LWAvatars) return window.LWAvatars.markup(r.avatar, { name: r.name });
+    return `<span class="lw-avatar lw-avatar--initial" aria-hidden="true">${esc(String(r.name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
+  }
+
   function rowHtml(r, rank, kind) {
     const s = SCORE[kind](r), mine = me && r.uid === me.uid;
     // Hover labels (title) + aria-label so each badge icon is named for mouse and screen-reader users alike.
@@ -37,6 +43,7 @@
     return `<li class="lb-row${mine ? ' is-me' : ''}${rank <= 3 ? ' is-top' : ''}${kind === 'badges' ? ' lb-row--badges' : ''}">
       <div class="lb-rank">${rank}</div>
       ${levelRowLabel(r.level || 1)}
+      ${avatarCell(r)}
       <div><div class="lb-name">${esc(r.name || 'Learner')}${mine ? ' (you)' : ''}</div>
         <div class="lb-meta"><span class="lb-stat lb-stat--streak" title="Day streak" aria-label="${r.streak || 0} day streak">${ico('flame', { size: 'sm' })}${r.streak || 0}</span><span class="lb-stat" title="Badges earned" aria-label="${r.badgeCount || 0} badges earned">${ico('medal', { size: 'sm' })}${r.badgeCount || 0}</span><span class="lb-badges">${icons}${more}</span></div></div>
       <div class="lb-score">${esc(s.big)}<small>${esc(s.small)}</small></div></li>`;

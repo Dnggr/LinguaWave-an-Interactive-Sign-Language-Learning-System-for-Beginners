@@ -1,0 +1,132 @@
+/* css/profile.css — pages/profile.html
+ * GitHub-style profile: picture + name in a left column, a year-long
+ * activity grid and the stat cards on the right. The base .lw-avatar look
+ * lives in css/style.css (shared with the leaderboard). */
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+.profile-main { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+.profile-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .profile-layout { grid-template-columns: 1fr; gap: var(--space-6); }
+  .profile-pair { grid-template-columns: 1fr; }
+}
+
+/* ── Left column: picture, name, picker ─────────────────────────── */
+.profile-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.profile-side__avatar-wrap { position: relative; width: 100%; max-width: 280px; }
+@media (max-width: 900px) { .profile-side__avatar-wrap { width: 168px; } }
+
+/* The big picture: fills the column as a circle. */
+.lw-avatar--hero { width: 100%; height: auto; aspect-ratio: 1; border-width: 1px; }
+.lw-avatar--hero.lw-avatar--initial { font-size: clamp(3.5rem, 10vw, 6.5rem); }
+
+/* Small round button over the picture's corner (same spot as GitHub's). */
+.profile-side__change {
+  position: absolute; right: 6px; bottom: 6px;
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; padding: 0;
+  background: var(--clr-surface); color: var(--clr-text-muted);
+  border: 1px solid var(--clr-border-strong, var(--clr-border));
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.profile-side__change:hover,
+.profile-side__change[aria-expanded="true"] { color: var(--clr-accent-text); border-color: var(--clr-accent); }
+.profile-side__change:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 2px; }
+
+.profile-side__name { margin: var(--space-2) 0 0; font-size: var(--fs-2xl); line-height: 1.2; overflow-wrap: anywhere; }
+.profile-side__sub { margin: 0; font-size: var(--fs-sm); }
+
+.profile-side__panel {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-surface);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.profile-side__panel[hidden] { display: none; }
+.profile-side__panel h3 { margin: 0; font-size: var(--fs-base); }
+
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: var(--space-3);
+}
+/* Real radio inputs (native keyboard + screen-reader behaviour), made invisible and stretched over the picture. */
+.avatar-option { position: relative; display: block; border-radius: 50%; cursor: pointer; }
+.avatar-option input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; opacity: 0; cursor: pointer; z-index: 1;
+}
+.avatar-option .lw-avatar {
+  width: 100%; height: auto; aspect-ratio: 1;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.avatar-option:hover .lw-avatar { border-color: var(--clr-border-strong); }
+.avatar-option input:checked + .lw-avatar {
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px var(--clr-accent-soft);
+}
+.avatar-option input:focus-visible + .lw-avatar { outline: 3px solid var(--clr-accent); outline-offset: 2px; }
+
+.profile-hero__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* ── Learning Activity: one box per day, a full year (GitHub-style) ──
+ * Separate from the .heatmap-cell styles in app.css, which the Progress
+ * page's Day Streak week strip still uses. */
+.gh-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.gh-head h2 { margin: 0; }
+.gh-head__total { margin: 0; font-size: var(--fs-sm); color: var(--clr-text-muted); }
+
+.gh-scroll { overflow-x: auto; padding-bottom: var(--space-2); }
+.gh-heatmap {
+  --gh-gap: 3px;
+  display: grid;
+  grid-template-columns: auto repeat(53, minmax(10px, 1fr));
+  column-gap: var(--gh-gap);
+  row-gap: var(--gh-gap);
+  min-width: 720px;
+}
+.gh-month {
+  grid-row: 1;
+  width: 0; min-width: 0; overflow: visible; white-space: nowrap;
+  font-size: var(--fs-xs); line-height: 1; padding-bottom: var(--space-1);
+  color: var(--clr-text-muted);
+}
+.gh-day {
+  grid-column: 1; align-self: center;
+  padding-right: var(--space-2);
+  font-size: 10px; line-height: 1; white-space: nowrap;
+  color: var(--clr-text-muted);
+}
+.gh-cell {
+  width: 100%; aspect-ratio: 1; align-self: start;
+  border-radius: 3px;
+  background: var(--clr-track);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--clr-text) 6%, transparent);
+}
+.gh-cell--l1 { background: color-mix(in srgb, var(--clr-success) 35%, var(--clr-track)); }
+.gh-cell--l2 { background: color-mix(in srgb, var(--clr-success) 58%, var(--clr-track)); }
+.gh-cell--l3 { background: color-mix(in srgb, var(--clr-success) 80%, var(--clr-track)); }
+.gh-cell--l4 { background: var(--clr-success); }
+.gh-cell--future { visibility: hidden; }
+.gh-cell--today { outline: 2px solid var(--clr-accent); outline-offset: 1px; }
+
+.gh-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); }
+.gh-foot__streak { margin: 0; font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.gh-legend { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--clr-text-muted); }
+.gh-legend .gh-cell { width: 12px; height: 12px; aspect-ratio: auto; align-self: auto; }
+.gh-legend span:first-child { margin-right: 2px; }
+.gh-legend span:last-child { margin-left: 2px; }

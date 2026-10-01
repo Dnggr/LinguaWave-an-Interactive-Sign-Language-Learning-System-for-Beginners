@@ -234,7 +234,7 @@ function summary(state, now, out) {
     streak: effectiveStreak(state.streak, today), longestStreak: state.streak.longest,
     dailyLessonXp: state.daily.lessonXp, dailyGameXp: state.daily.gameXp, dailyGameCap: ECON.GAME.DAILY_XP_CAP };
 }
-function publicProfile(state, name, now) {
+function publicProfile(state, name, now, avatar) {
   const today = dayKey(now, state.tz || 'UTC'), live = effectiveStreak(state.streak, today);
   const recent = Object.entries(state.badges).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
   return {
@@ -242,6 +242,7 @@ function publicProfile(state, name, now) {
     streak: live, longestStreak: state.streak.longest,
     streakExpiresAt: live > 0 ? startOfDayMs(shiftDayKey(state.streak.lastDay, 2), state.tz || 'UTC') : null,   // ms; loadBoard zeroes expired streaks
     badgeCount: Object.keys(state.badges).length, recentBadges: recent, updatedAt: serverTimestamp(),
+    ...(avatar ? { avatar } : {}),   // picture ID only (see js/avatars.js); omitted until the learner picks one
   };
 }
 
@@ -263,13 +264,13 @@ async function whenReady() {
 async function nameInfo() {
   const id = uid();
   if (nameCache && nameCache.uid === id) return nameCache;
-  let name = '', deletion = false;
+  let name = '', deletion = false, avatar = '';
   try {
     const snap = await getDoc(doc(db, 'users', id));
-    if (snap.exists()) { const d = snap.data(); name = typeof d.name === 'string' ? d.name : ''; deletion = d.deletionRequested === true; }
+    if (snap.exists()) { const d = snap.data(); name = typeof d.name === 'string' ? d.name : ''; deletion = d.deletionRequested === true; avatar = (typeof d.avatar === 'string' && /^avatar-\d{2}$/.test(d.avatar)) ? d.avatar : ''; }
   } catch { /* fall through */ }
   if (!name) { try { name = (window.LWAuth?.getCurrentUser?.() || {}).name || ''; } catch { /* ignore */ } }
-  nameCache = { uid: id, name: (name || '').trim().slice(0, 30) || 'Learner', deletion };
+  nameCache = { uid: id, name: (name || '').trim().slice(0, 30) || 'Learner', deletion, avatar };
   return nameCache;
 }
 
@@ -291,7 +292,7 @@ async function withState(fn) {
     if (out.reject) return { ok: false, reason: out.reject };
     if (out.skipStateWrite) return summary(state, now, out);
     tx.set(stateRef, state);
-    if (state.hidden || info.deletion) tx.delete(pubRef); else tx.set(pubRef, publicProfile(state, info.name, now));
+    if (state.hidden || info.deletion) tx.delete(pubRef); else tx.set(pubRef, publicProfile(state, info.name, now, info.avatar));
     return summary(state, now, out);
   });
 }
