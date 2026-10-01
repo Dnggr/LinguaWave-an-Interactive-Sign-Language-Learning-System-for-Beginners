@@ -8,8 +8,12 @@
  *      (js/auth.js), which also updates their leaderboard row.
  *   2. Learning Activity   (#profile-activity)   — GitHub-style grid: one box
  *      per day for the last year, month names across the top, weekday names
- *      down the side, darker box = more activity that day.
+ *      down the side, darker box = more activity that day. Built from the
+ *      same completions the Progress page counts (signs learned + practice).
  *   3. Your Highlights     (#profile-highlights) — personal bests.
+ *      Achievements       (#profile-achievements) — badges under the picture,
+ *      earned from the same real progress numbers (signs learned, missions
+ *      completed, longest streak). Locked ones are shown dimmed.
  *   4. Recent Activity     (#profile-recent)     — per-day list ("+N signs
  *      learned"). Same code js/progress-page.js's renderActivity() had.
  * (2), (3) and (4) MOVED here from the Progress page. Same data source
@@ -108,10 +112,13 @@ function activityLevel(n) {
  * weekday is named down the side. Boxes after today stay empty placeholders. */
 function renderConsistency(missions) {
   const el = document.getElementById('profile-activity');
-  const countByDay = new Map();
+  // Per day: signs learned (LESSON items) and other practice (booster / practice / quiz).
+  const byDay = new Map();
   collectAllCompletions(missions).forEach((c) => {
     const k = localDateKey(c.completedAt);
-    countByDay.set(k, (countByDay.get(k) || 0) + 1);
+    const b = byDay.get(k) || { signs: 0, other: 0 };
+    if (c.item.kind === 'LESSON') b.signs++; else b.other++;
+    byDay.set(k, b);
   });
   const streak = window.LWMissions.getStreakSummary();
 
@@ -120,7 +127,7 @@ function renderConsistency(missions) {
   const start = new Date(now);
   start.setDate(start.getDate() - now.getDay() - (HEATMAP_WEEKS - 1) * 7); // the Sunday that starts the oldest column
 
-  let total = 0;
+  let total = 0, signsTotal = 0;
   const cells = [];
   let marks = [];
   for (let w = 0; w < HEATMAP_WEEKS; w++) {
@@ -134,10 +141,15 @@ function renderConsistency(missions) {
         cells.push(`<span class="gh-cell gh-cell--future" style="${pos}"></span>`);
         continue;
       }
-      const n = countByDay.get(localDateKey(date.toISOString())) || 0;
+      const b = byDay.get(localDateKey(date.toISOString())) || { signs: 0, other: 0 };
+      const n = b.signs + b.other;
       total += n;
+      signsTotal += b.signs;
       const when = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      const what = n === 0 ? 'No activity' : `${n} ${n === 1 ? 'activity' : 'activities'}`;
+      const parts = [];
+      if (b.signs) parts.push(`${b.signs} sign${b.signs === 1 ? '' : 's'} learned`);
+      if (b.other) parts.push(`${b.other} practice or quiz ${b.other === 1 ? 'item' : 'items'}`);
+      const what = parts.length ? parts.join(', ') : 'No activity';
       const isToday = date.getTime() === now.getTime();
       cells.push(`<span class="gh-cell gh-cell--l${activityLevel(n)}${isToday ? ' gh-cell--today' : ''}" style="${pos}" title="${what} on ${when}"></span>`);
     }
@@ -154,21 +166,21 @@ function renderConsistency(missions) {
   el.innerHTML = `
     <div class="gh-head">
       <h2>Learning Activity</h2>
-      <p class="gh-head__total">${total} ${total === 1 ? 'activity' : 'activities'} in the last year</p>
+      <p class="gh-head__total">${signsTotal} sign${signsTotal === 1 ? '' : 's'} learned · ${total} ${total === 1 ? 'activity' : 'activities'} in the last year</p>
     </div>
     <div class="gh-scroll">
-      <div class="gh-heatmap" role="img" aria-label="${total} activities in the last year. Each box is one day; darker boxes mean more activity.">
+      <div class="gh-heatmap" role="img" aria-label="${signsTotal} signs learned and ${total} activities in the last year. Each box is one day; darker boxes mean more activity.">
         ${months}${days}${cells.join('')}
       </div>
     </div>
     <div class="gh-foot">
-      <p class="gh-foot__streak">${streak.currentStreak} day${streak.currentStreak === 1 ? '' : 's'} current streak</p>
+      <p class="gh-foot__streak">${streak.currentStreak} day${streak.currentStreak === 1 ? '' : 's'} current streak · longest ${streak.longestStreak} day${streak.longestStreak === 1 ? '' : 's'}</p>
       <div class="gh-legend" aria-hidden="true"><span>Less</span>${legend}<span>More</span></div>
     </div>
   `;
   // Start scrolled to today on narrow screens.
   const scroller = el.querySelector('.gh-scroll');
-  if (scroller) scroller.scrollLeft = scroller.scrollWidth;
+  if (scroller && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft = scroller.scrollWidth;
 }
 
 /* Recent Activity — moved from js/progress-page.js (renderActivity). Groups
@@ -294,6 +306,56 @@ function renderHighlights(missions, learnedSigns) {
   `;
 }
 
+/* ── ACHIEVEMENTS ─────────────────────────────────────────────────────
+ * Every badge is a threshold on a real number: signs learned (LESSON items
+ * completed), missions completed, longest streak. Nothing is stored — the
+ * badges are re-derived on each render, so they always match Progress. */
+const BADGE_SVG = (inner) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
+const BADGE_ICONS = {
+  hand: HIGHLIGHT_ICONS.hand.replace(/ width="18" height="18"/, ''),
+  flame: HIGHLIGHT_ICONS.flame.replace(/ width="18" height="18"/, ''),
+  check: HIGHLIGHT_ICONS.check.replace(/ width="18" height="18"/, ''),
+  award: HIGHLIGHT_ICONS.award.replace(/ width="18" height="18"/, ''),
+  book: BADGE_SVG('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
+  star: BADGE_SVG('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
+  trophy: BADGE_SVG('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-1.04 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98 1.04 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>'),
+  zap: BADGE_SVG('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
+};
+
+function renderAchievements(missions, learnedSigns) {
+  const el = document.getElementById('profile-achievements');
+  if (!el) return;
+  const streak = window.LWMissions.getStreakSummary();
+  const missionsDone = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
+  const signs = learnedSigns.length;
+
+  const badges = [
+    { icon: 'hand',   tone: 'accent',  title: 'First sign',     hint: 'Learn your first sign',       earned: signs >= 1 },
+    { icon: 'book',   tone: 'accent',  title: '10 signs',       hint: 'Learn 10 signs',              earned: signs >= 10 },
+    { icon: 'star',   tone: 'yellow',  title: '25 signs',       hint: 'Learn 25 signs',              earned: signs >= 25 },
+    { icon: 'trophy', tone: 'violet',  title: '50 signs',       hint: 'Learn 50 signs',              earned: signs >= 50 },
+    { icon: 'check',  tone: 'success', title: 'First mission',  hint: 'Complete a mission',          earned: missionsDone >= 1 },
+    { icon: 'award',  tone: 'violet',  title: '3 missions',     hint: 'Complete 3 missions',         earned: missionsDone >= 3 },
+    { icon: 'flame',  tone: 'orange',  title: '3-day streak',   hint: 'Practice 3 days in a row',    earned: streak.longestStreak >= 3 },
+    { icon: 'zap',    tone: 'orange',  title: '7-day streak',   hint: 'Practice 7 days in a row',    earned: streak.longestStreak >= 7 },
+  ];
+  const earnedCount = badges.filter((b) => b.earned).length;
+  const next = badges.find((b) => !b.earned);
+
+  el.innerHTML = `
+    <div class="achv-head"><h3>Achievements</h3><span>${earnedCount} of ${badges.length}</span></div>
+    <ul class="achv-grid">
+      ${badges.map((b) => `
+        <li class="achv ${b.earned ? `achv--earned achv--${b.tone}` : 'achv--locked'}" title="${escapeHtml(b.title)} — ${b.earned ? 'earned' : escapeHtml(b.hint)}">
+          ${BADGE_ICONS[b.icon]}
+          <span class="sr-only">${escapeHtml(b.title)}: ${b.earned ? 'earned' : 'locked. ' + escapeHtml(b.hint)}</span>
+        </li>`).join('')}
+    </ul>
+    ${next ? `<p class="achv-next">Next: ${escapeHtml(next.hint.charAt(0).toLowerCase() + next.hint.slice(1))}</p>` : '<p class="achv-next">You\'ve earned every achievement.</p>'}
+  `;
+}
+
 /* ── PROFILE PICTURE ──────────────────────────────────────────────── */
 let savedAvatarId = null;      // what is stored on the account
 let selectedAvatarId = null;   // what is currently highlighted in the picker
@@ -310,6 +372,8 @@ function currentName() {
 function paintHeaderAvatar() {
   const slot = document.getElementById('profile-avatar');
   if (slot) slot.innerHTML = window.LWAvatars.markup(selectedAvatarId, { size: 'hero', name: currentName() });
+  const preview = document.getElementById('avatar-dialog-preview');
+  if (preview) preview.innerHTML = window.LWAvatars.markup(selectedAvatarId, { size: 'lg', name: currentName() });
 }
 
 function syncSaveButton() {
@@ -327,14 +391,26 @@ function renderPicker() {
     </label>`).join('');
 }
 
+/* The picker is a native <dialog>: showModal() gives the focus trap and Esc.
+ * Anything that closes it without saving (Esc, Cancel, X, a click on the
+ * backdrop) puts the big picture back to what is saved — see the 'close'
+ * listener in initAvatar(). */
 function setPickerOpen(open) {
-  const panel = document.getElementById('avatar-panel');
+  const dlg = document.getElementById('avatar-panel');
   const toggle = document.getElementById('btn-change-avatar');
-  if (!panel || !toggle) return;
-  panel.hidden = !open;
-  toggle.setAttribute('aria-expanded', String(open));
-  if (!open && selectedAvatarId !== savedAvatarId) {
-    // Closing without saving puts the picture back to what is saved.
+  if (!dlg) return;
+  if (open && !dlg.open) {
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+  } else if (!open && dlg.open) {
+    if (typeof dlg.close === 'function') dlg.close(); else { dlg.removeAttribute('open'); onPickerClosed(); }
+  }
+}
+
+function onPickerClosed() {
+  const toggle = document.getElementById('btn-change-avatar');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  if (selectedAvatarId !== savedAvatarId) {
     selectedAvatarId = savedAvatarId;
     renderPicker(); paintHeaderAvatar(); syncSaveButton();
   }
@@ -375,11 +451,12 @@ async function initAvatar() {
     paintHeaderAvatar(); syncSaveButton();
   });
   document.getElementById('btn-save-avatar').addEventListener('click', saveAvatar);
-  document.getElementById('btn-change-avatar').addEventListener('click', () => {
-    const open = document.getElementById('avatar-panel').hidden;
-    setPickerOpen(open);
-  });
+  const dlg = document.getElementById('avatar-panel');
+  document.getElementById('btn-change-avatar').addEventListener('click', () => setPickerOpen(true));
   document.getElementById('btn-cancel-avatar').addEventListener('click', () => setPickerOpen(false));
+  document.getElementById('btn-close-avatar').addEventListener('click', () => setPickerOpen(false));
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) setPickerOpen(false); });   // backdrop click
+  dlg.addEventListener('close', onPickerClosed);
 
   // The session cache can be stale (picture changed on another device), so
   // confirm against the account once auth is ready — unless the learner has
@@ -403,6 +480,7 @@ function renderStats() {
     renderConsistency(missions);
     renderHighlights(missions, collectLearnedSigns(missions));
     renderRecentActivity(missions);
+    renderAchievements(missions, collectLearnedSigns(missions));
   } catch (e) {
     console.error('[profile-page.js] rendering failed:', e);
     showStatsUnavailable();
@@ -410,7 +488,7 @@ function renderStats() {
 }
 
 function showStatsUnavailable() {
-  ['profile-activity', 'profile-highlights', 'profile-recent'].forEach((id) => {
+  ['profile-activity', 'profile-highlights', 'profile-recent', 'profile-achievements'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<p class="text-muted">We couldn\'t load this right now.</p>';
   });
@@ -423,6 +501,10 @@ function initPage() {
   // away, then re-render once cross-device progress has synced.
   renderStats();
   window.LWMissions.whenMissionsSyncReady().then(renderStats);
+  // Keep the grid, highlights and badges in step with the learner's progress:
+  // re-read it whenever they come back to this tab after learning elsewhere.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderStats(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) renderStats(); });
 }
 
 if (document.readyState === 'loading') {
