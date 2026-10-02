@@ -135,15 +135,30 @@ function weekKeyUtc(ms) {                       // must match the key leaderboar
   const y0 = Date.UTC(d.getUTCFullYear(), 0, 1);
   return `${d.getUTCFullYear()}-W${String(Math.ceil(((d - y0) / 86400000 + 1) / 7)).padStart(2, '0')}`;
 }
+/* Day streak rules (same as js/missions.js "Day Streak" - keep the two in step).
+ * GRACE: ONE missed calendar day is forgiven (the next activity "restores" the streak and still
+ * counts +1); TWO missed days in a row reset it. It counts ACTIVE days, not calendar days:
+ * Mon no / Tue yes / Wed no / Thu yes / Fri yes  ->  Tue, Thu, Fri = 3. */
+const STREAK_MAX_MISSED_DAYS = 1;
+function dayGap(a, b) {                          // whole calendar days from key a to key b (b - a)
+  const [ay, am, ad] = a.split('-').map(Number), [by, bm, bd] = b.split('-').map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+}
 function applyStreak(s, today) {
   const cur = s || { current: 0, longest: 0, lastDay: null };
-  if (cur.lastDay === today) return { ...cur };
-  const next = cur.lastDay === shiftDayKey(today, -1) ? cur.current + 1 : 1;
+  if (cur.lastDay && cur.lastDay >= today) return { ...cur };   // already counted today (or the clock reads earlier): never double count, never reset
+  const missed = cur.lastDay ? dayGap(cur.lastDay, today) - 1 : Infinity;
+  const next = missed <= STREAK_MAX_MISSED_DAYS ? (cur.current || 0) + 1 : 1;
   return { current: next, longest: Math.max(cur.longest || 0, next), lastDay: today };
 }
 function effectiveStreak(s, today) {
   if (!s || !s.lastDay) return 0;
-  return (s.lastDay === today || s.lastDay === shiftDayKey(today, -1)) ? s.current : 0;
+  return dayGap(s.lastDay, today) - 1 <= STREAK_MAX_MISSED_DAYS ? s.current : 0;
+}
+/* Streak shown for a stored xpState doc, as of right now in that doc's own timezone. */
+function liveStreakOf(state) {
+  if (!state || !state.streak) return 0;
+  try { return effectiveStreak(state.streak, dayKey(Date.now(), state.tz || 'UTC')); } catch { return 0; }
 }
 function lessonItemXp(kind, bonusXP) {
   const base = ECON.LESSON_ITEM_XP[kind];
@@ -235,6 +250,21 @@ function touchStreak(state, today, out, now) {
   state.streak = applyStreak(state.streak, today);
   streakBadgesFor(state.streak.current).forEach((id) => grant(state, id, out, now));
 }
+/* One-off catch-up. Streaks stored BEFORE the grace rule were counted strictly (Tue, Thu, Fri = 2) and
+ * xpState keeps no day history to recount from, so the stored number would stay one short for good.
+ * js/missions.js keeps the day list and already applies the grace rule: when both agree on the last
+ * active day and missions has the higher live count, raise this one to match. Never lowers anything. */
+function healStreakFromMissions(state, today, out, now) {
+  const M = window.LWMissions;
+  if (!M || typeof M.getStreakSummary !== 'function' || !state.streak || !state.streak.lastDay) return false;
+  let m; try { m = M.getStreakSummary(); } catch { return false; }
+  if (!m || m.lastActivityDate !== state.streak.lastDay) return false;          // different last day (or timezone): leave it alone
+  if (effectiveStreak(state.streak, today) === 0) return false;                 // already ended
+  if (!(m.currentStreak > (state.streak.current || 0))) return false;
+  state.streak = { current: m.currentStreak, longest: Math.max(state.streak.longest || 0, m.currentStreak), lastDay: state.streak.lastDay };
+  streakBadgesFor(state.streak.current).forEach((id) => grant(state, id, out, now));
+  return true;
+}
 function summary(state, now, out) {
   const today = dayKey(now, state.tz || 'UTC');
   return { ok: true, ...out, xp: state.xp, level: state.level, weeklyXp: state.weeklyXp,
@@ -247,7 +277,7 @@ function publicProfile(state, name, now, avatar) {
   return {
     name, xp: state.xp, level: state.level, weeklyXp: state.weeklyXp, weekKey: state.weekKey,
     streak: live, longestStreak: state.streak.longest,
-    streakExpiresAt: live > 0 ? startOfDayMs(shiftDayKey(state.streak.lastDay, 2), state.tz || 'UTC') : null,   // ms; loadBoard zeroes expired streaks
+    streakExpiresAt: live > 0 ? startOfDayMs(shiftDayKey(state.streak.lastDay, STREAK_MAX_MISSED_DAYS + 2), state.tz || 'UTC') : null,   // ms; loadBoard zeroes expired streaks
     badgeCount: Object.keys(state.badges).length, recentBadges: recent, updatedAt: serverTimestamp(),
     ...(avatar ? { avatar } : {}),   // picture ID only (see js/avatars.js); omitted until the learner picks one
   };
@@ -596,6 +626,14 @@ async function loadBoard(kind) {
   rows.sort((a, c) => ((c[tie] || 0) - (a[tie] || 0)) || ((c.xp || 0) - (a.xp || 0)));
   return rows;
 }
+/** Call on the Profile page: brings a pre-grace-rule streak up to date (see healStreakFromMissions). Resolves with the summary. */
+async function syncStreak() {
+  for (let i = 0; i < 30 && !(window.LWMissions && window.LWMissions.getStreakSummary); i++) await sleep(100);   // missions.js is a deferred classic script
+  if (!window.LWMissions) return { ok: false, reason: 'no_missions' };
+  try {
+    return await withState((state, { now, today }) => (healStreakFromMissions(state, today, {}, now) ? {} : { skipStateWrite: true }));
+  } catch (e) { console.warn('[xp] streak sync failed', e); return { ok: false, reason: 'sync_failed' }; }
+}
 async function setVisibility(visible) {
   try { return await withState((state) => { state.hidden = !visible; return { hidden: state.hidden }; }); }
   catch (e) { reportProblem(e && e.code === 'permission-denied' ? 'rules' : 'unreachable', e); throw e; }
@@ -635,7 +673,7 @@ whenReady().then(async () => { await reconcileWithAccount(); flush(); backfillOn
 
 window.LWXP = {
   claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
-  getMyState, loadBoard, BOARDS, setVisibility, onUpdate, notify,
+  getMyState, loadBoard, BOARDS, setVisibility, onUpdate, notify, liveStreakOf, syncStreak,
   levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId, config: CFG, timezone: TZ,
   getLatest: () => latest,
   purgeOrphans, reconcileWithAccount,

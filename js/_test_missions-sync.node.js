@@ -144,7 +144,7 @@ async function scenario2_migration_pushesLocalUp() {
       completedItemIds: ['m1_0_LESSON_HELLO'],
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z' },
     }),
-    lw_missions_streak_v1: JSON.stringify({ uid, v: 2, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
+    lw_missions_streak_v1: JSON.stringify({ uid, v: 3, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: [] }),
   };
   const { sandbox, backend } = loadMissionsInFreshContext({ localStorageInitial: localInitial, loggedInUid: uid });
@@ -172,7 +172,7 @@ async function scenario3_reconcile_mergesProgressAndStreak() {
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_1_LESSON_HI'],
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_1_LESSON_HI: '2026-09-02T12:00:00.000Z' },
     },
-    streak: { v: 2, current: 1, longest: 4, lastActivityDate: '2026-09-03', recentDays: ['2026-09-03'] },
+    streak: { v: 3, current: 1, longest: 4, lastActivityDate: '2026-09-03', recentDays: ['2026-09-03'] },
     hearts: { lostAt: ['2026-09-05T10:00:00.000Z'] },
   });
 
@@ -182,7 +182,7 @@ async function scenario3_reconcile_mergesProgressAndStreak() {
       completedItemIds: ['m1_0_LESSON_HELLO', 'm1_2_LESSON_MORNING'], // one overlapping, one local-only
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_2_LESSON_MORNING: '2026-09-04T12:00:00.000Z' },
     }),
-    lw_missions_streak_v1: JSON.stringify({ uid, v: 2, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
+    lw_missions_streak_v1: JSON.stringify({ uid, v: 3, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
     lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: ['2026-09-06T00:00:00.000Z'] }), // stale local-only loss
   };
 

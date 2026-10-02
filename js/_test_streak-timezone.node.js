@@ -5,8 +5,10 @@
  * RULES UNDER TEST (see the "Day Streak" block in missions.js):
  *   - calendar days in the learner's LOCAL timezone, never 24h windows / UTC
  *   - only recordActivity(<qualifying type>) counts; markItemComplete() alone does not
- *   - 2nd activity the same day changes nothing; yesterday -> +1; a missed day -> reset
- *   - state = { current, longest, lastActivityDate, recentDays }
+ *   - 2nd activity the same day changes nothing; yesterday -> +1
+ *   - GRACE: ONE missed day is forgiven (counts as a restored streak), TWO missed
+ *     days in a row reset it; the streak counts active days, not calendar days
+ *   - state = { current, longest, lastActivityDate, lastRestoredDate, recentDays }
  *   - legacy `{ days }` saves are migrated from real completion timestamps
  *
  * HISTORY: the old streak keyed days by UTC (`toISOString().slice(0,10)`), which
@@ -157,28 +159,73 @@ const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
   assert(L.getStreakSummary().currentStreak === 0, 'markItemComplete / markMissionComplete alone do not extend the streak');
 }
 
-// 7. A missed full calendar day resets: current -> 1 on return, longest kept.
+// 7. TWO missed days in a row reset: current -> 1 on return, longest kept.
 {
   const { L, setNow } = makeEnv();
   [21, 22, 23].forEach((d) => { setNow(2026, 9, d, 8, 0); act(L); });
-  setNow(2026, 9, 25, 8, 0); // the 24th was missed entirely
-  assert(L.getStreakSummary().currentStreak === 0, 'after a missed day the streak reads 0');
+  setNow(2026, 9, 26, 8, 0); // the 24th AND 25th were missed
+  assert(L.getStreakSummary().currentStreak === 0, 'after two missed days in a row the streak reads 0');
   assert(L.getStreakSummary().longestStreak === 3, 'longest streak is kept after the reset');
-  act(L);
-  const s = L.getStreakSummary();
-  assert(s.currentStreak === 1 && s.longestStreak === 3, `returning after a gap restarts at 1 (got ${s.currentStreak}/${s.longestStreak})`);
+  const r = act(L);
+  const s2 = L.getStreakSummary();
+  assert(r.restored === false && s2.currentStreak === 1 && s2.longestStreak === 3, `returning after 2 missed days restarts at 1, not restored (got ${s2.currentStreak}/${s2.longestStreak})`);
 }
 
-// 8. Yesterday still counts as live until today ends; two days ago does not.
+// 7b. ONE missed day is forgiven: the next activity restores the streak and
+//     keeps counting (the screenshot rule).
+{
+  const { L, setNow } = makeEnv();
+  [21, 22, 23].forEach((d) => { setNow(2026, 9, d, 8, 0); act(L); });
+  setNow(2026, 9, 25, 8, 0); // only the 24th was missed
+  let s2 = L.getStreakSummary();
+  assert(s2.currentStreak === 3 && s2.atRisk === true && s2.practicedToday === false, 'one missed day: streak still alive (3) and flagged atRisk');
+  const r = act(L);
+  s2 = L.getStreakSummary();
+  assert(r.counted === true && r.restored === true && s2.currentStreak === 4 && s2.restoredToday === true, `activity after one missed day restores and counts: 3 -> 4 (got ${s2.currentStreak})`);
+  assert(act(L).counted === false && L.getStreakSummary().currentStreak === 4, 'a second activity the same day does not increase it again');
+  setNow(2026, 9, 26, 8, 0);
+  s2 = L.getStreakSummary();
+  assert(s2.restoredToday === false && s2.atRisk === false && s2.currentStreak === 4, 'next day: no longer "restored today", streak intact');
+  act(L);
+  assert(L.getStreakSummary().currentStreak === 5, 'streak keeps growing normally after a restore');
+}
+
+// 7c. THE SCREENSHOT EXAMPLE: Mon no, Tue yes, Wed no, Thu yes, Fri yes -> 3.
+{
+  const { L, setNow } = makeEnv();
+  setNow(2026, 9, 29, 9, 0); act(L);            // Tue (Mon 28th: nothing)
+  setNow(2026, 9, 30, 9, 0);                    // Wed: nothing
+  assert(L.getStreakSummary().currentStreak === 1, 'Wed (no activity yet): Tue streak still live');
+  setNow(2026, 10, 1, 9, 0);  act(L);           // Thu
+  assert(L.getStreakSummary().currentStreak === 2, 'Thu after a missed Wed: restored, 2');
+  setNow(2026, 10, 2, 9, 0);  act(L);           // Fri
+  const s2 = L.getStreakSummary();
+  assert(s2.currentStreak === 3 && s2.longestStreak === 3, `Tue, Thu, Fri -> streak 3 (got ${s2.currentStreak}/${s2.longestStreak})`);
+}
+
+// 7d. Alternating pattern forever survives (every other day); a 2-day hole kills it.
+{
+  const { L, setNow } = makeEnv();
+  [1, 3, 5, 7, 9].forEach((d) => { setNow(2026, 9, d, 9, 0); act(L); });
+  assert(L.getStreakSummary().currentStreak === 5, 'every-other-day practice keeps a streak of 5 active days');
+  setNow(2026, 9, 12, 9, 0); // 10th and 11th missed
+  assert(L.getStreakSummary().currentStreak === 0, 'two missed days after that: reset');
+}
+
+// 8. Liveness window: last active the 28th. 29th and 30th still live (the 30th is
+//    "at risk"), the 1st (two full days missed) is not.
 {
   const { L, setNow } = makeEnv();
   setNow(2026, 9, 27, 6, 7); act(L);
   setNow(2026, 9, 28, 6, 7); act(L);
   setNow(2026, 9, 29, 6, 7);
-  const s = L.getStreakSummary();
-  assert(s.currentStreak === 2 && s.practicedToday === false, 'streak from yesterday is live this morning, practicedToday false');
+  let s2 = L.getStreakSummary();
+  assert(s2.currentStreak === 2 && s2.practicedToday === false && s2.atRisk === false, 'streak from yesterday is live this morning, practicedToday false, not at risk');
   setNow(2026, 9, 30, 6, 7);
-  assert(L.getStreakSummary().currentStreak === 0, 'streak is 0 once a full day has been missed');
+  s2 = L.getStreakSummary();
+  assert(s2.currentStreak === 2 && s2.atRisk === true, 'one missed day: still 2, flagged atRisk');
+  setNow(2026, 10, 1, 6, 7);
+  assert(L.getStreakSummary().currentStreak === 0, 'two missed days in a row: streak is 0');
 }
 
 // 9. Stored shape: exactly current / longest / lastActivityDate (+ recentDays).
@@ -187,7 +234,7 @@ const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
   setNow(2026, 9, 10, 9, 0); act(L);
   setNow(2026, 9, 11, 9, 0); act(L);
   const r = raw(store);
-  assert(r.current === 2 && r.longest === 2 && r.lastActivityDate === key(2026, 9, 11) && r.v === 2,
+  assert(r.current === 2 && r.longest === 2 && r.lastActivityDate === key(2026, 9, 11) && r.v === 3 && r.lastRestoredDate === null,
     `saved state has current/longest/lastActivityDate (got ${JSON.stringify(r)})`);
   assert(JSON.stringify(r.recentDays) === JSON.stringify([key(2026, 9, 10), key(2026, 9, 11)]), 'recentDays lists the active local dates');
 }
@@ -237,9 +284,47 @@ const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
   assert(s.currentStreak === 2 && s.longestStreak === 2 && s.lastActivityDate === key(2026, 9, 29),
     `legacy data is rebuilt from real completions: Mon+Tue -> 2, the replay-only Wed is dropped (got ${s.currentStreak}/${s.longestStreak}/${s.lastActivityDate})`);
   const r = raw(store);
-  assert(r.v === 2 && r.current === 2 && r.lastActivityDate === key(2026, 9, 29) && !('days' in r), 'migration persisted the new shape');
+  assert(r.v === 3 && r.current === 2 && r.lastActivityDate === key(2026, 9, 29) && !('days' in r), 'migration persisted the new shape');
   L.getStreakSummary();
   assert(raw(store).current === 2, 'migration is idempotent');
+}
+
+// 12b. v2 -> v3 migration (the strict, no-grace version). The state from the
+//      screenshot: Tue, Thu, Fri active, v2 said current 2. Under the grace rule it is 3,
+//      and a long v2 streak is never lowered.
+{
+  const { L, store, setNow } = makeEnv({
+    localStorageInitial: {
+      lw_missions_progress_v1: JSON.stringify({ uid: null, completedItemIds: [], completedAt: {} }),
+      lw_missions_streak_v1: JSON.stringify({ uid: null, v: 2, current: 2, longest: 2, lastActivityDate: key(2026, 10, 2), recentDays: [key(2026, 9, 29), key(2026, 10, 1), key(2026, 10, 2)] }),
+    },
+  });
+  setNow(2026, 10, 2, 22, 37);
+  const s2 = L.getStreakSummary();
+  assert(s2.currentStreak === 3 && s2.longestStreak === 3 && s2.practicedToday === true, `v2 state Tue/Thu/Fri is re-counted to 3 (got ${s2.currentStreak}/${s2.longestStreak})`);
+  assert(raw(store).v === 3 && raw(store).current === 3, 'migration persisted as v3');
+  const e2 = makeEnv({
+    localStorageInitial: {
+      lw_missions_progress_v1: JSON.stringify({ uid: null, completedItemIds: [], completedAt: {} }),
+      lw_missions_streak_v1: JSON.stringify({ uid: null, v: 2, current: 40, longest: 40, lastActivityDate: key(2026, 10, 2), recentDays: [key(2026, 10, 1), key(2026, 10, 2)] }),
+    },
+  });
+  e2.setNow(2026, 10, 2, 12, 0);
+  assert(e2.L.getStreakSummary().currentStreak === 40, 'a long v2 streak is never lowered by the migration');
+}
+
+// 12c. A v3 save that was written short (Tue, Thu, Fri active but current stored as 2,
+//      e.g. merged from another device) heals itself; a legitimately reset streak does not.
+{
+  const mk = (state) => makeEnv({ localStorageInitial: {
+    lw_missions_progress_v1: JSON.stringify({ uid: null, completedItemIds: [], completedAt: {} }),
+    lw_missions_streak_v1: JSON.stringify({ uid: null, ...state }) } });
+  const a = mk({ v: 3, current: 2, longest: 2, lastActivityDate: key(2026, 10, 2), lastRestoredDate: null, recentDays: [key(2026, 9, 29), key(2026, 10, 1), key(2026, 10, 2)] });
+  a.setNow(2026, 10, 2, 22, 37);
+  assert(a.L.getStreakSummary().currentStreak === 3, 'v3 save stored short (2) with Tue/Thu/Fri heals to 3');
+  const b = mk({ v: 3, current: 1, longest: 3, lastActivityDate: key(2026, 10, 2), lastRestoredDate: null, recentDays: [key(2026, 9, 25), key(2026, 9, 26), key(2026, 9, 27), key(2026, 10, 2)] });
+  b.setNow(2026, 10, 2, 22, 37);
+  assert(b.L.getStreakSummary().currentStreak === 1, 'a real reset (gap of 4 days) stays at 1 - not "healed"');
 }
 
 // 13. Legacy data with NO timestamps at all keeps the old days as they are.
