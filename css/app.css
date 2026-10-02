@@ -889,6 +889,7 @@
 .lesson-media__fallback--text-only .lesson-media__img { display: none; }
 .lesson-media__img { max-width: 60%; max-height: 60%; object-fit: contain; }
 .lesson-media__hint { font-size: var(--fs-xs); margin: 0; }
+.lesson-media__caption { font-size: var(--fs-sm); margin: var(--space-2) 0 var(--space-4); text-align: center; }
 .lesson-media--missing {
   padding: var(--space-8);
   text-align: center;

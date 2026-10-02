@@ -199,5 +199,71 @@ for (let i = 0; i < 3; i++) window.LWMissions.markItemComplete(walkMission, i, w
 check('getDropOffIndex resumes mid-mission at the right index',
   window.LWMissions.getDropOffIndex(walkMission) === 3);
 
+// ── 11. Question sanity (this revision) — every question must have
+//       exactly one right answer and must not hand it over ──────────
+global.localStorage._reset();
+{
+  const L = window.LWMissionsLoop, M = window.LWMissions;
+  const g = M.getMissionForCategory('essentials_greetings');
+  const chap = M.getCategorySigns(g.level, g.category);
+
+  // register question: one right answer, answer is the twin, no own word, no shared-sign distractor
+  [['HI', 'HELLO'], ['BYE', 'GOODBYE'], ['NIGHT', 'EVENING']].forEach(([id, twin]) => {
+    const r = L.registerPromptFor(id, g.level, chap);
+    const twinTitle = L.signTitle(g.level, twin), ownTitle = L.signTitle(g.level, id);
+    check(`${id} register answer is its twin ${twin}`, r.answer === twinTitle);
+    check(`${id} register options include the answer exactly once`, r.options.filter((o) => o === r.answer).length === 1);
+    check(`${id} register options never repeat the sign being asked about`, r.options.indexOf(ownTitle) === -1);
+    check(`${id} register options are unique and 3 long`, new Set(r.options).size === 3 && r.options.length === 3);
+  });
+
+  // the old "which fits best?" wording is gone
+  check('no register prompt asks "fits best"', ['HI', 'BYE', 'NIGHT'].every((id) => !/fits best|Which fits/i.test(L.registerPromptFor(id, g.level, chap).prompt)));
+
+  // across EVERY live mission: no recognize option / discriminate partner is the same sign as the answer
+  let bad = 0, checked = 0;
+  M.getAllMissions().forEach((m) => {
+    const cs = M.getCategorySigns(m.level, m.category);
+    m.items.forEach((item, i) => {
+      if (!item.signId) return;
+      const plan = L.planForItem(m, i, item);
+      const opts = plan.options || plan.recognizeOptions;
+      if (opts) {
+        opts.options.forEach((id) => { checked++; if (id !== opts.correct && L.areSameSign(id, opts.correct, m.level)) { bad++; console.error('same-sign option', m.id, item.signId, id); } });
+        if (new Set(opts.options).size !== opts.options.length) { bad++; console.error('duplicate option', m.id, item.signId); }
+      }
+      if (plan.discriminatePair && L.areSameSign(plan.discriminatePair.neighborSignId, item.signId, m.level)) { bad++; console.error('same-sign pair', m.id, item.signId); }
+      if (plan.registerPrompt) {
+        const r = plan.registerPrompt;
+        if (r.options.filter((o) => o === r.answer).length !== 1) { bad++; console.error('register answer count', m.id, item.signId); }
+      }
+    });
+  });
+  check(`no unfair/duplicate answer options across all missions (${checked} options checked)`, bad === 0);
+
+  // BATHROOM/TOILET-style: two signs sharing one video are never offered against each other
+  check('areSameSign catches identical-video signs', L.areSameSign('BATHROOM', 'TOILET', 'medium'));
+  check('areSameSign does not flag different signs', !L.areSameSign('HELLO', 'MORNING', 'medium'));
+
+  // context prompts: no leftover blanks
+  check('no CONTEXT_PROMPT contains a ___ blank', Object.values(L._internals.CONTEXT_PROMPTS).every((p) => p.indexOf('___') === -1));
+}
+
+// ── 12. Every sign in every mission gets a specific "Try it yourself"
+//       instruction (no generic fallback, no blanks) ───────────────
+{
+  const L = window.LWMissionsLoop, M = window.LWMissions;
+  let generic = 0, blanks = 0, total = 0;
+  M.getAllMissions().forEach((m) => m.items.forEach((item) => {
+    if (!item.signId) return;
+    total++;
+    const p = L.contextPromptFor(m.level, item.signId);
+    if (/^Now sign /.test(p)) { generic++; console.error('generic context prompt for', m.id, item.signId); }
+    if (p.indexOf('___') !== -1 || !p.trim()) blanks++;
+  }));
+  check(`every sign item (${total}) has a specific context prompt`, generic === 0);
+  check('no context prompt has a blank', blanks === 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail > 0 ? 1 : 0);

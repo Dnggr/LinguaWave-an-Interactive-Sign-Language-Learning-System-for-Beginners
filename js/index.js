@@ -1,103 +1,217 @@
 /**
- * functions/index.js — LinguaWave Cloud Functions
+ * functions/index.js — Admin-only Cloud Function (NEW)
  * ─────────────────────────────────────────────────────────────────
  * deleteLearnerAccount({ uid })
- *   Admin-only. Deletes the learner's Firebase Auth login AND all of their
- *   Firestore data:
- *     users/{uid}  (+ any subcollections)
- *     userProgress/{uid}, userProgressV2/{uid}, userGame/{uid},
- *     xpState/{uid}, publicProfiles/{uid}   (leaderboard copy)
- *     surveys/*  where userId == uid
+ *   Deletes a learner COMPLETELY: their Firebase Authentication login
+ *   and their Firestore data (users/{uid} plus every subcollection).
  *
- *   Order: Auth first, Firestore second. If a step fails midway the admin
- *   can simply press Delete again — every step tolerates "already gone".
+ * WHY A FUNCTION : a browser can only delete the account that is
+ *   currently signed in. Removing someone else's login needs the
+ *   Admin SDK, which only runs on a server. This is that server piece.
  *
- * KEEP IN SYNC: ADMIN_EMAIL (also in firestore.rules, js/admin-auth.js,
- *   js/role-guard.js, js/admin-login.js, js/admin-firebase.js, index.html)
- *   and PER_UID_COLLECTIONS (also js/admin-firebase.js).
+ * WHO MAY CALL IT : only the single admin account. The check uses the
+ *   caller's verified Firebase token (request.auth), not anything the
+ *   browser sends, so it can't be faked from devtools.
  *
- * Needs the Blaze plan to deploy. Requires firebase-functions >= 4 and
- * firebase-admin >= 11 in functions/package.json (Node 18+).
- * Deploy:  firebase deploy --only functions
+ * KEEP IN SYNC : ADMIN_EMAIL below = js/admin-auth.js = js/role-guard.js
+ *   = index.html (LW_ADMIN_EMAIL) = firestore.rules.
+ *
+ * ORDER : Auth first, then Firestore. If Auth deletion fails nothing is
+ *   touched, so a learner is never left with data but no login (or the
+ *   reverse). An already-missing Auth user is treated as success so a
+ *   retry can finish cleaning up leftover Firestore data.
+ *
+ * Deploy: see ADMIN_SETUP.md ("Deleting learners"). Needs the Blaze plan.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * 2026-09-29 — checkEmailDeliverability({ email })  (NEW, PUBLIC callable)
+ *   Signup pre-check. js/auth.js register() calls this BEFORE creating the
+ *   Firebase account, so a clearly unusable address (bad syntax, a domain
+ *   with no mail server such as a mistyped "gmail.co", a disposable
+ *   address, a mailbox the SMTP probe says does not exist) never becomes
+ *   an account. All decision logic lives in functions/email-check.js.
+ *
+ *   ROLE OF REACHER: a pre-filter only. "Reacher says safe" does NOT mean
+ *   the person owns the mailbox — Firebase's verification email does that.
+ *
+ *   The browser never sees Reacher or its secret: browser -> this
+ *   function -> Reacher. The function returns ONLY { ok, reason?, checked }.
+ *
+ *   ONE-TIME SETUP (before deploying this function):
+ *     1. Run Reacher somewhere with outbound port 25 (NOT inside Cloud
+ *        Functions — GCP blocks port 25). e.g. Docker image
+ *        reacherhq/backend, and set its RCH__HEADER_SECRET.
+ *     2. firebase functions:secrets:set REACHER_SECRET      (that header value)
+ *     3. Create functions/.env containing:
+ *          REACHER_URL=https://your-reacher-host      (no trailing path)
+ *          REACHER_REJECT_DISPOSABLE=true             (optional, default true)
+ *     4. firebase deploy --only functions
+ *   With REACHER_URL empty/unset the function still works: it falls back
+ *   to a plain DNS MX/A lookup (weaker — no mailbox-level check).
+ *
+ *   FAILS OPEN: if Reacher is down/slow, the result is DNS-only, and if
+ *   DNS is inconclusive the address is allowed. That is safe because an
+ *   account with an unverified email gets NO learner access (js/auth.js).
+ *
+ *   ABUSE NOTE: it has to be callable by signed-out visitors (they have no
+ *   account yet), so it has a small per-IP limiter (in-memory, per
+ *   instance — best effort, not a hard guarantee). Consider Firebase App
+ *   Check if this ever gets abused.
+ * ─────────────────────────────────────────────────────────────────
+ * 2026-09-30 — XP / levels / badges / streaks / leaderboards  (NEW, see functions/xp.js)
+ *   claimLessonItem, claimMissionComplete, startGameSession, finishGameSession,
+ *   backfillLegacyProgress, setLeaderboardVisibility, expireStaleStreaks (scheduled hourly).
+ *   All XP state is written ONLY here (Admin SDK); firestore.rules deny client writes to it.
+ *   deleteLearnerAccount below also removes the learner's XP data.
  * ─────────────────────────────────────────────────────────────────
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { defineSecret, defineString } = require("firebase-functions/params");
+const emailCheck = require("./email-check");
+const xp = require("./xp");
+const { deleteXpData, deleteProgressData, resetLearnerProgressData } = require("./xp-cleanup");
 
 admin.initializeApp();
 
 const ADMIN_EMAIL = "linguawave.project@gmail.com";
-const PER_UID_COLLECTIONS = [
-  "userProgress",
-  "userProgressV2",
-  "userGame",
-  "xpState",
-  "publicProfiles",
-];
 
 exports.deleteLearnerAccount = onCall(async (request) => {
-  // ── who is asking? (token comes from Firebase, not from client data) ──
-  if (!request.auth) {
+  const caller = request.auth;
+  const callerEmail = (caller?.token?.email || "").toLowerCase();
+
+  if (!caller) {
     throw new HttpsError("unauthenticated", "Sign in first.");
   }
-  const callerEmail = String(request.auth.token.email || "").toLowerCase();
-  if (callerEmail !== ADMIN_EMAIL) {
-    throw new HttpsError("permission-denied", "Only the admin can delete learners.");
+  if (callerEmail !== ADMIN_EMAIL.toLowerCase() || caller.token.email_verified === false) {
+    throw new HttpsError("permission-denied", "Only the admin account can delete learners.");
   }
 
-  // ── what are they asking for? ──
   const uid = request.data && request.data.uid;
-  if (typeof uid !== "string" || !uid || uid.length > 128 || uid.includes("/")) {
-    throw new HttpsError("invalid-argument", "A valid learner uid is required.");
+  if (typeof uid !== "string" || !uid) {
+    throw new HttpsError("invalid-argument", "A learner uid is required.");
   }
-  if (uid === request.auth.uid) {
-    throw new HttpsError("failed-precondition", "The admin account can't be deleted.");
+  if (uid === caller.uid) {
+    throw new HttpsError("failed-precondition", "The admin account can't delete itself.");
   }
 
-  const auth = admin.auth();
-  const db = admin.firestore();
-
-  // ── 1. Auth login ──
-  let authDeleted = false;
+  // 1) Authentication login.
   try {
-    const target = await auth.getUser(uid);
-    if (String(target.email || "").toLowerCase() === ADMIN_EMAIL) {
-      throw new HttpsError("failed-precondition", "The admin account can't be deleted.");
-    }
-    await auth.deleteUser(uid);
-    authDeleted = true;
+    await admin.auth().deleteUser(uid);
   } catch (err) {
-    if (err instanceof HttpsError) throw err;
     if (err.code !== "auth/user-not-found") {
-      logger.error("deleteLearnerAccount: auth step failed", { uid, err });
-      throw new HttpsError("internal", "Couldn't delete the login: " + (err.message || err.code));
+      console.error("deleteUser failed", uid, err);
+      throw new HttpsError("internal", "Couldn't delete the login. Nothing else was removed.");
     }
-    // Already gone from Auth (e.g. a retry) — carry on and clean Firestore.
   }
 
-  // ── 2. Firestore data ──
+  // 2) Firestore data: users/{uid} and all of its subcollections.
   try {
-    await db.recursiveDelete(db.collection("users").doc(uid));
-    await Promise.all(
-      PER_UID_COLLECTIONS.map((c) => db.recursiveDelete(db.collection(c).doc(uid)))
-    );
-
-    const surveys = await db.collection("surveys").where("userId", "==", uid).get();
-    if (!surveys.empty) {
-      const writer = db.bulkWriter();
-      surveys.forEach((s) => writer.delete(s.ref));
-      await writer.close();
-    }
+    await admin.firestore().recursiveDelete(admin.firestore().doc(`users/${uid}`));
   } catch (err) {
-    logger.error("deleteLearnerAccount: firestore step failed", { uid, err });
+    console.error("recursiveDelete failed", uid, err);
     throw new HttpsError(
       "internal",
-      "Login removed but some data couldn't be deleted — press Delete again to retry: " +
-        (err.message || err.code)
+      "The login was deleted but some data couldn't be removed. Try deleting again."
     );
   }
 
-  logger.info("deleteLearnerAccount: done", { uid, authDeleted });
-  return { ok: true, authDeleted };
+  // 3) XP state, public leaderboard profile, game session, audit events.
+  try {
+    await deleteXpData(uid);
+    await deleteProgressData(uid);   // userProgress / userProgressV2 / userGame are NOT under users/{uid}
+  } catch (err) {
+    console.error("deleteXpData failed", uid, err);
+    throw new HttpsError("internal", "The login was deleted but some XP data couldn't be removed. Try deleting again.");
+  }
+
+  return { ok: true, uid };
 });
+
+/* ── RESET PROGRESS (admin only): keeps Auth login + users/{uid}; wipes XP, leaderboard row and lesson progress ── */
+exports.resetLearnerProgress = onCall(async (request) => {
+  const caller = request.auth;
+  if (!caller) throw new HttpsError("unauthenticated", "Sign in first.");
+  if ((caller.token.email || "").toLowerCase() !== ADMIN_EMAIL.toLowerCase() || caller.token.email_verified === false) {
+    throw new HttpsError("permission-denied", "Only the admin account can reset learners.");
+  }
+  const uid = request.data && request.data.uid;
+  if (typeof uid !== "string" || !uid) throw new HttpsError("invalid-argument", "A learner uid is required.");
+  if (uid === caller.uid) throw new HttpsError("failed-precondition", "The admin account can't reset itself.");
+  try {
+    await resetLearnerProgressData(uid);
+  } catch (err) {
+    console.error("resetLearnerProgress failed", uid, err);
+    throw new HttpsError("internal", "Couldn't reset this learner's progress. Try again.");
+  }
+  return { ok: true, uid };
+});
+
+/* ── XP system (functions/xp.js) ─────────────────────────────────── */
+exports.claimLessonItem = xp.claimLessonItem;
+exports.claimMissionComplete = xp.claimMissionComplete;
+exports.startGameSession = xp.startGameSession;
+exports.finishGameSession = xp.finishGameSession;
+exports.backfillLegacyProgress = xp.backfillLegacyProgress;
+exports.setLeaderboardVisibility = xp.setLeaderboardVisibility;
+exports.expireStaleStreaks = xp.expireStaleStreaks;
+exports.syncPublicProfileFromUser = xp.syncPublicProfileFromUser;
+
+/* ── checkEmailDeliverability ───────────────────────────────────── */
+const REACHER_URL = defineString("REACHER_URL", { default: "" });
+const REACHER_SECRET = defineSecret("REACHER_SECRET"); // never sent to the browser
+const REACHER_REJECT_DISPOSABLE = defineString("REACHER_REJECT_DISPOSABLE", { default: "true" });
+
+// Best-effort per-IP limiter (memory is per function instance, so this
+// slows a single abuser rather than guaranteeing a global cap).
+const CHECK_WINDOW_MS = 60 * 1000;
+const CHECK_MAX_PER_WINDOW = 10;
+const checkHits = new Map();
+
+function tooManyChecks(ip) {
+  const now = Date.now();
+  if (checkHits.size > 2000) {
+    for (const [key, entry] of checkHits) if (entry.resetAt <= now) checkHits.delete(key);
+  }
+  const entry = checkHits.get(ip);
+  if (!entry || entry.resetAt <= now) {
+    checkHits.set(ip, { count: 1, resetAt: now + CHECK_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > CHECK_MAX_PER_WINDOW;
+}
+
+exports.checkEmailDeliverability = onCall(
+  { secrets: [REACHER_SECRET], timeoutSeconds: 30 },
+  async (request) => {
+    const raw = request.data && request.data.email;
+    if (typeof raw !== "string") {
+      throw new HttpsError("invalid-argument", "An email address is required.");
+    }
+
+    const ip = (request.rawRequest && request.rawRequest.ip) || "unknown";
+    if (tooManyChecks(ip)) {
+      throw new HttpsError("resource-exhausted", "Too many checks. Please wait a minute and try again.");
+    }
+
+    const email = emailCheck.normalizeEmail(raw);
+    const verdict = await emailCheck.checkEmailDeliverability(email, {
+      url: REACHER_URL.value(),
+      secret: REACHER_SECRET.value(),
+      rejectDisposable: String(REACHER_REJECT_DISPOSABLE.value()).toLowerCase() !== "false",
+      timeoutMs: 12000,
+      log: (msg) => console.warn(msg),
+    });
+
+    // Log the domain only — no full addresses in Cloud Logging.
+    console.log(JSON.stringify({
+      fn: "checkEmailDeliverability",
+      domain: email.includes("@") ? email.slice(email.lastIndexOf("@") + 1).toLowerCase() : null,
+      ok: verdict.ok, reason: verdict.reason || null, checked: verdict.checked,
+    }));
+
+    // Only these three fields ever reach the browser (no raw Reacher JSON).
+    return { ok: verdict.ok, reason: verdict.reason || null, checked: verdict.checked };
+  }
+);

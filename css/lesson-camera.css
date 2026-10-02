@@ -527,3 +527,51 @@
   font-style: italic;
   justify-content: center;
 }
+
+/* ── LOCKED PRACTICE CHECK (sign has no trained data in labels.json) ────
+   Set by applyPracticeCheckLock() in js/camera-practice.js. The button stays
+   focusable + clickable (aria-disabled, NOT the disabled attribute) so the
+   click can open the "no trained data yet" modal and hover/focus can show
+   the tooltip — a truly disabled button swallows both. */
+#btn-start-assessment.is-locked {
+  position: relative;
+  opacity: .6;
+  cursor: not-allowed;
+  filter: grayscale(.4);
+}
+#btn-start-assessment.is-locked:hover { transform: none; box-shadow: none; }
+#btn-start-assessment.is-locked::after {
+  content: attr(data-lock-tip);
+  position: absolute;
+  left: 50%; bottom: calc(100% + var(--space-2));
+  transform: translateX(-50%);
+  width: max-content; max-width: min(280px, 90vw);
+  padding: var(--space-2) var(--space-3);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-size: var(--fs-xs); font-weight: 600; line-height: 1.4; text-align: center;
+  white-space: normal;
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s ease;
+  z-index: 5;
+}
+#btn-start-assessment.is-locked:hover::after,
+#btn-start-assessment.is-locked:focus-visible::after { opacity: 1; }
+.practice-check-locked-note { margin: var(--space-2) 0 0; }
+.practice-check-locked-note[hidden] { display: none; }
+
+/* No-trained-data modal (reuses .completion-overlay / .completion-card) */
+.untrained-card { padding: var(--space-8); }
+.untrained-card__icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; margin-bottom: var(--space-3);
+  border-radius: 50%;
+  background: var(--clr-surface-2, var(--clr-border));
+  color: var(--clr-accent);
+}
+.untrained-card__icon .lw-icon { width: 26px; height: 26px; }
+.untrained-card__text { margin: var(--space-3) 0 var(--space-5); line-height: 1.5; }
+.untrained-card .btn { margin-top: var(--space-2); }

@@ -8737,6 +8737,27 @@ function getSignV2(level, signId, category) {
 }
 
 /**
+ * NEW — every distinct videoUrl on file for a signId, across ALL levels and
+ * categories. 80 signIds are taught in more than one lesson, and each copy
+ * carries its own videoUrl; some of those files don't exist yet. lesson.js
+ * lists these as fallback <source>s so a sign shows a video whenever ANY
+ * copy of it has one. `firstUrl` (the entry actually being displayed) is
+ * always placed first, so behaviour is unchanged when its file exists.
+ * @param {string} signId
+ * @param {string} [firstUrl]
+ * @returns {string[]}
+ */
+function getSignVideoUrlsV2(signId, firstUrl) {
+  const upper = String(signId || '').toUpperCase();
+  const urls = [];
+  if (firstUrl) urls.push(firstUrl);
+  SIGNS_V2.forEach(s => {
+    if (s.signId === upper && s.videoUrl && urls.indexOf(s.videoUrl) === -1) urls.push(s.videoUrl);
+  });
+  return urls;
+}
+
+/**
  * Returns the ordered array of signId strings that belong to a
  * given level + category (only signs with an actual SIGNS_V2 content
  * entry — comingSoon categories with no SIGNS_V2 entries return []).
@@ -10192,6 +10213,7 @@ function getCategoriesForUnitV2(unitOrder) {
     // accessors. Purely
     // additive: nothing above this line changed shape or behavior.
     getSign: getSignV2,
+    getSignVideoUrls: getSignVideoUrlsV2,   // NEW — all videoUrls for a signId (fallback chain for lesson.js)
     getCategorySigns: getCategorySignsV2,
     getCategoriesForLevel: getCategoriesForLevelV2,
     getCategory: getCategoryV2,
