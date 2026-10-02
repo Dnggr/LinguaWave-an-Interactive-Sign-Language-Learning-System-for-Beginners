@@ -335,7 +335,9 @@ async function testConsistency() {
 
   // writer payload keys match the rules' allowed keys
   const fb = read('js/feedback.js');
-  const ruleKeys = /d\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/.exec(rules)[1].split(',').map((s) => s.trim().replace(/'/g, '')).sort().join();
+  const surveyRules = rules.split('match /surveys/{id}')[1] || '';
+  const allowedSurveyKeys = /d\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/.exec(surveyRules);
+  const ruleKeys = allowedSurveyKeys ? allowedSurveyKeys[1].split(',').map((s) => s.trim().replace(/'/g, '')).sort().join() : '';
   check('rules allowed top-level keys === writer keys', ruleKeys === 'answers,level,submittedAt,userEmail,userId,userName', ruleKeys);
   check('feedback.js does not import from window.LWAuth handles (one Firebase init)', !/initializeApp|firebaseConfig/.test(fb));
   check('feedback.js module import comes from ./auth.js', /from '\.\/auth\.js'/.test(fb));

@@ -62,7 +62,6 @@ import {
 import {
   query,
   where,
-  writeBatch,
   getDoc,
   setDoc,
   deleteDoc,
@@ -107,91 +106,33 @@ export async function listUsers() {
 export function updateUserLevel(uid, level) {
   return updateDoc(doc(db, "users", uid), { level });
 }
-// Every collection keyed by the learner's uid (doc id === uid).
-// Keep in sync with firestore.rules AND functions/index.js.
-const PER_UID_COLLECTIONS = [
-  "userProgress",
-  "userProgressV2",
-  "userGame",
-  "xpState",
-  "publicProfiles", // leaderboard copy — must go, or the deleted learner stays on it
-];
-
-// Callable errors that mean "the Cloud Function isn't there / can't run".
-const FUNCTION_UNREACHABLE = [
-  "functions/not-found",
-  "functions/unavailable",
-  "functions/internal",
-  "functions/deadline-exceeded",
-];
-
-/**
- * Deletes ALL of a learner's Firestore data from the browser (the admin's
- * rules allow it): users/{uid}, the per-uid collections above, and every
- * surveys/* document they submitted. One atomic batch — all or nothing.
- */
-async function deleteLearnerFirestoreData(uid) {
-  const surveys = await getDocs(
-    query(collection(db, "surveys"), where("userId", "==", uid))
-  );
-  const batch = writeBatch(db);
-  PER_UID_COLLECTIONS.forEach((c) => batch.delete(doc(db, c, uid)));
-  surveys.forEach((s) => batch.delete(s.ref));
-  batch.delete(doc(db, "users", uid)); // profile last in the list (the row the admin sees)
-  await batch.commit();
-}
-
 /**
  * Deletes a learner COMPLETELY.
- *  1. Preferred: the admin-only `deleteLearnerAccount` Cloud Function removes
- *     the Firebase Auth login AND all Firestore data server-side.
- *  2. If the function isn't reachable (not deployed / project on the free
- *     Spark plan), the Firestore data is still deleted from the browser, and
- *     the result says `authDeleted: false` so the UI can tell the admin to
- *     remove the login in Firebase console -> Authentication.
- * A browser CANNOT delete another user's Auth login (needs the Admin SDK) —
- * that part only ever happens in the Cloud Function.
+ * The admin-only Cloud Function removes the Firebase Auth login and all
+ * Firestore data, including server-owned XP documents. There is deliberately
+ * no browser fallback: client rules deny writes to XP collections.
  *
- * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function"|"browser"}>}
- * Other errors (e.g. permission-denied) are re-thrown untouched.
+ * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function"}>}
  */
 export async function deleteLearnerAccount(uid) {
-  try {
-    const call = httpsCallable(getFunctions(auth.app), "deleteLearnerAccount");
-    await call({ uid });
-    return { authDeleted: true, firestoreDeleted: true, via: "function" };
-  } catch (err) {
-    if (!FUNCTION_UNREACHABLE.includes(err?.code)) throw err;
-    console.warn("[deleteLearnerAccount] Cloud Function unreachable:", err?.code, err?.message);
-  }
-  await deleteLearnerFirestoreData(uid);
-  return { authDeleted: false, firestoreDeleted: true, via: "browser" };
+  const call = httpsCallable(getFunctions(auth.app), "deleteLearnerAccount");
+  await call({ uid });
+  return { authDeleted: true, firestoreDeleted: true, via: "function" };
 }
 
 /**
  * RESET PROGRESS (not Delete Account): keeps the Auth login and users/{uid}; removes XP, level, streak,
  * badges, the leaderboard row and all lesson progress. Writes users/{uid}.progressResetAt so the learner's
  * browser wipes its LOCAL copy on next load (js/auth.js applyProgressResetIfNeeded) instead of pushing it back.
- * Preferred path: the admin-only `resetLearnerProgress` Cloud Function; fallback: one atomic browser batch
- * (admin rules allow the deletes and the users update).
+ * The admin-only `resetLearnerProgress` Cloud Function performs the reset.
+ * There is no browser fallback because XP state is server-owned.
  *
- * @returns {Promise<{via:"function"|"browser"}>}
+ * @returns {Promise<{via:"function"}>}
  */
 export async function resetLearnerProgress(uid) {
-  try {
-    const call = httpsCallable(getFunctions(auth.app), "resetLearnerProgress");
-    await call({ uid });
-    return { via: "function" };
-  } catch (err) {
-    if (!FUNCTION_UNREACHABLE.includes(err?.code)) throw err;
-    console.warn("[resetLearnerProgress] Cloud Function unreachable:", err?.code, err?.message);
-  }
-  const userRef = doc(db, "users", uid);
-  const batch = writeBatch(db);
-  PER_UID_COLLECTIONS.forEach((c) => batch.delete(doc(db, c, uid)));   // same list Delete Account uses
-  if ((await getDoc(userRef)).exists()) batch.update(userRef, { progressResetAt: Date.now() });
-  await batch.commit();   // atomic: data and marker land together
-  return { via: "browser" };
+  const call = httpsCallable(getFunctions(auth.app), "resetLearnerProgress");
+  await call({ uid });
+  return { via: "function" };
 }
 
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────

@@ -24,6 +24,10 @@
 //   userProgress/{uid}     progress          (js/engine/progress.js)
 //   userProgressV2/{uid}   missions sync     (js/missions.js)
 //   userGame/{uid}         game progress     (js/game.js)          <- NEW
+//   xpState/{uid}          private XP state  (Cloud Functions write; owner read)
+//   publicProfiles/{uid}   leaderboard rows  (Cloud Functions write; verified read)
+//   xpSessions/{uid}       game sessions     (Cloud Functions only)
+//   xpEvents/{id}          XP audit records  (Cloud Functions write; admin read)
 //   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
 //
 // CHANGED (lesson media -> Cloudflare R2): signs/{id} writes are now shape-checked
@@ -180,46 +184,28 @@ service cloud.firestore {
       allow delete: if isOwner(uid) || isAdmin();
     }
 
-    // ── xpState/{uid}  (js/xp.js, CLIENT-SIDE XP — Spark plan, no Cloud Functions) ──
-    // The browser saves its own XP, so this can only LIMIT damage, not prevent forging:
-    // owner only, field whitelist, XP can never go down, hard ceiling of 20,000.
+    // ── xpState/{uid}  (private XP ledger; Cloud Functions only write) ──
     match /xpState/{uid} {
-      function validXpState(d) {
-        return d.keys().hasOnly(['v', 'xp', 'level', 'weeklyXp', 'weekKey', 'tz', 'tzChangedAt', 'streak',
-                                 'badges', 'lessonItems', 'missionsDone', 'learnedSigns', 'daily', 'totals',
-                                 'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt'])
-          && d.xp is number && d.xp >= 0 && d.xp <= 20000
-          && d.level is number && d.level >= 1 && d.level <= 30;
-      }
       allow get: if isOwner(uid);
       allow list: if false;
-      allow create: if isOwner(uid) && validXpState(request.resource.data);
-      allow update: if isOwner(uid) && validXpState(request.resource.data)
-        && request.resource.data.xp >= resource.data.xp;
-      allow delete: if isOwner(uid) || isAdmin();
+      allow create, update, delete: if false;
     }
 
     // ── publicProfiles/{uid}  (leaderboards) ───────────────────
-    // Small public copy written by the owner's browser together with xpState.
-    // Lists MUST carry limit <= 100.
+    // Small public copy written by Cloud Functions. Lists MUST carry limit <= 100.
     match /publicProfiles/{uid} {
-      function validPublic(d) {
-        return d.keys().hasOnly(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
-                                 'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt'])
-          && d.name is string && d.name.size() <= 30
-          && d.xp is number && d.xp >= 0 && d.xp <= 20000
-          && d.level is number && d.level >= 1 && d.level <= 30
-          && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= 20000
-          && d.weekKey is string && d.weekKey.size() <= 10
-          && d.streak is number && d.streak >= 0 && d.streak <= 5000
-          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 100
-          && d.recentBadges is list && d.recentBadges.size() <= 5
-          && (!('avatar' in d) || (d.avatar is string && d.avatar.matches('^avatar-[0-9]{2}$')));
-      }
       allow get: if verified();
       allow list: if verified() && request.query.limit <= 100;
-      allow create, update: if isOwner(uid) && verified() && validPublic(request.resource.data);
-      allow delete: if isOwner(uid) || isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // Cloud Function owned game ledger and audit rows. No browser reads or writes.
+    match /xpSessions/{uid} {
+      allow read, write: if false;
+    }
+    match /xpEvents/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // ── surveys/{id}  (js/feedback.js -> pages/admin-feedback.html) ──

@@ -13,7 +13,7 @@
      2.5s recording window                                       -> orange "record" timer.
      The motion you perform is matched against every motion brick still on the wall.
    - A confident sign that is NOT on the wall, or a failed motion attempt, is a miss.
-   - Clear the wall -> reward (stars + gems + badges, saved in localStorage 'lw_game_v1').
+   - Clear the wall -> reward (stars + gems + best runs, cached per learner and synced to userGame).
   Sign pool: asl_static_model/labels.json + asl_motion_model/labels.json are the ONLY authority on which
    signs can appear (see playableFilter). dictionary.js `disabled` flags are never read, and NONE is never playable.
   Lifecycle: stopCamera + cancelAnimationFrame + all timers cleared on pagehide/hidden.
@@ -38,7 +38,7 @@ const COUNTDOWN = ['3', '2', '1', 'GO!'], COUNT_STEP_MS = 600;
 const WAIT_HAND_MS = 6000;        // motion: give up if no hand appears after GO (no penalty)
 const HAND_LOST_MS = 1200;        // motion: hand gone this long mid-recording -> finish early
 const AFTER_MOTION_MS = 800;      // motion: pause before static detection resumes
-const ROWS = 3, STORE = 'lw_game_v1';
+const ROWS = 3, STORE = 'lw_game_v2';
 
 let bricks = [], running = false, rafId = null, timers = new Set();
 let stats = { correct: 0, wrong: 0, size: 0 }, startedAt = 0, tickId = null, engineReady = false, booting = false;
@@ -54,15 +54,53 @@ let allowedStatic = { active: false, set: null }, allowedMotion = { active: fals
 // DEV-TEST   They are no-ops unless the dev panel is active (needs localStorage 'lw_game_dev'='1'); a throw in dev code never breaks the game.
 const dev = (name, ...args) => { try { return window.LWGameDev?.[name]?.(...args); } catch (e) { console.warn('[dev-test]', e); } };   // DEV-TEST
 
-// ── storage ───────────────────────────────────────────────────────
-function load() {
-  try { return Object.assign({ gems: 0, walls: 0, badges: [], best: {} }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
-  catch { return { gems: 0, walls: 0, badges: [], best: {} }; }
+// ── per-learner game progress ──────────────────────────────────────
+const emptyGameData = () => ({ gems: 0, walls: 0, badges: [], best: {} });
+let activeGameUid = null, gameData = emptyGameData(), gameSaveQueue = Promise.resolve();
+let gameProgressReady = Promise.resolve();
+function gameStoreKey() { return `${STORE}:${activeGameUid || 'guest'}`; }
+function normalizeGameData(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  return { gems: Math.max(0, Number(input.gems) || 0), walls: Math.max(0, Number(input.walls) || 0),
+    badges: Array.isArray(input.badges) ? input.badges.filter((x) => typeof x === 'string').slice(0, 50) : [],
+    best: input.best && typeof input.best === 'object' && !Array.isArray(input.best) ? input.best : {} };
 }
-function save(d) {
+function mergeGameData(local, cloud) {
+  const a = normalizeGameData(local), b = normalizeGameData(cloud), best = { ...a.best };
+  Object.entries(b.best).forEach(([size, run]) => {
+    const old = best[size];
+    if (!old || Number(run?.stars) > Number(old.stars) || (Number(run?.stars) === Number(old.stars) && Number(run?.ms) < Number(old.ms))) best[size] = run;
+  });
+  return { gems: Math.max(a.gems, b.gems), walls: Math.max(a.walls, b.walls), badges: [...new Set([...a.badges, ...b.badges])].slice(0, 50), best };
+}
+function load() { return gameData; }
+function save(value) {
   if (dev('blockSave')) return;   // DEV-TEST
-  try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ }
+  gameData = normalizeGameData(value);
+  const snapshot = JSON.stringify(gameData);
+  try { localStorage.setItem(gameStoreKey(), snapshot); } catch { /* private mode */ }
+  if (activeGameUid && window.LWAuth?.writeProgressDoc) {
+    gameSaveQueue = gameSaveQueue.catch(() => {}).then(() => window.LWAuth.writeProgressDoc('userGame', gameData, { merge: false }))
+      .catch((error) => console.warn('[game] Wall Breaker progress sync failed:', error));
+  }
 }
+async function initializeGameProgress() {
+  try { await window.LWAuth?.whenAuthReady?.(); } catch { /* local cache remains available */ }
+  activeGameUid = window.LWAuth?.getAuthUid?.() || null;
+  let local = null;
+  try { local = JSON.parse(localStorage.getItem(gameStoreKey()) || 'null'); } catch { /* corrupt cache */ }
+  gameData = normalizeGameData(local);
+  if (activeGameUid && window.LWAuth?.readProgressDoc) {
+    try {
+      const cloud = await window.LWAuth.readProgressDoc('userGame');
+      gameData = mergeGameData(gameData, cloud?.data);
+      save(gameData);
+    } catch (error) { console.warn('[game] could not load Wall Breaker progress:', error); }
+  }
+  const gems = $('gm-gems'); if (gems) gems.textContent = gameData.gems;
+  showBest();
+}
+gameProgressReady = initializeGameProgress();
 
 // ── helpers ───────────────────────────────────────────────────────
 const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
@@ -470,6 +508,7 @@ async function startGame() {
   $('gm-pool-note').textContent = 'Loading hand tracking, camera and sign models…';
   let ok = false, pool = null;
   try {
+    await gameProgressReady;
     // engine boot and the sign-pool lookup are independent -> run them in parallel
     // buildPool waits for the boot result itself, because the playable pool needs the models to be loaded.
     const bootP = bootEngine();

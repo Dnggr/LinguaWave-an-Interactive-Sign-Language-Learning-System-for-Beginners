@@ -108,10 +108,10 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  deleteDoc,
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
   query,
   orderBy
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -182,7 +182,6 @@ const LOCAL_LEARNING_KEYS = [
   'lw_missions_progress_v1',   // js/missions.js
   'lw_missions_streak_v1',
   'lw_missions_hearts_v1',
-  'lw_game_v1',                // js/game.js (gems/walls/best — not uid-scoped)
 ];
 const RESET_SEEN_PREFIX = 'lw_reset_seen_v1:';
 const RESET_CHECK_KEY = 'lw_reset_check_v1';          // sessionStorage { uid, at }
@@ -192,8 +191,11 @@ function clearLocalLearningState(uid) {
   try {
     LOCAL_LEARNING_KEYS.forEach((k) => localStorage.removeItem(k));
     if (uid) {
-      localStorage.removeItem('lw_xp_pending_v1:' + uid);      // queued XP claims
+      localStorage.removeItem('lw_xp_pending_v1:' + uid);      // legacy queued XP claims
+      localStorage.removeItem('lw_xp_pending_v2:' + uid);
       localStorage.removeItem('lw_xp_backfilled_v1:' + uid);
+      localStorage.removeItem('lw_xp_backfilled_v2:' + uid);
+      localStorage.removeItem(`lw_game_v2:${uid}`);
     }
     sessionStorage.removeItem('lw_missions_last_sync_v1');     // 60 s "already synced" shortcut
   } catch (e) { /* storage blocked */ }
@@ -207,7 +209,7 @@ async function applyProgressResetIfNeeded(firebaseUser) {
     const last = JSON.parse(sessionStorage.getItem(RESET_CHECK_KEY) || 'null');
     if (last && last.uid === uid && Date.now() - last.at < RESET_CHECK_TTL_MS) return;
     const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) { clearLocalLearningState(uid); return; }   // profile wiped: xp.js reconcileWithAccount finishes it
+    if (!snap.exists()) { clearLocalLearningState(uid); return; }   // profile missing: discard stale local caches; server cleanup owns XP records.
     const marker = snap.data().progressResetAt;
     if (marker != null) {
       const seenKey = RESET_SEEN_PREFIX + uid;
@@ -1166,19 +1168,10 @@ async function register(name, email, password, confirmPassword) {
   return { verificationSent, email: normalizedEmail };
 }
 
-/* A users/{uid} profile was just (re)created. XP lives in separate docs (xpState / publicProfiles), so if the
- * database was wiped they would still hold the OLD XP and the learner would stay on the leaderboards.
- * Delete them so XP is always tied to the account's current profile. Owner delete is allowed by firestore.rules. */
+/* A users/{uid} profile was just created. Clear only local caches here; server XP cleanup
+ * happens through the admin reset/delete callables, and the browser has no XP delete path. */
 async function resetXpForNewProfile(uid) {
-  clearLocalLearningState(uid);   // local first: nothing stale may be pushed while the deletes run
-  try {
-    await Promise.all([
-      deleteDoc(doc(db, 'xpState', uid)),
-      deleteDoc(doc(db, 'publicProfiles', uid)),
-    ]);
-  } catch (e) {
-    console.warn('[auth] could not reset XP for the new profile:', e);
-  }
+  clearLocalLearningState(uid);   // clear local learning/XP queues before protected page scripts run
 }
 
 /* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
@@ -1273,8 +1266,10 @@ async function linkPendingGoogleCredential() {
  * next person able to see this learner's progress.
  * ──────────────────────────────────────────────────────────────── */
 async function logout(redirectPath) {
+  const uid = auth.currentUser?.uid;
   await signOut(auth);
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
+  if (uid) localStorage.removeItem(`lw_game_v2:${uid}`);
   localStorage.removeItem(LW_SESSION_KEY);
   window.location.href = redirectPath || '/index.html';
 }
@@ -1363,11 +1358,8 @@ async function updateUsername(newName) {
  * stored (users/{uid}.avatar), never an image or URL. The same pattern is
  * enforced by firestore.rules, so a console-written value that isn't an
  * ID is rejected there too.
- * updateAvatar() also copies the ID onto the learner's leaderboard row
- * (publicProfiles/{uid}) so the new picture shows up without waiting for
- * their next XP save. That row only exists for learners who have earned XP
- * and aren't hidden, so "no row yet" is expected and ignored — js/xp.js puts
- * the avatar on the row whenever it creates or rewrites it.
+ * The server's users/{uid} write trigger syncs the avatar onto the public leaderboard row;
+ * the client never writes publicProfiles directly.
  * getAvatar() reads the stored ID (the session cache can be stale if it was
  * changed on another device) and refreshes the cache. */
 const AVATAR_ID_RE = /^avatar-\d{2}$/;
@@ -1394,14 +1386,6 @@ async function updateAvatar(avatarId) {
   }
 
   await updateDoc(doc(db, 'users', firebaseUser.uid), { avatar: avatarId });
-
-  try {
-    await updateDoc(doc(db, 'publicProfiles', firebaseUser.uid), { avatar: avatarId });
-  } catch (e) {
-    // not-found = no leaderboard row (yet / hidden / pending deletion). Anything else is
-    // logged but never fails the save: the account itself already has the new picture.
-    if (!e || e.code !== 'not-found') console.warn('[auth] could not update the leaderboard picture:', e);
-  }
 
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
@@ -1585,6 +1569,21 @@ async function writeProgressDoc(name, data, opts) {
   return true;
 }
 
+// XP mutations are narrow, server-side operations. Keep callable names allow-listed here so
+// page scripts can never turn this bridge into a generic Cloud Function proxy.
+const XP_CALLABLES = new Set([
+  'claimLessonItem', 'claimMissionComplete', 'startGameSession', 'finishGameSession',
+  'backfillLegacyProgress', 'setLeaderboardVisibility',
+]);
+async function callXpFunction(name, data) {
+  if (!XP_CALLABLES.has(name)) throw new Error('XP operation is not allowed: ' + name);
+  await whenAuthReady();
+  const user = auth.currentUser;
+  if (!user || !user.emailVerified) throw new Error('Sign in with a verified account to save XP.');
+  const result = await httpsCallable(functions, name)(data || {});
+  return result.data;
+}
+
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
@@ -1604,6 +1603,7 @@ window.LWAuth = {
   getPasswordStrength,         // (strength bar + checklist) and
   validateConfirmPassword,     // can't drift from the real check
   getCurrentUser,
+  getAuthUid: () => auth.currentUser?.uid || null,
   isLoggedIn,
   getAuthState,
   getVerificationInfo,
@@ -1628,6 +1628,7 @@ window.LWAuth = {
   whenAuthReady,
   readProgressDoc,
   writeProgressDoc,
+  callXpFunction,
 };
 /* ── AUTO-GUARD (2026-09-29) ──────────────────────────────────────
  * "No verified email, no normal LinguaWave access" has to hold for EVERY

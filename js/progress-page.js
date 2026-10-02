@@ -256,6 +256,7 @@ function buildStreakWeek(activeDays) {
  * it re-renders the hero so the count and icon are right. */
 let heartsCountdownTimerId = null;
 let heartsRenderedCount = null;
+let stopLocalDayChange = null;
 
 function formatHeartCountdown(targetIso) {
   const ms = new Date(targetIso).getTime() - Date.now();
@@ -290,6 +291,7 @@ function tickHeartsCountdown() {
 
 function startHeartsCountdown() {
   if (heartsCountdownTimerId !== null) clearInterval(heartsCountdownTimerId);
+  tickHeartsCountdown();
   heartsCountdownTimerId = setInterval(tickHeartsCountdown, 15000);
 }
 window.addEventListener('pagehide', () => {
@@ -1169,6 +1171,15 @@ function renderProgressPage() {
   }
 }
 
+function watchLocalDayChange() {
+  stopLocalDayChange?.();
+  stopLocalDayChange = window.LWMissions?.onLocalDayChange?.(() => {
+    renderProgressPage();
+    const dlg = document.getElementById('streak-dialog');
+    if (dlg && dlg.open) dlg.innerHTML = buildStreakDialogContent();
+  }) || null;
+}
+
 function initPage() {
   if (!window.LWMissions) {
     showProgressUnavailable('window.LWMissions did not load');
@@ -1189,12 +1200,17 @@ function initPage() {
   // A tab left open past local midnight (or woken from sleep) would keep
   // showing yesterday as "today" and "Come back tomorrow". Re-render on a date
   // change, and refresh the streak dialog too if it happens to be open.
-  window.LWMissions.onLocalDayChange(() => {
-    renderProgressPage();
-    const dlg = document.getElementById('streak-dialog');
-    if (dlg && dlg.open) dlg.innerHTML = buildStreakDialogContent();
-  });
+  watchLocalDayChange();
 }
+
+// `pagehide` clears both recurring timers and local-day subscriptions. Re-arm them when
+// the browser restores this document from BFCache, since initPage does not run again.
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted || !window.LWMissions) return;
+  renderProgressPage();
+  startHeartsCountdown();
+  watchLocalDayChange();
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPage);

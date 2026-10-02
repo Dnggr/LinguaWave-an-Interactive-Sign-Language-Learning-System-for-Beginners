@@ -12,7 +12,7 @@
  *
  * BALANCE (see XP_SYSTEM.md for the derivation):
  *   full curriculum lesson XP  = 11,670 (one-time, finite, not farmable; measured from missions.js)
- *   Wall Breaker               ≤ 90 XP/day, with diminishing returns
+ *   Wall Breaker + Time Attack ≤ 90 game XP/day combined
  *   XP to reach Lv 30          = 13,050
  * So lessons alone carry a learner to Lv 28; Lv 29-30 need ~1.4k XP from the game, i.e. at least
  * ~16 days of capped play. A median lesson (mission) is worth 163 XP, about 8x a typical wall (21).
@@ -48,9 +48,9 @@ const CONFIG = {
   BACKFILL_MAX_XP: 1500,
   BACKFILL_WINDOW_DAYS: 14,
 
-  // ── Wall Breaker (the only repeatable XP) ──
+  // ── Game XP (Wall Breaker and Time Attack share the daily cap) ──
   GAME: {
-    MIN_LEARNED_BRICKS: 6,       // a wall needs >= 6 bricks of signs you have learned to earn XP/badges
+    MIN_LEARNED_BRICKS: 6,       // Wall Breaker threshold; Time Attack requires at least one learned target
     BRICK_XP: { static: 1, motion: 2 },
     CLEAR_BONUS: 3,
     FLAWLESS_BONUS: 3,

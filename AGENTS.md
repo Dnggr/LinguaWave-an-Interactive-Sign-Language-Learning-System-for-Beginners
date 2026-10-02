@@ -33,6 +33,6 @@ Before submitting code changes, agents must verify:
 * Browser side is `js/xp.js` (window.LWXP): it only *reports* lesson items / quiz pass / cleared wall and *reads* results.
   Hooks: `lesson.js completeAndAdvance`, `mastery-quiz.js` (after markMissionComplete), `missions.js markSignPracticedBridge`, `game.js`.
 * `js/xp-config.js` is GENERATED from `functions/xp-config.js` (`npm run build:client`). `functions/curriculum-manifest.json` is
-  GENERATED from `js/missions.js` (`npm run build:manifest`) - re-run after any curriculum change.
+  GENERATED from `js/missions.js` and `js/engine/dictionary.js` (`npm run build:manifest`) - re-run after curriculum or static/motion routing changes.
 * "Level" in XP code means the XP level 1-30, unrelated to `users.level` (basic/medium/intermediate).
 * Tests: `cd functions && npm test` (fake Firestore, no emulator).

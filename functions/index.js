@@ -70,7 +70,7 @@ const admin = require("firebase-admin");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const emailCheck = require("./email-check");
 const xp = require("./xp");
-const { deleteXpData } = require("./xp-cleanup");
+const { deleteXpData, deleteProgressData, resetLearnerProgressData } = require("./xp-cleanup");
 
 admin.initializeApp();
 
@@ -116,14 +116,41 @@ exports.deleteLearnerAccount = onCall(async (request) => {
     );
   }
 
-  // 3) XP state, public leaderboard profile, game session, audit events.
+  // 3) XP state, public leaderboard profile, game session, audit events, and feedback.
   try {
     await deleteXpData(uid);
+    await deleteProgressData(uid); // these uid-keyed docs are siblings of users/{uid}
   } catch (err) {
     console.error("deleteXpData failed", uid, err);
     throw new HttpsError("internal", "The login was deleted but some XP data couldn't be removed. Try deleting again.");
   }
 
+  return { ok: true, uid };
+});
+
+/* ── RESET PROGRESS (admin only): keeps Auth + users/{uid}; wipes XP and learner progress ── */
+exports.resetLearnerProgress = onCall(async (request) => {
+  const caller = request.auth;
+  if (!caller) throw new HttpsError("unauthenticated", "Sign in first.");
+  const callerEmail = (caller.token?.email || "").toLowerCase();
+  if (callerEmail !== ADMIN_EMAIL.toLowerCase() || caller.token.email_verified === false) {
+    throw new HttpsError("permission-denied", "Only the admin account can reset learners.");
+  }
+
+  const uid = request.data && request.data.uid;
+  if (typeof uid !== "string" || !uid) {
+    throw new HttpsError("invalid-argument", "A learner uid is required.");
+  }
+  if (uid === caller.uid) {
+    throw new HttpsError("failed-precondition", "The admin account can't reset itself.");
+  }
+
+  try {
+    await resetLearnerProgressData(uid);
+  } catch (err) {
+    console.error("resetLearnerProgress failed", uid, err);
+    throw new HttpsError("internal", "Couldn't reset this learner's progress. Try again.");
+  }
   return { ok: true, uid };
 });
 
