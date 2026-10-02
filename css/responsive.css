@@ -106,6 +106,16 @@ body {
     border-top: 1px solid var(--clr-border);
   }
   .app-sidebar.lw-nav-ready .admin-sidebar__tag { order: 4; flex: 1 0 100%; padding-bottom: 0; }
+  /* Account block in the opened panel: card and Log out are left-aligned rows like the nav links
+     (the generic foot rule above centres them), with a hairline above Log out. The row wrapper is
+     display:contents here, so the hairline goes on the link itself. */
+  .app-sidebar.lw-nav-ready .app-sidebar__foot.app-sidebar__foot--account .app-sidebar__user,
+  .app-sidebar.lw-nav-ready .app-sidebar__foot.app-sidebar__foot--account .app-sidebar__logout {
+    justify-content: flex-start; min-height: 48px; padding-inline: var(--space-4);
+  }
+  .app-sidebar.lw-nav-ready .app-sidebar__foot.app-sidebar__foot--account .app-sidebar__logout {
+    border-top: 1px solid var(--clr-border); border-radius: 0; font-size: var(--fs-base);
+  }
 
   /* Collapsed: only logo + theme switch + button remain. */
   .app-sidebar.lw-nav-ready:not(.is-open) .app-sidebar__nav,

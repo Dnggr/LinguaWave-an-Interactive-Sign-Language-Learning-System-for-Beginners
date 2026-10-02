@@ -923,8 +923,39 @@ a.unit-progress-row:focus-visible {
   /* CHANGED (light-mode UX pass) — reads --banner-from/to (style.css)
      instead of --clr-accent/--clr-accent-dim. Light values are identical
      to before; dark no longer puts white text on light-blue #60A5FA. */
-  background: linear-gradient(135deg, var(--banner-from) 0%, var(--banner-to) 100%);
+  background: linear-gradient(135deg, var(--mb-from) 0%, var(--mb-to) 100%);
   box-shadow: var(--shadow-card);
+
+  /* THEME TOKENS (fluid-pastel pass). Defaults = the original dark look,
+     value for value (white text on the banner blue). js/banner-shader.js
+     reads --mb-from/--mb-to too, so the CSS gradient (the no-WebGL
+     fallback) and the shader never disagree. */
+  --mb-from: var(--banner-from);
+  --mb-to: var(--banner-to);
+  --mb-title: #ffffff;
+  --mb-body: rgba(255, 255, 255, .95);
+  --mb-cta-bg: #ffffff;
+  --mb-cta-bg-hover: rgba(255, 255, 255, .9);
+  --mb-cta-text: var(--banner-to);
+  --mb-art-stroke: #ffffff;
+  --mb-art-disc: rgba(255, 255, 255, .14);
+}
+/* LIGHT THEME — true pastels (lavender -> sky) with dark indigo ink. White
+ * text cannot sit on pastels, so text, button and hand art flip together.
+ * Contrast: the shader floors the pastel luminance at .46 behind the text,
+ * so #312E81 body text is >= 5:1 and #1E1B4B title text is higher; the
+ * button is white on #312E81 (~12:1). Keep these selectors in step with the
+ * data-theme === 'light' check in js/banner-shader.js. */
+[data-theme="light"] .mission-banner {
+  --mb-from: #E0D7FD;
+  --mb-to: #BFD5FB;
+  --mb-title: #1E1B4B;
+  --mb-body: #312E81;
+  --mb-cta-bg: #312E81;
+  --mb-cta-bg-hover: #3730A3;
+  --mb-cta-text: #ffffff;
+  --mb-art-stroke: #3730A3;
+  --mb-art-disc: rgba(255, 255, 255, .5);
 }
 .mission-banner__text {
   position: relative;
@@ -936,27 +967,27 @@ a.unit-progress-row:focus-visible {
   font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0;
-  color: rgba(255, 255, 255, .95); /* CHANGED — was .85 = 4.20:1 on the light banner (AA needs 4.5) */
+  color: var(--mb-body); /* dark theme: rgba(255,255,255,.95) — was .85 = 4.20:1 on the banner (AA needs 4.5) */
   margin-bottom: var(--space-2);
 }
 .mission-banner__title {
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 700;
-  color: #ffffff;
+  color: var(--mb-title);
   margin-bottom: var(--space-2);
 }
 .mission-banner__desc {
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, .95); /* CHANGED — was .88 = 4.37:1 */
+  color: var(--mb-body); /* dark theme: rgba(255,255,255,.95) — was .88 = 4.37:1 */
   margin-bottom: var(--space-5);
   line-height: 1.5;
 }
 .mission-banner__cta {
-  background: #ffffff;
-  color: var(--banner-to); /* CHANGED — was --clr-accent-dim, which is only 3.7:1 on white in dark mode */
+  background: var(--mb-cta-bg);
+  color: var(--mb-cta-text); /* dark theme: --banner-to — was --clr-accent-dim, which is only 3.7:1 on white in dark mode */
 }
-.mission-banner__cta:hover { background: rgba(255, 255, 255, .9); }
+.mission-banner__cta:hover { background: var(--mb-cta-bg-hover); }
 .mission-banner__art {
   position: relative;
   z-index: 0;
@@ -965,6 +996,30 @@ a.unit-progress-row:focus-visible {
   height: 160px;
 }
 .mission-banner__art svg { width: 100%; height: 100%; }
+.mission-banner__art path { stroke: var(--mb-art-stroke); }
+.mission-banner__art circle { fill: var(--mb-art-disc); }
+/* ── Fluid-pastel shader backdrop (js/banner-shader.js) ────────────
+ * One <canvas> inserted as the banner's first child. z-index 0 + first
+ * in DOM order keeps it under .mission-banner__art (also z 0, later in
+ * DOM) and .mission-banner__text (z 1). Hidden until the first frame is
+ * drawn, so if WebGL is missing the banner's CSS gradient is all you see. */
+.mission-banner__shader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .6s ease;
+}
+.mission-banner__shader.is-ready { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .mission-banner__shader { transition: none; }
+}
+.lw-force-reduced-motion .mission-banner__shader { transition: none; }
 @media (max-width: 640px) {
   .mission-banner { flex-direction: column; text-align: center; padding: var(--space-6); }
   .mission-banner__text { max-width: none; }

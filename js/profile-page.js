@@ -436,6 +436,7 @@ async function saveAvatar() {
   try {
     await window.LWAuth.updateAvatar(selectedAvatarId);
     savedAvatarId = selectedAvatarId;
+    if (window.LinguaWave && window.LinguaWave.refreshSidebarUser) window.LinguaWave.refreshSidebarUser();   // repaint the sidebar account card
     toast('Profile picture updated.', 'success');
     setPickerOpen(false);
   } catch (e) {

@@ -207,20 +207,26 @@ async function refreshPoolNote() {
 // ── wall ──────────────────────────────────────────────────────────
 function renderWall() {
   const wall = $('gm-wall'); wall.innerHTML = '';
-  const perRow = Math.ceil(bricks.length / ROWS);
-  for (let r = 0; r < ROWS; r++) {
+  // LAYOUT PASS: the wall now lives in the right-hand column next to the camera, so it is narrower than before.
+  // Cap rows at 5 bricks (9 -> 3x3, 15 -> 3x5, 21 -> 5 rows of 5/4/4/4/4) so bricks stay wide enough to read,
+  // and spread the remainder evenly instead of leaving one stretched brick on the last row.
+  const rows = Math.max(ROWS, Math.ceil(bricks.length / 5)), base = Math.floor(bricks.length / rows), extra = bricks.length % rows;
+  let from = 0;
+  for (let r = 0; r < rows; r++) {
     const row = document.createElement('div');
     row.className = 'gm-row' + (r % 2 ? ' is-odd' : '');
-    bricks.slice(r * perRow, (r + 1) * perRow).forEach((b) => {
+    const count = base + (r < extra ? 1 : 0);
+    bricks.slice(from, from + count).forEach((b) => {
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = `gm-brick gm-brick--${b.type}`;
+      el.className = `gm-brick gm-brick--${b.type}` + (b.sign.length > 2 ? ' gm-brick--word' : '');   // word signs get a smaller, wrapping label
       el.innerHTML = `<span class="gm-brick__tag">${b.type === 'motion' ? 'MOVE' : 'HOLD'}</span><span class="gm-brick__sign"></span>`;
       el.querySelector('.gm-brick__sign').textContent = b.sign;
       el.title = 'Click for a hint';
       el.addEventListener('click', () => showHint(b));
       b.el = el; row.appendChild(el);
     });
+    from += count;
     wall.appendChild(row);
   }
   updateProgress();

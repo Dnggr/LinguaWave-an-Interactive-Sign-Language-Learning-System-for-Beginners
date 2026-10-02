@@ -1117,14 +1117,32 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   padding-top: var(--space-4); margin-top: var(--space-4);
   border-top: 1px solid var(--clr-border);
 }
-/* Account links (js/main.js initSidebarAccountLinks): Settings is pinned to the bottom of the
-   nav (auto top margin; the nav is flex:1), then a thin divider, then Profile. */
-.app-sidebar__link--pin { margin-top: auto; }
-.app-sidebar__divider { height: 1px; margin: var(--space-1) var(--space-3); background: var(--clr-border); flex-shrink: 0; }
-@media (max-width: 900px) {
-  /* Old horizontal-row fallback (menu script not ready): a 1px-tall divider would look like a glitch. */
-  .app-sidebar:not(.lw-nav-ready) .app-sidebar__divider { display: none; }
+/* Account block (js/main.js initSidebarAccountLinks): profile card on top, then a hairline, then
+   Log out (+ the theme switch on the right). Settings is a normal nav item under Feedback. */
+.app-sidebar__foot--account { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--space-1); }
+.app-sidebar__user { gap: var(--space-3); padding: var(--space-2) var(--space-3); min-width: 0; }
+.app-sidebar__avatar { display: flex; flex-shrink: 0; }
+.app-sidebar__user-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.app-sidebar__user-name {
+  color: var(--clr-text); font-size: var(--fs-sm); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.app-sidebar__user-role { color: var(--clr-text-muted); font-size: var(--fs-xs); font-weight: 400; }
+/* Same accent pair the other active links use, so contrast stays verified. */
+.app-sidebar__user.active .app-sidebar__user-name,
+.app-sidebar__user.active .app-sidebar__user-role { color: var(--clr-accent-text); }
+.app-sidebar__foot-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  margin-top: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--clr-border);
+}
+.app-sidebar__logout {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  color: var(--clr-text-muted); font-size: var(--fs-sm); font-weight: 600; text-decoration: none;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.app-sidebar__logout:hover { background: var(--clr-surface-2); color: var(--clr-text); text-decoration: none; }
+.app-sidebar__logout:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 
 /* Profile pictures (js/avatars.js). Round, fixed-size; no picture picked -> initial on the accent tint. */
 .lw-avatar {
