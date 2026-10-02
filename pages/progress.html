@@ -205,22 +205,22 @@
                visualization") below the chapter timeline. -->
           <div class="card progress-celebration" id="progress-celebration" hidden></div>
 
-          <div class="progress-hero-row" id="progress-hero">
-            <p class="text-muted loading-pulse">Loading your progress…</p>
+          <div class="progress-hero-row" id="progress-hero" data-sk>
+            <div class="sk-group" role="status"><span class="sr-only">Loading your progress…</span><div class="sk-row" style="gap:var(--space-6);flex-wrap:wrap"><span class="sk sk--circle" style="--s:128px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:9rem;--h:1.2rem"></span><span class="sk sk--line" style="--w:14rem;--h:.85rem"></span><span class="sk sk--pill" style="--w:8rem"></span></div><div class="card" style="min-width:min(18rem,100%);flex:1"><div class="sk-cols" style="--cols:2"><div class="sk-stack"><span class="sk sk--title" style="--w:40%;--h:1.4rem"></span><span class="sk sk--line" style="--w:80%;--h:.7rem"></span></div><div class="sk-stack"><span class="sk sk--title" style="--w:40%;--h:1.4rem"></span><span class="sk sk--line" style="--w:80%;--h:.7rem"></span></div><div class="sk-stack"><span class="sk sk--title" style="--w:40%;--h:1.4rem"></span><span class="sk sk--line" style="--w:80%;--h:.7rem"></span></div><div class="sk-stack"><span class="sk sk--title" style="--w:40%;--h:1.4rem"></span><span class="sk sk--line" style="--w:80%;--h:.7rem"></span></div></div></div></div></div>
           </div>
 
           <div class="progress-pair">
-            <div class="card next-milestone" id="next-milestone">
-              <p class="text-muted loading-pulse">Loading your next milestone…</p>
+            <div class="card next-milestone" id="next-milestone" data-sk>
+              <div class="sk-group" role="status"><span class="sr-only">Loading your next milestone…</span><span class="sk sk--line" style="--w:7rem;--h:.8rem"></span><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.85rem"></span><div class="sk sk--line" style="--h:.6rem;--w:100%"></div><span class="sk sk--btn" style="--w:8rem;--h:2.25rem"></span></div>
             </div>
-            <div class="card needs-review" id="needs-review">
-              <p class="text-muted loading-pulse">Loading review signs…</p>
+            <div class="card needs-review" id="needs-review" data-sk>
+              <div class="sk-group" role="status"><span class="sr-only">Loading review signs…</span><span class="sk sk--line" style="--w:8rem;--h:.8rem"></span><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:55%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4rem"></span></div><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:55%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4rem"></span></div><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:55%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4rem"></span></div></div>
             </div>
           </div>
 
           <h2 class="mt-8 mb-4 progress-chapters-heading">Your Learning Journey</h2>
-          <div class="card unit-progress-list" id="progress-chapters">
-            <p class="text-muted loading-pulse" style="padding: var(--space-4);">Loading your learning journey…</p>
+          <div class="card unit-progress-list" id="progress-chapters" data-sk>
+            <div class="sk-group" role="status" style="padding:var(--space-4)"><span class="sr-only">Loading your learning journey…</span><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div></div>
           </div>
 
           <!-- Phase 3 — Sign Mastery: a per-chapter grid of every sign
@@ -240,8 +240,8 @@
                below handles its own empty state inline (same convention
                as #next-milestone / #needs-review / #progress-chapters
                above) rather than one big all-or-nothing empty overlay. -->
-          <div class="card snapshot-card" id="progress-snapshot">
-            <p class="text-muted loading-pulse">Loading your strengths…</p>
+          <div class="card snapshot-card" id="progress-snapshot" data-sk>
+            <div class="sk-group" role="status"><span class="sr-only">Loading your strengths…</span><span class="sk sk--title" style="--w:10rem;--h:1.2rem"></span><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div></div>
           </div>
           </div><!-- /.progress-lower -->
         </div>
@@ -276,5 +276,7 @@
        <body data-tour="progress">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

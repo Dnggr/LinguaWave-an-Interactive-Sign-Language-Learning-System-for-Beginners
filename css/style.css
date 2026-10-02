@@ -1331,3 +1331,94 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 @media (prefers-reduced-motion: reduce) {
   .lw-shake-invalid { animation: none; }
 }
+/* ── 20. LOADING SKELETONS (shared, page-agnostic) ──────────────────
+   Why: containers like #mission-banner, #path-list or #xp-card start
+   empty (or with a one-line "Loading…") and get filled by JS a moment
+   later, so the layout jumped and content popped in. Each of them now
+   ships with static skeleton markup of roughly the same size; the JS
+   that fills the container replaces it wholesale via innerHTML, so no
+   cleanup code is needed anywhere.
+
+   Pieces:
+   .sk-group   wrapper (role="status" + an .sr-only "Loading…" label for
+               screen readers). Lives INSIDE the container so it goes away
+               with the first real render.
+   .sk         one blinking bar. Size it with --w / --h (lines, buttons)
+               or --s (circles, squares); modifiers below set the shape.
+   [data-sk]   marks the container; js/skeleton.js fades the real content
+               in ONCE, on the first swap (later re-renders stay instant,
+               so the Firestore re-sync can't make anything flash).
+
+   The blink is opacity-only (same discipline as .loading-pulse): no
+   motion, so reduced-motion just freezes it at a mid value. Colour is
+   a mix of --clr-text, so it works in light and dark without a second
+   palette. js/skeleton.js adds a "taking longer than usual" fallback so
+   a failed load can't blink forever. */
+.sk-group { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.sk-group--row { flex-direction: row; align-items: center; }
+.sk-group--grid { display: contents; }
+/* Inside a grid parent (hero row, xp-card...) a skeleton spans the whole row. */
+.sk-group:not(.sk-group--grid) { grid-column: 1 / -1; }
+.sk-stack { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.sk-stack--grow { flex: 1 1 auto; }
+.sk-row  { display: flex; align-items: center; gap: var(--space-4); width: 100%; }
+.sk-row--between { justify-content: space-between; }
+.sk-cols { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: var(--space-3); width: 100%; }
+
+.sk {
+  --sk-ink: var(--clr-text);
+  display: block;
+  flex: none;
+  width: var(--w, 100%);
+  height: var(--h, 1rem);
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--sk-ink) 11%, transparent);
+  animation: lw-sk-blink 1.2s ease-in-out infinite;
+}
+.sk--line  { height: var(--h, .9rem); border-radius: var(--radius-pill); }
+.sk--title { height: var(--h, 1.5rem); border-radius: var(--radius-sm); }
+.sk--pill  { height: var(--h, 1.4rem); width: var(--w, 5rem); border-radius: var(--radius-pill); }
+.sk--btn   { height: var(--h, 2.5rem); width: var(--w, 8rem); border-radius: var(--radius-pill); }
+.sk--circle { width: var(--s, 48px); height: var(--s, 48px); border-radius: 50%; }
+.sk--square { width: var(--s, 40px); height: var(--s, 40px); border-radius: var(--radius-sm); }
+.sk--block { height: var(--h, 6rem); border-radius: var(--radius-md); }
+
+/* The profile name (<h2 data-user-name></h2>) is filled by the session script
+   and has no markup to swap, so :empty carries its placeholder instead. It
+   vanishes by itself the moment text lands in the element. */
+.profile-side__name:empty::before {
+  content: ""; display: block; width: min(11rem, 70%); height: 1.6rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--clr-text) 11%, transparent);
+  animation: lw-sk-blink 1.2s ease-in-out infinite;
+}
+
+/* Skeleton bars on the gradient hero banner use its own ink colour. */
+.mission-banner .sk { --sk-ink: var(--mb-title, #fff); background: color-mix(in srgb, var(--sk-ink) 26%, transparent); }
+
+/* Stagger so a grid of placeholders ripples instead of blinking in lockstep. */
+.sk-group > :nth-child(2n) .sk, .sk-group--grid > :nth-child(2n) .sk,
+.sk-group > .sk:nth-child(2n)  { animation-delay: .15s; }
+.sk-group > :nth-child(3n) .sk, .sk-group--grid > :nth-child(3n) .sk,
+.sk-group > .sk:nth-child(3n)  { animation-delay: .3s; }
+
+@keyframes lw-sk-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .4; }
+}
+
+/* Real content arriving after a skeleton eases in instead of snapping. */
+.sk-revealing > * { animation: lw-sk-reveal var(--dur-base) var(--ease) both; }
+@keyframes lw-sk-reveal { from { opacity: 0; } to { opacity: 1; } }
+
+/* Set by js/skeleton.js if a skeleton is still on screen after ~12s. */
+.sk-stalled { color: var(--clr-text-muted); font-size: var(--fs-sm); padding: var(--space-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk, .profile-side__name:empty::before { animation: none; opacity: .7; }
+  .sk-revealing > * { animation: none; }
+}
+html.lw-force-reduced-motion .sk,
+html.lw-force-reduced-motion .profile-side__name:empty::before { animation: none; opacity: .7; }
+html.lw-force-reduced-motion .sk-revealing > * { animation: none; }

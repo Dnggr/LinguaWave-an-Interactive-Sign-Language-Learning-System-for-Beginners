@@ -129,9 +129,9 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             All missions
           </a>
-          <div id="mo-content">
+          <div id="mo-content" data-sk>
             <!-- filled by js/mission-overview.js -->
-            <p class="text-muted">Loading mission…</p>
+            <div class="sk-group" role="status"><span class="sr-only">Loading mission…</span><span class="sk sk--line" style="--w:8rem;--h:.8rem"></span><span class="sk sk--title" style="--w:min(26rem,80%);--h:2rem"></span><span class="sk sk--line" style="--w:min(34rem,95%)"></span><span class="sk sk--btn" style="--w:10rem;--h:2.75rem"></span><div class="card" style="margin-top:var(--space-3)"><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div></div></div>
           </div>
         </div>
       </section>
@@ -165,5 +165,7 @@
        <body data-tour="mission-overview">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

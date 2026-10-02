@@ -121,12 +121,14 @@
             <input type="search" id="path-search-input" placeholder="Search missions or topics" aria-label="Search missions or topics" />
           </div>
 
-          <div id="orientation-slot">
+          <div id="orientation-slot" data-sk>
             <!-- filled by js/learn.js — always visible, unaffected by search -->
+            <div class="sk-group" role="status"><span class="sr-only">Loading…</span><div class="card"><div class="sk-row"><span class="sk sk--square" style="--s:48px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:40%;--h:1.1rem"></span><span class="sk sk--line" style="--w:75%;--h:.8rem"></span></div><span class="sk sk--pill" style="--w:5rem"></span></div></div></div>
           </div>
 
-          <div class="path-list" id="path-list">
+          <div class="path-list" id="path-list" data-sk>
             <!-- filled by js/learn.js -->
+            <div class="sk-group" role="status"><span class="sr-only">Loading missions…</span><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div></div>
           </div>
         </div>
       </section>
@@ -163,5 +165,7 @@
        <body data-tour="learn">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
-</html>
+</html>
