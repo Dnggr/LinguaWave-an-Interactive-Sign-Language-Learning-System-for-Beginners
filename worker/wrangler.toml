@@ -1,0 +1,27 @@
+# LinguaWave media Worker — see R2_SETUP.md for the one-time setup.
+name = "linguawave-media"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# R2 bucket binding: lets the Worker head/read/delete objects with NO keys.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "linguawave-media"        # <- your bucket's name
+
+[vars]
+FIREBASE_PROJECT_ID = "linguawave-63911"
+# KEEP IN SYNC with firestore.rules, js/admin-auth.js, js/role-guard.js, functions/index.js, index.html
+ADMIN_EMAIL = "linguawave.project@gmail.com"
+# Origins of the site (no trailing slash, no path). Add localhost only while developing.
+ALLOWED_ORIGINS = "https://linguawave-63911.web.app,https://linguawave.online,http://localhost:5500,http://127.0.0.1:5500"
+# Public base URL videos are played from, no trailing slash. This Worker's own /media route
+# (src/index.js serveMedia), NOT the bucket's *.r2.dev URL: r2.dev is development-only and is
+# unreachable on some networks. js/missions.js (CUSTOM_MEDIA_BASE) must match this value.
+PUBLIC_MEDIA_BASE = "https://linguawave-media.johnjewelrydelacruz.workers.dev/media"
+# Needed only to build presigned upload URLs:
+R2_ACCOUNT_ID = "d26972340e2191a6d20e352219cb66a0"
+R2_BUCKET_NAME = "linguawave-media"
+
+# Secrets (NOT stored in this file) — set with:
+#   npx wrangler secret put R2_ACCESS_KEY_ID
+#   npx wrangler secret put R2_SECRET_ACCESS_KEY

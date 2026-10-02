@@ -128,18 +128,24 @@ function mediaBlockHtml(sign) {
   const safeVideo = escapeHtml(urls[0] || '');
   const safeImage = escapeHtml(sign.imageUrl || '');
   const safeTitle = escapeHtml(sign.title || sign.signId);
-  // NOTE: the fallback trigger lives on each <source> tag's own onerror, not
+
+    // NOTE: the fallback trigger lives on each <source> tag's own onerror, not
   // the <video> tag's — Chromium dispatches the media 'error' event to the
   // failing <source> child, not the parent <video>, and it does NOT bubble.
   // Only the LAST source showing the text/image fallback matters: while a
   // later <source> exists the browser moves on to it by itself.
-  const onErr = `if (this.nextElementSibling) return; var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';`;
+  // The <video> ALSO gets a handler (without the "last source" check): a file
+  // that downloads but can't be decoded (e.g. HEVC) fires 'error' on the
+  // <video>, never on a <source>, and would otherwise leave a black box.
+  const showFallback = `var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';`;
+  const onErr = `if (this.nextElementSibling) return; ${showFallback}`;
   const sources = (urls.length ? urls : ['']).map((u) =>
     `<source src="${escapeHtml(u)}" type="video/mp4" onerror="${onErr}">`).join('');
   return `
     <div class="lesson-media">
-      <video class="lesson-media__video" autoplay muted loop playsinline>
+      <video class="lesson-media__video" autoplay muted loop playsinline onerror="${showFallback}">
         ${sources}
+
       </video>
       <div class="lesson-media__fallback">
         <img class="lesson-media__img" alt="${safeTitle}" src="${safeImage}"

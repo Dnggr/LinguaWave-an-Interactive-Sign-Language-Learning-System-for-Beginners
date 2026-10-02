@@ -295,8 +295,44 @@ function revealEmbedControls() {
 }
 if (lessonShieldEl) lessonShieldEl.addEventListener('click', revealEmbedControls);
 
+// ── demo-video failure message ─────────────────────────────────────
+// A <video> that can't load (host unreachable, 404) or can't decode (e.g. HEVC)
+// used to just stay a black box. Show a short message in its place instead.
+// A failed <source> fires 'error' on the <source> (it doesn't bubble), a decode
+// failure fires it on the <video> — so both are listened to.
+let lessonVideoErrWired = false;
+function setLessonVideoError(failed) {
+  if (!lessonVideoEl) return;
+  let note = document.getElementById('lesson-video-error');
+  if (failed) {
+    lessonVideoEl.hidden = true;
+    if (!note) {
+      note = document.createElement('p');
+      note.id = 'lesson-video-error';
+      note.className = 'alert alert--error mt-4';
+      note.setAttribute('role', 'status');
+      note.textContent = "This sign's video couldn't be loaded. Check your connection and try again, or follow the written steps below.";
+      const wrap = lessonVideoEl.closest('.lesson-video') || lessonVideoEl.parentElement;
+      wrap.insertAdjacentElement('afterend', note);
+    }
+    note.hidden = false;
+  } else if (note) {
+    note.hidden = true;
+  }
+}
+function wireLessonVideoErrors() {
+  if (lessonVideoErrWired || !lessonVideoEl) return;
+  lessonVideoErrWired = true;
+  lessonVideoEl.addEventListener('error', () => setLessonVideoError(true));
+  // The <source> is reused across signs (only its src changes), so one listener is enough.
+  const source = lessonVideoEl.querySelector('source');
+  if (source) source.addEventListener('error', () => setLessonVideoError(true));
+}
+
 function applyLessonVideo(videoUrl) {
   const url = typeof videoUrl === 'string' ? videoUrl.trim() : '';
+  setLessonVideoError(false);
+  wireLessonVideoErrors();
 
   if (lessonEmbedEl && isYouTubeEmbedUrl(url)) {
     // YouTube: stop/hide the local player, load the embed clean (no controls),

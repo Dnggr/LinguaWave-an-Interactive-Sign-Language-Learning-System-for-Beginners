@@ -38,8 +38,8 @@
  *            screens read the hardcoded curriculum (js/missions.js) through
  *            js/admin-content.js. The ONE exception is `signs`: lessons the
  *            admin creates in Lesson Management are saved there (create /
- *            update / delete below). Each doc keeps the video's real path
- *            (e.g. ../assets/videos/basic/asl_vid_diy_raw/hello.mp4).
+ *            update / delete below). Each doc keeps the video's public R2 URL
+ *            and object key (the file lives in Cloudflare R2, not in Firestore).
  *            Besides that, this file handles `users` (list, level edit,
  *            full account delete) and the dashboard/report numbers.
  * ─────────────────────────────────────────────────────────────────
@@ -197,12 +197,14 @@ export async function resetLearnerProgress(uid) {
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────
  * Lessons the admin adds. Doc id === signId (a lowercase slug), so a
  * lesson can never be created twice. Fields:
- *   signId, title, description, tips[], missionId, chapterId, order,
- *   videoUrl  (real path, e.g. "../assets/videos/basic/asl_vid_diy_raw/hello.mp4"),
+ *   signId, title, description, tips[], missionId, chapterId, level, category, order,
+ *   videoUrl  (public https URL of the video in Cloudflare R2),
+ *   videoKey  (the R2 object key, e.g. "videos/admin/hello/1790000000000.mp4",
+ *              kept so the file can be replaced/deleted — js/admin-media.js),
  *   detectionType ("none" — admin-added lessons have no motion detection),
  *   source ("admin"), createdAt, updatedAt.
  * Writes are admin-only (firestore.rules: signs -> allow write: isAdmin()).
- * The video FILE itself is not stored in Firestore — only its path is.
+ * The video FILE itself is not stored in Firestore — only its URL and R2 key are.
  * ──────────────────────────────────────────────────────────────── */
 export async function listAdminLessons() {
   const snap = await getDocs(collection(db, "signs"));
@@ -217,8 +219,11 @@ function lessonPayload(data) {
     tips: Array.isArray(data.tips) ? data.tips : [],
     missionId: data.missionId || "",
     chapterId: data.chapterId || "",
+    level: data.level || "",         // from the mission; learner side needs it (missions.js)
+    category: data.category || "",   // from the mission; learner side needs it (missions.js)
     order: Number.isFinite(data.order) ? data.order : 0,
     videoUrl: data.videoUrl || "",
+    videoKey: data.videoKey || "",
     detectionType: "none",
     source: "admin",
   };

@@ -1,0 +1,1 @@
+import{n as e}from"./react-BLXfnExK.js";import{on as t}from"./index-Ynb2qbFw.js";var n=e(),r=()=>(0,n.jsx)(t,{});export{r as component};

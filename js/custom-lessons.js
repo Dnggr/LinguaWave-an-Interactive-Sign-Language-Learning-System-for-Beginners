@@ -28,6 +28,7 @@ function toPlain(id, d) {
     title: d.title || "",
     description: d.description || "",
     tips: Array.isArray(d.tips) ? d.tips : [],
+    missionId: d.missionId || "",
     level: d.level || "",
     category: d.category || "",
     order: typeof d.order === "number" ? d.order : 0,

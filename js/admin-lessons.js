@@ -7,33 +7,24 @@
  *   • Admin-added lessons — Firestore `signs` (source === "admin").
  *     The admin can CREATE, UPDATE and DELETE these.
  *
- * VIDEO : when the admin picks an .mp4 it is written to
- *   assets/videos/basic/asl_vid_diy_raw/<signId>.mp4 (js/admin-video-store.js)
- *   and the real path (../assets/videos/basic/asl_vid_diy_raw/<signId>.mp4)
- *   is what gets saved on the lesson's Firestore document. The video is
- *   written FIRST, so Firestore never points at a file that wasn't saved.
+ * VIDEO : when the admin picks an .mp4 it is uploaded to Cloudflare R2
+ *   (js/admin-media.js -> worker/src/index.js, which checks the Firebase
+ *   ID token + admin email and hands back a short-lived upload URL). The
+ *   public URL is saved as `videoUrl` and the R2 object key as `videoKey` on
+ *   the lesson's Firestore document. The upload happens FIRST, so Firestore
+ *   never points at a file that wasn't stored; if the Firestore save then
+ *   fails, the just-uploaded object is removed again. Replacing a video or
+ *   deleting a lesson removes the old R2 object (best effort).
  *
  * No level, no image. Admin-added lessons have no motion detection.
  * ─────────────────────────────────────────────────────────────────
  */
 import { getLessons, getQuizzes } from "./admin-content.js";
 import { listAdminLessons, createLesson, updateLesson, deleteLesson } from "./admin-firebase.js";
-import {
-  VIDEO_DIR_SEGMENTS,
-  supportsFolderAccess,
-  loadRememberedFolder,
-  connectFolder,
-  isFolderConnected,
-  getFolderName,
-  videoPathFor,
-  videoExists,
-  validateVideoFile,
-  saveVideo,
-} from "./admin-video-store.js";
+import { MAX_VIDEO_BYTES, validateVideoFile, uploadLessonVideo, deleteLessonVideo } from "./admin-media.js";
 
 const SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const MAX_TIPS = 10;
-const VIDEO_FOLDER_LABEL = "assets/" + VIDEO_DIR_SEGMENTS.slice(1).join("/") + "/";
 
 let builtIn = [];
 let custom = [];
@@ -63,7 +54,8 @@ function cacheEls() {
     formCancel: $("lesson-form-cancel"), formSave: $("lesson-form-save"), formError: $("lesson-form-error"),
     fTitle: $("f-title"), fSignId: $("f-signid"), fMission: $("f-mission"), fOrder: $("f-order"),
     fDesc: $("f-desc"), fTips: $("f-tips"), fVideo: $("f-video"), fVideoCurrent: $("f-video-current"),
-    fVideoPreview: $("f-video-preview"), fFolderStatus: $("f-folder-status"), fFolderBtn: $("f-folder-btn"),
+    fVideoPreview: $("f-video-preview"), fProgress: $("f-video-progress"), fProgressBar: $("f-video-progress-bar"),
+    fProgressText: $("f-video-progress-text"),
 
     delBackdrop: $("lesson-delete-backdrop"), delBody: $("lesson-delete-body"), delClose: $("lesson-delete-close"),
     delCancel: $("lesson-delete-cancel"), delConfirm: $("lesson-delete-confirm"),
@@ -89,6 +81,7 @@ function customToRow(d) {
     description: d.description || "",
     tips: Array.isArray(d.tips) ? d.tips : [],
     videoUrl: d.videoUrl || "",
+    videoKey: d.videoKey || "",      // R2 object key; empty for videos not uploaded through R2
     detectionType: d.detectionType || "none",
     order: typeof d.order === "number" ? d.order : null,
     missionId: d.missionId || "",
@@ -232,22 +225,13 @@ function setPreview(url) {
   }
 }
 
-function updateFolderStatus() {
-  if (!supportsFolderAccess()) {
-    els.fFolderBtn.hidden = true;
-    els.fFolderStatus.textContent =
-      `This browser can't save into the project folder. The video will be downloaded as <signId>.mp4 — move it into ${VIDEO_FOLDER_LABEL} yourself (Chrome or Edge can do it automatically).`;
-    return;
-  }
-  els.fFolderBtn.hidden = false;
-  if (isFolderConnected()) {
-    els.fFolderStatus.textContent = `Saving videos into "${getFolderName()}/${VIDEO_FOLDER_LABEL}"`;
-    els.fFolderBtn.textContent = "Change project folder";
-  } else {
-    els.fFolderStatus.textContent =
-      `Connect your LinguaWave project folder once so uploaded videos are saved into ${VIDEO_FOLDER_LABEL}`;
-    els.fFolderBtn.textContent = "Choose project folder";
-  }
+function setProgress(percent, label) {
+  // percent: number 0-100, or null to hide the bar.
+  const show = percent !== null && percent !== undefined;
+  els.fProgress.hidden = !show;
+  if (!show) return;
+  els.fProgressBar.value = percent;
+  els.fProgressText.textContent = label || `${percent}%`;
 }
 
 function openForm(row) {
@@ -269,7 +253,7 @@ function openForm(row) {
   els.fVideoCurrent.textContent = row && row.videoUrl
     ? `Current video: ${row.videoUrl} — choose a new file only if you want to replace it.`
     : "No video yet.";
-  updateFolderStatus();
+  setProgress(null);
   els.formBackdrop.hidden = false;
   els.fTitle.focus();
 }
@@ -308,13 +292,17 @@ function readForm() {
 
   const fileErr = validateVideoFile(file);
   if (fileErr) return { error: fileErr };
-  if (file && supportsFolderAccess() && !isFolderConnected()) {
-    return { error: `Choose your project folder first (button under the video field) so the video can be saved into ${VIDEO_FOLDER_LABEL}` };
-  }
   if (!editing && !file) return { error: "Upload an MP4 video for this lesson." };
 
   return {
-    data: { signId, title, description, tips, order, missionId, chapterId: missionById.get(missionId).chapterId },
+    data: {
+      signId, title, description, tips, order, missionId,
+      chapterId: missionById.get(missionId).chapterId,
+      // Derived from the mission (not asked in the form): the learner side
+      // ignores any admin lesson without a valid level + category.
+      level: missionById.get(missionId).level,
+      category: missionById.get(missionId).category,
+    },
     file,
   };
 }
@@ -330,33 +318,35 @@ async function saveForm() {
   els.formSave.disabled = true;
   els.formSave.textContent = "Saving…";
 
+  let uploaded = null;           // { key, url } of a video uploaded during THIS save
   try {
     let videoUrl = editing ? editing.videoUrl : "";
-    let downloaded = false;
+    let videoKey = editing ? editing.videoKey : "";
 
     if (file) {
-      // Don't silently clobber a video that belongs to something else.
-      const target = videoPathFor(data.signId);
-      if (isFolderConnected() && target !== (editing && editing.videoUrl) && (await videoExists(data.signId))) {
-        if (!window.confirm(`A file named ${data.signId}.mp4 already exists in ${VIDEO_FOLDER_LABEL}. Replace it?`)) {
-          return;
-        }
-      }
-      const res = await saveVideo(data.signId, file);   // 1) video first
-      videoUrl = res.path;
-      downloaded = res.mode === "download";
+      setProgress(0, "Uploading… 0%");
+      uploaded = await uploadLessonVideo(data.signId, file, (p) =>   // 1) video first
+        setProgress(p, p < 100 ? `Uploading… ${p}%` : "Checking video…"));
+      videoUrl = uploaded.url;
+      videoKey = uploaded.key;
     }
 
-    const payload = { ...data, videoUrl };
-    if (editing) await updateLesson(editing.signId, payload);   // 2) then Firestore
-    else await createLesson(payload);
+    const payload = { ...data, videoUrl, videoKey };
+    try {
+      if (editing) await updateLesson(editing.signId, payload);   // 2) then Firestore
+      else await createLesson(payload);
+    } catch (dbErr) {
+      // Firestore refused: don't leave an orphan upload behind in R2.
+      if (uploaded) await deleteLessonVideo(uploaded.key);
+      throw dbErr;
+    }
 
-    toast(
-      downloaded
-        ? `Lesson saved. Move the downloaded ${data.signId}.mp4 into ${VIDEO_FOLDER_LABEL}`
-        : editing ? "Lesson updated." : "Lesson added.",
-      "success"
-    );
+    // The old file is only removed once the lesson points at the new one.
+    if (uploaded && editing && editing.videoKey && editing.videoKey !== uploaded.key) {
+      await deleteLessonVideo(editing.videoKey);
+    }
+
+    toast(editing ? "Lesson updated." : "Lesson added.", "success");
     saving = false;
     closeForm();
     await reloadCustom();
@@ -366,25 +356,15 @@ async function saveForm() {
     let msg = err?.message || "Couldn't save this lesson.";
     if (err?.code === "permission-denied") {
       msg = "Firestore rejected the save. Make sure you're signed in as the admin and the latest firestore.rules are published.";
-    } else if (err?.name === "NotAllowedError" || err?.code === "folder/denied") {
-      msg = "The browser blocked access to the project folder. Click Save again and choose Allow.";
+    } else if (err?.code === "media/http-403") {
+      msg = "The media service says this account isn't the admin. Sign in with the admin account.";
     }
     showFormError(msg);
   } finally {
     saving = false;
+    setProgress(null);
     els.formSave.disabled = false;
     els.formSave.textContent = "Save Lesson";
-  }
-}
-
-async function chooseFolder() {
-  try {
-    await connectFolder();
-    updateFolderStatus();
-    showFormError("");
-  } catch (err) {
-    if (err?.name === "AbortError") return;      // admin closed the picker
-    showFormError(err?.message || "Couldn't open that folder.");
   }
 }
 
@@ -417,7 +397,9 @@ async function confirmDelete() {
   els.delConfirm.disabled = true;
   try {
     await deleteLesson(pendingDelete.signId);
-    toast("Lesson deleted.", "success");
+    // Firestore first: if this fails the lesson is gone but a stray file is harmless.
+    const fileGone = await deleteLessonVideo(pendingDelete.videoKey);
+    toast(fileGone ? "Lesson deleted." : "Lesson deleted, but its video file couldn't be removed from storage.", fileGone ? "success" : "info");
     closeDelete();
     await reloadCustom();
     render();
@@ -451,7 +433,6 @@ function wireEvents() {
   els.formClose.addEventListener("click", closeForm);
   els.formCancel.addEventListener("click", closeForm);
   els.formSave.addEventListener("click", saveForm);
-  els.fFolderBtn.addEventListener("click", chooseFolder);
   els.fVideo.addEventListener("change", onVideoPicked);
   els.fTitle.addEventListener("input", () => {
     if (!editing && !signIdTouched) els.fSignId.value = slugify(els.fTitle.value);
@@ -493,9 +474,8 @@ async function init() {
     els.tbody.innerHTML = `<tr><td colspan="7" class="admin-table__empty">Couldn't load the lesson content (js/missions.js).</td></tr>`;
     return;
   }
-  // Admin-added lessons and the remembered project folder load after the
-  // built-in list is already on screen; a failure here doesn't block it.
-  loadRememberedFolder().catch(() => {});
+  // Admin-added lessons load after the built-in list is already on screen;
+  // a failure here doesn't block it.
   try {
     await reloadCustom();
     render();
