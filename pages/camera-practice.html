@@ -169,8 +169,8 @@
              wholesale on its first call, so this is naturally
              overwritten and needs no cleanup code. Uses
              css/style.css's shared `.loading-pulse` (§16). -->
-        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline">
-          <p class="text-muted loading-pulse" style="padding: var(--space-3);">Loading course outline…</p>
+        <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline" data-sk>
+          <div class="sk-group" role="status" style="padding:var(--space-3)"><span class="sr-only">Loading course outline…</span><span class="sk sk--line" style="--w:70%;--h:1rem"></span><span class="sk sk--line" style="--w:90%;--h:1rem"></span><span class="sk sk--line" style="--w:55%;--h:1rem"></span><span class="sk sk--line" style="--w:80%;--h:1rem"></span><span class="sk sk--line" style="--w:65%;--h:1rem"></span><span class="sk sk--line" style="--w:85%;--h:1rem"></span></div>
         </aside>
       <!-- `id="lesson-content"`/`tabindex="-1"` moved down onto
            .lesson-header below (2026-08-26) — see the skip-link comment
@@ -576,5 +576,7 @@
        10). Loaded after tour.js, and js/camera-practice.js calls it only
        through optional chaining, so this page still works without it. -->
   <script src="../js/camera-tips-reminder.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

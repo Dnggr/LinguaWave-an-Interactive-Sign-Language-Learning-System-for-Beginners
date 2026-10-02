@@ -160,9 +160,9 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             <span id="mq-back-label">All missions</span>
           </a>
-          <div id="mq-content">
+          <div id="mq-content" data-sk>
             <!-- filled by js/mastery-quiz.js -->
-            <p class="text-muted">Loading quiz…</p>
+            <div class="sk-group" role="status"><span class="sr-only">Loading quiz…</span><span class="sk sk--line" style="--w:7rem;--h:.8rem"></span><span class="sk sk--title" style="--w:min(28rem,85%);--h:1.8rem"></span><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:var(--space-3);margin-top:var(--space-3)"><span class="sk sk--block" style="--h:3.25rem;border-radius:var(--radius-md)"></span><span class="sk sk--block" style="--h:3.25rem;border-radius:var(--radius-md)"></span><span class="sk sk--block" style="--h:3.25rem;border-radius:var(--radius-md)"></span><span class="sk sk--block" style="--h:3.25rem;border-radius:var(--radius-md)"></span></div></div>
           </div>
         </div>
       </section>
@@ -191,5 +191,7 @@
        <body data-tour="mastery-quiz">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

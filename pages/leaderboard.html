@@ -126,7 +126,7 @@
                 </div>
               </div>
 
-              <div id="lb-panel" role="tabpanel" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
+              <div id="lb-panel" role="tabpanel" aria-live="polite" data-sk><!-- filled by js/leaderboard.js --><div class="sk-group" role="status"><span class="sr-only">Loading the leaderboard…</span><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div><div class="sk-row" style="padding:var(--space-2) var(--space-3)"><span class="sk sk--circle" style="--s:28px"></span><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:40%"></span><span class="sk sk--line" style="--w:22%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4.5rem;--h:.9rem"></span></div></div></div>
 
               <div class="lb-privacy" id="lb-privacy"></div>
             </div>
@@ -134,7 +134,7 @@
             <!-- Side panel: the learner's own level card, with the "My badges" button under its XP bar (drawMe() in js/leaderboard.js).
                  Sits to the right on desktop; stacks ABOVE the boards on tablets and phones. -->
             <aside class="lb-side" aria-label="Your level">
-              <div class="card xp-card lb-me" id="lb-me" aria-live="polite"><!-- filled by js/leaderboard.js --></div>
+              <div class="card xp-card lb-me" id="lb-me" aria-live="polite" data-sk><!-- filled by js/leaderboard.js --><div class="sk-group" role="status"><span class="sr-only">Loading your level…</span><div class="sk-row"><span class="sk sk--circle" style="--s:56px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:60%;--h:1.2rem"></span><span class="sk sk--line" style="--w:40%;--h:.8rem"></span></div></div><span class="sk sk--line" style="--h:.7rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.5rem"></span></div></div>
             </aside>
           </div>
 
@@ -171,5 +171,7 @@
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
   <script src="../js/leaderboard.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>
