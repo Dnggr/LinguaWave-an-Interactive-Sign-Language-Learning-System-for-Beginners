@@ -168,6 +168,32 @@ export async function deleteLearnerAccount(uid) {
   return { authDeleted: false, firestoreDeleted: true, via: "browser" };
 }
 
+/**
+ * RESET PROGRESS (not Delete Account): keeps the Auth login and users/{uid}; removes XP, level, streak,
+ * badges, the leaderboard row and all lesson progress. Writes users/{uid}.progressResetAt so the learner's
+ * browser wipes its LOCAL copy on next load (js/auth.js applyProgressResetIfNeeded) instead of pushing it back.
+ * Preferred path: the admin-only `resetLearnerProgress` Cloud Function; fallback: one atomic browser batch
+ * (admin rules allow the deletes and the users update).
+ *
+ * @returns {Promise<{via:"function"|"browser"}>}
+ */
+export async function resetLearnerProgress(uid) {
+  try {
+    const call = httpsCallable(getFunctions(auth.app), "resetLearnerProgress");
+    await call({ uid });
+    return { via: "function" };
+  } catch (err) {
+    if (!FUNCTION_UNREACHABLE.includes(err?.code)) throw err;
+    console.warn("[resetLearnerProgress] Cloud Function unreachable:", err?.code, err?.message);
+  }
+  const userRef = doc(db, "users", uid);
+  const batch = writeBatch(db);
+  PER_UID_COLLECTIONS.forEach((c) => batch.delete(doc(db, c, uid)));   // same list Delete Account uses
+  if ((await getDoc(userRef)).exists()) batch.update(userRef, { progressResetAt: Date.now() });
+  await batch.commit();   // atomic: data and marker land together
+  return { via: "browser" };
+}
+
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────
  * Lessons the admin adds. Doc id === signId (a lowercase slug), so a
  * lesson can never be created twice. Fields:
