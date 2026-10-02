@@ -142,6 +142,8 @@ import { initMediaPipe, processFrame, isModelReady, getModelError,
          setDetectionInterval } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas }           from './engine/renderer.js';
 import { getDetectionType }                    from './engine/dictionary.js';
+import { loadTrainedLabelSets, getSignTrainingStatus,
+         getSequenceTrainingStatus }              from './engine/training-status.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer,
          isMotionModelReady, getMotionModelError, loadModels,
          // getMotionBufferStatus() gives the REAL recording progress
@@ -1399,6 +1401,88 @@ if (document.readyState === 'loading') {
 
 // ── Update lesson meta (header, counter, progress bar) ────────────
 
+// ══════════════════════════════════════════════════════════════════
+// NEW — LOCKED PRACTICE CHECK for signs with NO TRAINED DATA
+// ══════════════════════════════════════════════════════════════════
+// Source of truth is asl_motion_model/labels.json / asl_static_model/
+// labels.json (via js/engine/training-status.js), NOT the hand-kept
+// `disabled` flags in dictionary.js. If the model has no class for this
+// sign, "Practice Check" can never pass it (e.g. HI was being read as the
+// static letter "Y"), so the button is locked: dimmed + hover/focus
+// tooltip, and clicking it opens a modal explaining the developers don't
+// have the data for it yet. Fails open if labels.json can't be loaded.
+// Deleting a sign's gap is automatic: add its label, retrain, and the
+// lock disappears with no code change.
+let practiceCheckLocked = false;
+let untrainedReturnFocusEl = null;
+let untrainedInfo = { model: 'motion', name: null };   // last lock details, so the startAssessment() backstop can reuse them
+const untrainedModalEl = document.getElementById('untrained-modal');
+
+async function applyPracticeCheckLock() {
+  if (!startBtnEl || isNameDrill) return;
+  let status;
+  try {
+    const sets  = await loadTrainedLabelSets();
+    const steps = getPhraseSequence(sign);
+    status = steps ? getSequenceTrainingStatus(steps, sets) : getSignTrainingStatus(sign, sets);
+  } catch (e) {
+    console.warn('[camera-practice] training-status check failed, leaving Practice Check unlocked:', e);
+    return;
+  }
+
+  const lockedNoteEl = document.getElementById('practice-check-locked-note');
+  const normalNoteEl = document.querySelector('.practice-check-note');
+  practiceCheckLocked = !status.trained;
+
+  if (!practiceCheckLocked) {
+    startBtnEl.classList.remove('is-locked');
+    startBtnEl.removeAttribute('aria-disabled');
+    startBtnEl.removeAttribute('data-lock-tip');
+    startBtnEl.onclick = startAssessment;
+    if (lockedNoteEl) lockedNoteEl.hidden = true;
+    if (normalNoteEl) normalNoteEl.style.display = '';
+    return;
+  }
+
+  const modelName = status.model === 'motion' ? 'motion' : 'sign';
+  const signName  = window.LWMissions?.getSign?.(level, sign)?.title ?? sign;
+  const tip = 'Locked — we don\'t have trained data for this sign yet.';
+  window.LWIcons.setLabel(startBtnEl, 'chapter_lock', 'Practice Check', { size: 'sm' });
+  startBtnEl.classList.add('is-locked');
+  startBtnEl.setAttribute('aria-disabled', 'true');
+  startBtnEl.setAttribute('data-lock-tip', tip);
+  untrainedInfo = { model: modelName, name: signName };
+  startBtnEl.onclick = (e) => { e?.preventDefault?.(); openUntrainedModal(); };
+  if (lockedNoteEl) lockedNoteEl.hidden = false;
+  if (normalNoteEl) normalNoteEl.style.display = 'none';
+}
+
+function openUntrainedModal() {
+  if (!untrainedModalEl) return;
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('untrained-model', untrainedInfo.model);
+  set('untrained-sign', `"${untrainedInfo.name || sign}"`);
+  const iconEl = document.getElementById('untrained-icon');
+  if (iconEl && !iconEl.firstChild) iconEl.appendChild(window.LWIcons.node('chapter_lock'));
+  untrainedReturnFocusEl = document.activeElement;
+  untrainedModalEl.style.display = 'flex';
+  document.getElementById('untrained-ok')?.focus();
+}
+
+function closeUntrainedModal() {
+  if (!untrainedModalEl) return;
+  untrainedModalEl.style.display = 'none';
+  untrainedReturnFocusEl?.focus?.();
+  untrainedReturnFocusEl = null;
+}
+
+document.getElementById('untrained-ok')?.addEventListener('click', closeUntrainedModal);
+document.getElementById('untrained-close')?.addEventListener('click', closeUntrainedModal);
+untrainedModalEl?.addEventListener('click', (e) => { if (e.target === untrainedModalEl) closeUntrainedModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && untrainedModalEl && untrainedModalEl.style.display !== 'none') closeUntrainedModal();
+});
+
 function updateLessonMeta() {
   const counter = document.getElementById('lesson-counter');
   const fill    = document.getElementById('lesson-progress-fill');
@@ -1610,6 +1694,7 @@ function updateLessonMeta() {
     // BUG 5 FIX: use .onclick assignment (idempotent) instead of
     // addEventListener, which stacks duplicate listeners if called twice.
     if (startBtnEl) startBtnEl.onclick = startAssessment;
+    applyPracticeCheckLock();   // async; re-locks the button once labels.json is read
   }
 
   // NEW: the "Try it" practice trigger — same idempotent wiring, same
@@ -2370,6 +2455,9 @@ function handlePracticeFrame(result) {
 // ── Assessment mode ────────────────────────────────────────────────
 
 function startAssessment() {
+  // Backstop: retryLesson()/overlay buttons can reach here without going through
+  // the button's own onclick — never run a check for a sign with no trained data.
+  if (practiceCheckLocked) { openUntrainedModal(); return; }
   // BUG 8 FIX: word/category lessons test every sign in the category
   // in one assessment; the alphabet keeps testing just the one letter.
   quizSigns   = isCategoryAssessment ? [...signOrder] : [sign];

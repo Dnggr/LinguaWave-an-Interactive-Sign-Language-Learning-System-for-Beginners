@@ -370,6 +370,7 @@
           loopStage: 'Contextualize (lighter: sign already known)',
           render: 'lesson-lighter',
           reason: duplicateOf ? `Same sign as ${duplicateOf}` : 'Already taught in an earlier mission',
+          duplicateOf,   // NEW: lesson.js shows THIS sign's video on the "already in your hands" screen
           registerPrompt: duplicateOf ? registerPromptFor(item.signId) : null,
           contextPrompt: contextPromptFor(level, item.signId),
         };
@@ -380,7 +381,7 @@
     if (item.kind === 'BOOSTER') {
       if (lighter && registerPromptFor(item.signId)) {
         return { loopStage: 'Discriminate (register, not handshape)', render: 'booster-register',
-                 registerPrompt: registerPromptFor(item.signId) };
+                 registerPrompt: registerPromptFor(item.signId), duplicateOf };
       }
       return {
         loopStage: 'Recognize',
