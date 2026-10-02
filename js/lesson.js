@@ -46,6 +46,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
+console.info('[LinguaWave] lesson.js loaded: question fix 2026-10-02');
 
 // Mirrors mission-overview.js's own const of the same name — kept
 // as a small local re-derivation, same as this file's own existing
@@ -159,13 +160,13 @@ function mediaBlockHtml(sign) {
  * Shows the twin's video (the one they already learned), falling back to
  * this sign's own media if the twin has no entry. mediaBlockHtml() already
  * falls back to image/text if the mp4 is missing. */
-function twinMediaHtml(mission, item, plan, sign) {
+function twinMediaHtml(mission, item, plan, sign, withCaption = true) {
   const twinId = plan && plan.duplicateOf;
   const twin = twinId ? window.LWMissions.getSign(mission.level, twinId, mission.category) : null;
   const shown = twin || sign;
   if (!shown) return '';
   const own = (sign && sign.title) || item.signId;
-  const caption = twin
+  const caption = (twin && withCaption)
     ? `<p class="lesson-media__caption text-muted">This is the sign for both ${escapeHtml(twin.title || twinId)} and ${escapeHtml(own)}.</p>`
     : '';
   return mediaBlockHtml(shown) + caption;
@@ -291,6 +292,10 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
   const reg = plan.registerPrompt;
+  // REWORKED: this teach screen used to ask the same "which fits best?"
+  // question the Quick Check right after it asks (and its two options were
+  // the same sign). It now only explains the sign; the Quick Check that
+  // follows is the one place the learner is quizzed on it.
   el.innerHTML = `
     <div class="lesson-stage-label">Already in your hands</div>
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
@@ -298,45 +303,19 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
       <strong>You already know this sign.</strong> ${escapeHtml(plan.reason)}.
     </div>
     ${twinMediaHtml(mission, item, plan, sign)}
-    ${reg ? `
-      <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
-      <div class="lesson-options" id="lesson-register-options">
-        ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
-      </div>
-      <p class="lesson-feedback" id="lesson-feedback" hidden></p>
-    ` : `
-      <p class="lesson-prompt">${escapeHtml(plan.contextPrompt)}</p>
-      <div class="lesson-actions">
-        <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
-      </div>
-    `}
+    ${reg ? `<p class="lesson-desc">${escapeHtml(reg.note)}</p>` : ''}
+    <div class="lesson-actions">
+      <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
+    </div>
   `;
-
-  if (reg) {
-    const feedback = document.getElementById('lesson-feedback');
-    document.querySelectorAll('#lesson-register-options .lesson-option').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.disabled) return;
-        document.querySelectorAll('#lesson-register-options .lesson-option').forEach((b) => { b.disabled = true; });
-        const correct = btn.dataset.value === reg.answer;
-        btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
-        feedback.hidden = false;
-        window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-          (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best here. `) + reg.note, { size: 'sm' });
-        feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-        advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
-      });
-    });
-  } else {
-    document.getElementById('lesson-continue').addEventListener('click', () => {
-      completeAndAdvance(mission, index, item);
-    });
-  }
+  document.getElementById('lesson-continue').addEventListener('click', () => {
+    completeAndAdvance(mission, index, item);
+  });
 }
 
-function renderRecognizeQuestion(container, mission, index, item, sign, opts, onDone) {
+function renderRecognizeQuestion(container, mission, index, item, sign, opts, onDone, promptText = 'Which word is this?') {
   container.innerHTML += `
-    <p class="lesson-prompt">Which word is this?</p>
+    ${promptText ? `<p class="lesson-prompt">${escapeHtml(promptText)}</p>` : ''}
     ${mediaBlockHtml(sign)}
     <div class="lesson-options" id="lesson-recognize-options">
       ${shuffleOptions(opts.options).map((id) => {
@@ -365,8 +344,10 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
 function renderBoosterRecognize(mission, index, item, plan) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
-  el.innerHTML = `<div class="lesson-stage-label">Quick Check</div><h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>`;
-  renderRecognizeQuestion(el, mission, index, item, sign, plan.options, () => completeAndAdvance(mission, index, item));
+  // REWORKED: the heading used to be the sign's own title (e.g. "Bye") right above
+  // "Which word is this?" with "Bye" as an option, which gave the answer away.
+  el.innerHTML = `<div class="lesson-stage-label">Quick Check</div><h1>What does this sign mean?</h1>`;
+  renderRecognizeQuestion(el, mission, index, item, sign, plan.options, () => completeAndAdvance(mission, index, item), null);
 }
 
 function renderBoosterRegister(mission, index, item, plan) {
@@ -375,8 +356,8 @@ function renderBoosterRegister(mission, index, item, plan) {
   const el = document.getElementById('lesson-content');
   el.innerHTML = `
     <div class="lesson-stage-label">Quick Check</div>
-    <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
-    ${twinMediaHtml(mission, item, plan, sign)}
+    <h1>One sign, two words</h1>
+    ${twinMediaHtml(mission, item, plan, sign, false)}
     <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
     <div class="lesson-options" id="lesson-register-options">
       ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
@@ -392,7 +373,7 @@ function renderBoosterRegister(mission, index, item, plan) {
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
       window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-        (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best. `) + reg.note, { size: 'sm' });
+        (correct ? 'Right! ' : `Not quite, this sign is also used for "${reg.answer}". `) + reg.note, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
       advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
     });
@@ -403,9 +384,14 @@ function renderPracticeScenario(mission, index, item, plan) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
 
+  // The scenario title (e.g. "Ending a Video Call", or the generic
+  // `Using "Bye" ...`) can name the answer, which is fine for the pair
+  // question below (it already names the sign being asked for) but would
+  // give away the word-from-video question, so that branch hides it.
+  const showScenarioTitle = !!plan.discriminatePair;
   el.innerHTML = `
     <div class="lesson-stage-label">Practice</div>
-    <h1>${escapeHtml(item.scenarioTitle || 'Practice')}</h1>
+    <h1>${escapeHtml(showScenarioTitle ? (item.scenarioTitle || 'Practice') : 'Which word is this?')}</h1>
   `;
 
   if (plan.discriminatePair) {
@@ -441,7 +427,7 @@ function renderPracticeScenario(mission, index, item, plan) {
       });
     });
   } else if (plan.recognizeOptions) {
-    renderRecognizeQuestion(el, mission, index, item, sign, plan.recognizeOptions, () => showContextStep(mission, index, item, plan));
+    renderRecognizeQuestion(el, mission, index, item, sign, plan.recognizeOptions, () => showContextStep(mission, index, item, plan), null);
   } else {
     showContextStep(mission, index, item, plan);
   }
@@ -455,8 +441,9 @@ function showContextStep(mission, index, item, plan) {
   const wrap = document.createElement('div');
   wrap.className = 'lesson-context';
   wrap.innerHTML = `
-    <p class="lesson-stage-label">Use it in context</p>
+    <p class="lesson-stage-label">Try it yourself</p>
     <p class="lesson-prompt">${escapeHtml(plan.contextPrompt || '')}</p>
+    <p class="text-muted">This step isn\u2019t graded. Sign it with your hands, then continue when you\u2019re ready.</p>
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
     </div>
