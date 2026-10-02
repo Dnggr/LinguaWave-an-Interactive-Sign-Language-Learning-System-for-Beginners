@@ -181,9 +181,9 @@
             </div>
           </div>
 
-          <div id="lesson-content">
+          <div id="lesson-content" data-sk>
             <!-- filled by js/lesson.js -->
-            <p class="text-muted">Loading lesson…</p>
+            <div class="sk-group" role="status"><span class="sr-only">Loading lesson…</span><div class="card"><div class="sk-row" style="align-items:flex-start;gap:var(--space-6);flex-wrap:wrap"><span class="sk sk--block" style="--h:15rem;--w:min(22rem,100%)"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:40%;--h:1.6rem"></span><span class="sk sk--line" style="--w:90%"></span><span class="sk sk--line" style="--w:75%"></span><span class="sk sk--line" style="--w:60%"></span></div></div></div><span class="sk sk--btn" style="--w:8rem;--h:2.75rem"></span></div>
           </div>
         </div>
       </section>
@@ -212,5 +212,7 @@
        <body data-tour="lesson">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

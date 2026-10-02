@@ -116,7 +116,7 @@
             <!-- Left column: picture + name. The picker opens from the round button on the picture. -->
             <aside class="profile-side" aria-label="Your profile">
               <div class="profile-side__avatar-wrap">
-                <div id="profile-avatar" aria-hidden="true"></div>
+                <div id="profile-avatar" aria-hidden="true" data-sk><div class="sk-group" role="status"><span class="sr-only">Loading your picture…</span><span class="sk sk--circle" style="--s:100%;height:auto;aspect-ratio:1"></span></div></div>
                 <button type="button" class="profile-side__change" id="btn-change-avatar"
                         aria-haspopup="dialog" aria-expanded="false" aria-controls="avatar-panel"
                         aria-label="Change your picture" title="Change your picture">
@@ -127,7 +127,7 @@
               <p class="text-muted profile-side__sub">Your picture shows next to your name on the leaderboard.</p>
 
               <!-- Achievements: filled by js/profile-page.js from real progress. -->
-              <div class="profile-achievements" id="profile-achievements"></div>
+              <div class="profile-achievements" id="profile-achievements" data-sk><div class="sk-group" role="status"><span class="sr-only">Loading achievements…</span><div class="sk-cols" style="--cols:3"><span class="sk sk--square" style="--s:100%;aspect-ratio:1"></span><span class="sk sk--square" style="--s:100%;aspect-ratio:1"></span><span class="sk sk--square" style="--s:100%;aspect-ratio:1"></span></div></div></div>
 
               <!-- Picture picker: a floating modal (native <dialog>: focus trap + Esc come from the browser). -->
               <dialog class="avatar-dialog" id="avatar-panel" aria-labelledby="avatar-picker-label">
@@ -154,20 +154,20 @@
             <!-- Right column -->
             <div class="profile-main">
               <!-- Level / XP card: filled by js/xp-ui.js. The placeholder is replaced on first draw. -->
-              <div class="card xp-card" id="xp-card" aria-live="polite" style="--tier: #38bdf8;">
-                <p class="text-muted loading-pulse">Loading your level…</p>
+              <div class="card xp-card" id="xp-card" aria-live="polite" data-sk style="--tier: #38bdf8;">
+                <div class="sk-group" role="status"><span class="sr-only">Loading your level…</span><div class="sk-row"><span class="sk sk--circle" style="--s:56px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:12rem;--h:1.2rem"></span><span class="sk sk--line" style="--w:7rem;--h:.8rem"></span></div></div><span class="sk sk--line" style="--h:.7rem"></span><div class="sk-row"><span class="sk sk--pill" style="--w:7.5rem"></span><span class="sk sk--pill" style="--w:6.5rem"></span></div></div>
               </div>
 
-              <div class="card" id="profile-activity">
-                <p class="text-muted loading-pulse">Loading your learning activity…</p>
+              <div class="card" id="profile-activity" data-sk>
+                <div class="sk-group" role="status"><span class="sr-only">Loading your learning activity…</span><span class="sk sk--title" style="--w:11rem;--h:1.3rem"></span><span class="sk sk--block" style="--h:7.5rem;--w:100%"></span></div>
               </div>
 
               <div class="profile-pair">
-                <div class="card" id="profile-highlights">
-                  <p class="text-muted loading-pulse">Loading your highlights…</p>
+                <div class="card" id="profile-highlights" data-sk>
+                  <div class="sk-group" role="status"><span class="sr-only">Loading your highlights…</span><span class="sk sk--title" style="--w:8rem;--h:1.3rem"></span><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:60%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:60%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:60%"></span><span class="sk sk--line" style="--w:35%;--h:.7rem"></span></div></div></div>
                 </div>
-                <div class="card activity-card" id="profile-recent">
-                  <p class="text-muted loading-pulse">Loading recent activity…</p>
+                <div class="card activity-card" id="profile-recent" data-sk>
+                  <div class="sk-group" role="status"><span class="sr-only">Loading recent activity…</span><span class="sk sk--title" style="--w:9rem;--h:1.3rem"></span><div class="sk-row"><span class="sk sk--circle" style="--s:10px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:70%"></span><span class="sk sk--line" style="--w:40%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--circle" style="--s:10px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:70%"></span><span class="sk sk--line" style="--w:40%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--circle" style="--s:10px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:70%"></span><span class="sk sk--line" style="--w:40%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--circle" style="--s:10px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:70%"></span><span class="sk sk--line" style="--w:40%;--h:.7rem"></span></div></div></div>
                 </div>
               </div>
             </div>
@@ -189,5 +189,7 @@
   <script src="../js/avatars.js"></script>
   <script src="../js/profile-page.js"></script>
   <script src="../js/xp-ui.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>

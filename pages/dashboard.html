@@ -131,11 +131,13 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="dash-hero-grid">
-            <div class="mission-banner" id="mission-banner">
-              <!-- filled by js/dashboard.js -->
+            <div class="mission-banner" id="mission-banner" data-sk>
+              <!-- filled by js/dashboard.js; the skeleton below is replaced on first render -->
+              <div class="sk-group sk-group--row" role="status" style="justify-content:space-between;gap:var(--space-6)"><span class="sr-only">Loading today’s mission…</span><div class="sk-stack sk-stack--grow" style="gap:var(--space-3)"><span class="sk sk--line" style="--w:7rem;--h:.8rem"></span><span class="sk sk--title" style="--w:min(22rem,80%);--h:2rem"></span><span class="sk sk--line" style="--w:min(30rem,90%)"></span><span class="sk sk--line" style="--w:min(24rem,70%)"></span><span class="sk sk--btn" style="--w:11rem;--h:3rem;margin-top:var(--space-2)"></span></div><span class="sk sk--circle" style="--s:min(180px,28vw)"></span></div>
             </div>
-            <div class="card progress-card" id="progress-card">
+            <div class="card progress-card" id="progress-card" data-sk>
               <!-- filled by js/dashboard.js -->
+              <div class="sk-group" role="status"><span class="sr-only">Loading your progress…</span><div class="sk-row"><span class="sk sk--circle" style="--s:88px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:5rem;--h:.75rem"></span><span class="sk sk--title" style="--w:10rem;--h:1.2rem"></span></div></div><div class="sk-cols" style="margin-top:var(--space-2)"><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div></div></div>
             </div>
           </div>
         </div>
@@ -148,8 +150,9 @@
             <h2>Learning Path</h2>
             <a href="learn.html" class="section-heading-row__link">View All</a>
           </div>
-          <div class="learning-path-grid" id="learning-path-grid">
+          <div class="learning-path-grid" id="learning-path-grid" data-sk>
             <!-- filled by js/dashboard.js -->
+            <div class="sk-group sk-group--grid" role="status"><span class="sr-only">Loading your learning path…</span><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div></div>
           </div>
         </div>
       </section>
@@ -160,8 +163,9 @@
           <div class="section-heading-row">
             <h2>Recommended for You</h2>
           </div>
-          <div class="recommended-grid" id="recommended-grid">
+          <div class="recommended-grid" id="recommended-grid" data-sk>
             <!-- filled by js/dashboard.js -->
+            <div class="sk-group sk-group--grid" role="status"><span class="sr-only">Loading recommendations…</span><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div></div>
           </div>
         </div>
       </section>
@@ -192,5 +196,7 @@
        <body data-tour="dashboard">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
+  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/skeleton.js"></script>
 </body>
 </html>
