@@ -19,13 +19,18 @@
 //
 // COLLECTIONS COVERED (everything else is denied by default):
 //   users/{uid}            learner profile   (js/auth.js, admin panel)
-//   signs/{id}             lesson content    (admin panel)
+//   signs/{id}             lesson content    (admin panel; video = R2 URL + key)
 //   questions/{id}         quiz questions    (admin panel)
 //   userProgress/{uid}     progress          (js/engine/progress.js)
 //   userProgressV2/{uid}   missions sync     (js/missions.js)
 //   userGame/{uid}         game progress     (js/game.js)          <- NEW
 //   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
 //
+// CHANGED (lesson media -> Cloudflare R2): signs/{id} writes are now shape-checked
+//      (field whitelist, id == signId, videoUrl https/legacy path, videoKey in the
+//      Worker's videos/admin/<signId>/<ts>.mp4 format). Delete stays
+//      admin-only and unconditional. Upload authorization itself is NOT done here:
+//      it's the media Worker (worker/src/index.js) that checks the Firebase token.
 // CHANGED (progress sync fix): learner progress (userProgress, userProgressV2,
 //      userGame) is now get/create/update by the owner only, with a field
 //      whitelist. NOTE: the rules alone were never the blocker — js/auth.js had
@@ -104,9 +109,32 @@ service cloud.firestore {
     }
 
     // ── signs/{id}  (Lesson Management) ────────────────────────
+    // Learners read; only the admin writes. The video itself lives in
+    // Cloudflare R2 — the document only carries its public URL + object key.
+    // The rules can't know R2 is uploaded, but they DO pin the shape so a
+    // typo or a compromised admin session can't store arbitrary fields or
+    // point a lesson at a non-https / non-R2-key value.
     match /signs/{id} {
+      function validLesson(d) {
+        return d.keys().hasOnly(['signId', 'title', 'description', 'tips', 'missionId', 'chapterId', 'order',
+                                 'videoUrl', 'videoKey', 'localVideoPath', 'level', 'category',
+                                 'detectionType', 'source', 'createdAt', 'updatedAt'])
+          && d.signId == id
+          && id.matches('^[a-z0-9][a-z0-9_-]{0,39}$')
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 60
+          && d.description is string && d.description.size() <= 500
+          && d.tips is list && d.tips.size() <= 10
+          && d.order is number && d.order >= 0 && d.order <= 9999
+          // videoUrl: empty, a public https URL (R2), or a legacy ../assets/ path.
+          && d.videoUrl is string && d.videoUrl.size() <= 500
+          && (d.videoUrl == '' || d.videoUrl.matches('^https://[^ ]+$') || d.videoUrl.matches('^\\.\\./assets/[^ ]+$'))
+          // videoKey: empty (no R2 object) or exactly the shape the media Worker generates.
+          && (!('videoKey' in d) || d.videoKey == ''
+              || d.videoKey.matches('^videos/admin/[a-z0-9][a-z0-9_-]{0,39}/[0-9]{10,16}\\.mp4$'));
+      }
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && validLesson(request.resource.data);
+      allow delete: if isAdmin();   // always allowed, so legacy/odd documents can still be cleaned up
     }
 
     // ── questions/{id}  (Quiz Management) ──────────────────────

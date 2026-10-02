@@ -104,7 +104,7 @@ function logNearMiss(kind, label, result, topRaw) {
   } catch { /* diagnostics must never break detection */ }
 }
 
-import { SIGN_DICTIONARY } from './dictionary.js';
+import { SIGN_DICTIONARY, getDetectionType } from './dictionary.js';
 
 // ── Config ────────────────────────────────────────────────────────
 const STATIC_MODEL_PATH  = '../asl_static_model/model.json';
@@ -596,13 +596,38 @@ async function loadKeras3CompatModel(modelJsonPath) {
 
 // ── Load ──────────────────────────────────────────────────────────
 
+// ── labels.json = the authoritative list of trained signs ─────────
+// Both labels.json files are fetched through ONE cached helper, so the label
+// map the models use to decode their output and the "which signs are trained"
+// answer the game reads (getClassifiableSigns below) can never disagree.
+const _labelFetches = {};
+function fetchLabelsOnce(kind) {
+  if (!_labelFetches[kind]) {
+    const path = kind === 'motion' ? MOTION_LABELS_PATH : STATIC_LABELS_PATH;
+    _labelFetches[kind] = fetch(path, { cache: 'no-cache' })
+      .then((res) => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+      .catch((e) => { delete _labelFetches[kind]; throw e; });   // a failed fetch can be retried
+  }
+  return _labelFetches[kind];
+}
+
+/**
+ * Loads ONLY the two labels.json files (no model weights), so the game can work
+ * out its playable pool before the camera/models have finished booting.
+ * Never throws: a file that fails to load simply leaves that model with no
+ * trained signs (fail CLOSED — an unknown model must not make signs playable).
+ */
+export async function loadModelLabels() {
+  const [s, m] = await Promise.allSettled([fetchLabelsOnce('static'), fetchLabelsOnce('motion')]);
+  if (s.status === 'fulfilled') staticLabels = s.value; else console.warn('[classifier] static labels.json not loaded:', s.reason?.message);
+  if (m.status === 'fulfilled') motionLabels = m.value; else console.warn('[classifier] motion labels.json not loaded:', m.reason?.message);
+}
+
 export async function loadModels() {
   console.log('[classifier] Loading static model…');
   try {
     staticModel  = await loadKeras3CompatModel(STATIC_MODEL_PATH);
-    const res    = await fetch(STATIC_LABELS_PATH);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    staticLabels = await res.json();
+    staticLabels = await fetchLabelsOnce('static');
     console.log('[classifier] Static model ready. Labels:', staticLabels);
   } catch (e) {
     console.error('[classifier] Failed to load static model:', e.message);
@@ -613,14 +638,63 @@ export async function loadModels() {
   console.log('[classifier] Loading motion model…');
   try {
     motionModel  = await loadKeras3CompatModel(MOTION_MODEL_PATH);
-    const res2   = await fetch(MOTION_LABELS_PATH);
-    if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
-    motionLabels = await res2.json();
+    motionLabels = await fetchLabelsOnce('motion');
     console.log('[classifier] Motion model ready. Labels:', motionLabels);
   } catch (e) {
     console.warn('[classifier] Motion model not loaded:', e.message);
     motionModelError = e.message;   // expose for lesson.js warning
   }
+}
+
+// ── Which signs can each model actually classify? ─────────────────
+// labels.json is the ONLY source. dictionary.js `disabled` flags are NOT consulted.
+export const NONE_LABEL = 'NONE';   // background class — never a sign
+
+// Set to false to make a sign playable ONLY if its own label is in labels.json
+// (no twin/alias signs such as CARRY riding on BRING's class).
+const ALLOW_TWIN_ALIASES = true;
+
+/** The sign labels the given model was trained on ('static' | 'motion'), NONE removed. null = labels not loaded. */
+export function getTrainedLabelSet(kind) {
+  const labels = kind === 'motion' ? motionLabels : staticLabels;
+  if (!labels) return null;
+  return new Set(Object.values(labels).filter((l) => l !== NONE_LABEL));
+}
+
+/**
+ * Can the model assigned to this sign (dictionary detectionType) classify it?
+ * True when its own label is in that model's labels.json, or — only if the
+ * classifier's twin pooling supports it (SIGN_GROUPS) — when an equivalent
+ * sign is in that same model's labels.json. The sign must also have a
+ * dictionary entry (the game needs its type/category). NONE is never true.
+ */
+export function isSignClassifiable(signId) {
+  const id = String(signId ?? '');
+  if (!id || id === NONE_LABEL || !SIGN_DICTIONARY[id]) return false;
+  const trained = getTrainedLabelSet(getDetectionType(id) === 'motion' ? 'motion' : 'static');
+  if (!trained) return false;
+  const members = ALLOW_TWIN_ALIASES ? getSignGroup(id) : [id];
+  return members.some((m) => m !== NONE_LABEL && trained.has(m));
+}
+
+/** True when the sign's OWN label is in its model's labels.json (not just a twin of one). */
+export function isTrainedLabel(signId) {
+  const id = String(signId ?? '');
+  if (!id || id === NONE_LABEL || !SIGN_DICTIONARY[id]) return false;
+  return !!getTrainedLabelSet(getDetectionType(id) === 'motion' ? 'motion' : 'static')?.has(id);
+}
+
+/**
+ * Every sign the game may use, derived from the two labels.json files:
+ * each trained label, plus its twin-group mates, filtered by isSignClassifiable().
+ * Needs loadModelLabels() (or loadModels()) to have run; returns [] otherwise.
+ */
+export function getClassifiableSigns() {
+  const candidates = new Set();
+  for (const kind of ['static', 'motion']) {
+    for (const label of getTrainedLabelSet(kind) ?? []) getSignGroup(label).forEach((g) => candidates.add(g));
+  }
+  return [...candidates].filter(isSignClassifiable);
 }
 
 export function isClassifierReady() {
@@ -697,8 +771,9 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
 
-  const entry = SIGN_DICTIONARY[rawLabel];
-  if (!entry || entry.disabled) return { label: null, confidence: 0, matched: false };
+  // labels.json decides what is trained, so the dictionary `disabled` flag is not consulted here.
+  // NONE is the background class and is never reported as a sign.
+  if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) return { label: null, confidence: 0, matched: false };
 
   // NEW: both the absolute threshold AND the margin over the runner-up
   // must pass — see the block comment near MATCH_THRESHOLD above.
@@ -814,8 +889,8 @@ function runMotionInference(frameWindow, allowedLabels = null, targetSign = null
   // common case — a label that IS in the dictionary but hasn't been
   // wired into data.js/dictionary.js yet would still show up as a
   // "detected" word with no matching lesson. Keep both files in sync.
-  const dictEntry = SIGN_DICTIONARY[rawLabel];
-  if (!dictEntry || dictEntry.disabled) {
+  // (labels.json decides what is trained — `disabled` is not consulted; NONE is never a sign.)
+  if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 

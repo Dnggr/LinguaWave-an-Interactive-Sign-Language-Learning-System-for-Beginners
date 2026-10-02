@@ -247,29 +247,34 @@ const UNITS_V2 = [
  * display tag jumps it into a different chapter. Every other unit's
  * categoryGroup follows its existing order position contiguously.
  * ──────────────────────────────────────────────────────────────── */
+/* CHAPTER ORDER (2026-10-02): chapters 2-11 are ordered by how much trained data the
+ * ASL models currently have for them (most-covered first), not by curriculum theme.
+ * Chapter 2's id is mirrored by CHAPTER_2_ID in the chapter-gating block below —
+ * if the chapter in slot 2 ever changes again, update CHAPTER_2_ID too, or the
+ * wrong chapter becomes the gate for everything after it. */
 const CATEGORY_GROUPS_V2 = [
   { id: 'asl_foundations', order: 1, title: 'ASL Foundations',
     blurb: 'The building blocks everything else leans on: the alphabet and numbers.' },
-  { id: 'introduce_yourself', order: 2, title: 'Introduce Yourself',
-    blurb: 'Say hello, and talk about yourself and the people around you.' },
-  { id: 'express_feelings', order: 3, title: 'Express How You Feel',
+  { id: 'express_feelings', order: 2, title: 'Express How You Feel',
     blurb: 'Politeness, emotions, and everyday needs.' },
-  { id: 'daily_actions', order: 4, title: 'Daily Actions & Communication',
+  { id: 'daily_actions', order: 3, title: 'Daily Actions & Communication',
     blurb: 'Verbs for what you do, and how you talk about doing it.' },
-  { id: 'describing_things', order: 5, title: 'Describing People & Things',
-    blurb: 'Colors, shapes, size, and the senses — how to describe anything.' },
-  { id: 'home_family', order: 6, title: 'Home & Family',
-    blurb: 'Family members, and the rooms and things in a home.' },
-  { id: 'school_life', order: 7, title: 'School Life',
-    blurb: 'Classroom vocabulary, supplies, and subjects.' },
-  { id: 'food_nature', order: 8, title: 'Food & Nature',
-    blurb: 'Fruits, animals, plants, weather, and the seasons.' },
-  { id: 'clothing_belongings', order: 9, title: 'Clothing & Belongings',
-    blurb: 'What you wear, and the personal items you carry.' },
-  { id: 'people_places_time', order: 10, title: 'People, Places & Time',
-    blurb: 'Professions, places, transportation, and talking about time.' },
-  { id: 'having_a_conversation', order: 11, title: 'Having a Conversation',
+  { id: 'introduce_yourself', order: 4, title: 'Introduce Yourself',
+    blurb: 'Say hello, and talk about yourself and the people around you.' },
+  { id: 'having_a_conversation', order: 5, title: 'Having a Conversation',
     blurb: 'Turn-taking, questions, requests, and social manners.' },
+  { id: 'people_places_time', order: 6, title: 'People, Places & Time',
+    blurb: 'Professions, places, transportation, and talking about time.' },
+  { id: 'food_nature', order: 7, title: 'Food & Nature',
+    blurb: 'Fruits, animals, plants, weather, and the seasons.' },
+  { id: 'school_life', order: 8, title: 'School Life',
+    blurb: 'Classroom vocabulary, supplies, and subjects.' },
+  { id: 'describing_things', order: 9, title: 'Describing People & Things',
+    blurb: 'Colors, shapes, size, and the senses — how to describe anything.' },
+  { id: 'home_family', order: 10, title: 'Home & Family',
+    blurb: 'Family members, and the rooms and things in a home.' },
+  { id: 'clothing_belongings', order: 11, title: 'Clothing & Belongings',
+    blurb: 'What you wear, and the personal items you carry.' },
 ];
 
 /* ── getCategoryGroup() / getUnitsForCategoryGroupV2() ─────────────────
@@ -9680,7 +9685,7 @@ function getCategoriesForUnitV2(unitOrder) {
    * REVISED RULE (was: strictly sequential, each chapter needed every
    * earlier chapter 100% done):
    *   - Chapter 1 (asl_foundations)   : always open.
-   *   - Chapter 2 (introduce_yourself): opens once Chapter 1 is 100%.
+   *   - Chapter 2 (express_feelings)  : opens once Chapter 1 is 100%.
    *   - Chapters 3 and up             : ALL open at once as soon as
    *                                     Chapter 2 (and so Chapter 1) is
    *                                     100% — no more one-by-one unlock.
@@ -9694,7 +9699,7 @@ function getCategoriesForUnitV2(unitOrder) {
    * below for the Game tab (Chapter 1 gate).
    */
   const CHAPTER_1_ID = 'asl_foundations';
-  const CHAPTER_2_ID = 'introduce_yourself';
+  const CHAPTER_2_ID = 'express_feelings';
 
   // True when every live mission in the chapter is 100% done. A chapter
   // with no live missions can't block anything (vacuously complete).
@@ -10156,7 +10161,7 @@ function getCategoriesForUnitV2(unitOrder) {
    * then order within the chapter. This is the number Learn's rows and
    * Mission Overview's header display. It is NOT a mission's index in
    * getAllMissions(): that array is in unit order, and chapters regroup it
-   * (e.g. "Personal Information" is array slot 12 but lives in Chapter 2),
+   * (e.g. "Personal Information" is array slot 12 but lives in Chapter 4),
    * so array-index numbering skipped values (Chapter 5 read 11, 13, 14…)
    * and would disagree with the order the learner actually sees. Keyed by
    * category id, which is stable across searches/filters.

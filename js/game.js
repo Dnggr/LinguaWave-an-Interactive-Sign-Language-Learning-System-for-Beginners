@@ -14,15 +14,18 @@
      The motion you perform is matched against every motion brick still on the wall.
    - A confident sign that is NOT on the wall, or a failed motion attempt, is a miss.
    - Clear the wall -> reward (stars + gems + badges, saved in localStorage 'lw_game_v1').
+  Sign pool: asl_static_model/labels.json + asl_motion_model/labels.json are the ONLY authority on which
+   signs can appear (see playableFilter). dictionary.js `disabled` flags are never read, and NONE is never playable.
   Lifecycle: stopCamera + cancelAnimationFrame + all timers cleared on pagehide/hidden.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
 import { initMediaPipe, processFrame, isModelReady } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
-import { getDetectionType, getActiveSigns, getSignData } from './engine/dictionary.js';
+import { getDetectionType, getSignData } from './engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer, finalizeMotionWindow,
-         loadModels, isMotionModelReady, getAllowedLabelsForSign, getSignGroup,
-         getMotionBufferStatus } from './engine/classifier.js';
+         loadModels, loadModelLabels, isClassifierReady, isMotionModelReady,
+         getAllowedLabelsForSign, getSignGroup, getMotionBufferStatus,
+         getClassifiableSigns, isSignClassifiable, isTrainedLabel } from './engine/classifier.js';
 
 const $ = (id) => document.getElementById(id);
 const videoEl = $('lw-webcam'), canvasEl = $('lw-canvas'), ctx = canvasEl.getContext('2d');
@@ -162,26 +165,57 @@ function getCurriculumSignIds() {
   } catch { return null; }
 }
 
-// Playable = the classifier can detect it AND a lesson teaches it.
-function playableFilter() {
-  const active = new Set(getActiveSigns()), curriculum = getCurriculumSignIds(), motionOk = isMotionModelReady();
-  return (s) => active.has(s) && (!curriculum || curriculum.has(s)) && (getDetectionType(s) !== 'motion' || motionOk);
+// Playable = a model's labels.json can classify it AND a lesson teaches it.
+// labels.json is the ONLY authority for "can be classified" (via classifier.js, which maps each sign to the
+// model for its detection type and honours the classifier's own twin groups). dictionary.js `disabled`
+// flags are NOT used, and NONE can never pass. `requireModels` = the model weights must also be loaded.
+function playableFilter({ requireModels = false } = {}) {
+  const curriculum = getCurriculumSignIds();
+  return (s) => {
+    if (!isSignClassifiable(s)) return false;
+    if (curriculum && !curriculum.has(s)) return false;
+    if (!requireModels) return true;
+    return getDetectionType(s) === 'motion' ? isMotionModelReady() : isClassifierReady();
+  };
+}
+
+// The full playable set, derived from the labels (not from the dictionary).
+const playablePool = (opts) => getClassifiableSigns().filter(playableFilter(opts));
+
+// Twin signs (BRING/CARRY, 0/O ...) are the same gesture to the classifier, so two of them on one wall would
+// both ask for the identical sign. Keep one per group, preferring a sign that is itself a trained label.
+function dedupeTwins(signs) {
+  const keyOf = (s) => { const g = getSignGroup(s); return g.length === 1 ? null : g.slice().sort().join('|'); };
+  const best = new Map();   // group key -> chosen sign
+  for (const s of signs) {
+    const k = keyOf(s);
+    if (k && (!best.has(k) || (!isTrainedLabel(best.get(k)) && isTrainedLabel(s)))) best.set(k, s);
+  }
+  return signs.filter((s) => { const k = keyOf(s); return !k || best.get(k) === s; });
 }
 
 // source: 'learned' (default) = ONLY finished signs, wall shrinks if you have fewer than the wall size
 //         'mixed'   = finished signs first, then unlearned lesson signs to fill the wall
 //         'all'     = any lesson sign
-// returns { signs, learnedSet, note }
-async function buildPool(size, source) {
-  const devPool = dev('getPool'); if (devPool) return devPool;   // DEV-TEST (letters/numbers test set)
-  const learnedAll = await getLearnedSignIds();
-  const usable = playableFilter();
-  const learned = shuffle([...learnedAll].filter(usable));
-  const others = () => shuffle(getActiveSigns().filter(usable).filter((s) => !learnedAll.has(s)));
+// `ready` resolves true once the camera + models are loaded. Returns { signs, learnedSet, note }, or null if boot failed.
+async function buildPool(size, source, ready) {
+  // Labels first (cheap, independent of the camera), so the pool never depends on a boot race.
+  const [learnedAll, booted] = await Promise.all([getLearnedSignIds(), ready, loadModelLabels()]);
+  if (!booted) return null;
+  const usable = playableFilter({ requireModels: true });
+  const finalize = (list) => dedupeTwins(list).filter(usable);   // last gate: nothing unclassifiable reaches the wall
+
+  const devPool = dev('getPool');   // DEV-TEST (letters/numbers test set) — still passes through the same labels.json gate
+  if (devPool) return { ...devPool, signs: finalize(devPool.signs || []) };   // DEV-TEST
+
+  const everything = playablePool({ requireModels: true });
+  const learned = dedupeTwins(shuffle([...learnedAll].filter(usable)));
+  const others = () => dedupeTwins(shuffle(everything.filter((s) => !learnedAll.has(s))))
+    .filter((s) => !learned.some((l) => getSignGroup(l).includes(s)));   // don't re-add a twin of a learned sign
   let signs, note = '';
 
   if (source === 'all') {
-    signs = shuffle(getActiveSigns().filter(usable)).slice(0, size);
+    signs = dedupeTwins(shuffle(everything)).slice(0, size);
   } else if (source === 'mixed') {
     signs = learned.slice(0, size);
     signs = signs.concat(others().slice(0, size - signs.length));
@@ -190,14 +224,15 @@ async function buildPool(size, source) {
     signs = learned.slice(0, size);   // unique signs only: a smaller wall beats duplicate bricks
     if (signs.length < size) note = `Your wall has ${signs.length} brick${signs.length === 1 ? '' : 's'} because you've finished ${signs.length} sign${signs.length === 1 ? '' : 's'}. Finish more lessons to grow it.`;
   }
+  signs = finalize(signs);
   return { signs: shuffle(signs), learnedSet: new Set(learned), note };
 }
 
 async function refreshPoolNote() {
   try {
-    const learned = await getLearnedSignIds();
+    const [learned] = await Promise.all([getLearnedSignIds(), loadModelLabels()]);
     const usable = playableFilter();
-    const n = [...learned].filter(usable).length;
+    const n = dedupeTwins([...learned].filter(usable)).length;
     $('gm-pool-note').textContent = n
       ? `${n} finished sign${n === 1 ? '' : 's'} can appear on the wall.`
       : "You haven't finished any signs yet. Complete a lesson first, or switch to 'learned + new signs' in Setup.";
@@ -436,7 +471,9 @@ async function startGame() {
   let ok = false, pool = null;
   try {
     // engine boot and the sign-pool lookup are independent -> run them in parallel
-    [ok, pool] = await Promise.all([bootEngine(), buildPool(size, $('gm-source').value)]);
+    // buildPool waits for the boot result itself, because the playable pool needs the models to be loaded.
+    const bootP = bootEngine();
+    [ok, pool] = await Promise.all([bootP, buildPool(size, $('gm-source').value, bootP)]);
   } catch (e) {
     console.error('[game] start failed:', e);
     $('gm-pool-note').textContent = `Could not start: ${e.message}`;
