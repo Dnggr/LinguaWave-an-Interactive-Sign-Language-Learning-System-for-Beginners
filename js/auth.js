@@ -171,6 +171,57 @@ const LOGIN_PAGE_URL = new URL('../index.html', import.meta.url).href;
 const VERIFY_PAGE_URL = new URL('../pages/verify-email.html', import.meta.url).href;
 
 // ── AUTH STATE SYNC ─────────────────────────────────────────────
+/* ── LOCAL LEARNING STATE + ADMIN "RESET PROGRESS" MARKER ─────────
+ * Admin "Reset progress" (js/admin-firebase.js resetLearnerProgress) deletes the learner's Firestore progress/XP docs
+ * and stamps users/{uid}.progressResetAt (admin-only field: users update rules stop the learner writing it).
+ * This browser compares that stamp with the one it last acted on; different => wipe the LOCAL copy so it can't be
+ * pushed back up (progress.js saveStore, missions.js sync, xp.js queue/backfill).
+ * Keep this key list in sync with js/progress.js, js/missions.js, js/game.js, js/xp.js. */
+const LOCAL_LEARNING_KEYS = [
+  'lw_progress_v3',            // js/progress.js
+  'lw_missions_progress_v1',   // js/missions.js
+  'lw_missions_streak_v1',
+  'lw_missions_hearts_v1',
+  'lw_game_v1',                // js/game.js (gems/walls/best — not uid-scoped)
+];
+const RESET_SEEN_PREFIX = 'lw_reset_seen_v1:';
+const RESET_CHECK_KEY = 'lw_reset_check_v1';          // sessionStorage { uid, at }
+const RESET_CHECK_TTL_MS = 5 * 60 * 1000;
+
+function clearLocalLearningState(uid) {
+  try {
+    LOCAL_LEARNING_KEYS.forEach((k) => localStorage.removeItem(k));
+    if (uid) {
+      localStorage.removeItem('lw_xp_pending_v1:' + uid);      // queued XP claims
+      localStorage.removeItem('lw_xp_backfilled_v1:' + uid);
+    }
+    sessionStorage.removeItem('lw_missions_last_sync_v1');     // 60 s "already synced" shortcut
+  } catch (e) { /* storage blocked */ }
+}
+
+/* Must finish BEFORE 'lwauth-ready' so no page script pushes stale local state first. Local only: the admin's
+ * batch already deleted the Firestore side, and a learner's browser must never delete remote progress. */
+async function applyProgressResetIfNeeded(firebaseUser) {
+  const uid = firebaseUser.uid;
+  try {
+    const last = JSON.parse(sessionStorage.getItem(RESET_CHECK_KEY) || 'null');
+    if (last && last.uid === uid && Date.now() - last.at < RESET_CHECK_TTL_MS) return;
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) { clearLocalLearningState(uid); return; }   // profile wiped: xp.js reconcileWithAccount finishes it
+    const marker = snap.data().progressResetAt;
+    if (marker != null) {
+      const seenKey = RESET_SEEN_PREFIX + uid;
+      if (localStorage.getItem(seenKey) !== String(marker)) {
+        clearLocalLearningState(uid);
+        localStorage.setItem(seenKey, String(marker));
+      }
+    }
+    sessionStorage.setItem(RESET_CHECK_KEY, JSON.stringify({ uid, at: Date.now() }));
+  } catch (e) {
+    console.warn('[auth] reset check failed, will retry on the next load:', e);
+  }
+}
+
 // Fires once on page load (after Firebase checks for an existing
 // session) and again any time login/logout state changes. Keeps
 // localStorage as an accurate cache of who's currently signed in.
@@ -192,6 +243,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       // in. verify-email.html reads Firebase directly, not this cache.
       localStorage.removeItem(LW_SESSION_KEY);
     } else if (firebaseUser) {
+      await applyProgressResetIfNeeded(firebaseUser);   // before the session-cache logic and before authReady
       const existing = getCurrentUser();
 
       if (existing && existing.uid === firebaseUser.uid) {
@@ -212,6 +264,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       }
     } else {
       localStorage.removeItem(LW_SESSION_KEY);
+      sessionStorage.removeItem(RESET_CHECK_KEY);       // a fresh sign-in must re-check
     }
   } catch (syncError) {
     // Cache not written (nothing half-true is stored). The guards below
@@ -1117,13 +1170,12 @@ async function register(name, email, password, confirmPassword) {
  * database was wiped they would still hold the OLD XP and the learner would stay on the leaderboards.
  * Delete them so XP is always tied to the account's current profile. Owner delete is allowed by firestore.rules. */
 async function resetXpForNewProfile(uid) {
+  clearLocalLearningState(uid);   // local first: nothing stale may be pushed while the deletes run
   try {
     await Promise.all([
       deleteDoc(doc(db, 'xpState', uid)),
       deleteDoc(doc(db, 'publicProfiles', uid)),
     ]);
-    localStorage.removeItem('lw_xp_pending_v1:' + uid);
-    localStorage.removeItem('lw_xp_backfilled_v1:' + uid);
   } catch (e) {
     console.warn('[auth] could not reset XP for the new profile:', e);
   }
@@ -1627,4 +1679,4 @@ window.LWAuth = {
 // Still a module export, not a window.LWAuth property, so the console-write
 // concern above is unchanged; firestore.rules restricts surveys to create-only
 // with a validated shape and the caller's own uid.
-export { app, auth, db, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy };
+export { app, auth, db, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, clearLocalLearningState };

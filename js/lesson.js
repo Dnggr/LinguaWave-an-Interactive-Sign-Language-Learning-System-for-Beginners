@@ -46,6 +46,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
+console.info('[LinguaWave] lesson.js loaded: question fix 2026-10-02');
 
 // Mirrors mission-overview.js's own const of the same name — kept
 // as a small local re-derivation, same as this file's own existing
@@ -86,34 +87,89 @@ function escapeHtml(str) {
  * Mirrors js/camera-practice.js's own defensive pattern for the same not-yet-
  * populated asset paths (see that file's "Add image to ..." hint) —
  * not a new convention invented for this page. */
+// NEW — a sign's videoUrl may be a YouTube embed instead of a local mp4 (the
+// convention documented above SIGNS_V2 in missions.js, already supported by
+// camera-practice.js). A YouTube embed is a web page, not a media file, so it
+// can't go in <video>/<source>; it needs an <iframe>. Same allow-list as
+// camera-practice.js — only YouTube embed URLs are ever framed, because
+// videoUrl can also come from admin-edited Firestore content.
+const YT_EMBED_RE = /^https:\/\/(www\.)?(youtube\.com|youtube-nocookie\.com)\/embed\/([\w-]{6,})(\?[^\s#]*)?$/i;
+function youTubeEmbedSrc(url) {
+  const m = YT_EMBED_RE.exec(String(url || '').trim());
+  if (!m) return null;
+  const u = new URL(String(url).trim());
+  // Same clean, muted, looping treatment local clips get (see camera-practice.js).
+  [['autoplay', '1'], ['mute', '1'], ['loop', '1'], ['playlist', m[3]], ['rel', '0'],
+   ['playsinline', '1'], ['iv_load_policy', '3'], ['controls', '0']].forEach(([k, v]) => u.searchParams.set(k, v));
+  return u.toString();
+}
+
 function mediaBlockHtml(sign) {
   if (!sign) {
     return `<div class="lesson-media lesson-media--missing">Sign data not found.</div>`;
   }
-  const safeVideo = escapeHtml(sign.videoUrl || '');
+  // NEW — fallback chain: this entry's own video first, then every other copy
+  // of the same sign in the curriculum (getSignVideoUrls, missions.js). The
+  // browser tries each <source> in order, so a sign whose own mp4 is missing
+  // still plays a video if any other lesson has one.
+  const allUrls = (window.LWMissions && window.LWMissions.getSignVideoUrls)
+    ? window.LWMissions.getSignVideoUrls(sign.signId, sign.videoUrl)
+    : [sign.videoUrl].filter(Boolean);
+  const ytSrc = youTubeEmbedSrc(allUrls[0]);
+  if (ytSrc) {
+    return `
+    <div class="lesson-media">
+      <iframe class="lesson-media__video" src="${escapeHtml(ytSrc)}" title="${escapeHtml(sign.title || sign.signId)}"
+              allow="autoplay; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
+              style="border:0; width:100%; aspect-ratio:16/9;"></iframe>
+    </div>`;
+  }
+  const urls = allUrls.filter((u) => !youTubeEmbedSrc(u));   // a YouTube URL can't be a <source>
+  const safeVideo = escapeHtml(urls[0] || '');
   const safeImage = escapeHtml(sign.imageUrl || '');
   const safeTitle = escapeHtml(sign.title || sign.signId);
-  // NOTE: the fallback trigger lives on the <source> tag's own
-  // onerror, not the <video> tag's — Chromium dispatches the media
-  // 'error' event to the failing <source> child, not the parent
-  // <video>, when a nested source 404s (it does NOT bubble like a
-  // normal DOM event). Verified with a real Chromium run during this
-  // build: attaching onerror to <video> alone silently never fires.
+  // NOTE: the fallback trigger lives on each <source> tag's own onerror, not
+  // the <video> tag's — Chromium dispatches the media 'error' event to the
+  // failing <source> child, not the parent <video>, and it does NOT bubble.
+  // Only the LAST source showing the text/image fallback matters: while a
+  // later <source> exists the browser moves on to it by itself.
+  const onErr = `if (this.nextElementSibling) return; var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';`;
+  const sources = (urls.length ? urls : ['']).map((u) =>
+    `<source src="${escapeHtml(u)}" type="video/mp4" onerror="${onErr}">`).join('');
   return `
     <div class="lesson-media">
       <video class="lesson-media__video" autoplay muted loop playsinline>
-        <source src="${safeVideo}" type="video/mp4"
-                onerror="var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';">
+        ${sources}
       </video>
       <div class="lesson-media__fallback">
         <img class="lesson-media__img" alt="${safeTitle}" src="${safeImage}"
              onerror="this.style.display='none'; this.parentElement.classList.add('lesson-media__fallback--text-only');">
-        <p class="lesson-media__hint text-muted" data-video-path="${safeVideo || ''}">
+        <p class="lesson-media__hint text-muted" data-video-path="${safeVideo}">
           The video for this sign isn't available yet, so here's the written description instead.
         </p>
       </div>
     </div>
   `;
+}
+
+/* NEW — video for the "already in your hands" (lighter) and register Quick
+ * Check screens. These screens teach a sign that is physically IDENTICAL to
+ * one the learner already saw (HI = HELLO, BYE = GOODBYE, NIGHT = EVENING —
+ * see SAME_SIGN_AS in lesson-loop.js), but used to show no video at all, so
+ * the learner got a text-only question about a sign they had no way to see.
+ * Shows the twin's video (the one they already learned), falling back to
+ * this sign's own media if the twin has no entry. mediaBlockHtml() already
+ * falls back to image/text if the mp4 is missing. */
+function twinMediaHtml(mission, item, plan, sign, withCaption = true) {
+  const twinId = plan && plan.duplicateOf;
+  const twin = twinId ? window.LWMissions.getSign(mission.level, twinId, mission.category) : null;
+  const shown = twin || sign;
+  if (!shown) return '';
+  const own = (sign && sign.title) || item.signId;
+  const caption = (twin && withCaption)
+    ? `<p class="lesson-media__caption text-muted">This is the sign for both ${escapeHtml(twin.title || twinId)} and ${escapeHtml(own)}.</p>`
+    : '';
+  return mediaBlockHtml(shown) + caption;
 }
 
 function descriptionHtml(sign) {
@@ -214,7 +270,7 @@ function advanceAfterAnswer(container, correct, onDone, delay = 1100) {
 }
 
 function renderLessonWatch(mission, index, item, plan, ctx) {
-  const sign = window.LWMissions.getSign(mission.level, item.signId);
+  const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
   el.innerHTML = `
     <div class="lesson-stage-label">Watch &amp; Learn</div>
@@ -233,58 +289,37 @@ function renderLessonWatch(mission, index, item, plan, ctx) {
 }
 
 function renderLessonLighter(mission, index, item, plan, ctx) {
-  const sign = window.LWMissions.getSign(mission.level, item.signId);
+  const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
   const reg = plan.registerPrompt;
+  // REWORKED: this teach screen used to ask the same "which fits best?"
+  // question the Quick Check right after it asks (and its two options were
+  // the same sign). It now only explains the sign; the Quick Check that
+  // follows is the one place the learner is quizzed on it.
   el.innerHTML = `
     <div class="lesson-stage-label">Already in your hands</div>
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
     <div class="lesson-callout">
       <strong>You already know this sign.</strong> ${escapeHtml(plan.reason)}.
     </div>
-    ${reg ? `
-      <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
-      <div class="lesson-options" id="lesson-register-options">
-        ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
-      </div>
-      <p class="lesson-feedback" id="lesson-feedback" hidden></p>
-    ` : `
-      <p class="lesson-prompt">${escapeHtml(plan.contextPrompt)}</p>
-      <div class="lesson-actions">
-        <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
-      </div>
-    `}
+    ${twinMediaHtml(mission, item, plan, sign)}
+    ${reg ? `<p class="lesson-desc">${escapeHtml(reg.note)}</p>` : ''}
+    <div class="lesson-actions">
+      <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
+    </div>
   `;
-
-  if (reg) {
-    const feedback = document.getElementById('lesson-feedback');
-    document.querySelectorAll('#lesson-register-options .lesson-option').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.disabled) return;
-        document.querySelectorAll('#lesson-register-options .lesson-option').forEach((b) => { b.disabled = true; });
-        const correct = btn.dataset.value === reg.answer;
-        btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
-        feedback.hidden = false;
-        window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-          (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best here. `) + reg.note, { size: 'sm' });
-        feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
-        advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
-      });
-    });
-  } else {
-    document.getElementById('lesson-continue').addEventListener('click', () => {
-      completeAndAdvance(mission, index, item);
-    });
-  }
+  document.getElementById('lesson-continue').addEventListener('click', () => {
+    completeAndAdvance(mission, index, item);
+  });
 }
 
-function renderRecognizeQuestion(container, mission, index, item, sign, opts, onDone) {
+function renderRecognizeQuestion(container, mission, index, item, sign, opts, onDone, promptText = 'Which word is this?') {
   container.innerHTML += `
-    <p class="lesson-prompt">Which word is this?</p>
+    ${promptText ? `<p class="lesson-prompt">${escapeHtml(promptText)}</p>` : ''}
     ${mediaBlockHtml(sign)}
     <div class="lesson-options" id="lesson-recognize-options">
       ${shuffleOptions(opts.options).map((id) => {
-        const s = window.LWMissions.getSign(mission.level, id);
+        const s = window.LWMissions.getSign(mission.level, id, mission.category);
         return `<button type="button" class="lesson-option" data-value="${escapeHtml(id)}">${escapeHtml((s && s.title) || id)}</button>`;
       }).join('')}
     </div>
@@ -307,19 +342,22 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
 }
 
 function renderBoosterRecognize(mission, index, item, plan) {
-  const sign = window.LWMissions.getSign(mission.level, item.signId);
+  const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
-  el.innerHTML = `<div class="lesson-stage-label">Quick Check</div><h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>`;
-  renderRecognizeQuestion(el, mission, index, item, sign, plan.options, () => completeAndAdvance(mission, index, item));
+  // REWORKED: the heading used to be the sign's own title (e.g. "Bye") right above
+  // "Which word is this?" with "Bye" as an option, which gave the answer away.
+  el.innerHTML = `<div class="lesson-stage-label">Quick Check</div><h1>What does this sign mean?</h1>`;
+  renderRecognizeQuestion(el, mission, index, item, sign, plan.options, () => completeAndAdvance(mission, index, item), null);
 }
 
 function renderBoosterRegister(mission, index, item, plan) {
-  const sign = window.LWMissions.getSign(mission.level, item.signId);
+  const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const reg = plan.registerPrompt;
   const el = document.getElementById('lesson-content');
   el.innerHTML = `
     <div class="lesson-stage-label">Quick Check</div>
-    <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
+    <h1>One sign, two words</h1>
+    ${twinMediaHtml(mission, item, plan, sign, false)}
     <p class="lesson-prompt">${escapeHtml(reg.prompt)}</p>
     <div class="lesson-options" id="lesson-register-options">
       ${shuffleOptions(reg.options).map((opt) => `<button type="button" class="lesson-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('')}
@@ -335,7 +373,7 @@ function renderBoosterRegister(mission, index, item, plan) {
       btn.classList.add(correct ? 'lesson-option--correct' : 'lesson-option--incorrect');
       feedback.hidden = false;
       window.LWIcons.setLabel(feedback, correct ? 'complete' : 'error',
-        (correct ? 'Right, ' : `Not quite, ${reg.answer} fits best. `) + reg.note, { size: 'sm' });
+        (correct ? 'Right! ' : `Not quite, this sign is also used for "${reg.answer}". `) + reg.note, { size: 'sm' });
       feedback.className = 'lesson-feedback ' + (correct ? 'lesson-feedback--correct' : 'lesson-feedback--incorrect');
       advanceAfterAnswer(el, correct, () => completeAndAdvance(mission, index, item), 1400);
     });
@@ -343,17 +381,22 @@ function renderBoosterRegister(mission, index, item, plan) {
 }
 
 function renderPracticeScenario(mission, index, item, plan) {
-  const sign = window.LWMissions.getSign(mission.level, item.signId);
+  const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
 
+  // The scenario title (e.g. "Ending a Video Call", or the generic
+  // `Using "Bye" ...`) can name the answer, which is fine for the pair
+  // question below (it already names the sign being asked for) but would
+  // give away the word-from-video question, so that branch hides it.
+  const showScenarioTitle = !!plan.discriminatePair;
   el.innerHTML = `
     <div class="lesson-stage-label">Practice</div>
-    <h1>${escapeHtml(item.scenarioTitle || 'Practice')}</h1>
+    <h1>${escapeHtml(showScenarioTitle ? (item.scenarioTitle || 'Practice') : 'Which word is this?')}</h1>
   `;
 
   if (plan.discriminatePair) {
-    const targetSign = window.LWMissions.getSign(mission.level, plan.discriminatePair.targetSignId);
-    const neighborSign = window.LWMissions.getSign(mission.level, plan.discriminatePair.neighborSignId);
+    const targetSign = window.LWMissions.getSign(mission.level, plan.discriminatePair.targetSignId, mission.category);
+    const neighborSign = window.LWMissions.getSign(mission.level, plan.discriminatePair.neighborSignId, mission.category);
     const pairs = Math.random() < 0.5
       ? [{ sign: targetSign, correct: true }, { sign: neighborSign, correct: false }]
       : [{ sign: neighborSign, correct: false }, { sign: targetSign, correct: true }];
@@ -384,7 +427,7 @@ function renderPracticeScenario(mission, index, item, plan) {
       });
     });
   } else if (plan.recognizeOptions) {
-    renderRecognizeQuestion(el, mission, index, item, sign, plan.recognizeOptions, () => showContextStep(mission, index, item, plan));
+    renderRecognizeQuestion(el, mission, index, item, sign, plan.recognizeOptions, () => showContextStep(mission, index, item, plan), null);
   } else {
     showContextStep(mission, index, item, plan);
   }
@@ -398,8 +441,9 @@ function showContextStep(mission, index, item, plan) {
   const wrap = document.createElement('div');
   wrap.className = 'lesson-context';
   wrap.innerHTML = `
-    <p class="lesson-stage-label">Use it in context</p>
+    <p class="lesson-stage-label">Try it yourself</p>
     <p class="lesson-prompt">${escapeHtml(plan.contextPrompt || '')}</p>
+    <p class="text-muted">This step isn\u2019t graded. Sign it with your hands, then continue when you\u2019re ready.</p>
     <div class="lesson-actions">
       <button type="button" class="btn btn--primary btn--lg" id="lesson-continue">Continue</button>
     </div>

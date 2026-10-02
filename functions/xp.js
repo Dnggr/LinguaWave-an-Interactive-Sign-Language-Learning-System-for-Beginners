@@ -1,90 +1,221 @@
 /**
- * functions/xp.js — server-authoritative XP / levels / badges / streaks / Wall Breaker sessions
+ * js/xp.js — XP / level / badge / streak system, CLIENT-SIDE VERSION (works on the free Spark plan)
  * ─────────────────────────────────────────────────────────────────
- * WHY SERVER-SIDE: LinguaWave is a static site — the browser talks to Firestore directly, so
- * anything the browser is allowed to write, a user can write from DevTools. XP, levels, badges
- * and streaks feed a PUBLIC leaderboard, so none of them may be client-writable. Firestore rules
- * (see firestore.rules) deny every client write to xpState / publicProfiles / xpSessions /
- * xpEvents; ONLY these callables (Admin SDK) write them, after validating the request.
+ * No Cloud Functions needed. The browser computes XP with the same rules the server version used
+ * and saves the result to Firestore:
+ *     xpState/{uid}        private (owner read/write)  -> full state, ledger, badges
+ *     publicProfiles/{uid} leaderboard row             -> small public copy (written together, one transaction)
  *
- * WHAT THE SERVER CAN AND CANNOT PROVE: sign recognition (TensorFlow.js) and quiz grading still
- * run in the browser, so the server can't watch a lesson happen. What it enforces instead:
- *   - lesson XP is ONE-TIME per item (ledger in xpState.lessonItems) -> not farmable;
- *   - only items that exist in the curriculum manifest count;
- *   - a minimum gap between claims and a soft daily cap on lesson XP (bulk scripting is slow);
- *   - the Mastery-Quiz skip path pays 40% and is rate-limited harder;
- *   - Wall Breaker (the ONLY repeatable XP) runs as a server-timed SESSION: the server stamps the
- *     start, the client reports break times, and the server rejects anything physically
- *     impossible; XP has diminishing returns per day plus a hard daily cap;
- *   - game XP/badges only count bricks of signs the server knows you learned.
- * Residual risk (documented in XP_SYSTEM.md): a determined user can script the finite, one-time
- * lesson XP slowly. Closing that fully means grading quizzes on the server.
+ * HONEST LIMIT: because the browser writes the score, a technical user can edit their own XP in
+ * DevTools. firestore.rules only caps the damage (own docs only, field whitelist, XP never goes down,
+ * max 20,000). Fine for a capstone demo; NOT cheat-proof. To get real anti-cheat later: upgrade to
+ * Blaze, deploy functions/xp.js, and restore the server version of this file (see XP_SYSTEM.md).
  *
- * Callables (all need a signed-in, email-verified user):
- *   claimLessonItem({missionId,itemIndex,tz})     claimMissionComplete({missionId,tz})
- *   startGameSession({signs,tz})                  finishGameSession({sessionId,broken,wrong,tz})
- *   backfillLegacyProgress({completedItemIds})    setLeaderboardVisibility({visible})
- * Scheduled: expireStaleStreaks (hourly) keeps the streak leaderboard honest.
- * Trigger:   syncPublicProfileFromUser (users/{uid} writes) — removes a self-"deleted" learner from
- *            the leaderboards (js/auth.js deleteAccount only sets deletionRequested) and keeps the
- *            public name in step with Settings / Edit Profile.
- *            REGION: triggers must run in the Firestore database's region. Everything here uses the
- *            default (us-central1); if your database lives elsewhere, add `region` to that one call.
+ * ACCOUNT LINK: XP lives in xpState/publicProfiles, separate from users/{uid} and the progress docs. If the
+ * database is wiped (users/progress cleaned) those two would keep the OLD XP and keep the learner on the
+ * leaderboards. reconcileWithAccount() fixes that: a signed-in learner whose users/{uid} profile is MISSING
+ * has their xpState + publicProfiles deleted (and the XP queue/backfill flags cleared) and the profile
+ * recreated, so XP/leaderboard always restart together with the account's progress.
+ *   Admin tool: LWXP.purgeOrphans() removes leaderboard rows whose users/{uid} no longer exists.
+ *
+ * Same public API as before (window.LWXP), so lesson.js / missions.js / mastery-quiz.js / game.js /
+ * leaderboard.js / xp-ui.js need NO changes.
+ *
+ * RELIABILITY: lesson claims go through a small queue persisted in localStorage
+ * (`lw_xp_pending_v1:<uid>`). If a save fails (offline, rules not published) it stays queued and is
+ * retried; the ledger in xpState makes a retry impossible to double-pay.
+ *
+ * Needs on the page: <script src="../js/xp-config.js"> (display data) and js/auth.js (module).
  * ─────────────────────────────────────────────────────────────────
  */
-'use strict';
+import { auth, db, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, orderBy, clearLocalLearningState } from './auth.js';
+import { limit, where, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
-const crypto = require('crypto');
-const admin = require('firebase-admin');
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onDocumentWritten } = require('firebase-functions/v2/firestore');
-
-const { CONFIG } = require('./xp-config');
-const E = require('./xp-engine');
-const MANIFEST = require('./curriculum-manifest.json');
-
+const CFG = window.LW_XP_CONFIG || { MAX_LEVEL: 30, LEVEL_XP: [0], TIERS: [], BADGES: {}, GAME: { MIN_LEARNED_BRICKS: 6, DAILY_XP_CAP: 90 } };
 const ADMIN_EMAIL = 'linguawave.project@gmail.com';
-const OPTS = { maxInstances: 20 };
-const SIGN_SET = new Set(MANIFEST.signs);
 
-// itemId -> [missionId, index], mirrors missions.js itemId() for the legacy backfill.
-const ITEM_INDEX = new Map();
-for (const [mid, m] of Object.entries(MANIFEST.missions)) {
-  m.items.forEach(([kind, ref], i) => ITEM_INDEX.set(`${mid}_${i}_${kind}_${ref}`, [mid, i]));
+/* ── economy (copy of functions/xp-config.js — keep in sync if you change numbers) ── */
+const ECON = {
+  LESSON_ITEM_XP: { LESSON: 6, BOOSTER: 3, PRACTICE: 5 },
+  MISSION_BONUS: { base: 25, perSign: 3, max: 80 },
+  MISSION_SKIP_FACTOR: 0.4,
+  MISSION_FULL_LESSON_RATIO: 0.8,
+  LESSON_DAILY_SOFT_CAP: 800,
+  LESSON_OVER_CAP_FACTOR: 0.5,
+  BACKFILL_FACTOR: 0.5,
+  BACKFILL_MAX_XP: 1500,
+  TZ_CHANGE_COOLDOWN_DAYS: 14,
+  GAME: {
+    BRICK_XP: { static: 1, motion: 2 }, CLEAR_BONUS: 3, FLAWLESS_BONUS: 3,
+    ACC_TIERS: [{ min: 0.85, mult: 1 }, { min: 0.60, mult: 0.8 }, { min: 0, mult: 0.5 }],
+    WALL_DECAY: [{ upTo: 3, mult: 1 }, { upTo: 5, mult: 0.5 }, { upTo: 7, mult: 0.25 }, { upTo: 999, mult: 0 }],
+    DAILY_XP_CAP: 90, MAX_BRICKS: 21, MIN_GAP_MS: { static: 400, motion: 3000 }, CLOCK_SLACK_MS: 3000,
+    SESSION_TTL_MS: 30 * 60 * 1000, SPEED_BADGE_MS_PER_BRICK: 6000, VETERAN_WALLS: 5,
+  },
+};
+const STREAK_BADGE_DAYS = [3, 7, 14, 30, 60, 100];
+const MISSION_COUNT_BADGES = [[1, 'missions_1'], [10, 'missions_10'], [25, 'missions_25']];
+
+const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; } })();
+const listeners = new Set();
+let latest = null;
+let flushing = null;
+let lastError = null;
+let warnedOnce = false;
+let nameCache = null;           // { uid, name, deletion }
+let session = null;             // current Wall Breaker session (memory only)
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const uid = () => auth.currentUser && auth.currentUser.uid;
+
+/* ══════════════ pure rules (ported from functions/xp-engine.js) ══════════════ */
+function levelFromXp(xp) {
+  let lv = 1;
+  while (lv < CFG.MAX_LEVEL && xp >= CFG.LEVEL_XP[lv]) lv++;
+  return lv;
 }
-const lessonSignsOf = (mid) => MANIFEST.missions[mid].items.filter((it) => it[0] === 'LESSON').map((it) => it[1]);
+function levelProgress(xp) {
+  const level = levelFromXp(xp);
+  if (level >= CFG.MAX_LEVEL) return { level, into: 0, need: 0, pct: 100, maxed: true };
+  const lo = CFG.LEVEL_XP[level - 1], hi = CFG.LEVEL_XP[level];
+  return { level, into: xp - lo, need: hi - lo, pct: Math.floor(((xp - lo) / (hi - lo)) * 100), maxed: false };
+}
+function tierOf(level) {
+  let t = CFG.TIERS[0] || { name: '', icon: '', color: '#38bdf8' };
+  for (const x of CFG.TIERS) if (level >= x.from) t = x;
+  return t;
+}
+const badgeInfo = (id) => CFG.BADGES[id] || { id, name: id, icon: '🏅', desc: '' };
 
-const db = () => admin.firestore();
+/* Lucide icon ids (registered in js/icons.js) for tiers and badges. The emoji in CFG stay as the data of record
+ * (dashboard chips etc. still read them); the Leaderboard, Wall Breaker and the level/badge pop-up draw these instead. */
+const TIER_ICON = { Ripple: 'droplet', Current: 'waves', Tide: 'shell', Swell: 'sailboat', Crest: 'anchor', Tsunami: 'crown' };
+const SPECIAL_BADGE_ICON = { game_first: 'brick_wall', game_flawless: 'gem', game_speed: 'zap', game_veteran: 'hard_hat',
+  missions_1: 'graduation_cap', missions_10: 'library', missions_25: 'award' };
+function tierIconId(levelOrTier) {
+  const t = typeof levelOrTier === 'object' && levelOrTier ? levelOrTier : tierOf(levelOrTier || 1);
+  return TIER_ICON[t.name] || 'droplet';
+}
+function badgeIconId(id) {
+  if (SPECIAL_BADGE_ICON[id]) return SPECIAL_BADGE_ICON[id];
+  if (/^lesson_L\d+$/.test(id)) return 'book_open';
+  if (/^game_L\d+$/.test(id)) return 'brick_wall';
+  if (/^streak_\d+$/.test(id)) return 'flame';
+  return 'medal';
+}
+/** Inline <svg> markup for an icon id; '' if js/icons.js is not on the page (the text beside it still reads fine). */
+const iconSvg = (iconId, opts) => (window.LWIcons ? window.LWIcons.markup(iconId, opts) : '');
 
-/* ── state ──────────────────────────────────────────────────── */
+function isValidTz(tz) {
+  if (typeof tz !== 'string' || tz.length < 1 || tz.length > 64) return false;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+function dayKey(ms, tz) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+}
+function shiftDayKey(key, delta) {
+  const [y, m, d] = key.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + delta));
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+}
+function tzOffsetMs(ms, tz) {
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .formatToParts(new Date(ms)).forEach((x) => { p[x.type] = x.value; });
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+}
+function startOfDayMs(key, tz) {
+  const [y, m, d] = key.split('-').map(Number);
+  const guess = Date.UTC(y, m - 1, d);
+  return guess - tzOffsetMs(guess - tzOffsetMs(guess, tz), tz);
+}
+function weekKeyUtc(ms) {                       // must match the key leaderboards query with
+  const d = new Date(ms); d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const y0 = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return `${d.getUTCFullYear()}-W${String(Math.ceil(((d - y0) / 86400000 + 1) / 7)).padStart(2, '0')}`;
+}
+function applyStreak(s, today) {
+  const cur = s || { current: 0, longest: 0, lastDay: null };
+  if (cur.lastDay === today) return { ...cur };
+  const next = cur.lastDay === shiftDayKey(today, -1) ? cur.current + 1 : 1;
+  return { current: next, longest: Math.max(cur.longest || 0, next), lastDay: today };
+}
+function effectiveStreak(s, today) {
+  if (!s || !s.lastDay) return 0;
+  return (s.lastDay === today || s.lastDay === shiftDayKey(today, -1)) ? s.current : 0;
+}
+function lessonItemXp(kind, bonusXP) {
+  const base = ECON.LESSON_ITEM_XP[kind];
+  if (!base) return 0;
+  return base + (kind === 'PRACTICE' && bonusXP ? bonusXP : 0);
+}
+function missionBonus(signCount) { const m = ECON.MISSION_BONUS; return Math.min(m.max, m.base + m.perSign * signCount); }
+function applyLessonSoftCap(rawXp, lessonXpToday) {
+  const room = Math.max(0, ECON.LESSON_DAILY_SOFT_CAP - lessonXpToday);
+  if (rawXp <= room) return rawXp;
+  return room + Math.floor((rawXp - room) * ECON.LESSON_OVER_CAP_FACTOR);
+}
+function wallDecayMult(n) { for (const t of ECON.GAME.WALL_DECAY) if (n < t.upTo) return t.mult; return 0; }
+function gameWallXp({ bricks, wrong, wallsToday, gameXpToday }) {
+  const G = ECON.GAME, minLearned = (CFG.GAME && CFG.GAME.MIN_LEARNED_BRICKS) || 6;
+  const learnedBricks = bricks.filter((b) => b.learned);
+  if (learnedBricks.length < minLearned) return { eligible: false, xp: 0, raw: 0, reason: 'not_enough_learned' };
+  const correct = bricks.length, acc = correct / Math.max(1, correct + wrong);
+  const accMult = (G.ACC_TIERS.find((t) => acc >= t.min) || G.ACC_TIERS[G.ACC_TIERS.length - 1]).mult;
+  const base = learnedBricks.reduce((s, b) => s + (b.motion ? G.BRICK_XP.motion : G.BRICK_XP.static), 0);
+  const flawless = wrong === 0;
+  const raw = base * accMult + G.CLEAR_BONUS + (flawless ? G.FLAWLESS_BONUS : 0);
+  const decay = wallDecayMult(wallsToday), room = Math.max(0, G.DAILY_XP_CAP - gameXpToday);
+  const xp = Math.min(Math.round(raw * decay), room);
+  return { eligible: true, xp, raw: Math.round(raw), accuracy: acc, flawless, decay,
+    capped: xp < Math.round(raw * decay) || (decay > 0 && room === 0), reason: xp === 0 ? (decay === 0 ? 'diminished' : 'daily_cap') : null };
+}
+function validateGameTiming({ sessionSigns, broken, elapsedMs }) {
+  const G = ECON.GAME;
+  if (!Array.isArray(broken) || broken.length !== sessionSigns.length) return 'incomplete_wall';
+  const seen = new Set(), want = new Set(sessionSigns);
+  let prev = 0, minTotal = 0;
+  for (const b of broken) {
+    if (!b || typeof b.s !== 'string' || !want.has(b.s) || seen.has(b.s)) return 'bad_bricks';
+    seen.add(b.s);
+    if (typeof b.t !== 'number' || !isFinite(b.t) || b.t < prev) return 'bad_timing';
+    const gap = G.MIN_GAP_MS[b.m ? 'motion' : 'static'];
+    if (b.t - prev < gap) return 'too_fast';
+    minTotal += gap; prev = b.t;
+  }
+  if (prev > elapsedMs + G.CLOCK_SLACK_MS) return 'clock_mismatch';
+  if (elapsedMs < minTotal) return 'too_fast';
+  return null;
+}
+function nextLevelBadge(group, level, owned) {
+  for (let n = 1; n <= Math.min(level, CFG.MAX_LEVEL); n++) { const id = `${group}_L${n}`; if (!owned[id]) return id; }
+  return null;
+}
+const streakBadgesFor = (cur) => STREAK_BADGE_DAYS.filter((d) => cur >= d).map((d) => `streak_${d}`);
+const missionCountBadgesFor = (n) => MISSION_COUNT_BADGES.filter(([c]) => n >= c).map(([, id]) => id);
+
+/* ══════════════ state ══════════════ */
 function newState(now) {
   return {
-    v: CONFIG.VERSION, xp: 0, level: 1, weeklyXp: 0, weekKey: E.weekKeyUtc(now),
+    v: 1, xp: 0, level: 1, weeklyXp: 0, weekKey: weekKeyUtc(now),
     tz: null, tzChangedAt: 0,
     streak: { current: 0, longest: 0, lastDay: null },
-    badges: {},                 // id -> earnedAt (ms)
-    lessonItems: {},            // missionId -> [claimed item indices]
-    missionsDone: {},           // missionId -> 'full' | 'skip' | 'backfill'
-    learnedSigns: [],
+    badges: {}, lessonItems: {}, missionsDone: {}, learnedSigns: [],
     daily: { day: null, lessonXp: 0, gameXp: 0, walls: 0 },
     totals: { lessonXp: 0, gameXp: 0, walls: 0, countedWalls: 0, missions: 0 },
     lastClaimAt: 0, lastSkipAt: 0, backfilled: false, hidden: false, createdAt: now,
   };
 }
-
 function resolveTz(state, hint, now) {
-  const cooldown = CONFIG.TZ_CHANGE_COOLDOWN_DAYS * 86400000;
-  if (!state.tz) { state.tz = E.isValidTz(hint) ? hint : 'UTC'; state.tzChangedAt = now; }
-  else if (E.isValidTz(hint) && hint !== state.tz && now - (state.tzChangedAt || 0) >= cooldown) {
-    state.tz = hint; state.tzChangedAt = now;
-  }
+  const cooldown = ECON.TZ_CHANGE_COOLDOWN_DAYS * 86400000;
+  if (!state.tz) { state.tz = isValidTz(hint) ? hint : 'UTC'; state.tzChangedAt = now; }
+  else if (isValidTz(hint) && hint !== state.tz && now - (state.tzChangedAt || 0) >= cooldown) { state.tz = hint; state.tzChangedAt = now; }
 }
-/** Roll the per-day and per-week counters. Returns today's local day key. */
 function rollover(state, now) {
-  const today = E.dayKey(now, state.tz);
+  const today = dayKey(now, state.tz);
   if (state.daily.day !== today) state.daily = { day: today, lessonXp: 0, gameXp: 0, walls: 0 };
-  const wk = E.weekKeyUtc(now);
+  const wk = weekKeyUtc(now);
   if (state.weekKey !== wk) { state.weekKey = wk; state.weeklyXp = 0; }
   return today;
 }
@@ -92,304 +223,420 @@ function addXp(state, xp, out) {
   if (xp <= 0) return;
   const before = state.level;
   state.xp += xp; state.weeklyXp += xp;
-  state.level = E.levelFromXp(state.xp);
+  state.level = levelFromXp(state.xp);
   for (let l = before + 1; l <= state.level; l++) (out.levelUps = out.levelUps || []).push(l);
 }
 function grant(state, id, out, now) {
-  if (!E.BADGES[id] || state.badges[id]) return;
+  if (!CFG.BADGES[id] || state.badges[id]) return;
   state.badges[id] = now;
   (out.newBadges = out.newBadges || []).push(id);
 }
 function touchStreak(state, today, out, now) {
-  state.streak = E.applyStreak(state.streak, today);
-  E.streakBadgesFor(state.streak.current).forEach((id) => grant(state, id, out, now));
+  state.streak = applyStreak(state.streak, today);
+  streakBadgesFor(state.streak.current).forEach((id) => grant(state, id, out, now));
 }
 function summary(state, now, out) {
-  const today = E.dayKey(now, state.tz || 'UTC');
-  return {
-    ok: true, ...out,
-    xp: state.xp, level: state.level, weeklyXp: state.weeklyXp,
-    streak: E.effectiveStreak(state.streak, today), longestStreak: state.streak.longest,
-    dailyLessonXp: state.daily.lessonXp, dailyGameXp: state.daily.gameXp, dailyGameCap: CONFIG.GAME.DAILY_XP_CAP,
-  };
+  const today = dayKey(now, state.tz || 'UTC');
+  return { ok: true, ...out, xp: state.xp, level: state.level, weeklyXp: state.weeklyXp,
+    streak: effectiveStreak(state.streak, today), longestStreak: state.streak.longest,
+    dailyLessonXp: state.daily.lessonXp, dailyGameXp: state.daily.gameXp, dailyGameCap: ECON.GAME.DAILY_XP_CAP };
 }
-
-function publicProfile(state, name, now) {
-  const { Timestamp, FieldValue } = admin.firestore;
-  const today = E.dayKey(now, state.tz || 'UTC');
-  const live = E.effectiveStreak(state.streak, today);
+function publicProfile(state, name, now, avatar) {
+  const today = dayKey(now, state.tz || 'UTC'), live = effectiveStreak(state.streak, today);
   const recent = Object.entries(state.badges).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
   return {
     name, xp: state.xp, level: state.level, weeklyXp: state.weeklyXp, weekKey: state.weekKey,
     streak: live, longestStreak: state.streak.longest,
-    streakExpiresAt: live > 0 ? Timestamp.fromMillis(E.startOfDayMs(E.shiftDayKey(state.streak.lastDay, 2), state.tz || 'UTC')) : null,
-    badgeCount: Object.keys(state.badges).length, recentBadges: recent,
-    updatedAt: FieldValue.serverTimestamp(),
+    streakExpiresAt: live > 0 ? startOfDayMs(shiftDayKey(state.streak.lastDay, 2), state.tz || 'UTC') : null,   // ms; loadBoard zeroes expired streaks
+    badgeCount: Object.keys(state.badges).length, recentBadges: recent, updatedAt: serverTimestamp(),
+    ...(avatar ? { avatar } : {}),   // picture ID only (see js/avatars.js); omitted until the learner picks one
   };
 }
 
-/* ── shared runner ──────────────────────────────────────────── */
-function requireLearner(request) {
-  const a = request.auth;
-  if (!a) throw new HttpsError('unauthenticated', 'Sign in first.');
-  if (a.token.email_verified === false) throw new HttpsError('permission-denied', 'Verify your email first.');
-  return a;
+/* ══════════════ problems are never silent ══════════════ */
+const toastFn = () => (window.LinguaWave && window.LinguaWave.showToast) || window.showToast;
+function reportProblem(kind, e) {
+  lastError = { kind, code: (e && e.code) || null, message: (e && e.message) || String(e || ''), at: new Date().toISOString() };
+  console.warn('[xp]', kind, lastError.code || '', lastError.message);
+  if (warnedOnce) return;
+  const text = kind === 'rules' ? 'XP could not be saved: database rules are not published yet.'
+    : kind === 'unreachable' ? 'XP could not be saved right now. It will sync later.' : null;
+  if (text && typeof toastFn() === 'function') { warnedOnce = true; toastFn()(text, 'error'); }
 }
 
-/**
- * Runs `fn(state, ctx, tx)` inside a transaction on xpState/{uid}. fn mutates `state` and returns
- * an `out` object; it may do its own reads FIRST (tx.get) and tx writes to other docs.
- * `out.reject` => respond with { ok:false, reason } and leave xpState/publicProfiles untouched.
- * `out.skipStateWrite` => same but the response is still ok:true.
- */
-async function withXp(auth, tzHint, fn) {
-  const uid = auth.uid;
-  if ((auth.token.email || '').toLowerCase() === ADMIN_EMAIL) return { ok: false, reason: 'admin_account' };
+/* ══════════════ keep XP tied to the account ══════════════ */
+let reconciledUid = null;
+let reconciling = null;
+async function reconcileWithAccount() {
+  await whenReady();
+  const u = auth.currentUser;
+  if (!u || (u.email || '').toLowerCase() === ADMIN_EMAIL || reconciledUid === u.uid) return;
+  if (reconciling) return reconciling;                        // one run at a time
+  reconciling = (async () => {
+    try {
+      const userRef = doc(db, 'users', u.uid);
+      if (!(await getDoc(userRef)).exists()) {
+        // Profile is gone => the account's data was wiped. Old XP must not survive it.
+        clearLocalLearningState(u.uid);   // local first: stale queue/progress must not be pushed while the deletes run
+        await Promise.all([deleteDoc(doc(db, 'xpState', u.uid)), deleteDoc(doc(db, 'publicProfiles', u.uid))]);
+        nameCache = null; latest = null;
+        const rawName = (u.displayName || (u.email || '').split('@')[0] || 'Learner') + '';
+        await setDoc(userRef, {                               // recreate the profile so this runs only once
+          uid: u.uid,
+          name: rawName.trim().slice(0, 30) || 'Learner',
+          email: u.email,
+          level: 'basic',
+          joined: new Date(u.metadata.creationTime).toISOString().slice(0, 10),
+        });
+        console.info('[xp] account data was wiped: XP and leaderboard entry reset.');
+      }
+      reconciledUid = u.uid;
+    } catch (e) {
+      console.warn('[xp] reconcile failed (will retry next load)', e);
+    } finally { reconciling = null; }
+  })();
+  return reconciling;
+}
+
+/** ADMIN ONLY (rules allow the admin to delete). Removes leaderboard rows whose users/{uid} is gone.
+ *  Run from the console on an admin page:  await LWXP.purgeOrphans()   (repeat if it returns 100) */
+async function purgeOrphans() {
+  await whenReady();
+  const u = auth.currentUser;
+  if (!u || (u.email || '').toLowerCase() !== ADMIN_EMAIL) return { ok: false, reason: 'admin_only' };
+  const snap = await getDocs(query(collection(db, 'publicProfiles'), limit(100)));
+  let removed = 0;
+  for (const d of snap.docs) {
+    if ((await getDoc(doc(db, 'users', d.id))).exists()) continue;
+    await deleteDoc(d.ref);
+    await deleteDoc(doc(db, 'xpState', d.id)).catch(() => {});
+    removed++;
+  }
+  return { ok: true, scanned: snap.size, removed };
+}
+
+/* ══════════════ the one writer: transaction on xpState + publicProfiles ══════════════ */
+async function whenReady() {
+  try { await window.LWAuth?.whenAuthReady?.(); } catch { /* guest */ }
+}
+async function nameInfo() {
+  const id = uid();
+  if (nameCache && nameCache.uid === id) return nameCache;
+  let name = '', deletion = false, avatar = '';
+  try {
+    const snap = await getDoc(doc(db, 'users', id));
+    if (snap.exists()) { const d = snap.data(); name = typeof d.name === 'string' ? d.name : ''; deletion = d.deletionRequested === true; avatar = (typeof d.avatar === 'string' && /^avatar-\d{2}$/.test(d.avatar)) ? d.avatar : ''; }
+  } catch { /* fall through */ }
+  if (!name) { try { name = (window.LWAuth?.getCurrentUser?.() || {}).name || ''; } catch { /* ignore */ } }
+  nameCache = { uid: id, name: (name || '').trim().slice(0, 30) || 'Learner', deletion, avatar };
+  return nameCache;
+}
+
+/** fn(state, {now, today}) mutates state and returns `out`. out.reject / out.skipStateWrite as in the server version. */
+async function withState(fn) {
+  await whenReady();
+  await reconcileWithAccount();
+  const u = auth.currentUser;
+  if (!u) return { ok: false, reason: 'signed_out' };
+  if ((u.email || '').toLowerCase() === ADMIN_EMAIL) return { ok: false, reason: 'admin_account' };
+  const info = await nameInfo();
+  const stateRef = doc(db, 'xpState', u.uid), pubRef = doc(db, 'publicProfiles', u.uid);
   const now = Date.now();
-  const stateRef = db().doc(`xpState/${uid}`);
-  const userRef = db().doc(`users/${uid}`);
-  const pubRef = db().doc(`publicProfiles/${uid}`);
-  return db().runTransaction(async (tx) => {
-    const [stateSnap, userSnap] = await Promise.all([tx.get(stateRef), tx.get(userRef)]);
-    const state = stateSnap.exists ? { ...newState(now), ...stateSnap.data() } : newState(now);
-    resolveTz(state, tzHint, now);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(stateRef);
+    const state = snap.exists() ? { ...newState(now), ...snap.data() } : newState(now);
+    resolveTz(state, TZ, now);
     const today = rollover(state, now);
-    const rawName = userSnap.exists && typeof userSnap.data().name === 'string' ? userSnap.data().name : 'Learner';
-    const name = rawName.trim().slice(0, 30) || 'Learner';
-    const pendingDeletion = userSnap.exists && userSnap.data().deletionRequested === true;
-
-    const out = (await fn(state, { now, today, uid }, tx)) || {};
-    if (out.reject) return { ok: false, reason: out.reject, retryAfterMs: out.retryAfterMs || 0 };
+    const out = (await fn(state, { now, today })) || {};
+    if (out.reject) return { ok: false, reason: out.reject };
     if (out.skipStateWrite) return summary(state, now, out);
-
     tx.set(stateRef, state);
-    if (state.hidden || pendingDeletion) tx.delete(pubRef); else tx.set(pubRef, publicProfile(state, name, now));
+    if (state.hidden || info.deletion) tx.delete(pubRef); else tx.set(pubRef, publicProfile(state, info.name, now, info.avatar));
     return summary(state, now, out);
   });
 }
-const logEvent = (uid, type, data) => db().collection('xpEvents').add({ uid, type, ...data, at: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+
+/* ══════════════ events ══════════════ */
+function publish(res) {
+  latest = { ...(latest || {}), ...res };
+  listeners.forEach((fn) => { try { fn(res, latest); } catch (e) { console.warn('[xp] listener failed', e); } });
+  notify(res);
+}
+const onUpdate = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+
+async function getMyState() {
+  await whenReady();
+  await reconcileWithAccount();
+  if (!uid()) return null;
+  try {
+    const snap = await getDoc(doc(db, 'xpState', uid()));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) { console.warn('[xp] could not read state', e); return null; }
+}
 
 /* ══════════════ lessons ══════════════ */
+const qKey = () => `lw_xp_pending_v1:${uid()}`;
+function readQ() { try { return JSON.parse(localStorage.getItem(qKey()) || '[]'); } catch { return []; } }
+function writeQ(q) { try { localStorage.setItem(qKey(), JSON.stringify(q.slice(-300))); } catch { /* private mode */ } }
+function enqueue(job) {
+  if (!uid()) return;
+  const q = readQ();
+  if (!q.some((j) => j.t === job.t && j.m === job.m && j.i === job.i)) { q.push(job); writeQ(q); }
+}
+async function findMission(id) {
+  for (let i = 0; i < 80 && !window.LWMissions; i++) await sleep(100);       // missions.js is a deferred classic script
+  const all = (window.LWMissions && window.LWMissions.getAllMissions && window.LWMissions.getAllMissions()) || [];
+  return all.find((m) => m.id === id) || null;
+}
 
-exports.claimLessonItem = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const { missionId, itemIndex, tz } = request.data || {};
-  const mission = typeof missionId === 'string' ? MANIFEST.missions[missionId] : null;
-  if (!mission || !Number.isInteger(itemIndex) || itemIndex < 0 || itemIndex >= mission.items.length) {
-    throw new HttpsError('invalid-argument', 'Unknown lesson item.');
+async function runJob(job) {
+  const mission = await findMission(job.m);
+  if (!mission) return { ok: false, reason: 'unknown_mission' };
+  const lessonIdx = mission.items.map((it, i) => (it.kind === 'LESSON' ? i : -1)).filter((i) => i >= 0);
+
+  if (job.t === 'item') {
+    const item = mission.items[job.i];
+    if (!item || !ECON.LESSON_ITEM_XP[item.kind]) return { ok: false, reason: 'not_rewarding' };
+    return withState((state, { now, today }) => {
+      const claimed = state.lessonItems[mission.id] || [];
+      if (claimed.includes(job.i)) return { duplicate: true, xpGained: 0, skipStateWrite: true };
+      const out = {};
+      const xp = applyLessonSoftCap(lessonItemXp(item.kind, item.bonusXP), state.daily.lessonXp);
+      state.lessonItems[mission.id] = claimed.concat(job.i).sort((a, b) => a - b);
+      state.lastClaimAt = now;
+      if (item.kind === 'LESSON' && item.signId && !state.learnedSigns.includes(item.signId)) state.learnedSigns.push(item.signId);
+      state.daily.lessonXp += xp; state.totals.lessonXp += xp;
+      addXp(state, xp, out);
+      touchStreak(state, today, out, now);
+      out.xpGained = xp;
+      return out;
+    });
   }
-  const [kind, ref, bonus] = mission.items[itemIndex];
-  if (!(kind in CONFIG.LESSON_ITEM_XP)) throw new HttpsError('invalid-argument', 'This item does not award XP by itself.');
 
-  return withXp(auth, tz, (state, { now, today }) => {
-    const claimed = state.lessonItems[missionId] || [];
-    if (claimed.includes(itemIndex)) return { duplicate: true, xpGained: 0, skipStateWrite: true };
-    if (now - state.lastClaimAt < CONFIG.MIN_CLAIM_GAP_MS) {
-      return { reject: 'too_fast', retryAfterMs: CONFIG.MIN_CLAIM_GAP_MS - (now - state.lastClaimAt) + 50 };
-    }
-    const out = {};
-    const xp = E.applyLessonSoftCap(E.lessonItemXp(kind, bonus), state.daily.lessonXp);
-    state.lessonItems[missionId] = claimed.concat(itemIndex).sort((a, b) => a - b);
-    state.lastClaimAt = now;
-    if (kind === 'LESSON' && ref && !state.learnedSigns.includes(ref)) state.learnedSigns.push(ref);
-    state.daily.lessonXp += xp; state.totals.lessonXp += xp;
-    addXp(state, xp, out);
-    touchStreak(state, today, out, now);
-    out.xpGained = xp;
-    return out;
-  });
-});
-
-exports.claimMissionComplete = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const { missionId, tz } = request.data || {};
-  const mission = typeof missionId === 'string' ? MANIFEST.missions[missionId] : null;
-  if (!mission) throw new HttpsError('invalid-argument', 'Unknown lesson.');
-
-  const result = await withXp(auth, tz, (state, { now, today }) => {
-    if (state.missionsDone[missionId]) return { duplicate: true, xpGained: 0, skipStateWrite: true };
-    const lessonIdx = mission.items.map((it, i) => (it[0] === 'LESSON' ? i : -1)).filter((i) => i >= 0);
-    const claimed = new Set(state.lessonItems[missionId] || []);
+  // mission (Mastery Quiz passed)
+  return withState((state, { now, today }) => {
+    if (state.missionsDone[mission.id]) return { duplicate: true, xpGained: 0, skipStateWrite: true };
+    const claimed = new Set(state.lessonItems[mission.id] || []);
     const done = lessonIdx.filter((i) => claimed.has(i)).length;
-    const full = lessonIdx.length === 0 || done / lessonIdx.length >= CONFIG.MISSION_FULL_LESSON_RATIO;
-
-    if (!full) {
-      const wait = CONFIG.MIN_SKIP_CLAIM_GAP_MS - (now - state.lastSkipAt);
-      if (wait > 0) return { reject: 'too_fast', retryAfterMs: wait + 50 };
-      state.lastSkipAt = now;
-    }
+    const full = lessonIdx.length === 0 || done / lessonIdx.length >= ECON.MISSION_FULL_LESSON_RATIO;
     const out = { path: full ? 'full' : 'skip' };
-    const raw = Math.round(E.missionBonus(mission.signCount) * (full ? 1 : CONFIG.MISSION_SKIP_FACTOR));
-    const xp = E.applyLessonSoftCap(raw, state.daily.lessonXp);
-
-    state.missionsDone[missionId] = full ? 'full' : 'skip';
-    lessonSignsOf(missionId).forEach((s) => { if (!state.learnedSigns.includes(s)) state.learnedSigns.push(s); });
+    const raw = Math.round(missionBonus(lessonIdx.length) * (full ? 1 : ECON.MISSION_SKIP_FACTOR));
+    const xp = applyLessonSoftCap(raw, state.daily.lessonXp);
+    state.missionsDone[mission.id] = full ? 'full' : 'skip';
+    lessonIdx.forEach((i) => { const s = mission.items[i].signId; if (s && !state.learnedSigns.includes(s)) state.learnedSigns.push(s); });
     state.daily.lessonXp += xp; state.totals.lessonXp += xp; state.totals.missions += 1;
     state.lastClaimAt = now;
     addXp(state, xp, out);
     touchStreak(state, today, out, now);
-    E.missionCountBadgesFor(state.totals.missions).forEach((id) => grant(state, id, out, now));
-    const lb = E.nextLevelBadge('lesson', state.level, state.badges);   // catch-up: lowest unearned <= level
+    missionCountBadgesFor(state.totals.missions).forEach((id) => grant(state, id, out, now));
+    const lb = nextLevelBadge('lesson', state.level, state.badges);
     if (lb) grant(state, lb, out, now);
     out.xpGained = xp;
     return out;
   });
-  if (result.ok && result.path) logEvent(auth.uid, 'mission', { missionId, path: result.path, xp: result.xpGained });
-  return result;
-});
+}
+
+/** Drain the queue in order. Resolves when it's empty or saving keeps failing. */
+function flush() {
+  if (flushing) return flushing;
+  flushing = (async () => {
+    try {
+      await whenReady();
+      if (!uid()) return;
+      for (;;) {
+        const q = readQ();
+        if (!q.length) return;
+        let res;
+        try { res = await runJob(q[0]); }
+        catch (e) {
+          reportProblem(e && e.code === 'permission-denied' ? 'rules' : 'unreachable', e);
+          return;                                                   // keep the job queued, retry next time
+        }
+        if (res && res.ok === false) console.info('[xp] claim not paid:', res.reason);
+        writeQ(readQ().slice(1));                                   // paid, duplicate, or permanently refused
+        if (res && res.ok) publish(res);
+      }
+    } finally { flushing = null; }
+  })();
+  return flushing;
+}
+
+const REWARDING = { LESSON: 1, BOOSTER: 1, PRACTICE: 1 };
+function claimItem(mission, index) {
+  try {
+    const item = mission && mission.items && mission.items[index];
+    if (!item || !REWARDING[item.kind]) return;
+    enqueue({ t: 'item', m: mission.id, i: index });
+    flush();
+  } catch (e) { console.warn('[xp] claimItem failed', e); }
+}
+function claimMission(mission) {
+  try {
+    if (!mission || !mission.id) return;
+    enqueue({ t: 'mission', m: mission.id });
+    flush();
+  } catch (e) { console.warn('[xp] claimMission failed', e); }
+}
 
 /* ══════════════ Wall Breaker ══════════════ */
+async function startGame(signs) {
+  try {
+    await whenReady();
+    if (!uid() || !Array.isArray(signs) || !signs.length || signs.length > ECON.GAME.MAX_BRICKS) return null;
+    const st = await getMyState();
+    const learned = new Set((st && st.learnedSigns) || []);
+    const learnedBricks = signs.filter((s) => learned.has(s)).length;
+    const minLearned = (CFG.GAME && CFG.GAME.MIN_LEARNED_BRICKS) || 6;
+    session = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), signs: signs.slice(), done: false };
+    return { ok: true, sessionId: session.id, learnedBricks, xpEligible: learnedBricks >= minLearned, minLearned };
+  } catch (e) { console.warn('[xp] startGame failed', e); return null; }
+}
+/** broken: [{ s: sign, t: msSinceStart, m: isMotion }]. Returns the summary or null. */
+async function finishGame(sessionId, broken, wrong) {
+  try {
+    if (!sessionId || !session || session.id !== sessionId || session.done) return { ok: false, reason: 'no_session' };
+    const sess = session; sess.done = true;                                  // a session pays out at most once
+    if (!Number.isInteger(wrong) || wrong < 0 || wrong > 500) return { ok: false, reason: 'bad_input' };
+    const G = ECON.GAME, elapsed = Date.now() - sess.startedAt;
+    if (elapsed > G.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
+    const problem = validateGameTiming({ sessionSigns: sess.signs, broken, elapsedMs: elapsed });
+    if (problem) return { ok: false, reason: problem };
 
-exports.startGameSession = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const { signs, tz } = request.data || {};
-  const G = CONFIG.GAME;
-  if (!Array.isArray(signs) || signs.length < 1 || signs.length > G.MAX_BRICKS
-      || !signs.every((s) => typeof s === 'string' && SIGN_SET.has(s)) || new Set(signs).size !== signs.length) {
-    throw new HttpsError('invalid-argument', 'Invalid wall.');
-  }
-  if ((auth.token.email || '').toLowerCase() === ADMIN_EMAIL) return { ok: false, reason: 'admin_account' };
-  const now = Date.now();
-  const [stateSnap, sessSnap] = await Promise.all([db().doc(`xpState/${auth.uid}`).get(), db().doc(`xpSessions/${auth.uid}`).get()]);
-  const prev = sessSnap.exists ? sessSnap.data() : null;
-  if (prev && !prev.done && now - prev.startedAt < G.MIN_START_GAP_MS) return { ok: false, reason: 'too_fast' };
-  const learned = new Set(stateSnap.exists ? stateSnap.data().learnedSigns || [] : []);
-  const learnedBricks = signs.filter((s) => learned.has(s)).length;
-  const sessionId = crypto.randomUUID();
-  await db().doc(`xpSessions/${auth.uid}`).set({ id: sessionId, startedAt: now, signs, done: false });
-  return { ok: true, sessionId, learnedBricks, xpEligible: learnedBricks >= G.MIN_LEARNED_BRICKS, minLearned: G.MIN_LEARNED_BRICKS };
-});
+    const r = await withState((state, { now, today }) => {
+      const learned = new Set(state.learnedSigns);
+      const bricks = broken.map((b) => ({ learned: learned.has(b.s), motion: !!b.m }));
+      const res = gameWallXp({ bricks, wrong, wallsToday: state.daily.walls, gameXpToday: state.daily.gameXp });
+      if (!res.eligible) return { counted: false, xpGained: 0, reason: res.reason, skipStateWrite: true };
+      const out = { counted: false, accuracy: res.accuracy, flawless: res.flawless, multiplier: res.decay, capped: !!res.capped };
+      state.daily.walls += 1; state.totals.walls += 1;
+      const xp = res.xp;
+      if (xp > 0) {
+        state.daily.gameXp += xp; state.totals.gameXp += xp; state.totals.countedWalls += 1;
+        addXp(state, xp, out);
+        touchStreak(state, today, out, now);
+        grant(state, 'game_first', out, now);
+        if (res.flawless) grant(state, 'game_flawless', out, now);
+        if (elapsed / sess.signs.length <= G.SPEED_BADGE_MS_PER_BRICK) grant(state, 'game_speed', out, now);
+        if (state.totals.countedWalls >= G.VETERAN_WALLS) grant(state, 'game_veteran', out, now);
+        const gb = nextLevelBadge('game', state.level, state.badges);
+        if (gb) grant(state, gb, out, now);
+        out.counted = true;
+      } else out.reason = res.reason;
+      out.xpGained = xp;
+      return out;
+    });
+    if (r && r.ok) publish(r);
+    return r;
+  } catch (e) { reportProblem(e && e.code === 'permission-denied' ? 'rules' : 'unreachable', e); return null; }
+}
 
-exports.finishGameSession = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const { sessionId, broken, wrong, tz } = request.data || {};
-  if (typeof sessionId !== 'string' || !Array.isArray(broken) || broken.length > CONFIG.GAME.MAX_BRICKS
-      || !Number.isInteger(wrong) || wrong < 0 || wrong > 500) {
-    throw new HttpsError('invalid-argument', 'Invalid result.');
-  }
-  const G = CONFIG.GAME;
-  const sessRef = db().doc(`xpSessions/${auth.uid}`);
-
-  const result = await withXp(auth, tz, async (state, { now, today }, tx) => {
-    const snap = await tx.get(sessRef);
-    const sess = snap.exists ? snap.data() : null;
-    if (!sess || sess.id !== sessionId || sess.done) return { reject: 'no_session' };
-    tx.set(sessRef, { ...sess, done: true, finishedAt: now });          // a session pays out at most once
-
-    const elapsed = now - sess.startedAt;
-    if (elapsed > G.SESSION_TTL_MS) return { reject: 'expired' };
-    const problem = E.validateGameTiming({ sessionSigns: sess.signs, broken, serverElapsedMs: elapsed });
-    if (problem) { logEvent(auth.uid, 'game_rejected', { reason: problem, size: sess.signs.length, elapsed }); return { reject: problem }; }
-
-    const learned = new Set(state.learnedSigns);
-    const bricks = broken.map((b) => ({ learned: learned.has(b.s), motion: !!b.m }));
-    const res = E.gameWallXp({ bricks, wrong, wallsToday: state.daily.walls, gameXpToday: state.daily.gameXp });
-    if (!res.eligible) return { counted: false, xpGained: 0, reason: res.reason, skipStateWrite: true };
-
-    const out = { counted: false, accuracy: res.accuracy, flawless: res.flawless, multiplier: res.decay, capped: !!res.capped };
-    state.daily.walls += 1; state.totals.walls += 1;
-    const xp = res.xp;
-    if (xp > 0) {
-      state.daily.gameXp += xp; state.totals.gameXp += xp; state.totals.countedWalls += 1;
+/* ══════════════ one-time backfill of progress done before XP existed ══════════════ */
+async function backfillOnce() {
+  try {
+    await whenReady();
+    for (let i = 0; i < 60 && !window.LWMissions; i++) await sleep(100);
+    if (!uid() || !window.LWMissions) return;
+    const flag = `lw_xp_backfilled_v1:${uid()}`;
+    if (localStorage.getItem(flag)) return;
+    try { await window.LWMissions.whenMissionsSyncReady?.(); } catch { /* local only */ }
+    const st = await getMyState();
+    if (st && st.backfilled) { localStorage.setItem(flag, '1'); return; }
+    const M = window.LWMissions, missions = M.getAllMissions?.() || [];
+    if (!missions.length) return;
+    const r = await withState((state, { now }) => {
+      if (state.backfilled) return { duplicate: true, xpGained: 0, skipStateWrite: true };
+      const out = {}; let raw = 0;
+      for (const m of missions) {
+        const have = new Set(state.lessonItems[m.id] || []);
+        m.items.forEach((it, i) => {
+          if (!M.isItemComplete(m, i, it) || have.has(i)) return;
+          if (it.kind === 'QUIZ') {
+            if (!state.missionsDone[m.id]) {
+              state.missionsDone[m.id] = 'backfill'; state.totals.missions += 1;
+              raw += missionBonus(m.items.filter((x) => x.kind === 'LESSON').length);
+            }
+            return;
+          }
+          if (!ECON.LESSON_ITEM_XP[it.kind]) return;
+          have.add(i);
+          if (it.kind === 'LESSON' && it.signId && !state.learnedSigns.includes(it.signId)) state.learnedSigns.push(it.signId);
+          raw += lessonItemXp(it.kind, it.bonusXP);
+        });
+        if (have.size) state.lessonItems[m.id] = [...have].sort((a, b) => a - b);
+      }
+      if (raw === 0) return { duplicate: true, xpGained: 0, skipStateWrite: true };   // nothing to backfill: don't create a 0-XP row / leaderboard entry
+      const xp = Math.min(ECON.BACKFILL_MAX_XP, Math.round(raw * ECON.BACKFILL_FACTOR));
+      state.backfilled = true; state.totals.lessonXp += xp;
       addXp(state, xp, out);
-      touchStreak(state, today, out, now);
-      grant(state, 'game_first', out, now);
-      if (res.flawless) grant(state, 'game_flawless', out, now);
-      if (elapsed / sess.signs.length <= G.SPEED_BADGE_MS_PER_BRICK) grant(state, 'game_speed', out, now);
-      if (state.totals.countedWalls >= G.VETERAN_WALLS) grant(state, 'game_veteran', out, now);
-      const gb = E.nextLevelBadge('game', state.level, state.badges);
-      if (gb) grant(state, gb, out, now);
-      out.counted = true;
-    } else {
-      out.reason = res.reason;
+      missionCountBadgesFor(state.totals.missions).forEach((id) => grant(state, id, out, now));
+      out.xpGained = xp; out.backfilled = true;
+      return out;
+    });
+    if (r && (r.ok || r.duplicate)) localStorage.setItem(flag, '1');
+    if (r && r.ok && r.xpGained > 0) publish(r);
+  } catch (e) { reportProblem(e && e.code === 'permission-denied' ? 'rules' : 'unreachable', e); }
+}
+
+/* ══════════════ leaderboards ══════════════ */
+const BOARDS = {
+  xp:      { label: 'All-time XP', build: (c) => query(c, orderBy('xp', 'desc'), limit(50)) },
+  weekly:  { label: 'This week',   build: (c, wk) => query(c, where('weekKey', '==', wk), orderBy('weeklyXp', 'desc'), limit(50)) },
+  streak:  { label: 'Streaks',     build: (c) => query(c, orderBy('streak', 'desc'), limit(50)) },
+  badges:  { label: 'Badges',      build: (c) => query(c, orderBy('badgeCount', 'desc'), limit(50)) },
+};
+async function loadBoard(kind) {
+  await whenReady();
+  const b = BOARDS[kind] || BOARDS.xp, now = Date.now();
+  const snap = await getDocs(b.build(collection(db, 'publicProfiles'), weekKeyUtc(now)));
+  const rows = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  rows.forEach((r) => { if (r.streakExpiresAt && r.streakExpiresAt <= now) r.streak = 0; });   // nothing sweeps expired streaks now, so hide them here
+  const tie = { streak: 'streak', badges: 'badgeCount', weekly: 'weeklyXp', xp: 'xp' }[kind] || 'xp';
+  rows.sort((a, c) => ((c[tie] || 0) - (a[tie] || 0)) || ((c.xp || 0) - (a.xp || 0)));
+  return rows;
+}
+async function setVisibility(visible) {
+  try { return await withState((state) => { state.hidden = !visible; return { hidden: state.hidden }; }); }
+  catch (e) { reportProblem(e && e.code === 'permission-denied' ? 'rules' : 'unreachable', e); throw e; }
+}
+
+/* ══════════════ pop-ups (level up / new badges / +XP) ══════════════ */
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+let popTimer = null;
+function notify(res) {
+  try {
+    if (!res || !res.ok) return;
+    const gained = res.xpGained || 0, ups = res.levelUps || [], badges = res.newBadges || [];
+    if (!gained && !ups.length && !badges.length) return;
+    if (!ups.length && !badges.length) {
+      const toast = toastFn();
+      if (typeof toast === 'function') toast(`+${gained} XP`, 'success');
+      return;
     }
-    out.xpGained = xp;
-    return out;
-  });
-  return result;
-});
+    const top = ups.length ? ups[ups.length - 1] : null;
+    const tier = tierOf(top || res.level || 1);
+    const el = document.createElement('div');
+    el.className = 'xp-pop'; el.setAttribute('role', 'status');
+    el.innerHTML = `
+      ${top ? `<div class="xp-pop__level" style="--tier:${esc(tier.color)}"><span class="xp-pop__tier" aria-hidden="true">${iconSvg(tierIconId(tier))}</span> Level ${top}<small>${esc(tier.name)}</small></div>` : ''}
+      ${gained ? `<div class="xp-pop__xp">+${gained} XP</div>` : ''}
+      ${badges.length ? `<ul class="xp-pop__badges">${badges.map((id) => { const b = badgeInfo(id); return `<li><span class="xp-pop__badge" aria-hidden="true">${iconSvg(badgeIconId(id), { size: 'sm' })}</span><b>${esc(b.name)}</b></li>`; }).join('')}</ul>` : ''}`;
+    document.querySelectorAll('.xp-pop').forEach((n) => n.remove());
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('xp-pop--in'));
+    clearTimeout(popTimer);
+    popTimer = setTimeout(() => { el.classList.remove('xp-pop--in'); setTimeout(() => el.remove(), 400); }, 4500);
+  } catch (e) { console.warn('[xp] notify failed', e); }
+}
 
-/* ══════════════ one-time legacy backfill ══════════════ */
+window.addEventListener('online', () => flush());
+whenReady().then(async () => { await reconcileWithAccount(); flush(); backfillOnce(); });
 
-exports.backfillLegacyProgress = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const ids = request.data && request.data.completedItemIds;
-  if (!Array.isArray(ids) || ids.length > 3000 || !ids.every((x) => typeof x === 'string' && x.length < 120)) {
-    throw new HttpsError('invalid-argument', 'Invalid progress list.');
-  }
-  // Only accounts that existed before launch, judged by Firebase Auth (not browser-writable data).
-  const rec = await admin.auth().getUser(auth.uid);
-  const launch = Date.parse(CONFIG.LAUNCH_AT_ISO);
-  if (Date.parse(rec.metadata.creationTime) >= launch) return { ok: false, reason: 'not_eligible' };
-  if (Date.now() > launch + CONFIG.BACKFILL_WINDOW_DAYS * 86400000) return { ok: false, reason: 'window_closed' };
-
-  return withXp(auth, null, (state, { now }) => {
-    if (state.backfilled) return { duplicate: true, xpGained: 0, skipStateWrite: true };
-    const out = {}; let raw = 0; const quizDone = new Set();
-    for (const id of new Set(ids)) {
-      const hit = ITEM_INDEX.get(id);
-      if (!hit) continue;
-      const [mid, i] = hit;
-      const [kind, ref, bonus] = MANIFEST.missions[mid].items[i];
-      if (kind === 'QUIZ') { quizDone.add(mid); continue; }
-      const have = state.lessonItems[mid] || [];
-      if (have.includes(i)) continue;
-      state.lessonItems[mid] = have.concat(i).sort((a, b) => a - b);
-      if (kind === 'LESSON' && ref && !state.learnedSigns.includes(ref)) state.learnedSigns.push(ref);
-      raw += E.lessonItemXp(kind, bonus);
-    }
-    for (const mid of quizDone) {
-      if (state.missionsDone[mid]) continue;
-      state.missionsDone[mid] = 'backfill'; state.totals.missions += 1;
-      lessonSignsOf(mid).forEach((s) => { if (!state.learnedSigns.includes(s)) state.learnedSigns.push(s); });
-      raw += E.missionBonus(MANIFEST.missions[mid].signCount);
-    }
-    const xp = Math.min(CONFIG.BACKFILL_MAX_XP, Math.round(raw * CONFIG.BACKFILL_FACTOR));
-    state.backfilled = true; state.totals.lessonXp += xp;
-    addXp(state, xp, out);
-    E.missionCountBadgesFor(state.totals.missions).forEach((id) => grant(state, id, out, now));
-    out.xpGained = xp; out.backfilled = true;
-    return out;
-  }).then((r) => { if (r.ok && r.backfilled) logEvent(auth.uid, 'backfill', { xp: r.xpGained, sent: ids.length }); return r; });
-});
-
-/* ══════════════ leaderboard visibility ══════════════ */
-
-exports.setLeaderboardVisibility = onCall(OPTS, async (request) => {
-  const auth = requireLearner(request);
-  const visible = request.data && request.data.visible;
-  if (typeof visible !== 'boolean') throw new HttpsError('invalid-argument', 'visible must be true or false.');
-  return withXp(auth, null, (state) => { state.hidden = !visible; return { hidden: state.hidden }; });
-});
-
-/* ══════════════ maintenance ══════════════ */
-
-/** A streak dies at the end of the day after the last activity; nothing "runs" then, so sweep hourly. */
-exports.expireStaleStreaks = onSchedule('every 60 minutes', async () => {
-  const { Timestamp } = admin.firestore;
-  for (let round = 0; round < 10; round++) {
-    const snap = await db().collection('publicProfiles').where('streakExpiresAt', '<=', Timestamp.now()).limit(400).get();
-    if (snap.empty) return;
-    const batch = db().batch();
-    snap.docs.forEach((d) => batch.update(d.ref, { streak: 0, streakExpiresAt: null }));
-    await batch.commit();
-    if (snap.size < 400) return;
-  }
-});
-
-/* ══════════════ users/{uid} -> publicProfiles/{uid} sync ══════════════ */
-
-exports.syncPublicProfileFromUser = onDocumentWritten({ document: 'users/{uid}', maxInstances: 5 }, async (event) => {
-  const uid = event.params.uid;
-  const after = event.data && event.data.after;
-  const pubRef = db().doc(`publicProfiles/${uid}`);
-  if (!after || !after.exists || after.data().deletionRequested === true) {    // gone or "deleted": off the boards
-    await pubRef.delete().catch(() => {});
-    return;
-  }
-  const before = event.data.before && event.data.before.exists ? event.data.before.data() : {};
-  const d = after.data();
-  if (d.name === before.name) return;
-  const snap = await pubRef.get();
-  if (snap.exists) await pubRef.update({ name: (typeof d.name === 'string' ? d.name.trim().slice(0, 30) : '') || 'Learner' });
-});
+window.LWXP = {
+  claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
+  getMyState, loadBoard, BOARDS, setVisibility, onUpdate, notify,
+  levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId, config: CFG, timezone: TZ,
+  getLatest: () => latest,
+  purgeOrphans, reconcileWithAccount,
+  debug: () => ({ uid: uid(), pending: readQ(), lastError, latest }),   // run LWXP.debug() in the console
+};
+document.dispatchEvent(new CustomEvent('lwxp-ready'));

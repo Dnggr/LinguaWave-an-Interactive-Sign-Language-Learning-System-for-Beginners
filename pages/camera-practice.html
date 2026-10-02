@@ -438,6 +438,13 @@
               for another attempt.
             </p>
 
+            <!-- NEW: shown INSTEAD of the 80% note when this sign has no trained data
+                 (labels.json has no class for it). Toggled by applyPracticeCheckLock()
+                 in js/camera-practice.js. -->
+            <p class="text-muted practice-check-locked-note" id="practice-check-locked-note" style="font-size: var(--fs-xs);" hidden>
+              Practice Check is locked for this sign — we haven't trained the detection data for it yet.
+            </p>
+
             <!-- Assessment prompt (shown during assessment only) -->
             <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
             <div class="assessment-prompt-box" id="assessment-prompt-box" style="display:none;">
@@ -474,6 +481,28 @@
   <!-- ══════════════════════════════════════════════════════════
        COMPLETION OVERLAY (shown after assessment ends)
        ══════════════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════
+       NO-TRAINED-DATA MODAL (opened by the locked Practice Check button)
+       Reuses the completion-overlay look. Wired in js/camera-practice.js
+       (openUntrainedModal / closeUntrainedModal).
+       ══════════════════════════════════════════════════════════ -->
+  <div class="completion-overlay untrained-overlay" id="untrained-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="untrained-title">
+    <div class="completion-card untrained-card">
+      <button type="button" class="completion-card__close" id="untrained-close" aria-label="Close">&times;</button>
+      <div class="untrained-card__icon" id="untrained-icon" aria-hidden="true"></div>
+      <h2 id="untrained-title">No trained data yet</h2>
+      <p class="untrained-card__text">
+        We don't have the <span id="untrained-model">motion</span> detection data for
+        <strong id="untrained-sign">this sign</strong> yet, so Practice Check can't grade it.
+      </p>
+      <p class="untrained-card__text text-muted">
+        You can still watch the sign above and practice it on your own.
+        Practice Check will unlock once the data for this sign has been added.
+      </p>
+      <button type="button" class="btn btn--primary btn--full" id="untrained-ok">Got it</button>
+    </div>
+  </div>
+
   <div class="completion-overlay" id="completion-overlay" style="display:none;" role="dialog" aria-modal="true">
     <div class="completion-card">
       <!-- NEW: small close (X), same look as the login modal's close button.
