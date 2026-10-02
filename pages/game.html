@@ -26,6 +26,11 @@
       - js/main.js added: it wires every [data-logout] link, so "Log out" did nothing on this page before
       - styling lives in css/game.css and now reads only the shared tokens (no hard-coded hex)
     Markup ids/classes the game logic uses are unchanged, so js/game.js needed no logic changes.
+
+    ONE-SCREEN LAYOUT PASS — the page used to be a vertical stack (camera -> timers -> wall), so the wall sat below
+    the fold and a player with their hands up could not reach it. Now .gm-stage puts camera and wall side by side and
+    css/game.css locks the page to the viewport on desktop. Only elements were re-parented (wall footer now holds the
+    hint, legend and Quit button; the log moved under the wall); every id read by js/game.js is unchanged.
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -123,7 +128,9 @@
           <span class="gm-progress__reward" id="gm-reward" data-lw-icon="gift"></span>
         </div>
 
-        <div class="gm-top">
+        <!-- ONE-SCREEN STAGE: camera + timers on the left, the wall (or Setup before Start) on the right,
+             so the sign you need is always next to the camera and nobody has to scroll with their hands up. -->
+        <div class="gm-stage">
           <section class="gm-left">
             <div class="gm-cam" id="gm-cam" data-mode="idle">
               <video id="lw-webcam" autoplay playsinline muted></video>
@@ -145,7 +152,8 @@
             </div>
           </section>
 
-          <div class="gm-side">
+          <div class="gm-right">
+            <!-- Before Start: Setup. After Start: it is hidden (game.js) and the wall takes its place. -->
             <section class="gm-setup" id="gm-start" aria-labelledby="gm-setup-title">
               <h2 id="gm-setup-title">Setup</h2>
               <p class="text-muted gm-setup__how">Bricks come from signs you've finished in your lessons. Sign them in any order. <b class="gm-tag-static">HOLD</b> = hold the sign steady. <b class="gm-tag-motion">MOVE</b> = press Space, wait for 3-2-1, then sign.</p>
@@ -168,22 +176,26 @@
               <p class="text-muted gm-setup__best" id="gm-best"></p>
             </section>
 
+            <div class="gm-field" id="gm-field">
+              <div class="gm-wall" id="gm-wall" aria-label="Wall of sign bricks"></div>
+              <div class="gm-field__foot">
+                <p class="gm-hint text-muted" id="gm-hint" aria-live="polite"></p>
+                <div class="gm-field__bar">
+                  <div class="gm-legend" aria-label="Legend">
+                    <span><i class="gm-dot gm-dot--static"></i>Static · HOLD</span>
+                    <span><i class="gm-dot gm-dot--motion"></i>Motion · MOVE</span>
+                  </div>
+                  <button class="btn btn--ghost btn--sm gm-quit" id="gm-quit" type="button" hidden>Quit this wall</button>
+                </div>
+              </div>
+            </div>
+
             <aside class="gm-log">
               <h2>Signs log</h2>
               <ul id="gm-log"></ul>
-              <div class="gm-legend" aria-label="Legend">
-                <span><i class="gm-dot gm-dot--static"></i>Static · HOLD</span>
-                <span><i class="gm-dot gm-dot--motion"></i>Motion · MOVE</span>
-              </div>
-              <button class="btn btn--ghost btn--sm gm-quit" id="gm-quit" type="button" hidden>Quit this wall</button>
             </aside>
           </div>
         </div>
-
-        <div class="gm-field" id="gm-field">
-          <div class="gm-wall" id="gm-wall" aria-label="Wall of sign bricks"></div>
-        </div>
-        <p class="gm-hint text-muted" id="gm-hint"></p>
 
         <div class="gm-overlay" id="gm-result" hidden>
           <div class="gm-card">

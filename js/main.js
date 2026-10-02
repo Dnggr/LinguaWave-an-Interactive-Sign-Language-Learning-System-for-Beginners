@@ -159,42 +159,137 @@ function initSidebarNavGuard() {
 }
 
 
-/* ── SIDEBAR ACCOUNT LINKS ────────────────────────────────────────
- * Settings no longer sits in the main list. It is pinned to the bottom
- * of the sidebar, a thin divider under it, then the Profile link — so the
- * bottom of the sidebar reads  Settings / ─── / Profile  and then the
- * theme switch + Log out.
- * Done here (not in each page's markup) so every learner page gets it from
- * one place. It only acts on a sidebar that already has a Settings link, so
- * admin sidebars are untouched; running twice does nothing. Must run BEFORE
- * initSidebarNavGuard() so the new link is covered by it, which is why it is
- * called straight away (this script sits at the end of <body>) and again at
- * the top of DOMContentLoaded for pages that load it differently.
- * CSS: .app-sidebar__link--pin / .app-sidebar__divider in css/style.css.
+/* ── SIDEBAR ACCOUNT CARD ─────────────────────────────────────────
+ * The bottom of every learner sidebar is now one account block:
+ *
+ *     [avatar]  Alex Carter          <- links to profile.html
+ *               Learner
+ *     ───────────────────────────
+ *     [→] Log out              (theme switch)
+ *
+ * Settings is NOT moved any more — it simply stays in the nav right under
+ * Feedback, exactly where each page's markup puts it. (It used to be pinned
+ * to the bottom with a divider and a separate Profile link; that is gone.)
+ *
+ * Built here, not in each page's markup, so all 14 learner pages get it from
+ * one place. It only acts on a sidebar whose nav has a Settings link, so the
+ * admin sidebars are untouched; running twice does nothing. The page's own
+ * Log out element is REUSED (not cloned) so the [data-logout] wiring in
+ * initUserDetails() keeps working, and so is the theme switch (js/theme.js).
+ * Must run BEFORE initSidebarNavGuard() so the card is covered by it (it has
+ * the .app-sidebar__link class), hence the immediate call below plus the one
+ * at the top of DOMContentLoaded.
+ *
+ * The name is a [data-user-name] span, so initUserDetails() fills it and
+ * js/edit-profile.js refreshes it after a rename. The picture is painted by
+ * initSidebarUser() (below) because auth.js is a module and has not run yet
+ * when this file first executes.
+ * CSS: .app-sidebar__foot--account / __user / __foot-row / __logout in css/style.css.
  */
+const SIDEBAR_MAIN_SRC = (document.currentScript && document.currentScript.src) || '';
+
 function initSidebarAccountLinks() {
-  const nav = document.querySelector('.app-sidebar__nav');
-  if (!nav || nav.querySelector('.app-sidebar__link--pin')) return;   // no sidebar, or already done
-  const settings = nav.querySelector('a[href="settings.html"]');
-  if (!settings) return;
-
-  nav.appendChild(settings);                       // make sure it is the last item…
-  settings.classList.add('app-sidebar__link--pin'); // …so its auto top margin pushes the pair to the bottom
-
-  const divider = document.createElement('div');
-  divider.className = 'app-sidebar__divider';
-  divider.setAttribute('role', 'separator');
-  nav.appendChild(divider);
+  const aside = document.querySelector('.app-sidebar');
+  const nav = aside && aside.querySelector('.app-sidebar__nav');
+  const foot = aside && aside.querySelector('.app-sidebar__foot');
+  if (!nav || !foot || foot.querySelector('.app-sidebar__user')) return;   // no sidebar, or already done
+  if (!nav.querySelector('a[href="settings.html"]')) return;              // admin sidebar — leave alone
 
   const onProfile = /^profile(\.html)?$/.test(currentPage());
-  const profile = document.createElement('a');
-  profile.href = 'profile.html';
-  profile.className = 'app-sidebar__link' + (onProfile ? ' active' : '');
-  profile.innerHTML = '<span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="user_round"></span>Profile';
-  nav.appendChild(profile);
-  if (window.LWIcons && typeof window.LWIcons.hydrate === 'function') window.LWIcons.hydrate(nav);
+  const card = document.createElement('a');
+  card.href = 'profile.html';
+  card.className = 'app-sidebar__link app-sidebar__user' + (onProfile ? ' active' : '');
+  if (onProfile) card.setAttribute('aria-current', 'page');
+  card.title = 'View your profile';
+  card.innerHTML =
+    '<span class="app-sidebar__avatar" aria-hidden="true"></span>' +
+    '<span class="app-sidebar__user-text">' +
+      '<span class="app-sidebar__user-name" data-user-name>Learner</span>' +
+      '<span class="app-sidebar__user-role">Learner</span>' +
+    '</span>';
+
+  // Reuse the existing Log out link + theme switch, re-skinned and regrouped.
+  const logout = foot.querySelector('[data-logout]');
+  const theme = foot.querySelector('.theme-switch');
+  const row = document.createElement('div');
+  row.className = 'app-sidebar__foot-row';
+  if (logout) {
+    logout.className = 'app-sidebar__logout';
+    logout.innerHTML = '<span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="log_out"></span>Log out';
+    row.appendChild(logout);
+  }
+  if (theme) row.appendChild(theme);
+
+  foot.classList.add('app-sidebar__foot--account');
+  foot.insertBefore(card, foot.firstChild);
+  foot.appendChild(row);
+  if (window.LWIcons && typeof window.LWIcons.hydrate === 'function') window.LWIcons.hydrate(foot);
 }
 initSidebarAccountLinks();
+
+
+/* ── SIDEBAR ACCOUNT CARD: profile picture ─────────────────────────
+ * Paints the learner's chosen picture (js/avatars.js) into the card, or their
+ * initial when none is picked. Notes:
+ *  - avatars.js is only on a couple of pages, so it is loaded on demand here
+ *    (next to main.js) instead of editing every page.
+ *  - The session cache only has an `avatar` key once getAvatar()/updateAvatar()
+ *    has run on this device (login does not write it). If the key is missing we
+ *    do ONE getAvatar() after auth is ready; it writes the key back (null = no
+ *    picture), so later pages skip the read.
+ *  - Exposed as LinguaWave.refreshSidebarUser() so the Profile page can repaint
+ *    right after a new picture is saved.
+ */
+let sidebarAvatarsLoading = null;
+function loadAvatarsScript() {
+  if (window.LWAvatars) return Promise.resolve(true);
+  if (sidebarAvatarsLoading) return sidebarAvatarsLoading;
+  sidebarAvatarsLoading = new Promise((resolve) => {
+    if (!SIDEBAR_MAIN_SRC) { resolve(false); return; }
+    const s = document.createElement('script');
+    s.src = SIDEBAR_MAIN_SRC.replace(/main\.js(\?.*)?$/, 'avatars.js');
+    s.onload = () => resolve(!!window.LWAvatars);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+  return sidebarAvatarsLoading;
+}
+
+function paintSidebarAvatar(avatarId) {
+  const slot = document.querySelector('.app-sidebar__user .app-sidebar__avatar');
+  if (!slot) return;
+  const name = getActiveUser().name;
+  if (window.LWAvatars) {
+    slot.innerHTML = window.LWAvatars.markup(avatarId, { name });
+  } else {
+    const initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+    slot.innerHTML = '<span class="lw-avatar lw-avatar--initial">' + initial.replace(/[&<>"']/g, '') + '</span>';
+  }
+}
+
+async function initSidebarUser() {
+  if (!document.querySelector('.app-sidebar__user')) return;
+  paintSidebarAvatar(null);                       // instant: initial on the tint, no layout pop
+  await loadAvatarsScript();
+  const session = window.LWAuth?.getCurrentUser?.();
+  if (session && Object.prototype.hasOwnProperty.call(session, 'avatar')) {
+    paintSidebarAvatar(session.avatar);
+    return;
+  }
+  paintSidebarAvatar(null);
+  try {
+    if (!window.LWAuth?.whenAuthReady || !window.LWAuth?.getAvatar) return;
+    await window.LWAuth.whenAuthReady();
+    paintSidebarAvatar(await window.LWAuth.getAvatar());
+  } catch (e) {
+    console.warn('[main.js] sidebar picture not loaded:', e);   // initial stays; never blocks the page
+  }
+}
+
+function refreshSidebarUser() {
+  const session = window.LWAuth?.getCurrentUser?.();
+  paintSidebarAvatar(session ? session.avatar : null);
+}
 
 
 /* ── PROGRESS BARS: animate fill on page load ────────────────────── */
@@ -308,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarNavGuard();
   initProgressBars();
   initUserDetails();
+  initSidebarUser();
   // FIX (migration-analysis pass) — guarded null check added since
   // this now also runs on LinguaWave pages, several of which have
   // no <footer class="footer"> element at all; querySelector() would
@@ -322,4 +418,5 @@ window.LinguaWave = {
   getActiveUser,
   showToast,
   triggerLockedFeedback,
+  refreshSidebarUser,
 };

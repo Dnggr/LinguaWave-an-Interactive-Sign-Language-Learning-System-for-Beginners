@@ -13,37 +13,62 @@
      the same values as .card. Overlays use --backdrop (theme-aware) instead of a fixed dark scrim.
    - Progress fill slides with transform (same technique as .progress-bar__fill) and turns --clr-success on a clear.
    - Violet stays reserved for achievements (gems, chest, earned badges), as in style.css.
+
+   ONE-SCREEN LAYOUT PASS — why and what:
+   - Problem: camera -> timers -> wall was a vertical stack, so the wall (the thing you must read to know what to sign)
+     sat below the fold. A player mid-sign has their hands up and cannot scroll. The 16:9 camera box was also wasting
+     width: webcams here are 4:3 (cameraUtils asks for 640x480), so it letterboxed with side bars.
+   - Fix: on desktop .gm is exactly one viewport tall (no page scroll at all) and .gm-stage splits it:
+       left  = camera (takes all spare height) + timers      right = Setup before Start, the wall after Start, log below
+     The wall *replaces* Setup in the same slot instead of being pushed down the page.
+   - The camera no longer has a fixed aspect ratio; it fills its column and the video letterboxes via object-fit:contain
+     (the canvas overlay has the same object-fit, so the skeleton stays aligned).
+   - <= 900px (top-bar layout): stacked, but the camera + timers are sticky so feedback stays visible while the wall scrolls.
+   - Result overlay: absolute over the viewport-tall .gm on desktop, fixed on small screens (before, it was centred in a
+     page-tall box and could open below the fold).
+   - Wall rows share the available height (flex), so a 9/15/21 wall always fits instead of using fixed 68px bricks.
+   - Idle/play state is read from the [hidden] attribute game.js already toggles on #gm-start (via :has), so no JS changed.
 */
 .gm{
   --gm-static:var(--clr-accent);       --gm-static-soft:var(--clr-blue-soft);   --gm-static-text:var(--clr-accent-text);
   --gm-motion:var(--clr-orange);       --gm-motion-soft:var(--clr-orange-soft); --gm-motion-text:var(--clr-orange);
-  position:relative;max-width:1180px;margin:0 auto;padding:var(--space-6);
+  --gm-pg:36px;                        /* progress-track circle size */
+  position:relative;width:100%;max-width:1320px;margin:0 auto;   /* width:100% — #main is a column flexbox, so auto margins alone would shrink-wrap .gm */
+  padding:var(--space-4) var(--space-6);
+  display:flex;flex-direction:column;gap:var(--space-3);
 }
 
 /* header + HUD chips */
-.gm-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5)}
+.gm-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:var(--space-1) var(--space-4)}
+.gm-head__text{display:contents}   /* title + subtitle become grid items: title | chips on row 1, subtitle full-width on row 2 */
+.gm-title{grid-column:1;grid-row:1}
+.gm-head p{grid-column:1 / -1;grid-row:2}
+.gm-stats{grid-column:2;grid-row:1}
 .gm-title{margin:0;font-family:var(--font-display);letter-spacing:-.02em}
-.gm-head p{margin:var(--space-1) 0 0}
+.gm-head p{margin:0}
 .gm-stats{display:flex;gap:var(--space-2);flex-wrap:wrap}
-.gm-chip{display:inline-flex;align-items:baseline;gap:var(--space-2);padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);background:var(--clr-surface);border:1px solid var(--clr-border);font-size:var(--fs-sm);color:var(--clr-text-muted);box-shadow:var(--shadow-card)}
+.gm-chip{display:inline-flex;align-items:baseline;gap:var(--space-2);padding:var(--space-1) var(--space-4);border-radius:var(--radius-pill);background:var(--clr-surface);border:1px solid var(--clr-border);font-size:var(--fs-sm);color:var(--clr-text-muted);box-shadow:var(--shadow-card)}
 .gm-chip b{font-size:var(--fs-lg);color:var(--clr-text);font-variant-numeric:tabular-nums;font-family:var(--font-display)}
 .gm-chip--miss b{color:var(--clr-red-text)}
 .gm-chip--gem b{color:var(--clr-violet)}
 
-/* progress track: the hero walks toward the chest as bricks break */
-.gm-progress{--p:0;position:relative;height:44px;margin-bottom:var(--space-5)}
-.gm-progress__track{position:absolute;left:22px;right:22px;top:50%;height:10px;margin-top:-5px;border-radius:var(--radius-pill);background:var(--clr-track);overflow:hidden}
+/* progress track: the hero walks toward the chest as bricks break (circle size = --gm-pg) */
+.gm-progress{--p:0;position:relative;height:var(--gm-pg)}
+.gm-progress__track{position:absolute;left:calc(var(--gm-pg)/2);right:calc(var(--gm-pg)/2);top:50%;height:10px;margin-top:-5px;border-radius:var(--radius-pill);background:var(--clr-track);overflow:hidden}
 .gm-progress__fill{display:block;width:100%;height:100%;border-radius:inherit;background:var(--clr-accent);transform:translateX(calc((var(--p) - 1) * 100%));transition:transform var(--dur-slow) var(--ease),background var(--dur-base) var(--ease)}
 .gm-progress.is-done .gm-progress__fill{background:var(--clr-success)}
-.gm-progress__hero,.gm-progress__reward{position:absolute;top:0;width:44px;height:44px;display:grid;place-items:center;font-size:24px;line-height:1;border-radius:50%;background:var(--clr-surface);border:2px solid var(--clr-border);box-shadow:var(--shadow-card);transition:left var(--dur-slow) var(--ease),filter var(--dur-base),transform var(--dur-base),border-color var(--dur-base),background var(--dur-base)}
-.gm-progress__hero .lw-icon,.gm-progress__reward .lw-icon{width:24px;height:24px}
-.gm-progress__hero{left:calc(var(--p)*(100% - 44px));border-color:var(--clr-accent);background:var(--clr-accent-soft);color:var(--clr-accent-text)}
+.gm-progress__hero,.gm-progress__reward{position:absolute;top:0;width:var(--gm-pg);height:var(--gm-pg);display:grid;place-items:center;line-height:1;border-radius:50%;background:var(--clr-surface);border:2px solid var(--clr-border);box-shadow:var(--shadow-card);transition:left var(--dur-slow) var(--ease),filter var(--dur-base),transform var(--dur-base),border-color var(--dur-base),background var(--dur-base)}
+.gm-progress__hero .lw-icon,.gm-progress__reward .lw-icon{width:20px;height:20px}
+.gm-progress__hero{left:calc(var(--p)*(100% - var(--gm-pg)));border-color:var(--clr-accent);background:var(--clr-accent-soft);color:var(--clr-accent-text)}
 .gm-progress__reward{right:0;color:var(--clr-text-muted)}
 .gm-progress.is-done .gm-progress__reward{transform:scale(1.15) rotate(-6deg);border-color:var(--clr-violet);background:var(--clr-violet-soft);color:var(--clr-violet)}
 
-/* camera + log */
-.gm-top{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:var(--space-4);align-items:start}
-.gm-cam{position:relative;aspect-ratio:16/9;background:var(--clr-bg);border-radius:var(--radius-xl);overflow:hidden;border:2px solid var(--clr-border);transition:border-color var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
+/* stage: camera column | action column. min-width:0 everywhere so long labels can't blow a column open. */
+.gm-stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--space-4);align-items:stretch;flex:1 1 auto;min-height:0}
+.gm-left,.gm-right{display:flex;flex-direction:column;gap:var(--space-3);min-width:0;min-height:0}
+
+/* camera: fills the column's spare height; no fixed aspect ratio (see header note) */
+.gm-cam{position:relative;flex:1 1 0;min-height:200px;background:var(--clr-bg);border-radius:var(--radius-xl);overflow:hidden;border:2px solid var(--clr-border);transition:border-color var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
 .gm-cam[data-mode="static"]{border-color:var(--gm-static);box-shadow:0 0 0 4px var(--clr-accent-soft)}
 .gm-cam[data-mode="motion"]{border-color:var(--gm-motion);box-shadow:0 0 0 4px var(--clr-orange-soft)}
 .gm-cam video,.gm-cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}
@@ -53,38 +78,45 @@
 .gm-cam[data-mode="motion"] .gm-target{background:var(--gm-motion);border-color:var(--gm-motion);color:var(--clr-text-invert)}
 .gm-cam.is-miss{animation:gmMissFlash .5s}
 
-.gm-side{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
-.gm-setup{display:flex;flex-direction:column;gap:var(--space-3);background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-card)}
+.gm-setup{display:flex;flex-direction:column;gap:var(--space-3);flex:0 1 auto;min-height:0;overflow-y:auto;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-card)}
 .gm-setup[hidden]{display:none}
 .gm-setup h2{margin:0;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--clr-text-muted)}
 .gm-setup p{margin:0;font-size:var(--fs-sm)}
 .gm-setup__how{line-height:1.5}
 .gm-setup__note:empty,.gm-setup__best:empty{display:none}
 .gm-setup .btn--primary{width:100%;justify-content:center;padding:var(--space-3) var(--space-4)}
-.gm-quit{margin-top:var(--space-3);width:100%;justify-content:center}
+.gm-quit{flex:0 0 auto}
 .gm-quit[hidden]{display:none}
-.gm-log{display:flex;flex-direction:column;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-card);flex:1;min-height:200px;max-height:420px}
+.gm-log{display:flex;flex-direction:column;flex:0 0 auto;height:7.5rem;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-card)}
+.gm-log:has(#gm-log:empty){display:none}   /* nothing to show before the first brick / miss */
 .gm-log h2{margin:0 0 var(--space-2);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--clr-text-muted)}
 .gm-log ul{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;font-size:var(--fs-sm);font-family:var(--font-mono)}
 .gm-log li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed var(--clr-border)}
 .gm-log li .lw-icon-label{margin-left:0;min-width:0;overflow-wrap:anywhere}
 .gm-log li.ok{color:var(--clr-success)} .gm-log li.bad{color:var(--clr-red-text)}
-.gm-legend{display:flex;gap:var(--space-4);flex-wrap:wrap;margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--clr-border);font-size:var(--fs-xs);color:var(--clr-text-muted)}
+.gm-legend{display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--clr-text-muted)}
 .gm-legend span{display:inline-flex;align-items:center;gap:6px}
 
 /* the two timers (blue = static hold, orange = motion recording) */
-.gm-timers{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-top:var(--space-3)}
-.gm-timer{--c:var(--gm-static);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);background:var(--clr-surface);border:1px solid var(--clr-border);opacity:.72;transition:opacity var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
-.gm-timer--motion{--c:var(--gm-motion)}
+.gm-timers{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-2);flex:0 0 auto}   /* stacked full-width rows: side by side crushed the Record button on laptops */
+.gm-timer{--c:var(--gm-static);padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);background:var(--clr-surface);border:1px solid var(--clr-border);opacity:.72;transition:opacity var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+.gm-timer--motion{--c:var(--gm-motion);display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);align-items:center}   /* label + bar | Record button */
+.gm-timer--motion .gm-timer__row,.gm-timer--motion .gm-timer__bar{grid-column:1}
+/* static timer = one slim line: label | bar | value */
+.gm-timer--static{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:var(--space-3);align-items:center}
+.gm-timer--static .gm-timer__row{display:contents}
+.gm-timer--static .gm-timer__name{grid-column:1;grid-row:1}
+.gm-timer--static .gm-timer__bar{grid-column:2;grid-row:1;margin:0}
+.gm-timer--static .gm-timer__val{grid-column:3;grid-row:1}
 .gm-timer[hidden]{display:none}
 .gm-timer.is-active{opacity:1;border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
 .gm-timer__row{display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);font-size:var(--fs-xs);font-weight:700;color:var(--clr-text)}
 .gm-timer__name{display:inline-flex;align-items:center;gap:6px}
 .gm-timer__val{font-variant-numeric:tabular-nums;color:var(--gm-static-text);font-family:var(--font-mono)}
 .gm-timer--motion .gm-timer__val{color:var(--gm-motion-text)}
-.gm-timer__bar{height:8px;margin-top:var(--space-2);border-radius:var(--radius-pill);background:var(--clr-track);overflow:hidden}
+.gm-timer__bar{height:8px;margin-top:var(--space-1);border-radius:var(--radius-pill);background:var(--clr-track);overflow:hidden}
 .gm-timer__bar i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:var(--c);border-radius:inherit;transition:transform .1s linear}
-.gm-motion-btn{margin-top:var(--space-3);width:100%;justify-content:center;background:var(--gm-motion);color:var(--clr-text-invert);border:0;font-weight:700}
+.gm-motion-btn{grid-column:2;grid-row:1 / span 2;margin:0;width:auto;justify-content:center;background:var(--gm-motion);color:var(--clr-text-invert);border:0;font-weight:700}
 .gm-motion-btn:hover:not(:disabled){filter:brightness(.92)}
 .gm-motion-btn:focus-visible{outline:3px solid var(--gm-motion);outline-offset:2px}
 .gm-motion-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -93,23 +125,38 @@
 .gm-timer--motion .gm-dot,.gm-dot--motion{background:var(--gm-motion)}
 .gm-tag-static{color:var(--gm-static-text)} .gm-tag-motion{color:var(--gm-motion-text)}
 
-/* the wall */
-.gm-field{position:relative;margin-top:var(--space-4);padding:var(--space-5);border-radius:var(--radius-xl);border:1px solid var(--clr-border);background:var(--clr-surface);box-shadow:var(--shadow-card)}
-.gm-wall{display:flex;flex-direction:column;gap:var(--space-2)}
+/* the wall: fills the right column; rows share the height so 9 / 15 / 21 bricks always fit */
+.gm-field{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:var(--space-4);border-radius:var(--radius-xl);border:1px solid var(--clr-border);background:var(--clr-surface);box-shadow:var(--shadow-card)}
+.gm:has(#gm-start:not([hidden])) .gm-field{display:none}   /* Setup is showing (idle / after a run): the wall isn't in play */
+.gm-wall{display:flex;flex-direction:column;gap:var(--space-2);flex:1 1 0;min-height:0}
 .gm-wall.is-miss{animation:gmShake .4s}
-.gm-row{display:flex;gap:var(--space-2)}
+.gm-row{display:flex;gap:var(--space-2);flex:1 1 0;min-height:0;container-type:size}   /* size container: lets short bricks switch to a one-line layout below */
 .gm-row.is-odd{padding-left:4.5%}
 .gm-row:not(.is-odd){padding-right:4.5%}
+.gm-field__foot{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--clr-border)}
+.gm-field__bar{display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);flex-wrap:wrap}
 .gm-brick{
   --c:var(--gm-static);--c-soft:var(--gm-static-soft);--c-text:var(--gm-static-text);
   position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  padding:var(--space-3) var(--space-2);min-height:68px;cursor:pointer;
+  padding:var(--space-2);min-height:44px;cursor:pointer;
   border-radius:var(--radius-sm);border:2px solid var(--c);border-bottom-width:5px;   /* thick bottom edge = the "brick" cue */
   background:var(--c-soft);color:var(--c-text);
-  font-family:var(--font-display);font-weight:700;font-size:var(--fs-lg);
+  font-family:var(--font-display);font-weight:700;font-size:clamp(var(--fs-base),1.9vw,1.6rem);
   transition:transform var(--dur-base) var(--ease),opacity .35s,box-shadow var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
 .gm-brick--motion{--c:var(--gm-motion);--c-soft:var(--gm-motion-soft);--c-text:var(--gm-motion-text);border-style:dashed;border-bottom-style:solid}   /* dashed = MOVE, so color is never the only cue */
 .gm-brick__sign{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* word signs (THANK YOU, UNDERSTAND…): the brick is a size container so the label scales with its own width,
+   wraps at spaces, and as a last resort breaks mid-word instead of being cut off. Letters/numbers keep the big size. */
+.gm-brick{container-type:inline-size}
+.gm-brick--word{padding-inline:var(--space-1)}
+.gm-brick__sign{line-height:1.1}
+/* short bricks (dense walls / short windows): one line, 'HOLD  P', so the letter is never clipped */
+@container (max-height:66px){
+  .gm-brick:not(.gm-brick--word){flex-direction:row;gap:var(--space-2);padding-block:2px}
+  .gm-brick:not(.gm-brick--word) .gm-brick__sign{font-size:1.25rem}
+  .gm-brick:not(.gm-brick--word) .gm-brick__tag{font-size:10px;letter-spacing:.08em}
+}
+.gm-brick--word .gm-brick__sign{font-size:clamp(.68rem,13cqw,1.15rem);white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.05;overflow:visible}
 .gm-brick__tag{font-family:var(--font-body);font-size:var(--fs-xs);font-weight:700;letter-spacing:.12em;opacity:.85}
 .gm-brick:hover:not(:disabled){transform:translateY(-2px)}
 .gm-brick:focus-visible{outline:3px solid var(--clr-accent);outline-offset:2px}
@@ -118,7 +165,7 @@
 @keyframes gmPulse{50%{filter:brightness(1.12)}}
 @keyframes gmShake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 @keyframes gmMissFlash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 6px color-mix(in srgb,var(--clr-red) 55%,transparent)}}
-.gm-hint{min-height:1.5em;text-align:center;margin-top:var(--space-3)}
+.gm-hint{margin:0;min-height:2.9em;font-size:var(--fs-sm);line-height:1.45;text-align:left}   /* 2 lines reserved so the wall doesn't jump when a hint appears */
 
 /* overlays */
 .gm-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--backdrop);border-radius:var(--radius-xl)}   /* PERF FIX: backdrop-filter removed — re-blurring the live webcam every frame made the modal hang */
@@ -144,14 +191,37 @@
 .gm-badges>span{display:inline-flex;align-items:center;gap:6px;padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);background:var(--clr-violet-soft);color:var(--clr-violet);font-size:var(--fs-sm);font-weight:700}
 .gm-badges .lw-icon{width:16px;height:16px}
 
+/* short desktop windows: keep the one-screen promise by tightening, not scrolling */
+@media (min-width:901px) and (max-height:700px){
+  .gm{padding-block:var(--space-3);gap:var(--space-2)}
+  .gm-head p{display:none}                 /* the Setup card and the brick tags already carry the rules */
+  .gm-log{height:6rem}
+  .gm-hint{min-height:2.6em}
+}
+
+/* desktop: the page IS the viewport — nothing to scroll while signing */
+@media (min-width:901px){
+  .gm{height:100vh;height:100dvh;min-height:540px}
+  #main:has(>.gm){padding-bottom:0}   /* app.css gives #main 24px bottom padding, which alone would make the page scroll */
+}
+
+/* top-bar layout (<=900px): stacked, but camera + timers stay pinned so feedback is visible while the wall scrolls */
 @media (max-width:900px){
-  .gm{padding:var(--space-4)}
-  .gm-top{grid-template-columns:1fr}
-  .gm-log{max-height:220px;min-height:0}
-  .gm-timers{grid-template-columns:1fr}
+  .gm{padding:var(--space-3) var(--space-4) var(--space-6)}
+  .gm-head{grid-template-columns:minmax(0,1fr)}
+  .gm-title,.gm-head p,.gm-stats{grid-column:1;grid-row:auto}
+  .gm-head p{display:none}   /* the Setup card already states the rules; saves ~70px above the pinned camera */
+  .gm-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .gm-left{position:sticky;top:64px;z-index:5;padding-bottom:var(--space-2);background:var(--clr-bg)}   /* 64px = the sticky top bar from responsive.css */
+  .gm-cam{flex:none;height:clamp(170px,30dvh,300px);min-height:0;border-radius:var(--radius-lg,var(--radius-md))}
+  .gm-timers{grid-auto-flow:row}
+  .gm-timer{padding:var(--space-2) var(--space-3)}
   .gm-field{padding:var(--space-3)}
-  .gm-brick{padding:var(--space-2) var(--space-1);min-height:56px;font-size:var(--fs-base)}
+  .gm-wall{flex:none}
+  .gm-row{flex:none;container-type:normal}   /* no size containment: rows must grow with their bricks here */
+  .gm-brick{min-height:56px;font-size:var(--fs-base)}
   .gm-brick__tag{font-size:10px;letter-spacing:.06em}
+  .gm-overlay{position:fixed;border-radius:0}   /* centred in the viewport, not in a page-tall box */
   .gm-card{padding:var(--space-6)}
 }
 @media (prefers-reduced-motion:reduce){

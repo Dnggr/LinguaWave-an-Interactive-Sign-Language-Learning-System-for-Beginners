@@ -183,6 +183,9 @@
        and, critically, wires up every [data-logout] button (the sidebar's
        Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
+  <!-- Fluid-pastel shader behind Today's Mission. Plain script, loaded BEFORE dashboard.js
+       so its MutationObserver is already watching when dashboard.js fills #mission-banner. -->
+  <script src="../js/banner-shader.js"></script>
   <script src="../js/dashboard.js"></script>
   <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
        js/tour.js, how it looks in css/tour.css. This page opts in via
