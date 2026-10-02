@@ -20,10 +20,10 @@
     ─────────────────────────────────────────────────────────────────
     Built-in lessons (js/missions.js via js/admin-content.js) are shown
     view-only. Lessons the admin ADDS here are saved to Firestore `signs`
-    and can be created, edited and deleted. Uploaded MP4s are written to
-    assets/videos/basic/asl_vid_diy_raw/ (js/admin-video-store.js) and the
-    real path is stored on the lesson. No level, no image, and admin-added
-    lessons have no motion detection.
+    and can be created, edited and deleted. Uploaded MP4 videos go to
+    Cloudflare R2 through the media Worker (js/admin-media.js,
+    worker/src/index.js); the public URL + R2 key are stored on the lesson.
+    No level, no image, and admin-added lessons have no motion detection.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -193,9 +193,9 @@
           <input class="form-input" id="f-video" type="file" accept="video/mp4,.mp4" />
           <p class="text-muted admin-form-hint" id="f-video-current"></p>
           <video class="admin-video-preview" id="f-video-preview" controls muted playsinline hidden></video>
-          <div class="admin-folder-row">
-            <span class="text-muted admin-form-hint" id="f-folder-status"></span>
-            <button class="btn btn--ghost btn--sm" type="button" id="f-folder-btn">Choose project folder</button>
+          <div class="admin-upload-progress" id="f-video-progress" hidden>
+            <progress id="f-video-progress-bar" max="100" value="0"></progress>
+            <span class="text-muted admin-form-hint" id="f-video-progress-text" aria-live="polite"></span>
           </div>
         </div>
       </div>
@@ -215,7 +215,7 @@
         <button class="admin-modal__close" id="lesson-delete-close" type="button" aria-label="Close">&times;</button>
       </div>
       <p id="lesson-delete-body" class="text-muted">This can't be undone.</p>
-      <p class="admin-danger-note">The lesson is deleted from Firestore. Its video file stays in the assets folder.</p>
+      <p class="admin-danger-note">The lesson is deleted from Firestore and its uploaded video is removed from storage.</p>
       <div class="admin-modal__foot">
         <button class="btn btn--ghost" type="button" id="lesson-delete-cancel">Cancel</button>
         <button class="btn btn--danger" type="button" id="lesson-delete-confirm">Delete Lesson</button>

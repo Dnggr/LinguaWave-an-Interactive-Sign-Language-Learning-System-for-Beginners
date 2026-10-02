@@ -116,7 +116,7 @@ export function getLessons() {
 /**
  * One Mastery Quiz per mission.
  * [{ missionId, title, missionNumber, chapterId, chapterTitle,
- *    signCount, questionCount }]
+ *    level, category, signCount, questionCount }]
  * questionCount = how many questions one attempt asks (capped at 12).
  */
 export function getQuizzes() {
@@ -131,6 +131,11 @@ export function getQuizzes() {
       missionNumber: idx + 1,
       chapterId: chapter ? chapter.id : "",
       chapterTitle: chapter ? chapter.title : "Ungrouped",
+      // Internal only (never shown): a mission IS one (level, category) pair.
+      // Lesson Management saves these on admin-added lessons so the learner
+      // side (missions.js normalizeCustomSign) can place them in the mission.
+      level: mission.level,
+      category: mission.category,
       signCount,
       questionCount: Math.min(MAX_QUIZ_QUESTIONS, signCount),
     };

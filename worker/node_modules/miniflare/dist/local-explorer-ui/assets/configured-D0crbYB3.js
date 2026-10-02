@@ -1,0 +1,1 @@
+import{n as e}from"./react-BLXfnExK.js";import{t}from"./CronTriggersPage-Cq5bGNnX.js";var n=e();function r(){return(0,n.jsx)(t,{view:`configured`})}export{r as component};

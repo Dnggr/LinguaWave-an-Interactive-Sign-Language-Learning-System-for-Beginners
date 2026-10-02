@@ -9274,18 +9274,44 @@ function getCategoriesForUnitV2(unitOrder) {
   const CUSTOM_ORDER_BASE = 100000; // keeps admin lessons after every built-in sign
   const CUSTOM_SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
 
+  // Admin videos are played from the media Worker's public /media route. Lessons
+  // saved while uploads still returned the bucket's *.r2.dev URL (development-only,
+  // and unreachable on some networks) are rewritten to it here, so they work without
+  // being re-saved. KEEP IN SYNC with PUBLIC_MEDIA_BASE in worker/wrangler.toml.
+  const CUSTOM_MEDIA_BASE = 'https://linguawave-media.johnjewelrydelacruz.workers.dev/media';
+  const LEGACY_R2_URL_RE = /^https:\/\/pub-[a-z0-9]+\.r2\.dev\/(videos\/admin\/[a-z0-9_\-]+\/\d+\.mp4)$/i;
+  function rewriteLegacyMediaUrl(u) {
+    const m = typeof u === 'string' ? LEGACY_R2_URL_RE.exec(u.trim()) : null;
+    return m ? `${CUSTOM_MEDIA_BASE}/${m[1]}` : u;
+  }
+
+  // Lessons saved before Lesson Management stored level/category only carry a
+  // `missionId` ('m_<category>', or 'm_greetings' for the pilot category).
+  // Resolve that to the same (level, category) the mission was built from.
+  function resolveMissionCategory(missionId) {
+    if (typeof missionId !== 'string' || !missionId) return null;
+    const hit = CATEGORIES_V2.find(
+      (c) => (c.id === PILOT_CATEGORY ? 'm_greetings' : `m_${c.id}`) === missionId
+    );
+    return hit ? { level: hit.level, category: hit.id } : null;
+  }
+
   function normalizeCustomSign(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const signKey = typeof raw.signId === 'string' ? raw.signId.trim() : '';
-    const level = typeof raw.level === 'string' ? raw.level : '';
-    const category = typeof raw.category === 'string' ? raw.category : '';
+    let level = typeof raw.level === 'string' ? raw.level : '';
+    let category = typeof raw.category === 'string' ? raw.category : '';
+    if (!getCategoryV2(level, category)) {
+      const fromMission = resolveMissionCategory(raw.missionId);
+      if (fromMission) { level = fromMission.level; category = fromMission.category; }
+    }
     if (!CUSTOM_SIGN_ID_RE.test(signKey) || !getCategoryV2(level, category)) return null;
     const signId = signKey.toUpperCase();
     // Never shadow a built-in sign that already uses this id in this level.
     if (SIGNS_V2.some((sg) => !sg.custom && sg.level === level && sg.signId === signId)) return null;
     // Video: the Storage download URL the admin saved; fall back to the local
     // assets path if only that exists. Anything else is ignored.
-    const pick = [raw.videoUrl, raw.localVideoPath].find(
+    const pick = [rewriteLegacyMediaUrl(raw.videoUrl), raw.localVideoPath].find(
       (u) => typeof u === 'string' && (/^https:\/\//i.test(u) || u.indexOf('../assets/') === 0)
     ) || '';
     return {

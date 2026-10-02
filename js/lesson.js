@@ -99,9 +99,12 @@ function mediaBlockHtml(sign) {
   // <video>, when a nested source 404s (it does NOT bubble like a
   // normal DOM event). Verified with a real Chromium run during this
   // build: attaching onerror to <video> alone silently never fires.
+  // The <video> ALSO gets the same handler: a file that downloads but can't be
+  // decoded (e.g. HEVC) fires 'error' on the <video>, never on the <source>.
   return `
     <div class="lesson-media">
-      <video class="lesson-media__video" autoplay muted loop playsinline>
+      <video class="lesson-media__video" autoplay muted loop playsinline
+             onerror="var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';">
         <source src="${safeVideo}" type="video/mp4"
                 onerror="var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';">
       </video>

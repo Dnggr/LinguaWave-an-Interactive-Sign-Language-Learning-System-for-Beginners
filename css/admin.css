@@ -369,10 +369,10 @@ body.admin-gate.admin-ready { visibility: visible; }
   background: #000;
 }
 .admin-video-preview[hidden] { display: none; }
-.admin-folder-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: var(--space-3); flex-wrap: wrap;
+.admin-upload-progress {
+  display: flex; align-items: center; gap: var(--space-3);
   margin-top: var(--space-3);
 }
-.admin-folder-row .admin-form-hint { margin: 0; flex: 1 1 220px; }
-
+.admin-upload-progress[hidden] { display: none; }
+.admin-upload-progress progress { flex: 1 1 auto; height: 8px; accent-color: var(--primary, #4f46e5); }
+.admin-upload-progress .admin-form-hint { margin: 0; min-width: 8.5em; text-align: right; }
