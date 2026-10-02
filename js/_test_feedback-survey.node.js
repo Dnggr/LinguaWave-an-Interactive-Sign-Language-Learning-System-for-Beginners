@@ -345,7 +345,7 @@ async function testConsistency() {
     !/window\.LWAuth = \{[^}]*setDoc/.test(read('js/auth.js')));
 
   // nav
-  const order = ['admin-dashboard', 'admin-lessons', 'admin-quiz', 'admin-users', 'admin-feedback', 'admin-reports'];
+  const order = ['admin-dashboard', 'admin-lessons', 'admin-users', 'admin-feedback', 'admin-reports'];
   for (const p of order) {
     const page = read('pages/' + p + '.html');
     const links = [...page.matchAll(/<a href="(admin-[a-z]+)\.html" class="app-sidebar__link/g)].map((m) => m[1]);
