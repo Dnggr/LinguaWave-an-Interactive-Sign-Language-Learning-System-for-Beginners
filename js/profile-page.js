@@ -441,7 +441,13 @@ async function saveAvatar() {
     setPickerOpen(false);
   } catch (e) {
     console.warn('[profile-page.js] could not save picture:', e);
-    toast('Could not save your picture. Please try again.', 'error');
+    if (e && e.code === 'lw/account-removed') {
+      // Admin deleted this account while the tab was open; auth.js already signed them out.
+      toast(e.message, 'error');
+      setTimeout(() => { window.location.href = '../index.html'; }, 2500);
+    } else {
+      toast('Could not save your picture. Please try again.', 'error');
+    }
   } finally {
     btn.textContent = 'Save picture';
     syncSaveButton();
