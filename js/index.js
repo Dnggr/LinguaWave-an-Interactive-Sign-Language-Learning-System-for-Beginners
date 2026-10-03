@@ -58,10 +58,11 @@
  *   instance — best effort, not a hard guarantee). Consider Firebase App
  *   Check if this ever gets abused.
  * ─────────────────────────────────────────────────────────────────
- * 2026-09-30 — XP / levels / badges / streaks / leaderboards  (NEW, see functions/xp.js)
+ * 2026-09-30 — XP / levels / badges / streaks / leaderboards (LEGACY; Spark uses js/xp.js)
  *   claimLessonItem, claimMissionComplete, startGameSession, finishGameSession,
  *   backfillLegacyProgress, setLeaderboardVisibility, expireStaleStreaks (scheduled hourly).
- *   All XP state is written ONLY here (Admin SDK); firestore.rules deny client writes to it.
+ *   Formerly wrote XP with the Admin SDK. The Spark client now writes paired state/profile
+ *   transactions under capped Firestore rules; these callable exports are legacy.
  *   deleteLearnerAccount below also removes the learner's XP data.
  * ─────────────────────────────────────────────────────────────────
  */

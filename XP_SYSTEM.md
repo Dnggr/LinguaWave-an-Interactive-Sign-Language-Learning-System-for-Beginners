@@ -1,96 +1,71 @@
 # LinguaWave XP, Levels, Badges, Streaks & Leaderboards
 
-_Added 2026-09-30. Everything below is implemented in `functions/xp*.js`, `js/xp.js`, `js/leaderboard.js`,
-`js/xp-ui.js`, `css/xp.css`, `pages/leaderboard.html`, `firestore.rules`._
+_Spark-plan design, updated 2026-10-03. `js/xp-engine.mjs` contains the browser economy; `js/xp.js` writes the learner's XP documents through Firestore transactions. The `functions/xp*.js` implementation is retained as legacy code and is not the deployed XP path._
 
-## 1. What a learner sees
+## Learner experience and economy
 
-* **Account level** Lv 1-30, grouped into 6 tiers (Ripple, Current, Tide, Swell, Crest, Tsunami).
-  Not to be confused with the curriculum difficulty `users.level` (`basic|medium|intermediate`), which is untouched.
-* **Badges.** Every level has two: a **Scholar** badge (finish a lesson while at that level) and a
-  **Wall Breaker** badge (clear a counted wall at that level). Plus streak badges (3/7/14/30/60/100 days),
-  lesson-count badges (1/10/25) and four game badges (First Wall, Flawless, Speed Breaker, Wall Veteran).
-  73 total. *Catch-up rule:* each finish awards the **lowest unearned** level badge you qualify for, so nothing is
-  permanently missable if you level up between lessons.
-* **Leaderboards** (`pages/leaderboard.html`): All-time XP, This week (resets Monday 00:00 UTC), Streaks, Badges, plus
-  "My badges". Each row shows level, XP, streak, badge count and recent badges. Learners can hide themselves.
-* Dashboard shows a level/XP card; the game result screen shows the XP the server granted.
+Account levels run from 1 to 30 and are separate from the curriculum difficulty in `users.level` (`basic|medium|intermediate`). The 73 badges include Scholar and Wall Breaker badges for every level, streak badges, mission-count badges, and four game badges. Catch-up awards the lowest eligible unearned level badge.
 
-## 2. The economy (all numbers in `functions/xp-config.js`)
+The app has four leaderboard views: all-time XP, weekly XP, streaks, and badge count, plus a personal “My badges” view. Learners can hide their public row. Weekly boards use UTC week keys.
 
-| Source | XP | Repeatable? |
-|---|---|---|
-| Lesson item (sign lesson / booster / practice) | 6 / 3 / 5 (+5 on `bonusXP` practice items) | **No** - once per item |
-| Mastery Quiz pass (mission bonus) | 25 + 3 per sign, max 80 | **No** - once per mission |
-| Wall Breaker brick | 1 static / 2 motion, only bricks of signs you have learned | yes, but capped |
-| Wall cleared / flawless | +3 / +3 | yes, but capped |
+| Source | XP | Repeat rule |
+|---|---:|---|
+| Lesson item | 6 / 3 / 5 for LESSON / BOOSTER / PRACTICE; eligible practice adds 5 | Once per mission item |
+| Mastery Quiz mission bonus | 25 + 3 per lesson sign, capped at 80 | Once per mission |
+| Wall Breaker brick | 1 static / 2 motion for learned signs | Shared 90 XP daily game cap; per-wall decay |
+| Cleared wall / flawless bonus | +3 / +3 | Same game cap and decay |
+| Time Attack target | 1 static / 2 motion, adjusted by accuracy | Shared 90 XP daily game cap; no Wall Breaker decay |
+| Time Attack completion / flawless bonus | +3 / +3 | Same game cap |
 
-Measured from the real `missions.js`: 69 missions, 1,718 items, **11,670 XP** of lessons in total; a median lesson is
-**163 XP**, a typical 15-brick wall **21 XP** (~8x less). Lv 30 needs 13,050 XP, so lessons alone reach **Lv 28** and the
-last two levels need the game (~1.4k XP, at least ~16 days at the cap). Level cost: 100 XP for Lv 1->2, then +25 each level.
+The game cap is 90 XP per day across Wall Breaker and Time Attack. Wall Breaker requires at least six learned bricks; its reward decays after the third, fifth, and seventh eligible wall. Time Attack requires all selected targets to be learned and never awards Wall Breaker badges. The level curve reaches Level 30 at 13,050 XP.
 
-**Wall Breaker is the only repeatable XP and is throttled three ways:** per-wall accuracy multiplier (1x / 0.8x / 0.5x);
-diminishing returns per counted wall per local day (walls 1-3 full, 4-5 half, 6-7 quarter, 8+ zero); hard cap of
-**90 XP/day** (proved in `_test_xp.node.js`: even perfect 21-motion-brick walls cannot exceed it).
-A wall needs **>= 6 learned bricks** to earn anything, so you cannot farm XP on signs you never studied.
+## Spark write path
 
-## 3. Anti-cheat model (read this before changing anything)
+* `js/xp-engine.mjs` is a pure module with no Firebase or DOM access. It owns the browser XP economy and can be imported by Node.
+* `js/xp.js` exposes the existing `window.LWXP` API. Lesson, mission, game, backfill, visibility, and profile-sync writes are serialized through a page queue. Offline lesson/mission claims stay in `lw_xp_pending_v2:<uid>` for retry.
+* Every committed state change writes `xpState/{uid}` and `publicProfiles/{uid}` in one transaction. `lastWriteAt` and `updatedAt` use Firestore server timestamps. Hidden or deletion-requested accounts have no public row.
+* `xpSessions` and `xpEvents` are legacy collections; the browser no longer reads or writes them. Game sessions exist in memory in the page, and the browser checks elapsed time and sign type before awarding XP.
+* `getLearnedSigns()` returns the union of `xpState.learnedSigns` and signs with completed LESSON items in `window.LWMissions`. Wall Breaker and Time Attack use this same method for eligibility and target pools.
+* `js/xp-config.js` is a display-only legacy mirror. Do not generate economy values from `functions/xp-config.js`. Changes to the economy, level curve, tiers, or badge catalogue belong in `js/xp-engine.mjs` and must preserve the values above.
+* The Cloud Functions XP implementation and its manifest/build scripts remain in `functions/` for reference only. They are not required for XP on Spark and must not be deployed as part of this path. Signup's optional email-deliverability pre-check still calls a function and fails open when unavailable.
 
-The site is static: the browser talks to Firestore directly, so **anything a client may write, a user can forge**.
-Therefore:
+## Rules and anti-cheat limits
 
-1. **No client write access** to `xpState`, `publicProfiles`, `xpSessions`, `xpEvents` (see `firestore.rules`). Only Cloud
-   Functions (Admin SDK) write them. Editing JS in DevTools can at best send a request that is validated and refused.
-2. **Server-held ledger.** Lesson XP is recorded per `missionId + itemIndex`; replays pay 0. Unknown items are rejected
-   against `functions/curriculum-manifest.json`.
-3. **Rate limits.** >= 2 s between lesson claims, >= 90 s between skip-path mission claims, lesson XP halves after 800/day.
-4. **Server-timed Wall Breaker sessions.** The server stamps the start; the client reports each brick's break time; the
-   server rejects impossible timing (static < 0.4 s, motion < 3 s between breaks, total shorter than the server saw,
-   duplicate/foreign bricks, reused or expired session). Each session pays at most once.
-5. **Server-derived "learned".** Which signs count is computed from the server ledger, never from client data.
-6. **Day/week boundaries** use a timezone stored server-side; it can change at most once per 14 days, so flipping the
-   timezone cannot mint extra "days".
-7. The admin account never earns XP. Rejected game runs are logged to `xpEvents` (admin-readable) for review.
+Publish the checked-in `firestore.rules` by pasting it into Firebase Console → Firestore Database → Rules → Publish. The XP rules require a verified owner, whitelist the stored fields, enforce XP/level consistency, prevent XP decreases, cap ordinary XP increases at 100 per write, allow one legacy backfill of up to 1,500 XP on first creation or a one-time `backfilled` transition, cap daily game XP at 90, limit badges to 73, pace state writes, compare the public row with `xpState` using `getAfter()`, deny browser deletion of the private state, and pair public-row deletion with hide/account-deletion state.
 
-### Known limits (honest list)
-* **Recognition and quiz grading still run in the browser** (TensorFlow.js / `mastery-quiz.js`), so the server cannot
-  watch a lesson happen. A determined user can script lesson claims - but only the *finite* 11,670 XP, at >= 2 s per item
-  with a soft cap, and never the repeatable game XP. Closing this fully means grading quizzes server-side.
-* **Legacy backfill is unverifiable** (old progress lives in client-writable docs). It is capped at **1,500 XP (~Lv 8)**,
-  pays half rate, runs once per account, only for accounts created before `LAUNCH_AT_ISO`, and only for 14 days after launch.
-* The app's existing dashboard streak (`missions.js`, local/synced) and the XP streak (server) are separate counters and can differ
-  by a day. The leaderboard uses the server one.
-* Names are public to other signed-in learners (opt-out toggle on the leaderboard page). Consider a display-name or
-  opt-in policy before launch if your users are minors.
+These checks limit damage; they do not make browser XP server-authoritative. A learner can edit browser code and forge lesson completion, game results, learned signs, streak days, or timezone data within the rule caps. Client clock changes can cheat day boundaries. Game timing is measured by the browser and can be faked. The rules also cannot remove a stale admin row from another user's collection query; admin XP writes are blocked, and any prior admin row must be removed.
 
-## 4. Data model
+The learner account `linguawave.project@gmail.com` is excluded in the client and blocked from XP writes in the rules. Public profiles are visible to verified users and include a learner-selected display name; use an opt-out or consider an opt-in policy if learners are minors.
 
+## Legacy backfill
+
+Backfill reads local completed-item progress once, pays half rate, and caps the grant at 1,500 XP. Eligibility uses Firebase Auth's `currentUser.metadata.creationTime`; client-supplied dates are not accepted. With `LAUNCH_AT_ISO` set to `2026-10-01T00:00:00Z`, the 14-day window closes **2026-10-15**. The owner should decide whether to move that date before launch.
+
+Legacy progress itself is client-writable and cannot be verified. Backfill therefore remains honor-system despite its cap and one-time marker.
+
+## Data model
+
+```text
+xpState/{uid}         private, owner read/create/update (no client delete): xp, level, weeklyXp, weekKey, tz,
+                      tzChangedAt, streak, badges, lessonItems, missionsDone,
+                      learnedSigns, daily, totals, lastClaimAt, lastSkipAt,
+                      backfilled, hidden, createdAt, lastWriteAt
+publicProfiles/{uid}  verified-user read: name, xp, level, weeklyXp, weekKey,
+                      streak, longestStreak, streakExpiresAt, badgeCount,
+                      recentBadges, avatar (optional), updatedAt
+xpSessions/{uid}      denied; legacy
+xpEvents/{id}         denied; legacy
 ```
-xpState/{uid}         PRIVATE (owner read)   xp, level, weeklyXp, weekKey, tz, streak{current,longest,lastDay}, badges{id:ms},
-                                             lessonItems{mission:[idx]}, missionsDone{}, learnedSigns[], daily{}, totals{}, hidden, backfilled
-publicProfiles/{uid}  signed-in+verified read name, xp, level, weeklyXp, weekKey, streak, streakExpiresAt, longestStreak, badgeCount, recentBadges[]
-xpSessions/{uid}      no client access        current wall: id, startedAt, signs[], done
-xpEvents/{id}         admin read              audit/rejections
+
+`lastWriteAt` is server-timestamped and rules require about two seconds between writes. Existing documents without it get one migration write. The profile row must be updated/deleted in the same transaction as the state document.
+
+## Verification
+
+```sh
+node js/_test_xp-engine.node.mjs
+node js/_test_xp-client.node.mjs
 ```
-`expireStaleStreaks` (hourly) zeroes `publicProfiles.streak` when `streakExpiresAt` passes, because nothing "runs" when a streak dies.
-`syncPublicProfileFromUser` removes self-"deleted" learners from the boards and syncs renamed users.
 
-## 5. Deploy checklist (in order)
+The engine test covers the economy, levels, badges, cooldowns, game payouts, streaks, timezone handling, and backfill. The client harness uses fake Firestore to check transaction pairing, queue serialization, offline retry, error-message throttling, visibility, and a game claim. These are not emulator tests. No Firebase emulator/rules-unit-testing package is currently installed in this repository.
 
-1. **Set `LAUNCH_AT_ISO`** in `functions/xp-config.js` to the moment you deploy (controls who may backfill).
-2. `cd functions && npm i && npm test` (100 checks, no Firebase needed).
-3. `firebase deploy --only functions` (needs Blaze; first deploy enables Cloud Scheduler). If your Firestore database is not in
-   `us-central1`, add `region` to `syncPublicProfileFromUser` in `functions/xp.js`.
-4. Publish **`firestore.rules`** (Console -> Firestore -> Rules, or `firebase deploy --only firestore:rules`).
-5. Create the composite index from **`firestore.indexes.json`** (publicProfiles: `weekKey` asc + `weeklyXp` desc). The console
-   also prints a one-click link the first time "This week" is opened.
-6. Deploy the static site.
-Deploy functions **before** the site so claims never hit a missing function (if they do, the client queues and retries).
-
-## 6. Maintaining it
-
-* Changed `js/missions.js` (new sign/category/mission)? Run `npm run build:manifest` in `functions/`, then redeploy functions.
-  Until then new items simply earn no XP (they are not in the manifest).
-* Changed a level name, badge, or XP number? Edit `functions/xp-config.js`, then `npm run build:client` (regenerates
-  `js/xp-config.js` - never hand-edit it).
-* Adding a new XP source = a new **callable** that validates server-side. Never add a client write path.
+After publishing rules and deploying the static site, verify a verified learner can earn XP and see a matching `xpState` / `publicProfiles` pair. Confirm unverified users, cross-user writes, XP decreases, over-cap grants, and game XP above 90 are rejected. Do not deploy Cloud Functions for XP on Spark.

@@ -11,6 +11,17 @@
 //      Hiding admin pages is only cosmetic — anyone can open DevTools
 //      and call the Firestore SDK. These rules are the real lock.
 //
+// XP ON SPARK: These rules enforce verified-owner writes, document shape,
+//      XP/level consistency, small per-write grants, a shared game-XP ceiling,
+//      write pacing, and consistency between xpState and publicProfiles.
+//      They cannot prove that a lesson or game was honestly completed: a user
+//      can still forge eligible data within the limits, and client-held day,
+//      week, streak, and learned-sign data remain best-effort. The admin account
+//      is barred from XP writes. Older xpState documents without lastWriteAt
+//      get one migration write; subsequent writes use the two-second limit.
+//      Rules also cannot filter a stale admin row out of another user's
+//      leaderboard query; prevent admin row creation and remove any old row.
+//
 // ADMIN = the one account whose Firebase Auth email matches the string
 //      in isAdmin() below. Keep it in sync with ADMIN_EMAIL in
 //      js/admin-auth.js, js/role-guard.js, js/admin-login.js,
@@ -19,13 +30,22 @@
 //
 // COLLECTIONS COVERED (everything else is denied by default):
 //   users/{uid}            learner profile   (js/auth.js, admin panel)
-//   signs/{id}             lesson content    (admin panel)
+//   signs/{id}             lesson content    (admin panel; video = R2 URL + key)
 //   questions/{id}         quiz questions    (admin panel)
 //   userProgress/{uid}     progress          (js/engine/progress.js)
 //   userProgressV2/{uid}   missions sync     (js/missions.js)
 //   userGame/{uid}         game progress     (js/game.js)          <- NEW
+//   xpState/{uid}          private XP state  (verified owner create/update; client delete denied)
+//   publicProfiles/{uid}   leaderboard rows  (verified read; paired owner write)
+//   xpSessions/{uid}       legacy game sessions (denied)
+//   xpEvents/{id}          legacy XP audit records (denied)
 //   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
 //
+// CHANGED (lesson media -> Cloudflare R2): signs/{id} writes are now shape-checked
+//      (field whitelist, id == signId, videoUrl https/legacy path, videoKey in the
+//      Worker's videos/admin/<signId>/<ts>.mp4 format). Delete stays
+//      admin-only and unconditional. Upload authorization itself is NOT done here:
+//      it's the media Worker (worker/src/index.js) that checks the Firebase token.
 // CHANGED (progress sync fix): learner progress (userProgress, userProgressV2,
 //      userGame) is now get/create/update by the owner only, with a field
 //      whitelist. NOTE: the rules alone were never the blocker — js/auth.js had
@@ -104,9 +124,32 @@ service cloud.firestore {
     }
 
     // ── signs/{id}  (Lesson Management) ────────────────────────
+    // Learners read; only the admin writes. The video itself lives in
+    // Cloudflare R2 — the document only carries its public URL + object key.
+    // The rules can't know R2 is uploaded, but they DO pin the shape so a
+    // typo or a compromised admin session can't store arbitrary fields or
+    // point a lesson at a non-https / non-R2-key value.
     match /signs/{id} {
+      function validLesson(d) {
+        return d.keys().hasOnly(['signId', 'title', 'description', 'tips', 'missionId', 'chapterId', 'order',
+                                 'videoUrl', 'videoKey', 'localVideoPath', 'level', 'category',
+                                 'detectionType', 'source', 'createdAt', 'updatedAt'])
+          && d.signId == id
+          && id.matches('^[a-z0-9][a-z0-9_-]{0,39}$')
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 60
+          && d.description is string && d.description.size() <= 500
+          && d.tips is list && d.tips.size() <= 10
+          && d.order is number && d.order >= 0 && d.order <= 9999
+          // videoUrl: empty, a public https URL (R2), or a legacy ../assets/ path.
+          && d.videoUrl is string && d.videoUrl.size() <= 500
+          && (d.videoUrl == '' || d.videoUrl.matches('^https://[^ ]+$') || d.videoUrl.matches('^\\.\\./assets/[^ ]+$'))
+          // videoKey: empty (no R2 object) or exactly the shape the media Worker generates.
+          && (!('videoKey' in d) || d.videoKey == ''
+              || d.videoKey.matches('^videos/admin/[a-z0-9][a-z0-9_-]{0,39}/[0-9]{10,16}\\.mp4$'));
+      }
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && validLesson(request.resource.data);
+      allow delete: if isAdmin();   // always allowed, so legacy/odd documents can still be cleaned up
     }
 
     // ── questions/{id}  (Quiz Management) ──────────────────────
@@ -152,46 +195,183 @@ service cloud.firestore {
       allow delete: if isOwner(uid) || isAdmin();
     }
 
-    // ── xpState/{uid}  (js/xp.js, CLIENT-SIDE XP — Spark plan, no Cloud Functions) ──
-    // The browser saves its own XP, so this can only LIMIT damage, not prevent forging:
-    // owner only, field whitelist, XP can never go down, hard ceiling of 20,000.
+    // ── xpState/{uid}  (private XP ledger; browser writes are best-effort) ──
     match /xpState/{uid} {
+      function levelMatchesXp(level, xp) {
+        // LEVEL_XP[l - 1] is the minimum total XP for level l.
+        let thresholds = [0, 100, 225, 375, 550, 750, 975, 1225, 1500, 1800,
+                          2125, 2475, 2850, 3250, 3675, 4125, 4600, 5100, 5625, 6175,
+                          6750, 7350, 7975, 8625, 9300, 10000, 10725, 11475, 12250, 13050];
+        return level is number && level >= 1 && level <= 30
+          && thresholds[level - 1] <= xp
+          && (level == 30 || xp < thresholds[level]);
+      }
+
       function validXpState(d) {
         return d.keys().hasOnly(['v', 'xp', 'level', 'weeklyXp', 'weekKey', 'tz', 'tzChangedAt', 'streak',
                                  'badges', 'lessonItems', 'missionsDone', 'learnedSigns', 'daily', 'totals',
-                                 'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt'])
-          && d.xp is number && d.xp >= 0 && d.xp <= 20000
-          && d.level is number && d.level >= 1 && d.level <= 30;
+                                 'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt', 'lastWriteAt'])
+          && d.keys().hasAll(['v', 'xp', 'level', 'weeklyXp', 'weekKey', 'tz', 'tzChangedAt', 'streak',
+                              'badges', 'lessonItems', 'missionsDone', 'learnedSigns', 'daily', 'totals',
+                              'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt', 'lastWriteAt'])
+          && d.v == 1
+          && d.xp is number && d.xp >= 0
+          && levelMatchesXp(d.level, d.xp)
+          && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= d.xp
+          && d.weekKey is string && d.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
+          && (d.tz == null || (d.tz is string && d.tz.size() <= 64))
+          && d.tzChangedAt is number && d.tzChangedAt >= 0
+          && d.streak is map
+          && d.streak.keys().hasOnly(['current', 'longest', 'lastDay'])
+          && d.streak.keys().hasAll(['current', 'longest', 'lastDay'])
+          && d.streak.current is number && d.streak.current >= 0 && d.streak.current <= 10000
+          && d.streak.longest is number && d.streak.longest >= d.streak.current && d.streak.longest <= 10000
+          && (d.streak.lastDay == null || (d.streak.lastDay is string && d.streak.lastDay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+          && d.badges is map && d.badges.keys().size() <= 73
+          && d.lessonItems is map && d.lessonItems.keys().size() <= 1000
+          && d.missionsDone is map && d.missionsDone.keys().size() <= 1000
+          && d.learnedSigns is list && d.learnedSigns.size() <= 1000
+          && d.daily is map
+          && d.daily.keys().hasOnly(['day', 'lessonXp', 'gameXp', 'walls', 'timeAttacks'])
+          && d.daily.keys().hasAll(['day', 'lessonXp', 'gameXp', 'walls', 'timeAttacks'])
+          && (d.daily.day == null || (d.daily.day is string && d.daily.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+          && d.daily.lessonXp is number && d.daily.lessonXp >= 0
+          && d.daily.gameXp is number && d.daily.gameXp >= 0 && d.daily.gameXp <= 90
+          && d.daily.walls is number && d.daily.walls >= 0
+          && d.daily.timeAttacks is number && d.daily.timeAttacks >= 0
+          && d.totals is map
+          && d.totals.keys().hasOnly(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions'])
+          && d.totals.keys().hasAll(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions'])
+          && d.totals.lessonXp is number && d.totals.lessonXp >= 0
+          && d.totals.gameXp is number && d.totals.gameXp >= 0
+          && d.totals.walls is number && d.totals.walls >= 0
+          && d.totals.countedWalls is number && d.totals.countedWalls >= 0
+          && d.totals.timeAttacks is number && d.totals.timeAttacks >= 0
+          && d.totals.missions is number && d.totals.missions >= 0
+          && d.lastClaimAt is number && d.lastClaimAt >= 0
+          && d.lastSkipAt is number && d.lastSkipAt >= 0
+          && d.backfilled is bool
+          && d.hidden is bool
+          && d.createdAt is number && d.createdAt >= 0
+          && d.lastWriteAt == request.time;
       }
+
+      function publicRowMatchesState(d, s) {
+        return d.xp == s.xp
+          && d.level == s.level
+          && d.weeklyXp == s.weeklyXp
+          && d.weekKey == s.weekKey
+          && d.streak == s.streak.current
+          && d.longestStreak == s.streak.longest
+          && d.badgeCount == s.badges.keys().size();
+      }
+
+      function pairedPublicRow(d) {
+        let profilePath = /databases/$(database)/documents/publicProfiles/$(uid);
+        let userPath = /databases/$(database)/documents/users/$(uid);
+        return (d.hidden || (existsAfter(userPath)
+                             && getAfter(userPath).data.get('deletionRequested', false) == true))
+          ? !existsAfter(profilePath)
+          : existsAfter(profilePath)
+            && getAfter(profilePath).data.updatedAt == request.time
+            && publicRowMatchesState(getAfter(profilePath).data, d);
+      }
+
       allow get: if isOwner(uid);
       allow list: if false;
-      allow create: if isOwner(uid) && validXpState(request.resource.data);
-      allow update: if isOwner(uid) && validXpState(request.resource.data)
-        && request.resource.data.xp >= resource.data.xp;
-      allow delete: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && verified() && !isAdmin()
+        && validXpState(request.resource.data)
+        // A first write may include the one-time, half-rate legacy backfill.
+        && request.resource.data.xp <= 1500
+        && request.resource.data.streak.current <= 1
+        && pairedPublicRow(request.resource.data);
+      allow update: if isOwner(uid) && verified() && !isAdmin()
+        && validXpState(request.resource.data)
+        && request.resource.data.xp >= resource.data.xp
+        // 80 XP is the largest ordinary grant; 20 XP is safety slack. A one-time
+        // legacy backfill may add up to 1500 XP when it first flips backfilled on.
+        && (request.resource.data.xp <= resource.data.xp + 100
+            || (!resource.data.get('backfilled', false)
+                && request.resource.data.backfilled
+                && request.resource.data.xp <= resource.data.xp + 1500))
+        && (resource.data.get('backfilled', false) == false || request.resource.data.backfilled == true)
+        && request.resource.data.streak.current <= resource.data.streak.current + 1
+        && request.resource.data.streak.longest >= resource.data.streak.longest
+        && (!('lastWriteAt' in resource.data)
+            || (resource.data.lastWriteAt is timestamp
+                && request.time >= resource.data.lastWriteAt + duration.value(2, 's')))
+        && pairedPublicRow(request.resource.data);
+      // Deleting state would reset the daily cap and one-time backfill. Server
+      // cleanup uses the Admin SDK; no browser or signed-in account may delete it.
+      allow delete: if false;
     }
 
     // ── publicProfiles/{uid}  (leaderboards) ───────────────────
-    // Small public copy written by the owner's browser together with xpState.
-    // Lists MUST carry limit <= 100.
+    // Public copies are readable by verified accounts, and must be written in
+    // the same batch/transaction as xpState (matching its after-write values).
     match /publicProfiles/{uid} {
+      function publicRowMatchesState(d, s) {
+        return d.xp == s.xp
+          && d.level == s.level
+          && d.weeklyXp == s.weeklyXp
+          && d.weekKey == s.weekKey
+          && d.streak == s.streak.current
+          && d.longestStreak == s.streak.longest
+          && d.badgeCount == s.badges.keys().size();
+      }
+
       function validPublic(d) {
+        let statePath = /databases/$(database)/documents/xpState/$(uid);
+        let userPath = /databases/$(database)/documents/users/$(uid);
         return d.keys().hasOnly(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
                                  'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt'])
-          && d.name is string && d.name.size() <= 30
-          && d.xp is number && d.xp >= 0 && d.xp <= 20000
+          && d.keys().hasAll(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
+                              'streakExpiresAt', 'badgeCount', 'recentBadges', 'updatedAt'])
+          && d.name is string && d.name.size() >= 1 && d.name.size() <= 30
+          && d.xp is number && d.xp >= 0
           && d.level is number && d.level >= 1 && d.level <= 30
-          && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= 20000
-          && d.weekKey is string && d.weekKey.size() <= 10
-          && d.streak is number && d.streak >= 0 && d.streak <= 5000
-          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 100
+          && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= d.xp
+          && d.weekKey is string && d.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
+          && d.streak is number && d.streak >= 0 && d.streak <= 10000
+          && d.longestStreak is number && d.longestStreak >= d.streak && d.longestStreak <= 10000
+          && (d.streakExpiresAt == null || (d.streakExpiresAt is number && d.streakExpiresAt >= 0))
+          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 73
           && d.recentBadges is list && d.recentBadges.size() <= 5
-          && (!('avatar' in d) || (d.avatar is string && d.avatar.matches('^avatar-[0-9]{2}$')));
+          && (!('avatar' in d) || (d.avatar is string && d.avatar.matches('^avatar-[0-9]{2}$')))
+          && d.updatedAt == request.time
+          && existsAfter(statePath)
+          && getAfter(statePath).data.lastWriteAt == request.time
+          && getAfter(statePath).data.hidden == false
+          && publicRowMatchesState(d, getAfter(statePath).data)
+          && (!existsAfter(userPath)
+              || getAfter(userPath).data.get('deletionRequested', false) != true);
       }
+
+      function pairedPublicDelete() {
+        let statePath = /databases/$(database)/documents/xpState/$(uid);
+        let userPath = /databases/$(database)/documents/users/$(uid);
+        return isOwner(uid) && verified() && !isAdmin()
+          && existsAfter(statePath)
+          && getAfter(statePath).data.lastWriteAt == request.time
+          && (getAfter(statePath).data.hidden == true
+              || (existsAfter(userPath)
+                  && getAfter(userPath).data.get('deletionRequested', false) == true));
+      }
+
       allow get: if verified();
       allow list: if verified() && request.query.limit <= 100;
-      allow create, update: if isOwner(uid) && verified() && validPublic(request.resource.data);
-      allow delete: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && verified() && !isAdmin() && validPublic(request.resource.data);
+      // The admin may clear only their own stale row; learner rows are removed
+      // only in the same transaction that hides XP or observes deletionRequested.
+      allow delete: if (isOwner(uid) && isAdmin()) || pairedPublicDelete();
+    }
+
+    // Legacy Cloud Function session and audit collections are unused on Spark.
+    match /xpSessions/{uid} {
+      allow read, write: if false;
+    }
+    match /xpEvents/{eventId} {
+      allow read, write: if false;
     }
 
     // ── surveys/{id}  (js/feedback.js -> pages/admin-feedback.html) ──

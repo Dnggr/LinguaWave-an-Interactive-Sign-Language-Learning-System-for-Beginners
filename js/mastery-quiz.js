@@ -644,8 +644,8 @@ function finishQuiz(state) {
   // DAY STREAK: reaching here means the quiz was PASSED (see the note above), which
   // is a qualifying activity. A failed / out-of-hearts attempt never gets here.
   window.LWMissions.recordActivity('mastery_quiz');
-  // XP (js/xp.js): report the pass. The server pays the full mission bonus only if the lesson
-  // items were really done in-app; otherwise the reduced skip-path rate. Not a client decision.
+  // XP (js/xp.js): report the pass. The shared engine selects the full mission bonus when lesson
+  // items are complete; otherwise it uses the reduced skip-path rate.
   if (window.LWXP) window.LWXP.claimMission(state.mission);
   const recap = window.LWMissions.getRecap(state.mission);
 

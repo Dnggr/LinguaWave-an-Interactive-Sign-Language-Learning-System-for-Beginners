@@ -121,20 +121,12 @@ function closeDeleteConfirm() {
 async function confirmDelete() {
   if (!pendingDeleteUid) return;
   const uid = pendingDeleteUid;
-  const target = allUsers.find((x) => x.id === uid);
   els.deleteConfirm.disabled = true;
   try {
-    // Cloud Function: Auth login + Firestore data. Falls back to Firestore-only.
-    const res = await deleteLearnerAccount(uid);
+    // Cloud Function removes the Auth login and learner data, including XP.
+    await deleteLearnerAccount(uid);
     closeDeleteConfirm();
-    if (res.authDeleted) {
-      window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
-    } else {
-      window.LinguaWave?.showToast?.(
-        `Data deleted, but the login still exists — remove ${target?.email || "it"} in Firebase console → Authentication → Users (the delete service isn't deployed).`,
-        "error"
-      );
-    }
+    window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
     await loadUsers();
   } catch (err) {
     console.error("Failed to delete learner:", err);

@@ -898,7 +898,8 @@ without a continue URL).
 | `--font-body`    | Inter | Body text |
 | Pass threshold | 80% | Quiz assessment |
 
-## XP / leaderboard subsystem (2026-09-30)
-Browser (`js/xp.js`) -> callable Cloud Functions (`functions/xp.js`, pure rules in `xp-engine.js`, numbers in `xp-config.js`) ->
-Firestore `xpState` (private) + `publicProfiles` (leaderboard rows). Rules block all client writes to these. Details, economy,
-threat model and deploy steps: `XP_SYSTEM.md`.
+## XP / leaderboard subsystem (Spark path, 2026-10-03)
+Browser (`js/xp.js` + pure `js/xp-engine.mjs`) -> paired Firestore transactions -> `xpState` (private) +
+`publicProfiles` (leaderboard rows). Firestore rules validate the document shape, pair the public row with the private
+state, and cap writes; they cannot verify browser-reported lesson completion or game results. The former callable path
+in `functions/xp.js` remains as legacy code and is not used for Spark XP. Details and limits: `XP_SYSTEM.md`.

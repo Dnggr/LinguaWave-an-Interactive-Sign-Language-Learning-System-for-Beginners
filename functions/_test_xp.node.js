@@ -159,15 +159,15 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   rr = await call(X.finishGameSession, 'u3', { sessionId: sid, wrong: 0, broken: [] });
   assert(rr.reason === 'no_session', 'session cannot be replayed after a rejection');
 
-  const play = async (uid, signs, { wrong = 0, msPer = 2000, motionFrom = 999 } = {}) => {
+  const play = async (uid, signs, { wrong = 0, msPer = 2000 } = {}) => {
     const s = await call(X.startGameSession, uid, { signs });
-    let t = 0; const broken = signs.map((sn, i) => { t += msPer; return { s: sn, t, m: i >= motionFrom }; });
+    let t = 0; const broken = signs.map((sn) => { const motion = M.detectionTypes[sn] === 'motion'; t += motion ? Math.max(msPer, 3000) : msPer; return { s: sn, t, m: motion }; });
     tick(t + 300);
     return call(X.finishGameSession, uid, { sessionId: s.sessionId, wrong, broken });
   };
   tick(5000);
   rr = await play('u3', pool.slice(0, 15));
-  assert(rr.ok && rr.counted && rr.xpGained === 21, `honest wall pays 21 (got ${rr.xpGained})`);
+  assert(rr.ok && rr.counted && rr.xpGained === 26, `honest mixed wall pays 26 (got ${rr.xpGained})`);
   assert(rr.newBadges.includes('game_first') && rr.newBadges.includes('game_flawless') && rr.newBadges.includes('game_L1'), 'game badges');
   assert(rr.newBadges.includes('game_speed'), '2s/brick beats the 6s speed threshold');
   // same session id can't be reused
@@ -182,8 +182,24 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   // next local day resets
   tick(24 * 3600 * 1000);
   rr = await play('u3', pool.slice(0, 15));
-  assert(rr.xpGained === 21, 'new day, full pay again');
+  assert(rr.xpGained === 26, 'new day, full pay again');
   assert(state('u3').streak.current >= 2, 'streak grew across days');
+
+  // Time Attack has its own eligibility/reward path, shares the game XP cap,
+  // and must never grant Wall Breaker badges or increment wall totals.
+  store.set('users/u12', { name: 'Tia' });
+  await call(X.claimLessonItem, 'u12', { missionId: mid, itemIndex: 0, tz: 'UTC' });
+  const ta = await call(X.startGameSession, 'u12', { signs: ['A'], mode: 'timeAttack' });
+  assert(ta.ok && ta.xpEligible && ta.minLearned === 1, 'Time Attack can count a short learned sequence');
+  tick(800);
+  rr = await call(X.finishGameSession, 'u12', { sessionId: ta.sessionId, wrong: 0, broken: [{ s: 'A', t: 500, m: false }] });
+  assert(rr.ok && rr.counted && rr.xpGained === 7, `one-sign Time Attack earns its own XP (${rr.xpGained})`);
+  assert(!(rr.newBadges || []).includes('game_first') && !(rr.newBadges || []).includes('game_L1'), 'Time Attack does not award Wall Breaker badges');
+  assert(state('u12').daily.timeAttacks === 1 && state('u12').daily.walls === 0, 'Time Attack and Wall Breaker totals are separate');
+  const mismatch = await call(X.startGameSession, 'u12', { signs: ['A'], mode: 'timeAttack' });
+  tick(3500);
+  rr = await call(X.finishGameSession, 'u12', { sessionId: mismatch.sessionId, wrong: 0, broken: [{ s: 'A', t: 3100, m: true }] });
+  assert(rr.reason === 'sign_type_mismatch', 'server rejects a forged motion/static target type');
 
   // not enough learned bricks
   store.set('users/u4', { name: 'Di' });
@@ -244,6 +260,9 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   await call(X.claimLessonItem, 'u11', { missionId: mid, itemIndex: 0, tz: 'UTC' });
   assert(store.has('publicProfiles/u11'), 'u11 is on the board');
   const ev = (b, a) => ({ params: { uid: 'u11' }, data: { before: { exists: !!b, data: () => b }, after: { exists: !!a, data: () => a } } });
+  store.set('xpState/u13', { xp: 20 });
+  await X.syncPublicProfileFromUser({ params: { uid: 'u13' }, data: { before: { exists: false }, after: { exists: true, data: () => ({ name: 'New profile' }) } } });
+  assert(store.get('xpState/u13').xp === 20 && store.get('publicProfiles/u13').xp === 20, 'profile-create trigger preserves XP claimed before its async event ran');
   await X.syncPublicProfileFromUser(ev({ name: 'Ivy' }, { name: 'Ivy R.' }));
   assert(store.get('publicProfiles/u11').name === 'Ivy R.', 'rename syncs to the leaderboard');
   store.set('users/u11', { name: 'Ivy', deletionRequested: true });

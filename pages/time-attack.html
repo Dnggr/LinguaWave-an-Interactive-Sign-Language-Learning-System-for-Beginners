@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Time Attack | LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <link rel="stylesheet" href="../css/xp.css" />
+  <script src="../js/xp-config.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/xp.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>window.addEventListener('lwauth-ready', () => LWAuth.requireAuth('../index.html'));</script>
+  <script src="../js/role-guard.js"></script>
+  <script src="../js/mobile-nav.js" defer></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to Time Attack</a>
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>Dashboard</a>
+        <a href="learn.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>Learn</a>
+        <a href="progress.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>Progress</a>
+        <a href="game.html" class="app-sidebar__link active" aria-current="page"><span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="5" rx="1"/><rect x="13" y="4" width="8" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><rect x="10" y="11" width="8" height="5" rx="1"/><path d="M4 20h16"/></svg></span>Game</a>
+        <a href="leaderboard.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>Leaderboard</a>
+        <a href="feedback.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>Feedback</a>
+        <a href="settings.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>Settings</a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch" aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme"><span class="theme-switch__check"><span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span><span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span></span></button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+    <main class="app-main" id="main">
+      <div class="ta">
+        <header class="gm-head ta-head">
+          <div class="gm-head__text"><h1 class="gm-title">Time Attack</h1><p>Sign each target in order. Finish the sequence as quickly as you can.</p></div>
+          <a class="btn btn--ghost btn--sm ta-back" href="game.html" aria-label="Back to game modes">← Back</a>
+          <div class="gm-stats" role="status" aria-live="polite">
+            <span class="gm-chip">Target <b id="ta-count">0/0</b></span>
+            <span class="gm-chip">Time <b id="ta-time">0.0s</b></span>
+            <span class="gm-chip gm-chip--miss">Misses <b id="ta-misses">0</b></span>
+          </div>
+        </header>
+        <div class="ta-progress" aria-hidden="true"><span class="ta-progress__fill" id="ta-progress"></span></div>
+        <div class="ta-stage">
+          <section class="ta-primary" aria-label="ASL target demonstration">
+            <div class="ta-demo" id="ta-demo">
+              <div class="ta-demo__empty" id="ta-demo-empty"><span data-lw-icon="chapter_hand" aria-hidden="true"></span><p>Press Start to load your first learned sign.</p></div>
+            </div>
+            <div class="ta-sign-caption">
+              <div><p class="ta-target-card__eyebrow">TARGET</p><h2 id="ta-target">Ready</h2></div>
+              <span class="ta-sign-type" id="ta-sign-type" data-type="static" hidden>STATIC SIGN</span>
+            </div>
+            <p id="ta-hint" class="ta-target-card__hint"></p>
+          </section>
+          <section class="ta-right" id="ta-right" aria-label="Live camera and controls">
+            <div class="gm-cam ta-cam" id="ta-cam" data-mode="idle">
+              <video id="ta-video" autoplay playsinline muted></video>
+              <canvas id="ta-canvas"></canvas>
+              <div id="camera-status" class="gm-cam__status">Press Start to turn on the camera.</div>
+              <div class="gm-target" aria-hidden="true">Live camera</div>
+            </div>
+            <p id="ta-status" class="ta-status" role="status" aria-live="polite">Your learned signs will be selected when you start.</p>
+            <div class="ta-controls">
+              <button class="btn btn--primary" id="ta-start" type="button">Start</button>
+              <button class="btn btn--sm gm-motion-btn" id="ta-motion" type="button" disabled>Record motion sign <kbd>Space</kbd></button>
+              <button class="btn btn--ghost btn--sm" id="ta-quit" type="button" disabled>Quit run</button>
+            </div>
+            <div class="ta-instructions">
+              <h2>How to play</h2>
+              <p>Follow the demo. Hold static signs steady; press Space or Record motion sign before performing a motion sign.</p>
+              <a class="btn btn--ghost btn--sm" href="game.html">All game modes</a>
+            </div>
+          </section>
+        </div>
+        <section class="gm-overlay ta-overlay" id="ta-result" hidden aria-live="polite">
+          <div class="gm-card ta-result-card">
+            <div class="gm-chest" aria-hidden="true" data-lw-icon="zap"></div>
+            <h2>Time Attack complete</h2>
+            <p id="ta-summary"></p>
+            <div class="gm-result__xp" id="ta-xp"></div>
+            <div class="gm-badges" id="ta-badges"></div>
+            <div class="ta-result-actions"><button class="btn btn--primary" id="ta-again" type="button">Play again</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
+          </div>
+        </section>
+        <section class="gm-overlay ta-overlay ta-loading" id="ta-loading" hidden role="status" aria-live="polite" aria-label="Loading Time Attack">
+          <div class="gm-card ta-loading-card">
+            <span class="ta-spinner" aria-hidden="true"></span>
+            <h2>Getting Time Attack ready</h2>
+            <p>Starting your camera and loading sign recognition…</p>
+            <div class="ta-skeleton" aria-hidden="true"><i></i><i></i><i></i></div>
+          </div>
+        </section>
+        <section class="gm-overlay ta-overlay" id="ta-error" hidden role="alertdialog" aria-modal="true" aria-labelledby="ta-error-title">
+          <div class="gm-card ta-result-card">
+            <h2 id="ta-error-title">Time Attack could not start</h2>
+            <p id="ta-error-message">Check camera access and try again.</p>
+            <div class="ta-result-actions">
+              <button class="btn btn--primary" id="ta-error-retry" type="button">Try again</button>
+              <button class="btn btn--ghost" id="ta-error-close" type="button">Close</button>
+            </div>
+          </div>
+        </section>
+        <section class="gm-overlay ta-overlay" id="ta-quit-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="ta-quit-title">
+          <div class="gm-card ta-result-card">
+            <h2 id="ta-quit-title">Quit this run?</h2>
+            <p>Your current run will end without submitting its result.</p>
+            <div class="ta-result-actions">
+              <button class="btn btn--ghost" id="ta-quit-cancel" type="button">Keep playing</button>
+              <button class="btn btn--primary" id="ta-quit-confirm" type="button">Quit run</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script defer src="../js/engine/progress.js"></script>
+  <script defer src="../js/missions.js"></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/time-attack.js"></script>
+</body>
+</html>

@@ -13,16 +13,19 @@
      2.5s recording window                                       -> orange "record" timer.
      The motion you perform is matched against every motion brick still on the wall.
    - A confident sign that is NOT on the wall, or a failed motion attempt, is a miss.
-   - Clear the wall -> reward (stars + gems + badges, saved in localStorage 'lw_game_v1').
+   - Clear the wall -> reward (stars + gems + best runs, cached per learner and synced to userGame).
+  Sign pool: asl_static_model/labels.json + asl_motion_model/labels.json are the ONLY authority on which
+   signs can appear (see playableFilter). dictionary.js `disabled` flags are never read, and NONE is never playable.
   Lifecycle: stopCamera + cancelAnimationFrame + all timers cleared on pagehide/hidden.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
 import { initMediaPipe, processFrame, isModelReady } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
-import { getDetectionType, getActiveSigns, getSignData } from './engine/dictionary.js';
+import { getDetectionType, getSignData } from './engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer, finalizeMotionWindow,
-         loadModels, isMotionModelReady, getAllowedLabelsForSign, getSignGroup,
-         getMotionBufferStatus } from './engine/classifier.js';
+         loadModels, loadModelLabels, isClassifierReady, isMotionModelReady,
+         getAllowedLabelsForSign, getSignGroup, getMotionBufferStatus,
+         getClassifiableSigns, isSignClassifiable, isTrainedLabel } from './engine/classifier.js';
 
 const $ = (id) => document.getElementById(id);
 const videoEl = $('lw-webcam'), canvasEl = $('lw-canvas'), ctx = canvasEl.getContext('2d');
@@ -35,14 +38,14 @@ const COUNTDOWN = ['3', '2', '1', 'GO!'], COUNT_STEP_MS = 600;
 const WAIT_HAND_MS = 6000;        // motion: give up if no hand appears after GO (no penalty)
 const HAND_LOST_MS = 1200;        // motion: hand gone this long mid-recording -> finish early
 const AFTER_MOTION_MS = 800;      // motion: pause before static detection resumes
-const ROWS = 3, STORE = 'lw_game_v1';
+const ROWS = 3, STORE = 'lw_game_v2';
 
 let bricks = [], running = false, rafId = null, timers = new Set();
 let stats = { correct: 0, wrong: 0, size: 0 }, startedAt = 0, tickId = null, engineReady = false, booting = false;
 let phase = 'static';             // 'static' | 'countdown' | 'waiting' | 'recording' | 'cooldown'
 let heldBrick = null, holdSince = 0, lastGoodAt = 0, ignoreGroup = null;
 let wrongLabel = null, wrongSince = 0, lastMissAt = 0;
-// XP (js/xp.js): the server times each wall. We only REPORT when bricks broke; it decides the reward.
+// XP (js/xp.js): the browser records each wall and calculates the reward; Firestore rules cap the write.
 let xpSessionP = Promise.resolve(null), brokenLog = [];
 let waitStart = 0, handLostAt = null, motionMs = 2500;
 let allowedStatic = { active: false, set: null }, allowedMotion = { active: false, set: null };
@@ -51,15 +54,53 @@ let allowedStatic = { active: false, set: null }, allowedMotion = { active: fals
 // DEV-TEST   They are no-ops unless the dev panel is active (needs localStorage 'lw_game_dev'='1'); a throw in dev code never breaks the game.
 const dev = (name, ...args) => { try { return window.LWGameDev?.[name]?.(...args); } catch (e) { console.warn('[dev-test]', e); } };   // DEV-TEST
 
-// ── storage ───────────────────────────────────────────────────────
-function load() {
-  try { return Object.assign({ gems: 0, walls: 0, badges: [], best: {} }, JSON.parse(localStorage.getItem(STORE) || '{}')); }
-  catch { return { gems: 0, walls: 0, badges: [], best: {} }; }
+// ── per-learner game progress ──────────────────────────────────────
+const emptyGameData = () => ({ gems: 0, walls: 0, badges: [], best: {} });
+let activeGameUid = null, gameData = emptyGameData(), gameSaveQueue = Promise.resolve();
+let gameProgressReady = Promise.resolve();
+function gameStoreKey() { return `${STORE}:${activeGameUid || 'guest'}`; }
+function normalizeGameData(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  return { gems: Math.max(0, Number(input.gems) || 0), walls: Math.max(0, Number(input.walls) || 0),
+    badges: Array.isArray(input.badges) ? input.badges.filter((x) => typeof x === 'string').slice(0, 50) : [],
+    best: input.best && typeof input.best === 'object' && !Array.isArray(input.best) ? input.best : {} };
 }
-function save(d) {
+function mergeGameData(local, cloud) {
+  const a = normalizeGameData(local), b = normalizeGameData(cloud), best = { ...a.best };
+  Object.entries(b.best).forEach(([size, run]) => {
+    const old = best[size];
+    if (!old || Number(run?.stars) > Number(old.stars) || (Number(run?.stars) === Number(old.stars) && Number(run?.ms) < Number(old.ms))) best[size] = run;
+  });
+  return { gems: Math.max(a.gems, b.gems), walls: Math.max(a.walls, b.walls), badges: [...new Set([...a.badges, ...b.badges])].slice(0, 50), best };
+}
+function load() { return gameData; }
+function save(value) {
   if (dev('blockSave')) return;   // DEV-TEST
-  try { localStorage.setItem(STORE, JSON.stringify(d)); } catch { /* private mode */ }
+  gameData = normalizeGameData(value);
+  const snapshot = JSON.stringify(gameData);
+  try { localStorage.setItem(gameStoreKey(), snapshot); } catch { /* private mode */ }
+  if (activeGameUid && window.LWAuth?.writeProgressDoc) {
+    gameSaveQueue = gameSaveQueue.catch(() => {}).then(() => window.LWAuth.writeProgressDoc('userGame', gameData, { merge: false }))
+      .catch((error) => console.warn('[game] Wall Breaker progress sync failed:', error));
+  }
 }
+async function initializeGameProgress() {
+  try { await window.LWAuth?.whenAuthReady?.(); } catch { /* local cache remains available */ }
+  activeGameUid = window.LWAuth?.getAuthUid?.() || null;
+  let local = null;
+  try { local = JSON.parse(localStorage.getItem(gameStoreKey()) || 'null'); } catch { /* corrupt cache */ }
+  gameData = normalizeGameData(local);
+  if (activeGameUid && window.LWAuth?.readProgressDoc) {
+    try {
+      const cloud = await window.LWAuth.readProgressDoc('userGame');
+      gameData = mergeGameData(gameData, cloud?.data);
+      save(gameData);
+    } catch (error) { console.warn('[game] could not load Wall Breaker progress:', error); }
+  }
+  const gems = $('gm-gems'); if (gems) gems.textContent = gameData.gems;
+  showBest();
+}
+gameProgressReady = initializeGameProgress();
 
 // ── helpers ───────────────────────────────────────────────────────
 const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
@@ -121,31 +162,19 @@ function dropHold() {
 }
 
 // ── sign pool: signs the learner has FINISHED, optionally topped up ──
-// "Finished" = the union of two progress stores (the game page never loaded either before,
-// which is why the pool was always random):
-//   - LWMissions: a sign's LESSON item is complete (passed in the lesson / camera check, or the
-//     whole mission was completed via the Mastery Quiz skip-path)
-//   - LWProgress: lw_progress_v3 "practiced" signs (camera-practice bridge)
-// Sign ids in both stores are the same uppercase keys as SIGN_DICTIONARY; signs the classifier
-// has no model for simply aren't in the dictionary, so they're filtered out below.
+// XP eligibility, Wall Breaker eligibility, and Time Attack all use the same
+// learned-sign union supplied by LWXP: xpState plus completed LESSON items.
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p), new Promise((res) => setTimeout(res, ms))]);
 
 async function getLearnedSignIds() {
-  const ids = new Set();
-  // never let a slow/failed sync hang the Start button — waits are capped
-  try { await withTimeout(window.LWAuth?.whenAuthReady?.(), 4000); } catch { /* guest / no auth */ }
-  try { await withTimeout(window.LWMissions?.whenMissionsSyncReady?.(), 4000); } catch { /* local-only */ }
-  try { await withTimeout(window.LWProgress?.whenProgressReady?.(), 4000); } catch { /* local-only */ }
   try {
-    const M = window.LWMissions;
-    (M?.getAllMissions?.() || []).forEach((m) => m.items.forEach((item, i) => {
-      if (item.kind === 'LESSON' && item.signId && M.isItemComplete(m, i, item)) ids.add(item.signId);
-    }));
-  } catch (e) { console.warn('[game] could not read mission progress:', e); }
-  try {
-    (window.LWProgress?.getAllLearnedSigns?.() || []).forEach((s) => { if (s?.signId) ids.add(s.signId); });
-  } catch (e) { console.warn('[game] could not read sign progress:', e); }
-  return ids;
+    await withTimeout(window.LWAuth?.whenAuthReady?.(), 4000);
+    await withTimeout(window.LWMissions?.whenMissionsSyncReady?.(), 4000);
+    return new Set(await withTimeout(window.LWXP?.getLearnedSigns?.() || [], 4000));
+  } catch (e) {
+    console.warn('[game] could not read learned signs:', e);
+    return new Set();
+  }
 }
 
 // Signs that exist in the curriculum (missions.js LESSON items). SIGN_DICTIONARY also holds detector-only
@@ -162,26 +191,57 @@ function getCurriculumSignIds() {
   } catch { return null; }
 }
 
-// Playable = the classifier can detect it AND a lesson teaches it.
-function playableFilter() {
-  const active = new Set(getActiveSigns()), curriculum = getCurriculumSignIds(), motionOk = isMotionModelReady();
-  return (s) => active.has(s) && (!curriculum || curriculum.has(s)) && (getDetectionType(s) !== 'motion' || motionOk);
+// Playable = a model's labels.json can classify it AND a lesson teaches it.
+// labels.json is the ONLY authority for "can be classified" (via classifier.js, which maps each sign to the
+// model for its detection type and honours the classifier's own twin groups). dictionary.js `disabled`
+// flags are NOT used, and NONE can never pass. `requireModels` = the model weights must also be loaded.
+function playableFilter({ requireModels = false } = {}) {
+  const curriculum = getCurriculumSignIds();
+  return (s) => {
+    if (!isSignClassifiable(s)) return false;
+    if (curriculum && !curriculum.has(s)) return false;
+    if (!requireModels) return true;
+    return getDetectionType(s) === 'motion' ? isMotionModelReady() : isClassifierReady();
+  };
+}
+
+// The full playable set, derived from the labels (not from the dictionary).
+const playablePool = (opts) => getClassifiableSigns().filter(playableFilter(opts));
+
+// Twin signs (BRING/CARRY, 0/O ...) are the same gesture to the classifier, so two of them on one wall would
+// both ask for the identical sign. Keep one per group, preferring a sign that is itself a trained label.
+function dedupeTwins(signs) {
+  const keyOf = (s) => { const g = getSignGroup(s); return g.length === 1 ? null : g.slice().sort().join('|'); };
+  const best = new Map();   // group key -> chosen sign
+  for (const s of signs) {
+    const k = keyOf(s);
+    if (k && (!best.has(k) || (!isTrainedLabel(best.get(k)) && isTrainedLabel(s)))) best.set(k, s);
+  }
+  return signs.filter((s) => { const k = keyOf(s); return !k || best.get(k) === s; });
 }
 
 // source: 'learned' (default) = ONLY finished signs, wall shrinks if you have fewer than the wall size
 //         'mixed'   = finished signs first, then unlearned lesson signs to fill the wall
 //         'all'     = any lesson sign
-// returns { signs, learnedSet, note }
-async function buildPool(size, source) {
-  const devPool = dev('getPool'); if (devPool) return devPool;   // DEV-TEST (letters/numbers test set)
-  const learnedAll = await getLearnedSignIds();
-  const usable = playableFilter();
-  const learned = shuffle([...learnedAll].filter(usable));
-  const others = () => shuffle(getActiveSigns().filter(usable).filter((s) => !learnedAll.has(s)));
+// `ready` resolves true once the camera + models are loaded. Returns { signs, learnedSet, note }, or null if boot failed.
+async function buildPool(size, source, ready) {
+  // Labels first (cheap, independent of the camera), so the pool never depends on a boot race.
+  const [learnedAll, booted] = await Promise.all([getLearnedSignIds(), ready, loadModelLabels()]);
+  if (!booted) return null;
+  const usable = playableFilter({ requireModels: true });
+  const finalize = (list) => dedupeTwins(list).filter(usable);   // last gate: nothing unclassifiable reaches the wall
+
+  const devPool = dev('getPool');   // DEV-TEST (letters/numbers test set) — still passes through the same labels.json gate
+  if (devPool) return { ...devPool, signs: finalize(devPool.signs || []) };   // DEV-TEST
+
+  const everything = playablePool({ requireModels: true });
+  const learned = dedupeTwins(shuffle([...learnedAll].filter(usable)));
+  const others = () => dedupeTwins(shuffle(everything.filter((s) => !learnedAll.has(s))))
+    .filter((s) => !learned.some((l) => getSignGroup(l).includes(s)));   // don't re-add a twin of a learned sign
   let signs, note = '';
 
   if (source === 'all') {
-    signs = shuffle(getActiveSigns().filter(usable)).slice(0, size);
+    signs = dedupeTwins(shuffle(everything)).slice(0, size);
   } else if (source === 'mixed') {
     signs = learned.slice(0, size);
     signs = signs.concat(others().slice(0, size - signs.length));
@@ -190,14 +250,15 @@ async function buildPool(size, source) {
     signs = learned.slice(0, size);   // unique signs only: a smaller wall beats duplicate bricks
     if (signs.length < size) note = `Your wall has ${signs.length} brick${signs.length === 1 ? '' : 's'} because you've finished ${signs.length} sign${signs.length === 1 ? '' : 's'}. Finish more lessons to grow it.`;
   }
+  signs = finalize(signs);
   return { signs: shuffle(signs), learnedSet: new Set(learned), note };
 }
 
 async function refreshPoolNote() {
   try {
-    const learned = await getLearnedSignIds();
+    const [learned] = await Promise.all([getLearnedSignIds(), loadModelLabels()]);
     const usable = playableFilter();
-    const n = [...learned].filter(usable).length;
+    const n = dedupeTwins([...learned].filter(usable)).length;
     $('gm-pool-note').textContent = n
       ? `${n} finished sign${n === 1 ? '' : 's'} can appear on the wall.`
       : "You haven't finished any signs yet. Complete a lesson first, or switch to 'learned + new signs' in Setup.";
@@ -435,8 +496,11 @@ async function startGame() {
   $('gm-pool-note').textContent = 'Loading hand tracking, camera and sign models…';
   let ok = false, pool = null;
   try {
+    await gameProgressReady;
     // engine boot and the sign-pool lookup are independent -> run them in parallel
-    [ok, pool] = await Promise.all([bootEngine(), buildPool(size, $('gm-source').value)]);
+    // buildPool waits for the boot result itself, because the playable pool needs the models to be loaded.
+    const bootP = bootEngine();
+    [ok, pool] = await Promise.all([bootP, buildPool(size, $('gm-source').value, bootP)]);
   } catch (e) {
     console.error('[game] start failed:', e);
     $('gm-pool-note').textContent = `Could not start: ${e.message}`;
@@ -481,8 +545,8 @@ function finish() {
   const stars = acc >= 0.85 ? 3 : acc >= 0.6 ? 2 : 1;
   const gems = stats.size + stars * 5;
   const d = load(), earned = [];
-  // Badges are now awarded by the SERVER (functions/xp.js) and shown below via reportWall();
-  // the old local-only badge list (lw_game_v1.badges) was forgeable, so it no longer grants anything.
+  // XP badges are awarded by the shared browser engine and shown below via reportWall();
+  // the old local-only badge list (lw_game_v1.badges) remains display-only.
   d.gems += gems; d.walls++;
   const prev = d.best[stats.size];
   if (!prev || stars > prev.stars || (stars === prev.stars && ms < prev.ms)) d.best[stats.size] = { stars, ms };
@@ -503,8 +567,8 @@ function finish() {
   reportWall();
 }
 
-// Report the cleared wall and show what the server decided. Gems/stars above stay local
-// and cosmetic; XP and badges only ever come from this server answer.
+// Report the cleared wall and show the shared XP engine result. Gems/stars above stay local
+// and cosmetic; XP and badges are persisted with the paired Firestore transaction.
 async function reportWall() {
   const box = $('gm-xp'), badges = $('gm-badges');
   if (!box) return;
