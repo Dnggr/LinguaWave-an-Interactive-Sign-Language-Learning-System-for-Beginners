@@ -2,6 +2,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import worker, { presignUrl, verifyFirebaseToken, sniffVideo, parseRange, MAX_VIDEO_BYTES } from "../src/index.js";
+import {
+  getGoogleAccessToken, deleteFirebaseAuthUser, clearTokenCache, FirebaseAuthAdminError,
+  GOOGLE_TOKEN_URL, IDENTITY_TOOLKIT_SCOPE,
+} from "../src/firebase-auth-admin.js";
 
 const b64u = (b) => Buffer.from(b).toString("base64url");
 
@@ -68,11 +72,11 @@ const env = (bucket) => ({
   ALLOWED_ORIGINS: "https://app.example.com", PUBLIC_MEDIA_BASE: "https://media.example.com/",
   R2_ACCOUNT_ID: "acct", R2_BUCKET_NAME: "lw", R2_ACCESS_KEY_ID: "AK", R2_SECRET_ACCESS_KEY: "SK",
 });
-async function call(path, body, { token, bucket = fakeBucket(), method = "POST", origin = "https://app.example.com" } = {}) {
+async function call(path, body, { token, bucket = fakeBucket(), method = "POST", origin = "https://app.example.com", deps = {}, envOver = {} } = {}) {
   const headers = { "Content-Type": "application/json", Origin: origin };
   if (token !== null) headers.Authorization = `Bearer ${token ?? (await makeToken())}`;
   const res = await worker.fetch(new Request(`https://w.example${path}`, { method, headers, body: JSON.stringify(body) }),
-    env(bucket), {}, { getJwks, now: NOW });
+    { ...env(bucket), ...envOver }, {}, { getJwks, now: NOW, ...deps });
   return { res, data: await res.json().catch(() => null), bucket };
 }
 
@@ -201,4 +205,215 @@ test("media: unsatisfiable range -> 416; HEAD -> headers only; missing/odd keys 
 test("media: GET on the POST routes still refused", async () => {
   const res = await worker.fetch(new Request("https://w.example/v1/upload-url", { method: "GET" }), env(mediaBucket()), {}, {});
   assert.equal(res.status, 405);
+});
+
+/* ── POST /v1/delete-user (privileged Firebase Auth deletion) ───── */
+// The Firebase Admin API is faked through deps.deleteAuthUser: no Google credential, no network.
+function fakeAuthDeleter(behaviour = async () => ({})) {
+  const calls = [];
+  const fn = async (envArg, uid, now) => { calls.push({ uid, now, hasEnv: !!envArg }); return behaviour(uid); };
+  fn.calls = calls;
+  return fn;
+}
+const delUser = (body, opts = {}) => call("/v1/delete-user", body, opts);
+const LEARNER_UID = "learnerUid123";
+
+test("delete-user: no Authorization header -> 401, nothing deleted", async () => {
+  const del = fakeAuthDeleter();
+  const { res } = await delUser({ uid: LEARNER_UID }, { token: null, deps: { deleteAuthUser: del } });
+  assert.equal(res.status, 401);
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: invalid Firebase token -> 401", async () => {
+  const del = fakeAuthDeleter();
+  assert.equal((await delUser({ uid: LEARNER_UID }, { token: "not.a.jwt", deps: { deleteAuthUser: del } })).res.status, 401);
+  const other = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign"]);
+  const forged = await makeToken({}, { key: other.privateKey });
+  assert.equal((await delUser({ uid: LEARNER_UID }, { token: forged, deps: { deleteAuthUser: del } })).res.status, 401);
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: a signed-in learner -> 403", async () => {
+  const del = fakeAuthDeleter();
+  const token = await makeToken({ email: "learner@x.com", sub: "someone-else" });
+  const { res } = await delUser({ uid: LEARNER_UID }, { token, deps: { deleteAuthUser: del } });
+  assert.equal(res.status, 403);
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: admin email without email_verified -> 403", async () => {
+  const del = fakeAuthDeleter();
+  const token = await makeToken({ email_verified: false });
+  assert.equal((await delUser({ uid: LEARNER_UID }, { token, deps: { deleteAuthUser: del } })).res.status, 403);
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: the admin can't delete their own uid -> 400", async () => {
+  const del = fakeAuthDeleter();
+  const { res, data } = await delUser({ uid: "uid-1" }, { deps: { deleteAuthUser: del } }); // default token sub is "uid-1"
+  assert.equal(res.status, 400);
+  assert.match(data.error, /own account/);
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: missing / malformed uid -> 400", async () => {
+  const del = fakeAuthDeleter();
+  for (const uid of [undefined, "", 5, null, "a/b", "../x", "has space", "x".repeat(129), { $ne: 1 }]) {
+    const { res } = await delUser({ uid }, { deps: { deleteAuthUser: del } });
+    assert.equal(res.status, 400, JSON.stringify(uid));
+  }
+  assert.equal((await delUser(undefined, { deps: { deleteAuthUser: del } })).res.status, 400); // body is not JSON
+  assert.equal(del.calls.length, 0);
+});
+test("delete-user: verified admin + valid target -> deletes the Auth user", async () => {
+  const del = fakeAuthDeleter();
+  const { res, data } = await delUser({ uid: LEARNER_UID }, { deps: { deleteAuthUser: del } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(data, { uid: LEARNER_UID, authDeleted: true, alreadyMissing: false });
+  assert.deepEqual(del.calls.map((c) => c.uid), [LEARNER_UID]);
+  assert.equal(del.calls[0].now, NOW);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), "https://app.example.com");
+});
+test("delete-user: Auth user already gone -> retry-safe 200 with alreadyMissing", async () => {
+  const del = fakeAuthDeleter(async () => { throw new FirebaseAuthAdminError("user-not-found", "gone", "USER_NOT_FOUND"); });
+  const { res, data } = await delUser({ uid: LEARNER_UID }, { deps: { deleteAuthUser: del } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(data, { uid: LEARNER_UID, authDeleted: true, alreadyMissing: true });
+});
+test("delete-user: Firebase Admin API failure -> 502, never reports success, leaks no detail", async () => {
+  const del = fakeAuthDeleter(async () => { throw new FirebaseAuthAdminError("api-error", "x", "503 SECRET-DETAIL"); });
+  const quiet = console.error; console.error = () => {};
+  let out;
+  try { out = await delUser({ uid: LEARNER_UID }, { deps: { deleteAuthUser: del } }); } finally { console.error = quiet; }
+  assert.equal(out.res.status, 502);
+  assert.equal(out.data.authDeleted, undefined);
+  assert.ok(!JSON.stringify(out.data).includes("SECRET-DETAIL"));
+});
+test("delete-user: unexpected thrown error -> 500, not success", async () => {
+  const del = fakeAuthDeleter(async () => { throw new Error("boom"); });
+  const quiet = console.error; console.error = () => {};
+  let out;
+  try { out = await delUser({ uid: LEARNER_UID }, { deps: { deleteAuthUser: del } }); } finally { console.error = quiet; }
+  assert.equal(out.res.status, 502);
+  assert.equal(out.data.authDeleted, undefined);
+});
+test("delete-user: server secrets missing -> 500 'not set up' (real module, nothing sent to Google)", async () => {
+  const quiet = console.error; console.error = () => {};
+  let out;
+  try { out = await delUser({ uid: LEARNER_UID }); } finally { console.error = quiet; } // env() has no service-account secrets
+  assert.equal(out.res.status, 500);
+  assert.match(out.data.error, /isn't set up/);
+});
+test("delete-user: CORS for allowed origin, none for others, preflight answered", async () => {
+  const del = fakeAuthDeleter();
+  const evil = await delUser({ uid: LEARNER_UID }, { origin: "https://evil.example", deps: { deleteAuthUser: del } });
+  assert.equal(evil.res.headers.get("Access-Control-Allow-Origin"), null);
+  const pre = await worker.fetch(
+    new Request("https://w.example/v1/delete-user", { method: "OPTIONS", headers: { Origin: "https://app.example.com" } }),
+    env(fakeBucket()), {}, { getJwks, now: NOW });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get("Access-Control-Allow-Origin"), "https://app.example.com");
+  assert.match(pre.headers.get("Access-Control-Allow-Headers"), /Authorization/);
+});
+test("delete-user: only POST is accepted", async () => {
+  const del = fakeAuthDeleter();
+  for (const method of ["GET", "PUT", "DELETE", "PATCH"]) {
+    const res = await worker.fetch(new Request("https://w.example/v1/delete-user", { method }), env(fakeBucket()), {}, { getJwks, now: NOW, deleteAuthUser: del });
+    assert.equal(res.status, 405, method);
+  }
+  assert.equal(del.calls.length, 0);
+});
+
+/* ── firebase-auth-admin.js against a faked Google ─────────────── */
+const saKeys = await crypto.subtle.generateKey(
+  { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+const pkcs8 = Buffer.from(await crypto.subtle.exportKey("pkcs8", saKeys.privateKey)).toString("base64");
+const PEM = `-----BEGIN PRIVATE KEY-----\n${pkcs8.match(/.{1,64}/g).join("\n")}\n-----END PRIVATE KEY-----\n`;
+const SA_EMAIL = "svc@linguawave-63911.iam.gserviceaccount.com";
+const saEnv = (over = {}) => ({ FIREBASE_PROJECT_ID: PROJECT, FIREBASE_SERVICE_ACCOUNT_EMAIL: SA_EMAIL, FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: PEM, ...over });
+
+/** Fake Google: records requests, checks the JWT signature, answers token + accounts:delete. */
+function fakeGoogle({ deleteStatus = 200, deleteBody = { kind: "identitytoolkit#DeleteAccountResponse" }, tokenStatus = 200 } = {}) {
+  const log = { token: [], del: [] };
+  const fetchFn = async (url, init) => {
+    if (url === GOOGLE_TOKEN_URL) {
+      const assertion = new URLSearchParams(init.body).get("assertion");
+      const [h, b, sig] = assertion.split(".");
+      const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", saKeys.publicKey, Buffer.from(sig, "base64url"), new TextEncoder().encode(`${h}.${b}`));
+      log.token.push({ ok, claims: JSON.parse(Buffer.from(b, "base64url")), header: JSON.parse(Buffer.from(h, "base64url")), grant: new URLSearchParams(init.body).get("grant_type") });
+      return tokenStatus === 200
+        ? Response.json({ access_token: "ya29.fake", expires_in: 3599, token_type: "Bearer" })
+        : Response.json({ error: "invalid_grant", error_description: "Invalid JWT Signature." }, { status: tokenStatus });
+    }
+    log.del.push({ url, auth: init.headers.Authorization, body: JSON.parse(init.body) });
+    return Response.json(deleteBody, { status: deleteStatus });
+  };
+  return { fetchFn, log };
+}
+
+test("getGoogleAccessToken: signs a valid RS256 service-account JWT and caches the token", async () => {
+  clearTokenCache();
+  const g = fakeGoogle();
+  assert.equal(await getGoogleAccessToken(saEnv(), NOW, { fetchFn: g.fetchFn }), "ya29.fake");
+  assert.equal(await getGoogleAccessToken(saEnv(), NOW + 60_000, { fetchFn: g.fetchFn }), "ya29.fake");
+  assert.equal(g.log.token.length, 1, "second call should reuse the cached token");
+  const t = g.log.token[0];
+  assert.equal(t.ok, true, "JWT signature must verify with the service account's public key");
+  assert.deepEqual(t.header, { alg: "RS256", typ: "JWT" });
+  assert.equal(t.grant, "urn:ietf:params:oauth:grant-type:jwt-bearer");
+  assert.equal(t.claims.iss, SA_EMAIL);
+  assert.equal(t.claims.aud, GOOGLE_TOKEN_URL);
+  assert.equal(t.claims.scope, IDENTITY_TOOLKIT_SCOPE);
+  assert.equal(t.claims.iat, Math.floor(NOW / 1000));
+  assert.equal(t.claims.exp - t.claims.iat, 3600);
+  await getGoogleAccessToken(saEnv(), NOW + 3_500_000, { fetchFn: g.fetchFn }); // near expiry -> refreshed
+  assert.equal(g.log.token.length, 2);
+});
+test("getGoogleAccessToken: accepts the key with literal \\n sequences (as pasted from the JSON file)", async () => {
+  clearTokenCache();
+  const g = fakeGoogle();
+  const oneLine = PEM.trim().replace(/\n/g, "\\n");
+  assert.equal(await getGoogleAccessToken(saEnv({ FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: oneLine }), NOW, { fetchFn: g.fetchFn }), "ya29.fake");
+  assert.equal(g.log.token[0].ok, true);
+});
+test("getGoogleAccessToken: missing or garbage secrets -> not-configured; Google refusal -> token-exchange-failed", async () => {
+  clearTokenCache();
+  const g = fakeGoogle();
+  await assert.rejects(getGoogleAccessToken(saEnv({ FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: undefined }), NOW, { fetchFn: g.fetchFn }), { code: "not-configured" });
+  await assert.rejects(getGoogleAccessToken(saEnv({ FIREBASE_SERVICE_ACCOUNT_EMAIL: "" }), NOW, { fetchFn: g.fetchFn }), { code: "not-configured" });
+  await assert.rejects(getGoogleAccessToken(saEnv({ FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: "not a key" }), NOW, { fetchFn: g.fetchFn }), { code: "not-configured" });
+  await assert.rejects(getGoogleAccessToken(saEnv(), NOW, { fetchFn: fakeGoogle({ tokenStatus: 400 }).fetchFn }), { code: "token-exchange-failed" });
+  assert.equal(g.log.token.length, 0, "nothing should be sent to Google without usable secrets");
+});
+test("deleteFirebaseAuthUser: calls accounts:delete with the bearer token and the target uid", async () => {
+  clearTokenCache();
+  const g = fakeGoogle();
+  assert.deepEqual(await deleteFirebaseAuthUser(saEnv(), "target1", NOW, { fetchFn: g.fetchFn }), { uid: "target1" });
+  assert.equal(g.log.del.length, 1);
+  assert.equal(g.log.del[0].url, `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:delete`);
+  assert.equal(g.log.del[0].auth, "Bearer ya29.fake");
+  assert.deepEqual(g.log.del[0].body, { localId: "target1" });
+});
+test("deleteFirebaseAuthUser: USER_NOT_FOUND -> user-not-found; any other API error -> api-error", async () => {
+  clearTokenCache();
+  const missing = fakeGoogle({ deleteStatus: 400, deleteBody: { error: { code: 400, message: "USER_NOT_FOUND" } } });
+  await assert.rejects(deleteFirebaseAuthUser(saEnv(), "t", NOW, { fetchFn: missing.fetchFn }), { code: "user-not-found" });
+  clearTokenCache();
+  const denied = fakeGoogle({ deleteStatus: 403, deleteBody: { error: { code: 403, message: "PERMISSION_DENIED" } } });
+  await assert.rejects(deleteFirebaseAuthUser(saEnv(), "t", NOW, { fetchFn: denied.fetchFn }), { code: "api-error" });
+  clearTokenCache();
+  const down = async (url) => { if (url === GOOGLE_TOKEN_URL) return Response.json({ access_token: "x", expires_in: 3599 }); throw new Error("network down"); };
+  await assert.rejects(deleteFirebaseAuthUser(saEnv(), "t", NOW, { fetchFn: down }), { code: "api-error" });
+});
+test("end to end: Worker route -> real firebase-auth-admin -> (stubbed) Google", async () => {
+  clearTokenCache();
+  const g = fakeGoogle();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = g.fetchFn; // JWKS comes from the injected getJwks, so Google is the only fetch target
+  try {
+    const { res, data } = await call("/v1/delete-user", { uid: LEARNER_UID }, { envOver: saEnv() });
+    assert.equal(res.status, 200);
+    assert.deepEqual(data, { uid: LEARNER_UID, authDeleted: true, alreadyMissing: false });
+    assert.deepEqual(g.log.del.map((d) => d.body.localId), [LEARNER_UID]);
+  } finally {
+    globalThis.fetch = realFetch;
+    clearTokenCache();
+  }
 });

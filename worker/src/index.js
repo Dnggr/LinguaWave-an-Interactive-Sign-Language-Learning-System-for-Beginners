@@ -17,6 +17,12 @@
  *   5. Browser saves { videoUrl, videoKey } on the Firestore `signs` document.
  *   6. Learners play the video from GET /media/<key> on THIS Worker (public, Range-aware).
  *   6. POST /v1/delete      -> removes an admin-uploaded object (replace / delete lesson).
+ *   7. POST /v1/delete-user -> deletes ANOTHER user's Firebase Auth login (admin only). A browser
+ *                              can't do this, so the Worker calls Google's Identity Toolkit Admin
+ *                              API with a service-account credential (src/firebase-auth-admin.js).
+ *                              It replaces the retired `deleteLearnerAccount` Cloud Function.
+ *                              Firestore cleanup stays in the admin browser (js/admin-firebase.js),
+ *                              which runs it only AFTER this call succeeds.
  *
  * LEARNERS never call this Worker: they read the lesson from Firestore and play
  * videoUrl straight from the public R2 media domain.
@@ -28,8 +34,10 @@
  *   R2_ACCESS_KEY_ID       secret   } (the S3-compatible API token for THIS bucket,
  *   R2_SECRET_ACCESS_KEY   secret  /  Object Read & Write, never put in front-end code)
  *   FIREBASE_PROJECT_ID    var     e.g. linguawave-63911
+ *   FIREBASE_SERVICE_ACCOUNT_EMAIL        secret  } only for /v1/delete-user: a service account
+ *   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY  secret  } allowed to delete Firebase Auth users
  *   ADMIN_EMAIL            var     KEEP IN SYNC with firestore.rules, js/admin-auth.js,
- *                                  js/role-guard.js, functions/index.js, index.html
+ *                                  js/role-guard.js, index.html
  *   ALLOWED_ORIGINS        var     comma list of site origins allowed to call this API
  *   PUBLIC_MEDIA_BASE      var     public base URL of the bucket, no trailing slash
  *
@@ -39,10 +47,14 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+import { deleteFirebaseAuthUser } from "./firebase-auth-admin.js";
+
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // keep in sync with js/admin-media.js
 export const UPLOAD_URL_TTL_SECONDS = 600;
 export const KEY_PREFIX = "videos/admin/";
 
+// Firebase Auth UIDs are short alphanumeric strings; refuse anything else before it reaches Google.
+const UID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const KEY_RE = /^videos\/admin\/[a-z0-9][a-z0-9_-]{0,39}\/\d{10,16}\.(mp4)$/;
 // MP4 only for now: the learner players hard-code <source type="video/mp4"> (js/lesson.js,
@@ -299,6 +311,33 @@ async function remove(request, env) {
   return { deleted: key };
 }
 
+/**
+ * POST /v1/delete-user  { uid }  — admin only (enforced by requireAdmin before this runs).
+ * Deletes the target's Firebase Auth login. Success is only ever reported when Google confirms it,
+ * or confirms the user is already gone (so an interrupted bulk delete can simply be re-run).
+ * deps.deleteAuthUser is a test seam; production uses deleteFirebaseAuthUser.
+ */
+async function deleteUser(request, env, now, { claims, deps = {} }) {
+  const { uid } = await readJson(request);
+  if (typeof uid !== "string" || !UID_RE.test(uid)) throw new HttpError(400, "Invalid user id.");
+  if (uid === claims.sub) throw new HttpError(400, "You can't delete your own account here.");
+
+  const deleteAuthUser = deps.deleteAuthUser || deleteFirebaseAuthUser;
+  try {
+    await deleteAuthUser(env, uid, now.getTime());
+  } catch (err) {
+    if (err && err.code === "user-not-found") {
+      return { uid, authDeleted: true, alreadyMissing: true };
+    }
+    console.error("[media-worker] delete-user", err && err.code, err && err.detail, err);
+    if (err && err.code === "not-configured") {
+      throw new HttpError(500, "Account deletion isn't set up on the server yet.");
+    }
+    throw new HttpError(502, "Couldn't delete the login. Nothing was reported as deleted; try again.");
+  }
+  return { uid, authDeleted: true, alreadyMissing: false };
+}
+
 /* ── public media (GET /media/<key>) ───────────────────────────────
  * Serves the admin videos to learners from this Worker's own hostname,
  * instead of the bucket's *.r2.dev URL (development-only per Cloudflare,
@@ -393,12 +432,14 @@ export default {
     }
     try {
       if (request.method !== "POST") throw new HttpError(405, "Use POST.");
-      const routes = { "/v1/upload-url": uploadUrl, "/v1/finalize": finalize, "/v1/delete": remove };
+      const routes = {
+        "/v1/upload-url": uploadUrl, "/v1/finalize": finalize, "/v1/delete": remove, "/v1/delete-user": deleteUser,
+      };
       const handler = routes[url.pathname];
       if (!handler) throw new HttpError(404, "Not found.");
       const claims = await requireAdmin(request, env, deps); // every route is admin-only
-      const data = await handler(request, env, deps.now ? new Date(deps.now) : new Date());
-      console.log(JSON.stringify({ route: url.pathname, uid: claims.sub, key: data.key || data.deleted }));
+      const data = await handler(request, env, deps.now ? new Date(deps.now) : new Date(), { claims, deps });
+      console.log(JSON.stringify({ route: url.pathname, uid: claims.sub, key: data.key || data.deleted, target: data.uid }));
       return json(data, 200, request, env);
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.message }, err.status, request, env);

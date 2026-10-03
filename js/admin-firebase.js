@@ -54,10 +54,6 @@ import {
   getDocs,
   updateDoc,
 } from "./auth.js";
-import {
-  getFunctions,
-  httpsCallable,
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 // Same SDK build as auth.js, so these share its Firestore instance (`db`).
 import {
   query,
@@ -68,6 +64,7 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { getContentStats } from "./admin-content.js";
+import { callWorker } from "./admin-worker.js";
 import {
   normalizeSurvey,
   enrichWithUsers,
@@ -87,11 +84,11 @@ function withId(snapshot) {
  * here on purpose — accounts are created through the real sign-up
  * flow, not by the admin. Deleting a learner removes BOTH their Firebase
  * Auth login and their Firestore data. A browser can't delete someone
- * else's Auth account (that needs the Admin SDK), so that part goes through
- * the `deleteLearnerAccount` Cloud Function in /functions (Blaze plan, see
- * ADMIN_SETUP.md). Without it, only the Firestore data is deleted (by this
- * file, from the admin's browser) and the admin is told to remove the login
- * in the Firebase console.
+ * else's Auth account (that needs Google's Admin API), so that part goes
+ * through the Cloudflare Worker (POST /v1/delete-user, see js/admin-worker.js
+ * and worker/src/firebase-auth-admin.js). Everything else (Firestore cleanup,
+ * progress reset) runs here in the admin's browser under firestore.rules.
+ * There is NO Firebase Cloud Functions dependency: the Spark plan is enough.
  * ──────────────────────────────────────────────────────────────── */
 // The admin is not a learner: hide the admin's own profile doc (if it has
 // one) so User Management and Reports only count real learners.
@@ -105,12 +102,9 @@ export async function listUsers() {
 export function updateUserLevel(uid, level) {
   return updateDoc(doc(db, "users", uid), { level });
 }
-// Everything keyed by the learner's uid, besides users/{uid} itself. Keep in sync with
-// functions/xp-cleanup.js (xpState, publicProfiles, userProgress, userProgressV2, userGame; surveys by userId).
+// Everything keyed by the learner's uid, besides users/{uid} itself (xpState, publicProfiles, userProgress,
+// userProgressV2, userGame; surveys are found by their userId field instead). Keep in sync with firestore.rules.
 const LEARNER_UID_DOCS = ["xpState", "publicProfiles", "userProgress", "userProgressV2", "userGame"];
-// Errors that mean "you are not allowed": never fall back on these. Anything else (not-found, unavailable,
-// internal / CORS / network, i.e. the function isn't deployed on the Spark plan) falls back to browser-only.
-const FUNCTION_DENIED = ["functions/permission-denied", "functions/unauthenticated"];
 /**
  * Admin-side Firestore cleanup (idempotent). users/{uid} goes FIRST: firestore.rules only let a
  * learner CREATE xpState / publicProfiles / progress docs while users/{uid} exists, so a learner tab
@@ -124,49 +118,62 @@ async function deleteLearnerFirestoreData(uid) {
   await Promise.all(surveys.docs.map((s) => deleteDoc(s.ref)));
 }
 /**
- * Deletes a learner COMPLETELY.
- * 1. The admin-only Cloud Function removes the Firebase Auth login (and, via the Admin SDK, every
- *    Firestore doc incl. legacy xpEvents/xpSessions).
- * 2. This browser then ALSO deletes users, xpState, publicProfiles, userProgress, userProgressV2,
- *    userGame and the learner's surveys. It is a safety net: it covers a Cloud Function that is not
- *    deployed (Spark plan) or is an older deployment that doesn't clean every collection.
- * If the function can't be reached the Firestore data is still removed, and the caller is told
- * (authDeleted:false) that the login must be deleted in Firebase Console -> Authentication.
+ * Deletes a learner COMPLETELY: Firebase Auth login + Firestore data. Order matters:
+ *   1. The Worker deletes the Auth login (admin-only, verified server-side). If that fails, NOTHING
+ *      else is deleted and this throws, so the row stays and the admin can simply try again.
+ *      "Already missing" counts as success so an interrupted delete can be finished by retrying.
+ *   2. Only then does this browser delete users, xpState, publicProfiles, userProgress,
+ *      userProgressV2, userGame and the learner's surveys.
+ * It never resolves with "data deleted but the login still exists".
  *
- * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function+browser"|"browser"}>}
+ * @param {string} uid                       the learner's uid
+ * @param {{forceRefresh?: boolean}} [opts]  forceRefresh (default true): mint a new ID token for this call.
+ *        deleteAllLearners() refreshes once up front and passes false so a bulk run isn't N refreshes.
+ * @returns {Promise<{authDeleted:true, firestoreDeleted:true, alreadyMissing:boolean}>}
+ * @throws  Error with code `admin/invalid-uid`, `admin/self-delete`, `worker/...` (see js/admin-worker.js:
+ *          nothing was deleted) or `admin/cleanup-failed` (the login IS gone; run the delete again to finish).
  */
-export async function deleteLearnerAccount(uid) {
-  let authDeleted = false;
-  try {
-    await httpsCallable(getFunctions(auth.app), "deleteLearnerAccount")({ uid });
-    authDeleted = true;
-  } catch (err) {
-    if (FUNCTION_DENIED.includes(err?.code)) throw err;   // not allowed: nothing is deleted, the row stays
-    console.warn("[admin] deleteLearnerAccount function unavailable, deleting Firestore data from the browser only:", err);
+export async function deleteLearnerAccount(uid, { forceRefresh = true } = {}) {
+  if (typeof uid !== "string" || !uid) {
+    throw Object.assign(new Error("Invalid learner id."), { code: "admin/invalid-uid" });
   }
-  await deleteLearnerFirestoreData(uid);
-  return { authDeleted, firestoreDeleted: true, via: authDeleted ? "function+browser" : "browser" };
+  if (uid === auth.currentUser?.uid) {
+    throw Object.assign(new Error("You can't delete your own account here."), { code: "admin/self-delete" });
+  }
+  const res = await callWorker("/v1/delete-user", { uid }, { forceRefresh });
+  // Require an explicit confirmation: anything else must never be treated as "deleted".
+  if (res?.authDeleted !== true) {
+    throw Object.assign(new Error("The server didn't confirm the login was deleted. Nothing else was removed."), { code: "admin/auth-not-confirmed" });
+  }
+  try {
+    await deleteLearnerFirestoreData(uid);
+  } catch (err) {
+    console.error("[admin] login deleted but Firestore cleanup failed for", uid, err);
+    throw Object.assign(
+      new Error("The login was deleted but some data couldn't be removed. Press Delete again to finish."),
+      { code: "admin/cleanup-failed", cause: err }
+    );
+  }
+  return { authDeleted: true, firestoreDeleted: true, alreadyMissing: res.alreadyMissing === true };
 }
 /**
  * RESET PROGRESS (not Delete Account): keeps the Auth login and users/{uid}; removes XP, level, streak,
  * badges, the leaderboard row and all lesson progress. Writes users/{uid}.progressResetAt so the learner's
  * browser wipes its LOCAL copy on next load (js/auth.js applyProgressResetIfNeeded) instead of pushing it back.
- * The admin-only `resetLearnerProgress` Cloud Function performs the reset.
- * There is no browser fallback because a client cannot reset another learner's XP state.
+ * Runs entirely from the admin's browser under firestore.rules (same code as the bulk reset below).
  *
- * @returns {Promise<{via:"function"}>}
+ * @returns {Promise<{via:"browser"}>}
  */
 export async function resetLearnerProgress(uid) {
-  const call = httpsCallable(getFunctions(auth.app), "resetLearnerProgress");
-  await call({ uid });
-  return { via: "function" };
+  await resetLearnerFirestoreProgress(uid);
+  return { via: "browser" };
 }
 /* ── BULK ACTIONS (User Management → "Reset all user data" / "Delete all users") ────────────────
  * Both work on EVERY learner returned by listUsers() (the admin's own profile is already filtered out
  * there) and, as a second guard, never touch the signed-in user's own uid. They run from the admin's
- * browser (Spark plan: no Cloud Function needed) using what firestore.rules already allow the admin:
- * delete xpState / publicProfiles / userProgress / userProgressV2 / userGame / users / surveys, and
- * update any field on users/{uid}.
+ * browser using what firestore.rules already allow the admin: delete xpState / publicProfiles /
+ * userProgress / userProgressV2 / userGame / users / surveys, and update any field on users/{uid}.
+ * "Delete all users" additionally calls the Worker once per learner to remove their Auth login.
  * ──────────────────────────────────────────────────────────────── */
 const BULK_CONCURRENCY = 4;
 
@@ -219,46 +226,32 @@ export async function resetAllLearnersProgress(onProgress) {
   return { total: users.length, reset: users.length - failed.length, failed };
 }
 
+// Worker failures that would hit EVERY learner the same way (not signed in / not the admin / server not
+// configured / unreachable). One of these on the first learner means: stop, nothing else is touched.
+const SYSTEMIC_DELETE_ERRORS = ["worker/signed-out", "worker/unreachable", "worker/http-401", "worker/http-403", "worker/http-500"];
+
 /**
- * DELETE ALL USERS. Removes every learner's Firestore data (users doc first, see deleteLearnerFirestoreData).
- * If the `deleteLearnerAccount` Cloud Function is deployed it also removes their Auth logins; it is probed
- * once on the first learner, and if it is unavailable (Spark plan) the rest go browser-only and the caller is
- * told (authDeleted < deleted) to remove the logins in Firebase Console -> Authentication.
- * A permission error from the function aborts before anything else is touched.
- * @returns {Promise<{total:number, deleted:number, authDeleted:number, failed:Array}>}
+ * DELETE ALL USERS. Runs deleteLearnerAccount() for every learner (Auth login first, then Firestore data;
+ * see its comment). The first learner goes alone as a probe so a systemic problem (not allowed, Worker not
+ * set up, offline) is reported once instead of failing 4x in parallel. A learner whose login couldn't be
+ * deleted keeps ALL their data and is listed in `failed`; run it again to retry just those.
+ * @returns {Promise<{total:number, deleted:number, failed:Array}>}
  */
 export async function deleteAllLearners(onProgress) {
   const users = await listBulkTargets();
-  let useFunction = true;
-  let authDeleted = 0;
-  const deleteOne = async (u) => {
-    let viaFn = false;
-    if (useFunction) {
-      try {
-        await httpsCallable(getFunctions(auth.app), "deleteLearnerAccount")({ uid: u.id });
-        viaFn = true;
-      } catch (err) {
-        if (["functions/permission-denied", "functions/unauthenticated"].includes(err?.code)) throw err;
-        useFunction = false;   // not deployed / not reachable: browser-only from here on
-        console.warn("[admin] deleteLearnerAccount unavailable, deleting Firestore data only:", err);
-      }
-    }
-    await deleteLearnerFirestoreData(u.id);
-    if (viaFn) authDeleted += 1;
-  };
-  let failed = [];
-  let done = 0;
-  if (users.length) {
-    // Probe on the first learner alone so an unavailable function is detected once, not 4x in parallel.
-    failed = await runBulk(users.slice(0, 1), deleteOne);
-    done = 1;
-    onProgress?.(done, users.length);
-    // A real failure on the probe (e.g. permission-denied) means the rest would fail the same way: stop here.
-    if (failed.length) return { total: users.length, deleted: 0, authDeleted: 0, failed };
-    const rest = users.slice(1);
-    failed = failed.concat(await runBulk(rest, deleteOne, (d) => onProgress?.(done + d, users.length)));
+  if (!users.length) return { total: 0, deleted: 0, failed: [] };
+  // One fresh ID token for the whole run; each call then re-uses the SDK's cached (auto-refreshed) token.
+  await auth.currentUser?.getIdToken(true);
+  const deleteOne = (u) => deleteLearnerAccount(u.id, { forceRefresh: false });
+
+  let failed = await runBulk(users.slice(0, 1), deleteOne);
+  onProgress?.(1, users.length);
+  if (failed.length && SYSTEMIC_DELETE_ERRORS.includes(failed[0].error?.code)) {
+    return { total: users.length, deleted: 0, failed };
   }
-  return { total: users.length, deleted: users.length - failed.length, authDeleted, failed };
+  const rest = users.slice(1);
+  failed = failed.concat(await runBulk(rest, deleteOne, (d) => onProgress?.(1 + d, users.length)));
+  return { total: users.length, deleted: users.length - failed.length, failed };
 }
 
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────
