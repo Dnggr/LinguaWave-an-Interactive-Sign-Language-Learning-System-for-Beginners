@@ -4,20 +4,31 @@ const $ = (id) => document.getElementById(id);
 const root = $('cs');
 
 const ROUND_COUNT = 5;                       // sentences per run
-const COUNTDOWN = ['3', '2', '1', 'GO!'];
-const STEP_MS = 700;
+// How long the sign NAMES stay visible at the start of every sentence before they disappear and the learner has to
+// rely on memory. Change a number here to retune a level; the labels and icons feed the chip in the header.
+const DIFFICULTY = {
+  easy:   { label: 'Easy',   seconds: 10, icon: 'lc_sprout' },
+  medium: { label: 'Medium', seconds: 5,  icon: 'flame' },
+  hard:   { label: 'Hard',   seconds: 3,  icon: 'zap' }
+};
+const DEFAULT_DIFFICULTY = 'medium';
+const DIFFICULTY_KEY = 'lw-cs-difficulty';
+const PREVIEW_TICK_MS = 100;
+const GO_FLASH_MS = 700;
 const DRAG_THRESHOLD = 6;                    // px before a press becomes a drag (below it, it is a tap)
 const NEXT_ROUND_MS = 1100;
 const SHOW_ALL = new URLSearchParams(location.search).has('all');   // testing: skip the learned-sign filter
 
-let phase = 'idle';                          // idle | countdown | playing | checking | done
+let phase = 'idle';                          // idle | preview | playing | checking | done
 let rounds = [], roundIndex = 0, misses = 0, playMs = 0, roundStartedAt = 0;
 let tickId = null, timers = new Set(), selected = null, drag = null, justDragged = false, wasFull = false;
 let lastEligible = 0, lastLearnedOnly = true;   // how many sentences matched the learner's signs on the last Start
+let difficulty = DEFAULT_DIFFICULTY, runDifficulty = DEFAULT_DIFFICULTY;   // picked on the idle screen / locked in for the current run
+let previewId = null, previewEndsAt = 0;
 
 const norm = (v) => String(v || '').trim().toLowerCase();
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
-const setStatus = (message) => { $('cs-status').textContent = message; };
+const setStatus = (message) => { $('cs-status-text').textContent = message; };
 const slotsEl = () => $('cs-slots');
 const poolEl = () => $('cs-pool');
 const tileIn = (slot) => slot.querySelector(':scope > .cs-tile');
@@ -35,6 +46,33 @@ function shuffle(list) {
   const a = list.slice();
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
+}
+
+/* ---------- difficulty ---------- */
+
+function loadDifficulty() {
+  try {
+    const saved = localStorage.getItem(DIFFICULTY_KEY);
+    if (saved && DIFFICULTY[saved]) return saved;
+  } catch (_) { /* storage blocked: fall through to the default */ }
+  return DEFAULT_DIFFICULTY;
+}
+const previewSeconds = (key = difficulty) => DIFFICULTY[key].seconds;
+const idleHint = () => `Press Start. Each sentence begins with ${previewSeconds()} seconds to study every sign and its name. Then the names disappear and you drag the videos into order.`;
+
+function setDifficulty(key, save = true) {
+  if (!DIFFICULTY[key]) key = DEFAULT_DIFFICULTY;
+  difficulty = key; root.dataset.difficulty = key;
+  const d = DIFFICULTY[key];
+  $('cs-level').textContent = d.label;
+  const icon = $('cs-level-icon');                       // re-hydrate the chip icon (works before or after icons.js's own DOMContentLoaded pass)
+  icon.setAttribute('data-lw-icon', d.icon); icon.removeAttribute('data-lw-icon-done');
+  window.LWIcons?.hydrate?.(icon.parentElement);
+  const radio = document.querySelector(`input[name="cs-diff"][value="${key}"]`);
+  if (radio) radio.checked = true;
+  const hint = poolEl().querySelector('.cs-empty');
+  if (hint) hint.textContent = idleHint();
+  if (save) { try { localStorage.setItem(DIFFICULTY_KEY, key); } catch (_) { /* private mode: not persisted, still works */ } }
 }
 
 /* ---------- content ---------- */
@@ -136,15 +174,23 @@ function refreshNames() {
 }
 function setPhase(next) {
   phase = next; root.dataset.phase = next; refreshNames();
+  if (next !== 'playing') $('cs-preview').classList.remove('is-go');
+  $('cs-difficulty').disabled = !(next === 'idle' || next === 'done');
   $('cs-check').disabled = true; $('cs-reset').disabled = next !== 'playing';
 }
 
 function showIdle() {
   $('cs-sentence').textContent = 'Ready?';
   $('cs-count').textContent = '';
-  slotsEl().replaceChildren();
+  root.style.removeProperty('--cs-n'); root.style.removeProperty('--cs-cols');
+  // Three greyed-out slots keep the board the same height before and after Start, so nothing jumps.
+  slotsEl().replaceChildren(...[0, 1, 2].map((n) => {
+    const ghost = makeSlot(n); ghost.inert = true;
+    ['tabindex', 'role', 'aria-label'].forEach((a) => ghost.removeAttribute(a));
+    return ghost;
+  }));
   const hint = document.createElement('p');
-  hint.className = 'cs-empty'; hint.textContent = 'Press Start. You will see each sign with its name, then the names disappear and you drag the videos into order.';
+  hint.className = 'cs-empty'; hint.textContent = idleHint();
   poolEl().replaceChildren(hint);
   $('cs-count-label').textContent = '0/0'; $('cs-time').textContent = '0.0s'; $('cs-misses').textContent = '0';
   document.querySelector('.cs-progress')?.style.setProperty('--p', 0);
@@ -153,6 +199,7 @@ function showIdle() {
 function loadRound(index) {
   const round = rounds[index];
   selected = null; wasFull = false;
+  root.style.setProperty('--cs-n', round.words.length);                    // desktop: tiles are sized so ONE row holds every sign
   root.style.setProperty('--cs-cols', Math.min(round.words.length, 3));   // phones: tiles are sized so one row holds up to 3
   $('cs-sentence').textContent = round.text;
   $('cs-count-label').textContent = `${index + 1}/${rounds.length}`;
@@ -163,24 +210,45 @@ function loadRound(index) {
 
 function startRound() {
   loadRound(roundIndex);
-  setPhase('countdown');
-  setStatus('Memorize the signs. The names disappear at GO!');
-  countdown(0);
+  setPhase('preview');
+  beginPreview();
 }
 
-function countdown(step) {
-  if (phase !== 'countdown') return;
-  const label = $('cs-count');
-  if (step >= COUNTDOWN.length) {
-    label.textContent = '';
-    roundStartedAt = performance.now();
-    setPhase('playing');
-    setStatus('Drag the sign videos into the right order. Tap a sign, then a slot, works too.');
-    return;
-  }
-  label.textContent = COUNTDOWN[step];
-  label.style.animation = 'none'; void label.offsetWidth; label.style.animation = '';
-  later(() => countdown(step + 1), STEP_MS);
+// PREVIEW: every sentence opens with a timed window (Easy 10s / Medium 5s / Hard 3s) where the sign names are visible.
+// When it runs out the names fade away and the clock starts. "I'm ready" ends the window early.
+function beginPreview() {
+  const total = previewSeconds(runDifficulty) * 1000;
+  previewEndsAt = performance.now() + total;
+  $('cs-skip').hidden = false;
+  setStatus(`Study the signs and their names. The names disappear in ${previewSeconds(runDifficulty)} seconds.`);
+  paintPreview(total, total);
+  clearInterval(previewId);
+  previewId = setInterval(() => {
+    const left = previewEndsAt - performance.now();
+    if (left <= 0) endPreview(); else paintPreview(left, total);
+  }, PREVIEW_TICK_MS);
+}
+
+function paintPreview(left, total) {
+  $('cs-preview-text').textContent = 'Memorize';
+  $('cs-count').textContent = Math.ceil(left / 1000);
+  $('cs-preview-fill').style.setProperty('--pv', Math.max(0, left / total).toFixed(3));
+}
+
+function stopPreview() {
+  clearInterval(previewId); previewId = null;
+  $('cs-skip').hidden = true;
+}
+
+function endPreview() {
+  if (phase !== 'preview') return;
+  stopPreview();
+  roundStartedAt = performance.now();
+  setPhase('playing');
+  setStatus('Names hidden. Drag the videos into the right order, or tap a sign, then a slot.');
+  $('cs-preview-text').textContent = ''; $('cs-count').textContent = 'GO!';
+  $('cs-preview').classList.add('is-go');
+  later(() => $('cs-preview').classList.remove('is-go'), GO_FLASH_MS);
 }
 
 /* ---------- moving tiles ---------- */
@@ -315,6 +383,7 @@ async function start(useAll = false) {
     $('cs-error').hidden = false; $('cs-start').disabled = false; $('cs-all').disabled = false; setStatus('Could not start.');
     return;
   }
+  runDifficulty = difficulty;
   rounds = built.rounds; lastEligible = built.eligible; lastLearnedOnly = !(useAll || SHOW_ALL);
   // Fewer than a full run of sentences match what the learner knows: offer every sentence instead of a dead end.
   $('cs-all').hidden = useAll || SHOW_ALL || built.eligible >= ROUND_COUNT;
@@ -330,26 +399,28 @@ async function start(useAll = false) {
 }
 
 function finish() {
-  clearInterval(tickId); tickId = null; clearTimers();
+  clearInterval(tickId); tickId = null; clearTimers(); stopPreview();
   setPhase('done'); tick();
   document.querySelector('.cs-progress')?.style.setProperty('--p', 1);
   const total = rounds.length, accuracy = Math.round(total / (total + misses) * 100);
-  $('cs-summary').textContent = `Time: ${formatTime(playMs)} · Sentences: ${total} · Misses: ${misses} · Accuracy: ${accuracy}%`;
+  $('cs-summary').textContent = `Difficulty: ${DIFFICULTY[runDifficulty].label} · Time: ${formatTime(playMs)} · Sentences: ${total} · Misses: ${misses} · Accuracy: ${accuracy}%`;
   $('cs-result').hidden = false;
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;
   $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run complete.');
 }
 
-function quit() {
-  clearInterval(tickId); tickId = null; clearTimers();
+function toIdle(message) {
+  clearInterval(tickId); tickId = null; clearTimers(); stopPreview();
   if (drag) { window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp); window.removeEventListener('pointercancel', onPointerUp); drag.tile.remove(); drag = null; }
   selected = null; rounds = [];
+  $('cs-result').hidden = true;
   setPhase('idle'); showIdle();
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;
   $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
-  setStatus('Run abandoned.');
+  setStatus(message);
 }
+const quit = () => toIdle('Run abandoned. Pick a difficulty and press Start when you are ready.');
 
 /* ---------- wiring ---------- */
 
@@ -364,6 +435,9 @@ root.addEventListener('keydown', (event) => {
   const tile = event.target.closest?.('.cs-tile'), slot = event.target.closest?.('.cs-slot');
   if (tile) { event.preventDefault(); tapTile(tile); } else if (slot) { event.preventDefault(); tapSlot(slot); }
 });
+$('cs-difficulty').addEventListener('change', (event) => { if (event.target.name === 'cs-diff') setDifficulty(event.target.value); });
+$('cs-skip').addEventListener('click', endPreview);
+$('cs-change').addEventListener('click', () => toIdle('Pick a difficulty, then press Start.'));
 $('cs-start').addEventListener('click', () => start(false));
 $('cs-all').addEventListener('click', () => start(true));
 $('cs-again').addEventListener('click', () => start(false));
@@ -380,4 +454,5 @@ $('cs-quit-confirm').addEventListener('click', () => { $('cs-quit-modal').hidden
 $('cs-error-close').addEventListener('click', () => { $('cs-error').hidden = true; });
 $('cs-error-retry').addEventListener('click', () => { $('cs-error').hidden = true; start(); });
 
+setDifficulty(loadDifficulty(), false);
 setPhase('idle'); showIdle();

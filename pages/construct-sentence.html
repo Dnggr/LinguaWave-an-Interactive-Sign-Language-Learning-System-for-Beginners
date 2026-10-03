@@ -54,49 +54,72 @@
       </div>
     </aside>
     <main class="app-main" id="main">
-      <div class="cs" id="cs" data-phase="idle">
-        <header class="gm-head ta-head">
-          <div class="gm-head__text"><h1 class="gm-title">Construct a Sentence</h1><p>Drag the sign videos into the right order to build the sentence.</p></div>
-          <a class="btn btn--ghost btn--sm ta-back" href="game.html" aria-label="Back to game modes">← Back</a>
+      <div class="cs" id="cs" data-phase="idle" data-difficulty="medium">
+        <header class="cs-head">
+          <a class="btn btn--ghost btn--sm cs-back" href="game.html" aria-label="Back to game modes"><span data-lw-icon="lc_arrow_left" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Back</a>
+          <div class="cs-head__text">
+            <h1 class="gm-title">Construct a Sentence</h1>
+            <p>Memorize the signs, then drag the videos into the right order.</p>
+          </div>
           <div class="gm-stats" role="status" aria-live="polite">
-            <span class="gm-chip">Sentence <b id="cs-count-label">0/0</b></span>
-            <span class="gm-chip">Time <b id="cs-time">0.0s</b></span>
-            <span class="gm-chip gm-chip--miss">Misses <b id="cs-misses">0</b></span>
+            <span class="gm-chip cs-chip--level" title="Difficulty"><span data-lw-icon="flame" data-lw-icon-size="sm" id="cs-level-icon" aria-hidden="true"></span><b id="cs-level">Medium</b></span>
+            <span class="gm-chip"><span data-lw-icon="lc_list_ordered" data-lw-icon-size="sm" aria-hidden="true"></span>Sentence <b id="cs-count-label">0/0</b></span>
+            <span class="gm-chip"><span data-lw-icon="lc_timer" data-lw-icon-size="sm" aria-hidden="true"></span>Time <b id="cs-time">0.0s</b></span>
+            <span class="gm-chip gm-chip--miss"><span data-lw-icon="lc_circle_x" data-lw-icon-size="sm" aria-hidden="true"></span>Misses <b id="cs-misses">0</b></span>
           </div>
         </header>
         <div class="ta-progress cs-progress" aria-hidden="true"><span class="ta-progress__fill"></span></div>
 
         <section class="cs-board" aria-label="Sentence builder">
           <div class="cs-prompt">
-            <p class="cs-eyebrow">BUILD THIS SENTENCE</p>
-            <h2 class="cs-sentence" id="cs-sentence">Ready?</h2>
+            <div class="cs-prompt__text">
+              <p class="cs-eyebrow">BUILD THIS SENTENCE</p>
+              <h2 class="cs-sentence" id="cs-sentence">Ready?</h2>
+            </div>
+            <!-- Preview timer: shown only while the sign names are visible (data-phase="preview"), plus a short GO! flash. -->
+            <div class="cs-preview" id="cs-preview" aria-hidden="true">
+              <span class="cs-preview__icon" data-lw-icon="lc_eye" data-lw-icon-size="sm"></span>
+              <span class="cs-preview__text" id="cs-preview-text">Memorize</span>
+              <b class="cs-count" id="cs-count"></b>
+              <span class="cs-preview__bar"><span class="cs-preview__fill" id="cs-preview-fill"></span></span>
+            </div>
           </div>
-          <div class="cs-count" id="cs-count" aria-live="assertive"></div>
 
           <div>
-            <p class="cs-label">YOUR SENTENCE (left to right)</p>
+            <p class="cs-label"><span data-lw-icon="lc_list_ordered" data-lw-icon-size="sm" aria-hidden="true"></span>YOUR SENTENCE (left to right)</p>
             <div class="cs-slots" id="cs-slots" aria-label="Your sentence, in order"></div>
           </div>
           <div>
-            <p class="cs-label">SIGNS TO PLACE</p>
+            <p class="cs-label"><span data-lw-icon="lc_shuffle" data-lw-icon-size="sm" aria-hidden="true"></span>SIGNS TO PLACE</p>
             <div class="cs-pool" id="cs-pool" aria-label="Scrambled signs"></div>
           </div>
 
-          <p id="cs-status" class="ta-status" role="status" aria-live="polite">Press Start when you are ready.</p>
+          <fieldset class="cs-difficulty" id="cs-difficulty">
+            <legend class="cs-label"><span data-lw-icon="lc_hourglass" data-lw-icon-size="sm" aria-hidden="true"></span>DIFFICULTY: how long the sign names stay visible</legend>
+            <div class="cs-seg">
+              <label class="cs-seg__opt"><input type="radio" name="cs-diff" value="easy"><span class="cs-seg__body"><span data-lw-icon="lc_sprout" aria-hidden="true"></span><span class="cs-seg__name">Easy</span><span class="cs-seg__sub">10 seconds</span></span></label>
+              <label class="cs-seg__opt"><input type="radio" name="cs-diff" value="medium" checked><span class="cs-seg__body"><span data-lw-icon="flame" aria-hidden="true"></span><span class="cs-seg__name">Medium</span><span class="cs-seg__sub">5 seconds</span></span></label>
+              <label class="cs-seg__opt"><input type="radio" name="cs-diff" value="hard"><span class="cs-seg__body"><span data-lw-icon="zap" aria-hidden="true"></span><span class="cs-seg__name">Hard</span><span class="cs-seg__sub">3 seconds</span></span></label>
+            </div>
+          </fieldset>
+
+          <p id="cs-status" class="cs-status" role="status" aria-live="polite"><span data-lw-icon="lc_info" data-lw-icon-size="sm" aria-hidden="true"></span><span id="cs-status-text">Pick a difficulty, then press Start.</span></p>
           <div class="cs-controls">
-            <button class="btn btn--primary" id="cs-start" type="button">Start</button>
+            <button class="btn btn--primary" id="cs-start" type="button"><span data-lw-icon="lc_play" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Start</button>
             <button class="btn btn--sm" id="cs-all" type="button" hidden>Practice with all signs</button>
-            <button class="btn btn--sm" id="cs-check" type="button" disabled>Check</button>
-            <button class="btn btn--ghost btn--sm" id="cs-reset" type="button" disabled>Reset order</button>
-            <button class="btn btn--ghost btn--sm" id="cs-quit" type="button" disabled>Quit run</button>
+            <button class="btn btn--secondary btn--sm" id="cs-skip" type="button" hidden><span data-lw-icon="lc_skip_forward" data-lw-icon-self="1" data-lw-icon-size="sm"></span>I'm ready</button>
+            <button class="btn btn--secondary btn--sm" id="cs-check" type="button" disabled><span data-lw-icon="lc_circle_check" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Check</button>
+            <button class="btn btn--ghost btn--sm" id="cs-reset" type="button" disabled><span data-lw-icon="lc_rotate_ccw" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Reset order</button>
+            <button class="btn btn--ghost btn--sm cs-quit" id="cs-quit" type="button" disabled><span data-lw-icon="lc_circle_x" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Quit run</button>
           </div>
         </section>
 
         <section class="gm-overlay cs-overlay" id="cs-result" hidden aria-live="polite">
           <div class="gm-card">
+            <span class="cs-result-icon" data-lw-icon="trophy" aria-hidden="true"></span>
             <h2>Sentences complete</h2>
             <p id="cs-summary"></p>
-            <div class="cs-result-actions"><button class="btn btn--primary" id="cs-again" type="button">Play again</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
+            <div class="cs-result-actions"><button class="btn btn--primary" id="cs-again" type="button"><span data-lw-icon="lc_rotate_ccw" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Play again</button><button class="btn btn--ghost" id="cs-change" type="button"><span data-lw-icon="lc_hourglass" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Change difficulty</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
           </div>
         </section>
         <section class="gm-overlay cs-overlay" id="cs-error" hidden role="alertdialog" aria-modal="true" aria-labelledby="cs-error-title">
