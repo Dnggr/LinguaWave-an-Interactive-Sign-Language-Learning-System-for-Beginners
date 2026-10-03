@@ -73,15 +73,11 @@
  *            reads/writes. Every other function is storage-agnostic.
  * ─────────────────────────────────────────────────────────────────
  */
-
-
 'use strict';
-
 (function () {
   const STORE_KEY     = 'lw_progress_v3';
   const LEVEL_ORDER    = ['basic', 'medium', 'intermediate'];
   const PASS_THRESHOLD = 0.80;
-
   /**
    * ⚠️ TEMPORARY DEBUG SWITCH — added 2026-08-21, per explicit user
    * request, NOT part of PIVOT_CHECKLIST.md's Dashboard UX Review scope.
@@ -109,44 +105,21 @@
    * PIVOT_CHECKLIST.md so this isn't forgotten in a later session.
    */
   const DEBUG_UNLOCK_ALL = true;
-
   function loadStore() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch (e) { console.warn('[progress.js] corrupt store, resetting', e); return {}; }
   }
-
   function saveStoreLocal(store) {
+    // Stamp the owner so hydrateStore() can tell this cache from another account's.
+    if (!store.uid) { const uid = window.LWAuth?.getAuthUid?.(); if (uid) store.uid = uid; }
     localStorage.setItem(STORE_KEY, JSON.stringify(store));
   }
-
-  async function saveStore(store) {
-    saveStoreLocal(store); // write locally first, always — instant, safe from navigation interruption
-
-    // Same guard as hydrateStore() above — a page without auth.js loaded
-    // already fell into the catch block below via a TypeError (so this
-    // was never a crash), but bail explicitly so it's a clear no-op
-    // instead of a caught-and-logged exception every call.
-    if (!window.LWAuth) return;
-
-    try {
-      const { db, doc, setDoc, getCurrentUser } = window.LWAuth;
-      const user = getCurrentUser();
-      if (!user) return;
-
-      const userRef = doc(db, 'userProgress', user.uid);
-      await setDoc(userRef, store);
-    } catch (e) {
-      console.warn('[progress.js] could not save progress:', e);
-    }
-  }
-
   // REV 4 PHASE 3 — CHANGED: flat by categoryId, no more level layer.
   function ensureCategory(store, categoryId) {
     if (!store.categories) store.categories = {};
     if (!store.categories[categoryId]) store.categories[categoryId] = { signs: {}, assessment: null };
     return store.categories[categoryId];
   }
-
   // NEW (this session) — small flat map for gated 'interactive' units
   // (currently just fingerspell_name). Same shape/pattern as
   // levelAssessments below, keyed by unit id instead of level. See
@@ -155,88 +128,119 @@
     if (!store.unitAssessments) store.unitAssessments = {};
     return store.unitAssessments;
   }
-
   // NEW — level-final assessments still get their own small flat map;
   // this concept is untouched by the Phase 3 flattening (see file header).
   function ensureLevelAssessments(store) {
     if (!store.levelAssessments) store.levelAssessments = {};
     return store.levelAssessments;
   }
-
+  /* ── CLOUD SYNC (userProgress/{uid}) ──────────────────────────────
+   * localStorage is the fast cache every read uses; Firestore is the copy that follows the
+   * learner to another device. Two rules keep devices from erasing each other:
+   *   1. On every page load (at most once a minute per tab) the REMOTE doc is read and
+   *      MERGED into the local store, even if the local cache already belongs to this uid.
+   *      (It used to skip the fetch whenever cached.uid matched, so a device that had ever
+   *      been used never saw progress made elsewhere.)
+   *   2. Nothing is pushed until that merge has happened (`remoteSynced`); a full-document
+   *      write from a device that hasn't pulled yet would wipe the other device's progress.
+   * Only window.LWAuth.readProgressDoc / writeProgressDoc are used: auth.js no longer exports
+   * the raw doc/getDoc/setDoc, so the old direct calls threw a (caught) TypeError and NOTHING
+   * ever reached Firestore.
+   * ──────────────────────────────────────────────────────────────── */
+  const SYNC_CACHE_KEY = 'lw_progress_last_sync_v1';   // sessionStorage { uid, at }
+  const SYNC_TTL_MS = 60 * 1000;
+  let remoteSynced = false;
+  const emptyStore = (uid) => ({ uid, categories: {}, levelAssessments: {}, unitAssessments: {} });
+  const laterIso = (a, b) => (!a ? (b || null) : !b ? a : (String(a) >= String(b) ? a : b));
+  function mergeAssessment(a, b) {
+    if (!a) return b || null;
+    if (!b) return a;
+    const newer = String(a.lastAt || '') >= String(b.lastAt || '') ? a : b;
+    return {
+      ...newer,
+      attempts:  Math.max(a.attempts || 0, b.attempts || 0),
+      bestScore: Math.max(a.bestScore || 0, b.bestScore || 0),
+      passed:    !!(a.passed || b.passed),
+      lastAt:    laterIso(a.lastAt, b.lastAt),
+    };
+  }
+  function mergeAssessmentMap(a, b) {
+    const out = {};
+    new Set([...Object.keys(a || {}), ...Object.keys(b || {})]).forEach((k) => { out[k] = mergeAssessment(a?.[k], b?.[k]); });
+    return out;
+  }
+  /** Union of two stores: nothing practiced/passed on either device is lost. */
+  function mergeStores(local, remote, uid) {
+    const out = emptyStore(uid);
+    new Set([...Object.keys(local.categories || {}), ...Object.keys(remote.categories || {})]).forEach((id) => {
+      const l = local.categories?.[id] || {}, r = remote.categories?.[id] || {};
+      const signs = {};
+      new Set([...Object.keys(l.signs || {}), ...Object.keys(r.signs || {})]).forEach((s) => {
+        signs[s] = { ...(r.signs?.[s] || {}), ...(l.signs?.[s] || {}), practicedAt: laterIso(l.signs?.[s]?.practicedAt, r.signs?.[s]?.practicedAt) };
+      });
+      out.categories[id] = { signs, assessment: mergeAssessment(l.assessment, r.assessment) };
+    });
+    out.levelAssessments = mergeAssessmentMap(local.levelAssessments, remote.levelAssessments);
+    out.unitAssessments  = mergeAssessmentMap(local.unitAssessments, remote.unitAssessments);
+    return out;
+  }
+  async function saveStore(store) {
+    saveStoreLocal(store); // write locally first, always — instant, safe from navigation interruption
+    if (!window.LWAuth) return;
+    try {
+      const { writeProgressDoc, getAuthUid } = window.LWAuth;
+      if (!writeProgressDoc || !getAuthUid || !getAuthUid()) return;
+      await progressReady;          // the first remote merge re-reads local, so this change is part of it
+      if (!remoteSynced) return;    // remote was never read (offline/blocked): stay local, the next load merges + pushes
+      await writeProgressDoc('userProgress', loadStore());   // latest local, not the possibly stale argument
+    } catch (e) {
+      console.warn('[progress.js] could not save progress:', e);
+    }
+  }
  /* ── HYDRATE: pull remote progress into local cache ───────────────
-   * Runs once when this script loads. Waits for Firebase to confirm
-   * who's logged in, then checks whether the cached store actually
-   * belongs to THIS user. If not (new device, different account, or
-   * empty cache), fetches the real progress from Firestore instead.
+   * Runs once when this script loads: waits for Firebase auth, reads the learner's remote
+   * progress and MERGES it with this device's cache (see CLOUD SYNC above).
    * ──────────────────────────────────────────────────────────────── */
   let resolveProgressReady;
   const progressReady = new Promise((resolve) => { resolveProgressReady = resolve; });
-
-async function hydrateStore() {
-  await window.LWAuth?.whenAuthReady?.();
-  console.log('[progress.js] authReady resolved, starting hydration check');
-
-  // BUGFIX (this revision) — this used to destructure window.LWAuth
-  // unguarded right after the optional-chained await above, so a page
-  // that loads progress.js without auth.js (e.g. a dev-only
-  // diagnostic page) threw an unhandled TypeError here, and
-  // since hydrateStore() is fire-and-forget with no .catch() at its one
-  // call site below, that was an unhandled promise rejection on every
-  // load of such a page. Same defensive shape AGENTS.md's own QA
-  // checklist already asks for ("window.LWAuth ... safely guarded
-  // before invoking methods or destructuring properties") — this just
-  // wasn't applied here yet. Degrades the same way the "no user" branch
-  // already does: resolve progressReady so callers awaiting it don't
-  // hang, and treat it as a guest/no-progress-source state.
-  if (!window.LWAuth) {
-    console.log('[progress.js] window.LWAuth not loaded on this page, skipping hydration');
+  async function hydrateStore() {
+    await window.LWAuth?.whenAuthReady?.();
+    if (!window.LWAuth) { resolveProgressReady(); return; }   // dev page without auth.js: local-only
+    const { readProgressDoc, writeProgressDoc, getCurrentUser } = window.LWAuth;
+    const user = getCurrentUser();
+    if (!user) { resolveProgressReady(); return; }
+    // A local cache that belongs to ANOTHER account is discarded, never merged.
+    const ownLocal = () => { const s = loadStore(); return s.uid === user.uid ? s : emptyStore(user.uid); };
+    try {
+      if (!readProgressDoc || !writeProgressDoc) { resolveProgressReady(); return; }
+      const last = JSON.parse(sessionStorage.getItem(SYNC_CACHE_KEY) || 'null');
+      if (last && last.uid === user.uid && Date.now() - last.at < SYNC_TTL_MS && loadStore().uid === user.uid) {
+        remoteSynced = true;        // merged moments ago in this tab; local already holds the result
+        resolveProgressReady();
+        return;
+      }
+    } catch (e) { /* sessionStorage blocked: just sync for real */ }
+    try {
+      const snapshot = await readProgressDoc('userProgress');
+      if (!snapshot) { resolveProgressReady(); return; }      // signed out / unverified: stay local-only
+      const remote = snapshot.exists ? (snapshot.data || {}) : {};
+      const merged = mergeStores(ownLocal(), remote, user.uid);   // local re-read AFTER the await
+      saveStoreLocal(merged);
+      remoteSynced = true;
+      if (!snapshot.exists || JSON.stringify(merged) !== JSON.stringify(remote)) {
+        await writeProgressDoc('userProgress', merged);       // converge: other devices get the union too
+      }
+      try { sessionStorage.setItem(SYNC_CACHE_KEY, JSON.stringify({ uid: user.uid, at: Date.now() })); } catch (e) { /* ignore */ }
+    } catch (e) {
+      console.warn('[progress.js] could not sync progress:', e);
+    }
     resolveProgressReady();
-    return;
   }
-
-  const { db, doc, getDoc, getCurrentUser } = window.LWAuth;
-  const user = getCurrentUser();
-
-  if (!user) {
-    console.log('[progress.js] no user, skipping hydration');
-    resolveProgressReady();
-    return;
-  }
-
-  const cached = loadStore();
-  console.log('[progress.js] cached.uid:', cached.uid, 'vs user.uid:', user.uid);
-
-  if (cached.uid === user.uid) {
-    console.log('[progress.js] cache matches, skipping fetch');
-    resolveProgressReady();
-    return;
-  }
-
-  console.log('[progress.js] fetching from Firestore...');
-  try {
-    const userRef = doc(db, 'userProgress', user.uid);
-    const snapshot = await getDoc(userRef);
-    // REV 4 PHASE 3 — CHANGED: flat default shape (categories/levelAssessments)
-    // instead of the old { levels: {} }.
-    const remoteStore = snapshot.exists() ? snapshot.data() : { uid: user.uid, categories: {}, levelAssessments: {}, unitAssessments: {} };
-    remoteStore.uid = user.uid;
-    saveStoreLocal(remoteStore);
-    console.log('[progress.js] hydration complete, saved:', remoteStore);
-  } catch (e) {
-    console.warn('[progress.js] could not fetch progress:', e);
-  }
-
-  resolveProgressReady();
-}
-
   hydrateStore(); // kick off as soon as this script loads
-
   function whenProgressReady() {
     return progressReady;
   }
-
   /* ── Writes ────────────────────────────────────────────────────── */
-
   /** Mark a sign as practiced (viewed / attempted in lesson.html). */
   function recordSignPracticed(level, category, signId) {
     // NOTE: `level` is accepted (unused internally) purely so every
@@ -249,7 +253,6 @@ async function hydrateStore() {
     cat.signs[signId] = { ...(cat.signs[signId] || {}), practicedAt: new Date().toISOString() };
     saveStore(store);
   }
-
   /**
    * Record the result of a category-end assessment.
    * @param {{score:number, passed:boolean, breakdown:object}} result
@@ -269,7 +272,6 @@ async function hydrateStore() {
     saveStore(store);
     return cat.assessment;
   }
-
   /**
    * NEW (this session) — record the result of a gated 'interactive'
    * unit's assessment (currently just fingerspell_name). Same shape as
@@ -292,7 +294,6 @@ async function hydrateStore() {
     saveStore(store);
     return map[unitId];
   }
-
   /**
    * Record the result of a level-final assessment.
    * UNCHANGED by Phase 3 — level-final assessments are still a
@@ -315,9 +316,7 @@ async function hydrateStore() {
     saveStore(store);
     return map[level];
   }
-
   /* ── Reads ─────────────────────────────────────────────────────── */
-
   // REV 4 PHASE 3 — CHANGED: `level` param kept for call-site
   // compatibility (js/dashboard.js, js/quiz.js, js/learn.js all call
   // this as getCategoryProgress(level, categoryId)) but is no longer
@@ -326,24 +325,20 @@ async function hydrateStore() {
     const store = loadStore();
     return store.categories?.[category] ?? { signs: {}, assessment: null };
   }
-
   function getLevelAssessment(level) {
     const store = loadStore();
     return store.levelAssessments?.[level] ?? null;
   }
-
   /** NEW (this session) — mirrors getLevelAssessment, for gated units. */
   function getUnitAssessment(unitId) {
     const store = loadStore();
     return store.unitAssessments?.[unitId] ?? null;
   }
-
   /** Categories in a level that actually have playable sign content. */
   function liveCategoriesFor(level) {
     const cats = window.LWMissions?.getCategoriesForLevel?.(level) ?? [];
     return cats.filter(c => !c.comingSoon && (window.LWMissions.getCategorySigns(level, c.id).length > 0));
   }
-
   /**
    * NEW — REV 4 PHASE 3. Every live (has content, not comingSoon)
    * category in the WHOLE app, in one flat sequence, ordered by
@@ -380,7 +375,6 @@ async function hydrateStore() {
       });
     return out;
   }
-
   /**
    * NEW (this session) — every 'interactive' unit tagged `gated: true`
    * in missions.js's UNITS_V2 array (currently just fingerspell_name), in
@@ -393,7 +387,6 @@ async function hydrateStore() {
     const units = window.LWMissions?.getUnits?.() ?? [];
     return units.filter(u => u.kind === 'interactive' && u.gated === true);
   }
-
   /**
    * NEW (this session) — true only if every gate that sits BEFORE the
    * given unit order (in UNITS order) has been passed. Category-group
@@ -404,7 +397,6 @@ async function hydrateStore() {
       .filter(g => g.order < unitOrder)
       .every(g => !!getUnitAssessment(g.id)?.passed);
   }
-
   /**
    * A category is unlocked if it's the first live category in the
    * FLAT cross-unit chain, or the previous live category in that same
@@ -430,10 +422,8 @@ async function hydrateStore() {
     // DEBUG_UNLOCK_ALL short-circuit — see its doc comment above. Real
     // logic (unchanged) still runs below when this is `false`.
     if (DEBUG_UNLOCK_ALL) return true;
-
     const cat = (window.LWMissions?.content?.CATEGORIES ?? []).find(c => c.id === categoryId);
     if (cat && !gatesClearedBefore(cat.unit)) return false;
-
     const chain = getOrderedLiveCategories();
     const idx   = chain.findIndex(c => c.id === categoryId);
     if (idx <= 0) return true;
@@ -441,7 +431,6 @@ async function hydrateStore() {
     const prevProg = getCategoryProgress(prevCat.level, prevCat.id);
     return !!prevProg.assessment?.passed;
   }
-
   /**
    * Levels themselves are never locked — a learner can jump straight
    * into Medium or Intermediate if that's what they want to practice.
@@ -454,20 +443,17 @@ async function hydrateStore() {
   function isLevelUnlocked(_level) {
     return true;
   }
-
   /** The level-final assessment unlocks once every live category has passed. */
   function isLevelFinalUnlocked(level) {
     const live = liveCategoriesFor(level);
     if (live.length === 0) return false;
     return live.every(c => !!getCategoryProgress(level, c.id).assessment?.passed);
   }
-
   /** Aggregate stats for a level — powers dashboard cards + learn.js locks. */
   function getLevelStats(level) {
     const live    = liveCategoriesFor(level);
     const allCats = window.LWMissions?.getCategoriesForLevel?.(level) ?? [];
     let totalSigns = 0, practicedSigns = 0, passedCategories = 0;
-
     live.forEach(c => {
       const signs = window.LWMissions.getCategorySigns(level, c.id);
       const prog  = getCategoryProgress(level, c.id);
@@ -475,7 +461,6 @@ async function hydrateStore() {
       practicedSigns += signs.filter(s => !!prog.signs[s]).length;
       if (prog.assessment?.passed) passedCategories++;
     });
-
     return {
       totalCategories:  allCats.length,
       liveCategories:   live.length,
@@ -487,7 +472,6 @@ async function hydrateStore() {
       unlocked:           isLevelUnlocked(level),
     };
   }
-
   /** Flat list of every practiced sign, for the dashboard recap grid. */
   function getAllLearnedSigns() {
     // REV 4 PHASE 3 — CHANGED: walks the new flat `categories` map
@@ -505,7 +489,6 @@ async function hydrateStore() {
     });
     return out;
   }
-
   window.LWProgress = {
     PASS_THRESHOLD, LEVEL_ORDER,
     recordSignPracticed, recordCategoryAssessment, recordLevelAssessment,

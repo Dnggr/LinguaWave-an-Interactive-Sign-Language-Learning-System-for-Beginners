@@ -10,7 +10,6 @@ import { auth, db, doc, getDoc, collection, getDocs, query, orderBy } from './au
 import { limit, where, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { SIGN_DICTIONARY } from './dictionary.js';
 import * as E from './xp-engine.mjs';
-
 const CFG = {
   MAX_LEVEL: E.CONFIG.MAX_LEVEL,
   LEVEL_XP: E.LEVEL_XP,
@@ -27,14 +26,12 @@ const toastTimes = new Map();
 let latest = null, flushing = null, lastError = null, retryTimer = null;
 let pageActive = true;
 const waitTimers = new Map();
-
 function delay(ms) {
   return new Promise((resolve) => {
     const id = setTimeout(() => { waitTimers.delete(id); resolve(); }, ms);
     waitTimers.set(id, resolve);
   });
 }
-
 const levelFromXp = E.levelFromXp;
 const levelProgress = E.levelProgress;
 function tierOf(level) {
@@ -61,23 +58,19 @@ function queueKey(uid = currentUid()) { return `lw_xp_pending_v2:${uid}`; }
 function randomId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
-
 /* Streak shown for a stored xpState doc, as of right now in that doc's own timezone.
  * Needs E.effectiveStreak and E.dayKey from xp-engine.mjs (the grace-rule logic from main). */
 function liveStreakOf(state) {
   if (!state?.streak) return 0;
   try { return E.effectiveStreak(state.streak, E.dayKey(Date.now(), state.tz || 'UTC')); } catch { return 0; }
 }
-
 function publish(result) {
   if (!result) return;
   latest = { ...(latest || {}), ...result };
   listeners.forEach((fn) => { try { fn(result, latest); } catch (error) { console.warn('[xp] update listener failed', error); } });
   notify(result);
 }
-
 const onUpdate = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-
 function errorMessage(error) {
   if (!auth.currentUser) return 'Sign in with a verified account to earn XP.';
   if (!auth.currentUser.emailVerified || error?.code === 'unauthenticated') return 'Verify your email to earn XP.';
@@ -87,7 +80,6 @@ function errorMessage(error) {
   if (code === 'failed-precondition') return 'XP could not be saved. Refresh the page and try again.';
   return 'XP could not be saved. Check your connection and try again.';
 }
-
 function reportError(error) {
   const code = error?.code || 'unknown';
   const message = error?.message || String(error);
@@ -99,11 +91,9 @@ function reportError(error) {
   const toast = window.LinguaWave?.showToast || window.showToast;
   if (typeof toast === 'function') toast(errorMessage(error), 'error');
 }
-
 function isOfflineError(error) {
   return ['unavailable', 'network-request-failed', 'deadline-exceeded'].includes(String(error?.code || '').replace(/^firestore\//, ''));
 }
-
 function readQueue(uid = currentUid()) {
   if (!uid) return [];
   try {
@@ -122,12 +112,10 @@ function readQueue(uid = currentUid()) {
     return migrated;
   } catch { return []; }
 }
-
 function writeQueue(value, uid = currentUid()) {
   if (!uid) return;
   try { localStorage.setItem(queueKey(uid), JSON.stringify(value.slice(-300))); } catch { /* storage may be disabled */ }
 }
-
 function sameJob(a, b) {
   if (a.type !== b.type) return false;
   if (a.type === 'item') return a.missionId === b.missionId && a.itemIndex === b.itemIndex;
@@ -139,7 +127,6 @@ function sameJob(a, b) {
   if (a.type === 'streak') return true;
   return a.qid === b.qid;
 }
-
 function enqueue(job) {
   const uid = currentUid();
   if (!uid) return Promise.resolve({ ok: false, reason: 'unauthenticated' });
@@ -157,18 +144,15 @@ function enqueue(job) {
   void flush();
   return promise;
 }
-
 function settleJob(job, result) {
   if (!job?.qid) return;
   const pending = pendingResolvers.get(job.qid);
   if (pending) pending.resolve(result);
   pendingResolvers.delete(job.qid);
 }
-
 function runtimeMissions() {
   try { return window.LWMissions?.getAllMissions?.() || []; } catch { return []; }
 }
-
 function missionForId(id) {
   const mission = runtimeMissions().find((item) => item?.id === id);
   if (!mission || !Array.isArray(mission.items)) return null;
@@ -183,7 +167,6 @@ function missionForId(id) {
     items: mission.items.map((item) => ({ ...item })),
   };
 }
-
 function signTypes() {
   const types = {};
   Object.entries(SIGN_DICTIONARY).forEach(([signId, definition]) => {
@@ -191,7 +174,6 @@ function signTypes() {
   });
   return types;
 }
-
 function localLearnedSigns() {
   const learned = new Set();
   const missions = window.LWMissions;
@@ -203,29 +185,24 @@ function localLearnedSigns() {
   } catch (error) { console.warn('[xp] could not read completed lesson signs:', error); }
   return learned;
 }
-
 function combinedLearnedSigns(state) {
   return [...new Set([...(state?.learnedSigns || []), ...localLearnedSigns()])].sort();
 }
-
 async function getLearnedSigns() {
   await window.LWAuth?.whenAuthReady?.();
   try { await window.LWMissions?.whenMissionsSyncReady?.(); } catch { /* local lesson progress still counts as best-effort */ }
   const state = await getMyState();
   return combinedLearnedSigns(state);
 }
-
 function timestampMs(value) {
   if (!value) return 0;
   if (typeof value.toMillis === 'function') return value.toMillis();
   if (value instanceof Date) return value.getTime();
   return Number(value) || 0;
 }
-
 function displayName(userData, user) {
   return String(userData?.name || user?.displayName || user?.email?.split('@')[0] || 'Learner').trim().slice(0, 30) || 'Learner';
 }
-
 async function applyJob(job, uid) {
   const user = auth.currentUser;
   if (!user || user.uid !== uid) {
@@ -239,25 +216,24 @@ async function applyJob(job, uid) {
     throw error;
   }
   if (isAdmin()) return { ok: false, reason: 'admin_account' };
-
   const stateRef = doc(db, 'xpState', uid);
   const profileRef = doc(db, 'publicProfiles', uid);
   const userRef = doc(db, 'users', uid);
   const missions = runtimeMissions().map((mission) => missionForId(mission.id)).filter(Boolean);
   const types = signTypes();
   const localLearned = localLearnedSigns();
-
   return runTransaction(db, async (transaction) => {
     if (auth.currentUser?.uid !== uid) return { ok: false, reason: 'unauthenticated' };
     const [stateSnap, userSnap] = await Promise.all([transaction.get(stateRef), transaction.get(userRef)]);
     const now = Date.now();
-    const userData = userSnap.exists() ? userSnap.data() : {};
+    // Profile gone = account deleted by the admin: never re-create xpState / publicProfiles for it.
+    if (!userSnap.exists()) return { ok: false, reason: 'account_missing' };
+    const userData = userSnap.data();
     if (userData.deletionRequested && job.type !== 'profile') return { ok: false, reason: 'account_deletion_pending' };
     const state = E.normalizeState(stateSnap.exists() ? stateSnap.data() : null, now);
     E.resolveTimezone(state, TZ, now);
     const today = E.rollover(state, now);
     let result;
-
     if (job.type === 'item' || job.type === 'mission') {
       const mission = missionForId(job.missionId);
       if (!mission) return { ok: false, reason: 'unknown_mission' };
@@ -283,17 +259,14 @@ async function applyJob(job, uid) {
       const learned = [...new Set([...state.learnedSigns, ...localLearned])];
       result = E.applyGameFinish(state, session, job.broken, job.wrong, learned, types, { now, today });
     } else return { ok: false, reason: 'bad_input' };
-
     if (result?.skipStateWrite) return E.summary(state, now, result);
     if (!result?.ok) return result || { ok: false, reason: 'bad_input' };
-
     // Rules require ~2 seconds between every XP-state write. The clock is
     // client-side, so rules also verify the server timestamp on commit.
     const lastWriteAt = timestampMs(state.lastWriteAt);
     if (lastWriteAt && now - lastWriteAt < E.CONFIG.MIN_CLAIM_GAP_MS) {
       return { ok: false, reason: 'too_fast', retryAfterMs: E.CONFIG.MIN_CLAIM_GAP_MS - (now - lastWriteAt) };
     }
-
     transaction.set(stateRef, { ...state, lastWriteAt: serverTimestamp() });
     if (state.hidden || userData.deletionRequested) {
       transaction.delete(profileRef);
@@ -306,7 +279,6 @@ async function applyJob(job, uid) {
     return E.summary(state, now, result);
   });
 }
-
 async function flush() {
   if (flushing) return flushing;
   flushing = (async () => {
@@ -340,17 +312,14 @@ async function flush() {
   })().finally(() => { flushing = null; });
   return flushing;
 }
-
 function claimItem(mission, index) {
   if (!mission?.id || !Number.isInteger(index)) return;
   void enqueue({ type: 'item', missionId: mission.id, itemIndex: index });
 }
-
 function claimMission(mission) {
   if (!mission?.id) return;
   void enqueue({ type: 'mission', missionId: mission.id });
 }
-
 async function startGame(signs, mode = 'wall') {
   await window.LWAuth?.whenAuthReady?.();
   const user = auth.currentUser;
@@ -377,7 +346,6 @@ async function startGame(signs, mode = 'wall') {
     return null;
   }
 }
-
 async function finishGame(sessionId, broken, wrong = 0) {
   const session = gameSessions.get(sessionId);
   if (!session) return { ok: false, reason: 'no_session' };
@@ -386,7 +354,6 @@ async function finishGame(sessionId, broken, wrong = 0) {
   if (result?.reason !== 'too_fast') gameSessions.delete(sessionId);
   return result;
 }
-
 async function getMyState() {
   await window.LWAuth?.whenAuthReady?.();
   const uid = currentUid();
@@ -399,14 +366,12 @@ async function getMyState() {
     return null;
   }
 }
-
 const BOARDS = {
   xp: { label: 'All-time XP', build: (ref) => query(ref, orderBy('xp', 'desc'), limit(50)) },
   weekly: { label: 'This week', build: (ref, week) => query(ref, where('weekKey', '==', week), orderBy('weeklyXp', 'desc'), limit(50)) },
   streak: { label: 'Streaks', build: (ref) => query(ref, orderBy('streak', 'desc'), limit(50)) },
   badges: { label: 'Badges', build: (ref) => query(ref, orderBy('badgeCount', 'desc'), limit(50)) },
 };
-
 async function loadBoard(kind) {
   await window.LWAuth?.whenAuthReady?.();
   const board = BOARDS[kind] || BOARDS.xp;
@@ -422,22 +387,18 @@ async function loadBoard(kind) {
   rows.sort((a, b) => ((b[key] || 0) - (a[key] || 0)) || ((b.xp || 0) - (a.xp || 0)));
   return rows;
 }
-
 /** Call on the Profile page: brings a pre-grace-rule streak up to date. Resolves with the summary. */
 async function syncStreak() {
   for (let i = 0; i < 30 && pageActive && !window.LWMissions?.getStreakSummary; i++) await delay(100); // missions.js is a deferred classic script
   if (!window.LWMissions) return { ok: false, reason: 'no_missions' };
   return enqueue({ type: 'streak' });
 }
-
 async function setVisibility(visible) {
   return enqueue({ type: 'visibility', visible: !!visible });
 }
-
 async function syncPublicProfile() {
   return enqueue({ type: 'profile' });
 }
-
 async function backfillOnce() {
   await window.LWAuth?.whenAuthReady?.();
   const user = auth.currentUser;
@@ -466,7 +427,6 @@ async function backfillOnce() {
   }));
   return enqueue({ type: 'backfill', completedItemIds });
 }
-
 let popTimer = null, popRemovalTimer = null;
 function notify(result) {
   try {
@@ -500,7 +460,6 @@ function notify(result) {
     }, 4500);
   } catch (error) { console.warn('[xp] reward notification failed:', error); }
 }
-
 window.addEventListener('online', () => { void flush(); });
 window.addEventListener('pageshow', (event) => {
   pageActive = true;
@@ -518,7 +477,6 @@ window.addEventListener('pagehide', () => {
   waitTimers.clear();
 });
 window.addEventListener('storage', (event) => { if (event.key === queueKey()) void flush(); });
-
 window.LWXP = {
   claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
   getMyState, getLearnedSigns, loadBoard, BOARDS, setVisibility, syncPublicProfile, onUpdate, notify,
@@ -527,7 +485,6 @@ window.LWXP = {
   config: CFG, timezone: TZ, getLatest: () => latest,
   debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }), // run LWXP.debug() in the console
 };
-
 document.dispatchEvent(new CustomEvent('lwxp-ready'));
 void window.LWAuth?.whenAuthReady?.().then(() => { void flush(); void backfillOnce(); }).catch((error) => {
   console.warn('[xp] auth initialization failed:', error?.code || '', error?.message || error);

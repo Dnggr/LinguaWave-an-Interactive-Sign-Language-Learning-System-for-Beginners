@@ -116,9 +116,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
-
 (function (global) {
-
   /* ══════════════════════════════════════════════════════════════
    * CONTENT MODEL — SIGNS_V2 / CATEGORIES_V2 / UNITS_V2 /
    * CATEGORY_GROUPS_V2 below are the ONLY copy of the learning
@@ -129,7 +127,6 @@
    * backs the public LWMissions.getXxx() API exported at the bottom
    * of this file.
    * ══════════════════════════════════════════════════════════════ */
-
 const UNITS_V2 = [
   // HOMEPAGE PIVOT (this session) — order:0 'welcome' (kind:'info',
   // "Welcome to ASL: A Brief History") REMOVED. That content is now
@@ -219,7 +216,6 @@ const UNITS_V2 = [
   { id: 'requests_unit', order: 66, title: 'Requests', kind: 'category-group', categoryGroup: 'having_a_conversation' },
   { id: 'answers', order: 67, title: 'Answers', kind: 'category-group', categoryGroup: 'having_a_conversation' },
 ];
-
 /* ── CATEGORY_GROUPS_V2 — chapter-level grouping over UNITS_V2 (added this
  * session, per Mark's request) ─────────────────────────────────────
  * PURPOSE : A purely presentational "chapter" layer on top of the
@@ -276,7 +272,6 @@ const CATEGORY_GROUPS_V2 = [
   { id: 'clothing_belongings', order: 11, title: 'Clothing & Belongings',
     blurb: 'What you wear, and the personal items you carry.' },
 ];
-
 /* ── getCategoryGroup() / getUnitsForCategoryGroupV2() ─────────────────
  * Small additive helpers, same style as getUnitsV2() below. Not called
  * anywhere yet — for learn.js/dashboard.js to adopt when they add the
@@ -285,11 +280,9 @@ const CATEGORY_GROUPS_V2 = [
 function getCategoryGroupsV2() {
   return CATEGORY_GROUPS_V2.slice().sort((a, b) => a.order - b.order);
 }
-
 function getUnitsForCategoryGroupV2(categoryGroupId) {
   return UNITS_V2.filter(u => u.categoryGroup === categoryGroupId);
 }
-
 /* ── UNIT 0 CONTENT — REMOVED this session (Homepage pivot) ─────────
  * `UNIT0_CONTENT` (five sections: "What is ASL?", "A Brief History of
  * ASL", "How practice works in LinguaWave", and two Deaf-culture
@@ -305,12 +298,10 @@ function getUnitsForCategoryGroupV2(categoryGroupId) {
  * referenced this const, so removing it has zero effect on lesson
  * content, detection, or progress/unlock logic.
  * ──────────────────────────────────────────────────────────────── */
-
 const CATEGORIES_V2 = [
   // ── level=basic — Alphabet & Numbers (topics 1-2, unchanged from Rev 6) ──
   { id: 'alphabet', level: 'basic', title: 'Alphabet', order: 1, comingSoon: false, unit: 1 },
   { id: 'numbers', level: 'basic', title: 'Numbers', order: 1, comingSoon: false, unit: 2 },
-
   // ── level=medium — topics 3-68, one category per unit, in the exact
   // order given in Omen's uploaded 'updated fixed lesson.txt' (topic
   // numbers in the comments below match that file's own numbering) ──
@@ -919,7 +910,6 @@ const CATEGORIES_V2 = [
     id: 'answers', level: 'medium', title: 'Answers', order: 1, comingSoon: false, unit: 67,
     words: ['YES', 'NO', 'OKAY', 'SURE', 'MAYBE', 'KNOW', 'DON\'T', 'UNDERSTAND', 'GOOD'],
   },
-
   // ── Legacy categories with real SIGNS_V2 content that the new plan
   // doesn't have a topic for. RESTORED here (not dropped) — verified
   // against the original data.js that each has authored lesson
@@ -954,9 +944,7 @@ const CATEGORIES_V2 = [
     id: 'money', level: 'medium', title: 'Money', order: 2, comingSoon: false, unit: 41,
     words: ['DOLLARS', 'CENTS', 'COST'],
   },
-
 ];
-
 /* ── SIGNS_V2 ────────────────────────────────────────────────────────
  * Mirrors Firestore signs/{id} — level, signId, category, title,
  * description, tips, imageUrl, videoUrl, order, detectionType.
@@ -965,13 +953,11 @@ const CATEGORIES_V2 = [
  * defined in js/engine/dictionary.js so the lesson content panel
  * never contradicts what the classifier is actually checking for.
  * ──────────────────────────────────────────────────────────────── */
-
 //NOTE: read the lesson.js line 1065 comment and lesson.html line 177 comment to proceed
 //If we're gonna use youtube video as the source for video demonstration
 //replace the value of the videoUrl with the corresponding youtube video embed source (src)
 //to get the embed source of the corresponding youtube video click share, select embed and copy the src
 //Example: videoUrl: "https://www.youtube.com/embed/rlhRQiVeQPY?si=U7AqOtDU-hoEq1p5"
-
 const SIGNS_V2 = [
   {
     id: 'basic_A', level: 'basic', signId: 'A', title: 'Letter A', order: 1,
@@ -1233,7 +1219,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/basic/Z.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/1. letters/z.mp4', detectionType: 'motion',
   },
-
    /* ── BASIC · NUMBERS (0–10) ────────────────────────────────────
    * 0–5, 7, 8 are held/static handshapes — `detectionType: 'static'`,
    * running through the SAME asl_static_model as the alphabet.
@@ -1354,7 +1339,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/basic/10.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/2. numbers/10.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · FAMILY ──────────────────────────────────────────
    * MOM/DAD are the canonical face-relative minimal pair — same
    * handshape, same movement, only the location (chin vs forehead)
@@ -1514,7 +1498,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/medium/family/DIVORCED.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · SCHOOL GROUP (Units 28–32) ──────────────────────
    * Lesson content for the School group's Batch 3b words that had
    * no description/tips yet. TEACHER/STUDENT/FRIEND/CLASSMATE/BOOK/
@@ -1646,9 +1629,7 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/subjects/HISTORY.png', videoUrl: '../assets/videos/medium/subjects/HISTORY.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · WORDS (auto-generated content — see BUGFIX notes) ── */
-
   // ── MEDIUM · PLACES ──
   {
     id: 'medium_places_HOME', level: 'medium', category: 'places', signId: 'HOME', title: 'Home', order: 1,
@@ -1754,7 +1735,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · TIME ──
   {
     id: 'medium_time_DAY', level: 'medium', category: 'time', signId: 'DAY', title: 'Day', order: 1,
@@ -1893,7 +1873,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/medium/time/finish.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · TEMPERATURE ──
   {
     id: 'medium_temperature_HOT', level: 'medium', category: 'temperature', signId: 'HOT', title: 'Hot', order: 1,
@@ -1915,7 +1894,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/temperature/cold.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/17. touch/cold.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · FOOD ── REMOVED (this session) — the 'food' category and its
   // 11 dedicated category:'food' SIGNS_V2 entries (PIZZA, MILK, HAMBURGER, HOT
   // DOG, EGG, APPLE, CHEESE, SPOON, FORK, CUP, CEREAL) were deleted at the
@@ -1945,7 +1923,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/food/hungry.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/6. basic feelings/hungry.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · CLOTHES ──
   {
     id: 'medium_clothes_SHIRT', level: 'medium', category: 'clothes', signId: 'SHIRT', title: 'Shirt', order: 1,
@@ -2083,7 +2060,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/clothes/belt.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/43 clothes/belt.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/belt.htm',
   },
-
   // ── MEDIUM · HEALTH ──
   {
     id: 'medium_health_WASH', level: 'medium', category: 'health', signId: 'WASH', title: 'Wash', order: 1,
@@ -2136,7 +2112,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/health/brush_teeth.png', videoUrl: '../assets/videos/medium/health/brush_teeth.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · PEOPLE (Unit 6) ─────────────────────────────────
    * BOY/GIRL/BABY already covered under 'family' — not duplicated here.
    * REV 8 (2026-08-25): I/HE/SHE resolved — removed from words[] above
@@ -2255,7 +2230,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/people/student.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/5. basic people/student.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · FEELINGS ──
   {
     id: 'medium_feelings_HAPPY', level: 'medium', category: 'feelings', signId: 'HAPPY', title: 'Happy', order: 1,
@@ -2454,7 +2428,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/feelings/okay.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/6. basic feelings/okay.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · REQUESTS ──
   {
     id: 'medium_requests_PLEASE', level: 'medium', category: 'essentials_polite_expressions', signId: 'PLEASE', title: 'Please', order: 1,
@@ -2581,7 +2554,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/requests/food.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/7. basic needs/food.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · ACTIONS (Unit 9) ──────────────────────────────────
    * REV 8 (2026-08-25): new block. GO/COME/STOP/DRINK/SLEEP/CRY are
    * relocated entries (content unchanged from their old category, only
@@ -2924,7 +2896,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/actions/bath.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/take a bath.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bath.htm',
   },
-
   /* ── MEDIUM · HAND ACTIONS (Unit 10) ────────────────────────────
    * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
    * added this session. All entries added with matching disabled:true
@@ -3053,7 +3024,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/hand_actions/pick.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/9. hand actions/pick up.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · COMMUNICATION (Unit 11) ───────────────────────────
    * REV 8 (2026-08-25): new block, ASLU-checked (lifeprint.com) content
    * added this session. 'HELP' is intentionally NOT here — it's already
@@ -3134,7 +3104,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/communication/sign.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/10. communication actions/sign.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sign.htm',
   },
-
   // ── MEDIUM · ESSENTIALS_GREETINGS ──
   // NEW (this session) — no prior data.js content existed for HELLO at
   // all (only a disabled dictionary.js placeholder) — see
@@ -3252,7 +3221,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/essentials_greetings/welcome.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/welcome.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · ESSENTIALS_BASIC_RESPONSES (YES/NO — new content;
   // WHO/WHAT/WHEN/WHERE/WHY/HOW/GOOD/BAD moved here from `requests`/
   // `feelings`, see those entries above for their unchanged content) ──
@@ -3278,7 +3246,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/essentials_basic_responses/no.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/4. polite words/no.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · COLORS ──
   {
     id: 'medium_colors_BLUE', level: 'medium', category: 'colors', signId: 'BLUE', title: 'Blue', order: 1,
@@ -3390,7 +3357,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/colors/pink.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/13. colors/pink.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · SHAPES ── (new this pass — unlocks Unit 15)
   {
     id: 'medium_shapes_CIRCLE', level: 'medium', category: 'shapes', signId: 'CIRCLE', title: 'Circle', order: 1,
@@ -3472,7 +3438,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/shapes/diamond.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/14. shapes/diamond.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · BODY ── (new this pass — unlocks Unit 12)
   {
     id: 'medium_body_BODY', level: 'medium', category: 'body', signId: 'BODY', title: 'Body', order: 1,
@@ -3634,7 +3599,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/11. body parts/back.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · SIZE ── (new this pass — unlocks Unit 16. BIG/TALL
   // description text carried over unchanged from the retired 'amounts'
   // category — see data.js history — everything else here is new.)
@@ -3728,7 +3692,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/size/light.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/15. size/light.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · TASTE ── (new this pass — unlocks Unit 19)
   {
     id: 'medium_taste_SWEET', level: 'medium', category: 'taste', signId: 'SWEET', title: 'Sweet', order: 1,
@@ -3800,7 +3763,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/taste/fresh.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/18. taste/fresh.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · PERSONAL_INFORMATION (Unit 13) ── (new this pass —
   // unlocks Unit 13. NAME/AGE/FAMILY/BIRTHDAY/LIVE/FROM are new
   // ASLU-checked content (lifeprint.com, cross-checked against
@@ -3977,7 +3939,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/personal_information/from.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/12. personal information/from.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/from.htm',
   },
-
   // ── MEDIUM · APPEARANCE (Unit 17) ── (new this pass — unlocks Unit
   // 17. CLEAN duplicates the existing medium_actions_CLEAN entry — see
   // block comment on Personal Information above for why. NEAT is
@@ -4138,7 +4099,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/appearance/bright.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/16. appearance/bright.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/clear.htm',
   },
-
   // ── MEDIUM · SOUND (Unit 20) ── (new this pass — unlocks Unit 20.
   // FLAG: QUIET and SILENT are, per ASLU's own dictionary (which lists
   // them together as "QUIET/SILENT"), the SAME physical sign — the
@@ -4212,7 +4172,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/sound/low.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/19. sound/low.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/low.htm',
   },
-
   // ── MEDIUM · DESCRIPTIONS ── (UNLOCKED 2026-09-01 — FAST/SLOW/STRONG/WEAK/
   // EMPTY/OPEN/CLOSED researched fresh against lifeprint.com, cross-checked
   // against Handspeak/PocketSign/StrongASL/SigningSavvy. GOOD/BAD are
@@ -4328,7 +4287,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/descriptions/closed.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/20. common descriptions/closed.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/door.htm',
   },
-
   // ── MEDIUM · MONEY ──
   {
     id: 'medium_money_DOLLARS', level: 'medium', category: 'money', signId: 'DOLLARS', title: 'Dollars', order: 1,
@@ -4360,7 +4318,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/money/cost.png', videoUrl: '../assets/videos/medium/money/cost.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · ANIMALS ──
   {
     id: 'medium_animals_CAT', level: 'medium', category: 'animals', signId: 'CAT', title: 'Cat', order: 1,
@@ -4496,7 +4453,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/animals/goat.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/goat.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · HOME (Unit 23) ── (new this pass — unlocks Unit 23.
   // HOME and BATHROOM are duplicates of signs already verified
   // elsewhere in this file (see medium_places_HOME and
@@ -4613,7 +4569,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/home/yard.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/25. rooms/yard.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/field.htm',
   },
-
   // ── MEDIUM · FURNITURE (Unit 24) ── (new this pass — unlocks Unit 24.
   // All 11 words are fresh lifeprint.com (ASLU) research, cross-checked
   // against Handspeak, aslbloom, signingsavvy, and other secondary
@@ -4742,7 +4697,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/furniture/lamp.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/26. furniture/lamp.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/light.htm',
   },
-
   // ── MEDIUM · BATHROOM (Unit 26) ── (UNLOCKED 2026-09-01 — researched
   // against lifeprint.com, cross-checked against Handspeak/PocketSign/
   // StrongASL/SigningSavvy. TOILET is a duplicate of medium_home_BATHROOM
@@ -4839,7 +4793,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/bathroom/toothpaste.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/28 bathoom/toothpaste.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/toothpaste.htm',
   },
-
   // ── MEDIUM · KITCHEN (Unit 27) ── (UNLOCKED 2026-09-01 — researched
   // against lifeprint.com, cross-checked against Handspeak/PocketSign/
   // StrongASL/SigningSavvy. CUP/SPOON/FORK are duplicates of the existing
@@ -4946,7 +4899,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/kitchen/knife.png', videoUrl: '../assets/videos/medium/kitchen/knife.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/knife.htm',
   },
-
   // ── MEDIUM · HOUSEHOLD (Unit 25) ── (researched against lifeprint.com,
   // cross-checked against Handspeak/aslbloom/PocketSign/SigningSavvy.
   // TOY and BAG dropped from words[] — ASLU explicitly recommends
@@ -5107,7 +5059,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/household/key.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/27. household object/key.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/key.htm',
   },
-
   // ── MEDIUM · INSECTS ── (new this pass — unlocks Unit 40)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom/pocketsign. ANT note: lifeprint documents that
@@ -5159,7 +5110,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/insects/spider.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/42 insects/spider.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · SEASONS ── (new this pass — unlocks Unit 47)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/ava.me/aslbloom. WINTER note: lifeprint documents this
@@ -5206,7 +5156,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/seasons/winter.png', videoUrl: '../assets/videos/medium/seasons/winter.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · DAYTIME ── (new this pass — unlocks Unit 54)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom. EVENING note: lifeprint documents NIGHT and
@@ -5252,7 +5201,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/medium/daytime/night.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · DAYS ── (new this pass — unlocks Unit 55)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/ava.me/strongasl. THURSDAY note: lifeprint documents
@@ -5332,7 +5280,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/days/sunday.png', videoUrl: '../assets/videos/medium/days/sunday.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · DISTANCE ── (new this pass — unlocks Unit 60)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/pocketsign/the indexing.htm reference page. NEAR/CLOSE
@@ -5402,7 +5349,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/distance/away.png', videoUrl: '../assets/videos/medium/distance/away.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · DRINKS ── (new this pass — unlocks Unit 37)
   // Researched on lifeprint.com (ASLU), cross-checked against
   // Handspeak/aslbloom/PocketSign/ASL Interactive. JUICE note: lifeprint's
@@ -5472,7 +5418,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/drinks/coffee.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/39 drinks/coffee.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · FRUITS ── (new this pass — unlocks Unit 34)
   // Researched on lifeprint.com (ASLU), cross-checked against Handspeak/
   // aslbloom/Signing Time/ASL-LEX (ASLU text pages don't include prose
@@ -5577,7 +5522,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/fruits/melon.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/36 fruits/melon.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · VEGETABLES ── (researched 2026-09-02, unlocks Unit 35)
   // Researched on lifeprint.com (ASLU), cross-checked against Handspeak
   // and Signing Savvy. CUCUMBER is intentionally NOT included — sources
@@ -5704,7 +5648,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/vegetables/broccoli.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/37 vegetables/broccoli.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · DRESSING ── (new this pass — unlocks Unit 42)
   // WEAR/CHANGE/FOLD researched on lifeprint.com (ASLU), cross-checked
   // against Handspeak/PocketSign/SigningTime. WASH/CLEAN/DIRTY are
@@ -5791,7 +5734,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/appearance/dirty.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/44 getting dressed/dirty.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · TRANSPORTATION ── (new this pass — unlocks Unit 50)
   // DRIVE and FLY researched fresh on lifeprint.com (ASLU), cross-checked
   // against Handspeak. WALK, RIDE, GO, STOP, WAIT are DUPLICATES of the
@@ -5875,7 +5817,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/actions/wait.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/wait.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · MANNERS (unlocked 2026-09-02) ──
   {
     // DUPLICATE — same sign as medium_requests_PLEASE.
@@ -5947,7 +5888,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/10. communication actions/help.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · PERSONAL_ITEMS (unlocked 2026-09-02) ──
   {
     // NEW — researched against lifeprint.com, cross-checked against
@@ -6044,7 +5984,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/personal_items/bottle.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/45 personal items/bottle.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · TURN_TAKING (unlocked 2026-09-02) ──
   {
     // DUPLICATE — same sign as medium_people_MY.
@@ -6146,7 +6085,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/turn_taking/finished.png', videoUrl: '../assets/videos/turn_taking/finished.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/finish.htm',
   },
-
   // ── MEDIUM · FREQUENCY (unlocked 2026-09-02) ──
   {
     // NEW — ASLU's own signing-notes page gives this as the simple,
@@ -6257,7 +6195,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/frequency/monthly.png', videoUrl: '../assets/videos/frequency/monthly.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/lessons/lesson12.htm',
   },
-
   // ── MEDIUM · RESPONSES (unlocked 2026-09-02) ──
   {
     // DUPLICATE — same sign as medium_essentials_basic_responses_YES.
@@ -6357,7 +6294,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/responses/understand.png', videoUrl: '../assets/videos/responses/understand.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/u/understand.htm',
   },
-
   // ── MEDIUM · ANSWERS (unlocked 2026-09-02) ──
   {
     // DUPLICATE — same sign as medium_responses_YES.
@@ -6464,7 +6400,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/feelings/good.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/20. common descriptions/good.mp4', detectionType: 'motion',
   },
-
   /* ── MEDIUM · WILD ANIMALS (Unit 39) ── (NEW this session — unlocks
    * Unit 39. All 10 words researched fresh against lifeprint.com (ASLU),
    * cross-checked against a second source (Quizlet's lifeprint-sourced
@@ -6586,7 +6521,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/wild_animals/turtle.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/41 wild animals/turtle.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/turtle.htm',
   },
-
   /* ── MEDIUM · SNACKS (Unit 36) ── (NEW this session — unlocks Unit
    * 36. COOKIE and CANDY are duplicates of the existing
    * medium_food_COOKIE/medium_food_CANDY entries (same physical signs,
@@ -6716,7 +6650,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/snacks/icecream.png', videoUrl: '../assets/videos/medium/snacks/icecream.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/icecream.htm',
   },
-
   /* ── MEDIUM · WEATHER (Unit 46) ── (NEW this session — unlocks Unit
    * 46. HOT and COLD are duplicates of the existing
    * medium_temperature_HOT/COLD entries. WARM and COOL are also listed
@@ -6869,7 +6802,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/weather/snow.png', videoUrl: '../assets/videos/medium/weather/snow.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/snow.htm',
   },
-
   /* ── MEDIUM · MONTHS (Unit 56) ──────────────────────────────────
    * UNLOCKED (2026-09-02): all 12 words are new content, researched
    * against lifeprint.com (ASLU) and cross-checked against StartASL.com
@@ -7014,7 +6946,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/months/december.png', videoUrl: '../assets/videos/medium/months/december.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
-
   /* ── MEDIUM · SEQUENCE (Unit 57) ─────────────────────────────────
    * UNLOCKED (2026-09-02): 9 of 10 words are new content, researched
    * against lifeprint.com (ASLU) and cross-checked against Handspeak.
@@ -7299,7 +7230,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/vehicles/ship.png', videoUrl: '../assets/videos/medium/vehicles/ship.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.aslbloom.com/signs/ship',
   },
-
   /* ── MEDIUM · COMMUNITY ─────────────────────────────────────────
    * PARTIAL UNLOCK (this session) — 9 of the 10 words[] researched
    * against lifeprint.com (ASLU), cross-checked against a second
@@ -7431,7 +7361,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/community/park.png', videoUrl: '../assets/videos/medium/community/park.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/park.htm',
   },
-
   /* ── MEDIUM · DIRECTIONS ────────────────────────────────────────
    * UNLOCKED (this session) — 5 of the 10 words[] are new content,
    * researched against lifeprint.com (ASLU). BACK, TURN, GO, STOP, and
@@ -7566,7 +7495,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/actions/wait.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/wait.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wait.htm',
   },
-
   /* ── MEDIUM · SOCIAL ────────────────────────────────────────────
    * UNLOCKED (this session) — 5 of the 12 words[] are new content,
    * researched against lifeprint.com (ASLU). CLASSMATE and NEIGHBOR
@@ -7724,7 +7652,6 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/social/together.png', videoUrl: '../assets/videos/medium/social/together.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/with.htm',
   },
-
   // ── MEDIUM · CONVERSATION (unlocked 2026-09-02) ──
   {
     // DUPLICATE — same sign as medium_essentials_greetings_HELLO.
@@ -7849,7 +7776,6 @@ const SIGNS_V2 = [
     ],
     imageUrl: '../assets/images/medium/essentials_greetings/goodbye.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/goodbye.mp4', detectionType: 'motion',
   },
-
   // ── MEDIUM · MAKING_REQUESTS (unlocked 2026-09-02) ──
   {
     // NEW — researched against lifeprint.com's "have" page and Signing
@@ -8708,13 +8634,11 @@ const SIGNS_V2 = [
     imageUrl: '../assets/images/medium/body/back.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/11. body parts/back.mp4', detectionType: 'motion',
   },
 ];
-
 /* NOTE: this file used to also export a `QUESTIONS` array of static
  * multiple-choice questions. Removed — quiz.js never read it; it
  * builds every multiple-choice/identification round dynamically from
  * SIGNS_V2 (see buildMCRound()/buildIdRound() there), so QUESTIONS had
  * been dead weight since that page was written. */
-
 /* ── Category defaults ───────────────────────────────────────────
  * SIGNS_V2 entries under level=basic didn't previously have a
  * `category` field (alphabet was the only thing on that level).
@@ -8723,9 +8647,7 @@ const SIGNS_V2 = [
 SIGNS_V2.forEach(s => {
   if (!s.category) s.category = s.level === 'basic' ? 'alphabet' : 'general';
 });
-
 /* ── Helpers ─────────────────────────────────────────────────────── */
-
 /**
  * Returns the SIGNS_V2 entry for a given level + signId, or null.
  * @param {string} level
@@ -8740,7 +8662,6 @@ function getSignV2(level, signId, category) {
   }
   return SIGNS_V2.find(s => s.level === level && s.signId === upper) ?? null;
 }
-
 /**
  * NEW — every distinct videoUrl on file for a signId, across ALL levels and
  * categories. 80 signIds are taught in more than one lesson, and each copy
@@ -8761,7 +8682,6 @@ function getSignVideoUrlsV2(signId, firstUrl) {
   });
   return urls;
 }
-
 /**
  * Returns the ordered array of signId strings that belong to a
  * given level + category (only signs with an actual SIGNS_V2 content
@@ -8776,7 +8696,6 @@ function getCategorySignsV2(level, categoryId) {
     .sort((a, b) => a.order - b.order)
     .map(s => s.signId);
 }
-
 /**
  * Returns all category metadata objects for a given level, sorted
  * by their display order.
@@ -8785,7 +8704,6 @@ function getCategorySignsV2(level, categoryId) {
 function getCategoriesForLevelV2(level) {
   return CATEGORIES_V2.filter(c => c.level === level).sort((a, b) => a.order - b.order);
 }
-
 /**
  * Returns a single category's metadata, or null.
  * @param {string} level
@@ -8794,7 +8712,6 @@ function getCategoriesForLevelV2(level) {
 function getCategoryV2(level, categoryId) {
   return CATEGORIES_V2.find(c => c.level === level && c.id === categoryId) ?? null;
 }
-
 /**
  * NEW — Rev 4 Phase 1. Returns all UNITS_V2 metadata sorted by `order`.
  * Not consumed by any UI yet — js/learn.js's trail-view rewrite is
@@ -8803,7 +8720,6 @@ function getCategoryV2(level, categoryId) {
 function getUnitsV2() {
   return [...UNITS_V2].sort((a, b) => a.order - b.order);
 }
-
 /**
  * NEW — Rev 4 Phase 1. Returns every CATEGORIES_V2 entry tagged with the
  * given unit order, sorted by their existing `order` field (unchanged
@@ -8813,8 +8729,6 @@ function getUnitsV2() {
 function getCategoriesForUnitV2(unitOrder) {
   return CATEGORIES_V2.filter(c => c.unit === unitOrder).sort((a, b) => a.order - b.order);
 }
-
-
   const FEATURE_FLAG_KEY = 'lw-missions-enabled';
   // STORAGE — own namespace, versioned like the rest of this repo's
   // localStorage keys (lw_progress_v3, lw-preferences, ...) but never
@@ -8825,12 +8739,12 @@ function getCategoriesForUnitV2(unitOrder) {
   // other = legacy `{ days: [...] }` state, migrated on first load.
   const STREAK_VERSION = 3;
   const HEARTS_KEY = 'lw_missions_hearts_v1';
-
   // ── Cross-device Firestore sync (NEW, this revision) ────────────
   // The 3 keys above were previously local-only (see comment below
   // at PER-ACCOUNT SCOPING). This adds a `userProgressV2/{uid}`
-  // Firestore doc, written through via window.LWAuth (js/auth.js's
-  // doc/getDoc/setDoc/db), with a one-time reconcile on load:
+  // Firestore doc, written through via window.LWAuth.readProgressDoc /
+  // writeProgressDoc (js/auth.js; the raw doc/getDoc/setDoc/db are NOT exported
+  // any more), with a one-time reconcile on load:
   //   - no user logged in            -> untouched, stays local-only
   //   - user logged in, no remote doc -> migration: push local UP
   //   - user logged in, remote exists -> union-merge (see
@@ -8841,7 +8755,6 @@ function getCategoriesForUnitV2(unitOrder) {
   // Every save*State() below also write-throughs its own field
   // (fire-and-forget — never blocks a local save on network).
   const FIRESTORE_COLLECTION_V2 = 'userProgressV2';
-
   function getLWAuthV2() {
     try {
       return (window && window.LWAuth) || null;
@@ -8849,13 +8762,16 @@ function getCategoriesForUnitV2(unitOrder) {
       return null;
     }
   }
-
   // Fire-and-forget: pushes ONE field (progress/streak/hearts) to the
   // signed-in user's Firestore doc. No-ops silently (never throws
   // into the caller) when nobody's logged in or LWAuth isn't loaded.
+  // The uid whose remote doc has been read and merged into localStorage in THIS page
+  // load. Write-through is held back until then: a device that has not pulled yet would
+  // otherwise overwrite the remote `progress` with its (partial) local copy.
+  let missionsSyncedUid = null;
   function pushFieldToFirestoreV2(field, state) {
     const auth = getLWAuthV2();
-    if (!auth) return;
+    if (!auth || !auth.writeProgressDoc) return;
     let user = null;
     try {
       user = auth.getCurrentUser ? auth.getCurrentUser() : null;
@@ -8863,16 +8779,20 @@ function getCategoriesForUnitV2(unitOrder) {
       user = null;
     }
     if (!user || !user.uid) return;
+    if (missionsSyncedUid !== user.uid) {
+      // Not pulled yet: skip the push (local save already happened). The sync below merges
+      // local + remote and pushes the union, so nothing is lost.
+      try { whenMissionsSyncReady(); } catch { /* local-only */ }
+      return;
+    }
     try {
-      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
-      Promise.resolve(auth.setDoc(ref, { [field]: state }, { merge: true })).catch((e) => {
+      Promise.resolve(auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, { [field]: state }, { merge: true })).catch((e) => {
         console.warn('[missions.js] Missions Firestore write-through failed for', field, e);
       });
     } catch (e) {
       console.warn('[missions.js] Missions Firestore write-through failed for', field, e);
     }
   }
-
   // Union-merges local + remote. completedItemIds are unioned (nothing from
   // either device is lost); the streak is merged by mergeStreakStates();
   // hearts.lostAt is taken ENTIRELY from remote (authoritative —
@@ -8884,7 +8804,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const remoteProgress = (remote && remote.progress) || { completedItemIds: [], completedAt: {} };
     const remoteStreak = (remote && remote.streak) || emptyStreakState();
     const remoteHearts = (remote && remote.hearts) || { lostAt: [] };
-
     const mergedIds = Array.from(new Set([
       ...(local.progress.completedItemIds || []),
       ...(remoteProgress.completedItemIds || []),
@@ -8901,16 +8820,13 @@ function getCategoriesForUnitV2(unitOrder) {
       normalizeStreak(local.streak, mergedCompletedAt),
       normalizeStreak(remoteStreak, mergedCompletedAt)
     );
-
     return {
       progress: { ...local.progress, completedItemIds: mergedIds, completedAt: mergedCompletedAt },
       streak: mergedStreak,
       hearts: { ...local.hearts, lostAt: (remoteHearts.lostAt || []).slice() },
     };
   }
-
   let MissionsSyncPromise = null;
-
   // PERF FIX — this is a traditional multi-page site (no client-side
   // routing/cache), so whenMissionsSyncReady()'s per-page-load
   // MissionsSyncPromise cache below only ever helped a SINGLE page
@@ -8933,7 +8849,6 @@ function getCategoriesForUnitV2(unitOrder) {
   // that never actually happened.
   const SESSION_SYNC_CACHE_KEY = 'lw_missions_last_sync_v1';
   const SESSION_SYNC_TTL_MS = 60 * 1000;
-
   function readSessionSyncCache() {
     try {
       const raw = sessionStorage.getItem(SESSION_SYNC_CACHE_KEY);
@@ -8942,7 +8857,6 @@ function getCategoriesForUnitV2(unitOrder) {
       return null; // sessionStorage unavailable (private mode, etc.) — just means no cache hit, sync still runs for real below.
     }
   }
-
   function writeSessionSyncCache(uid) {
     try {
       sessionStorage.setItem(SESSION_SYNC_CACHE_KEY, JSON.stringify({ uid, at: Date.now() }));
@@ -8950,18 +8864,15 @@ function getCategoriesForUnitV2(unitOrder) {
       // Nothing to do — worst case the next page just re-syncs for real.
     }
   }
-
   async function performMissionsSync() {
     const auth = getLWAuthV2();
     if (!auth) return; // js/auth.js not loaded (dev preview pages) — local-only.
-
     try {
       if (auth.whenAuthReady) await auth.whenAuthReady();
     } catch (e) {
       console.warn('[missions.js] Missions sync: whenAuthReady failed, staying local-only:', e);
       return;
     }
-
     let user = null;
     try {
       user = auth.getCurrentUser ? auth.getCurrentUser() : null;
@@ -8969,40 +8880,38 @@ function getCategoriesForUnitV2(unitOrder) {
       user = null;
     }
     if (!user || !user.uid) return; // nobody logged in — Firestore untouched.
-
     const cached = readSessionSyncCache();
     if (cached && cached.uid === user.uid && Date.now() - cached.at < SESSION_SYNC_TTL_MS) {
+      missionsSyncedUid = user.uid;
       return; // synced this uid moments ago in this tab — localStorage is already the merged result.
     }
-
     try {
-      const ref = auth.doc(auth.db, FIRESTORE_COLLECTION_V2, user.uid);
-      const snap = await auth.getDoc(ref);
-
+      if (!auth.readProgressDoc || !auth.writeProgressDoc) return; // bridge missing — local-only.
+      const snap = await auth.readProgressDoc(FIRESTORE_COLLECTION_V2);   // { exists, data } | null (signed out / unverified)
+      if (!snap) return;
       const localState = {
         progress: loadProgressState(),
         streak: loadStreakState(),
         hearts: loadHeartsState(),
       };
-
-      if (!snap || !snap.exists()) {
+      if (!snap.exists) {
         // Returning/new user, nothing in Firestore yet — migration:
         // push whatever real local data exists UP, rather than
         // discarding it in favor of an empty remote doc.
-        await auth.setDoc(ref, localState);
+        await auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, localState);
+        missionsSyncedUid = user.uid;
         writeSessionSyncCache(user.uid);
         return;
       }
-
-      const merged = reconcileMissionsState(localState, snap.data() || {});
+      const merged = reconcileMissionsState(localState, snap.data || {});
       saveProgressState(merged.progress, { skipPush: true });
       saveStreakState(merged.streak, { skipPush: true });
       saveHeartsState(merged.hearts, { skipPush: true });
-
       // Push the merged (superset) result back so any OTHER device
       // that only had, say, the local-only half of the union also
       // converges next time it syncs.
-      await auth.setDoc(ref, merged, { merge: true });
+      await auth.writeProgressDoc(FIRESTORE_COLLECTION_V2, merged, { merge: true });
+      missionsSyncedUid = user.uid;
       writeSessionSyncCache(user.uid);
     } catch (e) {
       console.warn('[missions.js] Missions Firestore sync failed, staying local-only:', e);
@@ -9011,7 +8920,6 @@ function getCategoriesForUnitV2(unitOrder) {
       // actually completed.
     }
   }
-
   // Call once per page load before trusting/writing Missions state that
   // needs to be cross-device-accurate. Cached so a page calling it
   // from multiple places only ever runs the reconcile once.
@@ -9025,7 +8933,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return MissionsSyncPromise;
   }
-
   // PER-ACCOUNT SCOPING (NEW) — mirrors js/camera-practice.js's 2026-08-26
   // personalization uid-scoping fix and js/engine/progress.js's own
   // `cached.uid === user.uid` reconcile pattern: these 3 keys are
@@ -9051,9 +8958,7 @@ function getCategoriesForUnitV2(unitOrder) {
       return null;
     }
   }
-
   /* ── Feature flag ────────────────────────────────────────────── */
-
   function isEnabled() {
     try {
       return localStorage.getItem(FEATURE_FLAG_KEY) === 'true';
@@ -9061,7 +8966,6 @@ function getCategoriesForUnitV2(unitOrder) {
       return false;
     }
   }
-
   function setEnabled(on) {
     try {
       localStorage.setItem(FEATURE_FLAG_KEY, on ? 'true' : 'false');
@@ -9069,7 +8973,6 @@ function getCategoriesForUnitV2(unitOrder) {
       console.warn('[missions.js] could not persist feature flag:', e);
     }
   }
-
   /* ── Pilot mission builder (§5.2, §5.3) ─────────────────────────
    * Reads real content off this file's own SIGNS_V2 rather than inventing a
    * second copy of it. Every LESSON/BOOSTER/PRACTICE item below wraps
@@ -9077,10 +8980,8 @@ function getCategoriesForUnitV2(unitOrder) {
    * top, per §5.1's "wrappers around content that already exists;
    * nothing new needs to be built to render them" principle.
    */
-
   const PILOT_LEVEL = 'medium';
   const PILOT_CATEGORY = 'essentials_greetings';
-
   // §3.2 — hand-curated content, ONLY for the Phase 1 pilot category.
   // Every other category (Phase 3, below) falls back to
   // CATEGORY_SCENARIO_TEMPLATE instead of a per-sign hand-written map
@@ -9111,14 +9012,12 @@ function getCategoriesForUnitV2(unitOrder) {
       nextTeaser: 'Next up: Polite Words — please, thank you, and sorry.',
     },
   };
-
   // §3.2 fallback for every non-curated category (Phase 3) — still
   // situational (names the category, not "Practice 4"), just not
   // individually hand-written per sign like the pilot's own map.
   function genericScenarioTitle(signTitle, categoryTitle) {
     return `Using "${signTitle}" — ${categoryTitle}`;
   }
-
   // §3.3 fallback bonus-XP rule for non-curated categories: fixed
   // (not random) — every 3rd practice-eligible sign, by position, so
   // it's reproducible across sessions like the curated pilot's own
@@ -9126,7 +9025,6 @@ function getCategoriesForUnitV2(unitOrder) {
   function genericBonusEligible(indexAmongPracticeItems) {
     return indexAmongPracticeItems % 3 === 2;
   }
-
   // ADMIN-ADDED LESSONS (Lesson Management → Firestore `signs`, see
   // registerCustomSigns() below) are flagged `custom: true`. They are built
   // AFTER every built-in sign, using the exact same LESSON → BOOSTER →
@@ -9139,7 +9037,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const sg = getSignV2(level, signId);
     return !!(sg && sg.custom);
   }
-
   function buildItemsForCategory(level, categoryId, categoryTitle, signIds, curated) {
     const items = [];
     let practiceCount = 0;
@@ -9148,19 +9045,16 @@ function getCategoriesForUnitV2(unitOrder) {
     [builtInIds, customIds].forEach((ids) => ids.forEach((signId, i, arr) => {
       const sign = getSignV2(level, signId);
       const signTitle = (sign && sign.title) || signId;
-
       // §3.1 — never two teaches in a row: LESSON is always directly
       // followed by a BOOSTER on the same sign, then (every other
       // sign) a scenario-titled PRACTICE before the next LESSON.
       items.push({ kind: 'LESSON', signId, scenarioTitle: null });
       items.push({ kind: 'BOOSTER', signId });
-
       if (i % 2 === 1 || i === arr.length - 1) {
         const isBonus = curated
           ? curated.bonusSignIds.has(signId)
           : genericBonusEligible(practiceCount);
         practiceCount++;
-
         items.push({
           kind: 'PRACTICE',
           signId,
@@ -9172,16 +9066,13 @@ function getCategoriesForUnitV2(unitOrder) {
         });
       }
     }));
-
     // Mastery Quiz — unchanged concept, reuses the existing category
     // assessment (pages/quiz.html?level=<level>&category=<categoryId>).
     // Hearts are still only spent here, per §6 non-goals / the
     // guide's existing hearts rule — Missions doesn't change that.
     items.push({ kind: 'QUIZ', level, category: categoryId });
-
     return items;
   }
-
   // §5.2/§5.3, generalized (Phase 3) — builds a full Missions mission
   // object for ANY level+categoryId that has real SIGNS_V2 content, not
   // just the Phase 1 pilot. Degrades to an empty item list (not a
@@ -9190,10 +9081,8 @@ function getCategoriesForUnitV2(unitOrder) {
   function buildMissionForCategory(level, categoryId) {
     const category = getCategoryV2(level, categoryId);
     const signIds = getCategorySignsV2(level, categoryId);
-
     const curated = CURATED[categoryId] || null;
     const categoryTitle = (category && category.title) || categoryId;
-
     // CHAPTER — UNITS_V2 each carry a `categoryGroup` (one of the 12
     // named curriculum chapters, getCategoryGroupsV2()). A mission's
     // chapter is its owning unit's chapter, looked up via category.unit
@@ -9205,7 +9094,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const owningUnit = category
       ? getUnitsV2().find((u) => u.order === category.unit)
       : null;
-
     return {
       // Keep 'm_greetings' (not 'm_essentials_greetings') for the
       // curated pilot category specifically — that id is already
@@ -9232,11 +9120,9 @@ function getCategoriesForUnitV2(unitOrder) {
       },
     };
   }
-
   function buildPilotMission() {
     return buildMissionForCategory(PILOT_LEVEL, PILOT_CATEGORY);
   }
-
   // §7 Phase 3 — every live category in the app, in the same order/
   // filter rule js/engine/progress.js's getOrderedLiveCategories()
   // uses (not comingSoon, has real SIGNS_V2 content) — re-derived here
@@ -9257,7 +9143,6 @@ function getCategoriesForUnitV2(unitOrder) {
       });
     return out;
   }
-
   // PERF FIX (this revision) — getAllMissions() used to rebuild all
   // ~65 missions (each with its own items[] array) from scratch on
   // EVERY call, by design ("missions are cheap to build; nothing here
@@ -9273,7 +9158,6 @@ function getCategoriesForUnitV2(unitOrder) {
   // once per page load" instead of "build every call," with stable
   // object identity as the added benefit.
   let _missionsCache = null;
-
   /* ══════════════════════════════════════════════════════════════
    * ADMIN-ADDED LESSONS (Lesson Management → Firestore `signs`)
    * ──────────────────────────────────────────────────────────────
@@ -9299,7 +9183,6 @@ function getCategoriesForUnitV2(unitOrder) {
   const CUSTOM_SIGNS_CACHE_KEY = 'lw_custom_signs_v1';
   const CUSTOM_ORDER_BASE = 100000; // keeps admin lessons after every built-in sign
   const CUSTOM_SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
-
   // Admin videos are played from the media Worker's public /media route. Lessons
   // saved while uploads still returned the bucket's *.r2.dev URL (development-only,
   // and unreachable on some networks) are rewritten to it here, so they work without
@@ -9310,7 +9193,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const m = typeof u === 'string' ? LEGACY_R2_URL_RE.exec(u.trim()) : null;
     return m ? `${CUSTOM_MEDIA_BASE}/${m[1]}` : u;
   }
-
   // Lessons saved before Lesson Management stored level/category only carry a
   // `missionId` ('m_<category>', or 'm_greetings' for the pilot category).
   // Resolve that to the same (level, category) the mission was built from.
@@ -9321,7 +9203,6 @@ function getCategoriesForUnitV2(unitOrder) {
     );
     return hit ? { level: hit.level, category: hit.id } : null;
   }
-
   function normalizeCustomSign(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const signKey = typeof raw.signId === 'string' ? raw.signId.trim() : '';
@@ -9355,7 +9236,6 @@ function getCategoriesForUnitV2(unitOrder) {
       custom: true,
     };
   }
-
   // Replaces ALL previously registered admin lessons with `list`.
   function registerCustomSigns(list) {
     for (let i = SIGNS_V2.length - 1; i >= 0; i--) {
@@ -9372,7 +9252,6 @@ function getCategoriesForUnitV2(unitOrder) {
     _missionsCache = null; // missions are built from SIGNS_V2 — rebuild on next getAllMissions()
     return added;
   }
-
   function hydrateCustomSignsFromCache() {
     try {
       const raw = localStorage.getItem(CUSTOM_SIGNS_CACHE_KEY);
@@ -9381,7 +9260,6 @@ function getCategoriesForUnitV2(unitOrder) {
       // No storage / corrupt cache: the Firestore load below still runs.
     }
   }
-
   let _customLessonsPromise = null;
   function loadCustomLessonsOnce() {
     if (typeof document === 'undefined') return Promise.resolve(); // Node tests
@@ -9402,14 +9280,12 @@ function getCategoriesForUnitV2(unitOrder) {
     // Never let a slow/blocked Firestore read hold a page's first repaint for long.
     return Promise.race([_customLessonsPromise, new Promise((resolve) => setTimeout(resolve, 5000))]);
   }
-
   function getAllMissions() {
     if (!_missionsCache) {
       _missionsCache = getLiveCategoryList().map((c) => buildMissionForCategory(c.level, c.id));
     }
     return _missionsCache;
   }
-
   // §7 Phase 3 — category ids are unique across the whole app (same
   // assumption js/engine/progress.js's own storage makes — see its
   // file header), so a bare categoryId lookup is enough; returns null
@@ -9423,14 +9299,12 @@ function getCategoriesForUnitV2(unitOrder) {
   function getMissionForCategory(categoryId) {
     return getAllMissions().find((m) => m.category === categoryId) || null;
   }
-
   /* ── Progress (dual-horizon, §3.4) ───────────────────────────────
    * missionProgress: fraction of this mission's items completed.
    * lessonProgress: fraction of ONE sign's own items (its LESSON +
    * BOOSTER + any PRACTICE tied to that signId) completed — the
    * "second, shorter bar" from §3.4/§5.4.
    */
-
   // PERF FIX (this revision) — loadProgressState() used to hit
   // localStorage.getItem() + JSON.parse() on EVERY call, and it's
   // called once per item (isItemComplete() below), for every item of
@@ -9465,14 +9339,12 @@ function getCategoriesForUnitV2(unitOrder) {
   // rebuild on the hot path), now correct if storage changes underneath
   // this module too.
   let _progressCache = null; // { uid, raw, state, completedIdsSet } | null
-
   function loadProgressState() {
     const uid = getCurrentUidV2();
     const raw = localStorage.getItem(PROGRESS_KEY);
     if (_progressCache && _progressCache.uid === uid && _progressCache.raw === raw) {
       return _progressCache.state;
     }
-
     let state;
     try {
       const parsed = raw ? JSON.parse(raw) : null;
@@ -9495,7 +9367,6 @@ function getCategoriesForUnitV2(unitOrder) {
     _progressCache = { uid, raw, state, completedIdsSet: new Set(state.completedItemIds) };
     return state;
   }
-
   function saveProgressState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
@@ -9513,16 +9384,13 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('progress', state);
   }
-
   function itemId(mission, index, item) {
     return `${mission.id}_${index}_${item.kind}_${item.signId || item.category || ''}`;
   }
-
   function isItemComplete(mission, index, item) {
     loadProgressState(); // ensures _progressCache is populated/fresh for the current uid
     return _progressCache.completedIdsSet.has(itemId(mission, index, item));
   }
-
   function markItemComplete(mission, index, item) {
     const state = loadProgressState();
     const id = itemId(mission, index, item);
@@ -9545,7 +9413,6 @@ function getCategoriesForUnitV2(unitOrder) {
     // recordActivity(type) instead (lesson.js, mastery-quiz.js, camera-practice.js).
     return getMissionProgress(mission);
   }
-
   // NEW, ADDITIVE (Priority 1, Task 1 — "Mastery Quiz Completes the
   // Mission") — marks EVERY item in `mission` complete in one go
   // (LESSON/BOOSTER/PRACTICE for every sign, plus QUIZ), not just the
@@ -9574,7 +9441,6 @@ function getCategoriesForUnitV2(unitOrder) {
     mission.items.forEach((item, i) => markItemComplete(mission, i, item));
     return getMissionProgress(mission);
   }
-
   // BRIDGE (migration-analysis pass) — pages/camera-practice.html
   // (the moved-but-still-V1 camera practice page) only ever calls
   // window.LWProgress.recordSignPracticed(level, category, signId); it
@@ -9602,13 +9468,11 @@ function getCategoriesForUnitV2(unitOrder) {
     if (global.LWXP) global.LWXP.claimItem(mission, index);
     return done;
   }
-
   // Phase 2 addition — when this item was completed, or null.
   function getItemCompletedAt(mission, index, item) {
     const state = loadProgressState();
     return state.completedAt[itemId(mission, index, item)] || null;
   }
-
   // Phase 2 addition — index of the first NOT-yet-complete item, in
   // the mission's own sequential order ("how far did the learner
   // actually get before stopping"). Returns mission.items.length if
@@ -9619,7 +9483,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return mission.items.length;
   }
-
   // NEW, ADDITIVE — "may this learner step back through the mission and
   // review it?" True once every item BEFORE the closing QUIZ is complete
   // (i.e. getDropOffIndex() has reached the QUIZ item, so the Mastery Quiz
@@ -9643,7 +9506,6 @@ function getCategoriesForUnitV2(unitOrder) {
     if (last < 0) return false;
     return getDropOffIndex(mission) >= last;
   }
-
   // PERF FIX (this revision) — isChapterUnlocked() (below) calls
   // getMissionProgress() on every mission in every EARLIER chapter,
   // for every mission being rendered — so a full mission-list render
@@ -9661,7 +9523,6 @@ function getCategoriesForUnitV2(unitOrder) {
   // writes.
   let _progressVersion = 0;
   const _missionProgressMemo = new WeakMap(); // mission -> { version, value }
-
   function getMissionProgress(mission) {
     const memo = _missionProgressMemo.get(mission);
     if (memo && memo.version === _progressVersion) return memo.value;
@@ -9671,7 +9532,6 @@ function getCategoriesForUnitV2(unitOrder) {
     _missionProgressMemo.set(mission, { version: _progressVersion, value });
     return value;
   }
-
   function getLessonProgress(mission, signId) {
     const signItems = mission.items
       .map((item, i) => ({ item, i }))
@@ -9680,7 +9540,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const done = signItems.filter(({ item, i }) => isItemComplete(mission, i, item)).length;
     return done / signItems.length;
   }
-
   /* ── Chapter gating ──────────────────────────────────────────────
    * REVISED RULE (was: strictly sequential, each chapter needed every
    * earlier chapter 100% done):
@@ -9700,7 +9559,6 @@ function getCategoriesForUnitV2(unitOrder) {
    */
   const CHAPTER_1_ID = 'asl_foundations';
   const CHAPTER_2_ID = 'express_feelings';
-
   // True when every live mission in the chapter is 100% done. A chapter
   // with no live missions can't block anything (vacuously complete).
   function isChapterComplete(categoryGroupId, allMissions) {
@@ -9708,7 +9566,6 @@ function getCategoriesForUnitV2(unitOrder) {
       .filter((m) => m.categoryGroup === categoryGroupId)
       .every((m) => getMissionProgress(m) >= 1);
   }
-
   function isChapterUnlocked(categoryGroupId, allMissions) {
     if (!categoryGroupId) return true;
     const chapter = getCategoryGroupsV2().find((c) => c.id === categoryGroupId);
@@ -9719,7 +9576,6 @@ function getCategoriesForUnitV2(unitOrder) {
     return isChapterComplete(CHAPTER_1_ID, allMissions)
         && isChapterComplete(CHAPTER_2_ID, allMissions);
   }
-
   // A mission's real, chapter-aware status:
   //  - 'done'      the mission itself is 100% complete
   //  - 'locked'    the mission's chapter isn't unlocked yet (above)
@@ -9734,7 +9590,6 @@ function getCategoriesForUnitV2(unitOrder) {
     if (!isChapterUnlocked(mission.categoryGroup, allMissions)) return 'locked';
     return progress > 0 ? 'current' : 'available';
   }
-
   // Which chapter should read as "the one you're working on" for UI
   // purposes (e.g. which chapter section starts open on learn.html)
   // — the first chapter, in order, that isn't yet 100% complete.
@@ -9748,7 +9603,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return chapters.length ? chapters[chapters.length - 1].id : null;
   }
-
   function getRecap(mission) {
     // §3.8 — recap bullets, generated from whichever LESSON items are
     // actually complete, not a hardcoded list (so it's accurate for
@@ -9758,7 +9612,6 @@ function getCategoriesForUnitV2(unitOrder) {
       .filter(({ item, i }) => item.kind === 'LESSON' && isItemComplete(mission, i, item))
       .map(({ item }) => `You can now sign "${item.signId}"`);
   }
-
   /* ── Day Streak ─────────────────────────────────────────────────
    * REWRITTEN (streak pass). One small, explicit state per learner:
    *
@@ -9799,7 +9652,6 @@ function getCategoriesForUnitV2(unitOrder) {
    * js/mastery-quiz.js (a PASS), js/camera-practice.js (a PASSED camera check).
    * markItemComplete() deliberately does NOT record streak activity any more -
    * it also fires on replays and on bridge/reconfirm calls. */
-
   const STREAK_RECENT_DAYS = 14;
   // GRACE: consecutive missed calendar days a streak survives. 1 = one missed day is
   // forgiven (restored by the next activity), two in a row reset it.
@@ -9814,19 +9666,16 @@ function getCategoriesForUnitV2(unitOrder) {
     review: true,          // re-answering a recall/practice question on a finished item
     camera_practice: true, // PASSING the camera check
   });
-
   /* Local calendar day ('YYYY-MM-DD') of a Date/ISO string. Never UTC. */
   function localDayKey(dateLike) {
     const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
-
   /* Steps a day key by whole calendar days (DST-safe, never touches UTC). */
   function shiftDayKey(key, deltaDays) {
     const [y, m, d] = key.split('-').map(Number);
     return localDayKey(new Date(y, m - 1, d + deltaDays));
   }
-
   /* Whole calendar days from key `a` to key `b` (b - a). Math.round keeps it
    * exact across DST changes (a local "day" is 23 or 25 hours twice a year). */
   function dayGap(a, b) {
@@ -9834,19 +9683,14 @@ function getCategoriesForUnitV2(unitOrder) {
     const [by, bm, bd] = b.split('-').map(Number);
     return Math.round((new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad)) / 86400000);
   }
-
   function todayStr() {
     return localDayKey(new Date());
   }
-
   function emptyStreakState() {
     return { v: STREAK_VERSION, current: 0, longest: 0, lastActivityDate: null, lastRestoredDate: null, recentDays: [] };
   }
-
   const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-
   /* ── pure rules ── */
-
   /* State after a qualifying activity on local day `today`. Returns the SAME
    * object when nothing changes, so callers can tell whether to save. */
   function applyStreakActivity(state, today) {
@@ -9868,7 +9712,6 @@ function getCategoriesForUnitV2(unitOrder) {
       recentDays: Array.from(new Set(recent)).sort().slice(-STREAK_RECENT_DAYS),
     };
   }
-
   /* The streak to DISPLAY on local day `today`: live while at most
    * STREAK_MAX_MISSED_DAYS full days have been missed since the last activity,
    * 0 once a second missed day in a row has passed. */
@@ -9877,7 +9720,6 @@ function getCategoriesForUnitV2(unitOrder) {
     const missed = dayGap(state.lastActivityDate, today) - 1;
     return missed <= STREAK_MAX_MISSED_DAYS ? (state.current || 0) : 0;
   }
-
   /* Builds a state from a list of active local day keys (used only to
    * migrate pre-rewrite data). */
   function streakFromDays(days) {
@@ -9898,7 +9740,6 @@ function getCategoriesForUnitV2(unitOrder) {
       recentDays: uniq.slice(-STREAK_RECENT_DAYS),
     };
   }
-
   /* Accepts a v2 state (sanitised) or a legacy `{ days, ... }` state.
    *
    * Legacy migration: the old model recorded a "streak day" every time
@@ -9941,7 +9782,6 @@ function getCategoriesForUnitV2(unitOrder) {
     if (stampDays.length) return streakFromDays(stampDays);
     return streakFromDays(raw && raw.days);
   }
-
   /* Merge two states for cross-device sync. The state with the LATER
    * lastActivityDate wins `current` (same day -> the larger); `longest` and
    * recentDays only ever grow. */
@@ -9962,9 +9802,7 @@ function getCategoriesForUnitV2(unitOrder) {
       recentDays: Array.from(new Set([...(x.recentDays || []), ...(y.recentDays || [])])).sort().slice(-STREAK_RECENT_DAYS),
     };
   }
-
   /* ── storage ── */
-
   function loadStreakState() {
     const uid = getCurrentUidV2();
     try {
@@ -9985,7 +9823,6 @@ function getCategoriesForUnitV2(unitOrder) {
       return { ...emptyStreakState(), uid };
     }
   }
-
   function saveStreakState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
@@ -9995,7 +9832,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('streak', state);
   }
-
   /* THE one entry point. `type` must be one of STREAK_QUALIFYING_TYPES.
    * Returns { counted, restored, current, longest } - `counted` is true only when
    * this call started or extended the streak (first qualifying activity today);
@@ -10013,7 +9849,6 @@ function getCategoriesForUnitV2(unitOrder) {
     // restored: this call bridged a single missed day (grace) rather than just +1
     return { counted, restored: counted && after.lastRestoredDate === today, current: after.current, longest: after.longest };
   }
-
   function getStreakSummary() {
     const state = loadStreakState();
     const today = todayStr();
@@ -10031,7 +9866,6 @@ function getCategoriesForUnitV2(unitOrder) {
       recentDays: (state.recentDays || []).slice(),
     };
   }
-
   /* Runs `cb` once whenever the learner's LOCAL calendar day changes while the
    * page is open (midnight, or waking a sleeping tab / laptop). A page rendered
    * before midnight otherwise keeps showing yesterday as "today". One timer
@@ -10062,7 +9896,6 @@ function getCategoriesForUnitV2(unitOrder) {
     arm();
     return stop;
   }
-
   /* ── Mastery Hearts (§6/§10) ─────────────────────────────────────
    * A 3-heart pool guarding Mastery Quiz ATTEMPTS ONLY — every other
    * learning activity (lesson, booster, practice) stays open at zero
@@ -10075,10 +9908,8 @@ function getCategoriesForUnitV2(unitOrder) {
    * background timer needed, same lazy-evaluation style as the streak
    * calculator above.
    */
-
   const MAX_HEARTS = 3;
   const HEART_REFILL_MS = 1 * 60 * 60 * 1000; // 1 hour per lost heart
-
   function loadHeartsState() {
     const uid = getCurrentUidV2();
     try {
@@ -10094,7 +9925,6 @@ function getCategoriesForUnitV2(unitOrder) {
       return { uid, lostAt: [] };
     }
   }
-
   function saveHeartsState(state, opts) {
     try {
       state.uid = getCurrentUidV2();
@@ -10104,7 +9934,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     if (!(opts && opts.skipPush)) pushFieldToFirestoreV2('hearts', state);
   }
-
   // Drops any lostAt entries whose 4-hour refill window has already
   // passed, persisting the trim so storage doesn't grow forever.
   // Returns the still-lost (not yet refilled) timestamps.
@@ -10116,7 +9945,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return stillLost;
   }
-
   // { hearts: 0-3, maxHearts: 3, nextRefillAt: ISOString|null } —
   // nextRefillAt is when the NEXT heart comes back (the oldest still-
   // lost one), or null when the pool is already full.
@@ -10130,7 +9958,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return { hearts, maxHearts: MAX_HEARTS, nextRefillAt };
   }
-
   // Spends one heart for a Mastery Quiz attempt. No-ops (does not go
   // negative) if already at zero hearts — callers should check
   // getHeartsState().hearts > 0 before offering the action at all, this
@@ -10148,7 +9975,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return getHeartsState();
   }
-
   // NEW, ADDITIVE (Task 2, this revision) — same floor-at-zero
   // mechanics as consumeHeartForMastery() above, just spent for a
   // different reason: one WRONG graded answer inside a real,-native
@@ -10167,7 +9993,6 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return getHeartsState();
   }
-
   /* ── Orientation (this session) ──────────────────────────────────
    * A single, ungated, always-visible entry learn.js pins ABOVE
    * the 12 chapter sections — not a mission (no signs, no items, no
@@ -10185,11 +10010,9 @@ function getCategoriesForUnitV2(unitOrder) {
     goal: 'Where ASL comes from, why it matters, and how to learn it well — start here.',
     href: 'orientation.html',
   };
-
   function getOrientation() {
     return ORIENTATION;
   }
-
   /* ── UI config (§3.9, §3.10, §3.5, §3.12) ───────────────────────
    * Plain config, read by the preview renderer (js/missions-preview.js)
    * to decide where the hint link / heart counter / collapse
@@ -10202,7 +10025,6 @@ function getCategoriesForUnitV2(unitOrder) {
     collapseMasteredMissions: true, // §3.5
     discussionCount: null, // reserved for §3.12, stays hidden until non-zero
   };
-
   /* ── Trail numbering (light-mode UX pass) ──────────────────────
    * NEW — category id -> 1-based position on the trail: chapter order,
    * then order within the chapter. This is the number Learn's rows and
@@ -10222,11 +10044,8 @@ function getCategoriesForUnitV2(unitOrder) {
     });
     return byCategory;
   }
-
   /* ── Public export ───────────────────────────────────────────── */
-
   hydrateCustomSignsFromCache();
-
   global.LWMissions = {
     schemaVersion: 2,
     featureFlagKey: FEATURE_FLAG_KEY,
@@ -10280,5 +10099,4 @@ function getCategoriesForUnitV2(unitOrder) {
       CATEGORY_GROUPS: CATEGORY_GROUPS_V2,
     },
   };
-
 })(window);

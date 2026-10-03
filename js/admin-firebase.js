@@ -75,14 +75,11 @@ import {
   computeSurveyStats,
   displayName,
 } from "./survey-schema.js";
-
 export { auth, db };
-
 /* ── small helpers ──────────────────────────────────────────────── */
 function withId(snapshot) {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
-
 /* ── USERS (User Management) ──────────────────────────────────────
  * Reads/edits the SAME `users/{uid}` documents js/auth.js already
  * writes on register/login (name, email, level, joined). No "create"
@@ -91,8 +88,9 @@ function withId(snapshot) {
  * Auth login and their Firestore data. A browser can't delete someone
  * else's Auth account (that needs the Admin SDK), so that part goes through
  * the `deleteLearnerAccount` Cloud Function in /functions (Blaze plan, see
- * ADMIN_SETUP.md). Without it, only the Firestore data is deleted and the
- * admin is told to remove the login in the Firebase console.
+ * ADMIN_SETUP.md). Without it, only the Firestore data is deleted (by this
+ * file, from the admin's browser) and the admin is told to remove the login
+ * in the Firebase console.
  * ──────────────────────────────────────────────────────────────── */
 // The admin is not a learner: hide the admin's own profile doc (if it has
 // one) so User Management and Reports only count real learners.
@@ -106,20 +104,46 @@ export async function listUsers() {
 export function updateUserLevel(uid, level) {
   return updateDoc(doc(db, "users", uid), { level });
 }
+// Everything keyed by the learner's uid, besides users/{uid} itself. Keep in sync with
+// functions/xp-cleanup.js (xpState, publicProfiles, userProgress, userProgressV2, userGame; surveys by userId).
+const LEARNER_UID_DOCS = ["xpState", "publicProfiles", "userProgress", "userProgressV2", "userGame"];
+const FUNCTION_UNAVAILABLE = ["functions/not-found", "functions/unavailable"];
+/**
+ * Admin-side Firestore cleanup (idempotent). users/{uid} goes FIRST: firestore.rules only let a
+ * learner CREATE xpState / publicProfiles / progress docs while users/{uid} exists, so a learner tab
+ * that is still open can't put the data back while it is being removed.
+ */
+async function deleteLearnerFirestoreData(uid) {
+  await deleteDoc(doc(db, "users", uid));
+  await Promise.all(LEARNER_UID_DOCS.map((name) => deleteDoc(doc(db, name, uid))));
+  // Feedback is keyed `${uid}_${level}_${ts}`, so find it by its owner field.
+  const surveys = await getDocs(query(collection(db, "surveys"), where("userId", "==", uid)));
+  await Promise.all(surveys.docs.map((s) => deleteDoc(s.ref)));
+}
 /**
  * Deletes a learner COMPLETELY.
- * The admin-only Cloud Function removes the Firebase Auth login and all
- * Firestore data, including the learner's client-written XP documents. There
- * is no browser fallback because a client cannot delete another learner's data.
+ * 1. The admin-only Cloud Function removes the Firebase Auth login (and, via the Admin SDK, every
+ *    Firestore doc incl. legacy xpEvents/xpSessions).
+ * 2. This browser then ALSO deletes users, xpState, publicProfiles, userProgress, userProgressV2,
+ *    userGame and the learner's surveys. It is a safety net: it covers a Cloud Function that is not
+ *    deployed (Spark plan) or is an older deployment that doesn't clean every collection.
+ * If the function can't be reached the Firestore data is still removed, and the caller is told
+ * (authDeleted:false) that the login must be deleted in Firebase Console -> Authentication.
  *
- * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function"}>}
+ * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function+browser"|"browser"}>}
  */
 export async function deleteLearnerAccount(uid) {
-  const call = httpsCallable(getFunctions(auth.app), "deleteLearnerAccount");
-  await call({ uid });
-  return { authDeleted: true, firestoreDeleted: true, via: "function" };
+  let authDeleted = false;
+  try {
+    await httpsCallable(getFunctions(auth.app), "deleteLearnerAccount")({ uid });
+    authDeleted = true;
+  } catch (err) {
+    if (!FUNCTION_UNAVAILABLE.includes(err?.code)) throw err;   // real failure: nothing is deleted, the row stays for a retry
+    console.warn("[admin] deleteLearnerAccount function unavailable, deleting Firestore data from the browser only:", err);
+  }
+  await deleteLearnerFirestoreData(uid);
+  return { authDeleted, firestoreDeleted: true, via: authDeleted ? "function+browser" : "browser" };
 }
-
 /**
  * RESET PROGRESS (not Delete Account): keeps the Auth login and users/{uid}; removes XP, level, streak,
  * badges, the leaderboard row and all lesson progress. Writes users/{uid}.progressResetAt so the learner's
@@ -134,7 +158,6 @@ export async function resetLearnerProgress(uid) {
   await call({ uid });
   return { via: "function" };
 }
-
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────
  * Lessons the admin adds. Doc id === signId (a lowercase slug), so a
  * lesson can never be created twice. Fields:
@@ -151,7 +174,6 @@ export async function listAdminLessons() {
   const snap = await getDocs(collection(db, "signs"));
   return withId(snap);
 }
-
 function lessonPayload(data) {
   return {
     signId: data.signId,
@@ -169,7 +191,6 @@ function lessonPayload(data) {
     source: "admin",
   };
 }
-
 /** Creates signs/{signId}. Throws {code:"lesson/exists"} if the id is taken. */
 export async function createLesson(data) {
   const ref = doc(db, "signs", data.signId);
@@ -184,17 +205,14 @@ export async function createLesson(data) {
     updatedAt: serverTimestamp(),
   });
 }
-
 /** Updates an existing lesson (Sign ID never changes). */
 export function updateLesson(signId, data) {
   const { signId: _ignored, ...rest } = lessonPayload({ ...data, signId });
   return updateDoc(doc(db, "signs", signId), { ...rest, updatedAt: serverTimestamp() });
 }
-
 export function deleteLesson(signId) {
   return deleteDoc(doc(db, "signs", signId));
 }
-
 /* ── SURVEYS (Feedback & Surveys) ─────────────────────────────────
  * Reads every `surveys/{id}` document in ONE getDocs() call, normalises
  * it (missing fields become safe defaults, so older documents never
@@ -216,7 +234,6 @@ export async function listSurveys(users) {
   const rows = snap.docs.map((d) => normalizeSurvey(d.id, d.data()));
   return sortNewestFirst(enrichWithUsers(rows, users));
 }
-
 /* ── REPORTS & ANALYTICS ───────────────────────────────────────────
  * Read-only aggregates computed client-side (learners from Firestore,
  * lessons/quizzes from the hardcoded curriculum). Nothing here is
@@ -240,15 +257,12 @@ export async function getReportStats() {
   }
   // Lessons/quizzes come from the hardcoded curriculum, not Firestore.
   const content = getContentStats();
-
   const usersByLevel = users.reduce((acc, u) => {
     const lvl = u.level || "unspecified";
     acc[lvl] = (acc[lvl] || 0) + 1;
     return acc;
   }, {});
-
   const sortedByJoined = [...users].sort((a, b) => (b.joined || "").localeCompare(a.joined || ""));
-
   return {
     totalUsers: users.length,
     usersByLevel,
