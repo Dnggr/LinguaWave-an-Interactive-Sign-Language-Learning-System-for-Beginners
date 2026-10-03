@@ -1,10 +1,10 @@
 /**
  * admin-users.js — Controller for pages/admin-users.html (NEW)
  * Lists learner profiles from Firestore `users` and lets the admin delete a learner
- * COMPLETELY — Firebase Auth login + Firestore data — through the
- * `deleteLearnerAccount` Cloud Function (see js/admin-firebase.js); without
- * the function only the Firestore data goes and the admin is told to remove
- * the login in the Firebase console.
+ * COMPLETELY — Firebase Auth login + Firestore data (see deleteLearnerAccount in
+ * js/admin-firebase.js). The login is removed first by the Cloudflare Worker; if that
+ * fails nothing is deleted and the admin just sees an error, so there is no
+ * "data gone but login remains" state to explain.
  * The admin's own row (matched by ADMIN_EMAIL) has no delete button,
  * so a stray click can't delete the admin account.
  * BULK ACTIONS (header buttons): "Reset all user data" wipes XP / streaks / badges / progress for every
@@ -30,10 +30,12 @@ const BULK = {
     phrase: "DELETE",
     confirm: "Delete all users",
     body: (n) => `This permanently deletes ${n} learner account${n === 1 ? "" : "s"} and everything they have saved.`,
-    list: ["Profiles, XP, badges and progress", "Leaderboard rows and game progress", "Their feedback surveys", "Their login, if the delete service is deployed"],
+    list: ["Profiles, XP, badges and progress", "Leaderboard rows and game progress", "Their feedback surveys", "Their login (Firebase Authentication)"],
     note: "The admin account is not affected. This can't be undone.",
   },
 };
+// Not-allowed errors from the Worker (401/403) or from Firestore rules.
+const DENIED_CODES = ["worker/http-401", "worker/http-403", "permission-denied"];
 const els = {};
 function cacheEls() {
   els.tbody = document.getElementById("user-table-body");
@@ -116,25 +118,21 @@ async function confirmDelete() {
   const uid = pendingDeleteUid;
   els.deleteConfirm.disabled = true;
   try {
-    // Cloud Function (if deployed) removes the Auth login; the Firestore data is always removed.
-    const res = await deleteLearnerAccount(uid);
+    // Login first (via the Worker), then the learner's data. Throws if either part fails.
+    await deleteLearnerAccount(uid);
     closeDeleteConfirm();
-    window.LinguaWave?.showToast?.(
-      res?.authDeleted === false
-        ? "Learner data deleted. Their login still exists: remove it in Firebase Console -> Authentication."
-        : "Learner deleted (login and data).",
-      "success"
-    );
+    window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
     await loadUsers();
   } catch (err) {
     console.error("Failed to delete learner:", err);
-    const denied = ["functions/permission-denied", "permission-denied"].includes(err?.code);
     window.LinguaWave?.showToast?.(
-      denied
-        ? "Not allowed: only the admin account can delete learners."
-        : (err?.message || "Couldn't delete this learner."),
+      DENIED_CODES.includes(err?.code)
+        ? "Not allowed: only the verified admin account can delete learners."
+        : (err?.message || "Couldn't delete this learner. Nothing was deleted."),
       "error"
     );
+    // The login may already be gone (admin/cleanup-failed): refresh so the list shows what is left.
+    if (err?.code === "admin/cleanup-failed") await loadUsers();
   } finally {
     els.deleteConfirm.disabled = false;
   }
@@ -197,18 +195,24 @@ async function confirmBulk() {
       );
     } else {
       const r = await deleteAllLearners(onBulkProgress);
-      if (r.failed.length) {
+      if (r.failed.length && !r.deleted) {
+        // Nothing was deleted: show WHY (e.g. not allowed / server not set up) instead of a bare count.
+        const why = r.failed[0].error;
+        toast?.(
+          DENIED_CODES.includes(why?.code)
+            ? "Not allowed: only the verified admin account can do this."
+            : `Nothing was deleted. ${why?.message || "See the console."}`,
+          "error"
+        );
+      } else if (r.failed.length) {
         toast?.(`Deleted ${r.deleted} of ${r.total} learners. ${r.failed.length} failed, see the console and try again.`, "error");
-      } else if (r.authDeleted < r.deleted) {
-        toast?.(`Deleted data of ${r.deleted} learner${r.deleted === 1 ? "" : "s"}. Their logins still exist: remove them in Firebase Console -> Authentication.`, "success");
       } else {
         toast?.(`Deleted ${r.deleted} learner${r.deleted === 1 ? "" : "s"} (logins and data).`, "success");
       }
     }
   } catch (err) {
     console.error("Bulk action failed:", err);
-    const denied = ["functions/permission-denied", "permission-denied"].includes(err?.code);
-    toast?.(denied ? "Not allowed: only the admin account can do this." : (err?.message || "The bulk action failed."), "error");
+    toast?.(DENIED_CODES.includes(err?.code) ? "Not allowed: only the verified admin account can do this." : (err?.message || "The bulk action failed."), "error");
   } finally {
     bulkRunning = false;
     els.bulkClose.disabled = false;
