@@ -99,15 +99,17 @@
     <div class="app-main lb-page" id="main">
       <section class="section section--sm section--tight">
         <div class="container">
-          <header class="lb-head">
-            <div class="lb-head__text">
-              <h1>Leaderboard</h1>
-              <p class="mt-2 text-muted">Earn XP from lessons, Construct a Sentence, Wall Breaker and Time Attack. Lessons are worth far more than games, so there is no shortcut to the top.</p>
-            </div>
-            <button type="button" class="btn btn--ghost btn--sm lb-how-btn" id="lb-how-btn" aria-haspopup="dialog" aria-controls="lb-how-dialog">How XP works</button>
-          </header>
-
           <div class="lb-layout">
+            <!-- Title + intro. Lives INSIDE the grid (left column, row 1) so the level card on the right
+                 can start level with it instead of below it. -->
+            <header class="lb-head">
+              <div class="lb-head__text">
+                <h1>Leaderboard</h1>
+                <p class="mt-2 text-muted">Earn XP from lessons, Construct a Sentence, Wall Breaker and Time Attack. Lessons are worth far more than games, so there is no shortcut to the top.</p>
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm lb-how-btn" id="lb-how-btn" aria-haspopup="dialog" aria-controls="lb-how-dialog">How XP works</button>
+            </header>
+
             <!-- Main column: the boards themselves. -->
             <div class="lb-main">
               <div class="lb-tabs" role="tablist" aria-label="Leaderboard views" id="lb-tabs">
@@ -150,7 +152,8 @@
             </div>
 
             <!-- Side panel: the learner's own level card, with the "My badges" button under its XP bar (drawMe() in js/leaderboard.js).
-                 Sits to the right on desktop; stacks ABOVE the boards on tablets and phones. -->
+                 Sits to the right on desktop, spanning the title row and the boards (starts level with the title);
+                 stacks between the title and the boards on tablets and phones. -->
             <aside class="lb-side" aria-label="Your level">
               <div class="card xp-card lb-me" id="lb-me" aria-live="polite" data-sk><!-- filled by js/leaderboard.js --><div class="sk-group" role="status"><span class="sr-only">Loading your level…</span><div class="sk-row"><span class="sk sk--circle" style="--s:56px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:60%;--h:1.2rem"></span><span class="sk sk--line" style="--w:40%;--h:.8rem"></span></div></div><span class="sk sk--line" style="--h:.7rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.5rem"></span></div></div>
             </aside>

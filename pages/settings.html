@@ -58,7 +58,7 @@
     KEPT (from that session): "Replay all guides" now opens
                #guard-confirm-modal first — a generic "Do you want
                to …?" modal whose Confirm button is disabled behind a
-               10-second countdown. Wired by js/settings-page.js's
+               5-second countdown. Wired by js/settings-page.js's
                initConfirmGuardModal(), exposed as
                window.LWConfirmGuard(message). edit-profile.html has
                its own copy of this same modal for its own actions,
@@ -92,12 +92,12 @@
     /* Page-scoped: profile card + preference-row + guard-confirm-modal
        layout only. Everything else reuses css/style.css as-is. */
     .profile-card { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
-    .profile-card__avatar {
-      width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
-      background: var(--clr-accent-soft); color: var(--clr-accent);
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700;
-    }
+    /* Display-only picture slot. js/settings-page.js (initProfileAvatar) fills it with
+       the learner's chosen picture; with none chosen it shows their initial on the tint
+       (css/style.css .lw-avatar--initial). Changing it happens on Edit Profile. */
+    .profile-card__avatar { width: 72px; height: 72px; flex-shrink: 0; }
+    .profile-card__avatar .lw-avatar { width: 100%; height: auto; aspect-ratio: 1; border-width: 1px; }
+    .profile-card__avatar .lw-avatar--initial { font-family: var(--font-display); font-size: var(--fs-2xl); }
     .profile-card__info { flex: 1; min-width: 200px; }
     .profile-card__email { color: var(--clr-text-muted); font-size: var(--fs-sm); margin-top: var(--space-1); }
     .pref-row {
@@ -141,7 +141,7 @@
     .modal--guard p { font-size: var(--fs-sm); color: var(--clr-text); margin: 0 0 var(--space-5); overflow-wrap: anywhere; }
     .modal__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
     /* Keeps the Confirm button's width stable as its label counts down
-       from "Confirm (10)" to "Confirm" so it doesn't jump around. */
+       from "Confirm (5)" to "Confirm" so it doesn't jump around. */
     .modal__actions .btn--danger { min-width: 8.5em; }
   </style>
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
@@ -209,7 +209,7 @@
 
           <!-- ── PROFILE CARD ────────────────────────────────────── -->
           <div class="card mt-8 profile-card">
-            <div class="profile-card__avatar" aria-hidden="true" id="settings-avatar-initial" data-user-initial></div>
+            <div class="profile-card__avatar" aria-hidden="true" id="settings-avatar-initial"><span class="lw-avatar lw-avatar--initial" data-user-initial></span></div>
             <div class="profile-card__info">
               <div class="fs-lg" style="font-weight:700;" id="settings-user-name" data-user-name>—</div>
               <div class="profile-card__email" id="settings-user-email" data-user-email>—</div>
@@ -223,7 +223,7 @@
                guards "Replay all guides" below. Its message is set at
                open time by window.LWConfirmGuard(message) in
                js/settings-page.js; the Confirm button starts disabled
-               and counts down from "Confirm (10)" to "Confirm" before
+               and counts down from "Confirm (5)" to "Confirm" before
                it can be clicked. -->
           <div class="modal-overlay" id="guard-confirm-modal" hidden>
             <div class="modal modal--guard" role="alertdialog" aria-modal="true" aria-labelledby="guard-confirm-title" tabindex="-1">
@@ -325,6 +325,7 @@
        this is a safe load-order win, not just moved for no reason. -->
   <script defer src="../js/missions.js"></script>
   <script src="../js/tour.js"></script>
+  <script src="../js/avatars.js"></script>
   <script src="../js/settings-page.js"></script>
 </body>
 </html>

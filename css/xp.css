@@ -86,12 +86,13 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
 .lb-head__text { flex: 1 1 320px; min-width: 0; }
 .lb-how-btn { flex: none; }
 
-/* Two columns: boards (left, fluid) + the learner's own level card (right, sticky side panel).
-   Under 960px the side panel stacks ABOVE the boards. */
-.lb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6, 1.5rem); align-items: start; margin-top: var(--space-4, 1rem); }
-.lb-main { min-width: 0; }
+/* Two columns: title + boards (left, fluid) + the learner's own level card (right, sticky side panel that starts
+   level with the title). Under 960px it stacks: title, level card, boards. */
+.lb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4, 1rem) var(--space-6, 1.5rem); align-items: start; }
+.lb-head { grid-column: 1; grid-row: 1; }
+.lb-main { grid-column: 1; grid-row: 2; min-width: 0; }
 .lb-main .lb-tabs { margin-top: 0; }
-.lb-side { position: sticky; top: var(--space-6, 1.5rem); }
+.lb-side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: var(--space-6, 1.5rem); }   /* spans the title row too, so the card starts level with the title */
 .lb-me { text-align: center; justify-items: center; }
 .lb-me .xp-card__top { flex-direction: column; text-align: center; gap: var(--space-3, .75rem); }
 .lb-me .xp-level { width: 72px; height: 72px; font-size: 1.75rem; }
@@ -100,6 +101,8 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
 .lb-me .xp-bar__label { justify-content: center; }
 @media (max-width: 960px) {
   .lb-layout { grid-template-columns: minmax(0, 1fr); }
+  .lb-head, .lb-main, .lb-side { grid-column: 1; grid-row: auto; }
+  .lb-head { order: -2; }                       /* title, then your level card, then the boards */
   .lb-side { position: static; order: -1; }
   .lb-me { text-align: left; justify-items: stretch; }
   .lb-me .xp-card__top { flex-direction: row; text-align: left; }

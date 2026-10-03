@@ -14,6 +14,10 @@
  *            preferences doc exists server-side, only this file's
  *            save()/load() would need to change.
  *
+ * PROFILE PICTURE (display only): initProfileAvatar() below shows the learner's
+ * chosen picture in the profile card (needs js/avatars.js loaded first). It is
+ * only shown here; the picker lives on pages/edit-profile.html.
+ *
  * "Edit Profile" routes to pages/edit-profile.html — see that page's
  * own js/edit-profile.js for the profile-edit screen itself. (This
  * file used to also wire a Level badge here, driven by js/xp.js /
@@ -26,7 +30,7 @@
  * guides", which resets saved tour state for the whole account, goes
  * through window.LWConfirmGuard(message) — a small promise-based
  * modal defined in initConfirmGuardModal() below. It shows the
- * message, disables its Confirm button for a 10-second countdown, and
+ * message, disables its Confirm button for a 5-second countdown, and
  * only resolves true once the learner clicks Confirm after the
  * countdown finishes (Cancel/Escape resolve false immediately).
  * js/edit-profile.js has its own copy of this same modal for its own
@@ -127,7 +131,7 @@ function initMissionsDevBlock() {
 // If that markup is missing for any reason, LWConfirmGuard falls back
 // to a plain window.confirm() so a guarded action never silently stops
 // working.
-const GUARD_COUNTDOWN_SECONDS = 10;
+const GUARD_COUNTDOWN_SECONDS = 5;
 
 function initConfirmGuardModal() {
   const overlay    = document.getElementById('guard-confirm-modal');
@@ -201,10 +205,44 @@ function initConfirmGuardModal() {
   }
 }
 
+/* ── PROFILE PICTURE (display only) ───────────────────────────────
+ * Paints the picture chosen on Edit Profile / Profile into the card's
+ * #settings-avatar-initial slot. Same read order as js/main.js's sidebar
+ * avatar: the session cache first (instant), then one getAvatar() once auth
+ * is ready, because the cache can be stale (picture changed on another
+ * device) or have no `avatar` key yet. No picture, or avatars.js missing,
+ * leaves the initial that main.js already put there. */
+function initProfileAvatar() {
+  const slot = document.getElementById('settings-avatar-initial');
+  if (!slot || !window.LWAvatars) return;
+
+  const session = () => window.LWAuth?.getCurrentUser?.();
+  const paint = (avatarId) => {
+    const name = session()?.name || 'Learner';
+    slot.innerHTML = window.LWAvatars.markup(avatarId, { name });
+  };
+
+  const cached = session();
+  if (cached && window.LWAvatars.find(cached.avatar)) paint(cached.avatar);
+
+  Promise.resolve()
+    .then(() => window.LWAuth.whenAuthReady())
+    .then(() => window.LWAuth.getAvatar())
+    .then((stored) => paint(stored))
+    .catch((e) => console.warn('[settings-page.js] profile picture not loaded:', e));
+
+  // Back/forward can restore this page from memory with the old picture; the
+  // session cache was updated when it was saved, so repaint from that.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) paint(session()?.avatar);
+  });
+}
+
 function initSettingsPage() {
   const prefs = loadPrefs();
 
   initConfirmGuardModal();
+  initProfileAvatar();
   initThemeSelect();
   initMissionsDevBlock();
 
@@ -253,7 +291,7 @@ function initSettingsPage() {
   //
   // GUARD (RECONCILED — from a teammate's pass): this clears saved
   // tour progress across the whole app, so it goes through the guard
-  // modal + 10s countdown above before resetAll() runs.
+  // modal + 5s countdown above before resetAll() runs.
   const replayEl = document.getElementById('btn-replay-guides');
   replayEl?.addEventListener('click', async () => {
     if (!window.LWTour) return;
@@ -272,4 +310,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initSettingsPage);
 } else {
   initSettingsPage();
-}
+}

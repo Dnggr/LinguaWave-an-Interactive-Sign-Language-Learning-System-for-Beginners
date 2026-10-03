@@ -63,7 +63,9 @@
  *   1 and 2 say nothing about whether the mailbox exists or belongs to
  *   this person. Only 3 (Firebase's emailVerified, set by the emailed
  *   link) proves that.
- * LOGIN   : Firebase checks the password; if emailVerified is false the
+ * LOGIN   : the email must pass validateEmail() (format, then supported
+ *   provider — the same rule as signup, added 2026-10-03). Firebase checks
+ *   the password; if emailVerified is false the
  *   user STAYS signed in (verify-email.html needs a real Firebase user
  *   to resend / reload) but gets NO localStorage session and no access.
  * SESSION CACHE: `lw_session` is written ONLY for verified users. That
@@ -965,6 +967,16 @@ async function login(email, password) {
   if (!normalizedEmail || !password) {
     throw lwError('lw/missing-credentials', 'Please enter your email and password.');
   }
+  // Same email rules as register() (format, then supported provider), so Log In
+  // and Sign Up can't disagree. index.html shows this inline before submitting;
+  // this is the backstop for any other caller. (2026-10-03)
+  const emailCheck = validateEmail(normalizedEmail);
+  if (!emailCheck.formatValid) {
+    throw lwError('lw/invalid-email', INVALID_EMAIL_MESSAGE);
+  }
+  if (!emailCheck.providerSupported) {
+    throw lwError('lw/unsupported-email-provider', UNSUPPORTED_PROVIDER_MESSAGE);
+  }
   const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
   const firebaseUser = result.user;
   if (!firebaseUser.emailVerified) {
@@ -1203,6 +1215,36 @@ async function sendPasswordReset(email) {
   } catch (err) {
     if (err && err.code === 'auth/user-not-found') return; // don't leak account existence
     throw err;
+  }
+}
+/* ── DOES THIS EMAIL HAVE AN ACCOUNT? (2026-10-03) ───────────────
+ * Asks the `checkAccountExists` Cloud Function (functions/index.js) —
+ * the browser can't know this by itself (users/{uid} isn't readable
+ * signed-out, and Firebase's own lookup is blind with email-enumeration
+ * protection on). index.html uses it to offer "Reset it" only for a real
+ * account and to send a reset email only to one.
+ *
+ * Resolves true / false. FAILS CLOSED: if the function can't be reached
+ * this THROWS (a learner-safe message) instead of guessing "exists", so a
+ * broken check never opens the reset flow. The format is checked first,
+ * locally, so a malformed address never costs a network call.
+ * NOTE: this deliberately tells the caller whether an address is
+ * registered, which sendPasswordReset() above never does. */
+async function checkAccountExists(email) {
+  const normalized = normalizeEmail(email);
+  if (!validateEmail(normalized).formatValid) {
+    throw lwError('lw/invalid-email', INVALID_EMAIL_MESSAGE);
+  }
+  try {
+    const call = httpsCallable(functions, 'checkAccountExists', { timeout: 15000 });
+    const response = await call({ email: normalized });
+    return !!(response && response.data && response.data.exists === true);
+  } catch (err) {
+    if (err && err.code === 'functions/resource-exhausted') {
+      throw lwError('lw/too-many-checks', 'Too many attempts. Please wait a minute and try again.');
+    }
+    console.warn('[auth] Account check unavailable:', err);
+    throw lwError('lw/account-check-unavailable', "We couldn't check that email right now. Please try again in a moment.");
   }
 }
 /* ── PROFILE MANAGEMENT (NEW) ────────────────────────────────────
@@ -1582,6 +1624,7 @@ window.LWAuth = {
   linkPendingGoogleCredential,
   logout,
   sendPasswordReset,
+  checkAccountExists,          // true/false via Cloud Function; throws if it can't tell (fails closed)
   updateUsername,
   updateAvatar,
   getAvatar,

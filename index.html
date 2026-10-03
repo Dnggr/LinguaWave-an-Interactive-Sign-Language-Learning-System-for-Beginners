@@ -160,6 +160,34 @@
                is replaced by one line that says only what is still missing
                ("Password is too short" / "Password needs a number and
                lowercase letter" ...), written by LWAuth.validatePassword().
+
+    2026-10-03 (FORGOT PASSWORD + LOG IN EMAIL CHECK): (1) Log In now runs
+               the SAME email check as Sign Up (LWAuth.validateEmail:
+               format, then supported provider) before anything is sent,
+               with the same inline message and "Did you mean...?" typo
+               hint. (2) When Firebase rejects a login with a wrong-
+               password / invalid-credential error, the "Don't have an
+               account? Sign up free" line under the form is swapped for
+               "Forgot your password? Reset it"; it swaps back as soon as
+               the login email is edited. (3) That link opens a third
+               panel (#forgot-form, shown through showAuthTab('forgot'))
+               that asks for the account email and calls
+               LWAuth.sendPasswordReset() — Firebase emails a reset LINK
+               (no OTP). The confirmation is always the same generic
+               sentence, so it never reveals whether an account exists,
+               and Resend has a cooldown (LWAuth.RESEND_COOLDOWN_SECONDS).
+
+    2026-10-03 (RESET ONLY FOR EXISTING ACCOUNTS): the "Reset it" link and
+               the reset email are now gated on LWAuth.checkAccountExists()
+               (Cloud Function `checkAccountExists`, Admin SDK lookup). After
+               a wrong-password login the link appears ONLY if that email has
+               an account; if it has none, the sign-up line stays and the
+               message says so. The Forgot Password panel checks again before
+               sending, so retyping a different address can't get around it,
+               and showAuthTab('forgot') refuses to open unless the link is
+               showing. If the check itself fails, nothing is offered (fails
+               closed). Trade-off: this tells visitors whether an address is
+               registered (see the function's comment in functions/index.js).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -453,7 +481,7 @@
     <div class="auth-modal__box auth-modal__box--form">
       <button type="button" class="auth-modal__close" id="signin-modal-close" aria-label="Close">&times;</button>
       <div class="auth-card" id="auth-card">
-        <p class="auth-card__eyebrow">Get started</p>
+        <p class="auth-card__eyebrow" id="auth-eyebrow">Get started</p>
 
         <!-- ── TAB TOGGLE ───────────────────────────────────────── -->
         <div class="auth-tabs" id="auth-tabs">
@@ -474,14 +502,17 @@
           </svg>
           Continue with Google
         </button>
-        <div class="auth-divider"><span>or</span></div>
+        <div class="auth-divider" id="auth-divider"><span>or</span></div>
 
         <!-- ── LOG IN FORM ──────────────────────────────────────── -->
-        <form class="auth-form" id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+        <!-- novalidate: same reason as the register form — LWAuth.validateEmail is the one source of truth. -->
+        <form class="auth-form" id="login-form" novalidate onsubmit="event.preventDefault(); handleLogin();">
           <div class="form-group">
-            <input type="email" id="login-email" class="form-input" placeholder=" " autocomplete="email" />
+            <input type="email" id="login-email" class="form-input" placeholder=" " autocomplete="email" aria-describedby="login-email-status" oninput="onLoginEmailInput()" onblur="onLoginEmailBlur()" />
             <label for="login-email">Email</label>
           </div>
+          <small id="login-email-status" class="field-status" role="status" aria-live="polite" hidden></small>
+          <small id="login-email-hint" class="field-status text-muted" style="display:none;"></small>
           <div class="form-group mt-4">
             <input type="password" id="login-password" class="form-input form-input--has-toggle" placeholder=" " autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
             <label for="login-password">Password</label>
@@ -491,8 +522,11 @@
             </button>
           </div>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
-          <p class="auth-switch text-muted">
-            Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a>
+          <!-- Shows the sign-up line until a login fails with a wrong-password
+               error; handleLogin() then swaps in the forgot-password line. -->
+          <p class="auth-switch text-muted" id="login-switch">
+            <span id="login-switch-signup">Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a></span>
+            <span id="login-switch-forgot" hidden>Forgot your password? <a href="#" onclick="showAuthTab('forgot'); return false;">Reset it →</a></span>
           </p>
         </form>
 
@@ -552,6 +586,26 @@
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Create Account</button>
           <p class="auth-switch text-muted">
             Already have an account? <a href="#" onclick="showAuthTab('login'); return false;">Log in →</a>
+          </p>
+        </form>
+
+        <!-- ── FORGOT PASSWORD FORM ─────────────────────────────── -->
+        <!-- Opened from the login form's "Reset it" link, which only appears for
+             an existing account (LWAuth.checkAccountExists). Firebase emails a
+             reset LINK (LWAuth.sendPasswordReset). -->
+        <form class="auth-form" id="forgot-form" style="display:none;" novalidate onsubmit="event.preventDefault(); handleForgotPassword();">
+          <h3 class="auth-forgot__title">Reset your password</h3>
+          <p class="auth-forgot__intro text-muted">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+          <div class="form-group mt-4">
+            <input type="email" id="forgot-email" class="form-input" placeholder=" " autocomplete="email" aria-describedby="forgot-email-status" oninput="onForgotEmailInput()" onblur="onForgotEmailBlur()" />
+            <label for="forgot-email">Email</label>
+          </div>
+          <small id="forgot-email-status" class="field-status" role="status" aria-live="polite" hidden></small>
+          <small id="forgot-email-hint" class="field-status text-muted" style="display:none;"></small>
+          <p class="field-status field-status--ok auth-forgot__sent" id="forgot-sent" role="status" aria-live="polite" hidden></p>
+          <button type="submit" class="btn btn--primary btn--full btn--lg mt-8" id="forgot-submit">Send reset link</button>
+          <p class="auth-switch text-muted">
+            <a href="#" onclick="showAuthTab('login'); return false;">← Back to Log In</a>
           </p>
         </form>
       </div>
@@ -707,41 +761,76 @@
     }
     window.addEventListener('resize', () => positionAuthTabsIndicator(false));
 
-    // Crossfades the login/register forms instead of snapping their
-    // display on/off, so switching tabs reads as one smooth motion
-    // rather than an instant cut. See .auth-form--fade-out /
+    // Crossfades the auth panels (login / register / forgot) instead of
+    // snapping their display on/off, so switching reads as one smooth
+    // motion rather than an instant cut. See .auth-form--fade-out /
     // .auth-form--fade-in-start in css/auth.css for the timing.
+    // 'forgot' is not a tab: while it is showing, the tab bar, the Google
+    // button and the "or" divider are hidden (setAuthChrome) so the panel
+    // stands alone, and the "← Back to Log In" link returns to 'login'.
+    const AUTH_PANELS = { login: 'login-form', register: 'register-form', forgot: 'forgot-form' };
+    const AUTH_EYEBROW = { login: 'Get started', register: 'Get started', forgot: 'Account recovery' };
+
+    function setAuthChrome(tab) {
+      const forgot = tab === 'forgot';
+      ['auth-tabs', 'google-signin-btn', 'auth-divider'].forEach((id) => {
+        document.getElementById(id).style.display = forgot ? 'none' : '';
+      });
+      document.getElementById('auth-eyebrow').textContent = AUTH_EYEBROW[tab];
+    }
+
     function showAuthTab(tab) {
-      const isLogin = tab === 'login';
-      const loginForm    = document.getElementById('login-form');
-      const registerForm = document.getElementById('register-form');
-      const showEl = isLogin ? loginForm : registerForm;
-      const hideEl = isLogin ? registerForm : loginForm;
+      if (!AUTH_PANELS[tab]) tab = 'login';
+      // The reset panel is only for a confirmed, existing account: its link is
+      // revealed by handleLogin() after checkAccountExists() says yes. Anything
+      // else that asks for it (a stale click, the console) lands on Log In.
+      if (tab === 'forgot' && document.getElementById('login-switch-forgot').hidden &&
+          document.getElementById('forgot-form').style.display !== 'flex') {
+        tab = 'login';
+      }
+      const isForgot = tab === 'forgot';
+      const showEl = document.getElementById(AUTH_PANELS[tab]);
+      const allPanels = Object.values(AUTH_PANELS).map((id) => document.getElementById(id));
+      // Tab bar hidden = we are leaving the forgot panel; it can't be measured until it is back.
+      const cameFromForgot = document.getElementById('auth-tabs').style.display === 'none';
 
-      document.getElementById('tab-login').classList.toggle('auth-tab--active', isLogin);
-      document.getElementById('tab-register').classList.toggle('auth-tab--active', !isLogin);
-      positionAuthTabsIndicator(true);
+      if (!isForgot) {
+        document.getElementById('tab-login').classList.toggle('auth-tab--active', tab === 'login');
+        document.getElementById('tab-register').classList.toggle('auth-tab--active', tab === 'register');
+        positionAuthTabsIndicator(true);
+      }
 
-      // Already on this tab (or mid-transition into it) — nothing to animate.
+      // Already on this panel (or mid-transition into it) — nothing to animate.
       if (showEl.style.display === 'flex' && !showEl.classList.contains('auth-form--fade-in-start')) return;
 
       hideAllPasswords(); // a revealed password never follows you to the other tab
 
-      // Cancel any in-flight transition on either form so rapid tab
-      // clicks can't leave things in a half-faded state.
-      loginForm.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start');
-      registerForm.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start');
-
-      hideEl.classList.add('auth-form--fade-out');
+      // Cancel any in-flight transition on any panel so rapid clicks
+      // can't leave things in a half-faded state.
+      allPanels.forEach((el) => el.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start'));
+      allPanels
+        .filter((el) => el !== showEl && getComputedStyle(el).display !== 'none')
+        .forEach((el) => el.classList.add('auth-form--fade-out'));
 
       window.setTimeout(() => {
-        hideEl.style.display = 'none';
-        hideEl.classList.remove('auth-form--fade-out');
+        allPanels.forEach((el) => {
+          if (el === showEl) return;
+          el.style.display = 'none';
+          el.classList.remove('auth-form--fade-out');
+        });
+
+        setAuthChrome(tab);
+        if (isForgot) prepareForgotPanel();
 
         showEl.style.display = 'flex';
         showEl.classList.add('auth-form--fade-in-start');
         void showEl.offsetWidth; // force reflow so the fade-in actually transitions
         showEl.classList.remove('auth-form--fade-in-start');
+
+        if (cameFromForgot && !isForgot) positionAuthTabsIndicator(false); // tab bar just reappeared: snap, don't slide
+        if (isForgot && !signinModal.classList.contains('hidden')) {
+          document.getElementById('forgot-email').focus({ preventScroll: true });
+        }
       }, 160);
     }
 
@@ -822,8 +911,25 @@
       }
     }
 
+    // Firebase codes meaning "this email + password pair is wrong". With
+    // email-enumeration protection on, a wrong password and an unknown email
+    // both arrive as auth/invalid-credential (they can't be told apart).
+    const WRONG_PASSWORD_CODES = ['auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/wrong-password'];
+
+    // Under the Log In button: the "Sign up free" line, or (after a wrong
+    // password) the "Forgot your password?" line. One visible at a time.
+    function setLoginSwitch(showForgot) {
+      document.getElementById('login-switch-signup').hidden = showForgot;
+      document.getElementById('login-switch-forgot').hidden = !showForgot;
+    }
+    const INCORRECT_PASSWORD_MESSAGE = 'Incorrect password. Please try again, or use "Reset it" below to choose a new one.';
+    const NO_ACCOUNT_MESSAGE = 'No account found with that email. Check the address or sign up first.';
+
     async function handleLogin() {
       if (authRequestInFlight) return;
+      // Same email check as Sign Up (format, then supported provider); on
+      // failure nothing is sent to Firebase and the field is focused.
+      if (!validateAuxEmail('loginEmail')) return;
       // Raw values on purpose: LWAuth.login() normalizes (trims) the email
       // itself, so login and signup share ONE normalization (js/auth.js).
       const email    = document.getElementById('login-email').value;
@@ -839,9 +945,24 @@
         // re-checks Firebase on load and forwards them straight on.)
         window.location.href = result.verified ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
+        let message = LWAuth.describeAuthError(error);
+        let canReset = false;
+        // Wrong email/password pair: Firebase can't say which half was wrong, so
+        // ask the server whether the account exists. Only an existing account
+        // gets the reset link. If the check fails we can't tell, so we keep the
+        // generic message and offer nothing (fails closed).
+        if (error && WRONG_PASSWORD_CODES.includes(error.code)) {
+          try {
+            canReset = await LWAuth.checkAccountExists(email);
+            message = canReset ? INCORRECT_PASSWORD_MESSAGE : NO_ACCOUNT_MESSAGE;
+          } catch (checkError) {
+            console.warn('[login] account check failed:', checkError);
+          }
+        }
         authRequestInFlight = false;
         setSubmitBusy('login-form', false);
-        showAuthModal(LWAuth.describeAuthError(error));
+        setLoginSwitch(canReset);
+        showAuthModal(message);
       }
     }
 
@@ -898,9 +1019,14 @@
       return bestDist > 0 && bestDist <= 2 ? best : null;
     }
 
-    function checkEmailTypo() {
-      const input = document.getElementById('reg-email');
-      const hint = document.getElementById('reg-email-hint');
+    // Defaults = the Sign Up email field; Log In and Forgot Password pass
+    // their own input/hint ids and REG_FIELDS key.
+    function checkEmailTypo(inputId, hintId, key) {
+      inputId = inputId || 'reg-email';
+      hintId = hintId || 'reg-email-hint';
+      key = key || 'email';
+      const input = document.getElementById(inputId);
+      const hint = document.getElementById(hintId);
       const suggestion = suggestEmailDomain(input.value.trim());
       if (suggestion) {
         const [local] = input.value.trim().split('@');
@@ -909,7 +1035,11 @@
         const link = document.createElement('a');
         link.href = '#';
         link.textContent = local + '@' + suggestion;
-        link.addEventListener('click', (event) => { event.preventDefault(); fixEmailDomain(suggestion); });
+        // mousedown cancelled (same trick as the eye toggle): otherwise clicking the
+        // hint blurs the email field first, the blur handler rebuilds this very link,
+        // and the click lands on a link that no longer exists.
+        link.addEventListener('mousedown', (event) => event.preventDefault());
+        link.addEventListener('click', (event) => { event.preventDefault(); fixEmailDomain(suggestion, inputId, hintId, key); });
         hint.textContent = 'Did you mean ';
         hint.appendChild(link);
         hint.appendChild(document.createTextNode('?'));
@@ -919,13 +1049,16 @@
       }
     }
 
-    function fixEmailDomain(domain) {
-      const input = document.getElementById('reg-email');
+    function fixEmailDomain(domain, inputId, hintId, key) {
+      inputId = inputId || 'reg-email';
+      hintId = hintId || 'reg-email-hint';
+      key = key || 'email';
+      const input = document.getElementById(inputId);
       const [local] = input.value.trim().split('@');
       input.value = local + '@' + domain;
-      document.getElementById('reg-email-hint').style.display = 'none';
-      regTouched.email = true;
-      showRegStatus('email', REG_FIELDS.email.check());
+      document.getElementById(hintId).style.display = 'none';
+      regTouched[key] = true;
+      showRegStatus(key, REG_FIELDS[key].check());
     }
 
     // ── SIGNUP FIELD VALIDATION UI (2026-10-01) ─────────────────────
@@ -942,15 +1075,28 @@
     //   - an EMPTY field never shows a status line (nothing was entered to
     //     judge); on submit it just gets the red border and focus;
     //   - submit: every field is validated and the first bad one focused.
+    // One email check for Sign Up, Log In and Forgot Password (2026-10-03).
+    // Log In / Forgot Password pass showOk=false: a green "✓ Valid" line would
+    // push the submit button down on blur, so a quick click on it (autofill, then
+    // click) would land on the moved layout and not register. Errors still show.
+    function emailFieldCheck(inputId, showOk) {
+      const r = LWAuth.validateEmail(document.getElementById(inputId).value);
+      return r.valid
+        ? { ok: true,  message: showOk ? '✓ Valid email address' : '' }
+        : { ok: false, message: 'Please enter a valid email address.' };
+    }
     const REG_FIELDS = {
       email: {
         input: 'reg-email', status: 'reg-email-status',
-        check() {
-          const r = LWAuth.validateEmail(document.getElementById('reg-email').value);
-          return r.valid
-            ? { ok: true,  message: '✓ Valid email address' }
-            : { ok: false, message: 'Please enter a valid email address.' };
-        },
+        check() { return emailFieldCheck('reg-email', true); },
+      },
+      loginEmail: {
+        input: 'login-email', status: 'login-email-status', hint: 'login-email-hint',
+        check() { return emailFieldCheck('login-email', false); },
+      },
+      forgotEmail: {
+        input: 'forgot-email', status: 'forgot-email-status', hint: 'forgot-email-hint',
+        check() { return emailFieldCheck('forgot-email', false); },
       },
       password: {
         input: 'reg-password', status: null, // its message is the live summary in the password panel
@@ -971,7 +1117,7 @@
         },
       },
     };
-    const regTouched = { email: false, password: false, confirm: false };
+    const regTouched = { email: false, password: false, confirm: false, loginEmail: false, forgotEmail: false };
     const regTimers = {};
     const REG_TYPING_PAUSE_MS = 700;
 
@@ -1051,6 +1197,166 @@
       regTouched[key] = true;
       showRegStatus(key, REG_FIELDS[key].check());
       if (key === 'email') checkEmailTypo();
+    }
+
+    // ── LOG IN + FORGOT PASSWORD EMAIL FIELDS (2026-10-03) ──────────
+    // Same timing as the Sign Up email: no scolding mid-word, feedback on
+    // blur or after a 700ms pause, typo hint on blur, and a full re-check
+    // (validateAuxEmail) on submit.
+    function onAuxEmailInput(key) {
+      if (!window.LWAuth || !LWAuth.validateEmail) return; // auth.js not loaded yet
+      clearTimeout(regTimers[key]);
+      clearRegStatus(key);
+      document.getElementById(REG_FIELDS[key].hint).style.display = 'none';
+      regTimers[key] = setTimeout(() => {
+        const r = REG_FIELDS[key].check();
+        if (r.ok || regTouched[key]) showRegStatus(key, r);
+      }, REG_TYPING_PAUSE_MS);
+    }
+
+    function onAuxEmailBlur(key) {
+      if (!window.LWAuth || !LWAuth.validateEmail) return;
+      clearTimeout(regTimers[key]);
+      const f = REG_FIELDS[key];
+      const hasValue = document.getElementById(f.input).value !== '';
+      if (!hasValue && !regTouched[key]) return; // tabbing through an untouched empty field isn't an error
+      regTouched[key] = true;
+      showRegStatus(key, f.check());
+      checkEmailTypo(f.input, f.hint, key);
+    }
+
+    // true when the email passes; otherwise shows why, focuses the field and returns false.
+    function validateAuxEmail(key) {
+      const f = REG_FIELDS[key];
+      const input = document.getElementById(f.input);
+      clearTimeout(regTimers[key]);
+      regTouched[key] = true;
+      const r = f.check();
+      showRegStatus(key, r);
+      if (r.ok) return true;
+      if (input.value === '') input.setAttribute('aria-invalid', 'true'); // empty fields get the red border only
+      checkEmailTypo(f.input, f.hint, key);
+      input.focus();
+      return false;
+    }
+
+    function onLoginEmailInput() {
+      // A different email means the failed attempt no longer applies.
+      setLoginSwitch(false);
+      onAuxEmailInput('loginEmail');
+    }
+    function onLoginEmailBlur() { onAuxEmailBlur('loginEmail'); }
+
+    // ── FORGOT PASSWORD PANEL (2026-10-03) ──────────────────────────
+    // Firebase emails a reset LINK (LWAuth.sendPasswordReset), but only after
+    // LWAuth.checkAccountExists() confirms the address has an account. After a send,
+    // the button counts down before it can be used again; editing the email to
+    // a different address clears the countdown (a typo fix shouldn't wait).
+    let forgotCooldownTimer = null;
+    let forgotSentTo = '';
+    const FORGOT_BTN_LABEL = 'Send reset link';
+
+    function forgotCooldownSeconds() {
+      return (window.LWAuth && LWAuth.RESEND_COOLDOWN_SECONDS) || 60;
+    }
+
+    function hideForgotSent() {
+      const sent = document.getElementById('forgot-sent');
+      sent.textContent = '';
+      sent.hidden = true;
+    }
+
+    function cancelForgotCooldown() {
+      clearInterval(forgotCooldownTimer);
+      forgotCooldownTimer = null;
+      forgotSentTo = '';
+      const btn = document.getElementById('forgot-submit');
+      btn.disabled = false;
+      btn.textContent = FORGOT_BTN_LABEL;
+      hideForgotSent();
+    }
+
+    function startForgotCooldown() {
+      const btn = document.getElementById('forgot-submit');
+      let left = forgotCooldownSeconds();
+      clearInterval(forgotCooldownTimer);
+      const tick = () => {
+        if (left <= 0) {
+          clearInterval(forgotCooldownTimer);
+          forgotCooldownTimer = null;
+          btn.disabled = false;
+          btn.textContent = 'Resend reset link';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Resend in ' + left + 's';
+        left -= 1;
+      };
+      tick();
+      forgotCooldownTimer = setInterval(tick, 1000);
+    }
+
+    // Runs each time the panel is opened (see showAuthTab): carries over the
+    // email typed on Log In, and clears old feedback unless a send is cooling down.
+    function prepareForgotPanel() {
+      const input = document.getElementById('forgot-email');
+      const typed = document.getElementById('login-email').value.trim();
+      if (typed && typed !== input.value.trim()) {
+        input.value = typed;
+        if (forgotSentTo && typed !== forgotSentTo) cancelForgotCooldown();
+      }
+      clearRegStatus('forgotEmail');
+      regTouched.forgotEmail = false;
+      document.getElementById('forgot-email-hint').style.display = 'none';
+      if (!forgotCooldownTimer) {
+        hideForgotSent();
+        const btn = document.getElementById('forgot-submit');
+        btn.disabled = false;
+        btn.textContent = FORGOT_BTN_LABEL;
+      }
+    }
+
+    function onForgotEmailInput() {
+      if (forgotSentTo && document.getElementById('forgot-email').value.trim() !== forgotSentTo) cancelForgotCooldown();
+      onAuxEmailInput('forgotEmail');
+    }
+    function onForgotEmailBlur() { onAuxEmailBlur('forgotEmail'); }
+
+    async function handleForgotPassword() {
+      if (authRequestInFlight || forgotCooldownTimer) return;
+      if (!validateAuxEmail('forgotEmail')) return;
+      const email = document.getElementById('forgot-email').value.trim();
+      const btn = document.getElementById('forgot-submit');
+      authRequestInFlight = true;
+      btn.disabled = true;
+      btn.textContent = 'Checking...';
+      try {
+        // Only an existing account gets a reset email (checked again here
+        // because the address in this panel can be edited after it opened).
+        const exists = await LWAuth.checkAccountExists(email);
+        if (!exists) {
+          authRequestInFlight = false;
+          btn.disabled = false;
+          btn.textContent = FORGOT_BTN_LABEL;
+          showRegStatus('forgotEmail', { ok: false, message: NO_ACCOUNT_MESSAGE });
+          document.getElementById('forgot-email').focus();
+          return;
+        }
+        btn.textContent = 'Sending...';
+        await LWAuth.sendPasswordReset(email);
+        authRequestInFlight = false;
+        forgotSentTo = email;
+        const sent = document.getElementById('forgot-sent');
+        // textContent, never innerHTML: the address is whatever was typed.
+        sent.textContent = '✓ A password reset link is on its way to ' + email + '. Check your inbox and your spam folder.';
+        sent.hidden = false;
+        startForgotCooldown();
+      } catch (error) {
+        authRequestInFlight = false;
+        btn.disabled = false;
+        btn.textContent = FORGOT_BTN_LABEL;
+        showAuthModal(LWAuth.describeAuthError(error));
+      }
     }
 
     // ── PASSWORD PANEL (2026-10-01) ─────────────────────────────────
