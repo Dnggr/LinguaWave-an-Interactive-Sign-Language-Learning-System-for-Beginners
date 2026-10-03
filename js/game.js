@@ -45,7 +45,7 @@ let stats = { correct: 0, wrong: 0, size: 0 }, startedAt = 0, tickId = null, eng
 let phase = 'static';             // 'static' | 'countdown' | 'waiting' | 'recording' | 'cooldown'
 let heldBrick = null, holdSince = 0, lastGoodAt = 0, ignoreGroup = null;
 let wrongLabel = null, wrongSince = 0, lastMissAt = 0;
-// XP (js/xp.js): the server times each wall. We only REPORT when bricks broke; it decides the reward.
+// XP (js/xp.js): the browser records each wall and calculates the reward; Firestore rules cap the write.
 let xpSessionP = Promise.resolve(null), brokenLog = [];
 let waitStart = 0, handLostAt = null, motionMs = 2500;
 let allowedStatic = { active: false, set: null }, allowedMotion = { active: false, set: null };
@@ -162,31 +162,19 @@ function dropHold() {
 }
 
 // ── sign pool: signs the learner has FINISHED, optionally topped up ──
-// "Finished" = the union of two progress stores (the game page never loaded either before,
-// which is why the pool was always random):
-//   - LWMissions: a sign's LESSON item is complete (passed in the lesson / camera check, or the
-//     whole mission was completed via the Mastery Quiz skip-path)
-//   - LWProgress: lw_progress_v3 "practiced" signs (camera-practice bridge)
-// Sign ids in both stores are the same uppercase keys as SIGN_DICTIONARY; signs the classifier
-// has no model for simply aren't in the dictionary, so they're filtered out below.
+// XP eligibility, Wall Breaker eligibility, and Time Attack all use the same
+// learned-sign union supplied by LWXP: xpState plus completed LESSON items.
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p), new Promise((res) => setTimeout(res, ms))]);
 
 async function getLearnedSignIds() {
-  const ids = new Set();
-  // never let a slow/failed sync hang the Start button — waits are capped
-  try { await withTimeout(window.LWAuth?.whenAuthReady?.(), 4000); } catch { /* guest / no auth */ }
-  try { await withTimeout(window.LWMissions?.whenMissionsSyncReady?.(), 4000); } catch { /* local-only */ }
-  try { await withTimeout(window.LWProgress?.whenProgressReady?.(), 4000); } catch { /* local-only */ }
   try {
-    const M = window.LWMissions;
-    (M?.getAllMissions?.() || []).forEach((m) => m.items.forEach((item, i) => {
-      if (item.kind === 'LESSON' && item.signId && M.isItemComplete(m, i, item)) ids.add(item.signId);
-    }));
-  } catch (e) { console.warn('[game] could not read mission progress:', e); }
-  try {
-    (window.LWProgress?.getAllLearnedSigns?.() || []).forEach((s) => { if (s?.signId) ids.add(s.signId); });
-  } catch (e) { console.warn('[game] could not read sign progress:', e); }
-  return ids;
+    await withTimeout(window.LWAuth?.whenAuthReady?.(), 4000);
+    await withTimeout(window.LWMissions?.whenMissionsSyncReady?.(), 4000);
+    return new Set(await withTimeout(window.LWXP?.getLearnedSigns?.() || [], 4000));
+  } catch (e) {
+    console.warn('[game] could not read learned signs:', e);
+    return new Set();
+  }
 }
 
 // Signs that exist in the curriculum (missions.js LESSON items). SIGN_DICTIONARY also holds detector-only
@@ -557,8 +545,8 @@ function finish() {
   const stars = acc >= 0.85 ? 3 : acc >= 0.6 ? 2 : 1;
   const gems = stats.size + stars * 5;
   const d = load(), earned = [];
-  // Badges are now awarded by the SERVER (functions/xp.js) and shown below via reportWall();
-  // the old local-only badge list (lw_game_v1.badges) was forgeable, so it no longer grants anything.
+  // XP badges are awarded by the shared browser engine and shown below via reportWall();
+  // the old local-only badge list (lw_game_v1.badges) remains display-only.
   d.gems += gems; d.walls++;
   const prev = d.best[stats.size];
   if (!prev || stars > prev.stars || (stars === prev.stars && ms < prev.ms)) d.best[stats.size] = { stars, ms };
@@ -579,8 +567,8 @@ function finish() {
   reportWall();
 }
 
-// Report the cleared wall and show what the server decided. Gems/stars above stay local
-// and cosmetic; XP and badges only ever come from this server answer.
+// Report the cleared wall and show the shared XP engine result. Gems/stars above stay local
+// and cosmetic; XP and badges are persisted with the paired Firestore transaction.
 async function reportWall() {
   const box = $('gm-xp'), badges = $('gm-badges');
   if (!box) return;

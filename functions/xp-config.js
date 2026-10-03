@@ -1,9 +1,8 @@
 /**
- * functions/xp-config.js — LinguaWave XP / levels / badges: the ONE source of truth
+ * LEGACY: functions/xp-config.js — former XP economy source for the Functions implementation.
  * ─────────────────────────────────────────────────────────────────
- * Every number that affects the economy lives here. The browser gets a
- * display-only copy generated from this file (js/xp-config.js, built by
- * `node functions/scripts/build-client-config.js`) — never edit that copy by hand.
+ * The active Spark economy lives in js/xp-engine.mjs. This file remains for reference;
+ * do not generate browser economy values from it.
  *
  * NAMING: "account level" here is the XP level (Lv 1..30). It is NOT the
  * curriculum difficulty `users.level` ('basic' | 'medium' | 'intermediate'),

@@ -1,6 +1,7 @@
 /**
- * functions/xp.js — server-authoritative XP callables and leaderboard triggers.
- * All writes to xpState, publicProfiles, xpSessions and xpEvents happen here.
+ * LEGACY: functions/xp.js — former server-authoritative XP callables and leaderboard triggers.
+ * Spark XP now runs in js/xp-engine.mjs + js/xp.js with Firestore client rules as guardrails.
+ * Keep this only for reference; do not deploy or route the Spark XP flow through these functions.
  */
 'use strict';
 

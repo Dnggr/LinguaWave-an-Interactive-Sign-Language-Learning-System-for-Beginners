@@ -19,9 +19,9 @@
   </script>
   <!--
     pages/leaderboard.html -- Leaderboard + Badges (NEW, XP system)
-    Reads the server-written `publicProfiles` collection and the learner's own `xpState` doc through
-    window.LWXP (js/xp.js). Nothing on this page can change a score: Firestore rules block every
-    client write to XP data. See XP_SYSTEM.md.
+    Reads `publicProfiles` and the learner's own `xpState` doc through window.LWXP
+    (js/xp.js). XP is calculated in the browser and written in paired transactions; Firestore
+    rules cap those writes but cannot verify lesson or game claims. See XP_SYSTEM.md.
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />

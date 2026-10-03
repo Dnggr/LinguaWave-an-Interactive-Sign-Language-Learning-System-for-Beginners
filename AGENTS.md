@@ -28,11 +28,9 @@ Before submitting code changes, agents must verify:
 - Test static letter detection, motion word detection, multi-step fingerspelling, and category quiz assessments.
 
 ## XP / levels / badges / leaderboards (added 2026-09-30) — READ XP_SYSTEM.md FIRST
-* Server-authoritative. XP/level/badge/streak data is written ONLY by Cloud Functions (`functions/xp.js`); `firestore.rules`
-  deny every client write to `xpState`, `publicProfiles`, `xpSessions`, `xpEvents`. Never add a client write path for XP.
-* Browser side is `js/xp.js` (window.LWXP): it only *reports* lesson items / quiz pass / cleared wall and *reads* results.
-  Hooks: `lesson.js completeAndAdvance`, `mastery-quiz.js` (after markMissionComplete), `missions.js markSignPracticedBridge`, `game.js`.
-* `js/xp-config.js` is GENERATED from `functions/xp-config.js` (`npm run build:client`). `functions/curriculum-manifest.json` is
-  GENERATED from `js/missions.js` and `js/engine/dictionary.js` (`npm run build:manifest`) - re-run after curriculum or static/motion routing changes.
+* Spark-plan decision: browser code writes XP to Firestore. `functions/` XP code is legacy and is not deployed; do not restore a Functions-only XP path or add a Blaze dependency.
+* `js/xp-engine.mjs` is the pure XP economy and `js/xp.js` (`window.LWXP`) serializes claims through one page queue and writes `xpState` + `publicProfiles` atomically. Firestore rules cap writes but this is a best-effort honor system: browser claims and game timing can be forged within those caps.
+* Preserve the `window.LWXP` API. Learned-sign eligibility in both games must use `LWXP.getLearnedSigns()` (xpState learned signs union completed LESSON items from `LWMissions`); do not reintroduce separate Wall Breaker / Time Attack pools.
+* `js/xp-config.js` is a display-only legacy mirror. Economy changes belong in `js/xp-engine.mjs`; do not regenerate it from `functions/xp-config.js`. `functions/curriculum-manifest.json` and manifest build scripts are legacy for XP and are not required by the browser engine.
 * "Level" in XP code means the XP level 1-30, unrelated to `users.level` (basic/medium/intermediate).
-* Tests: `cd functions && npm test` (fake Firestore, no emulator).
+* Legacy Functions tests do not exercise the Spark bridge. Run `node js/_test_xp-engine.node.mjs` for the pure engine and `node js/_test_xp-client.node.mjs` for transaction/queue behavior.

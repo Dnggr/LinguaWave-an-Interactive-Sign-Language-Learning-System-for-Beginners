@@ -58,11 +58,12 @@
  *   instance — best effort, not a hard guarantee). Consider Firebase App
  *   Check if this ever gets abused.
  * ─────────────────────────────────────────────────────────────────
- * 2026-09-30 — XP / levels / badges / streaks / leaderboards  (NEW, see functions/xp.js)
+ * 2026-09-30 — XP / levels / badges / streaks / leaderboards (LEGACY; Spark uses js/xp.js)
  *   claimLessonItem, claimMissionComplete, startGameSession, finishGameSession,
  *   backfillLegacyProgress, setLeaderboardVisibility, expireStaleStreaks (scheduled hourly).
- *   All XP state is written ONLY here (Admin SDK); firestore.rules deny client writes to it.
- *   deleteLearnerAccount below also removes the learner's XP data.
+ *   Formerly wrote XP using the Admin SDK. This callable path is legacy; the Spark client
+ *   uses js/xp.js and the rules now permit capped owner writes. Cleanup below still removes
+ *   prior XP records when a deployed admin deletion function is used.
  * ─────────────────────────────────────────────────────────────────
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -154,7 +155,7 @@ exports.resetLearnerProgress = onCall(async (request) => {
   return { ok: true, uid };
 });
 
-/* ── XP system (functions/xp.js) ─────────────────────────────────── */
+/* ── LEGACY XP callables: retained for reference, not used by the Spark client ── */
 exports.claimLessonItem = xp.claimLessonItem;
 exports.claimMissionComplete = xp.claimMissionComplete;
 exports.startGameSession = xp.startGameSession;

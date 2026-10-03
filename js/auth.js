@@ -209,7 +209,7 @@ async function applyProgressResetIfNeeded(firebaseUser) {
     const last = JSON.parse(sessionStorage.getItem(RESET_CHECK_KEY) || 'null');
     if (last && last.uid === uid && Date.now() - last.at < RESET_CHECK_TTL_MS) return;
     const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) { clearLocalLearningState(uid); return; }   // profile missing: discard stale local caches; server cleanup owns XP records.
+    if (!snap.exists()) { clearLocalLearningState(uid); return; }   // profile missing: discard stale local caches.
     const marker = snap.data().progressResetAt;
     if (marker != null) {
       const seenKey = RESET_SEEN_PREFIX + uid;
@@ -990,6 +990,7 @@ async function finishVerifiedLogin(firebaseUser) {
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
   const profile = snapshot.exists() ? snapshot.data() : {};
+  const restoredDeletion = !!profile.deletionRequested;
 
   // Cancel a pending deletion on successful login — see deleteAccount()'s
   // header comment for the full grace-period design.
@@ -1008,6 +1009,7 @@ async function finishVerifiedLogin(firebaseUser) {
   };
 
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
+  if (restoredDeletion) void syncXpPublicProfile(); // Auth readiness completes after this callback returns.
   return user;
 }
 
@@ -1168,8 +1170,8 @@ async function register(name, email, password, confirmPassword) {
   return { verificationSent, email: normalizedEmail };
 }
 
-/* A users/{uid} profile was just created. Clear only local caches here; server XP cleanup
- * happens through the admin reset/delete callables, and the browser has no XP delete path. */
+/* A users/{uid} profile was just created. Clear stale local caches before protected
+ * page scripts run; new Spark XP state is initialized on the first browser transaction. */
 async function resetXpForNewProfile(uid) {
   clearLocalLearningState(uid);   // clear local learning/XP queues before protected page scripts run
 }
@@ -1345,6 +1347,7 @@ async function updateUsername(newName) {
   }
 
   await updateDoc(doc(db, 'users', firebaseUser.uid), { name: trimmed });
+  await syncXpPublicProfile();
 
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
@@ -1358,8 +1361,7 @@ async function updateUsername(newName) {
  * stored (users/{uid}.avatar), never an image or URL. The same pattern is
  * enforced by firestore.rules, so a console-written value that isn't an
  * ID is rejected there too.
- * The server's users/{uid} write trigger syncs the avatar onto the public leaderboard row;
- * the client never writes publicProfiles directly.
+ * Profile changes sync onto the public leaderboard row through LWXP's paired transaction.
  * getAvatar() reads the stored ID (the session cache can be stale if it was
  * changed on another device) and refreshes the cache. */
 const AVATAR_ID_RE = /^avatar-\d{2}$/;
@@ -1386,6 +1388,7 @@ async function updateAvatar(avatarId) {
   }
 
   await updateDoc(doc(db, 'users', firebaseUser.uid), { avatar: avatarId });
+  await syncXpPublicProfile();
 
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
@@ -1458,6 +1461,8 @@ async function deleteAccount(currentPassword) {
     deletionRequested: true,
     deletionRequestedAt: new Date().toISOString(),
   });
+
+  await syncXpPublicProfile();
 
   await signOut(auth);
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
@@ -1534,6 +1539,18 @@ function whenAuthReady() {
   });
 }
 
+// XP is client-written on Spark. Profile changes need the same paired state /
+// publicProfiles transaction as XP claims, so load the bridge only when an
+// account profile changes on pages that do not otherwise use XP.
+async function syncXpPublicProfile() {
+  try {
+    if (!window.LWXP?.syncPublicProfile) await import('./xp.js');
+    await window.LWXP?.syncPublicProfile?.();
+  } catch (error) {
+    console.warn('[auth] could not sync XP leaderboard profile:', error?.code || '', error?.message || error);
+  }
+}
+
 /* ── PROGRESS CLOUD BRIDGE (fix: progress not reaching Firestore) ──
  * The audit pass removed doc/db/getDoc/setDoc from window.LWAuth, but
  * js/engine/progress.js, js/missions.js and js/game.js still called them,
@@ -1567,21 +1584,6 @@ async function writeProgressDoc(name, data, opts) {
   if (!ref) return false;
   await setDoc(ref, data, opts && opts.merge ? { merge: true } : {});
   return true;
-}
-
-// XP mutations are narrow, server-side operations. Keep callable names allow-listed here so
-// page scripts can never turn this bridge into a generic Cloud Function proxy.
-const XP_CALLABLES = new Set([
-  'claimLessonItem', 'claimMissionComplete', 'startGameSession', 'finishGameSession',
-  'backfillLegacyProgress', 'setLeaderboardVisibility',
-]);
-async function callXpFunction(name, data) {
-  if (!XP_CALLABLES.has(name)) throw new Error('XP operation is not allowed: ' + name);
-  await whenAuthReady();
-  const user = auth.currentUser;
-  if (!user || !user.emailVerified) throw new Error('Sign in with a verified account to save XP.');
-  const result = await httpsCallable(functions, name)(data || {});
-  return result.data;
 }
 
 /* ── EXPORTS ──────────────────────────────────────────────────────
@@ -1628,7 +1630,6 @@ window.LWAuth = {
   whenAuthReady,
   readProgressDoc,
   writeProgressDoc,
-  callXpFunction,
 };
 /* ── AUTO-GUARD (2026-09-29) ──────────────────────────────────────
  * "No verified email, no normal LinguaWave access" has to hold for EVERY

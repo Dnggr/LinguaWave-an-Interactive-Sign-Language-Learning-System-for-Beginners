@@ -1,6 +1,6 @@
 /**
  * js/xp-ui.js — the "Your level" card on the Profile page (#xp-card; it used to be on the dashboard). Display only: every number
- * comes from the server-written xpState doc via window.LWXP. Classic script, safe if LWXP is absent.
+ * comes from the xpState doc via window.LWXP. Classic script, safe if LWXP is absent.
  */
 (function () {
   'use strict';

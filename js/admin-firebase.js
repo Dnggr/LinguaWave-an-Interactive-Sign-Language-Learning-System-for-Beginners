@@ -109,8 +109,8 @@ export function updateUserLevel(uid, level) {
 /**
  * Deletes a learner COMPLETELY.
  * The admin-only Cloud Function removes the Firebase Auth login and all
- * Firestore data, including server-owned XP documents. There is deliberately
- * no browser fallback: client rules deny writes to XP collections.
+ * Firestore data, including the learner's client-written XP documents. There
+ * is no browser fallback because a client cannot delete another learner's data.
  *
  * @returns {Promise<{authDeleted:boolean, firestoreDeleted:boolean, via:"function"}>}
  */
@@ -125,7 +125,7 @@ export async function deleteLearnerAccount(uid) {
  * badges, the leaderboard row and all lesson progress. Writes users/{uid}.progressResetAt so the learner's
  * browser wipes its LOCAL copy on next load (js/auth.js applyProgressResetIfNeeded) instead of pushing it back.
  * The admin-only `resetLearnerProgress` Cloud Function performs the reset.
- * There is no browser fallback because XP state is server-owned.
+ * There is no browser fallback because a client cannot reset another learner's XP state.
  *
  * @returns {Promise<{via:"function"}>}
  */

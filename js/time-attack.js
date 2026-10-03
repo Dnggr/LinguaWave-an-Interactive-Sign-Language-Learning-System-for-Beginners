@@ -24,16 +24,12 @@ function setMode(mode) { $('ta-cam').dataset.mode = mode; $('ta-right').dataset.
 function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); }
 function clearTimers() { timers.forEach(clearTimeout); timers.clear(); }
 
-function getLearnedSignIds() {
-  const ids = new Set(), M = window.LWMissions;
-  try {
-    (M?.getAllMissions?.() || []).forEach((mission) => mission.items.forEach((item, i) => {
-      if (item.kind === 'LESSON' && item.signId && M.isItemComplete(mission, i, item)) ids.add(item.signId);
-    }));
-  } catch (e) { console.warn('[time-attack] could not read mission progress:', e); }
-  try { window.LWProgress?.getAllLearnedSigns?.().forEach((sign) => sign?.signId && ids.add(sign.signId)); }
-  catch (e) { console.warn('[time-attack] could not read sign progress:', e); }
-  return ids;
+async function getLearnedSignIds() {
+  try { return new Set(await window.LWXP?.getLearnedSigns?.() || []); }
+  catch (e) {
+    console.warn('[time-attack] could not read learned signs:', e);
+    return new Set();
+  }
 }
 
 function signContentFor(signId) {
@@ -287,7 +283,7 @@ async function start() {
   $('ta-loading').hidden = true;
   try {
   await Promise.allSettled([window.LWMissions?.whenMissionsSyncReady?.(), window.LWProgress?.whenProgressReady?.()]);
-  const learned = getLearnedSignIds();
+  const learned = await getLearnedSignIds();
   const playableIds = getClassifiableSigns().filter((signId) => learned.has(signId) && isSignClassifiable(signId) &&
     (getDetectionType(signId) === 'motion' ? isMotionModelReady() : isClassifierReady()));
   // Keep only one member of each classifier twin group; both labels describe the same recognized gesture.
