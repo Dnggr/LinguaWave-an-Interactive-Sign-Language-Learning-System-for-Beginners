@@ -1,0 +1,48 @@
+/* Construct a Sentence. Reuses .gm-head / .gm-chip / .gm-overlay / .gm-card / .ta-progress / .ta-status from game.css.
+   .cs-tile rules are NOT scoped under .cs: a tile is re-parented to <body> while it is being dragged. */
+:root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.9)}
+
+.cs{--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
+.cs-progress{--p:0}
+.cs-board{display:flex;flex-direction:column;gap:var(--space-4);padding:clamp(var(--space-4),3vw,var(--space-6));border:1px solid var(--clr-border);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
+.cs-prompt{display:flex;flex-direction:column;gap:var(--space-1)}
+.cs-eyebrow,.cs-label{margin:0 0 var(--space-2);color:var(--clr-text-muted);font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em}
+.cs-eyebrow{margin:0}
+.cs-sentence{margin:0;font-family:var(--font-display);font-size:clamp(1.75rem,4vw,2.75rem);letter-spacing:-.03em;overflow-wrap:anywhere}
+
+.cs-count{display:none;text-align:center;font-family:var(--font-display);font-size:clamp(3rem,8vw,5rem);font-weight:700;line-height:1;color:var(--clr-violet)}
+.cs[data-phase="countdown"] .cs-count{display:block;animation:cs-pop .6s var(--ease)}
+@keyframes cs-pop{from{transform:scale(1.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+.cs-slots,.cs-pool{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
+.cs-pool{min-height:calc(var(--cs-tile-h) + var(--space-8));align-items:center;padding:var(--space-4);border:2px dashed var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg)}
+.cs-empty{max-width:34rem;margin:0;color:var(--clr-text-muted);text-align:center;line-height:1.5}
+
+.cs-slot{position:relative;display:block;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);border:2px dashed var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg);transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.cs-slot>.cs-tile{width:100%;height:100%;border:0;border-radius:calc(var(--radius-lg) - 2px)}
+.cs-slot__num{position:absolute;top:var(--space-2);left:var(--space-3);color:var(--clr-text-muted);font-size:var(--fs-lg);font-weight:700;font-family:var(--font-display);pointer-events:none}
+.cs-slot:has(>.cs-tile) .cs-slot__num{display:none}
+.cs-slot.is-over{border-color:var(--clr-violet);background:var(--clr-violet-soft)}
+.cs-slot.is-right{border:2px solid var(--clr-success)}
+.cs-slot.is-wrong{border:2px solid var(--clr-red);animation:cs-shake .35s}
+.cs-slot:focus-visible{outline:3px solid var(--clr-violet);outline-offset:2px}
+@keyframes cs-shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.cs-tile{position:relative;display:flex;flex-direction:column;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);overflow:hidden;border:2px solid var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-surface);box-shadow:var(--shadow-card);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
+.cs-tile video{flex:1 1 0;min-height:0;width:100%;object-fit:contain;background:var(--clr-bg);pointer-events:none}
+.cs-tile__name{flex:0 0 auto;padding:var(--space-1) var(--space-2);border-top:1px solid var(--clr-border);text-align:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--clr-text)}
+.cs-tile.is-nameless .cs-tile__name{visibility:hidden}
+.cs-tile.is-selected{border-color:var(--clr-violet);box-shadow:0 0 0 3px var(--clr-violet-soft)}
+.cs-tile.is-drag{position:fixed;z-index:1000;margin:0;cursor:grabbing;pointer-events:none;transform:scale(1.05) rotate(2deg);box-shadow:0 18px 40px rgba(0,0,0,.28)}
+.cs-tile:focus-visible{outline:3px solid var(--clr-violet);outline-offset:2px}
+.cs-ph{box-sizing:border-box;border:2px dashed var(--clr-border);border-radius:var(--radius-lg)}
+.cs:not([data-phase="playing"]) .cs-tile{cursor:default}
+
+.cs-controls,.cs-result-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
+.cs-overlay{position:absolute}
+
+@media(prefers-reduced-motion:reduce){.cs-count,.cs-slot,.cs-slot.is-wrong{animation:none;transition:none}}
+
+/* ---- Game picker (pages/game.html): third card, full width under Wall Breaker + Time Attack ---- */
+.game-mode--sentence{--mode-color:var(--clr-violet);--mode-soft:var(--clr-violet-soft);grid-column:1 / -1;min-height:clamp(220px,22vw,280px)}
+.game-mode__icon svg{width:clamp(30px,4vw,44px);height:clamp(30px,4vw,44px)}
