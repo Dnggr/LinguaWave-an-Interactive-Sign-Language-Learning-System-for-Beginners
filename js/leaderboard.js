@@ -1,7 +1,8 @@
 /**
  * js/leaderboard.js — pages/leaderboard.html
- * Views: All-time XP · This week · Streaks · Badges (public boards from `publicProfiles`), each sortable
- *        highest-first / lowest-first, and "My badges" (the learner's own level-badge grid from their private xpState).
+ * Views: Overall (Level · Streaks · Badges) and Games (Construct a Sentence · Wall Breaker · Time Attack). All are public boards
+ *        from `publicProfiles`, each sortable highest-first / lowest-first and limited to the top 10 / 25 / 50 (default 10; only
+ *        that many rows are read). "My badges" (the learner's own level-badge grid from their private xpState) is separate.
  *        "My badges" is NOT a tab: it is the button under the level card in the side panel (#lb-mine-btn).
  * Layout: boards in the main column, the learner's own level card in the right-hand side panel (#lb-me).
  * "How XP works" lives in a modal (#lb-how-dialog) opened from #lb-how-btn.
@@ -12,18 +13,30 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let X, me = null, myState = null, view = 'xp', lastBoard = 'xp', dir = 'desc', token = 0, mineFilter = 'all';   // mineFilter: 'all' | 'owned' (My badges view)
-  const cache = {};                              // kind -> rows (always best-first, as loaded); flipping the order never refetches
+  let X, me = null, myState = null, view = 'level', lastBoard = 'level', dir = 'desc', token = 0, mineFilter = 'all', max = 10;   // mineFilter: 'all' | 'owned' (My badges view)
+  const cache = {};                              // kind -> { rows (always best-first), n (how many were requested) }; flipping the order never refetches
   // Lucide icons come from the shared registry in js/icons.js (inline SVG, currentColor). If it ever failed to load the
   // text next to each icon still reads on its own, so a missing icon degrades to "no icon", never to a broken glyph.
   const ico = (id, o) => (window.LWIcons ? window.LWIcons.markup(id, o) : '');
 
   const SCORE = {
-    xp:     (r) => ({ big: (r.xp || 0).toLocaleString(), small: 'XP' }),
-    weekly: (r) => ({ big: (r.weeklyXp || 0).toLocaleString(), small: 'XP this week' }),
-    streak: (r) => ({ big: String(r.streak || 0), small: 'day streak' }),
-    badges: (r) => ({ big: String(r.badgeCount || 0), small: 'badges' }),
+    level:      (r) => ({ big: `Lv ${r.level || 1}`, small: `${(r.xp || 0).toLocaleString()} XP` }),
+    streak:     (r) => ({ big: String(r.streak || 0), small: 'day streak' }),
+    badges:     (r) => ({ big: String(r.badgeCount || 0), small: 'badges' }),
+    wall:       (r) => ({ big: (r.wallXp || 0).toLocaleString(), small: 'XP from walls' }),
+    timeAttack: (r) => ({ big: (r.timeAttackXp || 0).toLocaleString(), small: 'XP from Time Attack' }),
+    sentence:   (r) => ({ big: (r.sentenceXp || 0).toLocaleString(), small: 'XP from sentences' }),
   };
+  // Heading above each board: icon, title, and one line saying how it is ranked.
+  const BOARD_INFO = {
+    level:      { icon: 'trophy',     title: 'Top levels',            sub: 'Ranked by level. Total XP breaks ties.', empty: 'No learners on the board yet. Finish a lesson to appear here.' },
+    streak:     { icon: 'flame',      title: 'Longest streaks',       sub: 'Ranked by current day streak.', empty: 'No active streaks right now. Earn XP today to start one!' },
+    badges:     { icon: 'medal',      title: 'Most badges',           sub: 'Ranked by badges earned.', empty: 'No badges earned yet. Finish a lesson to get the first one.' },
+    sentence:   { icon: 'lc_puzzle',  title: 'Construct a Sentence',  sub: 'Ranked by XP earned from Construct a Sentence.', empty: 'Nobody has earned sentence XP yet. Finish a run to be first!' },
+    wall:       { icon: 'brick_wall', title: 'Wall Breaker',          sub: 'Ranked by XP earned from Wall Breaker.', empty: 'Nobody has earned Wall Breaker XP yet. Clear a wall to be first!' },
+    timeAttack: { icon: 'zap',        title: 'Time Attack',           sub: 'Ranked by XP earned from Time Attack.', empty: 'Nobody has earned Time Attack XP yet. Finish a run to be first!' },
+  };
+  const BOARDS = Object.keys(BOARD_INFO);
 
   function levelRowLabel(level) { const t = X.tierOf(level); return `<div class="lb-lv" style="--tier:${esc(t.color)}" title="${esc(t.name)}">${level}</div>`; }
 
@@ -40,7 +53,7 @@
     // Badges board: show how many badges are NOT in the (max 5) recent icons, e.g. "+12".
     const extra = kind === 'badges' ? Math.max(0, (r.badgeCount || 0) - (r.recentBadges || []).length) : 0;
     const more = extra ? `<span class="lb-more" title="${extra} more badge${extra === 1 ? '' : 's'}" aria-label="${extra} more badges">+${extra}</span>` : '';
-    return `<li class="lb-row${mine ? ' is-me' : ''}${rank <= 3 ? ' is-top' : ''}${kind === 'badges' ? ' lb-row--badges' : ''}">
+    return `<li class="lb-row${mine ? ' is-me' : ''}${rank <= 3 ? ' is-top' : ''}${kind === 'badges' ? ' lb-row--badges' : ''}" data-rank="${rank <= 3 ? rank : ''}">
       <div class="lb-rank">${rank}</div>
       ${levelRowLabel(r.level || 1)}
       ${avatarCell(r)}
@@ -49,27 +62,33 @@
       <div class="lb-score">${esc(s.big)}<small>${esc(s.small)}</small></div></li>`;
   }
 
-  // Rows are cached best-first. Ascending just reverses the list; each row keeps its REAL rank number, so the lowest
-  // row on a 50-row board still reads "50", not "1". (Only the top 50 are loaded, so "Lowest first" orders those 50.)
+  // Rows are cached best-first. Only the first `max` are shown. Ascending just reverses that slice; each row keeps its REAL
+  // rank number, so the lowest row of a top-10 still reads "10", not "1".
   function renderBoard(kind) {
-    const panel = $('lb-panel'), rows = cache[kind] || [];
-    if (!rows.length) { panel.innerHTML = `<p class="lb-empty">${kind === 'weekly' ? 'Nobody has earned XP this week yet. Be the first!' : 'No learners on the board yet. Finish a lesson to appear here.'}</p>`; return; }
+    const panel = $('lb-panel'), info = BOARD_INFO[kind], rows = ((cache[kind] && cache[kind].rows) || []).slice(0, max);
+    const head = `<div class="lb-board-head"><span class="lb-board-head__icon" aria-hidden="true">${ico(info.icon, { size: 'nav' })}</span>
+      <div><h2 class="lb-board-head__title">${esc(info.title)}</h2><p class="lb-board-head__sub">${esc(info.sub)}</p></div>
+      <span class="lb-board-head__count">Top ${max}</span></div>`;
+    if (!rows.length) { panel.innerHTML = head + `<p class="lb-empty">${esc(info.empty)}</p>`; return; }
     const ranked = rows.map((r, i) => ({ r, rank: i + 1 }));
     if (dir === 'asc') ranked.reverse();
-    let html = `<ol class="lb-list">${ranked.map((x) => rowHtml(x.r, x.rank, kind)).join('')}</ol>`;
-    if (dir === 'asc') html += `<p class="lb-note">Lowest first, within the top ${rows.length} learners on this board. Rank numbers are unchanged.</p>`;
-    if (me && !rows.some((r) => r.uid === me.uid)) html += `<p class="lb-note lb-me-pin">You are not in the top ${rows.length} on this board yet. Keep learning to climb!</p>`;
+    let html = head + `<ol class="lb-list">${ranked.map((x) => rowHtml(x.r, x.rank, kind)).join('')}</ol>`;
+    if (dir === 'asc') html += `<p class="lb-note">Lowest first, within the top ${rows.length} on this board. Rank numbers are unchanged.</p>`;
+    if (me && !rows.some((r) => r.uid === me.uid)) html += `<p class="lb-note lb-me-pin">You are not in the top ${rows.length} on this board yet. Keep going to climb!</p>`;
     panel.innerHTML = html;
   }
 
   async function showBoard(kind, force) {
     const my = ++token, panel = $('lb-panel');
     try {
-      if (force || !cache[kind]) {
+      const have = cache[kind];
+      // A bigger limit than what was fetched needs a refetch, unless the last fetch already returned everyone there is.
+      const enough = have && (have.n >= max || have.rows.length < have.n);
+      if (force || !enough) {
         panel.innerHTML = '<p class="lb-note">Loading…</p>';
-        const rows = await X.loadBoard(kind);
+        const n = max, rows = await X.loadBoard(kind, n);
         if (my !== token) return;
-        cache[kind] = rows;
+        cache[kind] = { rows, n };
       }
       renderBoard(kind);
     } catch (e) {
@@ -120,11 +139,11 @@
     };
     const ownedN = Object.keys(all).filter((id) => owned[id]).length;
     $('lb-panel').innerHTML =
-      `<p class="lb-note">You are Level ${level}. Finish a lesson or clear a wall to earn your next badge. Badges for levels you have already reached are handed out lowest first, so you can catch up on any you missed; higher levels unlock as you level up.</p>` +
+      `<p class="lb-note">You are Level ${level}. Finish a lesson, clear a wall or finish a sentence run to earn your next badge. Badges for levels you have already reached are handed out lowest first, so you can catch up on any you missed; higher levels unlock as you level up.</p>` +
       `<div class="lb-toolbar"><span class="lb-toolbar__label" id="bd-filter-label">Show</span><div class="lb-sort" role="group" aria-labelledby="bd-filter-label" id="bd-filter"><button type="button" class="lb-sort__btn" data-filter="all" aria-pressed="true">All badges</button><button type="button" class="lb-sort__btn" data-filter="owned" aria-pressed="false">Owned (${ownedN})</button></div></div>` +
-      lvGrid('Lesson badges by level', 'lesson') + lvGrid('Wall Breaker badges by level', 'game') +
-      group('Streaks', byGroup('streak'), 'streak') + group('Milestones', [...byGroup('lesson'), ...byGroup('game')], 'milestones') +
-      '<p class="lb-empty bd-none" hidden>You have not earned any badges yet. Finish a lesson or clear a wall to get your first.</p>';
+      lvGrid('Lesson badges by level', 'lesson') + lvGrid('Wall Breaker badges by level', 'game') + lvGrid('Construct a Sentence badges by level', 'sentence') +
+      group('Streaks', byGroup('streak'), 'streak') + group('Milestones', [...byGroup('lesson'), ...byGroup('game'), ...byGroup('sentence')], 'milestones') +
+      '<p class="lb-empty bd-none" hidden>You have not earned any badges yet. Finish a lesson, clear a wall or finish a sentence run to get your first.</p>';
     applyMineFilter();
   }
   // "Owned" filter: pure show/hide (no re-render), so groups the reader collapsed stay collapsed. Empty groups are hidden by CSS
@@ -191,9 +210,10 @@
 
   function syncSort() {
     document.querySelectorAll('#lb-sort .lb-sort__btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dir === dir)));
+    document.querySelectorAll('#lb-limit .lb-sort__btn').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.limit) === max)));
   }
 
-  // v is a board ('xp' | 'weekly' | 'streak' | 'badges') or 'mine'. On 'mine' no tab is selected (it lives under the level
+  // v is a board (level | streak | badges | wall | timeAttack | sentence) or 'mine'. On 'mine' no tab is selected (it lives under the level
   // card, not in the tab row) and the order control is hidden because the badge grid has no ranking.
   function select(v, target) {
     view = v; if (v !== 'mine') lastBoard = v;
@@ -229,13 +249,18 @@
       const b = e.target.closest('.lb-sort__btn'); if (!b || b.dataset.dir === dir) return;
       dir = b.dataset.dir; syncSort(); if (view !== 'mine') renderBoard(view);
     });
+    // Limit control: Top 10 / 25 / 50. Fetches again only when the new limit is bigger than what is already loaded.
+    $('lb-limit').addEventListener('click', (e) => {
+      const b = e.target.closest('.lb-sort__btn'); if (!b || Number(b.dataset.limit) === max) return;
+      max = Number(b.dataset.limit); syncSort(); if (view !== 'mine') showBoard(view);
+    });
     $('lb-tabs').addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       const tabs = [...document.querySelectorAll('#lb-tabs .lb-tab')], i = tabs.findIndex((t) => t.dataset.view === (view === 'mine' ? lastBoard : view));
       const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); select(n.dataset.view);
     });
     const [hashView, hashTarget] = location.hash.replace('#', '').split('/');   // "#mine" or "#mine/badge-streak_7"
-    select(['xp', 'weekly', 'streak', 'badges', 'mine'].includes(hashView) ? hashView : 'xp', hashView === 'mine' ? hashTarget : undefined);
+    select([...BOARDS, 'mine'].includes(hashView) ? hashView : 'level', hashView === 'mine' ? hashTarget : undefined);   // old #xp / #weekly links fall back to Level
   }
   if (window.LWXP) init(); else document.addEventListener('lwxp-ready', init, { once: true });
 })();

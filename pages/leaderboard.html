@@ -102,7 +102,7 @@
           <header class="lb-head">
             <div class="lb-head__text">
               <h1>Leaderboard</h1>
-              <p class="mt-2 text-muted">Earn XP from lessons, Wall Breaker and Time Attack. Lessons are worth far more than games, so there is no shortcut to the top.</p>
+              <p class="mt-2 text-muted">Earn XP from lessons, Construct a Sentence, Wall Breaker and Time Attack. Lessons are worth far more than games, so there is no shortcut to the top.</p>
             </div>
             <button type="button" class="btn btn--ghost btn--sm lb-how-btn" id="lb-how-btn" aria-haspopup="dialog" aria-controls="lb-how-dialog">How XP works</button>
           </header>
@@ -111,10 +111,22 @@
             <!-- Main column: the boards themselves. -->
             <div class="lb-main">
               <div class="lb-tabs" role="tablist" aria-label="Leaderboard views" id="lb-tabs">
-                <button class="lb-tab" role="tab" id="tab-xp" data-view="xp" aria-selected="true">All-time XP</button>
-                <button class="lb-tab" role="tab" id="tab-weekly" data-view="weekly" aria-selected="false">This week</button>
-                <button class="lb-tab" role="tab" id="tab-streak" data-view="streak" aria-selected="false">Streaks</button>
-                <button class="lb-tab" role="tab" id="tab-badges" data-view="badges" aria-selected="false">Badges</button>
+                <div class="lb-tabgroup" role="presentation">
+                  <span class="lb-tabgroup__label" aria-hidden="true">Overall</span>
+                  <div class="lb-tabgroup__tabs" role="presentation">
+                    <button class="lb-tab" role="tab" id="tab-level" data-view="level" aria-selected="true"><span data-lw-icon="trophy" data-lw-icon-size="sm" aria-hidden="true"></span>Level</button>
+                    <button class="lb-tab" role="tab" id="tab-streak" data-view="streak" aria-selected="false"><span data-lw-icon="flame" data-lw-icon-size="sm" aria-hidden="true"></span>Streaks</button>
+                    <button class="lb-tab" role="tab" id="tab-badges" data-view="badges" aria-selected="false"><span data-lw-icon="medal" data-lw-icon-size="sm" aria-hidden="true"></span>Badges</button>
+                  </div>
+                </div>
+                <div class="lb-tabgroup" role="presentation">
+                  <span class="lb-tabgroup__label" aria-hidden="true">Games</span>
+                  <div class="lb-tabgroup__tabs" role="presentation">
+                    <button class="lb-tab" role="tab" id="tab-sentence" data-view="sentence" aria-selected="false"><span data-lw-icon="lc_puzzle" data-lw-icon-size="sm" aria-hidden="true"></span>Sentence</button>
+                    <button class="lb-tab" role="tab" id="tab-wall" data-view="wall" aria-selected="false"><span data-lw-icon="brick_wall" data-lw-icon-size="sm" aria-hidden="true"></span>Wall Breaker</button>
+                    <button class="lb-tab" role="tab" id="tab-timeAttack" data-view="timeAttack" aria-selected="false"><span data-lw-icon="zap" data-lw-icon-size="sm" aria-hidden="true"></span>Time Attack</button>
+                  </div>
+                </div>
               </div>
 
               <!-- Order control: flips every board between highest-first (default) and lowest-first. Hidden on "My badges". -->
@@ -123,6 +135,12 @@
                 <div class="lb-sort" role="group" aria-labelledby="lb-sort-label" id="lb-sort">
                   <button type="button" class="lb-sort__btn" data-dir="desc" aria-pressed="true"><span aria-hidden="true">&darr;</span> Highest first</button>
                   <button type="button" class="lb-sort__btn" data-dir="asc" aria-pressed="false"><span aria-hidden="true">&uarr;</span> Lowest first</button>
+                </div>
+                <span class="lb-toolbar__label" id="lb-limit-label">Show</span>
+                <div class="lb-sort" role="group" aria-labelledby="lb-limit-label" id="lb-limit">
+                  <button type="button" class="lb-sort__btn" data-limit="10" aria-pressed="true">Top 10</button>
+                  <button type="button" class="lb-sort__btn" data-limit="25" aria-pressed="false">Top 25</button>
+                  <button type="button" class="lb-sort__btn" data-limit="50" aria-pressed="false">Top 50</button>
                 </div>
               </div>
 
@@ -146,10 +164,12 @@
               <h2 id="lb-how-title">How XP works</h2>
               <ul>
                 <li>Every lesson step earns XP once. Finishing a whole lesson and passing its Mastery Quiz pays a bonus (the largest reward).</li>
-                <li>Wall Breaker earns a little XP, and less each wall you clear in a day. It stops paying after the daily limit.</li>
-                <li>A wall only counts when at least 6 of its bricks are signs you have already learned in lessons.</li>
-                <li>Streaks count days you earn XP, using your own time zone. Week rankings reset every Monday (UTC).</li>
-                <li>Each level has a lesson badge and a wall badge. Earn them by finishing a lesson or a wall once you reach that level.</li>
+                <li>Construct a Sentence, Wall Breaker and Time Attack earn a little XP each. Together they stop paying after the daily game limit.</li>
+                <li>Construct a Sentence is open to everyone: you can earn XP, levels and badges from it without finishing any lessons first.</li>
+                <li>Wall Breaker and Time Attack only count signs you have already learned in lessons (Wall Breaker needs at least 6 learned bricks).</li>
+                <li>The Level board ranks learners by level, and XP breaks ties. Each game board ranks by the XP earned in that game.</li>
+                <li>Streaks count days you earn XP, using your own time zone.</li>
+                <li>Each level has a lesson badge, a wall badge and a sentence badge. Earn them by finishing a lesson, a wall or a sentence run once you reach that level.</li>
               </ul>
               <button type="button" class="btn btn--primary lb-how-dialog__ok" id="lb-how-ok">Got it</button>
             </div>

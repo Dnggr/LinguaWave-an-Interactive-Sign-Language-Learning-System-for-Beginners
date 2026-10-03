@@ -124,3 +124,11 @@
 }
 
 @media(prefers-reduced-motion:reduce){.cs-preview.is-go,.cs-slot,.cs-slot.is-wrong,.cs-tile,.cs-tile__name,.cs-preview__fill{animation:none;transition:none}}
+
+/* XP: header chip (hidden until a run starts) and the result card's XP line / badge chips (base styles live in css/xp.css and css/game.css) */
+.cs-chip--xp[hidden]{display:none}
+.cs-chip--xp.is-on .lw-icon{color:var(--clr-yellow)}
+.cs-chip--xp.is-on b{color:var(--clr-success)}
+.cs-chip--xp.is-off .lw-icon,.cs-chip--xp.is-off b{color:var(--clr-text-muted)}
+.cs-badges{margin:var(--space-3) 0}
+.cs-badges:empty{display:none}

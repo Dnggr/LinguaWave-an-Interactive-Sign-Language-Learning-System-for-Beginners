@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="../css/game.css" />
   <link rel="stylesheet" href="../css/construct-sentence.css" />
   <link rel="stylesheet" href="../css/responsive.css" />
+  <link rel="stylesheet" href="../css/xp.css" />
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
@@ -66,6 +67,7 @@
             <span class="gm-chip"><span data-lw-icon="lc_list_ordered" data-lw-icon-size="sm" aria-hidden="true"></span>Sentence <b id="cs-count-label">0/0</b></span>
             <span class="gm-chip"><span data-lw-icon="lc_timer" data-lw-icon-size="sm" aria-hidden="true"></span>Time <b id="cs-time">0.0s</b></span>
             <span class="gm-chip gm-chip--miss"><span data-lw-icon="lc_circle_x" data-lw-icon-size="sm" aria-hidden="true"></span>Misses <b id="cs-misses">0</b></span>
+            <span class="gm-chip cs-chip--xp" id="cs-xp-chip" hidden><span data-lw-icon="star" data-lw-icon-size="sm" aria-hidden="true"></span><b id="cs-xp-chip-text">XP</b></span>
           </div>
         </header>
         <div class="ta-progress cs-progress" aria-hidden="true"><span class="ta-progress__fill"></span></div>
@@ -119,6 +121,8 @@
             <span class="cs-result-icon" data-lw-icon="trophy" aria-hidden="true"></span>
             <h2>Sentences complete</h2>
             <p id="cs-summary"></p>
+            <div class="gm-result__xp" id="cs-xp" aria-live="polite"></div>
+            <div class="gm-badges cs-badges" id="cs-badges"></div>
             <div class="cs-result-actions"><button class="btn btn--primary" id="cs-again" type="button"><span data-lw-icon="lc_rotate_ccw" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Play again</button><button class="btn btn--ghost" id="cs-change" type="button"><span data-lw-icon="lc_hourglass" data-lw-icon-self="1" data-lw-icon-size="sm"></span>Change difficulty</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
           </div>
         </section>

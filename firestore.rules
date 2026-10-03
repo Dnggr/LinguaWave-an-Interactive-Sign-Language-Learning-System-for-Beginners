@@ -67,6 +67,18 @@
 //      Not enforceable here: submittedAt is an ISO *string* written by
 //      the browser, so its value can't be checked against request.time.
 //      (Switch feedback.js to serverTimestamp() if that ever matters.)
+// CHANGED (Construct a Sentence XP + badges): the badge map may hold up to 120 entries (was 73) and
+//      publicProfiles.badgeCount may reach 120, because 34 sentence badges were added (107 in total now).
+//      xpState.totals accepts ONE new, optional key, `sentences` (a non-negative number), which counts XP-earning
+//      sentence runs. It is optional on purpose, so documents written before this change stay valid.
+//      PUBLISH THESE RULES BEFORE DEPLOYING THE NEW JS: the new client writes totals.sentences on every XP write,
+//      and the old rules reject that key (every XP write would fail with permission-denied until the rules are published).
+//      Sentence XP shares the existing limits: the 90 XP/day game cap, the +100 XP per write ceiling and the 2 s pacing.
+// CHANGED (per-game leaderboards): xpState.totals accepts three more OPTIONAL keys, wallXp, timeAttackXp and
+//      sentenceXp (XP earned in each game; together they can never exceed totals.gameXp). publicProfiles accepts the same
+//      three optional keys, and when present each must equal the value in xpState.totals (a missing key counts as 0).
+//      Optional on purpose: documents written before this change stay valid.
+//      PUBLISH THESE RULES BEFORE DEPLOYING THE NEW JS, or every XP write fails with permission-denied.
 // CHANGED (admin account deletion): the admin may now delete xpState/{uid} and
 //      publicProfiles/{uid} (it already could delete users, userProgress,
 //      userProgressV2, userGame and surveys). And xpState, publicProfiles,
@@ -247,7 +259,7 @@ service cloud.firestore {
           && d.streak.current is number && d.streak.current >= 0 && d.streak.current <= 10000
           && d.streak.longest is number && d.streak.longest >= d.streak.current && d.streak.longest <= 10000
           && (d.streak.lastDay == null || (d.streak.lastDay is string && d.streak.lastDay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
-          && d.badges is map && d.badges.keys().size() <= 73
+          && d.badges is map && d.badges.keys().size() <= 120
           && d.lessonItems is map && d.lessonItems.keys().size() <= 1000
           && d.missionsDone is map && d.missionsDone.keys().size() <= 1000
           && d.learnedSigns is list && d.learnedSigns.size() <= 1000
@@ -260,8 +272,14 @@ service cloud.firestore {
           && d.daily.walls is number && d.daily.walls >= 0
           && d.daily.timeAttacks is number && d.daily.timeAttacks >= 0
           && d.totals is map
-          && d.totals.keys().hasOnly(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions'])
+          && d.totals.keys().hasOnly(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions', 'sentences',
+                                      'wallXp', 'timeAttackXp', 'sentenceXp'])
           && d.totals.keys().hasAll(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions'])
+          && (!('sentences' in d.totals) || (d.totals.sentences is number && d.totals.sentences >= 0))
+          && (!('wallXp' in d.totals) || (d.totals.wallXp is number && d.totals.wallXp >= 0))
+          && (!('timeAttackXp' in d.totals) || (d.totals.timeAttackXp is number && d.totals.timeAttackXp >= 0))
+          && (!('sentenceXp' in d.totals) || (d.totals.sentenceXp is number && d.totals.sentenceXp >= 0))
+          && d.totals.get('wallXp', 0) + d.totals.get('timeAttackXp', 0) + d.totals.get('sentenceXp', 0) <= d.totals.gameXp
           && d.totals.lessonXp is number && d.totals.lessonXp >= 0
           && d.totals.gameXp is number && d.totals.gameXp >= 0
           && d.totals.walls is number && d.totals.walls >= 0
@@ -283,7 +301,10 @@ service cloud.firestore {
           && d.weekKey == s.weekKey
           && d.streak == s.streak.current
           && d.longestStreak == s.streak.longest
-          && d.badgeCount == s.badges.keys().size();
+          && d.badgeCount == s.badges.keys().size()
+          && d.get('wallXp', 0) == s.totals.get('wallXp', 0)
+          && d.get('timeAttackXp', 0) == s.totals.get('timeAttackXp', 0)
+          && d.get('sentenceXp', 0) == s.totals.get('sentenceXp', 0);
       }
 
       function pairedPublicRow(d) {
@@ -338,14 +359,18 @@ service cloud.firestore {
           && d.weekKey == s.weekKey
           && d.streak == s.streak.current
           && d.longestStreak == s.streak.longest
-          && d.badgeCount == s.badges.keys().size();
+          && d.badgeCount == s.badges.keys().size()
+          && d.get('wallXp', 0) == s.totals.get('wallXp', 0)
+          && d.get('timeAttackXp', 0) == s.totals.get('timeAttackXp', 0)
+          && d.get('sentenceXp', 0) == s.totals.get('sentenceXp', 0);
       }
 
       function validPublic(d) {
         let statePath = /databases/$(database)/documents/xpState/$(uid);
         let userPath = /databases/$(database)/documents/users/$(uid);
         return d.keys().hasOnly(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
-                                 'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt'])
+                                 'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt',
+                                 'wallXp', 'timeAttackXp', 'sentenceXp'])
           && d.keys().hasAll(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
                               'streakExpiresAt', 'badgeCount', 'recentBadges', 'updatedAt'])
           && d.name is string && d.name.size() >= 1 && d.name.size() <= 30
@@ -356,8 +381,11 @@ service cloud.firestore {
           && d.streak is number && d.streak >= 0 && d.streak <= 10000
           && d.longestStreak is number && d.longestStreak >= d.streak && d.longestStreak <= 10000
           && (d.streakExpiresAt == null || (d.streakExpiresAt is number && d.streakExpiresAt >= 0))
-          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 73
+          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 120
           && d.recentBadges is list && d.recentBadges.size() <= 5
+          && (!('wallXp' in d) || (d.wallXp is number && d.wallXp >= 0 && d.wallXp <= d.xp))
+          && (!('timeAttackXp' in d) || (d.timeAttackXp is number && d.timeAttackXp >= 0 && d.timeAttackXp <= d.xp))
+          && (!('sentenceXp' in d) || (d.sentenceXp is number && d.sentenceXp >= 0 && d.sentenceXp <= d.xp))
           && (!('avatar' in d) || (d.avatar is string && d.avatar.matches('^avatar-[0-9]{2}$')))
           && d.updatedAt == request.time
           && existsAfter(statePath)
