@@ -223,3 +223,58 @@ exports.checkEmailDeliverability = onCall(
     return { ok: verdict.ok, reason: verdict.reason || null, checked: verdict.checked };
   }
 );
+
+/* ── checkAccountExists (2026-10-03, PUBLIC callable) ─────────────
+ * index.html's Log In / Forgot Password panels call this (through
+ * LWAuth.checkAccountExists) to find out whether an email already has an
+ * account, so the "Forgot your password? Reset it" link is only offered to,
+ * and a reset email only sent to, a real account.
+ *
+ * WHY A FUNCTION: signed-out visitors can't read Firestore users/{uid}
+ * (firestore.rules), and Firebase Auth's own client-side lookup
+ * (fetchSignInMethodsForEmail) returns nothing once email-enumeration
+ * protection is on. Only the Admin SDK can answer this.
+ *
+ * TRADE-OFF (deliberate, asked for by the owner): this tells anyone who
+ * calls it whether an address is registered. That is the "account
+ * enumeration" leak Firebase's protection exists to prevent. It is
+ * limited to a per-IP rate limit (best effort, per instance), returns ONLY
+ * { exists: true|false } (no uid, no providers, no name), and logs the
+ * domain only. Consider Firebase App Check if it is ever abused.
+ *
+ * Fails CLOSED on the client: if this call errors, LWAuth.checkAccountExists
+ * throws and index.html does not offer the reset.
+ */
+exports.checkAccountExists = onCall({ timeoutSeconds: 15 }, async (request) => {
+  const raw = request.data && request.data.email;
+  if (typeof raw !== "string" || !raw.trim() || raw.length > 320) {
+    throw new HttpsError("invalid-argument", "An email address is required.");
+  }
+
+  const ip = (request.rawRequest && request.rawRequest.ip) || "unknown";
+  if (tooManyChecks("account:" + ip)) {
+    throw new HttpsError("resource-exhausted", "Too many checks. Please wait a minute and try again.");
+  }
+
+  const email = emailCheck.normalizeEmail(raw);
+  let exists = false;
+  try {
+    await admin.auth().getUserByEmail(email);
+    exists = true;
+  } catch (err) {
+    // A malformed address simply has no account; anything else is a real failure.
+    if (err && (err.code === "auth/user-not-found" || err.code === "auth/invalid-email")) {
+      exists = false;
+    } else {
+      console.error("checkAccountExists failed", err);
+      throw new HttpsError("internal", "Couldn't check that email right now.");
+    }
+  }
+
+  console.log(JSON.stringify({
+    fn: "checkAccountExists",
+    domain: email.includes("@") ? email.slice(email.lastIndexOf("@") + 1).toLowerCase() : null,
+    exists,
+  }));
+  return { exists };
+});

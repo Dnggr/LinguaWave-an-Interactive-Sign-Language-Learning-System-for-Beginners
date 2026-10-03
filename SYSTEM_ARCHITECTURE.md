@@ -903,3 +903,21 @@ Browser (`js/xp.js` + pure `js/xp-engine.mjs`) -> paired Firestore transactions 
 `publicProfiles` (leaderboard rows). Firestore rules validate the document shape, pair the public row with the private
 state, and cap writes; they cannot verify browser-reported lesson completion or game results. The former callable path
 in `functions/xp.js` remains as legacy code and is not used for Spark XP. Details and limits: `XP_SYSTEM.md`.
+## Game Leaderboards (2026-10-04)
+`pages/leaderboard.html` has two sections: **Overall** (Level, Streaks, Badges, from `publicProfiles`) and **Game Leaderboards**
+(one tab; pick Construct / Time Attack / Wall Breaker, then a difficulty). The three old per-game *XP* tabs were replaced by it;
+old `#sentence` / `#wall` / `#timeAttack` links open the matching game board.
+
+* **Data:** `gameScores/{board}/entries/{uid}`, one personal-best document per learner per board
+  (`board` = `construct__easy|medium|hard`, `timeAttack__standard`, `wall__9|15|21`). Fields: `uid, game, difficulty, timeMs, misses,
+  completed, achievedAt, gameVersion`. Name and avatar are joined from `publicProfiles` at display time (no duplicated user records;
+  "Hide me from leaderboards" hides game rows too).
+* **Difficulty values are the games' own:** Construct easy/medium/hard; Wall Breaker's existing wall sizes 9/15/21 (Small/Medium/Large);
+  Time Attack has no difficulty, so it has one board and only full 10-sign runs are ranked (shorter runs are not comparable).
+* **Ranking** (`js/game-scores-core.mjs`, pure + tested by `node js/_test_game-scores.node.mjs`): Construct = time, then earliest
+  achieved, then uid. Time Attack / Wall Breaker = time, then misses, then earliest achieved, then uid. Only `completed: true` results with
+  a valid time/misses/timestamp rank. Firestore is read by `timeMs` only (no composite index needed); the final order is computed in JS.
+* **Writes:** each game calls `import('./game-scores.js').then(m => m.submitScore(...))` only from its *completed-run* path; the call is
+  lazy and never throws, so it cannot affect gameplay or XP. A stored best is replaced only by a better result (rules enforce it).
+* **Rules:** `firestore.rules` -> `match /gameScores/{board}/entries/{uid}`. Deploy with `firebase deploy --only firestore:rules`.
+  Like XP, results are browser-reported: rules bound values and force improve-only, but cannot prove a run happened.

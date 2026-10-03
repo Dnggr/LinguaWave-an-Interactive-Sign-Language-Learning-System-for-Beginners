@@ -1126,6 +1126,409 @@ function wireSidebarProgressCapture(el) {
   });
 }
 
+// ── SIDEBAR SEARCH ─────────────────────────────────────────────────
+// A search field that sits ABOVE the #course-sidebar card (not inside it). The
+// card and the field share a small wrapper, <div class="sbq-col">, created at
+// render time; syncSidebarColumn() moves the card's sticky/max-height onto the
+// pair so the field stays pinned with the card instead of scrolling away. It never edits the
+// outline: while a query is active the outline is hidden and a separate
+// results list is shown, so clearing the search restores the sidebar
+// exactly as it was (open/closed units, current-sign centring) with no
+// state to save. Results are built from window.LWMissions data — NOT
+// scraped from the DOM — because multi-category units only render sign
+// rows for the category you're currently inside, so a DOM filter would
+// never find signs in the others. Each result row comes from
+// sidebarSignRow(), so locked/pending gating, links, done/current state
+// and the click-to-record-progress listener behave as in the outline.
+//
+// Styling lives right here (injected once as <style id="lw-sidebar-search-css">)
+// so this feature is a single-file change. It uses the page's own tokens
+// (--clr-accent, --clr-border, --clr-text-muted, --space-*) with fallbacks,
+// and `currentColor` mixes so it follows the light/dark theme switch.
+// Class names are all `sbq*` — nothing here collides with lesson.css.
+const SIDEBAR_SEARCH_CSS = `
+.sbq-col { display: block; box-sizing: border-box; }
+.sbq { --sbq-accent: var(--clr-accent, #4da3ff); --sbq-line: var(--clr-border, rgba(148,163,184,.28)); --sbq-muted: var(--clr-text-muted, #8fa0c2);
+  padding: 0 0 var(--space-3, 12px); }
+.sbq [hidden], .sbq-results[hidden], .course-sidebar__outline[hidden] { display: none !important; }
+
+.sbq__field { position: relative; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 8px 0 14px;
+  border: 1px solid var(--sbq-line); border-radius: 14px; cursor: text;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.sbq__field:hover { border-color: color-mix(in srgb, var(--sbq-accent) 40%, var(--sbq-line)); }
+.sbq__field:focus-within { border-color: var(--sbq-accent);
+  background: color-mix(in srgb, var(--sbq-accent) 7%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sbq-accent) 20%, transparent),
+              0 10px 24px -12px color-mix(in srgb, var(--sbq-accent) 80%, transparent); }
+
+.sbq__icon { display: flex; flex: none; color: var(--sbq-muted);
+  transition: color .18s ease, transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.sbq__field:focus-within .sbq__icon { color: var(--sbq-accent); transform: scale(1.1) rotate(-10deg); }
+
+.sbq .sbq__input { flex: 1; min-width: 0; width: auto; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0;
+  outline: 0; box-shadow: none; background: transparent; color: inherit;
+  font: inherit; font-size: 15px; font-weight: 500; letter-spacing: .005em;
+  -webkit-appearance: none; appearance: none; }
+.sbq .sbq__input:focus { outline: 0; box-shadow: none; border: 0; background: transparent; }
+.sbq .sbq__input::placeholder { color: var(--sbq-muted); font-weight: 400; opacity: 1; }
+.sbq .sbq__input::-webkit-search-cancel-button, .sbq .sbq__input::-webkit-search-decoration { display: none; }
+@media (pointer: coarse) { .sbq .sbq__input { font-size: 16px; } }   /* 16px stops iOS zoom-on-focus */
+
+.sbq-kbd { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px;
+  font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--sbq-muted);
+  border: 1px solid var(--sbq-line); border-bottom-width: 2px; border-radius: 6px; }
+.sbq__field .sbq-kbd { transition: opacity .15s ease; }
+.sbq__field:focus-within .sbq-kbd, .sbq.is-filled .sbq__field .sbq-kbd { display: none; }
+@media (hover: none) { .sbq__field .sbq-kbd { display: none; } }
+
+.sbq__clear { box-sizing: border-box; display: none; flex: none; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
+  color: inherit; cursor: pointer; background: color-mix(in srgb, currentColor 12%, transparent);
+  transition: background .15s ease, transform .15s ease; }
+.sbq.is-filled .sbq__clear { display: grid; }
+.sbq__clear:hover { background: color-mix(in srgb, var(--sbq-accent) 28%, transparent); transform: scale(1.08); }
+.sbq__clear:focus-visible { outline: 2px solid var(--sbq-accent); outline-offset: 2px; }
+
+.sbq-results { --sbq-accent: var(--clr-accent, #4da3ff); --sbq-line: var(--clr-border, rgba(148,163,184,.28)); --sbq-muted: var(--clr-text-muted, #8fa0c2);
+  padding: 2px 0 var(--space-3, 12px); }
+.sbq-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 14px 8px;
+  font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--sbq-muted); }
+.sbq-meta b { color: var(--sbq-accent); font-weight: 700; }
+.sbq-meta__hint { display: inline-flex; align-items: center; gap: 6px; letter-spacing: .04em; }
+@media (hover: none) { .sbq-meta__hint { display: none; } }
+
+.sbq-group { margin-bottom: var(--space-2, 8px); }
+.sbq-group__title { display: flex; align-items: center; gap: 10px; padding: 8px 14px 6px;
+  font: 600 11px/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--sbq-muted); }
+.sbq-group__title::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--sbq-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--sbq-accent) 80%, transparent); }
+.sbq-group__title::after { content: ""; flex: 1; height: 1px; background: var(--sbq-line); }
+
+.sbq-results mark { padding: 0; color: var(--sbq-accent); font-weight: 700; background: linear-gradient(var(--sbq-accent), var(--sbq-accent)) 0 100% / 100% 2px no-repeat; }
+.sbq-results a:focus-visible { outline: 2px solid var(--sbq-accent); outline-offset: -2px; border-radius: 10px; }
+.sbq-results .is-top { position: relative; }
+.sbq-results .is-top::after { box-sizing: border-box; content: "\\21B5"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+  font: 600 12px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--sbq-muted);
+  border: 1px solid var(--sbq-line); border-bottom-width: 2px; border-radius: 6px; pointer-events: none; }
+@media (hover: none) { .sbq-results .is-top::after { display: none; } }
+
+.sbq-empty { display: grid; justify-items: center; gap: 6px; padding: 30px 20px 22px; text-align: center; color: var(--sbq-muted); font-size: 14px; }
+.sbq-empty svg { margin-bottom: 4px; opacity: .8; }
+.sbq-empty strong { color: inherit; font-weight: 600; word-break: break-word; }
+.sbq-empty small { font-size: 12.5px; opacity: .85; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not(.lw-force-reduced-motion) .sbq-results [data-i] { animation: sbqIn .26s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 24ms); }
+}
+@keyframes sbqIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+`;
+
+function injectSidebarSearchStyles() {
+  if (document.getElementById('lw-sidebar-search-css')) return;
+  const s = document.createElement('style');
+  s.id = 'lw-sidebar-search-css';
+  s.textContent = SIDEBAR_SEARCH_CSS;
+  document.head.appendChild(s);
+}
+
+const SBQ_ICON_SEARCH =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>';
+const SBQ_ICON_CLEAR =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" ' +
+  'stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const SBQ_ICON_EMPTY =
+  '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/><path d="m9 9 4 4M13 9l-4 4"/></svg>';
+
+// Every category the outline would actually list signs for, plus the flat
+// "interactive" unit rows. Same visibility rules as renderCourseSidebar():
+// comingSoon/empty categories and not-yet-unlocked units are skipped.
+function sidebarSearchableItems() {
+  const cats = [], flat = [];
+  window.LWMissions.getUnits().forEach(unit => {
+    if (unit.kind === 'interactive') { flat.push(unit); return; }
+    const liveCats = window.LWMissions.getCategoriesForUnit(unit.order)
+      .filter(c => !c.comingSoon && window.LWMissions.getCategorySigns(c.level, c.id).length > 0);
+    if (liveCats.length === 0) return;
+    const unlocked = unit.kind === 'reference'
+      || (window.LWProgress?.isCategoryUnlocked?.(liveCats[0].level, liveCats[0].id) ?? true);
+    if (!unlocked) return;
+    liveCats.forEach(cat => cats.push({ unit, cat, multi: liveCats.length > 1 }));
+  });
+  return { cats, flat };
+}
+
+function sidebarSearchMarkup() {
+  let n = 0;
+  try {
+    sidebarSearchableItems().cats.forEach(({ cat }) => {
+      n += window.LWMissions.getCategorySigns(cat.level, cat.id).length;
+    });
+  } catch (e) { /* placeholder just falls back to the generic text */ }
+  const placeholder = n > 0 ? `Search ${n} signs\u2026` : 'Search signs\u2026';
+  return `<div class="sbq" role="search">` +
+    `<label class="sbq__field">` +
+      `<span class="sbq__icon">${SBQ_ICON_SEARCH}</span>` +
+      `<input id="course-sidebar-search-input" class="sbq__input" type="search" enterkeyhint="go" ` +
+        `placeholder="${placeholder}" autocomplete="off" autocapitalize="off" spellcheck="false" ` +
+        `aria-label="Search signs" aria-controls="course-sidebar-results" />` +
+      `<kbd class="sbq-kbd" aria-hidden="true">/</kbd>` +
+      `<button type="button" id="course-sidebar-search-clear" class="sbq__clear" aria-label="Clear search">${SBQ_ICON_CLEAR}</button>` +
+    `</label>` +
+    `<div class="sr-only" id="course-sidebar-search-status" role="status"></div>` +
+  `</div>`;
+}
+
+// A sign-name match lists that sign; a unit or category-name match lists
+// everything inside it. Locked/pending signs come back as the same greyed,
+// non-clickable rows the outline uses. Returns { html, count }.
+function buildSidebarSearchResults(q) {
+  const { cats, flat } = sidebarSearchableItems();
+  const parts = [];
+  let count = 0;
+
+  cats.forEach(({ unit, cat, multi }) => {
+    const mission = missionForSidebarCategory(cat.id);
+    const missionLocked = !!mission
+      && window.LWMissions.getMissionStatus(mission, window.LWMissions.getAllMissions()) === 'locked';
+    const wholeCat = String(unit.title).toLowerCase().includes(q) || String(cat.title).toLowerCase().includes(q);
+    const rows = [];
+    window.LWMissions.getCategorySigns(cat.level, cat.id).forEach(signId => {
+      const label = window.LWMissions.getSign?.(cat.level, signId)?.title ?? signId;
+      if (wholeCat || String(label).toLowerCase().includes(q)) {
+        rows.push(sidebarSignRow(cat, signId, mission, missionLocked));
+      }
+    });
+    if (!rows.length) return;
+    count += rows.length;
+    const title = multi ? `${unit.title} \u203a ${cat.title}` : `${unit.order}. ${unit.title}`;
+    parts.push(`<div class="sbq-group">` +
+      `<div class="sbq-group__title">${escapeHtml(title)}</div>` +
+      `<div class="course-sidebar__signs">${rows.join('')}</div>` +
+    `</div>`);
+  });
+  // The "Fingerspell your name" activity row comes after real sign matches.
+  flat.forEach(unit => {
+    if (!String(unit.title).toLowerCase().includes(q)) return;
+    count++;
+    parts.push(`<div class="sbq-group">` +
+      `<a class="course-sidebar__unit course-sidebar__unit--flat" href="camera-practice.html?level=basic&category=fingerspell_name">` +
+        `<span class="course-sidebar__unit-icon">${window.LWIcons.markup(unit.id)}</span>` +
+        `<span class="course-sidebar__unit-title">${unit.order}. ${escapeHtml(unit.title)}</span>` +
+      `</a></div>`);
+  });
+
+  return { html: parts.join(''), count };
+}
+
+function highlightSidebarMatches(container, q) {
+  container.querySelectorAll('.course-sidebar__sign-label').forEach(span => {
+    const text = span.textContent;
+    const i = text.toLowerCase().indexOf(q);
+    if (i < 0) return;
+    span.textContent = '';
+    span.append(text.slice(0, i));
+    const m = document.createElement('mark');
+    m.textContent = text.slice(i, i + q.length);
+    span.append(m, text.slice(i + q.length));
+  });
+}
+
+// The card (#course-sidebar) and the search field share a wrapper so the field
+// sits above the card. Created once; the aside is moved into it, not cloned, so
+// every listener already attached to it (progress capture etc.) keeps working.
+function ensureSidebarColumn(el) {
+  const existing = el.parentElement;
+  if (existing && existing.classList.contains('sbq-col')) return existing;
+  const col = document.createElement('div');
+  col.className = 'sbq-col';
+  el.parentNode.insertBefore(col, el);
+  col.appendChild(el);
+  col.insertAdjacentHTML('afterbegin', sidebarSearchMarkup());
+  return col;
+}
+
+// The wrapper has to take over every layout role the card used to play, or the
+// page's columns shift. The card's stylesheet decides that role (width, flex or
+// grid placement, sticky offset, max-height), so we ask the browser: switch the
+// wrapper to display:contents for a moment, which makes the card behave exactly
+// as if it were still a direct child of the layout, read its computed values,
+// then copy them onto the wrapper. The card itself becomes a plain block that
+// fills the wrapper and gives up only the height the search field takes.
+// Re-run on resize, because those values change at the 1200px breakpoint.
+const SBQ_ITEM_PROPS = [
+  'flexGrow', 'flexShrink', 'flexBasis', 'order', 'alignSelf', 'justifySelf',
+  'gridColumnStart', 'gridColumnEnd', 'gridRowStart', 'gridRowEnd',
+  'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+  'minWidth', 'maxWidth',
+];
+function syncSidebarColumn(col, el) {
+  const search = col.querySelector('.sbq');
+
+  // 1. clear everything we set last time, so we read the stylesheet's own values
+  SBQ_ITEM_PROPS.concat(['position', 'top', 'zIndex', 'width']).forEach(p => { col.style[p] = ''; });
+  ['position', 'maxHeight', 'width', 'minWidth', 'maxWidth', 'flex', 'margin', 'alignSelf'].forEach(p => { el.style[p] = ''; });
+
+  // 2. measure the card as if it were the layout's direct child
+  col.style.display = 'contents';
+  if (search) search.style.display = 'none';
+  const cs = getComputedStyle(el);
+  const rect = el.getBoundingClientRect();
+  const m = {};
+  SBQ_ITEM_PROPS.concat(['position', 'top', 'zIndex', 'maxHeight']).forEach(p => { m[p] = cs[p]; });
+  col.style.display = '';
+  if (search) search.style.display = '';
+  const h = search ? search.offsetHeight : 0;
+
+  // 3. the wrapper takes over the card's place in the layout
+  SBQ_ITEM_PROPS.forEach(p => { col.style[p] = m[p]; });
+  col.style.width = rect.width + 'px';
+  if (m.position === 'sticky') {
+    col.style.position = 'sticky';
+    col.style.top = m.top;
+    col.style.alignSelf = 'start';
+    if (m.zIndex !== 'auto') col.style.zIndex = m.zIndex;
+  }
+
+  // 4. the card fills the wrapper and keeps its own look, minus the search's height
+  el.style.margin = '0';
+  el.style.width = 'auto';
+  el.style.minWidth = '0';
+  el.style.maxWidth = 'none';
+  el.style.flex = 'none';
+  el.style.alignSelf = 'auto';
+  if (m.position === 'sticky') el.style.position = 'static';
+  if (m.maxHeight && m.maxHeight !== 'none') el.style.maxHeight = `calc(${m.maxHeight} - ${h}px)`;
+}
+
+// One call from renderCourseSidebar(): builds the card's contents (outline +
+// hidden results list), mounts the search above it and keeps it in sync.
+function sidebarSearchMount(el, outlineHtml) {
+  injectSidebarSearchStyles();
+  const col = ensureSidebarColumn(el);
+  el.innerHTML =
+    `<div class="course-sidebar__outline" id="course-sidebar-outline">${outlineHtml}</div>` +
+    `<div class="sbq-results" id="course-sidebar-results" role="region" aria-label="Search results" hidden></div>`;
+  const input = col.querySelector('#course-sidebar-search-input');
+  if (input) input.value = '';
+  col.querySelector('.sbq')?.classList.remove('is-filled');
+  wireSidebarSearch(el, col);
+  syncSidebarColumn(col, el);
+  if (!col.dataset.sbqResize) {
+    col.dataset.sbqResize = 'true';
+    let raf = 0;
+    const resync = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => syncSidebarColumn(col, el));
+    };
+    window.addEventListener('resize', resync);           // viewport height/width changes
+    const parent = col.parentElement;                    // layout width changes with no window resize
+    if (window.ResizeObserver && parent) {               // (e.g. a scrollbar appearing once content loads)
+      let lastW = parent.clientWidth;
+      new ResizeObserver(() => {
+        if (parent.clientWidth !== lastW) { lastW = parent.clientWidth; resync(); }
+      }).observe(parent);
+    }
+  }
+}
+
+function wireSidebarSearch(el, col) {
+  const wrap   = col.querySelector('.sbq');
+  const input  = col.querySelector('#course-sidebar-search-input');
+  const clear  = col.querySelector('#course-sidebar-search-clear');
+  const status = col.querySelector('#course-sidebar-search-status');
+  if (!wrap || !input || !clear || !status || input.dataset.sbqWired) return;
+  input.dataset.sbqWired = 'true';
+
+  // Looked up each time so a re-render of the card's contents never leaves stale refs.
+  const outlineEl = () => el.querySelector('#course-sidebar-outline');
+  const resultsEl = () => el.querySelector('#course-sidebar-results');
+  const links = () => [...(resultsEl()?.querySelectorAll('a[href]') ?? [])];
+
+  function run() {
+    const outline = outlineEl(), results = resultsEl();
+    if (!outline || !results) return;
+    const raw = input.value.trim();
+    const q = raw.toLowerCase();
+    wrap.classList.toggle('is-filled', !!input.value);
+
+    if (!q) {                           // cleared: put the outline back as it was
+      results.hidden = true;
+      results.innerHTML = '';
+      outline.hidden = false;
+      status.textContent = '';
+      scrollCourseSidebarToCurrent(el);
+      return;
+    }
+
+    let found = { html: '', count: 0 };
+    try {
+      found = buildSidebarSearchResults(q);
+    } catch (e) {
+      console.error('[lesson.js] sidebar search failed:', e);
+    }
+
+    if (found.count) {
+      results.innerHTML =
+        `<div class="sbq-meta"><span><b>${found.count}</b> ${found.count === 1 ? 'result' : 'results'}</span>` +
+        `<span class="sbq-meta__hint"><kbd class="sbq-kbd">Esc</kbd> clear</span></div>` + found.html;
+      highlightSidebarMatches(results, q);
+      links().forEach((a, i) => { a.dataset.i = i; a.style.setProperty('--i', Math.min(i, 10)); });
+      links()[0]?.classList.add('is-top');
+      status.textContent = `${found.count} ${found.count === 1 ? 'result' : 'results'}`;
+    } else {
+      results.innerHTML = `<div class="sbq-empty">${SBQ_ICON_EMPTY}` +
+        `<span>No signs match <strong>\u201c${escapeHtml(raw)}\u201d</strong></span>` +
+        `<small>Check the spelling or try a shorter word.</small></div>`;
+      status.textContent = 'No results';
+    }
+    outline.hidden = true;
+    results.hidden = false;
+    el.scrollTop = 0;
+  }
+
+  function reset() { input.value = ''; run(); input.focus(); }
+
+  input.addEventListener('input', run);
+  clear.addEventListener('click', reset);
+  input.addEventListener('keydown', (e) => {
+    const results = resultsEl();
+    if (e.key === 'Escape' && input.value) { e.preventDefault(); reset(); }
+    else if (e.key === 'ArrowDown' && results && !results.hidden) {
+      const first = links()[0];
+      if (first) { e.preventDefault(); first.focus(); }
+    } else if (e.key === 'Enter' && results && !results.hidden) {
+      const first = links()[0];          // Enter opens the top result
+      if (first) { e.preventDefault(); first.click(); }
+    }
+  });
+  // Arrow keys walk the results; Esc from a result drops back to the box.
+  el.addEventListener('keydown', (e) => {
+    const results = resultsEl();
+    if (!results || results.hidden || !results.contains(document.activeElement)) return;
+    const list = links();
+    const i = list.indexOf(document.activeElement);
+    if (i < 0) return;
+    if (e.key === 'ArrowDown')    { e.preventDefault(); list[Math.min(i + 1, list.length - 1)].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); (i === 0 ? input : list[i - 1]).focus(); }
+    else if (e.key === 'Escape')  { e.preventDefault(); reset(); }
+  });
+
+  // "/" jumps to the search, unless the learner is typing somewhere already.
+  if (!document.body.dataset.sidebarSearchKey) {
+    document.body.dataset.sidebarSearchKey = 'true';
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = document.activeElement;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+      const box = document.getElementById('course-sidebar-search-input');
+      if (box) { e.preventDefault(); box.focus(); }
+    });
+  }
+}
+
 function renderCourseSidebar() {
   const el = document.getElementById('course-sidebar');
   if (!el) return;
@@ -1145,7 +1548,7 @@ function renderCourseSidebar() {
     const units = window.LWMissions.getUnits();
     const curUnitOrder = currentUnitOrder();
 
-    el.innerHTML = units.map(unit => {
+    const outlineHtml = units.map(unit => {
       const icon = window.LWIcons.markup(unit.id);
       const isCurrentUnit = unit.order === curUnitOrder;
 
@@ -1217,6 +1620,11 @@ function renderCourseSidebar() {
         `<div class="course-sidebar__unit-body"${open ? '' : ' style="display:none;"'}>${body}</div>` +
       `</div>`;
     }).join('');
+
+    // SIDEBAR SEARCH — mounts the search field ABOVE the card, then fills the
+    // card with the unchanged outline plus a results list that stays hidden
+    // until the learner types something.
+    sidebarSearchMount(el, outlineHtml);
 
     // Delegated per-unit collapse/expand — rebound every render since
     // innerHTML above is rebuilt from scratch each time updateLessonMeta()

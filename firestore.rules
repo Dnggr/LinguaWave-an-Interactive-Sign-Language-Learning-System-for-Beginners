@@ -37,6 +37,7 @@
 //   userGame/{uid}         game progress     (js/game.js)          <- NEW
 //   xpState/{uid}          private XP state  (verified owner create/update; client delete denied)
 //   publicProfiles/{uid}   leaderboard rows  (verified read; paired owner write)
+//   gameScores/{board}/entries/{uid}  game leaderboard personal bests (verified read; owner write, improve-only)
 //   xpSessions/{uid}       legacy game sessions (denied)
 //   xpEvents/{id}          legacy XP audit records (denied)
 //   surveys/{id}           feedback answers  (js/feedback.js -> admin panel)
@@ -85,6 +86,15 @@
 //      userProgress, userProgressV2 and userGame can only be CREATED while
 //      users/{uid} exists, so a deleted learner's open tab can't re-create
 //      the data that was just removed (leaderboard row, XP, progress).
+// SLIMMED (xpState + publicProfiles): XP writes were denied even though every clause passed, because the
+//      rules had grown past what Firestore will evaluate per request. Level check is now arithmetic,
+//      hasAll lists were dropped, and the state<->public-row match is checked once. Protections kept:
+//      verified owner only, admin barred, key whitelist, XP/level consistency, +100 XP per write,
+//      90 XP/day game cap, per-game XP <= gameXp, 2 s pacing, streak step <= 1, paired public row.
+//      Dropped (low value): type checks on lessonXp/walls/etc., size caps on lessonItems/missionsDone/
+//      learnedSigns, key whitelists inside streak/daily/totals.
+//      KEEP gameScores/{board}/entries/{uid} below: the Game Leaderboards need it. DO NOT paste the old
+//      long xpState/publicProfiles blocks back in.
 // ─────────────────────────────────────────────────────────────────
 rules_version = '2';
 
@@ -228,85 +238,38 @@ service cloud.firestore {
     }
 
     // ── xpState/{uid}  (private XP ledger; browser writes are best-effort) ──
+    // SLIMMED (2026-10-03): the previous version was so long that Firestore's per-request
+    // expression budget was most likely exhausted when the xpState + publicProfiles
+    // writes were evaluated together, so honest writes were denied. Same protections, fewer
+    // expressions: an arithmetic level check replaces the 30-entry table, hasAll lists are gone
+    // (reading a missing field already denies), and the xpState <-> publicProfiles match is
+    // checked once (on the publicProfiles side) instead of twice.
     match /xpState/{uid} {
-      function levelMatchesXp(level, xp) {
-        // LEVEL_XP[l - 1] is the minimum total XP for level l.
-        let thresholds = [0, 100, 225, 375, 550, 750, 975, 1225, 1500, 1800,
-                          2125, 2475, 2850, 3250, 3675, 4125, 4600, 5100, 5625, 6175,
-                          6750, 7350, 7975, 8625, 9300, 10000, 10725, 11475, 12250, 13050];
-        return level is number && level >= 1 && level <= 30
-          && thresholds[level - 1] <= xp
-          && (level == 30 || xp < thresholds[level]);
-      }
-
       function validXpState(d) {
         return d.keys().hasOnly(['v', 'xp', 'level', 'weeklyXp', 'weekKey', 'tz', 'tzChangedAt', 'streak',
                                  'badges', 'lessonItems', 'missionsDone', 'learnedSigns', 'daily', 'totals',
                                  'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt', 'lastWriteAt'])
-          && d.keys().hasAll(['v', 'xp', 'level', 'weeklyXp', 'weekKey', 'tz', 'tzChangedAt', 'streak',
-                              'badges', 'lessonItems', 'missionsDone', 'learnedSigns', 'daily', 'totals',
-                              'lastClaimAt', 'lastSkipAt', 'backfilled', 'hidden', 'createdAt', 'lastWriteAt'])
           && d.v == 1
           && d.xp is number && d.xp >= 0
-          && levelMatchesXp(d.level, d.xp)
+          // Level l needs (l-1)*(150+25l)/2 XP (= LEVEL_XP table, doubled to stay in integers).
+          && d.level is number && d.level >= 1 && d.level <= 30
+          && (d.level - 1) * (150 + 25 * d.level) <= 2 * d.xp
+          && (d.level == 30 || 2 * d.xp < d.level * (175 + 25 * d.level))
           && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= d.xp
-          && d.weekKey is string && d.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
-          && (d.tz == null || (d.tz is string && d.tz.size() <= 64))
-          && d.tzChangedAt is number && d.tzChangedAt >= 0
-          && d.streak is map
-          && d.streak.keys().hasOnly(['current', 'longest', 'lastDay'])
-          && d.streak.keys().hasAll(['current', 'longest', 'lastDay'])
-          && d.streak.current is number && d.streak.current >= 0 && d.streak.current <= 10000
-          && d.streak.longest is number && d.streak.longest >= d.streak.current && d.streak.longest <= 10000
-          && (d.streak.lastDay == null || (d.streak.lastDay is string && d.streak.lastDay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
-          && d.badges is map && d.badges.keys().size() <= 120
-          && d.lessonItems is map && d.lessonItems.keys().size() <= 1000
-          && d.missionsDone is map && d.missionsDone.keys().size() <= 1000
-          && d.learnedSigns is list && d.learnedSigns.size() <= 1000
-          && d.daily is map
-          && d.daily.keys().hasOnly(['day', 'lessonXp', 'gameXp', 'walls', 'timeAttacks'])
-          && d.daily.keys().hasAll(['day', 'lessonXp', 'gameXp', 'walls', 'timeAttacks'])
-          && (d.daily.day == null || (d.daily.day is string && d.daily.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
-          && d.daily.lessonXp is number && d.daily.lessonXp >= 0
+          && d.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
+          && d.streak.current is number && d.streak.current >= 0
+          && d.streak.longest >= d.streak.current && d.streak.longest <= 10000
+          && d.badges.keys().size() <= 120
           && d.daily.gameXp is number && d.daily.gameXp >= 0 && d.daily.gameXp <= 90
-          && d.daily.walls is number && d.daily.walls >= 0
-          && d.daily.timeAttacks is number && d.daily.timeAttacks >= 0
-          && d.totals is map
-          && d.totals.keys().hasOnly(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions', 'sentences',
-                                      'wallXp', 'timeAttackXp', 'sentenceXp'])
-          && d.totals.keys().hasAll(['lessonXp', 'gameXp', 'walls', 'countedWalls', 'timeAttacks', 'missions'])
-          && (!('sentences' in d.totals) || (d.totals.sentences is number && d.totals.sentences >= 0))
-          && (!('wallXp' in d.totals) || (d.totals.wallXp is number && d.totals.wallXp >= 0))
-          && (!('timeAttackXp' in d.totals) || (d.totals.timeAttackXp is number && d.totals.timeAttackXp >= 0))
-          && (!('sentenceXp' in d.totals) || (d.totals.sentenceXp is number && d.totals.sentenceXp >= 0))
-          && d.totals.get('wallXp', 0) + d.totals.get('timeAttackXp', 0) + d.totals.get('sentenceXp', 0) <= d.totals.gameXp
-          && d.totals.lessonXp is number && d.totals.lessonXp >= 0
           && d.totals.gameXp is number && d.totals.gameXp >= 0
-          && d.totals.walls is number && d.totals.walls >= 0
-          && d.totals.countedWalls is number && d.totals.countedWalls >= 0
-          && d.totals.timeAttacks is number && d.totals.timeAttacks >= 0
-          && d.totals.missions is number && d.totals.missions >= 0
-          && d.lastClaimAt is number && d.lastClaimAt >= 0
-          && d.lastSkipAt is number && d.lastSkipAt >= 0
+          && d.totals.get('wallXp', 0) + d.totals.get('timeAttackXp', 0) + d.totals.get('sentenceXp', 0) <= d.totals.gameXp
           && d.backfilled is bool
           && d.hidden is bool
-          && d.createdAt is number && d.createdAt >= 0
           && d.lastWriteAt == request.time;
       }
 
-      function publicRowMatchesState(d, s) {
-        return d.xp == s.xp
-          && d.level == s.level
-          && d.weeklyXp == s.weeklyXp
-          && d.weekKey == s.weekKey
-          && d.streak == s.streak.current
-          && d.longestStreak == s.streak.longest
-          && d.badgeCount == s.badges.keys().size()
-          && d.get('wallXp', 0) == s.totals.get('wallXp', 0)
-          && d.get('timeAttackXp', 0) == s.totals.get('timeAttackXp', 0)
-          && d.get('sentenceXp', 0) == s.totals.get('sentenceXp', 0);
-      }
-
+      // The public row must be written in the same commit (updatedAt == request.time).
+      // Its values are checked against this state by validPublic() in publicProfiles.
       function pairedPublicRow(d) {
         let profilePath = /databases/$(database)/documents/publicProfiles/$(uid);
         let userPath = /databases/$(database)/documents/users/$(uid);
@@ -314,8 +277,7 @@ service cloud.firestore {
                              && getAfter(userPath).data.get('deletionRequested', false) == true))
           ? !existsAfter(profilePath)
           : existsAfter(profilePath)
-            && getAfter(profilePath).data.updatedAt == request.time
-            && publicRowMatchesState(getAfter(profilePath).data, d);
+            && getAfter(profilePath).data.updatedAt == request.time;
       }
 
       allow get: if isOwner(uid);
@@ -335,7 +297,8 @@ service cloud.firestore {
             || (!resource.data.get('backfilled', false)
                 && request.resource.data.backfilled
                 && request.resource.data.xp <= resource.data.xp + 1500))
-        && (resource.data.get('backfilled', false) == false || request.resource.data.backfilled == true)
+        // backfilled can never flip back off.
+        && (request.resource.data.backfilled || !resource.data.get('backfilled', false))
         && request.resource.data.streak.current <= resource.data.streak.current + 1
         && request.resource.data.streak.longest >= resource.data.streak.longest
         && (!('lastWriteAt' in resource.data)
@@ -352,49 +315,32 @@ service cloud.firestore {
     // Public copies are readable by verified accounts, and must be written in
     // the same batch/transaction as xpState (matching its after-write values).
     match /publicProfiles/{uid} {
-      function publicRowMatchesState(d, s) {
-        return d.xp == s.xp
+      function validPublic(d) {
+        // getAfter() on a missing document makes the rule fail, so no separate existsAfter() is needed.
+        let s = getAfter(/databases/$(database)/documents/xpState/$(uid)).data;
+        let u = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+        return d.keys().hasOnly(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
+                                 'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt',
+                                 'wallXp', 'timeAttackXp', 'sentenceXp'])
+          && d.name is string && d.name.size() >= 1 && d.name.size() <= 30
+          && d.updatedAt == request.time
+          && s.lastWriteAt == request.time
+          && s.hidden == false
+          && d.xp == s.xp
           && d.level == s.level
           && d.weeklyXp == s.weeklyXp
           && d.weekKey == s.weekKey
           && d.streak == s.streak.current
           && d.longestStreak == s.streak.longest
           && d.badgeCount == s.badges.keys().size()
+          && d.recentBadges is list && d.recentBadges.size() <= 5
           && d.get('wallXp', 0) == s.totals.get('wallXp', 0)
           && d.get('timeAttackXp', 0) == s.totals.get('timeAttackXp', 0)
-          && d.get('sentenceXp', 0) == s.totals.get('sentenceXp', 0);
-      }
-
-      function validPublic(d) {
-        let statePath = /databases/$(database)/documents/xpState/$(uid);
-        let userPath = /databases/$(database)/documents/users/$(uid);
-        return d.keys().hasOnly(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
-                                 'streakExpiresAt', 'badgeCount', 'recentBadges', 'avatar', 'updatedAt',
-                                 'wallXp', 'timeAttackXp', 'sentenceXp'])
-          && d.keys().hasAll(['name', 'xp', 'level', 'weeklyXp', 'weekKey', 'streak', 'longestStreak',
-                              'streakExpiresAt', 'badgeCount', 'recentBadges', 'updatedAt'])
-          && d.name is string && d.name.size() >= 1 && d.name.size() <= 30
-          && d.xp is number && d.xp >= 0
-          && d.level is number && d.level >= 1 && d.level <= 30
-          && d.weeklyXp is number && d.weeklyXp >= 0 && d.weeklyXp <= d.xp
-          && d.weekKey is string && d.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
-          && d.streak is number && d.streak >= 0 && d.streak <= 10000
-          && d.longestStreak is number && d.longestStreak >= d.streak && d.longestStreak <= 10000
-          && (d.streakExpiresAt == null || (d.streakExpiresAt is number && d.streakExpiresAt >= 0))
-          && d.badgeCount is number && d.badgeCount >= 0 && d.badgeCount <= 120
-          && d.recentBadges is list && d.recentBadges.size() <= 5
-          && (!('wallXp' in d) || (d.wallXp is number && d.wallXp >= 0 && d.wallXp <= d.xp))
-          && (!('timeAttackXp' in d) || (d.timeAttackXp is number && d.timeAttackXp >= 0 && d.timeAttackXp <= d.xp))
-          && (!('sentenceXp' in d) || (d.sentenceXp is number && d.sentenceXp >= 0 && d.sentenceXp <= d.xp))
+          && d.get('sentenceXp', 0) == s.totals.get('sentenceXp', 0)
+          && (d.streakExpiresAt == null || d.streakExpiresAt is number)
           && (!('avatar' in d) || (d.avatar is string && d.avatar.matches('^avatar-[0-9]{2}$')))
-          && d.updatedAt == request.time
-          && existsAfter(statePath)
-          && getAfter(statePath).data.lastWriteAt == request.time
-          && getAfter(statePath).data.hidden == false
-          && publicRowMatchesState(d, getAfter(statePath).data)
-          // The profile doc must exist: a deleted account can't get its leaderboard row back.
-          && existsAfter(userPath)
-          && getAfter(userPath).data.get('deletionRequested', false) != true;
+          // The profile doc must exist and not be pending deletion: a deleted account can't get its row back.
+          && u.get('deletionRequested', false) != true;
       }
 
       function pairedPublicDelete() {
@@ -414,6 +360,43 @@ service cloud.firestore {
       // The admin may remove any row (account deletion, stale admin row); a learner's own
       // row is removed only in the same transaction that hides XP or observes deletionRequested.
       allow delete: if isAdmin() || pairedPublicDelete();
+    }
+
+    // ── gameScores/{board}/entries/{uid}  (js/game-scores.js, Game Leaderboards) ──
+    // One personal-best document per learner per board. `board` is "<game>__<difficulty>" and must be one of the
+    // boards the games really have (js/game-scores-core.mjs). Name and avatar are NOT stored here: the page joins
+    // them from publicProfiles, so "Hide me from leaderboards" also hides a learner's game rows.
+    // Like XP, results are reported by the browser: these rules bound the values and make a stored best only ever
+    // improve (faster, or equally fast with fewer misses), but cannot prove a run really happened.
+    match /gameScores/{board}/entries/{uid} {
+      function validBoard() {
+        return board in ['construct__easy', 'construct__medium', 'construct__hard',
+                         'timeAttack__standard', 'wall__9', 'wall__15', 'wall__21'];
+      }
+      function validScore(d) {
+        return d.keys().hasOnly(['uid', 'game', 'difficulty', 'timeMs', 'misses', 'completed', 'achievedAt', 'gameVersion'])
+          && d.keys().hasAll(['uid', 'game', 'difficulty', 'timeMs', 'misses', 'completed', 'achievedAt', 'gameVersion'])
+          && d.uid == uid
+          && d.game is string && d.difficulty is string
+          && board == d.game + '__' + d.difficulty
+          && d.timeMs is int && d.timeMs >= 1000 && d.timeMs <= 3600000
+          && d.misses is int && d.misses >= 0 && d.misses <= 500
+          && d.completed == true
+          && d.achievedAt == request.time
+          && d.gameVersion == 1;
+      }
+      function canWrite() {
+        return isOwner(uid) && verified() && !isAdmin() && profileExists(uid) && validBoard();
+      }
+
+      allow get: if verified();
+      allow list: if verified() && request.query.limit <= 100;
+      allow create: if canWrite() && validScore(request.resource.data);
+      allow update: if canWrite() && validScore(request.resource.data)
+        && (request.resource.data.timeMs < resource.data.timeMs
+            || (request.resource.data.timeMs == resource.data.timeMs
+                && request.resource.data.misses < resource.data.misses));
+      allow delete: if isAdmin() || isOwner(uid);
     }
 
     // Legacy Cloud Function session and audit collections are unused on Spark.

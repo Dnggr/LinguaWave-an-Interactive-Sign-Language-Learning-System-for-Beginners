@@ -1,0 +1,36 @@
+/* ── TOAST NOTIFICATIONS (created by showToast() in js/main.js) ─────
+   Lives in style.css, not toast.css: toast.css was only linked on 7 pages, so on
+   every other page the toast rendered unstyled below the layout. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: min(92vw, 420px);
+  padding: var(--space-3) var(--space-6);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, .25);
+  color: var(--clr-text);
+  font-size: var(--fs-sm);
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { border-color: var(--clr-success); color: var(--clr-success); }
+.toast--error   { border-color: var(--clr-red);     color: var(--clr-red); }
+.toast--info    { border-color: var(--clr-blue);    color: var(--clr-blue); }
+.toast .lw-icon-label { margin-left: var(--space-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: opacity var(--dur-base) var(--ease); transform: translateX(-50%); }
+}

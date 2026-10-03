@@ -69,3 +69,7 @@ node js/_test_xp-client.node.mjs
 The engine test covers the economy, levels, badges, cooldowns, game payouts, streaks, timezone handling, and backfill. The client harness uses fake Firestore to check transaction pairing, queue serialization, offline retry, error-message throttling, visibility, and a game claim. These are not emulator tests. No Firebase emulator/rules-unit-testing package is currently installed in this repository.
 
 After publishing rules and deploying the static site, verify a verified learner can earn XP and see a matching `xpState` / `publicProfiles` pair. Confirm unverified users, cross-user writes, XP decreases, over-cap grants, and game XP above 90 are rejected. Do not deploy Cloud Functions for XP on Spark.
+## Game Leaderboards are not XP boards
+The leaderboard page's game rankings (Construct, Time Attack, Wall Breaker) rank fastest completed runs from `gameScores`, not XP.
+`wallXp` / `timeAttackXp` / `sentenceXp` and `LWXP.loadBoard('wall' | 'timeAttack' | 'sentence')` still exist but the page no longer
+shows them. See `SYSTEM_ARCHITECTURE.md` ("Game Leaderboards").

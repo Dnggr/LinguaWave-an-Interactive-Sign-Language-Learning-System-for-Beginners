@@ -1021,3 +1021,12 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 @media (prefers-reduced-motion: reduce) {
   .pw-meter__fill, .pw-toggle, .pw-panel { transition: none; }
 }
+
+/* ── FORGOT PASSWORD PANEL (2026-10-03) ────────────────────────────
+   Third panel in #signin-modal, opened from the Log In form's "Reset it"
+   link (see showAuthTab('forgot') in index.html). It reuses .auth-form
+   (so it gets the same fade), the floating-label inputs and .field-status
+   lines; only the heading, intro and "link sent" line are new. */
+.auth-forgot__title { margin: 0; text-align: center; font-size: var(--fs-lg); }
+.auth-forgot__intro { margin: var(--space-2) 0 0; text-align: center; font-size: var(--fs-sm); line-height: 1.5; }
+.auth-forgot__sent { margin-top: var(--space-3); }

@@ -1,0 +1,63 @@
+/* ===== Sidebar search — append to css/lesson.css =====
+   Uses your existing tokens (--clr-*, --space-*, --fs-*). If your sidebar's
+   background isn't --clr-surface-2, change --sb-search-bg below to match it,
+   otherwise rows will show through the pinned search box while scrolling. */
+
+.course-sidebar { --sb-search-bg: var(--clr-surface-2); }
+
+.course-sidebar__outline[hidden],
+.course-sidebar__results[hidden],
+.course-sidebar__search-clear[hidden] { display: none !important; }
+
+.course-sidebar__search {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  background: var(--sb-search-bg);
+}
+/* Pinned only when the sidebar is its own scroll box (>=1200px). Below that
+   it's stacked above the lesson and should scroll away with the page. */
+@media (min-width: 1200px) {
+  .course-sidebar__search { position: sticky; top: 0; z-index: 2; }
+}
+
+.course-sidebar__search-field { position: relative; }
+.course-sidebar__search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; color: var(--clr-text-muted); pointer-events: none;
+}
+.course-sidebar__search-input {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 34px 10px 36px;
+  font: inherit; font-size: 16px;           /* 16px stops iOS zoom-on-focus */
+  color: inherit; background: transparent;
+  border: 1px solid var(--clr-border); border-radius: 10px;
+  -webkit-appearance: none; appearance: none;
+}
+.course-sidebar__search-input::placeholder { color: var(--clr-text-muted); }
+.course-sidebar__search-input::-webkit-search-cancel-button { display: none; }
+.course-sidebar__search-input:focus {
+  outline: none; border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--clr-accent) 22%, transparent);
+}
+.course-sidebar__search-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; line-height: 1; font-size: 20px;
+  background: none; border: 0; border-radius: 6px; cursor: pointer;
+  color: var(--clr-text-muted);
+}
+.course-sidebar__search-clear:hover { color: inherit; }
+.course-sidebar__search-clear:focus-visible { outline: 2px solid var(--clr-accent); }
+
+.course-sidebar__results-group { margin-bottom: var(--space-3); }
+.course-sidebar__results-title {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs); font-weight: 600; letter-spacing: .02em;
+  text-transform: uppercase; color: var(--clr-text-muted);
+}
+.course-sidebar__results-empty {
+  padding: var(--space-3); margin: 0;
+  font-size: var(--fs-xs); color: var(--clr-text-muted);
+}
+.course-sidebar__results mark {
+  color: inherit; border-radius: 3px;
+  background: color-mix(in srgb, var(--clr-accent) 30%, transparent);
+}
