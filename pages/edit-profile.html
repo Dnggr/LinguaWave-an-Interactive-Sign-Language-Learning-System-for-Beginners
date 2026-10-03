@@ -100,6 +100,20 @@
        in-page modal draft, applied here to a plain .card instead. */
     .danger-title { color: var(--clr-red-text); }
 
+    /* UX pass — section rhythm, 2-col password row, calmer danger zone. */
+    .container--narrow > .card h2 { font-size: var(--fs-lg); }
+    .container--narrow > .card { scroll-margin-top: var(--space-6); }
+    .form-row-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-4); }
+    .edit-hint { display: block; margin-top: var(--space-1); font-size: var(--fs-xs); color: var(--clr-text-muted); }
+    .danger-card { border-color: var(--clr-red); background: linear-gradient(var(--clr-red-soft), var(--clr-red-soft)), var(--clr-surface); }
+    .danger-steps { margin: var(--space-3) 0 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-sm); color: var(--clr-text); }
+    .danger-card .btn--danger[disabled] { opacity: .5; cursor: not-allowed; }
+    @media (max-width: 560px) {
+      .form-row-2 { grid-template-columns: minmax(0, 1fr); }
+      .profile-card .btn { width: 100%; }
+      .password-actions .btn { flex: 1 1 auto; }
+    }
+
     /* Guard confirm modal (RECONCILED — own copy of
        pages/settings.html's, since the two pages don't share a DOM).
        Reuses existing tokens throughout — only the overlay/panel
@@ -195,7 +209,7 @@
         <div class="container container--narrow" id="edit-profile-main" tabindex="-1">
           <a href="settings.html" class="btn btn--ghost btn--sm mb-4">← Back to Settings</a>
           <h1>Edit Profile</h1>
-          <p class="text-muted mt-2">Your name, your level, and your account security.</p>
+          <p class="text-muted mt-2">Your name and your account security.</p>
 
           <!-- ── PROFILE ─────────────────────────────────────────── -->
           <div class="card mt-8 profile-card">
@@ -217,6 +231,8 @@
                the new address — the login email itself doesn't change
                until that link is clicked, so nothing here touches the
                on-page email display above. -->
+          <!-- [DISABLED] Change Email card — commented out, not deleted. To restore it: remove this comment
+               wrapper here AND uncomment the initEmailForm() call in js/edit-profile.js (initEmailForm itself is intact).
           <div class="card mt-6">
             <h2 class="mb-2">Change Email</h2>
             <p class="text-muted" style="font-size: var(--fs-sm);">We'll send a confirmation link to the new address — your login email won't change until you click it.</p>
@@ -230,6 +246,7 @@
             </div>
             <button class="btn btn--primary mt-4" id="btn-change-email" type="button">Update Email</button>
           </div>
+          -->
 
           <!-- ── CHANGE PASSWORD ─────────────────────────────────── -->
           <div class="card mt-6">
@@ -238,13 +255,16 @@
               <label for="current-password-input">Current password</label>
               <input type="password" id="current-password-input" class="form-input" autocomplete="current-password" />
             </div>
-            <div class="form-group mt-3">
-              <label for="new-password-input">New password</label>
-              <input type="password" id="new-password-input" class="form-input" autocomplete="new-password" />
-            </div>
-            <div class="form-group mt-3">
-              <label for="confirm-password-input">Confirm new password</label>
-              <input type="password" id="confirm-password-input" class="form-input" autocomplete="new-password" />
+            <div class="form-row-2">
+              <div class="form-group mt-3">
+                <label for="new-password-input">New password</label>
+                <input type="password" id="new-password-input" class="form-input" autocomplete="new-password" />
+                <span class="edit-hint">At least 6 characters.</span>
+              </div>
+              <div class="form-group mt-3">
+                <label for="confirm-password-input">Confirm new password</label>
+                <input type="password" id="confirm-password-input" class="form-input" autocomplete="new-password" />
+              </div>
             </div>
             <div class="password-actions mt-4">
               <button class="btn btn--primary" id="btn-change-password" type="button">Update Password</button>
@@ -262,18 +282,28 @@
                action on this page, same design the teammate session
                used, even though it's reversible for a while now (see
                auth.js's deleteAccount()/login() for the full design). -->
-          <div class="card mt-6">
+          <div class="card mt-6 danger-card">
             <h2 class="mb-2 danger-title">Delete Account</h2>
-            <p class="text-muted" style="font-size: var(--fs-sm);">This deactivates your account and signs you out immediately. Log back in within 30 days to cancel — after that, your account and all learning progress are permanently deleted.</p>
+            <!-- Original one-line text, kept for reference:
+            This deactivates your account and signs you out immediately. Log back in within 30 days to cancel — after that, your account and all learning progress are permanently deleted. -->
+            <p class="text-muted" style="font-size: var(--fs-sm);">Deleting your account is a two-step process, so you have time to change your mind:</p>
+            <ul class="danger-steps">
+              <li>You are signed out immediately.</li>
+              <li>You have <span id="delete-grace-days">30</span> days to cancel &mdash; just log back in.</li>
+              <li>After that, your account and all learning progress are permanently deleted.</li>
+            </ul>
+            <!-- [DISABLED] Current password field — commented out, not deleted (js/edit-profile.js no longer requires it).
             <div class="form-group mt-3">
               <label for="delete-password-input">Current password</label>
               <input type="password" id="delete-password-input" class="form-input" autocomplete="current-password" />
             </div>
-            <div class="form-group mt-3">
+            -->
+            <div class="form-group mt-4">
               <label for="delete-confirm-input">Type <strong>DELETE</strong> to confirm</label>
-              <input type="text" id="delete-confirm-input" class="form-input" autocomplete="off" />
+              <input type="text" id="delete-confirm-input" class="form-input" autocomplete="off" placeholder="DELETE" aria-describedby="delete-confirm-hint" />
+              <span class="edit-hint" id="delete-confirm-hint">The button turns on once you type DELETE.</span>
             </div>
-            <button class="btn btn--danger mt-4" id="btn-delete-account" type="button">Delete my account</button>
+            <button class="btn btn--danger mt-4" id="btn-delete-account" type="button" disabled>Delete my account</button>
           </div>
 
           <!-- ── GUARD CONFIRM MODAL (RECONCILED — own copy of

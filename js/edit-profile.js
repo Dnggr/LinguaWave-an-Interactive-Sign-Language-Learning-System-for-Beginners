@@ -367,18 +367,32 @@ function initDeleteForm() {
 
   var graceDays = (window.LWAuth && window.LWAuth.DELETION_GRACE_PERIOD_DAYS) || 30;
 
+  // UX: the days shown in the card follow the real grace period, and the button only turns on once the
+  // learner has typed DELETE (the click handler below still re-checks it).
+  var graceEl = document.getElementById('delete-grace-days');
+  if (graceEl) graceEl.textContent = graceDays;
+  btn.disabled = true;
+  confirmEl.addEventListener('input', function () {
+    btn.disabled = (confirmEl.value || '').trim() !== 'DELETE';
+  });
+
   btn.addEventListener('click', async function () {
-    var password = passwordEl.value;
+    // [DISABLED] The "Current password" field was removed from this card (commented out in the HTML), so there
+    // is no password to read; the typed DELETE + confirm modal are the safeguards. auth.js deleteAccount()
+    // skips re-authentication when no password is passed.
+    // var password = passwordEl.value;
+    var password = passwordEl ? passwordEl.value : '';
 
     if ((confirmEl.value || '').trim() !== 'DELETE') {
       window.LinguaWave && window.LinguaWave.showToast('Type DELETE (all caps) to confirm.', 'error');
       confirmEl.focus();
       return;
     }
-    if (!password) {
-      window.LinguaWave && window.LinguaWave.showToast('Enter your password.', 'error');
-      return;
-    }
+    // [DISABLED] password no longer required here:
+    // if (!password) {
+    //   window.LinguaWave && window.LinguaWave.showToast('Enter your password.', 'error');
+    //   return;
+    // }
     if (typeof window.LWAuth === 'undefined' || typeof window.LWAuth.deleteAccount !== 'function') {
       window.LinguaWave && window.LinguaWave.showToast('Account deletion is not available right now.', 'error');
       return;
@@ -414,7 +428,8 @@ function initEditProfilePage() {
   if (!user) return; // requireAuth() (this page's own inline script) is already sending them to login
   initConfirmGuardModal();
   initNameForm(user);
-  initEmailForm();
+  // [DISABLED] Change Email is hidden on this page (card commented out in pages/edit-profile.html).
+  // initEmailForm();
   initPasswordForm(user);
   initDeleteForm();
 }
@@ -424,4 +439,3 @@ if (document.readyState === 'loading') {
 } else {
   initEditProfilePage();
 }
-

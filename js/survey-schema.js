@@ -212,6 +212,49 @@ export function filterSurveys(surveys, { level = "", term = "" } = {}) {
   });
 }
 
+/**
+ * Per-question answer distribution for the charts on the Feedback page.
+ * Returns one entry per SURVEY_QUESTIONS item:
+ *   { key, label, text, numbered, answered, skipped, average, buckets:[{value,label,count,pct}] }
+ * - buckets follow the question's own answer set (ratings run 5 -> 1, best first), so a value nobody
+ *   chose still shows as a zero-length bar.
+ * - answered = rows whose answer is one of the known values; skipped = everything else (missing, legacy,
+ *   unknown). pct is of `answered`. average is only set for the numbered 1-5 questions (null if none).
+ */
+export function computeAnswerDistributions(surveys) {
+  return SURVEY_QUESTIONS.map((q) => {
+    const values = Object.keys(q.map);
+    if (q.numbered) values.reverse();
+    const counts = Object.fromEntries(values.map((v) => [v, 0]));
+    let answered = 0;
+    let sum = 0;
+    surveys.forEach((s) => {
+      const raw = s.answers ? s.answers[q.key] : null;
+      if (typeof raw !== "string" && typeof raw !== "number") return;
+      const v = String(raw).trim();
+      if (!Object.prototype.hasOwnProperty.call(counts, v)) return;
+      counts[v] += 1;
+      answered += 1;
+      if (q.numbered) sum += Number(v);
+    });
+    return {
+      key: q.key,
+      label: q.label,
+      text: q.text,
+      numbered: !!q.numbered,
+      answered,
+      skipped: surveys.length - answered,
+      average: q.numbered && answered ? sum / answered : null,
+      buckets: values.map((v) => ({
+        value: v,
+        label: q.map[v],
+        count: counts[v],
+        pct: answered ? (counts[v] / answered) * 100 : 0,
+      })),
+    };
+  });
+}
+
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Everything is derived from the array passed in; nothing is invented. */

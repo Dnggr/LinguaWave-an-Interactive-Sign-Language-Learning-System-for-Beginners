@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────
  * Read-only. Gates on the admin account, loads `surveys` (and `users`,
  * once, to fill in identity on legacy rows) from Firestore, then renders
- * stats + a searchable / level-filterable list.
+ * stats, a "Survey results" chart per question, and a searchable list.
  *
  * - ONE surveys read + ONE users read per load. Filtering and search run
  *   in memory; nothing is queried per row.
@@ -24,14 +24,13 @@ import {
   NO_COMMENT_TEXT,
   formatAnswer,
   getComment,
-  levelKey,
-  levelLabel,
   formatDate,
   formatTime,
   displayName,
   enrichWithUsers,
   filterSurveys,
   computeSurveyStats,
+  computeAnswerDistributions,
 } from "./survey-schema.js";
 
 const PAGE_SIZE = 20;
@@ -47,11 +46,10 @@ const els = {};
 
 function cacheEls() {
   [
-    "fb-refresh", "fb-search", "fb-level-filter", "fb-count",
+    "fb-refresh", "fb-search", "fb-count", "fb-charts-wrap", "fb-charts",
     "fb-loading", "fb-error", "fb-retry", "fb-empty",
     "fb-list", "fb-more-wrap", "fb-more",
-    "fb-stat-total", "fb-stat-basic", "fb-stat-medium", "fb-stat-intermediate",
-    "fb-stat-other", "fb-stat-other-tile", "fb-stat-week", "fb-stat-latest",
+    "fb-stat-total", "fb-stat-week", "fb-stat-latest",
   ].forEach((id) => { els[id] = document.getElementById(id); });
 }
 
@@ -76,20 +74,67 @@ function showState(state, message) {
 function renderStats() {
   const s = computeSurveyStats(allSurveys);
   els["fb-stat-total"].textContent = s.total;
-  els["fb-stat-basic"].textContent = s.byLevel.basic;
-  els["fb-stat-medium"].textContent = s.byLevel.medium;
-  els["fb-stat-intermediate"].textContent = s.byLevel.intermediate;
-  els["fb-stat-other"].textContent = s.byLevel.other;
-  els["fb-stat-other-tile"].hidden = s.byLevel.other === 0;
   els["fb-stat-week"].textContent = s.thisWeek;
   els["fb-stat-latest"].textContent = s.latestMs === null ? "None yet" : formatDate(s.latestMs);
 }
 
 function resetStats() {
-  ["total", "basic", "medium", "intermediate", "other", "week", "latest"].forEach((k) => {
+  ["total", "week", "latest"].forEach((k) => {
     els[`fb-stat-${k}`].innerHTML = "&mdash;";
   });
-  els["fb-stat-other-tile"].hidden = true;
+  els["fb-charts-wrap"].hidden = true;
+  els["fb-charts"].innerHTML = "";
+}
+
+/* ── survey charts: one horizontal-bar chart per question ───────────
+ * Plain HTML/CSS bars (no chart library, so nothing extra to load and it follows the light/dark theme).
+ * Color is a hint only: every bar also has its label, count and percent as text. Drawn from ALL loaded
+ * submissions, like the stat tiles (the search box doesn't change them). */
+const TONE = {   // answer value -> bar color class, per question key
+  q1: { 5: "good", 4: "good", 3: "mid", 2: "warn", 1: "bad" },
+  q2: { 5: "good", 4: "good", 3: "mid", 2: "warn", 1: "bad" },
+  q3: { too_easy: "mid", just_right: "good", too_hard: "warn" },
+  q4: { yes: "good", maybe: "mid", no: "bad" },
+};
+
+function fmtPct(p) {
+  return `${Math.round(p)}%`;
+}
+
+function renderChart(d) {
+  const rows = d.buckets.map((b) => {
+    const tone = (TONE[d.key] && TONE[d.key][b.value]) || "mid";
+    return `
+      <li class="fb-bar">
+        <span class="fb-bar__label">${escapeHtml(d.numbered ? `${b.value} · ${b.label}` : b.label)}</span>
+        <span class="fb-bar__track" aria-hidden="true"><span class="fb-bar__fill fb-bar__fill--${tone}" style="width:${b.pct.toFixed(1)}%"></span></span>
+        <span class="fb-bar__num">${b.count} <span class="fb-bar__pct">(${fmtPct(b.pct)})</span></span>
+      </li>`;
+  }).join("");
+  const avg = d.average === null ? "" : `<span class="fb-chart__avg">Average ${d.average.toFixed(1)} / 5</span>`;
+  const note = d.skipped
+    ? `${d.answered} response${d.answered === 1 ? "" : "s"} &middot; ${d.skipped} not answered`
+    : `${d.answered} response${d.answered === 1 ? "" : "s"}`;
+  return `
+    <figure class="card fb-chart">
+      <figcaption class="fb-chart__head">
+        <span class="fb-chart__q">${escapeHtml(d.label)}</span>
+        <span class="fb-chart__text">${escapeHtml(d.text)}</span>
+        ${avg}
+      </figcaption>
+      <ul class="fb-bars">${rows}</ul>
+      <p class="fb-chart__note">${note}</p>
+    </figure>`;
+}
+
+function renderCharts() {
+  if (!allSurveys.length) {
+    els["fb-charts-wrap"].hidden = true;
+    els["fb-charts"].innerHTML = "";
+    return;
+  }
+  els["fb-charts"].innerHTML = computeAnswerDistributions(allSurveys).map(renderChart).join("");
+  els["fb-charts-wrap"].hidden = false;
 }
 
 /* ── one submission ──────────────────────────────────────────────── */
@@ -102,8 +147,6 @@ function field(label, valueHtml, extraClass = "") {
 }
 
 function renderCard(s) {
-  const key = levelKey(s.level);
-  const badgeClass = key === "other" ? "badge--locked" : `badge--${key}`;
   const time = formatTime(s.submittedMs);
   const comment = getComment(s.answers);
 
@@ -119,7 +162,6 @@ function renderCard(s) {
       <div class="fb-card__meta">
         ${field("Learner", escapeHtml(displayName(s)), "fb-field--name")}
         ${field("Email", s.userEmail ? escapeHtml(s.userEmail) : "&mdash;", "fb-field--email")}
-        ${field("Level", `<span class="badge ${badgeClass}">${escapeHtml(levelLabel(s.level))}</span>`)}
         ${field("Submitted", `${escapeHtml(formatDate(s.submittedMs))}${time ? `<span class="fb-field__sub">${escapeHtml(time)}</span>` : ""}`)}
       </div>
       <div class="fb-card__body">
@@ -138,7 +180,6 @@ function renderCard(s) {
 /* ── list ────────────────────────────────────────────────────────── */
 function applyFilters({ resetPaging = true } = {}) {
   filtered = filterSurveys(allSurveys, {
-    level: els["fb-level-filter"].value,
     term: els["fb-search"].value,
   });
   if (resetPaging) visibleCount = PAGE_SIZE;
@@ -151,7 +192,7 @@ function renderList() {
     return;
   }
   if (!filtered.length) {
-    showState("empty", "No feedback matches your search or filter.");
+    showState("empty", "No feedback matches your search.");
     return;
   }
   const shown = filtered.slice(0, visibleCount);
@@ -184,6 +225,7 @@ async function loadFeedback() {
     ]);
     allSurveys = enrichWithUsers(surveys, users);
     renderStats();
+    renderCharts();
     applyFilters();
   } catch (err) {
     console.error("[admin-feedback] Failed to load surveys:", err);
@@ -201,7 +243,6 @@ function wireEvents() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(applyFilters, SEARCH_DEBOUNCE_MS);
   });
-  els["fb-level-filter"].addEventListener("change", applyFilters);
   els["fb-more"].addEventListener("click", () => {
     visibleCount += PAGE_SIZE;
     renderList();

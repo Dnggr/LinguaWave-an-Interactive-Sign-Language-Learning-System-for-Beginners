@@ -97,15 +97,16 @@
           <div class="admin-header">
             <div>
               <h1>Reports &amp; Analytics</h1>
-              <p>A live snapshot — recomputed every time you open this page.</p>
+              <p id="report-updated">A live snapshot &mdash; recomputed every time you open this page.</p>
             </div>
+            <button class="btn btn--ghost btn--sm" id="report-refresh" type="button">Refresh</button>
           </div>
 
-          <div class="stats-grid" id="report-stats-grid">
-            <div class="stat-tile"><div class="stat-tile__value" id="report-total-users">&mdash;</div><div class="stat-tile__label">Total Learners</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="report-total-signs">&mdash;</div><div class="stat-tile__label">Total Lessons</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="report-total-questions">&mdash;</div><div class="stat-tile__label">Total Quizzes</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="report-total-feedback">&mdash;</div><div class="stat-tile__label">Total Feedback Submissions</div></div>
+          <div class="rp-kpis" id="report-stats-grid" aria-live="polite">
+            <div class="rp-kpi"><span class="rp-kpi__icon" data-lw-icon="people" aria-hidden="true"></span><div><div class="rp-kpi__value" id="report-total-users">&mdash;</div><div class="rp-kpi__label">Total Learners</div><div class="rp-kpi__sub" id="report-new-users"></div></div></div>
+            <div class="rp-kpi"><span class="rp-kpi__icon" data-lw-icon="learn" aria-hidden="true"></span><div><div class="rp-kpi__value" id="report-total-signs">&mdash;</div><div class="rp-kpi__label">Total Lessons</div></div></div>
+            <div class="rp-kpi"><span class="rp-kpi__icon" data-lw-icon="progress" aria-hidden="true"></span><div><div class="rp-kpi__value" id="report-total-questions">&mdash;</div><div class="rp-kpi__label">Total Quizzes</div></div></div>
+            <div class="rp-kpi"><span class="rp-kpi__icon" data-lw-icon="feedback" aria-hidden="true"></span><div><div class="rp-kpi__value" id="report-total-feedback">&mdash;</div><div class="rp-kpi__label">Feedback Submissions</div><div class="rp-kpi__sub" id="report-avg-rating"></div></div></div>
           </div>
         </div>
       </section>
@@ -113,29 +114,29 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="admin-grid-2">
-            <div class="card">
-              <div class="admin-section-title">Learners by Level</div>
-              <div id="report-users-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>New sign-ups</h2><span class="rp-card__hint">Last 14 days</span></div>
+              <div id="report-signups"><p class="text-muted">Loading&hellip;</p></div>
             </div>
-            <div class="card">
-              <div class="admin-section-title">Lessons by Chapter</div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Feedback snapshot</h2><a href="admin-feedback.html" class="rp-card__link">View charts</a></div>
+              <div id="report-feedback-summary"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-grid-2">
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Lessons by chapter</h2></div>
               <div id="report-signs-by-level"><p class="text-muted">Loading&hellip;</p></div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section--sm section--tight">
-        <div class="container">
-          <div class="admin-grid-2">
-            <div class="card">
-              <div class="admin-section-title">Quiz Questions by Chapter</div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Quiz questions by chapter</h2></div>
               <div id="report-questions-by-level"><p class="text-muted">Loading&hellip;</p></div>
             </div>
-            <div class="card">
-              <div class="admin-section-title">Most Recent Sign-ups</div>
-              <div id="report-recent-users"><p class="text-muted">Loading&hellip;</p></div>
-            </div>
           </div>
         </div>
       </section>
@@ -143,12 +144,12 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="admin-grid-2">
-            <div class="card">
-              <div class="admin-section-title">Feedback by Level</div>
-              <div id="report-feedback-by-level"><p class="text-muted">Loading&hellip;</p></div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Most recent sign-ups</h2><a href="admin-users.html" class="rp-card__link">Manage users</a></div>
+              <div id="report-recent-users"><p class="text-muted">Loading&hellip;</p></div>
             </div>
-            <div class="card">
-              <div class="admin-section-title">Recent Feedback <a href="admin-feedback.html" class="text-muted" style="font-size:var(--fs-xs); font-weight:400; margin-left:var(--space-2);">View all</a></div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Recent feedback</h2><a href="admin-feedback.html" class="rp-card__link">View all</a></div>
               <div id="report-recent-feedback"><p class="text-muted">Loading&hellip;</p></div>
             </div>
           </div>

@@ -73,6 +73,7 @@ import {
   enrichWithUsers,
   sortNewestFirst,
   computeSurveyStats,
+  computeAnswerDistributions,
   displayName,
 } from "./survey-schema.js";
 export { auth, db };
@@ -107,7 +108,9 @@ export function updateUserLevel(uid, level) {
 // Everything keyed by the learner's uid, besides users/{uid} itself. Keep in sync with
 // functions/xp-cleanup.js (xpState, publicProfiles, userProgress, userProgressV2, userGame; surveys by userId).
 const LEARNER_UID_DOCS = ["xpState", "publicProfiles", "userProgress", "userProgressV2", "userGame"];
-const FUNCTION_UNAVAILABLE = ["functions/not-found", "functions/unavailable"];
+// Errors that mean "you are not allowed": never fall back on these. Anything else (not-found, unavailable,
+// internal / CORS / network, i.e. the function isn't deployed on the Spark plan) falls back to browser-only.
+const FUNCTION_DENIED = ["functions/permission-denied", "functions/unauthenticated"];
 /**
  * Admin-side Firestore cleanup (idempotent). users/{uid} goes FIRST: firestore.rules only let a
  * learner CREATE xpState / publicProfiles / progress docs while users/{uid} exists, so a learner tab
@@ -138,7 +141,7 @@ export async function deleteLearnerAccount(uid) {
     await httpsCallable(getFunctions(auth.app), "deleteLearnerAccount")({ uid });
     authDeleted = true;
   } catch (err) {
-    if (!FUNCTION_UNAVAILABLE.includes(err?.code)) throw err;   // real failure: nothing is deleted, the row stays for a retry
+    if (FUNCTION_DENIED.includes(err?.code)) throw err;   // not allowed: nothing is deleted, the row stays
     console.warn("[admin] deleteLearnerAccount function unavailable, deleting Firestore data from the browser only:", err);
   }
   await deleteLearnerFirestoreData(uid);
@@ -158,6 +161,106 @@ export async function resetLearnerProgress(uid) {
   await call({ uid });
   return { via: "function" };
 }
+/* ── BULK ACTIONS (User Management → "Reset all user data" / "Delete all users") ────────────────
+ * Both work on EVERY learner returned by listUsers() (the admin's own profile is already filtered out
+ * there) and, as a second guard, never touch the signed-in user's own uid. They run from the admin's
+ * browser (Spark plan: no Cloud Function needed) using what firestore.rules already allow the admin:
+ * delete xpState / publicProfiles / userProgress / userProgressV2 / userGame / users / surveys, and
+ * update any field on users/{uid}.
+ * ──────────────────────────────────────────────────────────────── */
+const BULK_CONCURRENCY = 4;
+
+async function listBulkTargets() {
+  const me = auth.currentUser?.uid;
+  return (await listUsers()).filter((u) => u.id !== me);
+}
+
+/** Runs worker(user) over users, BULK_CONCURRENCY at a time. Never throws for one bad user. */
+async function runBulk(users, worker, onProgress) {
+  const failed = [];
+  let next = 0;
+  let done = 0;
+  async function lane() {
+    while (next < users.length) {
+      const u = users[next++];
+      try {
+        await worker(u);
+      } catch (err) {
+        console.error("[admin] bulk action failed for", u.id, err);
+        failed.push({ uid: u.id, email: u.email || "", error: err });
+      }
+      done += 1;
+      onProgress?.(done, users.length);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(BULK_CONCURRENCY, users.length) }, lane));
+  return failed;
+}
+
+/**
+ * Resets ONE learner's progress from the browser: deletes XP/leaderboard/progress/game docs, then stamps
+ * users/{uid}.progressResetAt LAST (js/auth.js applyProgressResetIfNeeded wipes the learner's local copy on
+ * next load when it sees a new stamp). users/{uid} itself, the login, name, avatar and level are kept.
+ */
+async function resetLearnerFirestoreProgress(uid) {
+  await Promise.all(LEARNER_UID_DOCS.map((name) => deleteDoc(doc(db, name, uid))));
+  await updateDoc(doc(db, "users", uid), { progressResetAt: Date.now() });
+}
+
+/**
+ * RESET ALL USER DATA. Every learner keeps their account; all XP, level, streaks, badges, leaderboard
+ * rows, lesson/mission progress and game progress are removed. Feedback surveys are kept.
+ * @param {(done:number,total:number)=>void} [onProgress]
+ * @returns {Promise<{total:number, reset:number, failed:Array}>}
+ */
+export async function resetAllLearnersProgress(onProgress) {
+  const users = await listBulkTargets();
+  const failed = await runBulk(users, (u) => resetLearnerFirestoreProgress(u.id), onProgress);
+  return { total: users.length, reset: users.length - failed.length, failed };
+}
+
+/**
+ * DELETE ALL USERS. Removes every learner's Firestore data (users doc first, see deleteLearnerFirestoreData).
+ * If the `deleteLearnerAccount` Cloud Function is deployed it also removes their Auth logins; it is probed
+ * once on the first learner, and if it is unavailable (Spark plan) the rest go browser-only and the caller is
+ * told (authDeleted < deleted) to remove the logins in Firebase Console -> Authentication.
+ * A permission error from the function aborts before anything else is touched.
+ * @returns {Promise<{total:number, deleted:number, authDeleted:number, failed:Array}>}
+ */
+export async function deleteAllLearners(onProgress) {
+  const users = await listBulkTargets();
+  let useFunction = true;
+  let authDeleted = 0;
+  const deleteOne = async (u) => {
+    let viaFn = false;
+    if (useFunction) {
+      try {
+        await httpsCallable(getFunctions(auth.app), "deleteLearnerAccount")({ uid: u.id });
+        viaFn = true;
+      } catch (err) {
+        if (["functions/permission-denied", "functions/unauthenticated"].includes(err?.code)) throw err;
+        useFunction = false;   // not deployed / not reachable: browser-only from here on
+        console.warn("[admin] deleteLearnerAccount unavailable, deleting Firestore data only:", err);
+      }
+    }
+    await deleteLearnerFirestoreData(u.id);
+    if (viaFn) authDeleted += 1;
+  };
+  let failed = [];
+  let done = 0;
+  if (users.length) {
+    // Probe on the first learner alone so an unavailable function is detected once, not 4x in parallel.
+    failed = await runBulk(users.slice(0, 1), deleteOne);
+    done = 1;
+    onProgress?.(done, users.length);
+    // A real failure on the probe (e.g. permission-denied) means the rest would fail the same way: stop here.
+    if (failed.length) return { total: users.length, deleted: 0, authDeleted: 0, failed };
+    const rest = users.slice(1);
+    failed = failed.concat(await runBulk(rest, deleteOne, (d) => onProgress?.(done + d, users.length)));
+  }
+  return { total: users.length, deleted: users.length - failed.length, authDeleted, failed };
+}
+
 /* ── LESSONS (Lesson Management → `signs`) ────────────────────────
  * Lessons the admin adds. Doc id === signId (a lowercase slug), so a
  * lesson can never be created twice. Fields:
@@ -263,7 +366,20 @@ export async function getReportStats() {
     return acc;
   }, {});
   const sortedByJoined = [...users].sort((a, b) => (b.joined || "").localeCompare(a.joined || ""));
+  // Sign-ups per day for the last 14 days (users.joined is "YYYY-MM-DD") + how many joined in the last 7.
+  const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const signupsByDay = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dayKey(d);
+    signupsByDay.push({ date: key, count: users.filter((u) => u.joined === key).length });
+  }
+  const newThisWeek = signupsByDay.slice(-7).reduce((n, d) => n + d.count, 0);
   return {
+    signupsByDay,
+    newThisWeek,
+    answerSummary: surveys ? computeAnswerDistributions(surveys) : null,
     totalUsers: users.length,
     usersByLevel,
     totalLessons: content.totalLessons,
