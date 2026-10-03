@@ -18,6 +18,10 @@ const GO_FLASH_MS = 700;
 const DRAG_THRESHOLD = 6;                    // px before a press becomes a drag (below it, it is a tap)
 const NEXT_ROUND_MS = 1100;
 const SHOW_ALL = new URLSearchParams(location.search).has('all');   // testing: skip the learned-sign filter
+// Construct a Sentence is open to everyone: no lesson progress is needed to play, earn XP, levels or badges.
+// PREFER_LEARNED would put sentences made only of finished signs first in the pick. It is off, so the pick is fully random
+// (and the page does not need to read the learner's progress).
+const PREFER_LEARNED = false;
 
 let phase = 'idle';                          // idle | preview | playing | checking | done
 let rounds = [], roundIndex = 0, misses = 0, playMs = 0, roundStartedAt = 0;
@@ -25,6 +29,8 @@ let tickId = null, timers = new Set(), selected = null, drag = null, justDragged
 let lastEligible = 0, lastLearnedOnly = true;   // how many sentences matched the learner's signs on the last Start
 let difficulty = DEFAULT_DIFFICULTY, runDifficulty = DEFAULT_DIFFICULTY;   // picked on the idle screen / locked in for the current run
 let previewId = null, previewEndsAt = 0;
+// XP (js/xp.js): the page records when each sentence is solved; LWXP checks the run, pays XP and awards badges in one Firestore transaction.
+let brokenLog = [], runStartedAt = 0, xpSessionP = Promise.resolve(null);
 
 const norm = (v) => String(v || '').trim().toLowerCase();
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
@@ -96,6 +102,19 @@ async function getLearned(useAll) {
   */
 }
 
+// Signs the learner has finished, used only to order the pick (never throws: no set just means a random pick).
+async function getPreferred() {
+  if (!PREFER_LEARNED || SHOW_ALL) return null;
+  try {
+    await whenXpReady();
+    if (typeof window.LWXP?.getLearnedSigns !== 'function') return null;
+    return new Set([...await withTimeout(window.LWXP.getLearnedSigns(), 6000, 'Loading learned signs')].map(norm));
+  } catch (error) {
+    console.warn('[construct-sentence] could not read learned signs for the pick:', error);
+    return null;
+  }
+}
+
 // LWXP is set by js/xp.js (a module). If it has not finished loading yet, wait for its ready event instead of failing.
 // (Only used by the learned-signs filter above, so it is idle while that filter is disabled.)
 function whenXpReady(ms = 5000) {
@@ -118,7 +137,7 @@ function mp4Candidates(signId) {
   return [...new Set(urls.filter((url) => url && !/youtube/i.test(url)))];
 }
 
-function buildRounds(learned) {
+function buildRounds(learned, preferred = null) {
   const unplayable = new Set();
   const playable = SENTENCES.filter((s) => {
     const missing = s.words.filter((w) => !mp4Candidates(w).length);
@@ -127,7 +146,12 @@ function buildRounds(learned) {
   });
   if (unplayable.size) console.warn('[construct-sentence] no .mp4 found for:', [...unplayable].join(', '));
   const eligible = learned ? playable.filter((s) => s.words.every((w) => learned.has(norm(w)))) : playable;
-  const picked = shuffle(eligible).slice(0, ROUND_COUNT).map((s) => ({ text: s.text, words: s.words, videos: s.words.map(mp4Candidates) }));
+  let pool = shuffle(eligible);
+  if (preferred) {   // fully-learned sentences first, then fill the run with the rest
+    const known = (s) => s.words.every((w) => preferred.has(norm(w)));
+    pool = [...pool.filter(known), ...pool.filter((s) => !known(s))];
+  }
+  const picked = shuffle(pool.slice(0, ROUND_COUNT)).map((s) => ({ text: s.text, words: s.words, videos: s.words.map(mp4Candidates) }));
   return { rounds: picked, eligible: eligible.length };
 }
 
@@ -357,11 +381,69 @@ function check() {
 }
 
 function roundComplete() {
+  brokenLog.push({ i: roundIndex, t: Date.now() - runStartedAt });   // XP: when this sentence was solved
   playMs += performance.now() - roundStartedAt;
   setPhase('checking');                   // names come back so they can see the finished sentence
   slotsEl().querySelectorAll('.cs-slot').forEach((s) => s.classList.add('is-right'));
   setStatus('Correct!');
   later(() => { if (roundIndex + 1 >= rounds.length) finish(); else { roundIndex++; startRound(); } }, NEXT_ROUND_MS);
+}
+
+/* ---------- XP ---------- */
+
+// Called when a run starts. The session clock is stamped inside LWXP.startGame before it awaits anything, so take the page's
+// own clock right before the call: the solve times in brokenLog are measured from runStartedAt.
+function startXpSession() {
+  const words = rounds.map((round) => round.words.slice());
+  const signs = [...new Set(words.flat())];
+  brokenLog = []; showXpChip(undefined);
+  runStartedAt = Date.now();
+  const mine = Promise.resolve(window.LWXP?.startGame ? window.LWXP.startGame(signs, 'sentence', { rounds: words, difficulty: runDifficulty }) : null)
+    .catch((error) => { console.warn('[construct-sentence] XP session could not start:', error); return null; });
+  xpSessionP = mine;
+  mine.then((session) => { if (xpSessionP === mine) showXpChip(session); });
+}
+
+// Header chip: "XP on" when this run's sentences are learned enough to count, otherwise "No XP" with the reason as a tooltip.
+// Pass undefined to hide it.
+function showXpChip(session) {
+  const chip = $('cs-xp-chip');
+  if (session === undefined) { chip.hidden = true; return; }
+  const on = !!session?.sessionId && !!session.xpEligible;
+  chip.hidden = false; chip.classList.toggle('is-on', on); chip.classList.toggle('is-off', !on);
+  $('cs-xp-chip-text').textContent = on ? 'XP on' : 'No XP';
+  chip.title = on ? 'This run counts for XP and badges.'
+    : 'XP is unavailable for this run (sign in with a verified account).';
+}
+
+async function reportXp() {
+  const box = $('cs-xp'), badges = $('cs-badges'), again = $('cs-again');
+  const sessionP = xpSessionP, log = brokenLog.slice(), wrong = misses;
+  box.className = 'gm-result__xp'; box.textContent = 'Counting XP…'; badges.replaceChildren(); again.disabled = true;
+  try {
+    const X = window.LWXP;
+    const session = await withTimeout(sessionP, 12000, 'Starting the XP session');
+    if (!session?.sessionId || !X) { box.textContent = 'XP unavailable right now (offline, or sign in with a verified account).'; return; }
+    const r = await withTimeout(X.finishGame(session.sessionId, log, wrong), 15000, 'Saving the result');
+    if (!r?.ok) { box.textContent = `XP not counted: ${X.reasonText?.(r?.reason) || 'unknown reason'}.`; return; }
+    for (const id of r.newBadges || []) {
+      const info = X.badgeInfo?.(id) || {}, chip = document.createElement('span');
+      window.LWIcons?.setLabel?.(chip, X.badgeIconId?.(id) || 'medal', info.name || id, { size: 'sm' });
+      if (!chip.textContent) chip.textContent = info.name || id;
+      badges.append(chip);
+    }
+    if (r.counted && r.xpGained > 0) {
+      box.textContent = `+${r.xpGained} XP${r.levelUps?.length ? ` · Level ${r.level}!` : ''}`;
+      box.classList.add('is-gain');
+    } else if (r.reason === 'daily_cap') {
+      box.textContent = `Daily game XP limit reached (${r.dailyGameCap}). Lessons still earn XP.`;
+    } else {
+      box.textContent = `No XP: ${X.reasonText?.(r.reason) || 'nothing to count this time'}.`;
+    }
+  } catch (error) {
+    console.warn('[construct-sentence] result submission failed:', error);
+    box.textContent = 'The run completed, but its XP result could not be saved.';
+  } finally { again.disabled = false; }
 }
 
 /* ---------- run lifecycle ---------- */
@@ -376,7 +458,8 @@ async function start(useAll = false) {
   setStatus('Preparing sentences…');   // when the learned-signs filter is re-enabled, use: useAll ? 'Preparing sentences…' : 'Preparing your learned signs…'
   let built;
   try {
-    built = buildRounds(await getLearned(useAll));
+    const learned = await getLearned(useAll);
+    built = buildRounds(learned, learned ? null : await getPreferred());
   } catch (error) {
     console.error('[construct-sentence] could not prepare run:', error);
     $('cs-error-message').textContent = error?.message || 'Could not prepare your sentences. Try again.';
@@ -395,6 +478,7 @@ async function start(useAll = false) {
   $('cs-result').hidden = true; $('cs-start').hidden = true; $('cs-all').hidden = true; $('cs-quit').disabled = false;
   roundIndex = 0; misses = 0; playMs = 0; $('cs-misses').textContent = '0';
   clearInterval(tickId); tickId = setInterval(tick, 100);
+  startXpSession();
   startRound();
 }
 
@@ -408,12 +492,14 @@ function finish() {
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;
   $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run complete.');
+  void reportXp();
 }
 
 function toIdle(message) {
   clearInterval(tickId); tickId = null; clearTimers(); stopPreview();
   if (drag) { window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp); window.removeEventListener('pointercancel', onPointerUp); drag.tile.remove(); drag = null; }
   selected = null; rounds = [];
+  brokenLog = []; xpSessionP = Promise.resolve(null); showXpChip(undefined);
   $('cs-result').hidden = true;
   setPhase('idle'); showIdle();
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;

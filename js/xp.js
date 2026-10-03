@@ -43,10 +43,12 @@ const badgeInfo = (id) => E.BADGES[id] || { id, name: id, icon: '🏅', desc: ''
 const tierIconId = (level) => ({ Ripple: 'droplet', Current: 'waves', Tide: 'shell', Swell: 'sailboat', Crest: 'anchor', Tsunami: 'crown' }[tierOf(level).name] || 'droplet');
 function badgeIconId(id) {
   const special = { game_first: 'brick_wall', game_flawless: 'gem', game_speed: 'zap', game_veteran: 'hard_hat',
-    missions_1: 'graduation_cap', missions_10: 'library', missions_25: 'award' };
+    missions_1: 'graduation_cap', missions_10: 'library', missions_25: 'award',
+    sentence_first: 'lc_message_square_text', sentence_flawless: 'lc_sparkles', sentence_hard: 'lc_brain', sentence_veteran: 'lc_scroll_text' };
   if (special[id]) return special[id];
   if (/^lesson_L\d+$/.test(id)) return 'book_open';
   if (/^game_L\d+$/.test(id)) return 'brick_wall';
+  if (/^sentence_L\d+$/.test(id)) return 'lc_puzzle';
   if (/^streak_\d+$/.test(id)) return 'flame';
   return 'medal';
 }
@@ -153,11 +155,16 @@ function settleJob(job, result) {
 function runtimeMissions() {
   try { return window.LWMissions?.getAllMissions?.() || []; } catch { return []; }
 }
+/** Every sign id the app knows: the detector dictionary plus the lesson content (Construct a Sentence uses lesson signs). */
+function knownSignIds() {
+  const known = new Set(Object.keys(SIGN_DICTIONARY));
+  (window.LWMissions?.content?.SIGNS || []).forEach((sign) => { if (sign?.signId) known.add(sign.signId); });
+  return known;
+}
 function missionForId(id) {
   const mission = runtimeMissions().find((item) => item?.id === id);
   if (!mission || !Array.isArray(mission.items)) return null;
-  const known = new Set(Object.keys(SIGN_DICTIONARY));
-  (window.LWMissions?.content?.SIGNS || []).forEach((sign) => { if (sign?.signId) known.add(sign.signId); });
+  const known = knownSignIds();
   for (const item of mission.items) {
     if (item?.signId && !known.has(item.signId)) return null;
   }
@@ -255,7 +262,11 @@ async function applyJob(job, uid) {
       result = { ok: true, xpGained: 0 };
     } else if (job.type === 'game') {
       const session = job.session;
-      if (!session || typeof session.id !== 'string' || !E.validateGameSigns(session.signs, session.mode, types)) return { ok: false, reason: 'no_session' };
+      const knownSigns = session?.mode === 'sentence' ? knownSignIds() : null;
+      const validSession = session && typeof session.id === 'string' && (knownSigns
+        ? E.validateSentenceSession(session, (signId) => knownSigns.has(signId))
+        : E.validateGameSigns(session.signs, session.mode, types));
+      if (!validSession) return { ok: false, reason: 'no_session' };
       const learned = [...new Set([...state.learnedSigns, ...localLearned])];
       result = E.applyGameFinish(state, session, job.broken, job.wrong, learned, types, { now, today });
     } else return { ok: false, reason: 'bad_input' };
@@ -321,6 +332,7 @@ const REASON_TEXT = {
   bad_input: 'the result was malformed',
   expired: 'the run took longer than 30 minutes',
   incomplete_wall: 'not every target was recorded',
+  incomplete_run: 'not every sentence was recorded',
   bad_bricks: 'the recorded targets did not match the run',
   bad_timing: 'the recorded timing was invalid',
   too_fast: 'the run was faster than the anti-cheat minimum',
@@ -343,7 +355,7 @@ function claimMission(mission) {
   if (!mission?.id) return;
   void enqueue({ type: 'mission', missionId: mission.id });
 }
-async function startGame(signs, mode = 'wall') {
+async function startGame(signs, mode = 'wall', extra = {}) {
   // Stamp the session clock now, before any await. The page records brick times from its own start; if this stamp
   // were taken after the auth/Firestore waits below, the engine's elapsed time would be short by that delay and
   // validateGameTiming() would reject honest runs (clock_mismatch / too_fast).
@@ -351,7 +363,13 @@ async function startGame(signs, mode = 'wall') {
   await window.LWAuth?.whenAuthReady?.();
   const user = auth.currentUser;
   if (!user || !user.emailVerified || isAdmin()) return null;
-  if (!Array.isArray(signs) || !E.validateGameSigns(signs, mode, signTypes())) return null;
+  // Construct a Sentence: `extra` = { rounds: [[signId, ...], ...], difficulty }; `signs` is the unique ids across the rounds.
+  const sentence = mode === 'sentence';
+  const rounds = sentence && Array.isArray(extra?.rounds) ? extra.rounds.map((words) => (Array.isArray(words) ? words.slice() : words)) : null;
+  if (sentence) {
+    const known = knownSignIds();
+    if (!Array.isArray(signs) || !E.validateSentenceSession({ signs, rounds, difficulty: extra?.difficulty }, (signId) => known.has(signId))) return null;
+  } else if (!Array.isArray(signs) || !E.validateGameSigns(signs, mode, signTypes())) return null;
   try {
     await window.LWMissions?.whenMissionsSyncReady?.();
     const [state, userSnap] = await Promise.all([
@@ -362,8 +380,9 @@ async function startGame(signs, mode = 'wall') {
     const learned = combinedLearnedSigns(state);
     const learnedBricks = signs.filter((signId) => learned.includes(signId)).length;
     const id = randomId();
-    const session = { id, startedAt, signs: signs.slice(), mode };
+    const session = { id, startedAt, signs: signs.slice(), mode, ...(sentence ? { rounds, difficulty: extra.difficulty } : {}) };
     gameSessions.set(id, session);
+    if (sentence) return { ok: true, sessionId: id, xpEligible: true };   // Construct a Sentence needs no learned signs
     const minLearned = mode === 'timeAttack' ? signs.length : E.CONFIG.GAME.MIN_LEARNED_BRICKS;
     return { ok: true, sessionId: id, learnedBricks,
       xpEligible: mode === 'timeAttack' ? learnedBricks === signs.length : learnedBricks >= minLearned,
@@ -393,25 +412,28 @@ async function getMyState() {
     return null;
   }
 }
+// Leaderboards, all read from `publicProfiles` with a single-field ordering (no composite index needed).
+//  level: ranked by level; level only ever rises with XP, so ordering by xp gives the same order, with ties split by XP.
+//  Game boards rank by XP earned in that game (wallXp / timeAttackXp / sentenceXp) and skip learners with none yet.
+const BOARD_MAX = 50;
 const BOARDS = {
-  xp: { label: 'All-time XP', build: (ref) => query(ref, orderBy('xp', 'desc'), limit(50)) },
-  weekly: { label: 'This week', build: (ref, week) => query(ref, where('weekKey', '==', week), orderBy('weeklyXp', 'desc'), limit(50)) },
-  streak: { label: 'Streaks', build: (ref) => query(ref, orderBy('streak', 'desc'), limit(50)) },
-  badges: { label: 'Badges', build: (ref) => query(ref, orderBy('badgeCount', 'desc'), limit(50)) },
+  level:       { label: 'Level',             field: 'xp',           build: (ref, n) => query(ref, orderBy('xp', 'desc'), limit(n)) },
+  streak:      { label: 'Streaks',           field: 'streak',       build: (ref, n) => query(ref, orderBy('streak', 'desc'), limit(n)) },
+  badges:      { label: 'Badges',            field: 'badgeCount',   build: (ref, n) => query(ref, orderBy('badgeCount', 'desc'), limit(n)) },
+  wall:        { label: 'Wall Breaker',      field: 'wallXp',       build: (ref, n) => query(ref, where('wallXp', '>', 0), orderBy('wallXp', 'desc'), limit(n)) },
+  timeAttack:  { label: 'Time Attack',       field: 'timeAttackXp', build: (ref, n) => query(ref, where('timeAttackXp', '>', 0), orderBy('timeAttackXp', 'desc'), limit(n)) },
+  sentence:    { label: 'Construct a Sentence', field: 'sentenceXp', build: (ref, n) => query(ref, where('sentenceXp', '>', 0), orderBy('sentenceXp', 'desc'), limit(n)) },
 };
-async function loadBoard(kind) {
+/** Top `max` learners (1..50) for a board. Only that many documents are read, so a short list is cheap. */
+async function loadBoard(kind, max = 10) {
   await window.LWAuth?.whenAuthReady?.();
-  const board = BOARDS[kind] || BOARDS.xp;
-  const date = new Date();
-  date.setUTCHours(0, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
-  const week = `${date.getUTCFullYear()}-W${String(Math.ceil(((date - yearStart) / 86400000 + 1) / 7)).padStart(2, '0')}`;
-  const snapshot = await getDocs(board.build(collection(db, 'publicProfiles'), week));
-  const rows = snapshot.docs.map((entry) => ({ uid: entry.id, ...entry.data() }));
+  const board = BOARDS[kind] || BOARDS.level;
+  const n = Math.max(1, Math.min(BOARD_MAX, Math.floor(Number(max)) || 10));
+  const snapshot = await getDocs(board.build(collection(db, 'publicProfiles'), n));
+  let rows = snapshot.docs.map((entry) => ({ uid: entry.id, ...entry.data() }));
   rows.forEach((row) => { if (row.streakExpiresAt && row.streakExpiresAt <= Date.now()) row.streak = 0; });
-  const key = { streak: 'streak', badges: 'badgeCount', weekly: 'weeklyXp', xp: 'xp' }[kind] || 'xp';
-  rows.sort((a, b) => ((b[key] || 0) - (a[key] || 0)) || ((b.xp || 0) - (a.xp || 0)));
+  if (board === BOARDS.streak) rows = rows.filter((row) => (row.streak || 0) > 0);   // a lapsed streak is not a streak
+  rows.sort((a, b) => ((b[board.field] || 0) - (a[board.field] || 0)) || ((b.xp || 0) - (a.xp || 0)));
   return rows;
 }
 /** Call on the Profile page: brings a pre-grace-rule streak up to date. Resolves with the summary. */

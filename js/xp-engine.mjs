@@ -41,6 +41,16 @@ export const CONFIG = Object.freeze({
     SPEED_BADGE_MS_PER_BRICK: 6000,
     VETERAN_WALLS: 5,
   }),
+  // Construct a Sentence. Open to every verified learner (no learned signs needed). XP is 1 per word; it shares GAME.DAILY_XP_CAP.
+  SENTENCE: Object.freeze({
+    WORD_XP: 1,
+    DIFFICULTY_MULT: Object.freeze({ easy: 1, medium: 1.25, hard: 1.5 }),
+    MAX_ROUNDS: 10,
+    MIN_WORDS: 3,
+    MAX_WORDS: 8,
+    MIN_MS_PER_WORD: 500,
+    VETERAN_RUNS: 5,
+  }),
 });
 
 export const TIERS = Object.freeze([
@@ -74,6 +84,10 @@ export function buildBadgeCatalog() {
     badges[`game_L${level}`] = { id: `game_L${level}`, group: 'game', level, icon: '🧱', color: tier.color,
       name: `${tier.name} Wall Breaker · Lv ${level}`, desc: `Clear a Wall Breaker wall once you have reached level ${level}.` };
   }
+  for (let level = 1; level <= CONFIG.MAX_LEVEL; level++) {
+    badges[`sentence_L${level}`] = { id: `sentence_L${level}`, group: 'sentence', level, icon: '🧩', color: tierForLevel(level).color,
+      name: `Sentence Builder · Lv ${level}`, desc: `Finish a Construct a Sentence run once you have reached level ${level}.` };
+  }
   for (const days of [3, 7, 14, 30, 60, 100]) badges[`streak_${days}`] = {
     id: `streak_${days}`, group: 'streak', icon: '🔥', color: '#f97316', name: `${days}-Day Streak`, desc: `Learn on ${days} days in a row.`,
   };
@@ -81,6 +95,10 @@ export function buildBadgeCatalog() {
   badges.game_flawless = { id: 'game_flawless', group: 'game', icon: '💎', color: '#22d3ee', name: 'Flawless', desc: 'Clear a counted wall with no misses.' };
   badges.game_speed = { id: 'game_speed', group: 'game', icon: '⚡', color: '#facc15', name: 'Speed Breaker', desc: 'Clear a counted wall at 6 seconds a brick or faster.' };
   badges.game_veteran = { id: 'game_veteran', group: 'game', icon: '🏗️', color: '#f59e0b', name: 'Wall Veteran', desc: `Clear ${CONFIG.GAME.VETERAN_WALLS} counted walls.` };
+  badges.sentence_first = { id: 'sentence_first', group: 'sentence', icon: '💬', color: '#38bdf8', name: 'First Sentence', desc: 'Finish your first counted Construct a Sentence run.' };
+  badges.sentence_flawless = { id: 'sentence_flawless', group: 'sentence', icon: '✨', color: '#22d3ee', name: 'Word Perfect', desc: 'Finish a counted sentence run with no misses.' };
+  badges.sentence_hard = { id: 'sentence_hard', group: 'sentence', icon: '🧠', color: '#c084fc', name: 'Memory Master', desc: 'Finish a counted sentence run on Hard.' };
+  badges.sentence_veteran = { id: 'sentence_veteran', group: 'sentence', icon: '📜', color: '#f59e0b', name: 'Sentence Veteran', desc: `Finish ${CONFIG.SENTENCE.VETERAN_RUNS} counted sentence runs.` };
   for (const [count, id, name, icon, color] of [
     [1, 'missions_1', 'First Lesson', '🎓', '#38bdf8'],
     [10, 'missions_10', 'Ten Lessons', '📚', '#2dd4bf'],
@@ -229,7 +247,7 @@ export function newState(now) {
     v: 1, xp: 0, level: 1, weeklyXp: 0, weekKey: weekKeyUtc(now), tz: null, tzChangedAt: 0,
     streak: { current: 0, longest: 0, lastDay: null }, badges: {}, lessonItems: {}, missionsDone: {}, learnedSigns: [],
     daily: { day: null, lessonXp: 0, gameXp: 0, walls: 0, timeAttacks: 0 },
-    totals: { lessonXp: 0, gameXp: 0, walls: 0, countedWalls: 0, timeAttacks: 0, missions: 0 },
+    totals: { lessonXp: 0, gameXp: 0, walls: 0, countedWalls: 0, timeAttacks: 0, missions: 0, sentences: 0, wallXp: 0, timeAttackXp: 0, sentenceXp: 0 },
     lastClaimAt: 0, lastSkipAt: 0, backfilled: false, hidden: false, createdAt: now,
   };
 }
@@ -381,7 +399,86 @@ export function validateGameSigns(signs, mode, signTypes) {
   return true;
 }
 
+/**
+ * Construct a Sentence session check. `session` = { signs, rounds: [[signId, ...], ...], difficulty }.
+ * `isKnown(signId)` says whether a sign exists in the app. Pure: no DOM, no Firebase.
+ */
+export function validateSentenceSession(session, isKnown) {
+  const cfg = CONFIG.SENTENCE;
+  if (!session || !Array.isArray(session.rounds) || !Array.isArray(session.signs)) return false;
+  if (!Object.hasOwn(cfg.DIFFICULTY_MULT, session.difficulty)) return false;
+  const { rounds, signs } = session;
+  if (!rounds.length || rounds.length > cfg.MAX_ROUNDS) return false;
+  const used = new Set();
+  for (const words of rounds) {
+    if (!Array.isArray(words) || words.length < cfg.MIN_WORDS || words.length > cfg.MAX_WORDS) return false;
+    if (words.some((w) => typeof w !== 'string' || !w || !isKnown(w)) || new Set(words).size !== words.length) return false;
+    words.forEach((w) => used.add(w));
+  }
+  if (signs.some((w) => typeof w !== 'string') || new Set(signs).size !== signs.length) return false;
+  return signs.length === used.size && signs.every((w) => used.has(w));
+}
+
+/** Timing/order check for a sentence run. `log` = [{ i, t }] with t = ms from the session start. Returns an error reason or null. */
+export function validateSentenceTiming({ rounds, log, elapsedMs }) {
+  const cfg = CONFIG.SENTENCE;
+  if (!Array.isArray(log) || log.length !== rounds.length) return 'incomplete_run';
+  let previous = 0;
+  let minTotal = 0;
+  for (let index = 0; index < log.length; index++) {
+    const entry = log[index];
+    if (!entry || entry.i !== index) return 'bad_bricks';
+    if (typeof entry.t !== 'number' || !Number.isFinite(entry.t) || entry.t < previous) return 'bad_timing';
+    const minGap = rounds[index].length * cfg.MIN_MS_PER_WORD;
+    if (entry.t - previous < minGap) return 'too_fast';
+    minTotal += minGap;
+    previous = entry.t;
+  }
+  if (previous > elapsedMs + CONFIG.GAME.CLOCK_SLACK_MS) return 'clock_mismatch';
+  if (elapsedMs < minTotal) return 'too_fast';
+  return null;
+}
+
+export function applySentenceFinish(state, session, log, wrong, _learnedSigns, { now, today }) {
+  const cfg = CONFIG.SENTENCE;
+  const game = CONFIG.GAME;
+  const elapsed = now - session.startedAt;
+  if (elapsed > game.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
+  const timingIssue = validateSentenceTiming({ rounds: session.rounds, log, elapsedMs: elapsed });
+  if (timingIssue) return { ok: false, reason: timingIssue };
+
+  // Every sentence in the run counts: this game does not need any lesson progress.
+  const words = session.rounds.reduce((sum, list) => sum + list.length, 0);
+  const accuracy = session.rounds.length / Math.max(1, session.rounds.length + wrong);
+  const accMult = (game.ACC_TIERS.find((tier) => accuracy >= tier.min) || game.ACC_TIERS.at(-1)).mult;
+  const flawless = wrong === 0;
+  const raw = Math.round(words * cfg.WORD_XP * accMult * cfg.DIFFICULTY_MULT[session.difficulty] + game.CLEAR_BONUS + (flawless ? game.FLAWLESS_BONUS : 0));
+  const room = Math.max(0, game.DAILY_XP_CAP - state.daily.gameXp);
+  const xp = Math.min(raw, room);
+
+  const out = { ok: true, counted: false, accuracy, flawless, difficulty: session.difficulty };
+  if (xp > 0) {
+    state.daily.gameXp += xp;
+    state.totals.gameXp += xp;
+    state.totals.sentenceXp = (state.totals.sentenceXp || 0) + xp;
+    state.totals.sentences = (state.totals.sentences || 0) + 1;
+    addXp(state, xp, out);
+    applyActivityStreak(state, today, out, now);
+    grantBadge(state, 'sentence_first', out, now);
+    if (flawless) grantBadge(state, 'sentence_flawless', out, now);
+    if (session.difficulty === 'hard') grantBadge(state, 'sentence_hard', out, now);
+    if (state.totals.sentences >= cfg.VETERAN_RUNS) grantBadge(state, 'sentence_veteran', out, now);
+    const badge = nextLevelBadge('sentence', state.level, state.badges);
+    if (badge) grantBadge(state, badge, out, now);
+    out.counted = true;
+  }
+  out.xpGained = xp;
+  if (!xp) out.reason = 'daily_cap';
+  return out;
+}
+
 export function applyGameFinish(state, session, broken, wrong, learnedSigns, signTypes, { now, today }) {
+  if (session.mode === 'sentence') return applySentenceFinish(state, session, broken, wrong, learnedSigns, { now, today });
   const elapsed = now - session.startedAt;
   if (elapsed > CONFIG.GAME.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
   const timingIssue = validateGameTiming({ sessionSigns: session.signs, broken, elapsedMs: elapsed });
@@ -404,6 +501,7 @@ export function applyGameFinish(state, session, broken, wrong, learnedSigns, sig
     state.daily.gameXp += xp;
     state.daily.timeAttacks += 1;
     state.totals.gameXp += xp;
+    state.totals.timeAttackXp = (state.totals.timeAttackXp || 0) + xp;
     state.totals.timeAttacks += 1;
     addXp(state, xp, out);
     if (xp > 0) applyActivityStreak(state, today, out, now);
@@ -421,6 +519,7 @@ export function applyGameFinish(state, session, broken, wrong, learnedSigns, sig
   if (result.xp > 0) {
     state.daily.gameXp += result.xp;
     state.totals.gameXp += result.xp;
+    state.totals.wallXp = (state.totals.wallXp || 0) + result.xp;
     state.totals.countedWalls += 1;
     addXp(state, result.xp, out);
     applyActivityStreak(state, today, out, now);
@@ -452,6 +551,10 @@ export function profileData(state, name, now, avatar) {
     streakExpiresAt: streak ? startOfDayMs(shiftDayKey(state.streak.lastDay, 2), tz) : null,
     badgeCount: Object.keys(state.badges).length,
     recentBadges,
+    // XP earned per game, for the per-game leaderboards (each is part of the shared daily game cap).
+    wallXp: state.totals.wallXp || 0,
+    timeAttackXp: state.totals.timeAttackXp || 0,
+    sentenceXp: state.totals.sentenceXp || 0,
     ...(avatar && /^avatar-\d{2}$/.test(avatar) ? { avatar } : {}),
   };
 }

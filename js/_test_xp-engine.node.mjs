@@ -19,7 +19,8 @@ check(E.xpForLevel(2) - E.xpForLevel(1) === 100, 'first level costs 100 XP');
 check(E.xpForLevel(3) - E.xpForLevel(2) === 125, 'second level costs 125 XP');
 check(E.levelFromXp(1e9) === 30, 'level is capped at 30');
 check(E.levelProgress(E.xpForLevel(30)).maxed, 'level 30 progress is maxed');
-check(Object.keys(E.BADGES).length === 73, 'badge catalogue count');
+check(Object.keys(E.BADGES).length === 107, 'badge catalogue count');
+check(Object.keys(E.BADGES).filter((id) => E.BADGES[id].group === 'sentence').length === 34, 'sentence badge count');
 
 const mission = {
   id: 'sample', category: 'sample_category',
@@ -157,6 +158,53 @@ check(cappedBackfill.xpGained === E.CONFIG.BACKFILL_MAX_XP, 'backfill has a 1,50
 check(E.profileData(state, 'Ana', baseTime).xp === state.xp, 'public profile copies state XP');
 check(E.profileData(state, 'Ana', baseTime).badgeCount === Object.keys(state.badges).length, 'public profile copies badge count');
 check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initializes daily game counter');
+
+
+// ---- Construct a Sentence ----
+{
+  const known = () => true;
+  const words = [['YOU', 'MY', 'FRIEND'], ['PLEASE', 'HELP', 'ME'], ['ME', 'EAT', 'FOOD'], ['ME', 'DRINK', 'WATER'], ['MOM', 'DRINK', 'MILK']];
+  const signs = [...new Set(words.flat())];
+  const session = (difficulty, startedAt) => ({ id: 's', startedAt, signs, mode: 'sentence', rounds: words, difficulty });
+  const goodLog = words.map((w, i) => ({ i, t: (i + 1) * 4000 }));
+  check(E.validateSentenceSession(session('medium', 0), known), 'sentence session valid');
+  check(!E.validateSentenceSession({ ...session('medium', 0), difficulty: 'insane' }, known), 'bad difficulty rejected');
+  check(!E.validateSentenceSession({ ...session('medium', 0), rounds: [['A', 'A', 'B']] }, known), 'repeated word rejected');
+  check(!E.validateSentenceSession({ ...session('medium', 0), signs: ['YOU'] }, known), 'signs must match rounds');
+  check(!E.validateSentenceSession(session('medium', 0), (w) => w !== 'ME'), 'unknown sign rejected');
+
+  const run = (difficulty, wrong, learned, log = goodLog, st = E.newState(baseTime)) => {
+    st.tz = 'UTC';
+    const day = E.rollover(st, baseTime + 25000);
+    return { st, out: E.applyGameFinish(st, session(difficulty, baseTime), log, wrong, learned, {}, { now: baseTime + 25000, today: day }) };
+  };
+  let r = run('medium', 0, signs);
+  check(r.out.ok && r.out.counted && r.out.xpGained === 25, `flawless medium pays 25 (got ${r.out.xpGained})`);
+  check(r.st.badges.sentence_first && r.st.badges.sentence_flawless && r.st.badges.sentence_L1 && !r.st.badges.sentence_hard, 'medium run badges');
+  check(r.st.totals.sentences === 1 && r.st.daily.gameXp === 25, 'sentence totals and daily cap tracked');
+  r = run('hard', 0, signs);
+  check(r.out.xpGained === 29 && r.st.badges.sentence_hard, 'flawless hard pays 29 and gives Memory Master');
+  r = run('easy', 0, signs);
+  check(r.out.xpGained === 21, 'flawless easy pays 21');
+  r = run('medium', 5, signs);
+  check(r.out.counted && r.out.xpGained < 25 && !r.st.badges.sentence_flawless, 'misses lower XP and skip flawless');
+  r = run('medium', 0, []);
+  check(r.out.ok && r.out.counted && r.out.xpGained === 25 && r.st.badges.sentence_first, 'a learner with no learned signs still earns sentence XP and badges');
+  r = run('medium', 0, signs, goodLog.slice(0, 4));
+  check(!r.out.ok && r.out.reason === 'incomplete_run', 'incomplete run rejected');
+  r = run('medium', 0, signs, goodLog.map((e, i) => ({ ...e, i: 4 - i })));
+  check(!r.out.ok, 'out of order run rejected');
+  r = run('medium', 0, signs, words.map((w, i) => ({ i, t: (i + 1) * 100 })));
+  check(!r.out.ok && r.out.reason === 'too_fast', 'too fast run rejected');
+  const capped = E.newState(baseTime); capped.tz = 'UTC'; capped.daily = { day: '2026-10-03', lessonXp: 0, gameXp: 90, walls: 0, timeAttacks: 0 };
+  r = run('medium', 0, signs, goodLog, capped);
+  check(r.out.ok && !r.out.counted && r.out.xpGained === 0 && r.out.reason === 'daily_cap', 'daily cap blocks sentence XP');
+  const vet = E.newState(baseTime); vet.tz = 'UTC';
+  for (let n = 0; n < 5; n++) { vet.daily.gameXp = 0; run('medium', 0, signs, goodLog, vet); }
+  check(vet.badges.sentence_veteran && vet.totals.sentences === 5, 'Sentence Veteran after 5 runs');
+  check(vet.totals.sentenceXp === 125 && vet.totals.sentenceXp === vet.totals.gameXp, 'sentence XP tracked per game');
+  check(E.profileData(vet, 'Ana', baseTime).sentenceXp === 125 && E.profileData(vet, 'Ana', baseTime).wallXp === 0, 'public profile carries per-game XP');
+}
 
 console.log(`${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

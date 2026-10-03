@@ -274,7 +274,7 @@
           target: '#lb-tabs',
           placement: 'bottom',
           title: 'Switch between boards',
-          body: 'Rank by all-time XP, this week\u2019s XP, streaks or badges, then flip between highest first and lowest first.',
+          body: 'Rank by level, streaks or badges, or open a game board for Construct a Sentence, Wall Breaker or Time Attack. You can flip the order and choose how many learners to show.',
         },
         {
           target: '#lb-panel',
@@ -286,7 +286,7 @@
           target: '#lb-how-btn',
           placement: 'bottom',
           title: 'Check how XP works',
-          body: 'Open this any time to see what earns XP, how streaks count, and when the weekly rankings reset.',
+          body: 'Open this any time to see what earns XP, how the boards are ranked and how streaks count.',
         },
       ],
     },
