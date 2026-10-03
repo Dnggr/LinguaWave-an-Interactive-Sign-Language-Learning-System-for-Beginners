@@ -13,6 +13,7 @@ const SHOW_ALL = new URLSearchParams(location.search).has('all');   // testing: 
 let phase = 'idle';                          // idle | countdown | playing | checking | done
 let rounds = [], roundIndex = 0, misses = 0, playMs = 0, roundStartedAt = 0;
 let tickId = null, timers = new Set(), selected = null, drag = null, justDragged = false, wasFull = false;
+let lastEligible = 0, lastLearnedOnly = true;   // how many sentences matched the learner's signs on the last Start
 
 const norm = (v) => String(v || '').trim().toLowerCase();
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
@@ -38,44 +39,74 @@ function shuffle(list) {
 
 /* ---------- content ---------- */
 
-async function getLearned() {
-  if (SHOW_ALL) return null;
+// ─────────────────────────────────────────────────────────────────────────────
+// LEARNED-SIGNS FILTER: TEMPORARILY DISABLED.
+// For now the game uses EVERY sentence in js/construct-sentences.js, whether or not the learner has finished the lessons.
+// TO RE-ENABLE (once every word is learnable): delete the `return null;` line in getLearned() below, and
+// uncomment the block under "ORIGINAL" (it waits for the XP service, then returns the set of learned signs).
+// Nothing else needs to change: buildRounds() and the "Practice with all signs" button already handle a learned set.
+// ─────────────────────────────────────────────────────────────────────────────
+async function getLearned(useAll) {
+  return null;   // <- delete this line to turn the learned-signs filter back on
+
+  /* ORIGINAL (uncomment when re-enabling):
+  if (useAll || SHOW_ALL) return null;
+  await whenXpReady();
   if (typeof window.LWXP?.getLearnedSigns !== 'function') throw new Error('The learned-sign service is unavailable. Reload the page and try again.');
   const ids = await withTimeout(window.LWXP.getLearnedSigns(), 12000, 'Loading learned signs');
   return new Set([...ids].map(norm));
+  */
 }
 
-// Plain .mp4 demo for a sign (YouTube embeds can't be dragged around, so they don't count).
-function mp4For(signId) {
+// LWXP is set by js/xp.js (a module). If it has not finished loading yet, wait for its ready event instead of failing.
+// (Only used by the learned-signs filter above, so it is idle while that filter is disabled.)
+function whenXpReady(ms = 5000) {
+  if (typeof window.LWXP?.getLearnedSigns === 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(id); document.removeEventListener('lwxp-ready', done); resolve(); };
+    const id = setTimeout(done, ms);
+    document.addEventListener('lwxp-ready', done);
+  });
+}
+
+// Every plain .mp4 demo on file for a sign, best first (YouTube embeds can't be dragged around, so they don't count).
+// A tile tries them in order, so one missing file no longer leaves a blank tile.
+function mp4Candidates(signId) {
   const M = window.LWMissions, signs = M?.content?.SIGNS || [];
   const entry = signs.find((s) => norm(s.signId) === norm(signId) && s.videoUrl) || signs.find((s) => norm(s.signId) === norm(signId));
-  if (!entry) return '';
+  if (!entry) return [];
   const content = M.getSign?.(entry.level, entry.signId, entry.category) || entry;
   const urls = M.getSignVideoUrls ? M.getSignVideoUrls(entry.signId, content.videoUrl) : [content.videoUrl];
-  return urls.filter(Boolean).find((url) => !/youtube/i.test(url)) || '';
+  return [...new Set(urls.filter((url) => url && !/youtube/i.test(url)))];
 }
 
 function buildRounds(learned) {
   const unplayable = new Set();
   const playable = SENTENCES.filter((s) => {
-    const missing = s.words.filter((w) => !mp4For(w));
+    const missing = s.words.filter((w) => !mp4Candidates(w).length);
     missing.forEach((w) => unplayable.add(w));
     return !missing.length;
   });
   if (unplayable.size) console.warn('[construct-sentence] no .mp4 found for:', [...unplayable].join(', '));
   const eligible = learned ? playable.filter((s) => s.words.every((w) => learned.has(norm(w)))) : playable;
-  if (!eligible.length && playable.length) console.info('[construct-sentence] no sentence uses only learned signs. Add ?all=1 to the URL to test with every sentence.');
-  return shuffle(eligible).slice(0, ROUND_COUNT).map((s) => ({ text: s.text, words: s.words, videos: s.words.map(mp4For) }));
+  const picked = shuffle(eligible).slice(0, ROUND_COUNT).map((s) => ({ text: s.text, words: s.words, videos: s.words.map(mp4Candidates) }));
+  return { rounds: picked, eligible: eligible.length };
 }
 
 /* ---------- board ---------- */
 
-function makeTile(sign, url) {
+function makeTile(sign, urls) {
   const tile = document.createElement('div');
   tile.className = 'cs-tile'; tile.dataset.sign = sign; tile.tabIndex = 0; tile.setAttribute('role', 'button');
   const video = document.createElement('video');
-  video.src = url; video.muted = true; video.loop = true; video.autoplay = true; video.playsInline = true;
+  let tried = 0;
+  video.src = urls[0]; video.muted = true; video.loop = true; video.autoplay = true; video.playsInline = true;
   video.preload = 'auto'; video.disablePictureInPicture = true; video.setAttribute('aria-hidden', 'true');
+  video.addEventListener('error', () => {
+    tried++;
+    if (tried < urls.length) { video.src = urls[tried]; video.load(); playTile(tile); return; }
+    tile.dataset.novideo = '1'; refreshNames();      // no file loaded at all: keep the name visible so the round is still solvable
+  });
   const name = document.createElement('span'); name.className = 'cs-tile__name'; name.textContent = sign;
   tile.append(video, name);
   return tile;
@@ -96,8 +127,9 @@ function scramble(tiles, words) {
 }
 
 function refreshNames() {
-  const hide = phase === 'playing';
+  const playing = phase === 'playing';
   document.querySelectorAll('.cs-tile').forEach((tile) => {
+    const hide = playing && !tile.dataset.novideo;
     tile.classList.toggle('is-nameless', hide);
     tile.setAttribute('aria-label', hide ? 'Sign video' : tile.dataset.sign);
   });
@@ -121,6 +153,7 @@ function showIdle() {
 function loadRound(index) {
   const round = rounds[index];
   selected = null; wasFull = false;
+  root.style.setProperty('--cs-cols', Math.min(round.words.length, 3));   // phones: tiles are sized so one row holds up to 3
   $('cs-sentence').textContent = round.text;
   $('cs-count-label').textContent = `${index + 1}/${rounds.length}`;
   document.querySelector('.cs-progress')?.style.setProperty('--p', index / rounds.length);
@@ -269,19 +302,28 @@ function tick() {
   $('cs-time').textContent = formatTime(playMs + (phase === 'playing' ? performance.now() - roundStartedAt : 0));
 }
 
-async function start() {
+async function start(useAll = false) {
   if (!(phase === 'idle' || phase === 'done') || $('cs-start').disabled) return;
-  $('cs-start').disabled = true; setStatus('Preparing your learned signs…');
+  $('cs-start').disabled = true; $('cs-all').disabled = true;
+  setStatus('Preparing sentences…');   // when the learned-signs filter is re-enabled, use: useAll ? 'Preparing sentences…' : 'Preparing your learned signs…'
+  let built;
   try {
-    rounds = buildRounds(await getLearned());
+    built = buildRounds(await getLearned(useAll));
   } catch (error) {
     console.error('[construct-sentence] could not prepare run:', error);
     $('cs-error-message').textContent = error?.message || 'Could not prepare your sentences. Try again.';
-    $('cs-error').hidden = false; $('cs-start').disabled = false; setStatus('Could not start.');
+    $('cs-error').hidden = false; $('cs-start').disabled = false; $('cs-all').disabled = false; setStatus('Could not start.');
     return;
   }
-  if (!rounds.length) { setStatus('No sentences are ready yet. Learn a few more signs, then come back.'); $('cs-start').disabled = false; return; }
-  $('cs-result').hidden = true; $('cs-start').hidden = true; $('cs-quit').disabled = false;
+  rounds = built.rounds; lastEligible = built.eligible; lastLearnedOnly = !(useAll || SHOW_ALL);
+  // Fewer than a full run of sentences match what the learner knows: offer every sentence instead of a dead end.
+  $('cs-all').hidden = useAll || SHOW_ALL || built.eligible >= ROUND_COUNT;
+  $('cs-all').disabled = false;
+  if (!rounds.length) {
+    setStatus('No sentences use only signs you have learned yet. Learn a few more signs, or practice with all signs.');
+    $('cs-start').disabled = false; return;
+  }
+  $('cs-result').hidden = true; $('cs-start').hidden = true; $('cs-all').hidden = true; $('cs-quit').disabled = false;
   roundIndex = 0; misses = 0; playMs = 0; $('cs-misses').textContent = '0';
   clearInterval(tickId); tickId = setInterval(tick, 100);
   startRound();
@@ -295,6 +337,7 @@ function finish() {
   $('cs-summary').textContent = `Time: ${formatTime(playMs)} · Sentences: ${total} · Misses: ${misses} · Accuracy: ${accuracy}%`;
   $('cs-result').hidden = false;
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;
+  $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run complete.');
 }
 
@@ -304,6 +347,7 @@ function quit() {
   selected = null; rounds = [];
   setPhase('idle'); showIdle();
   $('cs-start').hidden = false; $('cs-start').disabled = false; $('cs-quit').disabled = true;
+  $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run abandoned.');
 }
 
@@ -320,8 +364,9 @@ root.addEventListener('keydown', (event) => {
   const tile = event.target.closest?.('.cs-tile'), slot = event.target.closest?.('.cs-slot');
   if (tile) { event.preventDefault(); tapTile(tile); } else if (slot) { event.preventDefault(); tapSlot(slot); }
 });
-$('cs-start').addEventListener('click', start);
-$('cs-again').addEventListener('click', start);
+$('cs-start').addEventListener('click', () => start(false));
+$('cs-all').addEventListener('click', () => start(true));
+$('cs-again').addEventListener('click', () => start(false));
 $('cs-check').addEventListener('click', check);
 $('cs-reset').addEventListener('click', () => {
   if (phase !== 'playing') return;

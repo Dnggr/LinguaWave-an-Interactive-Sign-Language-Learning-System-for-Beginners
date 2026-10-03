@@ -2,7 +2,7 @@
    .cs-tile rules are NOT scoped under .cs: a tile is re-parented to <body> while it is being dragged. */
 :root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.9)}
 
-.cs{--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
+.cs{--cs-cols:3;--cs-tile-h:calc(var(--cs-tile-w)*.9);--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
 .cs-progress{--p:0}
 .cs-board{display:flex;flex-direction:column;gap:var(--space-4);padding:clamp(var(--space-4),3vw,var(--space-6));border:1px solid var(--clr-border);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
 .cs-prompt{display:flex;flex-direction:column;gap:var(--space-1)}
@@ -39,10 +39,18 @@
 .cs:not([data-phase="playing"]) .cs-tile{cursor:default}
 
 .cs-controls,.cs-result-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
-.cs-overlay{position:absolute}
+.cs-controls [hidden]{display:none}   /* .btn sets display:flex, which beats the [hidden] attribute: Start stayed visible (greyed out) during a run */
+/* The overlay is positioned by .gm-overlay in game.css: absolute over the board on desktop, fixed to the viewport at <=900px
+   (a bare .cs-overlay{position:absolute} here used to override that, so on phones the result card could open below the fold). */
+
+/* phones: tiles shrink so one row holds up to 3 and the slots + pool fit on screen together (no scrolling mid-drag) */
+@media(max-width:640px){
+  .cs{--cs-tile-w:calc((100vw - 6rem - (var(--cs-cols) - 1)*var(--space-2))/var(--cs-cols));padding-inline:var(--space-3)}
+  .cs-board{padding:var(--space-4);gap:var(--space-3)}
+  .cs-slots,.cs-pool{gap:var(--space-2)}
+  .cs-pool{padding:var(--space-2)}
+  .cs-tile__name{font-size:var(--fs-xs);padding:2px var(--space-1)}
+  .cs-slot__num{top:var(--space-1);left:var(--space-2);font-size:var(--fs-base)}
+}
 
 @media(prefers-reduced-motion:reduce){.cs-count,.cs-slot,.cs-slot.is-wrong{animation:none;transition:none}}
-
-/* ---- Game picker (pages/game.html): third card, full width under Wall Breaker + Time Attack ---- */
-.game-mode--sentence{--mode-color:var(--clr-violet);--mode-soft:var(--clr-violet-soft);grid-column:1 / -1;min-height:clamp(220px,22vw,280px)}
-.game-mode__icon svg{width:clamp(30px,4vw,44px);height:clamp(30px,4vw,44px)}

@@ -23,7 +23,6 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/game.css" />
-  <link rel="stylesheet" href="../css/construct-sentence.css" />
   <link rel="stylesheet" href="../css/responsive.css" />
   <script type="module" src="../js/auth.js"></script>
   <script src="../js/icons.js"></script>
@@ -58,20 +57,32 @@
         <div class="game-picker__grid">
           <a class="game-mode game-mode--wall" href="wall-breaker.html">
             <span class="game-mode__icon" data-lw-icon="brick_wall" aria-hidden="true"></span>
-            <span class="game-mode__eyebrow">FREE ORDER</span><h2>Wall Breaker</h2>
-            <p>Break every sign brick in any order. Hold static signs or record motion signs.</p>
+            <div class="game-mode__body">
+              <span class="game-mode__eyebrow">FREE ORDER</span>
+              <h2>Wall Breaker</h2>
+              <p>Break every sign brick in any order. Hold static signs or record motion signs.</p>
+              <span class="game-mode__meta">Uses your camera</span>
+            </div>
             <span class="game-mode__action">Play Wall Breaker <span aria-hidden="true">→</span></span>
           </a>
           <a class="game-mode game-mode--time" href="time-attack.html">
             <span class="game-mode__icon" data-lw-icon="zap" aria-hidden="true"></span>
-            <span class="game-mode__eyebrow">IN ORDER · AGAINST THE CLOCK</span><h2>Time Attack</h2>
-            <p>Sign each target in sequence and finish your run as quickly as possible.</p>
+            <div class="game-mode__body">
+              <span class="game-mode__eyebrow">IN ORDER · AGAINST THE CLOCK</span>
+              <h2>Time Attack</h2>
+              <p>Sign each target in sequence and finish your run as quickly as possible.</p>
+              <span class="game-mode__meta">Uses your camera</span>
+            </div>
             <span class="game-mode__action">Play Time Attack <span aria-hidden="true">→</span></span>
           </a>
           <a class="game-mode game-mode--sentence" href="construct-sentence.html">
             <span class="game-mode__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="5" height="6" rx="1"/><rect x="10" y="5" width="5" height="6" rx="1"/><rect x="17" y="5" width="4" height="6" rx="1"/><path d="M5 17h14"/></svg></span>
-            <span class="game-mode__eyebrow">DRAG &amp; DROP · FROM MEMORY</span><h2>Construct a Sentence</h2>
-            <p>Memorize the signs, then drag the videos into the right order to build the sentence.</p>
+            <div class="game-mode__body">
+              <span class="game-mode__eyebrow">DRAG &amp; DROP · FROM MEMORY</span>
+              <h2>Construct a Sentence</h2>
+              <p>Memorize the signs, then drag the videos into the right order to build the sentence.</p>
+              <span class="game-mode__meta">No camera needed</span>
+            </div>
             <span class="game-mode__action">Play Construct a Sentence <span aria-hidden="true">→</span></span>
           </a>
         </div>
