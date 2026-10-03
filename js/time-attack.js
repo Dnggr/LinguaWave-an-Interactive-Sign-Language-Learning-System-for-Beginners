@@ -4,7 +4,7 @@
   CONNECTS : Reuses cameraUtils, MediaPipe, renderer, classifier, dictionary, LWMissions media and LWXP game sessions.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
-import { initMediaPipe, processFrame, isModelReady } from './tracking/mediapipe.js';
+import { initMediaPipe, processFrame, isModelReady, resetTracking } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
 import { getDetectionType, getSignData } from './engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer, loadModels, loadModelLabels,
@@ -18,8 +18,20 @@ let bootPromise = null, bootGeneration = 0, trackingPromise = null, modelsPromis
 let targets = [], targetIndex = 0, misses = 0, heldSince = 0, wrongSince = 0, wrongLabel = '', lastMissAt = 0;
 let startedAt = 0, brokenLog = [], xpSessionP = Promise.resolve(null), motionWaitAt = 0, handLostAt = null;
 const currentTarget = () => targets[targetIndex] || null;
+// Per-run caches. The dictionary scans below are O(number of signs) and used to run on EVERY animation frame.
+let lastFrame = null, motionAllowedCache = null;
+const getMotionAllowed = () => (motionAllowedCache ??= new Set(getClassifiableSigns().filter((sign) => isSignClassifiable(sign) && getDetectionType(sign) === 'motion')));
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
 const setStatus = (message) => { $('ta-status').textContent = message; };
+// Overlays are shown/hidden with an inline display as well as [hidden]: a CSS rule that sets display on them overrides the
+// hidden attribute, which left the 'Still loading...' message stuck on top of a working camera.
+const toggle = (el, visible) => {
+  if (!el) return;
+  el.hidden = !visible;
+  if (!visible) { el.style.display = 'none'; return; }
+  el.style.display = '';                                            // let the stylesheet decide first...
+  if (getComputedStyle(el).display === 'none') el.style.display = 'flex';   // ...and only force it on if the CSS default is hidden
+};
 function setLoadingMessage(message) {
   $('camera-status').textContent = message;
   const detail = $('ta-loading').querySelector('p');
@@ -140,7 +152,7 @@ async function boot() {
   const generation = ++bootGeneration;
   bootPromise = (async () => {
     const status = $('camera-status');
-    status.hidden = false;
+    toggle(status, true);
     status.textContent = 'Requesting camera access…';
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -175,12 +187,12 @@ async function boot() {
       if (generation !== bootGeneration) { stopCamera(videoEl); return false; }
       if (!isModelReady()) throw new Error('Hand tracking could not start. Refresh the page and try again.');
       ready = true;
-      status.hidden = true;
+      toggle(status, false); status.textContent = '';
       return true;
     } catch (error) {
       console.error('[time-attack] camera/model startup failed:', error);
       stopCamera(videoEl);
-      status.hidden = false;
+      toggle(status, true);
       const messages = {
         NotAllowedError: 'Camera access was blocked. Allow camera access for this site in your browser settings, then try again.',
         PermissionDeniedError: 'Camera access was blocked. Allow camera access for this site in your browser settings, then try again.',
@@ -220,11 +232,13 @@ function acceptTarget() {
   else { setStatus('Correct! Next target.'); setTarget(); }
 }
 
-function detectStatic(left, right, face, pose, anyHandPresent, now) {
+function detectStatic(left, right, face, pose, anyHandPresent, now, fresh = true) {
   const target = currentTarget();
   if (!target || target.type !== 'static') return;
   if (!anyHandPresent) { heldSince = 0; wrongSince = 0; wrongLabel = ''; return; }
-  const result = classifyGesture(left, right, face, getAllowedLabelsForSign(target.signId), pose, target.signId);
+  if (!fresh) return;   // same landmarks as the last tick: nothing new to classify (the hold timer is wall-clock, so it keeps counting)
+  target.allowedLabels ??= getAllowedLabelsForSign(target.signId);
+  const result = classifyGesture(left, right, face, target.allowedLabels, pose, target.signId);
   if (result?.matched && result.label === target.signId) {
     if (!heldSince) heldSince = now;
     if (now - heldSince >= 500) acceptTarget();
@@ -256,14 +270,14 @@ function countdown(step) {
   later(() => countdown(step + 1), 600);
 }
 
-function handleMotion(left, right, face, pose, anyHandPresent, now) {
+function handleMotion(left, right, face, pose, anyHandPresent, now, fresh = true) {
   if (phase !== 'waiting' && phase !== 'recording') return;
   if (!anyHandPresent) {
     if (phase === 'waiting' && now - motionWaitAt > 6000) { phase = 'static'; setMode('motion'); setStatus('No hand detected. Press Record motion sign to try again.'); }
     if (phase === 'recording') {
       handLostAt ??= now;
       if (now - handLostAt > 1200) {
-        const target = currentTarget(), allowed = new Set(getClassifiableSigns().filter((sign) => isSignClassifiable(sign) && getDetectionType(sign) === 'motion'));
+        const target = currentTarget(), allowed = getMotionAllowed();
         const result = finalizeMotionWindow(allowed, target?.signId || null);
         if (result) return finishMotionAttempt(result);
         phase = 'static'; resetMotionBuffer(); setMode('motion'); setStatus('Not enough motion captured. Press Record motion sign to try again.');
@@ -272,7 +286,8 @@ function handleMotion(left, right, face, pose, anyHandPresent, now) {
     return;
   }
   handLostAt = null;
-  const allowed = new Set(getClassifiableSigns().filter((sign) => isSignClassifiable(sign) && getDetectionType(sign) === 'motion'));
+  if (!fresh) return;   // do not feed the same detection into the motion buffer more than once
+  const allowed = getMotionAllowed();
   const result = classifyMotion(left, right, face, allowed, pose, currentTarget()?.signId || null);
   if (result?.buffering) { phase = 'recording'; setStatus(`Recording… ${formatTime(getMotionBufferStatus().elapsedMs || 0)}`); return; }
   if (!result) return;
@@ -290,30 +305,33 @@ function loop() {
   rafId = requestAnimationFrame(loop);
   if (!videoEl || videoEl.readyState < 2) return;
   try {
-    const { leftHandLandmarks:left, rightHandLandmarks:right, faceLandmarks:face, poseLandmarks:pose, anyHandPresent } = processFrame(videoEl);
+    const frame = processFrame(videoEl);
+    const { leftHandLandmarks:left, rightHandLandmarks:right, faceLandmarks:face, poseLandmarks:pose, anyHandPresent } = frame;
+    // processFrame() hands back the SAME object until a new detection runs (~20/s), while this loop ticks at the display rate.
+    const fresh = frame !== lastFrame; lastFrame = frame;
     const hands = [left, right].filter(Boolean);
     if (hands.length) drawSkeleton(ctx, hands, canvasEl.width, canvasEl.height);
     else clearCanvas(ctx, canvasEl.width, canvasEl.height);
     if (!running) return;
     const now = Date.now();
-    if (currentTarget()?.type === 'static') detectStatic(left, right, face, pose, anyHandPresent, now);
-    else if (currentTarget()?.type === 'motion') handleMotion(left, right, face, pose, anyHandPresent, now);
+    if (currentTarget()?.type === 'static') detectStatic(left, right, face, pose, anyHandPresent, now, fresh);
+    else if (currentTarget()?.type === 'motion') handleMotion(left, right, face, pose, anyHandPresent, now, fresh);
   } catch (error) {
     console.error('[time-attack] frame processing failed:', error);
     shutdown();
     $('ta-error-message').textContent = 'Hand tracking stopped unexpectedly. Check camera access and try again.';
     $('ta-error').hidden = false;
     $('ta-start').hidden = false; $('ta-start').disabled = false;
-    $('camera-status').hidden = false;
+    toggle($('camera-status'), true);
     $('camera-status').textContent = $('ta-error-message').textContent;
   }
 }
 
 async function start() {
   if (running || finishing || $('ta-start').disabled) return;
-  $('ta-start').disabled = true; $('ta-loading').hidden = false; setStatus('Preparing your learned signs…');
-  if (!await boot()) { $('ta-loading').hidden = true; $('ta-start').disabled = false; return; }
-  $('ta-loading').hidden = true;
+  $('ta-start').disabled = true; toggle($('ta-loading'), true); setStatus('Preparing your learned signs…');
+  if (!await boot()) { toggle($('ta-loading'), false); $('ta-start').disabled = false; return; }
+  toggle($('ta-loading'), false);
   try {
   const startGeneration = bootGeneration;
   const learned = await getLearnedSignIds();
@@ -331,7 +349,7 @@ async function start() {
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   targets = pool.map(makeTarget).filter((target) => target.videos.length || target.imageUrl).slice(0, 10);
   if (!targets.length) { setStatus('No learned signs with playable model demos are available yet. Complete a lesson first.'); $('ta-start').disabled = false; return; }
-  targetIndex = 0; misses = 0; brokenLog = []; $('ta-misses').textContent = '0'; $('ta-time').textContent = '0.0s';
+  targetIndex = 0; misses = 0; brokenLog = []; lastFrame = null; motionAllowedCache = null; $('ta-misses').textContent = '0'; $('ta-time').textContent = '0.0s';
   $('ta-result').hidden = true; $('ta-start').hidden = true; $('ta-quit').disabled = false;
   running = true; startedAt = Date.now(); lastMissAt = 0;
   xpSessionP = Promise.resolve(window.LWXP?.startGame(targets.map((target) => target.signId), 'timeAttack') || null)
@@ -345,7 +363,7 @@ async function start() {
     $('ta-error-message').textContent = error?.message || 'Time Attack could not prepare your learned signs. Try again.';
     $('ta-error').hidden = false;
   } finally {
-    $('ta-loading').hidden = true;
+    toggle($('ta-loading'), false);
   }
 }
 
@@ -353,6 +371,7 @@ async function finish() {
   if (finishing || !running) return;
   finishing = true; running = false; phase = 'completed'; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
+  clearCanvas(ctx, canvasEl.width, canvasEl.height);
   const elapsed = Date.now() - startedAt;
   $('ta-time').textContent = formatTime(elapsed); document.querySelector('.ta-progress')?.style.setProperty('--p', 1);
   $('ta-start').hidden = false; $('ta-start').disabled = true; $('ta-quit').disabled = true; setStatus('Sequence complete.');
@@ -380,7 +399,7 @@ function shutdown() {
   bootGeneration++;
   running = false; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
-  stopCamera(videoEl); ready = false; resetMotionBuffer();
+  stopCamera(videoEl); ready = false; resetMotionBuffer(); resetTracking(); lastFrame = null; motionAllowedCache = null;
   if (wasRunning) phase = 'cancelled';
   $('ta-motion').disabled = true;
   $('ta-start').hidden = false; $('ta-start').disabled = false;
@@ -407,10 +426,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     const wasActive = running || $('ta-start').disabled || !!videoEl.srcObject;
     shutdown();
-    $('ta-loading').hidden = true;
+    toggle($('ta-loading'), false);
     if (wasActive) {
       finishing = false;
-      $('camera-status').hidden = false;
+      toggle($('camera-status'), true);
       $('camera-status').textContent = 'Camera paused. Press Start to resume.';
       setMode('idle'); setStatus('Camera paused. Press Start to resume.');
     }

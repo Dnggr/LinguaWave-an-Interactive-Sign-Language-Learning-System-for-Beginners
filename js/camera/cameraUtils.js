@@ -64,8 +64,12 @@ export async function startCamera(videoElement, canvasElement) {
   const constraints = {
     video: {
       facingMode: 'user',   // Front-facing (selfie) camera
-      width:  { ideal: 640 },
-      height: { ideal: 480 },
+      // CHANGED (clunky / lost hand): 640x480 -> 1280x720 (still only an `ideal` hint). At 640x480 a hand is
+      // ~100px wide, so Holistic had little detail to track it with once it moved or blurred. The hand model
+      // works on a crop of the hand, so a bigger source frame gives a sharper crop. If this is too heavy on a
+      // slow machine, try 960x540 or go back to 640x480.
+      width:  { ideal: 1280 },
+      height: { ideal: 720 },
       frameRate: { ideal: 30, max: 30 },
     },
     audio: false,

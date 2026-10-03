@@ -131,7 +131,10 @@ let lastVideoTime      = -1;
 // there specifically. lesson.js now drops to a slower rate during that
 // dead time and restores full rate the instant recording actually
 // starts (see startMotionRecording()/runMotionCountdown() in lesson.js).
-let DETECT_INTERVAL_MS = 50; // ~20 detections/sec (default/active rate)
+// CHANGED (clunky / disappearing skeleton): 50ms (~20/sec) -> 33ms (~30/sec), the SAME value capture.html uses
+// (its DETECT_INTERVAL_MS). The motion model was trained on frames captured at this cadence, and Holistic tracks
+// across consecutive frames, so a faster rate keeps a moving hand locked on.
+let DETECT_INTERVAL_MS = 33; // ~30 detections/sec (default/active rate)
 let lastDetectAt = 0;
 
 // NEW — diagnostic for the "gets laggier on retry" symptom, the other
@@ -157,6 +160,8 @@ let cachedResult = null; // last frame's { leftPts, rightPts, faceRaw, forehead,
 // Ghost-frame persistence — same tolerance pattern as capture.html,
 // tracked independently per hand + face so one occluded hand doesn't
 // zero out the other or the face mid-sign.
+// Same value as the capture system (capture.html GHOST_FRAMES). Counted in detections, so at ~30/sec a lost hand
+// is held ~0.33s before it is dropped.
 const GHOST_FRAMES = 10;
 
 let lastGoodLeftPts   = null, leftGhostCounter   = 0;
@@ -182,6 +187,74 @@ let lastGoodHipCenter      = null;
 const HAND_ZERO = new Array(63).fill(0);
 
 let anyHandPresent = false;
+
+// ── Tracking diagnostics ──────────────────────────────────────────
+// Answers "why is this hand not detected?" without guessing. In the browser console run:
+//     LWTrack.stats()   // after ~10 seconds of signing with the hand in question
+//     LWTrack.reset()   // to start a fresh measurement
+// rawLeft/rawRight = frames where Holistic ITSELF returned that hand (before any of our filters).
+// *Gate counters = frames where one of our own filters threw a raw hand away.
+const trackStats = {
+  frames: 0, faceFrames: 0, poseFrames: 0,
+  rawLeft: 0, rawRight: 0,
+  faceGateLeft: 0, faceGateRight: 0,
+  boneAndPoseLeft: 0, boneAndPoseRight: 0,
+  jumpHeldLeft: 0, jumpHeldRight: 0,
+  ghostLeft: 0, ghostRight: 0,
+  freshLeft: 0, freshRight: 0,
+  labelSwapSuspectLeft: 0, labelSwapSuspectRight: 0,
+  partialAnchorFrames: 0,   // frames where the face (forehead+chin) or the body (shoulders+hips) was not fully in frame
+};
+export function resetTrackingStats() { Object.keys(trackStats).forEach((key) => { trackStats[key] = 0; }); }
+export function getTrackingStats() {
+  const s = { ...trackStats };
+  const f = Math.max(1, s.frames);
+  const pct = (n) => `${Math.round(n * 100 / f)}%`;
+  s.summary = {
+    holisticReturnedLeft: pct(s.rawLeft), holisticReturnedRight: pct(s.rawRight),
+    usedLeft: pct(s.freshLeft), usedRight: pct(s.freshRight),
+    face: pct(s.faceFrames), pose: pct(s.poseFrames), anchorsPartial: pct(s.partialAnchorFrames),
+  };
+  let hint = 'Not enough frames yet: keep the hand in view for a few seconds, then call LWTrack.stats() again.';
+  if (s.frames >= 40) {
+    if (s.rawRight < s.frames * 0.05 && s.rawLeft >= s.frames * 0.2) {
+      hint = 'Holistic itself almost never returns the RIGHT hand while it returns the left. Our filters are not the cause: improve lighting, keep the right shoulder and arm inside the frame, and keep the wrist unobstructed.';
+    } else if (s.rawLeft < s.frames * 0.05 && s.rawRight >= s.frames * 0.2) {
+      hint = 'Holistic itself almost never returns the LEFT hand while it returns the right. Check lighting and framing on the left side.';
+    } else if (s.rawRight > 0 && s.freshRight < s.rawRight * 0.5) {
+      hint = 'Holistic sees the right hand but our filters drop most of those frames. Look at faceGateRight, boneAndPoseRight and jumpHeldRight to see which one.';
+    } else if (s.rawLeft > 0 && s.freshLeft < s.rawLeft * 0.5) {
+      hint = 'Holistic sees the left hand but our filters drop most of those frames. Look at faceGateLeft, boneAndPoseLeft and jumpHeldLeft.';
+    } else if (s.labelSwapSuspectLeft > s.rawLeft * 0.6 && s.labelSwapSuspectRight > s.rawRight * 0.6) {
+      hint = 'Holistic labels look swapped relative to the pose model (each hand sits nearer the opposite pose wrist).';
+    } else {
+      hint = 'Tracking looks healthy on both hands. If a sign still fails, the cause is classification, not detection.';
+    }
+  }
+  s.hint = hint;
+  return s;
+}
+if (typeof window !== 'undefined') {
+  window.LWTrack = { stats: () => { const s = getTrackingStats(); console.table(s.summary); console.log(s.hint, s); return s; }, reset: resetTrackingStats };
+}
+
+/**
+ * Forgets all per-session tracking memory (last-good hands, ghost counters, jump holds, bone baselines, cached frame).
+ * Call when the camera is stopped so a new session never inherits hands from the previous one.
+ */
+export function resetTracking() {
+  cachedResult = null;
+  lastVideoTime = -1;
+  lastDetectAt = 0;
+  lastGoodLeftPts = null; leftGhostCounter = 0;
+  lastGoodRightPts = null; rightGhostCounter = 0;
+  faceGhostCounter = 0; lastGoodForehead = null; lastGoodChin = null;
+  torsoGhostCounter = 0; lastGoodShoulderCenter = null; lastGoodHipCenter = null;
+  leftPendingJumpPts = null; leftPendingJumpCount = 0;
+  rightPendingJumpPts = null; rightPendingJumpCount = 0;
+  leftBoneLengthBaseline = null; rightBoneLengthBaseline = null;
+  anyHandPresent = false;
+}
 
 // CHANGED (multi-person fix, part A): reject a hand whose wrist sits
 // further than this many face-heights from the currently-tracked face.
@@ -295,6 +368,7 @@ export async function initMediaPipe() {
     minFaceSuppressionThreshold: 0.3,
     minPoseDetectionConfidence:  0.5,
     minPoseSuppressionThreshold: 0.3,
+    // Same as the capture system's holisticBaseConfig (all six thresholds are identical there).
     minHandLandmarksConfidence:  0.5,
   };
 
@@ -326,6 +400,15 @@ export async function initMediaPipe() {
     modelError = e.message;
     throw e; // hand tracking is required
   }
+}
+
+// NEW (anchor-independent hand tracking): a landmark only counts as "seen" if it is really inside the image.
+// Holistic still returns all 468 face points / 33 pose points when the face or body is partly cut off by the
+// frame edge (sitting close to the camera); the off-screen ones are guesses. The two hand filters that lean on
+// those anchors (face-proximity gate, pose-wrist cross-check) used to trust the guesses and could throw away a
+// perfectly good hand. They now only run when the anchor they depend on is actually visible.
+function inFrame(p, margin = 0.02) {
+  return !!p && p.x >= -margin && p.x <= 1 + margin && p.y >= -margin && p.y <= 1 + margin;
 }
 
 function firstOf(list) {
@@ -546,6 +629,28 @@ export function processFrame(videoElement) {
   const poseLeftWrist  = poseRaw ? poseRaw[POSE_LEFT_WRIST_IDX]  : null;
   const poseRightWrist = poseRaw ? poseRaw[POSE_RIGHT_WRIST_IDX] : null;
 
+  // NEW: is each anchor group actually visible this frame?
+  //  - face anchors: forehead AND chin inside the image (otherwise the face height the gate divides by is a guess)
+  //  - body anchors: both shoulders AND both hips inside the image (Holistic's pose model is much less stable when
+  //    the hips are off-screen, and its wrist estimate drifts, which made the pose cross-check reject real hands)
+  const faceTrusted = !!faceRaw && inFrame(faceRaw[FOREHEAD_IDX]) && inFrame(faceRaw[CHIN_IDX]);
+  const poseTrusted = !!poseRaw
+    && inFrame(poseRaw[POSE_LEFT_SHOULDER_IDX]) && inFrame(poseRaw[POSE_RIGHT_SHOULDER_IDX])
+    && inFrame(poseRaw[POSE_LEFT_HIP_IDX])      && inFrame(poseRaw[POSE_RIGHT_HIP_IDX]);
+  // A null wrist makes isWristNearPoseWrist() return true ("can't judge, let the hand through").
+  const crossWristL = (poseTrusted && inFrame(poseLeftWrist))  ? poseLeftWrist  : null;
+  const crossWristR = (poseTrusted && inFrame(poseRightWrist)) ? poseRightWrist : null;
+  if (!faceTrusted || !poseTrusted) trackStats.partialAnchorFrames++;
+
+  trackStats.frames++;
+  if (faceRaw) trackStats.faceFrames++;
+  if (poseRaw) trackStats.poseFrames++;
+  if (leftRaw)  trackStats.rawLeft++;
+  if (rightRaw) trackStats.rawRight++;
+  // Diagnostic only (never changes behaviour): is a labelled hand nearer the OPPOSITE pose wrist?
+  if (leftRaw && poseLeftWrist && poseRightWrist && dist2(leftRaw[0], poseRightWrist) + 0.05 < dist2(leftRaw[0], poseLeftWrist)) trackStats.labelSwapSuspectLeft++;
+  if (rightRaw && poseLeftWrist && poseRightWrist && dist2(rightRaw[0], poseLeftWrist) + 0.05 < dist2(rightRaw[0], poseRightWrist)) trackStats.labelSwapSuspectRight++;
+
   // ── Face — same ghost-fill pattern as capture.html ────────────
   let forehead, chin;
   if (faceRaw) {
@@ -600,9 +705,9 @@ export function processFrame(videoElement) {
   // wrong hand happens to still be within the face radius).
   let leftFiltered  = leftRaw;
   let rightFiltered = rightRaw;
-  if (faceRaw) {
-    if (leftFiltered  && !isHandNearFace(leftFiltered, forehead, chin))  leftFiltered  = null;
-    if (rightFiltered && !isHandNearFace(rightFiltered, forehead, chin)) rightFiltered = null;
+  if (faceTrusted) {
+    if (leftFiltered  && !isHandNearFace(leftFiltered, forehead, chin))  { leftFiltered  = null; trackStats.faceGateLeft++; }
+    if (rightFiltered && !isHandNearFace(rightFiltered, forehead, chin)) { rightFiltered = null; trackStats.faceGateRight++; }
   }
 
   // CHANGED (v2 — was too aggressive): used to reject a hand if EITHER
@@ -613,23 +718,25 @@ export function processFrame(videoElement) {
   // make a whole hand disappear. See the block comment near
   // BONE_LENGTH_TOLERANCE above for the full explanation.
   if (leftFiltered && !isBoneLengthPlausible(leftFiltered, leftBoneLengthBaseline)
-                   && !isWristNearPoseWrist(leftFiltered, poseLeftWrist)) {
-    leftFiltered = null;
+                   && !isWristNearPoseWrist(leftFiltered, crossWristL)) {
+    leftFiltered = null; trackStats.boneAndPoseLeft++;
   }
   if (rightFiltered && !isBoneLengthPlausible(rightFiltered, rightBoneLengthBaseline)
-                     && !isWristNearPoseWrist(rightFiltered, poseRightWrist)) {
-    rightFiltered = null;
+                     && !isWristNearPoseWrist(rightFiltered, crossWristR)) {
+    rightFiltered = null; trackStats.boneAndPoseRight++;
   }
 
   const leftJump = debounceJump(leftFiltered, lastGoodLeftPts, leftPendingJumpPts, leftPendingJumpCount);
   leftFiltered        = leftJump.value;
   leftPendingJumpPts   = leftJump.pendingPts;
   leftPendingJumpCount = leftJump.pendingCount;
+  if (leftJump.pendingCount > 0) trackStats.jumpHeldLeft++;
 
   const rightJump = debounceJump(rightFiltered, lastGoodRightPts, rightPendingJumpPts, rightPendingJumpCount);
   rightFiltered         = rightJump.value;
   rightPendingJumpPts   = rightJump.pendingPts;
   rightPendingJumpCount = rightJump.pendingCount;
+  if (rightJump.pendingCount > 0) trackStats.jumpHeldRight++;
 
   // ── Left hand, ghost-filled ────────────────────────────────────
   let leftPts = leftFiltered;
@@ -639,9 +746,12 @@ export function processFrame(videoElement) {
     // NEW: only calibrate off a genuinely fresh, already-trusted
     // detection — never off a ghost-filled (held-over) frame.
     leftBoneLengthBaseline = updateBoneLengthBaseline(leftBoneLengthBaseline, leftPts);
+    trackStats.freshLeft++;
   }
-  else if (lastGoodLeftPts && leftGhostCounter < GHOST_FRAMES) { leftPts = lastGoodLeftPts; leftGhostCounter++; }
-  else { leftPts = null; lastGoodLeftPts = null; }
+  else if (lastGoodLeftPts && leftGhostCounter < GHOST_FRAMES) { leftPts = lastGoodLeftPts; leftGhostCounter++; trackStats.ghostLeft++; }
+  // Hand really gone: also forget its bone-length baseline, so the next appearance (possibly at a different distance
+  // from the camera) calibrates fresh instead of being judged against a stale size.
+  else { leftPts = null; lastGoodLeftPts = null; leftBoneLengthBaseline = null; }
 
   // ── Right hand, ghost-filled ───────────────────────────────────
   let rightPts = rightFiltered;
@@ -649,9 +759,10 @@ export function processFrame(videoElement) {
     lastGoodRightPts = rightPts;
     rightGhostCounter = 0;
     rightBoneLengthBaseline = updateBoneLengthBaseline(rightBoneLengthBaseline, rightPts);
+    trackStats.freshRight++;
   }
-  else if (lastGoodRightPts && rightGhostCounter < GHOST_FRAMES) { rightPts = lastGoodRightPts; rightGhostCounter++; }
-  else { rightPts = null; lastGoodRightPts = null; }
+  else if (lastGoodRightPts && rightGhostCounter < GHOST_FRAMES) { rightPts = lastGoodRightPts; rightGhostCounter++; trackStats.ghostRight++; }
+  else { rightPts = null; lastGoodRightPts = null; rightBoneLengthBaseline = null; }
 
   anyHandPresent = !!(leftPts || rightPts);
 
@@ -671,7 +782,13 @@ export function processFrame(videoElement) {
     forehead,
     chin,
     anyHandPresent,
-    featureVec: buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter),
+    // Lazy: nothing in the live pipeline reads this (classifier.js rebuilds its own vector), so it is only built on demand
+    // instead of allocating a 138-value array on every detection.
+    _fv: undefined,
+    get featureVec() {
+      if (this._fv === undefined) this._fv = buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter);
+      return this._fv;
+    },
   };
   return cachedResult;
 }
