@@ -74,6 +74,8 @@ function friendlyAuthError(err) {
     'auth/invalid-email': 'That does not look like a valid email address.',
     // NEW — reachable now that Change Email calls updateUserEmail().
     'auth/email-already-in-use': 'Another account already uses that email.',
+    // auth.js updateOwnProfile(): the admin deleted this account while the tab was open.
+    'lw/account-removed': 'This account was removed by an administrator. Please create a new account.',
   };
   return (err && map[err.code]) || 'Something went wrong. Please try again.';
 }
@@ -215,6 +217,10 @@ function initNameForm(user) {
     } catch (e) {
       console.warn('[edit-profile.js] could not save name:', e);
       window.LinguaWave && window.LinguaWave.showToast(friendlyAuthError(e), 'error');
+      // Account was deleted by the admin: auth.js already signed them out, so leave this page.
+      if (e && e.code === 'lw/account-removed') {
+        setTimeout(function () { window.location.href = '../index.html'; }, 2500);
+      }
     } finally {
       setBusy(btn, false, 'Saving…', 'Save changes');
     }

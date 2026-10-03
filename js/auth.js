@@ -113,7 +113,8 @@ import {
   addDoc,
   deleteDoc,
   query,
-  orderBy
+  orderBy,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   getFunctions,
@@ -219,6 +220,12 @@ async function applyProgressResetIfNeeded(firebaseUser) {
 // localStorage as an accurate cache of who's currently signed in.
 let authReady = false;
 let hasFiredReady = false;
+let stopProfileListener = null;   // see startProfileWatch()
+let profileWatchUid = null;
+const ADMIN_LOGIN_EMAIL = 'linguawave.project@gmail.com';   // keep in sync with firestore.rules / admin-auth.js
+function isAdminLogin(firebaseUser) {
+  return !!firebaseUser && (firebaseUser.email || '').toLowerCase() === ADMIN_LOGIN_EMAIL;
+}
 onAuthStateChanged(auth, async (firebaseUser) => {
   // try/catch/finally-equivalent: authReady MUST be set and 'lwauth-ready'
   // MUST fire even if the Firestore read below fails (offline, blocked
@@ -233,6 +240,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       // must return null for this person so nothing treats them as logged
       // in. verify-email.html reads Firebase directly, not this cache.
       localStorage.removeItem(LW_SESSION_KEY);
+      stopProfileWatch();
     } else if (firebaseUser) {
       await applyProgressResetIfNeeded(firebaseUser);   // before the session-cache logic and before authReady
       const existing = getCurrentUser();
@@ -251,9 +259,11 @@ onAuthStateChanged(auth, async (firebaseUser) => {
         };
         localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
       }
+      startProfileWatch(firebaseUser.uid);   // sign out live if the admin deletes this account
     } else {
       localStorage.removeItem(LW_SESSION_KEY);
       sessionStorage.removeItem(RESET_CHECK_KEY);       // a fresh sign-in must re-check
+      stopProfileWatch();
     }
   } catch (syncError) {
     // Cache not written (nothing half-true is stored). The guards below
@@ -903,6 +913,11 @@ async function finishVerifiedLogin(firebaseUser) {
   // Fetch the real profile from Firestore instead of guessing
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
+  if (!snapshot.exists() && !isAdminLogin(firebaseUser)) {
+    // Admin deleted this learner but their login survived (delete service not deployed).
+    await signOutRemovedAccount(firebaseUser.uid);
+    throw lwError('lw/account-removed', ACCOUNT_REMOVED_MESSAGE);
+  }
   const profile = snapshot.exists() ? snapshot.data() : {};
   const restoredDeletion = !!profile.deletionRequested;
   // Cancel a pending deletion on successful login — see deleteAccount()'s
@@ -1214,6 +1229,87 @@ async function reauthenticate(currentPassword) {
   await reauthenticateWithCredential(firebaseUser, credential);
   return firebaseUser;
 }
+/* ── ADMIN-DELETED ACCOUNTS (2026-10-03) ──────────────────────────
+ * When the admin deletes a learner, users/{uid} is removed. If the
+ * `deleteLearnerAccount` Cloud Function is not deployed (Spark plan),
+ * admin-firebase.js only deletes the Firestore data, so the learner's Firebase
+ * LOGIN SURVIVES. A "profile missing" check therefore must NOT depend on the
+ * login being gone: a missing users/{uid} doc IS the signal that the account
+ * was removed.
+ *
+ * Two things act on that signal:
+ *   1. startProfileWatch(): a live listener on users/{uid}. When the doc
+ *      disappears (confirmed by the server, still gone 3 s later) the learner
+ *      is signed out and sent to the login page immediately, even if they are
+ *      just sitting on a page. The 3 s re-check covers a brand-new Google
+ *      sign-in, where the profile doc is created a moment AFTER auth fires.
+ *   2. updateOwnProfile(): name/picture saves. If the write fails because the
+ *      profile is gone, same sign-out instead of a generic "try again" error.
+ * login (finishVerifiedLogin) also refuses an email login whose profile is gone. */
+async function signOutRemovedAccount(uid) {
+  stopProfileWatch();
+  try { await signOut(auth); } catch (e) { /* already signed out */ }
+  clearLocalLearningState(uid);
+  try { localStorage.removeItem(window.LWProgress?.STORE_KEY); } catch (e) { /* storage blocked */ }
+  localStorage.removeItem(LW_SESSION_KEY);
+  sessionStorage.removeItem(RESET_CHECK_KEY);
+}
+const ACCOUNT_REMOVED_MESSAGE = 'This account was removed by an administrator. You have been signed out.';
+function sendRemovedAccountToLogin() {
+  const path = window.location.pathname || '';
+  if (/\/index\.html$/.test(path) || path === '/' || path === '') return;   // already on the login page
+  const toLogin = /\/pages\//.test(path) ? '../index.html' : 'index.html';
+  try { window.LinguaWave && window.LinguaWave.showToast && window.LinguaWave.showToast(ACCOUNT_REMOVED_MESSAGE, 'error'); } catch (e) { /* toast optional */ }
+  setTimeout(() => window.location.replace(toLogin), 2000);
+}
+function stopProfileWatch() {
+  if (stopProfileListener) { stopProfileListener(); stopProfileListener = null; }
+  profileWatchUid = null;
+}
+function startProfileWatch(uid) {
+  if (isAdminLogin(auth.currentUser)) return;                   // the admin account is not a learner profile
+  if (profileWatchUid === uid && stopProfileListener) return;   // already watching this learner
+  stopProfileWatch();
+  profileWatchUid = uid;
+  let docExists = null;       // last server-confirmed state; null = nothing confirmed yet
+  let recheckTimer = null;
+  stopProfileListener = onSnapshot(doc(db, 'users', uid), (snap) => {
+    if (snap.metadata.fromCache) return;      // offline / not confirmed by the server: never sign anyone out on that
+    docExists = snap.exists();
+    if (docExists) {
+      if (recheckTimer) { clearTimeout(recheckTimer); recheckTimer = null; }
+      return;
+    }
+    if (recheckTimer) return;
+    recheckTimer = setTimeout(async () => {
+      recheckTimer = null;
+      if (docExists !== false || profileWatchUid !== uid) return;   // profile came back, or a different user is signed in now
+      await signOutRemovedAccount(uid);
+      sendRemovedAccountToLogin();
+    }, 3000);
+  }, (err) => {
+    // A listener error (offline, rules...) must never sign anyone out.
+    console.warn('[auth] profile watch stopped:', err?.code || '', err?.message || err);
+  });
+}
+async function updateOwnProfile(fields) {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) throw new Error('Not signed in.');
+  const userRef = doc(db, 'users', firebaseUser.uid);
+  try {
+    await updateDoc(userRef, fields);
+    return;
+  } catch (err) {
+    // A missing doc surfaces as not-found, or as permission-denied (the update
+    // rule reads resource.data). Anything else (offline, quota...) is a real error.
+    if (!err || (err.code !== 'not-found' && err.code !== 'permission-denied')) throw err;
+    const snap = await getDoc(userRef);
+    if (snap.exists()) throw err;   // profile is there: a genuine rules/validation failure
+  }
+  // Profile is gone: the admin removed this account. The login may still exist, so don't test for it.
+  await signOutRemovedAccount(firebaseUser.uid);   // the calling page shows the message and redirects
+  throw lwError('lw/account-removed', ACCOUNT_REMOVED_MESSAGE);
+}
 /* Renames the learner. This app doesn't use Firebase Auth's own
  * displayName anywhere (login/register never set it — `name` has only
  * ever lived in Firestore), so this only touches the Firestore doc.
@@ -1232,7 +1328,7 @@ async function updateUsername(newName) {
   if (trimmed.length > MAX_NAME_LENGTH) {
     throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
   }
-  await updateDoc(doc(db, 'users', firebaseUser.uid), { name: trimmed });
+  await updateOwnProfile({ name: trimmed });
   await syncXpPublicProfile();
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
@@ -1268,7 +1364,7 @@ async function updateAvatar(avatarId) {
   if (typeof avatarId !== 'string' || !AVATAR_ID_RE.test(avatarId)) {
     throw new Error('Pick one of the available profile pictures.');
   }
-  await updateDoc(doc(db, 'users', firebaseUser.uid), { avatar: avatarId });
+  await updateOwnProfile({ avatar: avatarId });
   await syncXpPublicProfile();
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
