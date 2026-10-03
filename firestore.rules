@@ -67,6 +67,12 @@
 //      Not enforceable here: submittedAt is an ISO *string* written by
 //      the browser, so its value can't be checked against request.time.
 //      (Switch feedback.js to serverTimestamp() if that ever matters.)
+// CHANGED (admin account deletion): the admin may now delete xpState/{uid} and
+//      publicProfiles/{uid} (it already could delete users, userProgress,
+//      userProgressV2, userGame and surveys). And xpState, publicProfiles,
+//      userProgress, userProgressV2 and userGame can only be CREATED while
+//      users/{uid} exists, so a deleted learner's open tab can't re-create
+//      the data that was just removed (leaderboard row, XP, progress).
 // ─────────────────────────────────────────────────────────────────
 rules_version = '2';
 
@@ -80,6 +86,13 @@ service cloud.firestore {
 
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
+    }
+
+    // The learner's profile doc still exists. Admin deletion removes users/{uid} FIRST, so a
+    // still-open browser tab (its ID token stays valid for up to an hour) can no longer
+    // re-create xpState / publicProfiles / progress docs for an account that was deleted.
+    function profileExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
     }
 
     // Verified e-mail (password accounts must verify; Google accounts always are).
@@ -164,7 +177,9 @@ service cloud.firestore {
     // Reached via window.LWAuth.readProgressDoc/writeProgressDoc (js/auth.js).
     match /userProgress/{uid} {
       allow get: if isOwner(uid);
-      allow create, update: if isOwner(uid)
+      allow create: if isOwner(uid) && profileExists(uid)
+        && (!('uid' in request.resource.data) || request.resource.data.uid == uid);
+      allow update: if isOwner(uid)
         && (!('uid' in request.resource.data) || request.resource.data.uid == uid);
       allow delete: if isOwner(uid) || isAdmin();
     }
@@ -174,7 +189,9 @@ service cloud.firestore {
     // only the top-level keys below are accepted.
     match /userProgressV2/{uid} {
       allow get: if isOwner(uid);
-      allow create, update: if isOwner(uid)
+      allow create: if isOwner(uid) && profileExists(uid)
+        && request.resource.data.keys().hasOnly(['progress', 'streak', 'hearts']);
+      allow update: if isOwner(uid)
         && request.resource.data.keys().hasOnly(['progress', 'streak', 'hearts']);
       allow delete: if isOwner(uid) || isAdmin();
     }
@@ -183,15 +200,18 @@ service cloud.firestore {
     // Sign Wall game: gems, walls cleared, badges, best result per wall size.
     match /userGame/{uid} {
       allow get: if isOwner(uid);
-      allow create, update: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['gems', 'walls', 'badges', 'best'])
-        && request.resource.data.gems is number
-        && request.resource.data.gems >= 0 && request.resource.data.gems <= 10000000
-        && request.resource.data.walls is number
-        && request.resource.data.walls >= 0 && request.resource.data.walls <= 10000000
-        && request.resource.data.badges is list
-        && request.resource.data.badges.size() <= 50
-        && request.resource.data.best is map;
+      function validGame(d) {
+        return d.keys().hasOnly(['gems', 'walls', 'badges', 'best'])
+          && d.gems is number
+          && d.gems >= 0 && d.gems <= 10000000
+          && d.walls is number
+          && d.walls >= 0 && d.walls <= 10000000
+          && d.badges is list
+          && d.badges.size() <= 50
+          && d.best is map;
+      }
+      allow create: if isOwner(uid) && profileExists(uid) && validGame(request.resource.data);
+      allow update: if isOwner(uid) && validGame(request.resource.data);
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -279,7 +299,7 @@ service cloud.firestore {
 
       allow get: if isOwner(uid);
       allow list: if false;
-      allow create: if isOwner(uid) && verified() && !isAdmin()
+      allow create: if isOwner(uid) && verified() && !isAdmin() && profileExists(uid)
         && validXpState(request.resource.data)
         // A first write may include the one-time, half-rate legacy backfill.
         && request.resource.data.xp <= 1500
@@ -301,9 +321,10 @@ service cloud.firestore {
             || (resource.data.lastWriteAt is timestamp
                 && request.time >= resource.data.lastWriteAt + duration.value(2, 's')))
         && pairedPublicRow(request.resource.data);
-      // Deleting state would reset the daily cap and one-time backfill. Server
-      // cleanup uses the Admin SDK; no browser or signed-in account may delete it.
-      allow delete: if false;
+      // Deleting state would reset the daily cap and one-time backfill, so a learner can
+      // never delete their own. Only the admin (account deletion from User Management, or the
+      // deleteLearnerAccount Cloud Function via the Admin SDK) may remove it.
+      allow delete: if isAdmin();
     }
 
     // ── publicProfiles/{uid}  (leaderboards) ───────────────────
@@ -343,8 +364,9 @@ service cloud.firestore {
           && getAfter(statePath).data.lastWriteAt == request.time
           && getAfter(statePath).data.hidden == false
           && publicRowMatchesState(d, getAfter(statePath).data)
-          && (!existsAfter(userPath)
-              || getAfter(userPath).data.get('deletionRequested', false) != true);
+          // The profile doc must exist: a deleted account can't get its leaderboard row back.
+          && existsAfter(userPath)
+          && getAfter(userPath).data.get('deletionRequested', false) != true;
       }
 
       function pairedPublicDelete() {
@@ -361,9 +383,9 @@ service cloud.firestore {
       allow get: if verified();
       allow list: if verified() && request.query.limit <= 100;
       allow create, update: if isOwner(uid) && verified() && !isAdmin() && validPublic(request.resource.data);
-      // The admin may clear only their own stale row; learner rows are removed
-      // only in the same transaction that hides XP or observes deletionRequested.
-      allow delete: if (isOwner(uid) && isAdmin()) || pairedPublicDelete();
+      // The admin may remove any row (account deletion, stale admin row); a learner's own
+      // row is removed only in the same transaction that hides XP or observes deletionRequested.
+      allow delete: if isAdmin() || pairedPublicDelete();
     }
 
     // Legacy Cloud Function session and audit collections are unused on Spark.

@@ -9,27 +9,39 @@ import { drawSkeleton, clearCanvas } from './engine/renderer.js';
 import { getDetectionType, getSignData } from './engine/dictionary.js';
 import { classifyGesture, classifyMotion, resetMotionBuffer, loadModels, loadModelLabels,
   isClassifierReady, isMotionModelReady, getClassifiableSigns, isSignClassifiable,
-  getMotionBufferStatus, finalizeMotionWindow, getSignGroup } from './engine/classifier.js';
+  getMotionBufferStatus, finalizeMotionWindow, getSignGroup, getAllowedLabelsForSign } from './engine/classifier.js';
 
 const $ = (id) => document.getElementById(id);
 const videoEl = $('ta-video'), canvasEl = $('ta-canvas'), ctx = canvasEl.getContext('2d');
-let ready = false, running = false, rafId = null, tickId = null, phase = 'static', timers = new Set();
-let bootPromise = null, bootGeneration = 0;
+let ready = false, running = false, finishing = false, rafId = null, tickId = null, phase = 'static', timers = new Set();
+let bootPromise = null, bootGeneration = 0, trackingPromise = null, modelsPromise = null, labelsPromise = null;
 let targets = [], targetIndex = 0, misses = 0, heldSince = 0, wrongSince = 0, wrongLabel = '', lastMissAt = 0;
 let startedAt = 0, brokenLog = [], xpSessionP = Promise.resolve(null), motionWaitAt = 0, handLostAt = null;
 const currentTarget = () => targets[targetIndex] || null;
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
 const setStatus = (message) => { $('ta-status').textContent = message; };
+function setLoadingMessage(message) {
+  $('camera-status').textContent = message;
+  const detail = $('ta-loading').querySelector('p');
+  if (detail) detail.textContent = message;
+}
 function setMode(mode) { $('ta-cam').dataset.mode = mode; $('ta-right').dataset.mode = mode; }
 function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); }
 function clearTimers() { timers.forEach(clearTimeout); timers.clear(); }
 
+function withTimeout(promise, ms, label) {
+  let timeoutId;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => { timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)} seconds.`)), ms); })
+  ]).finally(() => clearTimeout(timeoutId));
+}
+
 async function getLearnedSignIds() {
-  try { return new Set(await window.LWXP?.getLearnedSigns?.() || []); }
-  catch (e) {
-    console.warn('[time-attack] could not read learned signs:', e);
-    return new Set();
+  if (typeof window.LWXP?.getLearnedSigns !== 'function') {
+    throw new Error('The learned-sign service is unavailable. Reload Time Attack and try again.');
   }
+  return new Set(await withTimeout(window.LWXP.getLearnedSigns(), 12000, 'Loading learned signs'));
 }
 
 function signContentFor(signId) {
@@ -140,10 +152,26 @@ async function boot() {
       }
       // Start the camera first so browser permission/device errors are reported directly,
       // then load the same tracking and classifier stack used by Wall Breaker.
-      await startCamera(videoEl, canvasEl);
+      await withTimeout(startCamera(videoEl, canvasEl), 12000, 'Starting camera');
       if (generation !== bootGeneration) { stopCamera(videoEl); return false; }
-      status.textContent = 'Loading hand tracking and sign models…';
-      await Promise.all([initMediaPipe(), loadModels(), loadModelLabels()]);
+      const stream = videoEl.srcObject;
+      if (videoEl.readyState < 2 || !stream?.getVideoTracks?.().some((track) => track.readyState === 'live')) {
+        throw new Error('The camera did not produce a live video stream. Check camera permission and try again.');
+      }
+      setLoadingMessage('Loading MediaPipe hand tracking and sign models…');
+      if (!trackingPromise) trackingPromise = initMediaPipe().catch((error) => { trackingPromise = null; throw error; });
+      if (!modelsPromise) modelsPromise = loadModels().catch((error) => { modelsPromise = null; throw error; });
+      if (!labelsPromise) labelsPromise = loadModelLabels().catch((error) => { labelsPromise = null; throw error; });
+      const remaining = new Set(['MediaPipe hand tracking', 'ASL recognition models', 'model labels']);
+      const markReady = (stage) => {
+        remaining.delete(stage);
+        if (remaining.size) setLoadingMessage(`Loaded ${stage}. Still loading ${[...remaining].join(' and ')}…`);
+      };
+      await Promise.all([
+        withTimeout(trackingPromise, 45000, 'Loading MediaPipe hand tracking').then(() => markReady('MediaPipe hand tracking')),
+        withTimeout(modelsPromise, 45000, 'Loading ASL recognition models').then(() => markReady('ASL recognition models')),
+        withTimeout(labelsPromise, 20000, 'Loading sign model labels').then(() => markReady('model labels'))
+      ]);
       if (generation !== bootGeneration) { stopCamera(videoEl); return false; }
       if (!isModelReady()) throw new Error('Hand tracking could not start. Refresh the page and try again.');
       ready = true;
@@ -162,7 +190,10 @@ async function boot() {
         NotSupportedError: 'This browser does not support camera access. Try an up-to-date browser.',
         SecurityError: 'Camera access requires HTTPS or localhost. Open LinguaWave from a secure local server.'
       };
-      status.textContent = messages[error?.name] || error?.message || 'Camera or sign models could not start. Check your connection and try again.';
+      const details = messages[error?.name] || error?.message || 'Check your connection and try again.';
+      status.textContent = error?.name === 'CameraTimeoutError'
+        ? details
+        : `Startup failed: ${details}`;
       $('ta-error-message').textContent = status.textContent;
       $('ta-error').hidden = false;
       return false;
@@ -193,7 +224,7 @@ function detectStatic(left, right, face, pose, anyHandPresent, now) {
   const target = currentTarget();
   if (!target || target.type !== 'static') return;
   if (!anyHandPresent) { heldSince = 0; wrongSince = 0; wrongLabel = ''; return; }
-  const result = classifyGesture(left, right, face, null, pose, target.signId);
+  const result = classifyGesture(left, right, face, getAllowedLabelsForSign(target.signId), pose, target.signId);
   if (result?.matched && result.label === target.signId) {
     if (!heldSince) heldSince = now;
     if (now - heldSince >= 500) acceptTarget();
@@ -210,6 +241,7 @@ function recordMotion() {
   const target = currentTarget();
   if (!running || phase !== 'static' || !target || target.type !== 'motion') return;
   phase = 'countdown'; handLostAt = null; resetMotionBuffer(); setMode('motion');
+  $('ta-motion').disabled = true;
   countdown(0);
 }
 
@@ -248,7 +280,7 @@ function handleMotion(left, right, face, pose, anyHandPresent, now) {
 }
 
 function finishMotionAttempt(result) {
-  phase = 'static'; setMode('motion');
+  phase = 'static'; setMode('motion'); $('ta-motion').disabled = false;
   const target = currentTarget();
   if (result.matched && target?.type === 'motion' && result.label === target.signId) acceptTarget();
   else { recordMiss(result.label || 'Unrecognized sign'); setStatus('That was not the target. Press Record motion sign to try again.'); }
@@ -269,21 +301,23 @@ function loop() {
   } catch (error) {
     console.error('[time-attack] frame processing failed:', error);
     shutdown();
-    $('ta-error-message').textContent = 'Hand tracking stopped unexpectedly. Check camera access and reload Time Attack.';
+    $('ta-error-message').textContent = 'Hand tracking stopped unexpectedly. Check camera access and try again.';
     $('ta-error').hidden = false;
+    $('ta-start').hidden = false; $('ta-start').disabled = false;
     $('camera-status').hidden = false;
     $('camera-status').textContent = $('ta-error-message').textContent;
   }
 }
 
 async function start() {
-  if (running || $('ta-start').disabled) return;
+  if (running || finishing || $('ta-start').disabled) return;
   $('ta-start').disabled = true; $('ta-loading').hidden = false; setStatus('Preparing your learned signs…');
   if (!await boot()) { $('ta-loading').hidden = true; $('ta-start').disabled = false; return; }
   $('ta-loading').hidden = true;
   try {
-  await Promise.allSettled([window.LWMissions?.whenMissionsSyncReady?.(), window.LWProgress?.whenProgressReady?.()]);
+  const startGeneration = bootGeneration;
   const learned = await getLearnedSignIds();
+  if (startGeneration !== bootGeneration || document.hidden) return;
   const playableIds = getClassifiableSigns().filter((signId) => learned.has(signId) && isSignClassifiable(signId) &&
     (getDetectionType(signId) === 'motion' ? isMotionModelReady() : isClassifierReady()));
   // Keep only one member of each classifier twin group; both labels describe the same recognized gesture.
@@ -300,14 +334,15 @@ async function start() {
   targetIndex = 0; misses = 0; brokenLog = []; $('ta-misses').textContent = '0'; $('ta-time').textContent = '0.0s';
   $('ta-result').hidden = true; $('ta-start').hidden = true; $('ta-quit').disabled = false;
   running = true; startedAt = Date.now(); lastMissAt = 0;
-  xpSessionP = window.LWXP?.startGame(targets.map((target) => target.signId), 'timeAttack') || Promise.resolve(null);
+  xpSessionP = Promise.resolve(window.LWXP?.startGame(targets.map((target) => target.signId), 'timeAttack') || null)
+    .catch((error) => { console.warn('[time-attack] XP session could not start:', error); return null; });
   clearInterval(tickId); tickId = setInterval(() => { $('ta-time').textContent = formatTime(Date.now() - startedAt); }, 100);
   setStatus('Follow the demo and sign the displayed target.'); setTarget();
   if (!rafId) loop();
   } catch (error) {
     console.error('[time-attack] could not prepare run:', error);
     $('ta-start').disabled = false;
-    $('ta-error-message').textContent = 'Time Attack could not prepare your learned signs. Reload the page and try again.';
+    $('ta-error-message').textContent = error?.message || 'Time Attack could not prepare your learned signs. Try again.';
     $('ta-error').hidden = false;
   } finally {
     $('ta-loading').hidden = true;
@@ -315,28 +350,40 @@ async function start() {
 }
 
 async function finish() {
-  running = false; clearInterval(tickId); tickId = null; clearTimers();
+  if (finishing || !running) return;
+  finishing = true; running = false; phase = 'completed'; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
   const elapsed = Date.now() - startedAt;
   $('ta-time').textContent = formatTime(elapsed); document.querySelector('.ta-progress')?.style.setProperty('--p', 1);
-  $('ta-start').hidden = false; $('ta-start').disabled = false; $('ta-quit').disabled = true; setStatus('Sequence complete.');
+  $('ta-start').hidden = false; $('ta-start').disabled = true; $('ta-quit').disabled = true; setStatus('Sequence complete.');
   $('ta-summary').textContent = `Completion time: ${formatTime(elapsed)} · Correct: ${targets.length} · Misses: ${misses} · Accuracy: ${Math.round(targets.length / (targets.length + misses) * 100)}%`;
   $('ta-result').hidden = false; $('ta-xp').textContent = 'Counting XP…'; $('ta-badges').replaceChildren();
-  const session = await xpSessionP;
-  const result = session && window.LWXP ? await window.LWXP.finishGame(session.sessionId, brokenLog, misses) : null;
-  if (!result?.ok) { $('ta-xp').textContent = 'XP could not be counted for this run.'; return; }
-  $('ta-xp').textContent = result.counted ? `+${result.xpGained} XP${result.levelUps?.length ? ` · Level ${result.level}` : ''}` : `No XP: ${result.reason || 'daily game limit reached'}`;
-  for (const id of result.newBadges || []) {
-    const info = window.LWXP.badgeInfo?.(id), badge = document.createElement('span');
-    badge.textContent = info?.name || id; $('ta-badges').append(badge);
-  }
+  try {
+    const session = await withTimeout(xpSessionP, 12000, 'Starting the XP session');
+    const result = session?.sessionId && window.LWXP ? await withTimeout(window.LWXP.finishGame(session.sessionId, brokenLog, misses), 15000, 'Saving the result') : null;
+    if (!result?.ok) $('ta-xp').textContent = `XP not counted: ${session?.sessionId ? (window.LWXP?.reasonText?.(result?.reason) || 'unknown reason') : 'no XP session (sign in with a verified account and complete the lessons first)'}`;
+    else {
+      $('ta-xp').textContent = result.counted ? `+${result.xpGained} XP${result.levelUps?.length ? ` · Level ${result.level}` : ''}` : `No XP: ${window.LWXP?.reasonText?.(result.reason) || result.reason || 'daily game limit reached'}`;
+      for (const id of result.newBadges || []) {
+        const info = window.LWXP.badgeInfo?.(id), badge = document.createElement('span');
+        badge.textContent = info?.name || id; $('ta-badges').append(badge);
+      }
+    }
+  } catch (error) {
+    console.warn('[time-attack] result submission failed:', error);
+    $('ta-xp').textContent = 'The run completed, but its XP result could not be saved.';
+  } finally { finishing = false; $('ta-start').disabled = false; }
 }
 
 function shutdown() {
+  const wasRunning = running;
   bootGeneration++;
   running = false; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
   stopCamera(videoEl); ready = false; resetMotionBuffer();
+  if (wasRunning) phase = 'cancelled';
+  $('ta-motion').disabled = true;
+  $('ta-start').hidden = false; $('ta-start').disabled = false;
   $('ta-quit').disabled = true;
 }
 
@@ -346,7 +393,7 @@ $('ta-motion').addEventListener('click', recordMotion);
 $('ta-quit').addEventListener('click', () => { $('ta-quit-modal').hidden = false; $('ta-quit-cancel').focus(); });
 $('ta-quit-cancel').addEventListener('click', () => { $('ta-quit-modal').hidden = true; $('ta-quit').focus(); });
 $('ta-quit-confirm').addEventListener('click', () => {
-  $('ta-quit-modal').hidden = true; shutdown(); setMode('idle');
+  $('ta-quit-modal').hidden = true; shutdown(); finishing = false; xpSessionP = Promise.resolve(null); brokenLog = []; targets = []; targetIndex = 0; setMode('idle');
   $('ta-start').hidden = false; $('ta-start').disabled = false; setStatus('Run abandoned.');
 });
 $('ta-error-close').addEventListener('click', () => { $('ta-error').hidden = true; });
@@ -358,8 +405,14 @@ document.addEventListener('keydown', (event) => {
 window.addEventListener('pagehide', shutdown);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    const wasRunning = running;
+    const wasActive = running || $('ta-start').disabled || !!videoEl.srcObject;
     shutdown();
-    if (wasRunning) { setMode('idle'); $('ta-start').hidden = false; $('ta-start').disabled = false; setStatus('Camera paused. Press Start to resume.'); }
+    $('ta-loading').hidden = true;
+    if (wasActive) {
+      finishing = false;
+      $('camera-status').hidden = false;
+      $('camera-status').textContent = 'Camera paused. Press Start to resume.';
+      setMode('idle'); setStatus('Camera paused. Press Start to resume.');
+    }
   }
 });

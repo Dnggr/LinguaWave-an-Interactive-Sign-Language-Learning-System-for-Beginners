@@ -291,7 +291,7 @@ async function flush() {
       try {
         const result = await applyJob(job, uid);
         if (currentUid() !== uid) return;
-        if (result?.reason === 'too_fast') {
+        if (result?.reason === 'too_fast' && Number(result.retryAfterMs) > 0) {   // pacing gap only; a game-timing 'too_fast' has no retryAfterMs and must be dropped, not retried forever
           clearTimeout(retryTimer);
           retryTimer = setTimeout(() => { retryTimer = null; void flush(); }, Math.max(1000, result.retryAfterMs || E.CONFIG.MIN_CLAIM_GAP_MS));
           return;
@@ -312,6 +312,29 @@ async function flush() {
   })().finally(() => { flushing = null; });
   return flushing;
 }
+const REASON_TEXT = {
+  unauthenticated: 'sign in with a verified account',
+  admin_account: 'the admin account cannot earn XP',
+  account_missing: 'this account no longer exists',
+  account_deletion_pending: 'account deletion is pending',
+  no_session: 'the game session was lost (reload and try again)',
+  bad_input: 'the result was malformed',
+  expired: 'the run took longer than 30 minutes',
+  incomplete_wall: 'not every target was recorded',
+  bad_bricks: 'the recorded targets did not match the run',
+  bad_timing: 'the recorded timing was invalid',
+  too_fast: 'the run was faster than the anti-cheat minimum',
+  clock_mismatch: 'the run clock did not match the session clock',
+  sign_type_mismatch: 'a sign type did not match the dictionary',
+  not_enough_learned: 'every target must be a sign you have already learned',
+  daily_cap: 'daily game XP limit reached',
+  diminished: 'no more XP from walls today',
+  no_xp: 'no XP was earned',
+  'permission-denied': 'Firestore rules rejected the write (verify your email, or the rules are out of date)',
+  'failed-precondition': 'Firestore needs an index or a fresh page load',
+  unavailable: 'offline - it will retry',
+};
+const reasonText = (reason) => REASON_TEXT[reason] || String(reason || 'unknown reason');
 function claimItem(mission, index) {
   if (!mission?.id || !Number.isInteger(index)) return;
   void enqueue({ type: 'item', missionId: mission.id, itemIndex: index });
@@ -321,6 +344,10 @@ function claimMission(mission) {
   void enqueue({ type: 'mission', missionId: mission.id });
 }
 async function startGame(signs, mode = 'wall') {
+  // Stamp the session clock now, before any await. The page records brick times from its own start; if this stamp
+  // were taken after the auth/Firestore waits below, the engine's elapsed time would be short by that delay and
+  // validateGameTiming() would reject honest runs (clock_mismatch / too_fast).
+  const startedAt = Date.now();
   await window.LWAuth?.whenAuthReady?.();
   const user = auth.currentUser;
   if (!user || !user.emailVerified || isAdmin()) return null;
@@ -335,7 +362,7 @@ async function startGame(signs, mode = 'wall') {
     const learned = combinedLearnedSigns(state);
     const learnedBricks = signs.filter((signId) => learned.includes(signId)).length;
     const id = randomId();
-    const session = { id, startedAt: Date.now(), signs: signs.slice(), mode };
+    const session = { id, startedAt, signs: signs.slice(), mode };
     gameSessions.set(id, session);
     const minLearned = mode === 'timeAttack' ? signs.length : E.CONFIG.GAME.MIN_LEARNED_BRICKS;
     return { ok: true, sessionId: id, learnedBricks,
@@ -351,7 +378,7 @@ async function finishGame(sessionId, broken, wrong = 0) {
   if (!session) return { ok: false, reason: 'no_session' };
   if (!Array.isArray(broken) || !Number.isInteger(wrong) || wrong < 0 || wrong > 500) return { ok: false, reason: 'bad_input' };
   const result = await enqueue({ type: 'game', session: { ...session }, broken: broken.map((brick) => ({ ...brick })), wrong });
-  if (result?.reason !== 'too_fast') gameSessions.delete(sessionId);
+  gameSessions.delete(sessionId);
   return result;
 }
 async function getMyState() {
@@ -480,7 +507,7 @@ window.addEventListener('storage', (event) => { if (event.key === queueKey()) vo
 window.LWXP = {
   claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
   getMyState, getLearnedSigns, loadBoard, BOARDS, setVisibility, syncPublicProfile, onUpdate, notify,
-  liveStreakOf, syncStreak,
+  liveStreakOf, syncStreak, reasonText,
   levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId,
   config: CFG, timezone: TZ, getLatest: () => latest,
   debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }), // run LWXP.debug() in the console

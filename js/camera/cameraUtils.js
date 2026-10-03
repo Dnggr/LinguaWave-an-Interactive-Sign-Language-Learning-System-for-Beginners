@@ -72,7 +72,32 @@ export async function startCamera(videoElement, canvasElement) {
   };
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    // BUGFIX (Time Attack lifecycle audit) — permission prompts can remain
+    // unresolved indefinitely. Bound that wait, and stop a late-arriving
+    // stream so a retry cannot leave an unowned camera running in the background.
+    const stream = await new Promise((resolve, reject) => {
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        settled = true;
+        const error = new Error('Camera permission or startup took too long. Check the browser permission prompt and try again.');
+        error.name = 'CameraTimeoutError';
+        reject(error);
+      }, 12000);
+      navigator.mediaDevices.getUserMedia(constraints).then((lateStream) => {
+        if (settled) {
+          lateStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(lateStream);
+      }, (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+    });
 
     // NEW — always zoom out to the widest field of view.
     // Some webcams (and some OS-level camera drivers, notably on
