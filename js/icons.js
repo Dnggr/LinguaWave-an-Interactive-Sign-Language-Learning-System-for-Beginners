@@ -470,6 +470,48 @@
   BODIES.arrow_right = '<path d="M5 12h14"/> <path d="m12 5 7 7-7 7"/>';
   LABELS.arrow_right = 'Next';
 
+  /* Lucide icons (https://lucide.dev, ISC licence) for the Construct a Sentence game. Path bodies copied unchanged
+   * from lucide-static 1.51.0. Ids carry an 'lc_' prefix on purpose: plain Lucide names such as 'info' already
+   * exist in BODIES for other screens, and a loop over bare names would silently overwrite them. */
+  var LUCIDE_GAME = {
+    lc_play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+    lc_timer: '<line x1="10" x2="14" y1="2" y2="2"/> <line x1="12" x2="15" y1="14" y2="11"/> <circle cx="12" cy="14" r="8"/>',
+    lc_eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/> <circle cx="12" cy="12" r="3"/>',
+    lc_eye_off: '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/> <path d="m2 2 20 20"/>',
+    lc_rotate_ccw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/> <path d="M3 3v5h5"/>',
+    lc_circle_x: '<circle cx="12" cy="12" r="10"/> <path d="m15 9-6 6"/> <path d="m9 9 6 6"/>',
+    lc_arrow_left: '<path d="m12 19-7-7 7-7"/> <path d="M19 12H5"/>',
+    lc_list_ordered: '<path d="M11 5h10"/> <path d="M11 12h10"/> <path d="M11 19h10"/> <path d="M4 4h1v5"/> <path d="M4 9h2"/> <path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/>',
+    lc_circle_check: '<circle cx="12" cy="12" r="10"/> <path d="m16 9-5.5 5.5L8 12"/>',
+    lc_shuffle: '<path d="m18 14 4 4-4 4"/> <path d="m18 2 4 4-4 4"/> <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/> <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/> <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>',
+    lc_info: '<circle cx="12" cy="12" r="10"/> <path d="M12 16v-4"/> <path d="M12 8h.01"/>',
+    lc_skip_forward: '<path d="M21 4v16"/> <path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/>',
+    lc_sprout: '<path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/> <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/> <path d="M5 21h14"/>',
+    lc_hourglass: '<path d="M5 22h14"/> <path d="M5 2h14"/> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>'
+  };
+  for (var lg in LUCIDE_GAME) {
+    if (Object.prototype.hasOwnProperty.call(LUCIDE_GAME, lg)) BODIES[lg] = LUCIDE_GAME[lg];
+  }
+  var LUCIDE_GAME_LABELS = {
+    lc_play: 'Start',
+    lc_timer: 'Timer',
+    lc_eye: 'Visible',
+    lc_eye_off: 'Hidden',
+    lc_rotate_ccw: 'Reset',
+    lc_circle_x: 'Quit',
+    lc_arrow_left: 'Back',
+    lc_list_ordered: 'Order',
+    lc_circle_check: 'Check',
+    lc_shuffle: 'Shuffled',
+    lc_info: 'Info',
+    lc_skip_forward: 'Skip',
+    lc_sprout: '<path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/> <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/> <path d="M5 21h14"/>',
+    lc_hourglass: 'Preview'
+  };
+  for (var lgl in LUCIDE_GAME_LABELS) {
+    if (Object.prototype.hasOwnProperty.call(LUCIDE_GAME_LABELS, lgl)) LABELS[lgl] = LUCIDE_GAME_LABELS[lgl];
+  }
+
   /* Semantic aliases -> pack ids. These exist so call sites can name the
    * MEANING they want ('done', 'lock') without caring what the artwork
    * file happens to be called. Resolving three concepts that used to

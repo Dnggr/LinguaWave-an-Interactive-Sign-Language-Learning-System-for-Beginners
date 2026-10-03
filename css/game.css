@@ -38,27 +38,32 @@
   display:flex;flex-direction:column;gap:var(--space-3);
 }
 
-/* Game mode picker: the same rounded surfaces, theme tokens and blue/orange mode cues as Wall Breaker. */
-.game-picker{--gm-static:var(--clr-accent);--gm-static-soft:var(--clr-blue-soft);--gm-motion:var(--clr-orange);--gm-motion-soft:var(--clr-orange-soft);width:100%;max-width:1320px;margin:auto;padding:clamp(var(--space-5),5vw,var(--space-16)) clamp(var(--space-4),5vw,var(--space-8))}
-.game-picker__intro{margin-bottom:clamp(var(--space-6),5vw,var(--space-12))}
+/* Game mode picker (pages/game.html): three equal cards that wrap 3 -> 2 -> 1 columns, so the whole picker fits one
+   screen on a laptop. Each card: icon tile, then eyebrow / title / description / a small "what you need" line, with the
+   Play pill pinned to the bottom so every card lines up. Mode colors match the games: blue = Wall Breaker,
+   orange = Time Attack, violet = Construct a Sentence. Tokens only, so it follows the theme toggle. */
+.game-picker{--gm-static:var(--clr-accent);--gm-static-soft:var(--clr-blue-soft);--gm-motion:var(--clr-orange);--gm-motion-soft:var(--clr-orange-soft);--gm-build:var(--clr-violet);--gm-build-soft:var(--clr-violet-soft);width:100%;max-width:1320px;margin:0 auto;padding:clamp(var(--space-5),4vw,var(--space-12)) clamp(var(--space-4),4vw,var(--space-8))}
+.game-picker__intro{margin-bottom:clamp(var(--space-5),3vw,var(--space-8))}
 .game-picker__intro>div{max-width:680px}
 .gm-kicker,.game-mode__eyebrow{margin:0 0 var(--space-2);font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em;color:var(--clr-text-muted)}
 .game-picker__intro h1{margin:0 0 var(--space-2)}
 .game-picker__intro p:last-child{margin:0;color:var(--clr-text-muted)}
-.game-picker__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(var(--space-4),3vw,var(--space-8))}
-.game-mode{--mode-color:var(--gm-static);--mode-soft:var(--gm-static-soft);position:relative;isolation:isolate;min-height:clamp(280px,34vw,420px);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:var(--space-3);overflow:hidden;padding:clamp(var(--space-5),4vw,var(--space-8));border:1px solid var(--clr-border);border-bottom:5px solid var(--mode-color);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card);color:var(--clr-text);text-decoration:none;transition:transform var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
-.game-mode::before{content:"";position:absolute;z-index:-1;top:-90px;right:-65px;width:260px;height:260px;border-radius:50%;background:var(--mode-soft);opacity:.65;transition:transform var(--dur-base) var(--ease)}
+.game-picker__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(var(--space-4),2vw,var(--space-6))}
+.game-mode{--mode-color:var(--gm-static);--mode-soft:var(--gm-static-soft);position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-5);min-height:clamp(260px,22vw,320px);overflow:hidden;padding:clamp(var(--space-5),2.5vw,var(--space-8));border:1px solid var(--clr-border);border-bottom:5px solid var(--mode-color);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card);color:var(--clr-text);text-decoration:none;transition:transform var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+.game-mode::before{content:"";position:absolute;z-index:-1;top:-80px;right:-60px;width:220px;height:220px;border-radius:50%;background:var(--mode-soft);opacity:.65;transition:transform var(--dur-base) var(--ease)}
 .game-mode--time{--mode-color:var(--gm-motion);--mode-soft:var(--gm-motion-soft)}
+.game-mode--sentence{--mode-color:var(--gm-build);--mode-soft:var(--gm-build-soft)}
 .game-mode:hover,.game-mode:focus-visible{transform:translateY(-4px);border-color:var(--mode-color);box-shadow:var(--shadow-card),0 0 0 3px var(--mode-soft);outline:none}
 .game-mode:hover::before,.game-mode:focus-visible::before{transform:scale(1.18)}
-.game-mode__icon{position:absolute;top:var(--space-6);right:var(--space-6);width:clamp(64px,9vw,100px);height:clamp(64px,9vw,100px);display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--mode-color) 28%,var(--clr-border));border-radius:var(--radius-xl);background:var(--clr-surface);color:var(--mode-color);box-shadow:var(--shadow-card)}
-.game-mode__icon .lw-icon{width:clamp(30px,4vw,44px);height:clamp(30px,4vw,44px)}
+.game-mode__icon{display:grid;flex:0 0 auto;place-items:center;width:64px;height:64px;border:1px solid color-mix(in srgb,var(--mode-color) 28%,var(--clr-border));border-radius:var(--radius-lg);background:var(--clr-surface);color:var(--mode-color);box-shadow:var(--shadow-card)}
+.game-mode__icon .lw-icon,.game-mode__icon svg{width:32px;height:32px}
+.game-mode__body{display:flex;flex-direction:column;gap:var(--space-2)}
 .game-mode__eyebrow{margin:0;color:var(--mode-color)}
-.game-mode h2{margin:0;font-family:var(--font-display);font-size:clamp(var(--fs-2xl),3vw,var(--fs-3xl));letter-spacing:-.02em}
+.game-mode h2{margin:0;font-family:var(--font-display);font-size:clamp(var(--fs-xl),2vw,var(--fs-2xl));letter-spacing:-.02em}
 .game-mode p{max-width:34rem;margin:0;color:var(--clr-text-muted);line-height:1.55}
-.game-mode__action{display:inline-flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);background:var(--mode-color);color:var(--clr-text-invert);font-weight:700;transition:gap var(--dur-fast) var(--ease)}
+.game-mode .game-mode__meta{margin-top:var(--space-1);font-size:var(--fs-sm);font-weight:600;color:var(--clr-text)}
+.game-mode__action{display:inline-flex;align-items:center;gap:var(--space-2);margin-top:auto;padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);background:var(--mode-color);color:var(--clr-text-invert);font-weight:700;transition:gap var(--dur-fast) var(--ease)}
 .game-mode:hover .game-mode__action,.game-mode:focus-visible .game-mode__action{gap:var(--space-3)}
-@media(max-width:760px){.game-picker__grid{grid-template-columns:1fr}.game-mode{min-height:260px}}
 @media(prefers-reduced-motion:reduce){.game-mode,.game-mode::before,.game-mode__action{transition:none}}
 
 /* Time Attack displays the curriculum demo as the primary panel and keeps the live camera beside it. */

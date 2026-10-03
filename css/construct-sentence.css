@@ -1,48 +1,126 @@
-/* Construct a Sentence. Reuses .gm-head / .gm-chip / .gm-overlay / .gm-card / .ta-progress / .ta-status from game.css.
+/* Construct a Sentence. Reuses .gm-title / .gm-stats / .gm-chip / .gm-overlay / .gm-card / .ta-progress from game.css.
    .cs-tile rules are NOT scoped under .cs: a tile is re-parented to <body> while it is being dragged. */
-:root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.9)}
+:root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.5625)}   /* fallback only; the real size is set on .cs-slots/.cs-pool below */
 
-.cs{--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
-.cs-progress{--p:0}
-.cs-board{display:flex;flex-direction:column;gap:var(--space-4);padding:clamp(var(--space-4),3vw,var(--space-6));border:1px solid var(--clr-border);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
-.cs-prompt{display:flex;flex-direction:column;gap:var(--space-1)}
-.cs-eyebrow,.cs-label{margin:0 0 var(--space-2);color:var(--clr-text-muted);font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em}
+.cs{--cs-cols:3;--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:0;margin:0 auto;padding:var(--space-4) var(--space-6) var(--space-8);display:flex;flex-direction:column;gap:var(--space-3)}
+#main:has(>.cs){justify-content:flex-start}   /* app.css centres #main vertically; top-align so the title never jumps between Ready / Playing */
+
+/* ---------- header: [Back] [title + hint] [stat chips] ---------- */
+.cs-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4)}
+.cs-head__text{min-width:0}
+.cs-head .gm-title{margin:0}
+.cs-head__text p{margin:var(--space-1) 0 0;color:var(--clr-text-muted);font-size:var(--fs-sm)}
+.cs-head .gm-stats{grid-column:3;grid-row:1;justify-content:flex-end;flex-wrap:nowrap}
+.cs-head .gm-chip{align-items:center;gap:var(--space-2);white-space:nowrap}
+.cs-head .gm-chip .lw-icon{width:16px;height:16px;color:var(--clr-text-muted)}
+.cs-back .lw-icon{margin-right:0}
+.cs[data-difficulty="easy"]   .cs-chip--level .lw-icon{color:var(--clr-success)}
+.cs[data-difficulty="medium"] .cs-chip--level .lw-icon{color:var(--clr-yellow)}
+.cs[data-difficulty="hard"]   .cs-chip--level .lw-icon{color:var(--clr-red)}
+@media(max-width:1280px){
+  .cs-head{grid-template-columns:auto minmax(0,1fr)}
+  .cs-head .gm-stats{grid-column:1/-1;grid-row:2;justify-content:flex-start;flex-wrap:wrap}
+}
+@media(max-width:640px){
+  .cs-head__text p{display:none}
+  .cs-head .gm-chip{padding-inline:var(--space-3)}
+}
+
+.cs-progress{--p:0;flex:0 0 8px;margin:0}   /* flush with the board edges instead of floating inset */
+
+/* ---------- board ---------- */
+.cs-board{--cs-lane-pad:var(--space-4);container-type:inline-size;display:flex;flex-direction:column;gap:var(--space-5);padding:clamp(var(--space-4),2.5vw,var(--space-6));border:1px solid var(--clr-border);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
+
+.cs-prompt{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--space-3) var(--space-4);min-height:5.25rem}
+.cs-prompt__text{display:flex;flex-direction:column;gap:var(--space-1);min-width:0}
+.cs-eyebrow,.cs-label{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-2);color:var(--clr-text-muted);font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em}
 .cs-eyebrow{margin:0}
+.cs-label .lw-icon{width:16px;height:16px}
 .cs-sentence{margin:0;font-family:var(--font-display);font-size:clamp(1.75rem,4vw,2.75rem);letter-spacing:-.03em;overflow-wrap:anywhere}
 
-.cs-count{display:none;text-align:center;font-family:var(--font-display);font-size:clamp(3rem,8vw,5rem);font-weight:700;line-height:1;color:var(--clr-violet)}
-.cs[data-phase="countdown"] .cs-count{display:block;animation:cs-pop .6s var(--ease)}
-@keyframes cs-pop{from{transform:scale(1.5);opacity:0}to{transform:scale(1);opacity:1}}
+/* preview timer: visible while the sign names are on screen, then flashes GO! */
+.cs-preview{position:relative;display:none;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);overflow:hidden;border:1px solid var(--clr-violet);border-radius:var(--radius-pill);background:var(--clr-violet-soft);color:var(--clr-text)}
+.cs[data-phase="preview"] .cs-preview,.cs-preview.is-go{display:inline-flex}
+.cs-preview__icon{display:inline-flex;color:var(--clr-violet)}
+.cs-preview__icon .lw-icon{width:18px;height:18px}
+.cs-preview__text{font-size:var(--fs-sm);font-weight:700}
+.cs-preview__text:empty{display:none}
+.cs-count{min-width:2ch;text-align:center;font-family:var(--font-display);font-size:var(--fs-2xl);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--clr-violet)}
+.cs-preview__bar{position:absolute;inset:auto 0 0 0;height:3px}
+.cs-preview__fill{display:block;width:100%;height:100%;background:var(--clr-violet);transform-origin:left center;transform:scaleX(var(--pv,1));transition:transform var(--dur-fast) linear}
+.cs-preview.is-go{animation:cs-pop .5s var(--ease)}
+.cs-preview.is-go .cs-preview__icon,.cs-preview.is-go .cs-preview__bar{display:none}
+@keyframes cs-pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
 
-.cs-slots,.cs-pool{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
-.cs-pool{min-height:calc(var(--cs-tile-h) + var(--space-8));align-items:center;padding:var(--space-4);border:2px dashed var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg)}
-.cs-empty{max-width:34rem;margin:0;color:var(--clr-text-muted);text-align:center;line-height:1.5}
+/* ---------- slots (answer lane) and pool (tray) ----------
+   Tile size comes from the board's own width, so every sign of the sentence fits on ONE row (max 260px wide, 16:9 like the videos),
+   and from the window height, so slots + pool + buttons still fit on a short laptop screen without scrolling mid-drag.
+   On phones the rule below caps a row at 3. */
+.cs-slots,.cs-pool{--cs-per-row:var(--cs-n,3);--cs-tile-w:clamp(72px,min(calc((100cqw - 2*var(--cs-lane-pad) - 4px - (var(--cs-per-row) - 1)*var(--space-3))/var(--cs-per-row)),calc((100dvh - 520px)*.889)),260px);--cs-tile-h:calc(var(--cs-tile-w)*.5625);box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--space-3);min-height:calc(var(--cs-tile-h) + 2*var(--cs-lane-pad) + 4px);padding:var(--cs-lane-pad);border-radius:var(--radius-lg)}
+.cs-slots{border:2px solid var(--clr-border);background:var(--clr-surface)}
+.cs-pool{border:2px dashed var(--clr-border);background:var(--clr-bg)}
+.cs-pool:empty::after{content:'All signs are placed. Check your order, or tap a sign to take it back.';max-width:30rem;color:var(--clr-text-muted);font-size:var(--fs-sm);text-align:center}
+.cs-empty{max-width:36rem;margin:0;color:var(--clr-text-muted);text-align:center;line-height:1.5}
 
 .cs-slot{position:relative;display:block;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);border:2px dashed var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg);transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
 .cs-slot>.cs-tile{width:100%;height:100%;border:0;border-radius:calc(var(--radius-lg) - 2px)}
-.cs-slot__num{position:absolute;top:var(--space-2);left:var(--space-3);color:var(--clr-text-muted);font-size:var(--fs-lg);font-weight:700;font-family:var(--font-display);pointer-events:none}
+.cs-slot__num{position:absolute;top:var(--space-2);left:var(--space-2);display:grid;place-items:center;width:1.75rem;height:1.75rem;border-radius:50%;background:var(--clr-surface);border:1px solid var(--clr-border);color:var(--clr-text-muted);font-size:var(--fs-sm);font-weight:700;font-family:var(--font-display);pointer-events:none}
 .cs-slot:has(>.cs-tile) .cs-slot__num{display:none}
 .cs-slot.is-over{border-color:var(--clr-violet);background:var(--clr-violet-soft)}
-.cs-slot.is-right{border:2px solid var(--clr-success)}
-.cs-slot.is-wrong{border:2px solid var(--clr-red);animation:cs-shake .35s}
+.cs-slot.is-right{border:2px solid var(--clr-success);box-shadow:0 0 0 4px var(--clr-success-soft)}
+.cs-slot.is-wrong{border:2px solid var(--clr-red);box-shadow:0 0 0 4px var(--clr-red-soft);animation:cs-shake .35s}
 .cs-slot:focus-visible{outline:3px solid var(--clr-violet);outline-offset:2px}
+.cs-slot[inert]{opacity:.55}
 @keyframes cs-shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
-.cs-tile{position:relative;display:flex;flex-direction:column;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);overflow:hidden;border:2px solid var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-surface);box-shadow:var(--shadow-card);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
-.cs-tile video{flex:1 1 0;min-height:0;width:100%;object-fit:contain;background:var(--clr-bg);pointer-events:none}
-.cs-tile__name{flex:0 0 auto;padding:var(--space-1) var(--space-2);border-top:1px solid var(--clr-border);text-align:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--clr-text)}
-.cs-tile.is-nameless .cs-tile__name{visibility:hidden}
+/* ---------- tiles: the video fills the tile; the name is an overlay, so hiding it leaves no empty strip ---------- */
+.cs-tile{position:relative;display:block;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);overflow:hidden;border:2px solid var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg);box-shadow:var(--shadow-card);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+.cs-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--clr-bg);pointer-events:none}
+.cs-tile__name{position:absolute;inset:auto 0 0 0;padding:var(--space-5) var(--space-2) var(--space-2);text-align:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);background:linear-gradient(to top,rgba(15,23,42,.9),rgba(15,23,42,0));pointer-events:none;transition:opacity var(--dur-base) var(--ease)}
+.cs-tile.is-nameless .cs-tile__name{opacity:0}
 .cs-tile.is-selected{border-color:var(--clr-violet);box-shadow:0 0 0 3px var(--clr-violet-soft)}
 .cs-tile.is-drag{position:fixed;z-index:1000;margin:0;cursor:grabbing;pointer-events:none;transform:scale(1.05) rotate(2deg);box-shadow:0 18px 40px rgba(0,0,0,.28)}
 .cs-tile:focus-visible{outline:3px solid var(--clr-violet);outline-offset:2px}
 .cs-ph{box-sizing:border-box;border:2px dashed var(--clr-border);border-radius:var(--radius-lg)}
 .cs:not([data-phase="playing"]) .cs-tile{cursor:default}
+.cs[data-phase="preview"] .cs-pool .cs-tile{border-color:var(--clr-violet)}   /* "look, don't touch yet" */
 
+/* ---------- difficulty picker (idle / between runs only) ---------- */
+.cs-difficulty{min-width:0;margin:0;padding:0;border:0}
+.cs-difficulty legend{padding:0}
+.cs:not([data-phase="idle"]):not([data-phase="done"]) .cs-difficulty{display:none}
+.cs-seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);max-width:760px;margin-inline:auto}
+.cs-seg__opt{position:relative;display:block;cursor:pointer}
+.cs-seg__opt input{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.cs-seg__body{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:var(--space-3);align-items:center;justify-items:start;padding:var(--space-3) var(--space-4);border:2px solid var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg);text-align:left;transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.cs-seg__body>[data-lw-icon]{grid-row:1/3;display:inline-flex;color:var(--clr-text-muted)}
+.cs-seg__body .lw-icon{width:28px;height:28px}
+.cs-seg__name{grid-column:2;font-family:var(--font-display);font-weight:700;line-height:1.2}
+.cs-seg__sub{grid-column:2;color:var(--clr-text-muted);font-size:var(--fs-xs)}
+.cs-seg__opt:hover input:not(:checked)+.cs-seg__body{border-color:var(--clr-text-muted)}
+.cs-seg__opt input:checked+.cs-seg__body{border-color:var(--clr-violet);background:var(--clr-violet-soft)}
+.cs-seg__opt input:checked+.cs-seg__body>[data-lw-icon]{color:var(--clr-violet)}
+.cs-seg__opt input:focus-visible+.cs-seg__body{outline:3px solid var(--clr-violet);outline-offset:2px}
+
+/* ---------- status line + controls ---------- */
+.cs-status{display:flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:1.5rem;margin:0;color:var(--clr-text-muted);font-size:var(--fs-sm);font-weight:600;line-height:1.45;text-align:center}
+.cs-status .lw-icon{width:16px;height:16px;color:var(--clr-accent-text)}
 .cs-controls,.cs-result-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
-.cs-overlay{position:absolute}
+.cs-controls [hidden]{display:none}   /* .btn sets display:inline-flex, which beats the [hidden] attribute */
+.cs .btn .lw-icon{margin-right:0}      /* .btn already has a gap; the global .btn .lw-icon margin doubled it */
+.cs-quit:hover:not(:disabled){color:var(--clr-red-text);border-color:var(--clr-red)}
+.cs-result-icon{display:inline-flex;color:var(--clr-violet)}
+.cs-result-icon .lw-icon{width:48px;height:48px}
+/* The overlay is positioned by .gm-overlay in game.css: absolute over the board on desktop, fixed to the viewport at <=900px. */
 
-@media(prefers-reduced-motion:reduce){.cs-count,.cs-slot,.cs-slot.is-wrong{animation:none;transition:none}}
+/* phones: a row holds at most 3 tiles, so slots + pool still fit on screen together (no scrolling mid-drag) */
+@media(max-width:640px){
+  .cs{padding-inline:var(--space-3)}
+  .cs-board{--cs-lane-pad:var(--space-2);padding:var(--space-4);gap:var(--space-4)}
+  .cs-slots,.cs-pool{--cs-per-row:var(--cs-cols,3);gap:var(--space-2)}
+  .cs-seg{grid-template-columns:minmax(0,1fr)}
+  .cs-tile__name{font-size:var(--fs-xs);padding:var(--space-4) var(--space-1) var(--space-1)}
+  .cs-slot__num{width:1.4rem;height:1.4rem;top:var(--space-1);left:var(--space-1);font-size:var(--fs-xs)}
+}
 
-/* ---- Game picker (pages/game.html): third card, full width under Wall Breaker + Time Attack ---- */
-.game-mode--sentence{--mode-color:var(--clr-violet);--mode-soft:var(--clr-violet-soft);grid-column:1 / -1;min-height:clamp(220px,22vw,280px)}
-.game-mode__icon svg{width:clamp(30px,4vw,44px);height:clamp(30px,4vw,44px)}
+@media(prefers-reduced-motion:reduce){.cs-preview.is-go,.cs-slot,.cs-slot.is-wrong,.cs-tile,.cs-tile__name,.cs-preview__fill{animation:none;transition:none}}
