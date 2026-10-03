@@ -10,47 +10,37 @@
  * so a stray click can't delete the admin account.
  */
 import { listUsers, updateUserLevel, deleteLearnerAccount } from "./admin-firebase.js";
-
 let allUsers = [];
 let pendingDeleteUid = null;
-
 const els = {};
-
 function cacheEls() {
   els.tbody = document.getElementById("user-table-body");
   els.search = document.getElementById("user-search");
   els.levelFilter = document.getElementById("user-level-filter");
-
   els.deleteBackdrop = document.getElementById("user-delete-backdrop");
   els.deleteBody = document.getElementById("user-delete-body");
   els.deleteClose = document.getElementById("user-delete-close");
   els.deleteCancel = document.getElementById("user-delete-cancel");
   els.deleteConfirm = document.getElementById("user-delete-confirm");
 }
-
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[c]));
 }
-
 function render() {
   const term = els.search.value.trim().toLowerCase();
   const level = els.levelFilter.value;
-
   const rows = allUsers.filter((u) => {
     if (level && u.level !== level) return false;
     if (!term) return true;
     return (u.name || "").toLowerCase().includes(term) || (u.email || "").toLowerCase().includes(term);
   });
-
   if (!rows.length) {
     els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__empty">${allUsers.length ? "No learners match your search." : "No learners yet."}</td></tr>`;
     return;
   }
-
   const adminEmail = (window.LWAdminAuth?.ADMIN_EMAIL || "").toLowerCase();
-
   els.tbody.innerHTML = rows.map((u) => {
     const isAdminRow = (u.email || "").toLowerCase() === adminEmail;
     return `
@@ -74,7 +64,6 @@ function render() {
   `;
   }).join("");
 }
-
 async function loadUsers() {
   els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__loading">Loading learners&hellip;</td></tr>`;
   try {
@@ -85,7 +74,6 @@ async function loadUsers() {
     els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__empty">Couldn't load learners from Firestore.</td></tr>`;
   }
 }
-
 async function handleLevelChange(e) {
   const select = e.target.closest("[data-level-select]");
   if (!select) return;
@@ -105,28 +93,30 @@ async function handleLevelChange(e) {
     select.disabled = false;
   }
 }
-
 function openDeleteConfirm(uid) {
   const u = allUsers.find((x) => x.id === uid);
   pendingDeleteUid = uid;
   els.deleteBody.textContent = `Permanently delete "${u?.name || u?.email || "this learner"}"? Their login and all their data will be removed.`;
   els.deleteBackdrop.hidden = false;
 }
-
 function closeDeleteConfirm() {
   els.deleteBackdrop.hidden = true;
   pendingDeleteUid = null;
 }
-
 async function confirmDelete() {
   if (!pendingDeleteUid) return;
   const uid = pendingDeleteUid;
   els.deleteConfirm.disabled = true;
   try {
     // Cloud Function removes the Auth login and learner data, including XP.
-    await deleteLearnerAccount(uid);
+    const res = await deleteLearnerAccount(uid);
     closeDeleteConfirm();
-    window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
+    window.LinguaWave?.showToast?.(
+      res?.authDeleted === false
+        ? "Learner data deleted. Their login still exists: remove it in Firebase Console -> Authentication."
+        : "Learner deleted (login and data).",
+      "success"
+    );
     await loadUsers();
   } catch (err) {
     console.error("Failed to delete learner:", err);
@@ -141,7 +131,6 @@ async function confirmDelete() {
     els.deleteConfirm.disabled = false;
   }
 }
-
 function wireEvents() {
   els.search.addEventListener("input", render);
   els.levelFilter.addEventListener("change", render);
@@ -150,17 +139,14 @@ function wireEvents() {
     const delId = e.target.closest("[data-delete]")?.dataset.delete;
     if (delId) openDeleteConfirm(delId);
   });
-
   els.deleteClose.addEventListener("click", closeDeleteConfirm);
   els.deleteCancel.addEventListener("click", closeDeleteConfirm);
   els.deleteBackdrop.addEventListener("click", (e) => { if (e.target === els.deleteBackdrop) closeDeleteConfirm(); });
   els.deleteConfirm.addEventListener("click", confirmDelete);
-
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !els.deleteBackdrop.hidden) closeDeleteConfirm();
   });
 }
-
 async function init() {
   const ok = await window.LWAdminAuth.requireAdmin();
   if (!ok) return;
@@ -168,5 +154,4 @@ async function init() {
   wireEvents();
   await loadUsers();
 }
-
 document.addEventListener("DOMContentLoaded", init);

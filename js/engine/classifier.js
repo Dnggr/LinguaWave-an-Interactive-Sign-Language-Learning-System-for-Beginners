@@ -231,6 +231,11 @@ const SIGN_GROUPS = [
   ['WIND', 'WINDY', 'STORMY'],
   ['RAIN', 'RAINY'],
   ['BITTER', 'SOUR'],
+  // 2026-10-01: curriculum spelling vs trained-label spelling of the SAME sign
+  // (asl_motion_model has FINISHED / THANKS; the lessons teach FINISH / THANK YOU).
+  // Merged in from the retired js/classifier.js (the engine copy is now the only one).
+  ['FINISH', 'FINISHED'],
+  ['THANK YOU', 'THANKS'],
 ];
 const GROUP_OF = (() => {
   const m = new Map();
@@ -705,6 +710,48 @@ export function isMotionModelReady() {
   return motionModel !== null && motionLabels !== null;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// AMBIDEXTROUS FALLBACK — "my left hand works but my right hand doesn't" (or the reverse)
+// ══════════════════════════════════════════════════════════════════
+// The feature vector has separate left-hand and right-hand slots. If the training clips for a one-handed sign were
+// mostly recorded with ONE hand, the model has simply never seen that sign in the other hand's slots, so the
+// skeleton draws but the sign never matches. Mirroring a one-handed vector (swap the slots, flip x, reflect the palm
+// normal) turns a left-hand performance into the right-hand one the model knows, and vice versa. The mirrored
+// attempt is only tried AFTER the normal one fails, only when exactly one hand is present, and when the learner was
+// asked for a specific sign it is only accepted if it confirms THAT sign, so it can make correct signing succeed
+// but can never invent a wrong-sign miss. Set to false to restore the old behaviour exactly.
+const AMBIDEXTROUS_FALLBACK = true;
+
+function mirrorHandBlock(flat, start) {
+  const out = new Array(63);
+  for (let i = 0; i < 63; i++) {
+    const v = flat[start + i];
+    out[i] = (i % 3 === 0 && v !== 0) ? -v : v;   // hand points are wrist-centred, so a mirror is x -> -x
+  }
+  return out;
+}
+// Mirroring flips the handedness of the cross product: n -> (nx, -ny, -nz).
+function reflectOrientation(flat, start) {
+  const ny = flat[start + 1], nz = flat[start + 2];
+  return [flat[start], ny === 0 ? 0 : -ny, nz === 0 ? 0 : -nz];
+}
+// Layout: [0..62 left][63..125 right][126 leftPresent][127 rightPresent][128..131 face/body][132..134 leftOrient][135..137 rightOrient]
+export function mirrorFeatureVector(flat) {
+  return [
+    ...mirrorHandBlock(flat, 63), ...mirrorHandBlock(flat, 0),
+    flat[127], flat[126],
+    flat[128], flat[129], flat[130], flat[131],   // distances to chin/forehead/shoulders/hips are symmetric about the body midline
+    ...reflectOrientation(flat, 135), ...reflectOrientation(flat, 132),
+  ];
+}
+const isSingleHandVector = (flat) => flat[126] !== flat[127];
+function labelConfirmsTarget(label, targetSign) {
+  if (!targetSign) return true;
+  if (label === targetSign) return true;
+  const group = getSignGroup(targetSign);
+  return !!group && group.includes(label);
+}
+
 // ── Static Classify ───────────────────────────────────────────────
 
 /**
@@ -734,40 +781,37 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks);
   if (!flat) return { label: null, confidence: 0, matched: false };
 
-  const input = tf.tensor2d([flat]);   // shape [1, 138]
+  // One forward pass. `input` lives outside tf.tidy() (tidy only disposes tensors created inside its own callback), so
+  // it is disposed in a finally block: that covers both the normal path and a throw from predict()/dataSync().
+  const infer = (vector) => {
+    const input = tf.tensor2d([vector]);   // shape [1, 138]
+    let picked = null;
+    try {
+      tf.tidy(() => {
+        const output = staticModel.predict(input);
+        const probs  = Array.from(output.dataSync());
+        // Restrict to labels valid in the current context BEFORE picking a winner, and pool look-alike twins (see TWIN_GROUPS).
+        picked = pickWinnerPoolingTwins(probs, staticLabels, allowedLabels, targetSign);
+      });
+    } finally {
+      input.dispose();
+    }
+    return picked;
+  };
+  const passes = (r) => !!(r && r.label && r.label !== NONE_LABEL && SIGN_DICTIONARY[r.label]
+    && r.confidence >= MATCH_THRESHOLD && (r.confidence - r.runnerUpConfidence) >= RUNNERUP_MARGIN_MIN);
 
-  let rawLabel   = null;
-  let confidence = 0;
-  let runnerUpConfidence = 0;
-  let topRaw = '';
-
-  // BUGFIX (PIVOT_CHECKLIST.md Phase C) — `input` is allocated OUTSIDE
-  // tf.tidy() (tidy only auto-disposes tensors created inside its own
-  // callback), so it always needed its own manual dispose(). That used
-  // to be a plain call placed after the tidy block; if
-  // staticModel.predict(input)/.dataSync() ever threw inside the
-  // callback, that line was skipped and `input` leaked in WebGL memory
-  // for the rest of the session. try/finally guarantees disposal on
-  // both the normal and thrown paths.
-  try {
-    tf.tidy(() => {
-      const output = staticModel.predict(input);
-      const probs  = Array.from(output.dataSync());
-
-      // Restrict to labels valid in the current context BEFORE picking a
-      // winner — not filtered after — so a genuine '6' isn't discarded
-      // just because the raw softmax briefly favored 'W' this frame.
-      // CHANGED: look-alike twins (0/O) are pooled — see TWIN_GROUPS.
-      const r = pickWinnerPoolingTwins(probs, staticLabels, allowedLabels, targetSign);
-      topRaw = r.topRaw;
-      confidence = r.confidence;
-      runnerUpConfidence = r.runnerUpConfidence;
-      rawLabel = r.label;
-    });
-  } finally {
-    input.dispose();
+  let r = infer(flat);
+  if (AMBIDEXTROUS_FALLBACK && isSingleHandVector(flat) && !passes(r)) {
+    const mirrored = infer(mirrorFeatureVector(flat));
+    if (passes(mirrored) && labelConfirmsTarget(mirrored.label, targetSign)) r = mirrored;
   }
   logTfMemoryIfDue('classifyGesture (static)');
+
+  const rawLabel = r ? r.label : null;
+  const confidence = r ? r.confidence : 0;
+  const runnerUpConfidence = r ? r.runnerUpConfidence : 0;
+  const topRaw = r ? r.topRaw : '';
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
 
@@ -775,8 +819,7 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   // NONE is the background class and is never reported as a sign.
   if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) return { label: null, confidence: 0, matched: false };
 
-  // NEW: both the absolute threshold AND the margin over the runner-up
-  // must pass — see the block comment near MATCH_THRESHOLD above.
+  // Both the absolute threshold AND the margin over the runner-up must pass.
   const matched = confidence >= MATCH_THRESHOLD && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
   logNearMiss('static', rawLabel, { matched, label: rawLabel, confidence }, topRaw);
 
@@ -848,69 +891,51 @@ const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
 // they only exist as motion classes), but here so a future motion-side
 // collision doesn't require re-deriving this fix from scratch.
 function runMotionInference(frameWindow, allowedLabels = null, targetSign = null) {
-  const input = tf.tensor3d([frameWindow]);   // shape [1, MOTION_FRAMES_REQUIRED, 138]
+  // Same input-tensor handling as classifyGesture(): `input` is disposed in a finally block.
+  const infer = (window40) => {
+    const input = tf.tensor3d([window40]);   // shape [1, MOTION_FRAMES_REQUIRED, 138]
+    let picked = null;
+    try {
+      tf.tidy(() => {
+        const output = motionModel.predict(input);
+        const probs  = Array.from(output.dataSync());
+        picked = pickWinnerPoolingTwins(probs, motionLabels, allowedLabels, targetSign);   // look-alike twins (0/O) are pooled, see TWIN_GROUPS
+      });
+    } finally {
+      input.dispose();
+    }
+    return picked;
+  };
+  const passes = (r) => !!(r && r.label && r.label !== NONE_LABEL && SIGN_DICTIONARY[r.label]
+    && r.confidence >= MOTION_THRESHOLD && (r.confidence - r.runnerUpConfidence) >= RUNNERUP_MARGIN_MIN);
 
-  let rawLabel   = null;
-  let confidence = 0;
-  let runnerUpConfidence = 0;
-  let topRaw = '';
-
-  // BUGFIX (PIVOT_CHECKLIST.md Phase C) — same input-tensor leak as
-  // classifyGesture() above, same fix: `input` lives outside tf.tidy()
-  // so it needs its own dispose(); try/finally guarantees that happens
-  // even if motionModel.predict(input)/.dataSync() throws inside the
-  // callback, instead of leaking the tensor in WebGL memory.
-  try {
-    tf.tidy(() => {
-      const output = motionModel.predict(input);
-      const probs  = Array.from(output.dataSync());
-
-      // CHANGED: look-alike twins (0/O) are pooled — see TWIN_GROUPS.
-      const r = pickWinnerPoolingTwins(probs, motionLabels, allowedLabels, targetSign);
-      topRaw = r.topRaw;
-      confidence = r.confidence;
-      runnerUpConfidence = r.runnerUpConfidence;
-      rawLabel = r.label;
-    });
-  } finally {
-    input.dispose();
+  let r = infer(frameWindow);
+  // Ambidextrous fallback (see the block comment above classifyGesture): only when the whole window is a one-handed
+  // performance, only after the normal read failed, and only accepted when it confirms the requested sign.
+  if (AMBIDEXTROUS_FALLBACK && !passes(r) && frameWindow.filter(isSingleHandVector).length >= frameWindow.length * 0.8) {
+    const mirrored = infer(frameWindow.map(mirrorFeatureVector));
+    if (passes(mirrored) && labelConfirmsTarget(mirrored.label, targetSign)) r = mirrored;
   }
   logTfMemoryIfDue('runMotionInference (motion)');
+
+  const rawLabel = r ? r.label : null;
+  const confidence = r ? r.confidence : 0;
+  const runnerUpConfidence = r ? r.runnerUpConfidence : 0;
+  const topRaw = r ? r.topRaw : '';
 
   if (!rawLabel) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  // BUG FIX: classifyGesture() already refuses to report a label that
-  // has no SIGN_DICTIONARY entry (or is marked disabled). classifyMotion()
-  // was missing this same guard, so a motion model trained on more labels
-  // than the dictionary knows about (e.g. new family words) could either
-  // silently report labels lesson.js has no content for, or — the more
-  // common case — a label that IS in the dictionary but hasn't been
-  // wired into data.js/dictionary.js yet would still show up as a
-  // "detected" word with no matching lesson. Keep both files in sync.
-  // (labels.json decides what is trained — `disabled` is not consulted; NONE is never a sign.)
+  // Same guard as classifyGesture(): labels.json decides what is trained; NONE is never a sign, and a label with no
+  // SIGN_DICTIONARY entry is not reported.
   if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  // NEW: same margin-over-runnerup fix as classifyGesture — see the
-  // block comment near MATCH_THRESHOLD.
+  // Margin-over-runner-up check, same as the static path. One clean window is the deliberate attempt: accept it immediately.
   const passesThreshold = confidence >= MOTION_THRESHOLD
     && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
-
-  // CHANGED: this used to require the SAME label on two consecutive
-  // windows before accepting a match ("confirming" state) — a holdover
-  // from when detection ran passively/continuously and needed extra
-  // protection against noise. Now that recording is explicitly
-  // triggered (3-2-1 countdown, one deliberate attempt), that second
-  // window caused a real bug instead of preventing one: after a good
-  // first window, the classifier immediately started buffering a
-  // SECOND window — but the user, thinking they were done, would
-  // relax/lower their hand right then, feeding that irrelevant motion
-  // into window two, which predictably failed and overwrote the
-  // correct first result with "no sign, 0%" a moment later. A single
-  // clean window is the deliberate attempt now; accept it immediately.
   logNearMiss('motion', rawLabel, { matched: passesThreshold, label: rawLabel, confidence }, topRaw);
   return { label: rawLabel, confidence, matched: passesThreshold, buffering: false };
 }

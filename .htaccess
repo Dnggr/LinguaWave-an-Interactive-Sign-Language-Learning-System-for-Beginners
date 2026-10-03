@@ -1,0 +1,7 @@
+# Hostinger/Apache: revalidate app files on each visit so deployments are
+# picked up without requiring learners to clear their browser cache.
+<IfModule mod_headers.c>
+  <FilesMatch "(?i)\.(html?|css|js|mjs|json|bin|svg|png|jpe?g|webp|woff2?)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

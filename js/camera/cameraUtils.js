@@ -64,15 +64,44 @@ export async function startCamera(videoElement, canvasElement) {
   const constraints = {
     video: {
       facingMode: 'user',   // Front-facing (selfie) camera
-      width:  { ideal: 640 },
-      height: { ideal: 480 },
+      // CHANGED (clunky / lost hand): 640x480 -> 1280x720 (still only an `ideal` hint). At 640x480 a hand is
+      // ~100px wide, so Holistic had little detail to track it with once it moved or blurred. The hand model
+      // works on a crop of the hand, so a bigger source frame gives a sharper crop. If this is too heavy on a
+      // slow machine, try 960x540 or go back to 640x480.
+      width:  { ideal: 1280 },
+      height: { ideal: 720 },
       frameRate: { ideal: 30, max: 30 },
     },
     audio: false,
   };
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    // BUGFIX (Time Attack lifecycle audit) — permission prompts can remain
+    // unresolved indefinitely. Bound that wait, and stop a late-arriving
+    // stream so a retry cannot leave an unowned camera running in the background.
+    const stream = await new Promise((resolve, reject) => {
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        settled = true;
+        const error = new Error('Camera permission or startup took too long. Check the browser permission prompt and try again.');
+        error.name = 'CameraTimeoutError';
+        reject(error);
+      }, 12000);
+      navigator.mediaDevices.getUserMedia(constraints).then((lateStream) => {
+        if (settled) {
+          lateStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(lateStream);
+      }, (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+    });
 
     // NEW — always zoom out to the widest field of view.
     // Some webcams (and some OS-level camera drivers, notably on

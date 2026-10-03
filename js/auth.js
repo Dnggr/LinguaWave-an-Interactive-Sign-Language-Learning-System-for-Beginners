@@ -121,7 +121,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
-
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -133,20 +132,16 @@ const firebaseConfig = {
   appId: "1:34514540529:web:18f5b1cd7f04e965fe1650",
   measurementId: "G-6CLTW0GZXJ"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
-
 'use strict';
-
 // Set by loginWithGoogle() when it hits account-exists-with-different-
 // credential — see linkPendingGoogleCredential() below for how it's
 // consumed once the user logs back in with their original password.
 let pendingGoogleCredential = null;
-
 const LW_SESSION_KEY = 'lw_session';
 const MAX_NAME_LENGTH = 30;
 // RFC 5321's own limits (64-char local part + 255-char domain) allow up
@@ -156,7 +151,6 @@ const MAX_NAME_LENGTH = 30;
 // address anyway.
 const MAX_EMAIL_LENGTH = 254;
 const DELETION_GRACE_PERIOD_DAYS = 30;
-
 // EMAIL VERIFICATION (2026-09-29) ─────────────────────────────────
 // Minimum gap between verification emails. Purely a UI courtesy on top
 // of Firebase's own server-side rate limit (auth/too-many-requests); the
@@ -164,12 +158,10 @@ const DELETION_GRACE_PERIOD_DAYS = 30;
 // countdown. It is NOT trusted for anything security-related.
 const RESEND_COOLDOWN_SECONDS = 60;
 const RESEND_KEY_PREFIX = 'lw_verify_resend_at:';
-
 // Resolved from THIS file's location (js/auth.js), so the redirect
 // targets are right no matter which folder the calling page lives in.
 const LOGIN_PAGE_URL = new URL('../index.html', import.meta.url).href;
 const VERIFY_PAGE_URL = new URL('../pages/verify-email.html', import.meta.url).href;
-
 // ── AUTH STATE SYNC ─────────────────────────────────────────────
 /* ── LOCAL LEARNING STATE + ADMIN "RESET PROGRESS" MARKER ─────────
  * Admin "Reset progress" (js/admin-firebase.js resetLearnerProgress) deletes the learner's Firestore progress/XP docs
@@ -186,7 +178,6 @@ const LOCAL_LEARNING_KEYS = [
 const RESET_SEEN_PREFIX = 'lw_reset_seen_v1:';
 const RESET_CHECK_KEY = 'lw_reset_check_v1';          // sessionStorage { uid, at }
 const RESET_CHECK_TTL_MS = 5 * 60 * 1000;
-
 function clearLocalLearningState(uid) {
   try {
     LOCAL_LEARNING_KEYS.forEach((k) => localStorage.removeItem(k));
@@ -198,9 +189,9 @@ function clearLocalLearningState(uid) {
       localStorage.removeItem(`lw_game_v2:${uid}`);
     }
     sessionStorage.removeItem('lw_missions_last_sync_v1');     // 60 s "already synced" shortcut
+    sessionStorage.removeItem('lw_progress_last_sync_v1');     // same shortcut in js/engine/progress.js
   } catch (e) { /* storage blocked */ }
 }
-
 /* Must finish BEFORE 'lwauth-ready' so no page script pushes stale local state first. Local only: the admin's
  * batch already deleted the Firestore side, and a learner's browser must never delete remote progress. */
 async function applyProgressResetIfNeeded(firebaseUser) {
@@ -223,13 +214,11 @@ async function applyProgressResetIfNeeded(firebaseUser) {
     console.warn('[auth] reset check failed, will retry on the next load:', e);
   }
 }
-
 // Fires once on page load (after Firebase checks for an existing
 // session) and again any time login/logout state changes. Keeps
 // localStorage as an accurate cache of who's currently signed in.
 let authReady = false;
 let hasFiredReady = false;
-
 onAuthStateChanged(auth, async (firebaseUser) => {
   // try/catch/finally-equivalent: authReady MUST be set and 'lwauth-ready'
   // MUST fire even if the Firestore read below fails (offline, blocked
@@ -247,14 +236,12 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     } else if (firebaseUser) {
       await applyProgressResetIfNeeded(firebaseUser);   // before the session-cache logic and before authReady
       const existing = getCurrentUser();
-
       if (existing && existing.uid === firebaseUser.uid) {
         // Already cached — skip the Firestore fetch entirely
       } else {
         const userRef = doc(db, 'users', firebaseUser.uid);
         const snapshot = await getDoc(userRef);
         const profile = snapshot.exists() ? snapshot.data() : {};
-
         const user = {
           uid: firebaseUser.uid,
           name: profile.name || (firebaseUser.email || '').split('@')[0] || 'Learner',
@@ -273,16 +260,12 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     // still work because they read auth.currentUser, not the cache.
     console.error('[auth] Could not sync the session cache:', syncError);
   }
-
   authReady = true;
-
   if (!hasFiredReady) {
     hasFiredReady = true;
     window.dispatchEvent(new Event('lwauth-ready'));
   }
 });
-
-
 /* ── READ SESSION ─────────────────────────────────────────────── */
 function getCurrentUser() {
   try {
@@ -292,7 +275,6 @@ function getCurrentUser() {
     return null;
   }
 }
-
 /* Where the visitor stands, from Firebase's live user — NOT localStorage.
  * Only meaningful once auth is ready (after 'lwauth-ready' / whenAuthReady()),
  * because before that Firebase hasn't restored the saved session yet. */
@@ -301,7 +283,6 @@ function getAuthState() {
   if (!firebaseUser) return 'logged-out';
   return firebaseUser.emailVerified ? 'verified' : 'unverified';
 }
-
 /* Non-sensitive info verify-email.html needs to render itself. Returns
  * plain strings only — never the Firebase user object itself, so the
  * console can't reach user.delete()/etc. through window.LWAuth. */
@@ -313,7 +294,6 @@ function getVerificationInfo() {
     uid: firebaseUser ? firebaseUser.uid : null,
   };
 }
-
 function isLoggedIn() {
   // Authorization must be based on Firebase's own live auth state —
   // NOT the localStorage mirror. getCurrentUser() reads a cache that
@@ -332,9 +312,7 @@ function isLoggedIn() {
   const firebaseUser = auth.currentUser;
   return !!firebaseUser && firebaseUser.emailVerified === true;
 }
-
 /* ── SMALL HELPERS (2026-09-29) ───────────────────────────────── */
-
 // ONE canonical email value, used for BOTH validation and the value sent
 // to Firebase/Reacher, in login AND register (before, register validated
 // `trimmedEmail` but sent the untrimmed `email` to Firebase). Trim only —
@@ -343,7 +321,6 @@ function isLoggedIn() {
 function normalizeEmail(email) {
   return (email === null || email === undefined ? '' : String(email)).trim();
 }
-
 // Errors THIS file throws on purpose: plain Error with a `lw/...` code and
 // a message that is already safe to show the learner as-is.
 function lwError(code, message) {
@@ -351,11 +328,9 @@ function lwError(code, message) {
   err.code = code;
   return err;
 }
-
 const INVALID_EMAIL_MESSAGE = "That doesn't look like a valid email address. Please check it and try again.";
 const CANT_RECEIVE_MESSAGE = 'This email address does not appear to be able to receive email. Please check the address and try again.';
 const GENERIC_AUTH_MESSAGE = 'Something went wrong. Please try again.';
-
 /* ── SIGNUP VALIDATION (2026-10-01) ───────────────────────────────
  * ONE implementation, used twice: register() below enforces it (the
  * authentication layer — a hand-edited page can't skip it), and index.html
@@ -383,20 +358,16 @@ const SUPPORTED_EMAIL_DOMAINS = Object.freeze([
   'protonmail.com',
 ]);
 const SUPPORTED_EMAIL_DOMAIN_SET = new Set(SUPPORTED_EMAIL_DOMAINS);
-
 const MAX_LOCAL_PART_LENGTH = 64;   // RFC 5321 local-part limit
 const MIN_PASSWORD_LENGTH = 8;      // same minimum changePassword() uses
 const MAX_PASSWORD_LENGTH = 50;     // = "Maximum password length" in Firebase console > Authentication > Settings > Password policy
 const VERY_STRONG_MIN_LENGTH = 12;  // "Very strong" also needs at least this many characters (display only — signup still accepts Strong)
-
 const LOCAL_PART_CHARS_RE = /^[A-Za-z0-9._%+-]+$/;
 const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const TLD_RE = /^[a-z]{2,}$/;
-
 const UNSUPPORTED_PROVIDER_MESSAGE =
   'Please use an email address from a supported provider (' +
   SUPPORTED_EMAIL_DOMAINS.map(function (d) { return '@' + d; }).join(', ') + ').';
-
 /* Checks an email in two separate steps and reports each one:
  *   formatValid       -> well-formed username@domain.tld
  *   providerSupported -> the domain (lowercased) is in SUPPORTED_EMAIL_DOMAINS
@@ -412,40 +383,30 @@ function validateEmail(email) {
     valid: false,
     reason: null,
   };
-
   if (!normalized) { result.reason = 'empty'; return result; }
   if (normalized.length > MAX_EMAIL_LENGTH || /\s/.test(normalized)) { result.reason = 'format'; return result; }
-
   const parts = normalized.split('@');            // "user@@x.com" -> 3 parts
   if (parts.length !== 2) { result.reason = 'format'; return result; }
-
   const local = parts[0];
   const domain = parts[1].toLowerCase();          // case-insensitive domain compare
-
   const localOk = local.length > 0 &&
     local.length <= MAX_LOCAL_PART_LENGTH &&
     LOCAL_PART_CHARS_RE.test(local) &&
     local.charAt(0) !== '.' &&
     local.charAt(local.length - 1) !== '.' &&
     local.indexOf('..') === -1;
-
   const labels = domain.split('.');               // "gmail..com" -> an empty label
   const domainOk = labels.length >= 2 &&
     labels.every(function (label) { return DOMAIN_LABEL_RE.test(label); }) &&
     TLD_RE.test(labels[labels.length - 1]);
-
   if (!localOk || !domainOk) { result.reason = 'format'; return result; }
-
   result.formatValid = true;
   result.domain = domain;
-
   if (!SUPPORTED_EMAIL_DOMAIN_SET.has(domain)) { result.reason = 'provider'; return result; }
-
   result.providerSupported = true;
   result.valid = true;
   return result;
 }
-
 /* ── PASSWORD POLICY + STRENGTH (2026-10-01) ─────────────────────
  * ONE implementation, three users: register() and changePassword() below
  * enforce it, and index.html's strength bar / requirement checklist read
@@ -480,7 +441,6 @@ function validateEmail(email) {
 const PASSWORD_SPECIAL_CHARS = '^$*.[]{}()?"!@#%&/\\,><\':;|_~`=+-';
 const PASSWORD_SPECIAL_EXAMPLES = '!@#$%&';   // short hint shown in labels/messages
 const PASSWORD_MIN_LEVEL = 'strong';          // 'strong' | 'medium' — see the note above before changing
-
 const PASSWORD_REQUIREMENTS = Object.freeze([
   Object.freeze({
     key: 'length',
@@ -518,17 +478,14 @@ const PASSWORD_REQUIREMENTS = Object.freeze([
     },
   }),
 ]);
-
 // Only { key, label } — what the checklist UI needs; the test functions stay private.
 const PASSWORD_CHECKLIST = Object.freeze(PASSWORD_REQUIREMENTS.map(function (r) {
   return Object.freeze({ key: r.key, label: r.label });
 }));
-
 // Which requirements signup insists on at PASSWORD_MIN_LEVEL.
 const PASSWORD_REQUIRED_KEYS = PASSWORD_MIN_LEVEL === 'medium'
   ? ['length', 'lower', 'upper', 'number']
   : PASSWORD_REQUIREMENTS.map(function (r) { return r.key; });
-
 // Obvious passwords, compared lowercase and EXACT (never "contains", so a
 // long passphrase that happens to include a word is fine). Not a breach
 // list — it catches the lazy picks; Firebase + the strength rules do the rest.
@@ -543,12 +500,10 @@ const COMMON_PASSWORDS = new Set([
   'changeme', 'trustno1', 'football', 'baseball', 'monkey123', 'dragon123',
   'linguawave', 'linguawave1', 'linguawave123', 'linguawave2026', 'learnasl', 'asl12345',
 ]);
-
 // Lowercase letters + digits only: "John.Smith_1" -> "johnsmith1".
 function squashForCompare(value) {
   return String(value === null || value === undefined ? '' : value).toLowerCase().replace(/[^a-z0-9]/g, '');
 }
-
 /* Why a password that satisfies every rule is STILL a bad pick:
  *   'common'   -> on COMMON_PASSWORDS
  *   'personal' -> is, or is built from, the learner's own email / name
@@ -558,12 +513,10 @@ function squashForCompare(value) {
 function findPasswordWeakness(password, context) {
   if (COMMON_PASSWORDS.has(password.toLowerCase())) return 'common';
   if (!context) return null;
-
   const pw = squashForCompare(password);
   const pwStem = pw.replace(/[0-9]+$/, '');       // "johnsmith2026" -> "johnsmith"
   const email = String(context.email || '').trim().toLowerCase();
   const local = email.split('@')[0];
-
   const parts = [local, email, context.name];
   for (let i = 0; i < parts.length; i++) {
     const part = squashForCompare(parts[i]);
@@ -573,7 +526,6 @@ function findPasswordWeakness(password, context) {
   }
   return null;
 }
-
 /* STRENGTH SCORE (0..100) — what the bar fills to and what the label is read from.
  * The label is no longer "did you tick the 5 boxes"; it is a percentage:
  *
@@ -597,17 +549,13 @@ function findPasswordWeakness(password, context) {
 const STRENGTH_MEDIUM_AT = 40;
 const STRENGTH_STRONG_AT = 70;
 const STRENGTH_VERY_STRONG_AT = 90;
-
 const KEYBOARD_ROWS = Object.freeze(['qwertyuiop', 'asdfghjkl', 'zxcvbnm', '1234567890']);
-
 function patternPenalty(pw) {
   const chars = Array.from(pw.toLowerCase());
   let penalty = 0;
-
   // Runs of 3+ identical characters: "aaa", "1111".
   const runs = chars.join('').match(/(.)\1{2,}/gu);
   if (runs) penalty += runs.length * 6;
-
   // Ascending / descending letter-or-digit sequences: "abc", "789", "cba".
   const isAlnum = function (c) { return /[a-z0-9]/.test(c); };
   for (let i = 2; i < chars.length; i++) {
@@ -616,7 +564,6 @@ function patternPenalty(pw) {
     const d2 = chars[i].codePointAt(0) - chars[i - 1].codePointAt(0);
     if (d1 === d2 && (d1 === 1 || d1 === -1)) penalty += 4;
   }
-
   // 4+ keys in a row on a keyboard row (either direction): "qwer", "asdf", "4321".
   const lower = chars.join('');
   const reversed = chars.slice().reverse().join('');
@@ -626,15 +573,12 @@ function patternPenalty(pw) {
       if (lower.indexOf(piece) !== -1 || reversed.indexOf(piece) !== -1) { penalty += 10; break; }
     }
   });
-
   return Math.min(penalty, 25);
 }
-
 function computePasswordScore(pw) {
   if (!pw) return 0;
   const length = Array.from(pw).length;
   const distinct = new Set(Array.from(pw)).size;
-
   // Repeating the same few characters doesn't add length: 12 x "a" is not 12 characters of strength.
   const effectiveLength = Math.min(length, distinct * 1.5);
   let points = Math.min(effectiveLength, 16) / 16 * 40;
@@ -644,17 +588,14 @@ function computePasswordScore(pw) {
   if (/[^\p{L}\p{N}]/u.test(pw)) points += 16;
   points += Math.min(distinct, 12) / 12 * 20;
   points -= patternPenalty(pw);
-
   return Math.max(0, Math.min(100, points));
 }
-
 function levelFromPercent(percent, length) {
   if (percent >= STRENGTH_VERY_STRONG_AT && length >= VERY_STRONG_MIN_LENGTH) return 'very-strong';
   if (percent >= STRENGTH_STRONG_AT) return 'strong';
   if (percent >= STRENGTH_MEDIUM_AT) return 'medium';
   return 'weak';
 }
-
 /* Scores a password. Pure and cheap (runs on every keystroke): never throws,
  * never logs, never stores.
  * Returns { score, max, percent, level, progress, checks:{length,lower,upper,number,special},
@@ -671,18 +612,15 @@ function getPasswordStrength(password, context) {
     checks[r.key] = ok;
     if (ok) score += 1;
   });
-
   const length = Array.from(pw).length;
   const tooLong = pw.length > MAX_PASSWORD_LENGTH;
   const weakReason = pw.length > 0 ? findPasswordWeakness(pw, context) : null;
-
   let percent = computePasswordScore(pw);
   if (length < MIN_PASSWORD_LENGTH) percent = Math.min(percent, 39 * length / MIN_PASSWORD_LENGTH);
   const meetsSignup = PASSWORD_REQUIRED_KEYS.every(function (k) { return checks[k]; });
   if (!meetsSignup) percent = Math.min(percent, STRENGTH_STRONG_AT - 1);
   if (tooLong || weakReason) percent = Math.min(percent, 25);
   percent = Math.round(percent);
-
   return {
     score: score, max: PASSWORD_REQUIREMENTS.length,
     percent: percent, level: levelFromPercent(percent, length),
@@ -690,7 +628,6 @@ function getPasswordStrength(password, context) {
     checks: checks, tooLong: tooLong, weakReason: weakReason,
   };
 }
-
 /* "Password needs …" wording (GitHub style). The message names ONLY what is
  * still missing, so it shrinks as the learner fixes things:
  *   "a number, uppercase letter and lowercase letter" -> "a number" -> (valid)
@@ -712,7 +649,6 @@ function describePasswordNeeds(missingKeys) {
   if (nouns.length === 1) return nouns[0];
   return nouns.slice(0, -1).join(', ') + ' and ' + nouns[nouns.length - 1];
 }
-
 /* The one password gate. Returns { valid, message, score, level, checks,
  * missing } — `message` is already safe to show (it never contains the
  * password) and is the success sentence when valid. `context` is optional
@@ -728,7 +664,6 @@ function validatePassword(password, context) {
     checks: strength.checks,
     missing: [],
   };
-
   if (typeof password !== 'string' || password.length === 0) {
     result.message = 'Please choose a password.';
     return result;
@@ -737,13 +672,11 @@ function validatePassword(password, context) {
     result.message = 'Password must be ' + MAX_PASSWORD_LENGTH + ' characters or fewer.';
     return result;
   }
-
   // What is still missing, by requirement key (length included).
   const missing = PASSWORD_REQUIREMENTS.filter(function (r) {
     return PASSWORD_REQUIRED_KEYS.indexOf(r.key) !== -1 && !strength.checks[r.key];
   });
   const missingKeys = missing.map(function (r) { return r.key; });
-
   // Length is reported before anything else (live, while typing: "ab" is
   // "too short", not "too common"). Once it is long enough the message
   // switches to whatever is still missing.
@@ -752,7 +685,6 @@ function validatePassword(password, context) {
     result.message = 'Password is too short';
     return result;
   }
-
   // Common / personal picks come next: telling someone to "add a
   // special character" to Password123 would just walk them to another bad one.
   if (strength.weakReason === 'common') {
@@ -763,18 +695,15 @@ function validatePassword(password, context) {
     result.message = 'Your password can\'t be based on your email address or name.';
     return result;
   }
-
   result.missing = missingKeys;
   if (missingKeys.length > 0) {
     result.message = 'Password needs ' + describePasswordNeeds(missingKeys);
     return result;
   }
-
   result.valid = true;
   result.message = 'Password meets all security requirements.';
   return result;
 }
-
 function validateConfirmPassword(password, confirmPassword) {
   if (typeof confirmPassword !== 'string' || confirmPassword.length === 0) {
     return { valid: false, message: 'Please confirm your password.' };
@@ -784,7 +713,6 @@ function validateConfirmPassword(password, confirmPassword) {
   }
   return { valid: true, message: '' };
 }
-
 /* Turns ANY error from this file / Firebase into a learner-safe sentence
  * (index.html's modal and verify-email.html both use it). Our own errors
  * pass through untouched; Firebase's raw "Firebase: Error (auth/...)."
@@ -794,7 +722,6 @@ function validateConfirmPassword(password, confirmPassword) {
 function describeAuthError(err, context) {
   if (!err) return GENERIC_AUTH_MESSAGE;
   if (err.name !== 'FirebaseError') return err.message || GENERIC_AUTH_MESSAGE;
-
   const code = err.code || '';
   if (context === 'session' &&
       ['auth/user-not-found', 'auth/user-token-expired', 'auth/invalid-user-token', 'auth/user-disabled'].includes(code)) {
@@ -839,7 +766,6 @@ function describeAuthError(err, context) {
       return GENERIC_AUTH_MESSAGE;
   }
 }
-
 /* ── SIGNUP PRE-CHECK (Reacher, via Cloud Function) ──────────────
  * Asks the `checkEmailDeliverability` Cloud Function (functions/index.js)
  * whether the address looks usable BEFORE any Firebase account exists.
@@ -860,7 +786,6 @@ const EMAIL_REJECT_MESSAGES = {
   'undeliverable': CANT_RECEIVE_MESSAGE,
   'disposable': "Temporary or disposable email addresses can't be used. Please use your regular email address.",
 };
-
 async function precheckEmail(normalizedEmail) {
   let data = null;
   try {
@@ -878,10 +803,8 @@ async function precheckEmail(normalizedEmail) {
     throw lwError('lw/email-rejected', EMAIL_REJECT_MESSAGES[data.reason] || CANT_RECEIVE_MESSAGE);
   }
 }
-
 /* ── VERIFICATION EMAIL: send / cooldown / re-check ──────────────── */
 function resendKey(uid) { return RESEND_KEY_PREFIX + uid; }
-
 /* Seconds left before another verification email may be requested
  * (0 = allowed now). The `<= RESEND_COOLDOWN_SECONDS` clamp means a
  * corrupted or hand-edited future timestamp can never lock the button
@@ -898,14 +821,11 @@ function getResendCooldownRemaining(firebaseUser) {
     return 0;
   }
 }
-
 function markVerificationSent(firebaseUser) {
   try { localStorage.setItem(resendKey(firebaseUser.uid), String(Date.now())); } catch (e) { /* storage blocked — Firebase's own limit still applies */ }
 }
-
 const CONTINUE_URL_ERRORS = ['auth/unauthorized-continue-uri', 'auth/invalid-continue-uri', 'auth/missing-continue-uri'];
 let verificationSendInFlight = false;
-
 /* Sends Firebase's built-in verification email to the signed-in user
  * (no custom token system). Used by register() for the first send and by
  * verify-email.html's Resend button.
@@ -923,7 +843,6 @@ async function sendVerificationEmail(firebaseUser) {
   const user = firebaseUser || auth.currentUser;
   if (!user) throw lwError('lw/not-signed-in', 'You need to be signed in to do that.');
   if (user.emailVerified) throw lwError('lw/already-verified', 'Your email is already verified.');
-
   const remaining = getResendCooldownRemaining(user);
   if (remaining > 0) {
     const err = lwError('lw/resend-cooldown', 'Please wait ' + remaining + ' second' + (remaining === 1 ? '' : 's') + ' before requesting another email.');
@@ -931,7 +850,6 @@ async function sendVerificationEmail(firebaseUser) {
     throw err;
   }
   if (verificationSendInFlight) return false;
-
   verificationSendInFlight = true;
   try {
     try {
@@ -954,7 +872,6 @@ async function sendVerificationEmail(firebaseUser) {
     verificationSendInFlight = false;
   }
 }
-
 /* "I already verified" — the ONLY place a session flips to verified.
  * Asks Firebase itself: reload() re-fetches the user record from the
  * server (emailVerified is cached on the device and does NOT update by
@@ -971,15 +888,12 @@ async function sendVerificationEmail(firebaseUser) {
 async function checkVerificationNow() {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) throw lwError('lw/not-signed-in', 'You need to be signed in to do that.');
-
   await firebaseUser.reload();
   if (!firebaseUser.emailVerified) return { verified: false };
-
   await firebaseUser.getIdToken(true);
   const user = await finishVerifiedLogin(firebaseUser);
   return { verified: true, user };
 }
-
 /* Shared tail of "this person is now a real, verified learner": read the
  * Firestore profile, cancel a pending soft-delete (see deleteAccount()),
  * write the session cache. Extracted from login() so login and
@@ -991,7 +905,6 @@ async function finishVerifiedLogin(firebaseUser) {
   const snapshot = await getDoc(userRef);
   const profile = snapshot.exists() ? snapshot.data() : {};
   const restoredDeletion = !!profile.deletionRequested;
-
   // Cancel a pending deletion on successful login — see deleteAccount()'s
   // header comment for the full grace-period design.
   if (profile.deletionRequested) {
@@ -999,7 +912,6 @@ async function finishVerifiedLogin(firebaseUser) {
     profile.deletionRequested = false;
     profile.deletionRequestedAt = null;
   }
-
   const user = {
     uid: firebaseUser.uid,
     name: profile.name || (firebaseUser.email || '').split('@')[0] || 'Learner',
@@ -1007,12 +919,10 @@ async function finishVerifiedLogin(firebaseUser) {
     level: profile.level || 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
-
   localStorage.setItem(LW_SESSION_KEY, JSON.stringify(user));
   if (restoredDeletion) void syncXpPublicProfile(); // Auth readiness completes after this callback returns.
   return user;
 }
-
 /* ── LOG IN ───────────────────────────────────────────────────────
  * Signs in with Firebase Auth, then branches on Firebase's OWN
  * emailVerified flag (never localStorage):
@@ -1040,19 +950,15 @@ async function login(email, password) {
   if (!normalizedEmail || !password) {
     throw lwError('lw/missing-credentials', 'Please enter your email and password.');
   }
-
   const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
   const firebaseUser = result.user;
-
   if (!firebaseUser.emailVerified) {
     localStorage.removeItem(LW_SESSION_KEY); // never leave a session for an unverified account
     return { verified: false, user: null };
   }
-
   const user = await finishVerifiedLogin(firebaseUser);
   return { verified: true, user };
 }
-
 /* ── REGISTER ─────────────────────────────────────────────────────
  * ORDER MATTERS (2026-09-29, validation steps extended 2026-10-01):
  *   1. normalize + validate, in this order: email format -> email
@@ -1108,7 +1014,6 @@ async function register(name, email, password, confirmPassword) {
   if (!emailCheck.providerSupported) {
     throw lwError('lw/unsupported-email-provider', UNSUPPORTED_PROVIDER_MESSAGE);
   }
-
   const passwordCheck = validatePassword(password, { email: normalizedEmail, name: trimmedName });
   if (!passwordCheck.valid) {
     throw lwError('lw/invalid-password', passwordCheck.message);
@@ -1119,17 +1024,14 @@ async function register(name, email, password, confirmPassword) {
   if (!confirmCheck.valid) {
     throw lwError('lw/password-mismatch', confirmCheck.message);
   }
-
   // Reacher pre-check — see precheckEmail() for what it rejects and
   // why it fails open. (Replaces the earlier never-deployed
   // `checkEmailDomain` DNS-only call.)
   await precheckEmail(normalizedEmail);
-
   // Also the "account already exists?" check: throws
   // auth/email-already-in-use (see describeAuthError) and no email is sent.
   const result = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
   const firebaseUser = result.user;
-
   const user = {
     uid: firebaseUser.uid,
     // Signup has no name field: the display name is the part of the email before
@@ -1139,9 +1041,7 @@ async function register(name, email, password, confirmPassword) {
     level: 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
-
   const userRef = doc(db, 'users', firebaseUser.uid);
-
   try {
     await setDoc(userRef, user);
   } catch (firestoreError) {
@@ -1154,7 +1054,6 @@ async function register(name, email, password, confirmPassword) {
     }
     throw firestoreError; // still let the caller show the real error
   }
-
   // Firebase's built-in verification email (no custom token system).
   // NOT fatal if it fails: the account exists, the caller is told via
   // verificationSent:false, and verify-email.html's Resend button retries.
@@ -1165,17 +1064,14 @@ async function register(name, email, password, confirmPassword) {
     verificationSent = false;
     console.error('Failed to send verification email:', sendError);
   }
-
   // Intentionally NOT signed out and NOT cached — see header comment.
   return { verificationSent, email: normalizedEmail };
 }
-
 /* A users/{uid} profile was just created. Clear stale local caches before protected
  * page scripts run; new Spark XP state is initialized on the first browser transaction. */
 async function resetXpForNewProfile(uid) {
   clearLocalLearningState(uid);   // clear local learning/XP queues before protected page scripts run
 }
-
 /* ── GOOGLE SIGN-IN ───────────────────────────────────────────────
  * Handles both first-time sign-up AND returning login through the
  * same call — signInWithPopup() creates the Firebase Auth user
@@ -1203,11 +1099,9 @@ async function loginWithGoogle() {
     }
     throw error; // still let the caller show/handle the error
   }
-
   const firebaseUser = result.user;
   const userRef = doc(db, 'users', firebaseUser.uid);
   const snapshot = await getDoc(userRef);
-
   let profile;
   if (snapshot.exists()) {
     profile = snapshot.data();
@@ -1228,7 +1122,6 @@ async function loginWithGoogle() {
     await setDoc(userRef, profile);
     await resetXpForNewProfile(firebaseUser.uid);   // brand-new profile => XP/leaderboard start fresh too
   }
-
   const user = {
     uid: firebaseUser.uid,
     name: profile.name || firebaseUser.email.split('@')[0] || 'Learner',
@@ -1236,7 +1129,6 @@ async function loginWithGoogle() {
     level: profile.level || 'basic',
     joined: new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10),
   };
-
   // 2026-09-29: Google normally reports the address as verified (Firebase
   // then sets emailVerified = true, so this gate is a no-op for almost
   // everyone). If a Google account ever comes back UNverified, treat it
@@ -1249,7 +1141,6 @@ async function loginWithGoogle() {
   }
   return user;
 }
-
 /* Links a Google credential that was stashed by loginWithGoogle()
  * after an account-exists-with-different-credential error. Call this
  * right after a successful password login() — if there's nothing
@@ -1261,7 +1152,6 @@ async function linkPendingGoogleCredential() {
   pendingGoogleCredential = null;
   await linkWithCredential(auth.currentUser, credential);
 }
-
 /* ── LOG OUT ──────────────────────────────────────────────────────
  * Signs out of Firebase Auth, then clears both local caches (session
  * + progress store) so a shared/public computer doesn't leave the
@@ -1275,7 +1165,6 @@ async function logout(redirectPath) {
   localStorage.removeItem(LW_SESSION_KEY);
   window.location.href = redirectPath || '/index.html';
 }
-
 /* ── FORGOT PASSWORD (logged out) ────────────────────────────────
  * Called from index.html's "Forgot password?" link — no signed-in
  * user required, since the whole point is recovering an account you
@@ -1301,7 +1190,6 @@ async function sendPasswordReset(email) {
     throw err;
   }
 }
-
 /* ── PROFILE MANAGEMENT (NEW) ────────────────────────────────────
  * Backs the Edit Profile modal on pages/settings.html. Each function
  * below is deliberately narrow — it only ever touches the *signed-in*
@@ -1326,7 +1214,6 @@ async function reauthenticate(currentPassword) {
   await reauthenticateWithCredential(firebaseUser, credential);
   return firebaseUser;
 }
-
 /* Renames the learner. This app doesn't use Firebase Auth's own
  * displayName anywhere (login/register never set it — `name` has only
  * ever lived in Firestore), so this only touches the Firestore doc.
@@ -1345,17 +1232,14 @@ async function updateUsername(newName) {
   if (trimmed.length > MAX_NAME_LENGTH) {
     throw new Error('Name must be ' + MAX_NAME_LENGTH + ' characters or fewer.');
   }
-
   await updateDoc(doc(db, 'users', firebaseUser.uid), { name: trimmed });
   await syncXpPublicProfile();
-
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
     cached.name = trimmed;
     localStorage.setItem(LW_SESSION_KEY, JSON.stringify(cached));
   }
 }
-
 /* ── PROFILE PICTURE ──────────────────────────────────────────────
  * Learners pick one of the fixed pictures in js/avatars.js; only its ID is
  * stored (users/{uid}.avatar), never an image or URL. The same pattern is
@@ -1365,7 +1249,6 @@ async function updateUsername(newName) {
  * getAvatar() reads the stored ID (the session cache can be stale if it was
  * changed on another device) and refreshes the cache. */
 const AVATAR_ID_RE = /^avatar-\d{2}$/;
-
 async function getAvatar() {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
@@ -1379,24 +1262,20 @@ async function getAvatar() {
   }
   return valid;
 }
-
 async function updateAvatar(avatarId) {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) throw new Error('Not signed in.');
   if (typeof avatarId !== 'string' || !AVATAR_ID_RE.test(avatarId)) {
     throw new Error('Pick one of the available profile pictures.');
   }
-
   await updateDoc(doc(db, 'users', firebaseUser.uid), { avatar: avatarId });
   await syncXpPublicProfile();
-
   const cached = getCurrentUser();
   if (cached && cached.uid === firebaseUser.uid) {
     cached.avatar = avatarId;
     localStorage.setItem(LW_SESSION_KEY, JSON.stringify(cached));
   }
 }
-
 /* Changes the learner's login email. Uses verifyBeforeUpdateEmail
  * rather than a bare updateEmail() — Firebase sends a confirmation
  * link to the NEW address, and the login email only actually changes
@@ -1413,7 +1292,6 @@ async function updateUserEmail(newEmail, currentPassword) {
   const firebaseUser = await reauthenticate(currentPassword);
   await verifyBeforeUpdateEmail(firebaseUser, trimmed);
 }
-
 /* Changes the learner's password while logged in (different from
  * sendPasswordReset() above, which is for someone who's locked out).
  * Reauthenticates with the CURRENT password first — same
@@ -1432,7 +1310,6 @@ async function changePassword(currentPassword, newPassword) {
   const firebaseUser = await reauthenticate(currentPassword);
   await updatePassword(firebaseUser, newPassword);
 }
-
 /* GRACE-PERIOD SOFT DELETE — not an instant hard delete. Reauthenticates,
  * then just flags `users/{uid}` with `deletionRequested: true` +
  * `deletionRequestedAt` and signs the learner out. Nothing is deleted
@@ -1456,19 +1333,15 @@ async function changePassword(currentPassword, newPassword) {
 async function deleteAccount(currentPassword) {
   const firebaseUser = await reauthenticate(currentPassword);
   const uid = firebaseUser.uid;
-
   await updateDoc(doc(db, 'users', uid), {
     deletionRequested: true,
     deletionRequestedAt: new Date().toISOString(),
   });
-
   await syncXpPublicProfile();
-
   await signOut(auth);
   localStorage.removeItem(window.LWProgress?.STORE_KEY);
   localStorage.removeItem(LW_SESSION_KEY);
 }
-
 /* ── ROUTE GUARDS ─────────────────────────────────────────────────
  * requireAuth() — three-way routing (2026-09-29):
  *     logged out             -> loginPath  (default index.html)
@@ -1496,13 +1369,11 @@ function redirectOnce(url) {
   redirecting = true;
   window.location.replace(url);
 }
-
 function enforceAccess(loginPath, verifyPath) {
   const state = getAuthState();
   if (state === 'logged-out') redirectOnce(loginPath || LOGIN_PAGE_URL);
   else if (state === 'unverified') redirectOnce(verifyPath || VERIFY_PAGE_URL);
 }
-
 function requireAuth(loginPath, verifyPath) {
   if (authReady) {
     enforceAccess(loginPath, verifyPath);
@@ -1512,7 +1383,6 @@ function requireAuth(loginPath, verifyPath) {
     enforceAccess(loginPath, verifyPath);
   }, { once: true });
 }
-
 function redirectIfLoggedIn(dashboardPath, verifyPath) {
   const state = getAuthState();
   if (state === 'verified') {
@@ -1524,7 +1394,6 @@ function redirectIfLoggedIn(dashboardPath, verifyPath) {
     redirectOnce(verifyPath || VERIFY_PAGE_URL);
   }
 }
-
 /* Resolves once Firebase has restored (or found no) session. It does NOT
  * say the user is verified — check getAuthState() afterwards if it
  * matters. Callers that only read getCurrentUser() are already safe:
@@ -1538,7 +1407,6 @@ function whenAuthReady() {
     }
   });
 }
-
 // XP is client-written on Spark. Profile changes need the same paired state /
 // publicProfiles transaction as XP claims, so load the bridge only when an
 // account profile changes on pages that do not otherwise use XP.
@@ -1550,7 +1418,6 @@ async function syncXpPublicProfile() {
     console.warn('[auth] could not sync XP leaderboard profile:', error?.code || '', error?.message || error);
   }
 }
-
 /* ── PROGRESS CLOUD BRIDGE (fix: progress not reaching Firestore) ──
  * The audit pass removed doc/db/getDoc/setDoc from window.LWAuth, but
  * js/engine/progress.js, js/missions.js and js/game.js still called them,
@@ -1561,7 +1428,6 @@ async function syncXpPublicProfile() {
  * and only after Firebase Auth has restored the session. firestore.rules
  * enforces the same thing server-side. */
 const PROGRESS_COLLECTIONS = ['userProgress', 'userProgressV2', 'userGame'];
-
 async function progressRef(name) {
   if (PROGRESS_COLLECTIONS.indexOf(name) === -1) throw new Error('progress collection not allowed: ' + name);
   await whenAuthReady();
@@ -1569,7 +1435,6 @@ async function progressRef(name) {
   if (!u || !u.emailVerified) return null;
   return doc(db, name, u.uid);
 }
-
 /* → { exists: boolean, data: object|null } , or null when signed out */
 async function readProgressDoc(name) {
   const ref = await progressRef(name);
@@ -1577,7 +1442,6 @@ async function readProgressDoc(name) {
   const snap = await getDoc(ref);
   return { exists: snap.exists(), data: snap.exists() ? snap.data() : null };
 }
-
 /* → true when written, false when signed out. opts.merge = setDoc merge. */
 async function writeProgressDoc(name, data, opts) {
   const ref = await progressRef(name);
@@ -1585,7 +1449,6 @@ async function writeProgressDoc(name, data, opts) {
   await setDoc(ref, data, opts && opts.merge ? { merge: true } : {});
   return true;
 }
-
 /* ── EXPORTS ──────────────────────────────────────────────────────
  * Exposed as window.LWAuth so plain <script> tags (no bundler) can
  * use it from any page.
@@ -1649,7 +1512,6 @@ window.LWAuth = {
   if (page === '' || page === 'index' || page === 'verify-email' || page.indexOf('admin-') === 0) return;
   requireAuth();
 })();
-
 // SECURITY (audit pass): `doc`, `db`, `getDoc`, `setDoc` used to be
 // re-exported here, which meant anyone with the browser console could
 // run LWAuth.setDoc(LWAuth.doc(LWAuth.db, 'users', uid), {level:'admin', ...})
@@ -1669,7 +1531,6 @@ window.LWAuth = {
 // users/{uid} writes to that uid. sendPasswordReset() needs no such
 // guard — it takes only an email and never touches Firestore or any
 // signed-in session.
-
 // ES-MODULE EXPORTS for js/admin-firebase.js (admin panel).
 // This file is the ONLY place the Firebase config, initializeApp() and
 // SDK imports live; the admin panel imports app/auth/db and the Firestore
