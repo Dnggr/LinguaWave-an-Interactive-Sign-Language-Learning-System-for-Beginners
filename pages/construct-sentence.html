@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Construct a Sentence | LinguaWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+  <link rel="stylesheet" href="../css/construct-sentence.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script src="../js/xp-config.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+  <script type="module" src="../js/xp.js"></script>
+  <script src="../js/icons.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <script>window.addEventListener('lwauth-ready', () => LWAuth.requireAuth('../index.html'));</script>
+  <script src="../js/role-guard.js"></script>
+  <script src="../js/mobile-nav.js" defer></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to Construct a Sentence</a>
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
+      <nav class="app-sidebar__nav">
+        <a href="dashboard.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="dashboard"></span>Dashboard</a>
+        <a href="learn.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="learn"></span>Learn</a>
+        <a href="progress.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>Progress</a>
+        <a href="game.html" class="app-sidebar__link active" aria-current="page"><span class="app-sidebar__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="5" rx="1"/><rect x="13" y="4" width="8" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><rect x="10" y="11" width="8" height="5" rx="1"/><path d="M4 20h16"/></svg></span>Game</a>
+        <a href="leaderboard.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="progress"></span>Leaderboard</a>
+        <a href="feedback.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="feedback"></span>Feedback</a>
+        <a href="settings.html" class="app-sidebar__link"><span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="settings"></span>Settings</a>
+      </nav>
+      <div class="app-sidebar__foot">
+        <button class="theme-switch" id="theme-toggle" type="button" role="switch" aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme"><span class="theme-switch__check"><span data-lw-icon="theme_sun" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--sun"></span><span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span></span></button>
+        <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
+      </div>
+    </aside>
+    <main class="app-main" id="main">
+      <div class="cs" id="cs" data-phase="idle">
+        <header class="gm-head ta-head">
+          <div class="gm-head__text"><h1 class="gm-title">Construct a Sentence</h1><p>Drag the sign videos into the right order to build the sentence.</p></div>
+          <a class="btn btn--ghost btn--sm ta-back" href="game.html" aria-label="Back to game modes">← Back</a>
+          <div class="gm-stats" role="status" aria-live="polite">
+            <span class="gm-chip">Sentence <b id="cs-count-label">0/0</b></span>
+            <span class="gm-chip">Time <b id="cs-time">0.0s</b></span>
+            <span class="gm-chip gm-chip--miss">Misses <b id="cs-misses">0</b></span>
+          </div>
+        </header>
+        <div class="ta-progress cs-progress" aria-hidden="true"><span class="ta-progress__fill"></span></div>
+
+        <section class="cs-board" aria-label="Sentence builder">
+          <div class="cs-prompt">
+            <p class="cs-eyebrow">BUILD THIS SENTENCE</p>
+            <h2 class="cs-sentence" id="cs-sentence">Ready?</h2>
+          </div>
+          <div class="cs-count" id="cs-count" aria-live="assertive"></div>
+
+          <div>
+            <p class="cs-label">YOUR SENTENCE (left to right)</p>
+            <div class="cs-slots" id="cs-slots" aria-label="Your sentence, in order"></div>
+          </div>
+          <div>
+            <p class="cs-label">SIGNS TO PLACE</p>
+            <div class="cs-pool" id="cs-pool" aria-label="Scrambled signs"></div>
+          </div>
+
+          <p id="cs-status" class="ta-status" role="status" aria-live="polite">Press Start when you are ready.</p>
+          <div class="cs-controls">
+            <button class="btn btn--primary" id="cs-start" type="button">Start</button>
+            <button class="btn btn--sm" id="cs-check" type="button" disabled>Check</button>
+            <button class="btn btn--ghost btn--sm" id="cs-reset" type="button" disabled>Reset order</button>
+            <button class="btn btn--ghost btn--sm" id="cs-quit" type="button" disabled>Quit run</button>
+          </div>
+        </section>
+
+        <section class="gm-overlay cs-overlay" id="cs-result" hidden aria-live="polite">
+          <div class="gm-card">
+            <h2>Sentences complete</h2>
+            <p id="cs-summary"></p>
+            <div class="cs-result-actions"><button class="btn btn--primary" id="cs-again" type="button">Play again</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
+          </div>
+        </section>
+        <section class="gm-overlay cs-overlay" id="cs-error" hidden role="alertdialog" aria-modal="true" aria-labelledby="cs-error-title">
+          <div class="gm-card">
+            <h2 id="cs-error-title">Could not start</h2>
+            <p id="cs-error-message">Try again in a moment.</p>
+            <div class="cs-result-actions"><button class="btn btn--primary" id="cs-error-retry" type="button">Try again</button><button class="btn btn--ghost" id="cs-error-close" type="button">Close</button></div>
+          </div>
+        </section>
+        <section class="gm-overlay cs-overlay" id="cs-quit-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="cs-quit-title">
+          <div class="gm-card">
+            <h2 id="cs-quit-title">Quit this run?</h2>
+            <p>Your progress in this run will be lost.</p>
+            <div class="cs-result-actions"><button class="btn btn--ghost" id="cs-quit-cancel" type="button">Keep playing</button><button class="btn btn--primary" id="cs-quit-confirm" type="button">Quit run</button></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script defer src="../js/engine/progress.js"></script>
+  <script defer src="../js/missions.js"></script>
+  <script src="../js/main.js"></script>
+  <script type="module" src="../js/construct-sentence.js"></script>
+</body>
+</html>
