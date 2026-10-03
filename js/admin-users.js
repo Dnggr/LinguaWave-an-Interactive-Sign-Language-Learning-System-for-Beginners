@@ -1,27 +1,63 @@
 /**
  * admin-users.js — Controller for pages/admin-users.html (NEW)
- * Lists learner profiles from Firestore `users`, lets the admin
- * change a learner's level inline, and lets them delete a learner
+ * Lists learner profiles from Firestore `users` and lets the admin delete a learner
  * COMPLETELY — Firebase Auth login + Firestore data — through the
  * `deleteLearnerAccount` Cloud Function (see js/admin-firebase.js); without
  * the function only the Firestore data goes and the admin is told to remove
  * the login in the Firebase console.
  * The admin's own row (matched by ADMIN_EMAIL) has no delete button,
  * so a stray click can't delete the admin account.
+ * BULK ACTIONS (header buttons): "Reset all user data" wipes XP / streaks / badges / progress for every
+ * learner but keeps their accounts; "Delete all users" removes every learner account. Both skip the admin
+ * and require typing a confirmation word first. Logic lives in js/admin-firebase.js.
  */
-import { listUsers, updateUserLevel, deleteLearnerAccount } from "./admin-firebase.js";
+import { listUsers, deleteLearnerAccount, resetAllLearnersProgress, deleteAllLearners } from "./admin-firebase.js";
 let allUsers = [];
 let pendingDeleteUid = null;
+let bulkMode = null;       // "reset" | "delete" while the bulk dialog is open
+let bulkRunning = false;   // true while a bulk action is in flight (dialog can't be dismissed)
+const BULK = {
+  reset: {
+    title: "Reset ALL user data?",
+    phrase: "RESET",
+    confirm: "Reset all data",
+    body: (n) => `This clears the learning data of ${n} learner${n === 1 ? "" : "s"}. Their accounts and logins stay.`,
+    list: ["XP, level and leaderboard rows", "Streaks, badges and achievements", "Lesson, mission and quiz progress", "Wall Breaker / game progress"],
+    note: "The admin account is not affected. This can't be undone. Feedback surveys are kept.",
+  },
+  delete: {
+    title: "Delete ALL users?",
+    phrase: "DELETE",
+    confirm: "Delete all users",
+    body: (n) => `This permanently deletes ${n} learner account${n === 1 ? "" : "s"} and everything they have saved.`,
+    list: ["Profiles, XP, badges and progress", "Leaderboard rows and game progress", "Their feedback surveys", "Their login, if the delete service is deployed"],
+    note: "The admin account is not affected. This can't be undone.",
+  },
+};
 const els = {};
 function cacheEls() {
   els.tbody = document.getElementById("user-table-body");
   els.search = document.getElementById("user-search");
-  els.levelFilter = document.getElementById("user-level-filter");
   els.deleteBackdrop = document.getElementById("user-delete-backdrop");
   els.deleteBody = document.getElementById("user-delete-body");
   els.deleteClose = document.getElementById("user-delete-close");
   els.deleteCancel = document.getElementById("user-delete-cancel");
   els.deleteConfirm = document.getElementById("user-delete-confirm");
+  els.bulkResetOpen = document.getElementById("bulk-reset-open");
+  els.bulkDeleteOpen = document.getElementById("bulk-delete-open");
+  els.bulkBackdrop = document.getElementById("bulk-backdrop");
+  els.bulkTitle = document.getElementById("bulk-title");
+  els.bulkBody = document.getElementById("bulk-body");
+  els.bulkList = document.getElementById("bulk-list");
+  els.bulkNote = document.getElementById("bulk-note");
+  els.bulkPrompt = document.getElementById("bulk-prompt");
+  els.bulkInput = document.getElementById("bulk-input");
+  els.bulkProgress = document.getElementById("bulk-progress");
+  els.bulkProgressBar = document.getElementById("bulk-progress-bar");
+  els.bulkProgressText = document.getElementById("bulk-progress-text");
+  els.bulkClose = document.getElementById("bulk-close");
+  els.bulkCancel = document.getElementById("bulk-cancel");
+  els.bulkConfirm = document.getElementById("bulk-confirm");
 }
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
@@ -30,14 +66,12 @@ function escapeHtml(str) {
 }
 function render() {
   const term = els.search.value.trim().toLowerCase();
-  const level = els.levelFilter.value;
   const rows = allUsers.filter((u) => {
-    if (level && u.level !== level) return false;
     if (!term) return true;
     return (u.name || "").toLowerCase().includes(term) || (u.email || "").toLowerCase().includes(term);
   });
   if (!rows.length) {
-    els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__empty">${allUsers.length ? "No learners match your search." : "No learners yet."}</td></tr>`;
+    els.tbody.innerHTML = `<tr><td colspan="4" class="admin-table__empty">${allUsers.length ? "No learners match your search." : "No learners yet."}</td></tr>`;
     return;
   }
   const adminEmail = (window.LWAdminAuth?.ADMIN_EMAIL || "").toLowerCase();
@@ -47,13 +81,6 @@ function render() {
     <tr data-uid="${u.id}">
       <td class="admin-table__title">${escapeHtml(u.name || "(no name)")}</td>
       <td class="admin-table__muted">${escapeHtml(u.email || "&mdash;")}</td>
-      <td>
-        <select class="form-input" data-level-select data-uid="${u.id}" style="padding: var(--space-1) var(--space-3); font-size: var(--fs-xs);">
-          <option value="basic" ${u.level === "basic" ? "selected" : ""}>Basic</option>
-          <option value="medium" ${u.level === "medium" ? "selected" : ""}>Medium</option>
-          <option value="intermediate" ${u.level === "intermediate" ? "selected" : ""}>Intermediate</option>
-        </select>
-      </td>
       <td class="admin-table__muted">${escapeHtml(u.joined || "&mdash;")}</td>
       <td class="admin-table__actions">
         ${isAdminRow
@@ -65,32 +92,13 @@ function render() {
   }).join("");
 }
 async function loadUsers() {
-  els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__loading">Loading learners&hellip;</td></tr>`;
+  els.tbody.innerHTML = `<tr><td colspan="4" class="admin-table__loading">Loading learners&hellip;</td></tr>`;
   try {
     allUsers = await listUsers();
     render();
   } catch (err) {
     console.error("Failed to load users:", err);
-    els.tbody.innerHTML = `<tr><td colspan="5" class="admin-table__empty">Couldn't load learners from Firestore.</td></tr>`;
-  }
-}
-async function handleLevelChange(e) {
-  const select = e.target.closest("[data-level-select]");
-  if (!select) return;
-  const uid = select.dataset.uid;
-  const level = select.value;
-  select.disabled = true;
-  try {
-    await updateUserLevel(uid, level);
-    const user = allUsers.find((u) => u.id === uid);
-    if (user) user.level = level;
-    window.LinguaWave?.showToast?.("Level updated.", "success");
-  } catch (err) {
-    console.error("Failed to update level:", err);
-    window.LinguaWave?.showToast?.("Couldn't update this learner's level.", "error");
-    render(); // revert the visible select to the last known-good value
-  } finally {
-    select.disabled = false;
+    els.tbody.innerHTML = `<tr><td colspan="4" class="admin-table__empty">Couldn't load learners from Firestore.</td></tr>`;
   }
 }
 function openDeleteConfirm(uid) {
@@ -108,7 +116,7 @@ async function confirmDelete() {
   const uid = pendingDeleteUid;
   els.deleteConfirm.disabled = true;
   try {
-    // Cloud Function removes the Auth login and learner data, including XP.
+    // Cloud Function (if deployed) removes the Auth login; the Firestore data is always removed.
     const res = await deleteLearnerAccount(uid);
     closeDeleteConfirm();
     window.LinguaWave?.showToast?.(
@@ -131,10 +139,94 @@ async function confirmDelete() {
     els.deleteConfirm.disabled = false;
   }
 }
+/* ── Bulk actions ─────────────────────────────────────────────── */
+function openBulk(mode) {
+  if (!allUsers.length) {
+    window.LinguaWave?.showToast?.("There are no learners to " + (mode === "reset" ? "reset." : "delete."), "info");
+    return;
+  }
+  const cfg = BULK[mode];
+  bulkMode = mode;
+  els.bulkTitle.textContent = cfg.title;
+  els.bulkBody.textContent = cfg.body(allUsers.length);
+  els.bulkList.innerHTML = cfg.list.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+  els.bulkNote.textContent = cfg.note;
+  els.bulkPrompt.textContent = `Type ${cfg.phrase} to confirm:`;
+  els.bulkInput.value = "";
+  els.bulkInput.disabled = false;
+  els.bulkConfirm.textContent = cfg.confirm;
+  els.bulkConfirm.disabled = true;
+  els.bulkCancel.disabled = false;
+  els.bulkProgress.hidden = true;
+  els.bulkBackdrop.hidden = false;
+  els.bulkInput.focus();
+}
+function closeBulk() {
+  if (bulkRunning) return;   // never abandon a half-finished run
+  els.bulkBackdrop.hidden = true;
+  bulkMode = null;
+}
+function updateBulkConfirmState() {
+  if (!bulkMode) return;
+  els.bulkConfirm.disabled = bulkRunning || els.bulkInput.value.trim() !== BULK[bulkMode].phrase;
+}
+function onBulkProgress(done, total) {
+  els.bulkProgressBar.max = total || 1;
+  els.bulkProgressBar.value = done;
+  els.bulkProgressText.textContent = `${done} / ${total} done`;
+}
+async function confirmBulk() {
+  if (!bulkMode || bulkRunning || els.bulkInput.value.trim() !== BULK[bulkMode].phrase) return;
+  const mode = bulkMode;
+  bulkRunning = true;
+  els.bulkConfirm.disabled = true;
+  els.bulkCancel.disabled = true;
+  els.bulkClose.disabled = true;
+  els.bulkInput.disabled = true;
+  els.bulkProgress.hidden = false;
+  onBulkProgress(0, allUsers.length);
+  const toast = window.LinguaWave?.showToast;
+  try {
+    if (mode === "reset") {
+      const r = await resetAllLearnersProgress(onBulkProgress);
+      toast?.(
+        r.failed.length
+          ? `Reset ${r.reset} of ${r.total} learners. ${r.failed.length} failed, see the console and try again.`
+          : `All data reset for ${r.reset} learner${r.reset === 1 ? "" : "s"}.`,
+        r.failed.length ? "error" : "success"
+      );
+    } else {
+      const r = await deleteAllLearners(onBulkProgress);
+      if (r.failed.length) {
+        toast?.(`Deleted ${r.deleted} of ${r.total} learners. ${r.failed.length} failed, see the console and try again.`, "error");
+      } else if (r.authDeleted < r.deleted) {
+        toast?.(`Deleted data of ${r.deleted} learner${r.deleted === 1 ? "" : "s"}. Their logins still exist: remove them in Firebase Console -> Authentication.`, "success");
+      } else {
+        toast?.(`Deleted ${r.deleted} learner${r.deleted === 1 ? "" : "s"} (logins and data).`, "success");
+      }
+    }
+  } catch (err) {
+    console.error("Bulk action failed:", err);
+    const denied = ["functions/permission-denied", "permission-denied"].includes(err?.code);
+    toast?.(denied ? "Not allowed: only the admin account can do this." : (err?.message || "The bulk action failed."), "error");
+  } finally {
+    bulkRunning = false;
+    els.bulkClose.disabled = false;
+    closeBulk();
+    await loadUsers();
+  }
+}
+
 function wireEvents() {
+  els.bulkResetOpen.addEventListener("click", () => openBulk("reset"));
+  els.bulkDeleteOpen.addEventListener("click", () => openBulk("delete"));
+  els.bulkInput.addEventListener("input", updateBulkConfirmState);
+  els.bulkInput.addEventListener("keydown", (e) => { if (e.key === "Enter") confirmBulk(); });
+  els.bulkConfirm.addEventListener("click", confirmBulk);
+  els.bulkClose.addEventListener("click", closeBulk);
+  els.bulkCancel.addEventListener("click", closeBulk);
+  els.bulkBackdrop.addEventListener("click", (e) => { if (e.target === els.bulkBackdrop) closeBulk(); });
   els.search.addEventListener("input", render);
-  els.levelFilter.addEventListener("change", render);
-  els.tbody.addEventListener("change", handleLevelChange);
   els.tbody.addEventListener("click", (e) => {
     const delId = e.target.closest("[data-delete]")?.dataset.delete;
     if (delId) openDeleteConfirm(delId);
@@ -145,6 +237,7 @@ function wireEvents() {
   els.deleteConfirm.addEventListener("click", confirmDelete);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !els.deleteBackdrop.hidden) closeDeleteConfirm();
+    if (e.key === "Escape" && !els.bulkBackdrop.hidden) closeBulk();
   });
 }
 async function init() {

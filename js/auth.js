@@ -1331,7 +1331,11 @@ async function changePassword(currentPassword, newPassword) {
  * gone by anything that checks `deletionRequested`) but its data is
  * not physically gone yet. */
 async function deleteAccount(currentPassword) {
-  const firebaseUser = await reauthenticate(currentPassword);
+  // Edit Profile no longer asks for the password on Delete Account (typed DELETE + confirm modal instead),
+  // so re-authentication only runs when a password is passed. Original line kept:
+  // const firebaseUser = await reauthenticate(currentPassword);
+  const firebaseUser = currentPassword ? await reauthenticate(currentPassword) : auth.currentUser;
+  if (!firebaseUser) throw new Error('Not signed in.');
   const uid = firebaseUser.uid;
   await updateDoc(doc(db, 'users', uid), {
     deletionRequested: true,

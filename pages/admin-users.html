@@ -18,13 +18,15 @@
   <!--
     pages/admin-users.html — User Management (NEW)
     ─────────────────────────────────────────────────────────────────
-    Reads/edits the SAME `users/{uid}` Firestore docs js/auth.js
-    already writes on register/login. Editing the level here changes
-    the field going forward — it doesn't retroactively regrade a
-    learner's history. "Delete" removes the learner's Firebase Auth
+    Reads the SAME `users/{uid}` Firestore docs js/auth.js
+    already writes on register/login (read-only list + delete; no level editing).
+    "Delete" removes the learner's Firebase Auth
     login AND their Firestore data, via the `deleteLearnerAccount`
     Cloud Function in /functions (see ADMIN_SETUP.md). If that function
-    isn't deployed, nothing is deleted.
+    isn't deployed, the Firestore data is still deleted and the login must
+    be removed in the Firebase console.
+    "Reset all user data" / "Delete all users" (header buttons) apply to every
+    learner EXCEPT the admin account; see js/admin-firebase.js (BULK ACTIONS).
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -100,18 +102,16 @@
           <div class="admin-header">
             <div>
               <h1>User Management</h1>
-              <p>View learners and update their level. No account creation here — accounts sign themselves up.</p>
+              <p>View and delete learners. No account creation here — accounts sign themselves up.</p>
+            </div>
+            <div class="admin-header__actions">
+              <button class="btn btn--ghost btn--sm admin-btn--warn" id="bulk-reset-open" type="button">Reset all user data</button>
+              <button class="btn btn--danger btn--sm" id="bulk-delete-open" type="button">Delete all users</button>
             </div>
           </div>
 
           <div class="admin-toolbar">
             <input class="form-input admin-toolbar__search" id="user-search" type="search" placeholder="Search by name or email&hellip;" />
-            <select class="form-input admin-toolbar__filter" id="user-level-filter">
-              <option value="">All levels</option>
-              <option value="basic">Basic</option>
-              <option value="medium">Medium</option>
-              <option value="intermediate">Intermediate</option>
-            </select>
           </div>
 
           <div class="admin-table-wrap">
@@ -120,13 +120,12 @@
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Level</th>
                   <th>Joined</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody id="user-table-body">
-                <tr><td colspan="5" class="admin-table__loading">Loading learners&hellip;</td></tr>
+                <tr><td colspan="4" class="admin-table__loading">Loading learners&hellip;</td></tr>
               </tbody>
             </table>
           </div>
@@ -143,10 +142,35 @@
         <button class="admin-modal__close" id="user-delete-close" type="button" aria-label="Close">&times;</button>
       </div>
       <p id="user-delete-body" class="text-muted">This can't be undone.</p>
-      <p class="admin-danger-note">This permanently deletes their login (Firebase Authentication) and all their data. It can't be undone.</p>
+      <p class="admin-danger-note">This permanently deletes all their data. It can't be undone. If the delete service isn't deployed, their login must also be removed in Firebase Console &rarr; Authentication.</p>
       <div class="admin-modal__foot">
         <button class="btn btn--ghost" type="button" id="user-delete-cancel">Cancel</button>
         <button class="btn btn--danger" type="button" id="user-delete-confirm">Delete Learner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk action (Reset all user data / Delete all users): one dialog, filled in by js/admin-users.js -->
+  <div class="admin-modal-backdrop" id="bulk-backdrop" hidden>
+    <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+      <div class="admin-modal__head">
+        <h2 id="bulk-title">Are you sure?</h2>
+        <button class="admin-modal__close" id="bulk-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p id="bulk-body" class="text-muted"></p>
+      <ul id="bulk-list" class="admin-bulk-list"></ul>
+      <p class="admin-danger-note" id="bulk-note"></p>
+      <label class="admin-bulk-confirm" for="bulk-input">
+        <span id="bulk-prompt"></span>
+        <input class="form-input" id="bulk-input" type="text" autocomplete="off" spellcheck="false" />
+      </label>
+      <div class="admin-upload-progress" id="bulk-progress" hidden>
+        <progress id="bulk-progress-bar" value="0" max="1"></progress>
+        <p class="admin-form-hint" id="bulk-progress-text" aria-live="polite"></p>
+      </div>
+      <div class="admin-modal__foot">
+        <button class="btn btn--ghost" type="button" id="bulk-cancel">Cancel</button>
+        <button class="btn btn--danger" type="button" id="bulk-confirm" disabled>Confirm</button>
       </div>
     </div>
   </div>

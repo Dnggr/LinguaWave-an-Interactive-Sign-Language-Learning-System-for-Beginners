@@ -102,15 +102,31 @@
           <div class="admin-header">
             <div>
               <h1>Admin Dashboard</h1>
-              <p>Signed in as <strong data-user-email>&mdash;</strong>. Simple content and account management for LinguaWave.</p>
+              <p id="dash-date">Signed in as <strong data-user-email>&mdash;</strong>.</p>
             </div>
+            <a class="btn btn--ghost btn--sm" href="admin-reports.html">Full reports</a>
           </div>
 
-          <div class="stats-grid" id="admin-stats-grid">
-            <div class="stat-tile"><div class="stat-tile__value" id="stat-users">&mdash;</div><div class="stat-tile__label">Learners</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="stat-signs">&mdash;</div><div class="stat-tile__label">Lessons</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="stat-questions">&mdash;</div><div class="stat-tile__label">Quizzes</div></div>
-            <a class="stat-tile" href="admin-feedback.html" id="stat-feedback-tile" title="Open Feedback &amp; Surveys"><div class="stat-tile__value" id="stat-feedback">&mdash;</div><div class="stat-tile__label">Feedback</div></a>
+          <div class="rp-kpis" id="admin-stats-grid" aria-live="polite">
+            <a class="rp-kpi dash-kpi" href="admin-users.html" title="Open User Management"><span class="rp-kpi__icon" data-lw-icon="people" aria-hidden="true"></span><div><div class="rp-kpi__value" id="stat-users">&mdash;</div><div class="rp-kpi__label">Learners</div><div class="rp-kpi__sub" id="stat-new-users"></div></div></a>
+            <a class="rp-kpi dash-kpi" href="admin-lessons.html" title="Open Lesson Management"><span class="rp-kpi__icon" data-lw-icon="learn" aria-hidden="true"></span><div><div class="rp-kpi__value" id="stat-signs">&mdash;</div><div class="rp-kpi__label">Lessons</div></div></a>
+            <a class="rp-kpi dash-kpi" href="admin-lessons.html" title="Open Lesson Management"><span class="rp-kpi__icon" data-lw-icon="progress" aria-hidden="true"></span><div><div class="rp-kpi__value" id="stat-questions">&mdash;</div><div class="rp-kpi__label">Quizzes</div></div></a>
+            <a class="rp-kpi dash-kpi" href="admin-feedback.html" id="stat-feedback-tile" title="Open Feedback &amp; Surveys"><span class="rp-kpi__icon" data-lw-icon="feedback" aria-hidden="true"></span><div><div class="rp-kpi__value" id="stat-feedback">&mdash;</div><div class="rp-kpi__label">Feedback</div><div class="rp-kpi__sub" id="stat-rating"></div></div></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--sm section--tight">
+        <div class="container">
+          <div class="admin-grid-2">
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Latest sign-ups</h2><a href="admin-users.html" class="rp-card__link">Manage users</a></div>
+              <div id="dash-recent-users"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
+            <div class="card rp-card">
+              <div class="rp-card__head"><h2>Latest feedback</h2><a href="admin-feedback.html" class="rp-card__link">View all</a></div>
+              <div id="dash-recent-feedback"><p class="text-muted">Loading&hellip;</p></div>
+            </div>
           </div>
         </div>
       </section>
@@ -118,7 +134,7 @@
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="section-heading-row">
-            <h2>Manage</h2>
+            <h2>Shortcuts</h2>
           </div>
           <div class="admin-quick-links">
             <a class="card admin-quick-link" href="admin-lessons.html">
@@ -132,7 +148,7 @@
               <span class="admin-quick-link__icon" data-lw-icon="people" aria-hidden="true"></span>
               <span>
                 <span class="admin-quick-link__title" style="display:block;">User Management</span>
-                <span class="admin-quick-link__desc">View learners and update their level.</span>
+                <span class="admin-quick-link__desc">View learners, reset their data or remove accounts.</span>
               </span>
             </a>
             <a class="card admin-quick-link" href="admin-feedback.html">
@@ -146,7 +162,7 @@
               <span class="admin-quick-link__icon" data-lw-icon="progress" aria-hidden="true"></span>
               <span>
                 <span class="admin-quick-link__title" style="display:block;">Reports &amp; Analytics</span>
-                <span class="admin-quick-link__desc">Learner, lesson, and quiz breakdowns.</span>
+                <span class="admin-quick-link__desc">Sign-ups, feedback results and lesson breakdowns.</span>
               </span>
             </a>
           </div>

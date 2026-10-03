@@ -106,12 +106,14 @@
 
           <div class="stats-grid" id="fb-stats" aria-live="polite">
             <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-total">&mdash;</div><div class="stat-tile__label">Total Feedback</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-basic">&mdash;</div><div class="stat-tile__label">Basic</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-medium">&mdash;</div><div class="stat-tile__label">Medium</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-intermediate">&mdash;</div><div class="stat-tile__label">Intermediate</div></div>
-            <div class="stat-tile" id="fb-stat-other-tile" hidden><div class="stat-tile__value" id="fb-stat-other">&mdash;</div><div class="stat-tile__label">Other / unknown</div></div>
             <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-week">&mdash;</div><div class="stat-tile__label">Submissions This Week</div></div>
             <div class="stat-tile"><div class="stat-tile__value stat-tile__value--text" id="fb-stat-latest">&mdash;</div><div class="stat-tile__label">Most Recent Submission</div></div>
+          </div>
+
+          <!-- Survey results: one chart per question, drawn by js/admin-feedback.js from ALL submissions. -->
+          <div class="fb-charts-wrap" id="fb-charts-wrap" hidden>
+            <h2 class="fb-charts-title">Survey results</h2>
+            <div class="fb-charts" id="fb-charts"></div>
           </div>
         </div>
       </section>
@@ -121,12 +123,6 @@
           <div class="admin-toolbar">
             <input class="form-input admin-toolbar__search" id="fb-search" type="search"
                    placeholder="Search by name, email or comment&hellip;" aria-label="Search feedback" autocomplete="off" />
-            <select class="form-input admin-toolbar__filter" id="fb-level-filter" aria-label="Filter by level">
-              <option value="">All levels</option>
-              <option value="basic">Basic</option>
-              <option value="medium">Medium</option>
-              <option value="intermediate">Intermediate</option>
-            </select>
           </div>
           <p class="fb-count text-muted" id="fb-count" aria-live="polite"></p>
 
