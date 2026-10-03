@@ -19,6 +19,8 @@
   Lifecycle: stopCamera + cancelAnimationFrame + all timers cleared on pagehide/hidden.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
+// Game Leaderboards: loaded on demand, so a problem in that module can never stop this game from loading.
+const reportScore = (game, difficulty, result) => import('./game-scores.js').then((m) => m.submitScore(game, difficulty, result)).catch((error) => console.warn('[game-scores] unavailable:', error));
 import { initMediaPipe, processFrame, isModelReady } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
 import { getDetectionType, getSignData } from './engine/dictionary.js';
@@ -565,6 +567,9 @@ function finish() {
   setCamMode('idle'); $('gm-btn-motion').disabled = true;
   showBest();
   reportWall();
+  // Leaderboard: ranked per wall size (9 / 15 / 21 bricks, the existing size menu). A wall that shrank because the learner
+  // knows fewer signs (e.g. 12 bricks) is not a ranked size, so submitScore() skips it. finish() = a cleared wall only.
+  void reportScore('wall', String(stats.size), { timeMs: ms, misses: stats.wrong });
 }
 
 // Report the cleared wall and show the shared XP engine result. Gems/stars above stay local

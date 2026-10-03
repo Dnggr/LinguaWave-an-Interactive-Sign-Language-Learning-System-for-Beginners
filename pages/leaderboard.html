@@ -19,9 +19,11 @@
   </script>
   <!--
     pages/leaderboard.html -- Leaderboard + Badges (NEW, XP system)
-    Reads `publicProfiles` and the learner's own `xpState` doc through window.LWXP
+    Overall boards read `publicProfiles` and the learner's own `xpState` doc through window.LWXP
     (js/xp.js). XP is calculated in the browser and written in paired transactions; Firestore
     rules cap those writes but cannot verify lesson or game claims. See XP_SYSTEM.md.
+    Game Leaderboards (the "Game Leaderboards" tab) read `gameScores/{board}/entries` through window.LWGameScores
+    (js/game-scores.js) and join names/avatars from `publicProfiles`.
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -124,14 +126,13 @@
                 <div class="lb-tabgroup" role="presentation">
                   <span class="lb-tabgroup__label" aria-hidden="true">Games</span>
                   <div class="lb-tabgroup__tabs" role="presentation">
-                    <button class="lb-tab" role="tab" id="tab-sentence" data-view="sentence" aria-selected="false"><span data-lw-icon="lc_puzzle" data-lw-icon-size="sm" aria-hidden="true"></span>Sentence</button>
-                    <button class="lb-tab" role="tab" id="tab-wall" data-view="wall" aria-selected="false"><span data-lw-icon="brick_wall" data-lw-icon-size="sm" aria-hidden="true"></span>Wall Breaker</button>
-                    <button class="lb-tab" role="tab" id="tab-timeAttack" data-view="timeAttack" aria-selected="false"><span data-lw-icon="zap" data-lw-icon-size="sm" aria-hidden="true"></span>Time Attack</button>
+                    <!-- One tab for all three games. The game + difficulty pickers are drawn inside the panel by js/leaderboard.js. -->
+                    <button class="lb-tab" role="tab" id="tab-games" data-view="games" aria-selected="false"><span data-lw-icon="trophy" data-lw-icon-size="sm" aria-hidden="true"></span>Game Leaderboards</button>
                   </div>
                 </div>
               </div>
 
-              <!-- Order control: flips every board between highest-first (default) and lowest-first. Hidden on "My badges". -->
+              <!-- Order control: flips every OVERALL board between highest-first (default) and lowest-first. Hidden on "My badges" and on Game Leaderboards (those are always fastest-first). -->
               <div class="lb-toolbar" id="lb-toolbar">
                 <span class="lb-toolbar__label" id="lb-sort-label">Order</span>
                 <div class="lb-sort" role="group" aria-labelledby="lb-sort-label" id="lb-sort">
@@ -170,7 +171,7 @@
                 <li>Construct a Sentence, Wall Breaker and Time Attack earn a little XP each. Together they stop paying after the daily game limit.</li>
                 <li>Construct a Sentence is open to everyone: you can earn XP, levels and badges from it without finishing any lessons first.</li>
                 <li>Wall Breaker and Time Attack only count signs you have already learned in lessons (Wall Breaker needs at least 6 learned bricks).</li>
-                <li>The Level board ranks learners by level, and XP breaks ties. Each game board ranks by the XP earned in that game.</li>
+                <li>The Level board ranks learners by level, and XP breaks ties. Game Leaderboards are separate: they rank your fastest completed run (not XP) in Construct, Time Attack and Wall Breaker.</li>
                 <li>Streaks count days you earn XP, using your own time zone.</li>
                 <li>Each level has a lesson badge, a wall badge and a sentence badge. Earn them by finishing a lesson, a wall or a sentence run once you reach that level.</li>
               </ul>
@@ -185,6 +186,8 @@
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
+  <!-- Game Leaderboards (Construct / Time Attack / Wall Breaker personal bests). Ranking rules: js/game-scores-core.mjs. -->
+  <script type="module" src="../js/game-scores.js"></script>
   <script src="../js/icons.js"></script>
   <script src="../js/avatars.js"></script>
   <script src="../js/theme.js" defer></script>

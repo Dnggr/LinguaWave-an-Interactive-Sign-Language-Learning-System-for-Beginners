@@ -231,3 +231,98 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
   .lb-board-head { padding: var(--space-2, .5rem) var(--space-3, .75rem); }
   .lb-board-head__count { display: none; }
 }
+
+/* ======================= Game Leaderboards (leaderboard.html "Game Leaderboards" tab) =======================
+   Built from the same tokens and pieces as the overall boards: .lb-board-head, .lb-sort pills, .lb-row cards, .sk skeletons.
+   Layout: game cards (3 across, stacked on phones) -> difficulty pills -> top-3 podium -> Rank | Player | Time | Misses list.
+   Construct ranks on time only, so its rows carry the --nomiss modifier (no Misses column). */
+.gl-games { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3, .75rem); margin: 0 0 var(--space-4, 1rem); }
+.gl-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; text-align: left; font: inherit; cursor: pointer;
+  padding: var(--space-3, .75rem) var(--space-4, 1rem); border-radius: var(--radius-md, 16px);
+  border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); color: var(--clr-text, #0f172a);
+  transition: border-color var(--dur-fast, .15s) var(--ease, ease), background var(--dur-fast, .15s) var(--ease, ease); }
+.gl-card:hover { border-color: var(--clr-accent, #2563eb); }
+.gl-card[aria-selected="true"] { border-color: var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); box-shadow: inset 0 0 0 1px var(--clr-accent, #2563eb); }
+.gl-card:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
+.gl-card__icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 12px;
+  background: var(--clr-surface-2, #eff6ff); color: var(--clr-accent-text, #1d4ed8); }
+.gl-card[aria-selected="true"] .gl-card__icon { background: var(--clr-accent, #2563eb); color: var(--clr-text-invert, #fff); }
+.gl-card__text { display: grid; gap: 2px; min-width: 0; }
+.gl-card__name { font-family: var(--font-display, inherit); font-weight: 700; }
+.gl-card__desc { font-size: var(--fs-sm, .875rem); color: var(--clr-text-muted, #586780); }
+.gl-diff { margin: 0 0 var(--space-2, .5rem); }
+.gl-note { margin: 0 0 var(--space-3, .75rem); padding: 0; }
+
+.gl-you { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-4, 1rem); margin: 0 0 var(--space-3, .75rem);
+  padding: var(--space-2, .5rem) var(--space-4, 1rem); border-radius: var(--radius-md, 16px);
+  border: 1px solid var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); }
+.gl-you__rank b { font-family: var(--font-display, inherit); font-size: 1.15rem; }
+.gl-you--none { border-color: var(--clr-border, #e2e8f0); background: var(--clr-surface-2, #eff6ff); color: var(--clr-text-muted, #586780); }
+
+/* Podium: DOM order is 1, 2, 3; desktop paints 2-1-3 with the winner raised. Phones fall back to a 1-2-3 list. */
+.gl-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3, .75rem); align-items: end; margin: var(--space-4, 1rem) 0; }
+.gl-pod { display: grid; justify-items: center; gap: 4px; min-width: 0; text-align: center; padding: var(--space-3, .75rem);
+  border-radius: var(--radius-md, 16px); border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); }
+.gl-pod--1 { order: 2; padding-top: var(--space-6, 1.5rem); padding-bottom: var(--space-5, 1.25rem); border-color: #d4a017; }
+.gl-pod--2 { order: 1; }
+.gl-pod--3 { order: 3; }
+.gl-pod.is-me { border-color: var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); }
+.gl-pod__rank { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-display, inherit); font-weight: 700; color: var(--clr-text-muted, #586780); }
+.gl-pod--1 .gl-pod__medal { color: #d4a017; }
+.gl-pod--2 .gl-pod__medal { color: #94a3b8; }
+.gl-pod--3 .gl-pod__medal { color: #c2763a; }
+.gl-pod__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.gl-pod__stats { display: grid; justify-items: center; gap: 2px; }
+.gl-pod__time { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.gl-pod__miss { font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
+
+/* Ranking list: header row + .lb-row cards on one shared column template. */
+.gl-table { display: grid; gap: var(--space-2, .5rem); }
+.gl-head, .lb-row.gl-row, .gl-row--sk { display: grid; grid-template-columns: 44px minmax(0, 1fr) 96px 72px; gap: var(--space-3, .75rem); align-items: center; }
+.gl-head.gl-row--nomiss, .lb-row.gl-row.gl-row--nomiss, .gl-row--sk.gl-row--nomiss { grid-template-columns: 44px minmax(0, 1fr) 96px; }
+.gl-head { padding: 0 14px; font-size: var(--fs-xs, .75rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--clr-text-muted, #586780); }
+.gl-head > :first-child { text-align: center; }
+.gl-rank-short { display: none; }
+.gl-row--sk { padding: 10px 14px; border-radius: var(--radius-md, 16px); border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); }
+.gl-player { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.gl-player .lb-name { min-width: 0; }
+.gl-time, .gl-miss { text-align: right; font-family: var(--font-display, inherit); font-weight: 700; font-variant-numeric: tabular-nums; }
+.gl-podium--sk .gl-pod--sk { height: 8rem; align-content: center; }
+.gl-podium--sk .gl-pod--sk .sk { margin-inline: auto; }
+
+/* Empty + error cards. */
+.gl-state { display: grid; justify-items: center; gap: var(--space-2, .5rem); text-align: center; padding: var(--space-8, 2rem) var(--space-4, 1rem);
+  border: 1px dashed var(--clr-border, #e2e8f0); border-radius: var(--radius-md, 16px); }
+.gl-state__icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); color: var(--clr-accent-text, #1d4ed8); }
+.gl-state--error .gl-state__icon { background: rgba(220, 38, 38, .12); color: var(--clr-red, #dc2626); }
+.gl-state__title { margin: 0; font-family: var(--font-display, inherit); font-size: var(--fs-lg, 1.1rem); }
+.gl-state__text { margin: 0 0 var(--space-2, .5rem); color: var(--clr-text-muted, #586780); }
+.gl-hint { text-align: center; margin-inline: auto; }
+
+@media (max-width: 720px) {
+  .gl-games { grid-template-columns: 1fr; }                       /* spec: games stacked on mobile */
+}
+@media (max-width: 560px) {
+  .gl-sub { display: none; }
+  .gl-rank-full { display: none; }  .gl-rank-short { display: inline; }   /* "Rank" -> "#" so the narrow rank column never collides with "Player" */                                      /* "Small · 9 bricks" -> "Small" so the pills never overflow */
+  .gl-podium { grid-template-columns: 1fr; gap: var(--space-2, .5rem); align-items: stretch; }
+  .gl-pod, .gl-pod--1 { order: 0; padding: var(--space-2, .5rem) var(--space-3, .75rem); border-radius: var(--radius-md, 16px);
+    grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "rank av name" "rank av stats";
+    justify-items: start; align-items: center; column-gap: 10px; row-gap: 0; text-align: left; }
+  .gl-pod--2, .gl-pod--3 { order: 0; }
+  .gl-pod__rank { grid-area: rank; }
+  .gl-pod .lw-avatar { grid-area: av; width: 40px; height: 40px; }
+  .gl-pod__name { grid-area: name; }
+  .gl-pod__stats { grid-area: stats; display: flex; align-items: baseline; gap: 6px; justify-items: initial; }
+  .gl-pod__time { font-size: 1rem; }
+  .gl-pod__miss::before { content: "\00b7\00a0"; }                  /* "00:42.3 · 0 misses" */
+  .gl-head, .lb-row.gl-row, .gl-row--sk { grid-template-columns: 24px minmax(0, 1fr) 64px 38px; gap: 8px; }
+  .gl-head.gl-row--nomiss, .lb-row.gl-row.gl-row--nomiss, .gl-row--sk.gl-row--nomiss { grid-template-columns: 24px minmax(0, 1fr) 64px; }
+  .gl-time, .gl-miss { font-size: .9rem; }
+  .gl-head { padding: 0 10px; font-size: .62rem; letter-spacing: .03em; }
+  .lb-row.gl-row, .gl-row--sk { padding: 8px 10px; }
+  .gl-player { gap: 8px; }
+}
+@media (max-width: 420px) { .gl-player .lw-avatar { width: 28px; height: 28px; } .gl-player { gap: 6px; } }
+@media (prefers-reduced-motion: reduce) { .gl-card { transition: none; } }
+.lw-force-reduced-motion .gl-card { transition: none; }

@@ -4,6 +4,8 @@
   CONNECTS : Reuses cameraUtils, MediaPipe, renderer, classifier, dictionary, LWMissions media and LWXP game sessions.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
+// Game Leaderboards: loaded on demand, so a problem in that module can never stop this game from loading.
+const reportScore = (game, difficulty, result) => import('./game-scores.js').then((m) => m.submitScore(game, difficulty, result)).catch((error) => console.warn('[game-scores] unavailable:', error));
 import { initMediaPipe, processFrame, isModelReady, resetTracking } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
 import { getDetectionType, getSignData } from './engine/dictionary.js';
@@ -377,6 +379,9 @@ async function finish() {
   $('ta-start').hidden = false; $('ta-start').disabled = true; $('ta-quit').disabled = true; setStatus('Sequence complete.');
   $('ta-summary').textContent = `Completion time: ${formatTime(elapsed)} · Correct: ${targets.length} · Misses: ${misses} · Accuracy: ${Math.round(targets.length / (targets.length + misses) * 100)}%`;
   $('ta-result').hidden = false; $('ta-xp').textContent = 'Counting XP…'; $('ta-badges').replaceChildren();
+  // Leaderboard: only a FULL run (10 targets) is ranked. Shorter runs happen when a learner knows fewer than 10 signs,
+  // and their time is not comparable. finish() runs only after the last target, never on Quit.
+  if (targets.length === 10) void reportScore('timeAttack', 'standard', { timeMs: elapsed, misses });
   try {
     const session = await withTimeout(xpSessionP, 12000, 'Starting the XP session');
     const result = session?.sessionId && window.LWXP ? await withTimeout(window.LWXP.finishGame(session.sessionId, brokenLog, misses), 15000, 'Saving the result') : null;

@@ -1,4 +1,6 @@
 import { SENTENCES } from './construct-sentences.js';
+// Game Leaderboards: loaded on demand, so a problem in that module can never stop this game from loading.
+const reportScore = (game, difficulty, result) => import('./game-scores.js').then((m) => m.submitScore(game, difficulty, result)).catch((error) => console.warn('[game-scores] unavailable:', error));
 
 const $ = (id) => document.getElementById(id);
 const root = $('cs');
@@ -493,6 +495,8 @@ function finish() {
   $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run complete.');
   void reportXp();
+  // Leaderboard: a finished run only (finish() is not reached by Quit/abandon). Time + difficulty are the ranking keys.
+  void reportScore('construct', runDifficulty, { timeMs: playMs, misses });
 }
 
 function toIdle(message) {
