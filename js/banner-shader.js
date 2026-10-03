@@ -43,8 +43,16 @@
  *     and no pointer interaction.
  *   - Loop pauses while the tab is hidden or the banner is off-screen.
  *     ~30fps while idle, ~60fps only while ripples are alive.
- *   - Touch: ripples follow a finger but never call preventDefault, so
- *     scrolling the page still works.
+ *   - Touch = hover. A finger resting on the banner is the "fingertip" a
+ *     mouse cursor would be. Page scrolling is never blocked by default:
+ *       * a quick swipe past the banner scrolls the page as normal;
+ *       * a sideways drag (touch-action: pan-y in CSS) drags the ripples;
+ *       * press-and-hold ~180ms without moving "grabs" the water: from then
+ *         on touchmove is preventDefault-ed so the finger can wander in
+ *         any direction without the page scrolling away from under it.
+ *     A drag that started a grab does not trigger the Start Mission link
+ *     when the finger lifts over it, and the long-press callout / context
+ *     menu is suppressed on touch only (desktop right-click is untouched).
  *   - No WebGL / context failure => canvas is never shown and the
  *     existing CSS gradient on .mission-banner is what the user sees.
  *   - Base colours follow --mb-from / --mb-to (falls back to
@@ -65,6 +73,11 @@
   var DROP_EVERY_PX = 12;     // new ripple after the pointer moved this far...
   var DROP_EVERY_MS = 26;     // ...and at least this long since the last one
   var MAX_DROPS = 12;         // ring buffer size (lowered automatically on weak GPUs)
+
+  // Touch tuning
+  var HOLD_MS = 180;          // press this long without moving => grab the water (page stops scrolling)
+  var SLOP_PX = 10;           // finger travel that counts as "a drag", not a tap / jitter
+  var CLICK_GUARD_MS = 450;   // swallow the synthetic click right after a grab-drag
 
   // DARK: Fluid Pastels 1 palette (sampled from the preview) — indigo-violet
   // base with lavender and blue-grey patches. sRGB 0..1.
@@ -251,6 +264,18 @@
     lastCX: 0, lastCY: 0,    // last drop position in client px
     lastDropMs: 0,
     lastDrawMs: 0
+  };
+
+  // touch gesture state (one finger; extra fingers are ignored)
+  var T = {
+    id: null,                // pointerId of the finger we are following
+    down: false,
+    engaged: false,          // true once the finger has "grabbed" the water
+    timer: 0,
+    sx: 0, sy: 0,            // where the finger landed (client px)
+    dragged: false,          // travelled further than SLOP_PX
+    clickBlockUntil: 0,      // performance.now() until which clicks are swallowed
+    lastWasTouch: false
   };
 
   /* ── helpers ──────────────────────────────────────────────────── */
@@ -447,6 +472,7 @@
 
   function onEnter(e) {
     if (!S.interactive || S.reduced) return;
+    if (e.pointerType !== 'touch') T.lastWasTouch = false;
     var q = pointerUV(e);
     if (!q) return;
     P.hovering = true;
@@ -461,6 +487,7 @@
 
   function onMove(e) {
     if (!S.interactive || S.reduced) return;
+    if (e.pointerType === 'touch') touchTrack(e);
     var q = pointerUV(e);
     if (!q) return;
     var now = performance.now();
@@ -498,11 +525,78 @@
     P.lastCY = e.clientY;
     P.lastDropMs = now;
     addDrop(q.x, q.y, 0, 0, 1.5, now);                        // splash
+    if (e.pointerType === 'touch') touchStart(e);
     if (!S.raf) sync();
   }
 
   function onLeave() {
     P.hovering = false;
+    touchReset();
+  }
+
+  /* ── touch: finger = hover ────────────────────────────────────── */
+  function touchReset() {
+    if (T.timer) { clearTimeout(T.timer); T.timer = 0; }
+    T.id = null;
+    T.down = false;
+    T.engaged = false;
+  }
+
+  function touchStart(e) {
+    if (T.down) return;                       // already following a finger
+    T.lastWasTouch = true;
+    T.id = e.pointerId;
+    T.down = true;
+    T.engaged = false;
+    T.dragged = false;
+    T.sx = e.clientX;
+    T.sy = e.clientY;
+    if (T.timer) clearTimeout(T.timer);
+    T.timer = setTimeout(function () {
+      T.timer = 0;
+      // still down and not scrolling/dragging => grab the water
+      if (T.down && !T.dragged) T.engaged = true;
+    }, HOLD_MS);
+  }
+
+  function touchTrack(e) {
+    if (!T.down || e.pointerId !== T.id) return;
+    var dx = e.clientX - T.sx;
+    var dy = e.clientY - T.sy;
+    if (!T.dragged && (dx * dx + dy * dy) > SLOP_PX * SLOP_PX) {
+      T.dragged = true;
+      if (!T.engaged) {
+        if (T.timer) { clearTimeout(T.timer); T.timer = 0; }
+        // a mostly-sideways drag is "playing with the water" — lock it in
+        // so a little vertical wobble can't hand the gesture to the scroller
+        if (Math.abs(dx) > Math.abs(dy)) T.engaged = true;
+        // mostly-vertical = the user wants to scroll: leave it to the browser
+      }
+    }
+  }
+
+  function onUp(e) {
+    if (e.pointerType !== 'touch' || e.pointerId !== T.id) return;
+    if (T.engaged && T.dragged) T.clickBlockUntil = performance.now() + CLICK_GUARD_MS;
+    touchReset();
+  }
+
+  // NON-passive on purpose: this is the one place we may stop a scroll, and
+  // only while the finger has grabbed the water.
+  function onTouchMove(e) {
+    if (T.engaged && e.cancelable) e.preventDefault();
+  }
+
+  function onClickCapture(e) {
+    if (performance.now() < T.clickBlockUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  function onContextMenu(e) {
+    // long-press on touch would pop a context menu / link preview over the ripples
+    if (T.lastWasTouch && (T.down || performance.now() < T.clickBlockUntil + 800)) e.preventDefault();
   }
 
   /* ── mounting ─────────────────────────────────────────────────── */
@@ -572,14 +666,20 @@
     // dashboard.js replaces the banner's children with innerHTML — put the canvas back
     new MutationObserver(ensureAttached).observe(banner, { childList: true });
 
-    // Pointer events on the banner itself (it survives re-renders). Passive,
-    // never preventDefault, so touch scrolling and the CTA link are untouched.
+    // Pointer events on the banner itself (it survives re-renders). The pointer
+    // listeners are passive; the only preventDefault is in onTouchMove, and only
+    // after a press-and-hold / sideways drag has grabbed the water.
     if (S.interactive && 'PointerEvent' in window) {
       banner.addEventListener('pointerenter', onEnter, { passive: true });
       banner.addEventListener('pointermove', onMove, { passive: true });
       banner.addEventListener('pointerdown', onDown, { passive: true });
+      banner.addEventListener('pointerup', onUp, { passive: true });
       banner.addEventListener('pointerleave', onLeave, { passive: true });
       banner.addEventListener('pointercancel', onLeave, { passive: true });
+      // touch only: scroll-lock while grabbing, no stray taps after a drag, no long-press menu
+      banner.addEventListener('touchmove', onTouchMove, { passive: false });
+      banner.addEventListener('click', onClickCapture, true);
+      banner.addEventListener('contextmenu', onContextMenu);
     } else {
       S.interactive = false;
     }

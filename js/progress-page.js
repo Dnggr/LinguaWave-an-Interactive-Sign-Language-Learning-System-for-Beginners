@@ -476,11 +476,17 @@ function buildStreakDialogContent() {
       </li>`);
   }
 
+  // One missed day is forgiven (see missions.js "Day Streak" GRACE rule), so the
+  // message tells the learner when they are in that window and when it was used.
   const message = practicedToday
-    ? "You've practiced today. Come back tomorrow to keep your streak going!"
-    : n > 0
-      ? 'Finish a lesson or practice a sign today to keep your streak going!'
-      : 'Finish a lesson or practice a sign to start your streak!';
+    ? (streak.restoredToday
+        ? 'Streak restored! You bridged a missed day. Come back tomorrow to keep it going!'
+        : "You've practiced today. Come back tomorrow to keep your streak going!")
+    : streak.atRisk
+      ? 'You missed yesterday. Practice today to restore your streak. Missing today too will reset it.'
+      : n > 0
+        ? 'Finish a lesson or practice a sign today to keep your streak going!'
+        : 'Finish a lesson or practice a sign to start your streak!';
   const best = streak.longestStreak;
 
   return `

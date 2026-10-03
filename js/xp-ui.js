@@ -39,17 +39,22 @@
     const X = window.LWXP;
     if (!X) return;
     const st = await X.getMyState();
-    if (st) {
-      // effective streak = still alive if last activity was today or yesterday (local to the stored tz)
-      try {
-        const tz = st.tz || 'UTC', f = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(ms));
-        const last = st.streak && st.streak.lastDay;
-        st.__liveStreak = last && (last === f(Date.now()) || last === f(Date.now() - 86400000)) ? st.streak.current : 0;
-      } catch { st.__liveStreak = 0; }
-    }
+    // effective streak = the grace rule lives in js/xp.js (one missed day is forgiven, two in a row reset it)
+    if (st) st.__liveStreak = X.liveStreakOf ? X.liveStreakOf(st) : 0;
     draw(st || { xp: 0, badges: {} });
     let badgeTotal = st && st.badges ? Object.keys(st.badges).length : 0;
     X.onUpdate((res) => { badgeTotal += (res.newBadges || []).length; draw({ xp: res.xp, streak: res.streak, badgeCount: badgeTotal, __liveStreak: res.streak }); });
+    // Streaks saved before the grace rule are one short: catch them up, then redraw.
+    if (st && X.syncStreak) {
+      X.syncStreak().then((res) => {
+        if (!res || !res.ok || typeof res.streak !== 'number') return;
+        badgeTotal += (res.newBadges || []).length;
+        if (res.streak !== st.__liveStreak || (res.newBadges || []).length) {
+          st.__liveStreak = res.streak;
+          draw({ xp: res.xp, streak: res.streak, badgeCount: badgeTotal, __liveStreak: res.streak });
+        }
+      }).catch(() => {});
+    }
   }
   if (window.LWXP) init(); else document.addEventListener('lwxp-ready', init, { once: true });
 })();

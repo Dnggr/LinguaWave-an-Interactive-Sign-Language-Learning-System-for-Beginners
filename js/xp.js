@@ -53,12 +53,20 @@ function badgeIconId(id) {
   if (/^streak_\d+$/.test(id)) return 'flame';
   return 'medal';
 }
+/** Inline <svg> markup for an icon id; '' if js/icons.js is not on the page. */
 const iconSvg = (id, options) => window.LWIcons?.markup(id, options) || '';
 function currentUid() { return auth.currentUser?.uid || ''; }
 function isAdmin() { return (auth.currentUser?.email || '').toLowerCase() === ADMIN_EMAIL; }
 function queueKey(uid = currentUid()) { return `lw_xp_pending_v2:${uid}`; }
 function randomId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+}
+
+/* Streak shown for a stored xpState doc, as of right now in that doc's own timezone.
+ * Needs E.effectiveStreak and E.dayKey from xp-engine.mjs (the grace-rule logic from main). */
+function liveStreakOf(state) {
+  if (!state?.streak) return 0;
+  try { return E.effectiveStreak(state.streak, E.dayKey(Date.now(), state.tz || 'UTC')); } catch { return 0; }
 }
 
 function publish(result) {
@@ -128,6 +136,7 @@ function sameJob(a, b) {
   if (a.type === 'visibility') return a.visible === b.visible;
   if (a.type === 'game') return a.session?.id === b.session?.id;
   if (a.type === 'profile') return true;
+  if (a.type === 'streak') return true;
   return a.qid === b.qid;
 }
 
@@ -262,6 +271,11 @@ async function applyJob(job, uid) {
       state.hidden = !job.visible;
       result = { ok: true, hidden: state.hidden, xpGained: 0 };
     } else if (job.type === 'profile') {
+      result = { ok: true, xpGained: 0 };
+    } else if (job.type === 'streak') {
+      // Catch-up for streaks stored before the grace rule; needs E.healStreakFromMissions in xp-engine.mjs.
+      const healed = typeof E.healStreakFromMissions === 'function' && E.healStreakFromMissions(state, today, {}, now);
+      if (!healed) return { ok: true, skipStateWrite: true, xpGained: 0 };
       result = { ok: true, xpGained: 0 };
     } else if (job.type === 'game') {
       const session = job.session;
@@ -409,6 +423,13 @@ async function loadBoard(kind) {
   return rows;
 }
 
+/** Call on the Profile page: brings a pre-grace-rule streak up to date. Resolves with the summary. */
+async function syncStreak() {
+  for (let i = 0; i < 30 && pageActive && !window.LWMissions?.getStreakSummary; i++) await delay(100); // missions.js is a deferred classic script
+  if (!window.LWMissions) return { ok: false, reason: 'no_missions' };
+  return enqueue({ type: 'streak' });
+}
+
 async function setVisibility(visible) {
   return enqueue({ type: 'visibility', visible: !!visible });
 }
@@ -501,9 +522,10 @@ window.addEventListener('storage', (event) => { if (event.key === queueKey()) vo
 window.LWXP = {
   claimItem, claimMission, startGame, finishGame, flush, backfillOnce,
   getMyState, getLearnedSigns, loadBoard, BOARDS, setVisibility, syncPublicProfile, onUpdate, notify,
+  liveStreakOf, syncStreak,
   levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId,
   config: CFG, timezone: TZ, getLatest: () => latest,
-  debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }),
+  debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }), // run LWXP.debug() in the console
 };
 
 document.dispatchEvent(new CustomEvent('lwxp-ready'));

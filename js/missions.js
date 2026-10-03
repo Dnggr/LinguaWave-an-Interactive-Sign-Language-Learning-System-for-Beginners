@@ -8823,7 +8823,7 @@ function getCategoriesForUnitV2(unitOrder) {
   const STREAK_KEY = 'lw_missions_streak_v1';
   // Shape version of the saved streak state (see the Day Streak block). Absent /
   // other = legacy `{ days: [...] }` state, migrated on first load.
-  const STREAK_VERSION = 2;
+  const STREAK_VERSION = 3;
   const HEARTS_KEY = 'lw_missions_hearts_v1';
 
   // ── Cross-device Firestore sync (NEW, this revision) ────────────
@@ -9762,12 +9762,16 @@ function getCategoriesForUnitV2(unitOrder) {
   /* ── Day Streak ─────────────────────────────────────────────────
    * REWRITTEN (streak pass). One small, explicit state per learner:
    *
-   *   { v: 2, current, longest, lastActivityDate, recentDays }
+   *   { v: 3, current, longest, lastActivityDate, lastRestoredDate, recentDays }
    *
-   *   current           consecutive LOCAL calendar days ending on lastActivityDate
+   *   current           number of ACTIVE days in the current streak, ending on
+   *                     lastActivityDate (one missed day inside it is forgiven,
+   *                     see GRACE below; it counts active days, not calendar days)
    *   longest           best `current` ever reached (never decreases)
    *   lastActivityDate  'YYYY-MM-DD', the learner's LOCAL date of the last
    *                     qualifying activity
+   *   lastRestoredDate  local date on which a missed day was last bridged ("streak
+   *                     restored"); only used for a UI message
    *   recentDays        the last STREAK_RECENT_DAYS active local dates, kept only so
    *                     the weekday boxes in the UI can show what really happened
    *                     (it never feeds `current`/`longest`)
@@ -9777,11 +9781,16 @@ function getCategoriesForUnitV2(unitOrder) {
    *    windows and never UTC (see localDayKey()).
    *  - Only recordActivity(type) with a type in STREAK_QUALIFYING_TYPES counts.
    *    Logging in, opening a page, the Dictionary or browsing lessons never call it.
-   *  - First qualifying activity of a day: lastActivityDate was yesterday ->
-   *    current + 1; otherwise (first ever, or a full day missed) -> 1.
-   *    Any further activity the same day changes nothing.
-   *  - A streak is "live" through the end of the day AFTER lastActivityDate;
-   *    once a whole calendar day is missed it reads 0 (longest is kept).
+   *  - GRACE: ONE missed calendar day is forgiven, TWO missed days in a row end
+   *    the streak (STREAK_MAX_MISSED_DAYS = 1). Example, Mon no / Tue yes / Wed no /
+   *    Thu yes / Fri yes -> Tue, Thu, Fri = 3 (Thu "restores" it after Wed).
+   *  - First qualifying activity of a day, by how many full days were missed since
+   *    lastActivityDate: 0 (yesterday) -> current + 1; 1 (day before yesterday)
+   *    -> current + 1 and the streak counts as RESTORED; 2 or more, or first ever
+   *    -> 1. Any further activity the same day changes nothing.
+   *  - A streak is "live" while at most one full day has been missed (it is "at
+   *    risk" the day after a miss); after a second missed day in a row it reads 0
+   *    (longest is kept).
    *  - A device clock that reads EARLIER than lastActivityDate (travel west, a
    *    changed clock) never resets or double counts: the day is treated as done.
    *
@@ -9792,6 +9801,9 @@ function getCategoriesForUnitV2(unitOrder) {
    * it also fires on replays and on bridge/reconfirm calls. */
 
   const STREAK_RECENT_DAYS = 14;
+  // GRACE: consecutive missed calendar days a streak survives. 1 = one missed day is
+  // forgiven (restored by the next activity), two in a row reset it.
+  const STREAK_MAX_MISSED_DAYS = 1;
   // Activity types that may extend a streak. Anything else is ignored.
   const STREAK_QUALIFYING_TYPES = Object.freeze({
     lesson: true,          // a LESSON item (learn a sign)
@@ -9815,12 +9827,20 @@ function getCategoriesForUnitV2(unitOrder) {
     return localDayKey(new Date(y, m - 1, d + deltaDays));
   }
 
+  /* Whole calendar days from key `a` to key `b` (b - a). Math.round keeps it
+   * exact across DST changes (a local "day" is 23 or 25 hours twice a year). */
+  function dayGap(a, b) {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad)) / 86400000);
+  }
+
   function todayStr() {
     return localDayKey(new Date());
   }
 
   function emptyStreakState() {
-    return { v: STREAK_VERSION, current: 0, longest: 0, lastActivityDate: null, recentDays: [] };
+    return { v: STREAK_VERSION, current: 0, longest: 0, lastActivityDate: null, lastRestoredDate: null, recentDays: [] };
   }
 
   const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -9834,7 +9854,9 @@ function getCategoriesForUnitV2(unitOrder) {
     // Already counted today (or the clock reads earlier than the last
     // activity day): never increase twice, never reset.
     if (s.lastActivityDate && s.lastActivityDate >= today) return s;
-    const continues = s.lastActivityDate === shiftDayKey(today, -1);
+    const missed = s.lastActivityDate ? dayGap(s.lastActivityDate, today) - 1 : Infinity;
+    const continues = missed <= STREAK_MAX_MISSED_DAYS;
+    const restored = continues && missed > 0; // a missed day was bridged just now
     const current = continues ? (s.current || 0) + 1 : 1;
     const recent = (s.recentDays || []).concat(today);
     return {
@@ -9842,16 +9864,18 @@ function getCategoriesForUnitV2(unitOrder) {
       current,
       longest: Math.max(s.longest || 0, current),
       lastActivityDate: today,
+      lastRestoredDate: restored ? today : (s.lastRestoredDate || null),
       recentDays: Array.from(new Set(recent)).sort().slice(-STREAK_RECENT_DAYS),
     };
   }
 
-  /* The streak to DISPLAY on local day `today`: live through the end of the
-   * day after the last activity, 0 once a full calendar day was missed. */
+  /* The streak to DISPLAY on local day `today`: live while at most
+   * STREAK_MAX_MISSED_DAYS full days have been missed since the last activity,
+   * 0 once a second missed day in a row has passed. */
   function liveStreak(state, today) {
     if (!state || !state.lastActivityDate) return 0;
-    const last = state.lastActivityDate;
-    return (last >= today || last === shiftDayKey(today, -1)) ? (state.current || 0) : 0;
+    const missed = dayGap(state.lastActivityDate, today) - 1;
+    return missed <= STREAK_MAX_MISSED_DAYS ? (state.current || 0) : 0;
   }
 
   /* Builds a state from a list of active local day keys (used only to
@@ -9861,7 +9885,8 @@ function getCategoriesForUnitV2(unitOrder) {
     if (!uniq.length) return emptyStreakState();
     let longest = 1, run = 1;
     for (let i = 1; i < uniq.length; i++) {
-      run = (uniq[i] === shiftDayKey(uniq[i - 1], 1)) ? run + 1 : 1;
+      // same grace rule as applyStreakActivity(): a gap of up to one missed day chains
+      run = (dayGap(uniq[i - 1], uniq[i]) - 1 <= STREAK_MAX_MISSED_DAYS) ? run + 1 : 1;
       if (run > longest) longest = run;
     }
     return {
@@ -9869,6 +9894,7 @@ function getCategoriesForUnitV2(unitOrder) {
       current: run,                       // run ending on the last active day
       longest,
       lastActivityDate: uniq[uniq.length - 1],
+      lastRestoredDate: null,
       recentDays: uniq.slice(-STREAK_RECENT_DAYS),
     };
   }
@@ -9883,15 +9909,27 @@ function getCategoriesForUnitV2(unitOrder) {
    * exist the legacy streak is rebuilt from the LOCAL days of those; only
    * when none exist are the old `days` trusted as they are. */
   function normalizeStreak(raw, completedAtMap) {
-    if (raw && raw.v === STREAK_VERSION) {
+    if (raw && (raw.v === STREAK_VERSION || raw.v === 2)) {
       const last = DAY_KEY_RE.test(raw.lastActivityDate) ? raw.lastActivityDate : null;
-      const current = last ? Math.max(0, Math.floor(Number(raw.current) || 0)) : 0;
+      const recentDays = (Array.isArray(raw.recentDays) ? raw.recentDays : []).filter((d) => DAY_KEY_RE.test(d)).sort().slice(-STREAK_RECENT_DAYS);
+      let current = last ? Math.max(0, Math.floor(Number(raw.current) || 0)) : 0;
+      let longest = Math.floor(Number(raw.longest) || 0);
+      if ((raw.v === 2 || raw.v === STREAK_VERSION) && last) {
+        // v2 (strict consecutive days, no grace) -> v3: re-count the recent active
+        // days under the grace rule, so a day that v2 treated as a break (e.g.
+        // Tue, Thu, Fri) is credited now. Also run on v3 so a save that was written
+        // short (e.g. merged from another device) heals itself. Never lowers a stored value.
+        const redo = streakFromDays(recentDays);
+        if (redo.lastActivityDate === last) current = Math.max(current, redo.current);
+        longest = Math.max(longest, redo.longest);
+      }
       return {
         v: STREAK_VERSION,
         current,
-        longest: Math.max(current, Math.floor(Number(raw.longest) || 0)),
+        longest: Math.max(current, longest),
         lastActivityDate: last,
-        recentDays: (Array.isArray(raw.recentDays) ? raw.recentDays : []).filter((d) => DAY_KEY_RE.test(d)).sort().slice(-STREAK_RECENT_DAYS),
+        lastRestoredDate: DAY_KEY_RE.test(raw.lastRestoredDate) ? raw.lastRestoredDate : null,
+        recentDays,
       };
     }
     const stamps = Object.values(completedAtMap || {});
@@ -9920,6 +9958,7 @@ function getCategoriesForUnitV2(unitOrder) {
       current,
       longest: Math.max(x.longest || 0, y.longest || 0, current),
       lastActivityDate: last || null,
+      lastRestoredDate: [x.lastRestoredDate, y.lastRestoredDate].filter(Boolean).sort().pop() || null,
       recentDays: Array.from(new Set([...(x.recentDays || []), ...(y.recentDays || [])])).sort().slice(-STREAK_RECENT_DAYS),
     };
   }
@@ -9958,18 +9997,21 @@ function getCategoriesForUnitV2(unitOrder) {
   }
 
   /* THE one entry point. `type` must be one of STREAK_QUALIFYING_TYPES.
-   * Returns { counted, current, longest } - `counted` is true only when this
-   * call started or extended the streak (i.e. first qualifying activity today). */
+   * Returns { counted, restored, current, longest } - `counted` is true only when
+   * this call started or extended the streak (first qualifying activity today);
+   * `restored` is true when it also bridged one missed day. */
   function recordActivity(type) {
     if (!STREAK_QUALIFYING_TYPES[type]) {
       console.warn('[missions.js] recordActivity ignored non-qualifying type:', type);
       return { counted: false, current: getStreakSummary().currentStreak, longest: getStreakSummary().longestStreak };
     }
     const before = loadStreakState();
-    const after = applyStreakActivity(before, todayStr());
+    const today = todayStr();
+    const after = applyStreakActivity(before, today);
     const counted = after !== before;
     if (counted) saveStreakState(after);
-    return { counted, current: after.current, longest: after.longest };
+    // restored: this call bridged a single missed day (grace) rather than just +1
+    return { counted, restored: counted && after.lastRestoredDate === today, current: after.current, longest: after.longest };
   }
 
   function getStreakSummary() {
@@ -9981,6 +10023,11 @@ function getCategoriesForUnitV2(unitOrder) {
       longestStreak: Math.max(state.longest || 0, current), // stays visible after a break
       lastActivityDate: state.lastActivityDate,
       practicedToday: !!state.lastActivityDate && state.lastActivityDate >= today,
+      // A day was missed (yesterday) and the streak is still alive: practising today
+      // restores it, missing today too resets it.
+      atRisk: current > 0 && !!state.lastActivityDate && dayGap(state.lastActivityDate, today) === 2,
+      // The streak was restored by today's activity (one missed day bridged).
+      restoredToday: state.lastRestoredDate === today,
       recentDays: (state.recentDays || []).slice(),
     };
   }
