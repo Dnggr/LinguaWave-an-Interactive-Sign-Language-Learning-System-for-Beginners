@@ -108,6 +108,8 @@ import {
   HolisticLandmarker,
   FilesetResolver,
 } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
+// Model + WASM now come from js/mediapipe-assets.js (cached in the browser, optionally self-hosted).
+import { prepareAssets } from '../mediapipe-assets.js';
 
 // ── Module state ──────────────────────────────────────────────────
 let holisticLandmarker = null;
@@ -350,12 +352,13 @@ let rightPendingJumpPts = null, rightPendingJumpCount = 0;
 
 // ── Public API ────────────────────────────────────────────────────
 
-export async function initMediaPipe() {
+// opts.onProgress(loadedBytes, totalBytes) reports the model download; opts.signal can abort it.
+export async function initMediaPipe(opts = {}) {
   console.log('[mediapipe] Loading HolisticLandmarker model…');
 
-  const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm'
-  );
+  const { wasmBase, modelBytes } = await prepareAssets(opts);
+  if (typeof opts.onPhase === 'function') opts.onPhase('starting');   // download done - engine is initialising
+  const vision = await FilesetResolver.forVisionTasks(wasmBase);
 
   // CHANGED (perf): try GPU first — big win when it's supported. Some
   // browser/driver combos throw on GPU init for holistic specifically,
@@ -376,7 +379,7 @@ export async function initMediaPipe() {
     holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
       ...baseConfig,
       baseOptions: {
-        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task',
+        modelAssetBuffer: modelBytes.slice(),   // bytes from js/mediapipe-assets.js (a copy per attempt)
         delegate: 'GPU',
       },
     });
@@ -390,7 +393,7 @@ export async function initMediaPipe() {
     holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
       ...baseConfig,
       baseOptions: {
-        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task',
+        modelAssetBuffer: modelBytes.slice(),   // bytes from js/mediapipe-assets.js (a copy per attempt)
         delegate: 'CPU',
       },
     });

@@ -476,3 +476,64 @@ body.admin-gate.admin-ready { visibility: visible; }
   .rp-bar__track { grid-column: 1 / -1; order: 3; }
   .rp-mini { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── ADMIN LOADING (skeletons) ───────────────────────────────────────
+   Why: admin pages are invisible (body.admin-gate) until Firebase confirms
+   the admin session. On a slow connection that was a blank screen for
+   several seconds, which looks exactly like a frozen page. Now:
+     1. .admin-boot  - a full-screen skeleton of the admin shell, shown ONLY
+                       while the gate is closed. requireAdmin() adds
+                       .admin-ready and it disappears. Pure CSS, so it paints
+                       with the stylesheet, before any script has run.
+     2. Per-section skeletons (KPI tiles, lists, charts, tables) built from
+        the shared .sk pieces in css/style.css section 20. js/skeleton.js
+        turns any that are still on screen after ~12s into a quiet note.
+   Nothing here shows admin data, so it is safe to display to anyone while
+   the email check is still running. */
+.admin-boot { display: none; }
+body.admin-gate:not(.admin-ready) .admin-boot {
+  display: flex;
+  visibility: visible;               /* body.admin-gate is visibility:hidden; this opts back in */
+  position: fixed; inset: 0; z-index: 2000;
+  background: var(--clr-bg);
+}
+.admin-boot__side {
+  width: 240px; flex: none;
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  background: var(--clr-surface);
+  border-right: 1px solid var(--clr-border);
+}
+.admin-boot__nav { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-6); }
+.admin-boot__main { flex: 1 1 auto; min-width: 0; padding: var(--space-8) var(--space-6); overflow: hidden; }
+.admin-boot__main .sk-group { max-width: 1100px; gap: var(--space-4); }
+.admin-boot .sk-stalled { max-width: 1100px; }
+@media (max-width: 900px) {
+  body.admin-gate:not(.admin-ready) .admin-boot { flex-direction: column; }
+  .admin-boot__side {
+    width: 100%; flex-direction: row; align-items: center; justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-right: 0; border-bottom: 1px solid var(--clr-border);
+  }
+  .admin-boot__nav { display: none; }
+  .admin-boot__main { padding: var(--space-5) var(--space-4); }
+}
+@media (max-width: 700px) {
+  .admin-boot .sk-cols { --cols: 2 !important; }
+}
+
+/* Skeleton pieces used inside admin cards, tables and the feedback list. */
+.sk-row > .sk { flex: 0 1 auto; }                       /* let bars shrink on narrow screens instead of overflowing */
+.sk-group--list { gap: var(--space-4); }
+.sk-group--cards { gap: var(--space-3); }
+.sk-bars { display: flex; align-items: flex-end; gap: var(--space-2); height: 8rem; width: 100%; }
+.sk-bars .sk { flex: 1 1 0; width: auto; height: var(--h, 40%); }
+.sk-card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+}
+.admin-table__sk:hover td { background: transparent; }
+.fb-state.fb-state--sk { padding: 0; border: 0; text-align: left; }

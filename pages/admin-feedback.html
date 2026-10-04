@@ -45,8 +45,28 @@
   <script src="../js/mobile-nav.js" defer></script>
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
+  <script src="../js/skeleton.js" defer></script>
 </head>
 <body class="admin-gate">
+
+  <!-- Loading skeleton for the admin shell. Visible only while body.admin-gate is closed
+       (css/admin.css "ADMIN LOADING"); requireAdmin() adds .admin-ready and it disappears. -->
+  <div class="admin-boot" role="status" aria-live="polite">
+    <span class="sr-only">Checking admin access&hellip;</span>
+    <div class="admin-boot__side" aria-hidden="true">
+      <span class="sk sk--title" style="--w:8.5rem;--h:1.4rem"></span>
+      <span class="sk sk--pill" style="--w:6.5rem;--h:1.2rem"></span>
+      <div class="admin-boot__nav"><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span></div>
+    </div>
+    <div class="admin-boot__main">
+      <div class="sk-group" aria-hidden="true">
+        <span class="sk sk--title" style="--w:min(16rem,60%);--h:1.8rem"></span>
+        <span class="sk sk--line" style="--w:min(26rem,80%)"></span>
+        <div class="sk-cols" style="--cols:4;margin-top:var(--space-4)"><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span></div>
+        <div class="sk-cols" style="--cols:2"><span class="sk sk--block" style="--h:14rem"></span><span class="sk sk--block" style="--h:14rem"></span></div>
+      </div>
+    </div>
+  </div>
 
   <a href="#main" class="skip-link">Skip to Feedback &amp; Surveys</a>
 
@@ -105,9 +125,9 @@
           </div>
 
           <div class="stats-grid" id="fb-stats" aria-live="polite">
-            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-total">&mdash;</div><div class="stat-tile__label">Total Feedback</div></div>
-            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-week">&mdash;</div><div class="stat-tile__label">Submissions This Week</div></div>
-            <div class="stat-tile"><div class="stat-tile__value stat-tile__value--text" id="fb-stat-latest">&mdash;</div><div class="stat-tile__label">Most Recent Submission</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-total" data-sk-inline><span class="sk sk--title" style="--w:3rem;--h:1.6rem"></span><span class="sr-only">Loading…</span></div><div class="stat-tile__label">Total Feedback</div></div>
+            <div class="stat-tile"><div class="stat-tile__value" id="fb-stat-week" data-sk-inline><span class="sk sk--title" style="--w:3rem;--h:1.6rem"></span><span class="sr-only">Loading…</span></div><div class="stat-tile__label">Submissions This Week</div></div>
+            <div class="stat-tile"><div class="stat-tile__value stat-tile__value--text" id="fb-stat-latest" data-sk-inline><span class="sk sk--title" style="--w:7rem;--h:1.6rem"></span><span class="sr-only">Loading…</span></div><div class="stat-tile__label">Most Recent Submission</div></div>
           </div>
 
           <!-- Survey results: one chart per question, drawn by js/admin-feedback.js from ALL submissions. -->
@@ -127,7 +147,7 @@
           <p class="fb-count text-muted" id="fb-count" aria-live="polite"></p>
 
           <!-- One of: loading / error / empty / list. Only one is visible at a time. -->
-          <div class="fb-state" id="fb-loading" role="status">Loading feedback&hellip;</div>
+          <div class="fb-state fb-state--sk" id="fb-loading"><div class="sk-group sk-group--cards" role="status"><span class="sr-only">Loading feedback…</span><div class="sk-card"><div class="sk-row"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:72%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:5rem;--h:.8rem"></span></div><span class="sk sk--line" style="--w:96%;--h:.8rem"></span><span class="sk sk--line" style="--w:80%;--h:.8rem"></span></div><div class="sk-card"><div class="sk-row"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:38%"></span><span class="sk sk--line" style="--w:64%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:5rem;--h:.8rem"></span></div><span class="sk sk--line" style="--w:96%;--h:.8rem"></span><span class="sk sk--line" style="--w:58%;--h:.8rem"></span></div><div class="sk-card"><div class="sk-row"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:58%"></span><span class="sk sk--line" style="--w:80%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:5rem;--h:.8rem"></span></div><span class="sk sk--line" style="--w:96%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span></div><div class="sk-card"><div class="sk-row"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:44%"></span><span class="sk sk--line" style="--w:58%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:5rem;--h:.8rem"></span></div><span class="sk sk--line" style="--w:96%;--h:.8rem"></span><span class="sk sk--line" style="--w:66%;--h:.8rem"></span></div></div></div>
           <div class="fb-state" id="fb-error" role="alert" hidden>
             <p>Unable to load feedback.<br />Please try again.</p>
             <button class="btn btn--secondary btn--sm" id="fb-retry" type="button">Try again</button>

@@ -48,6 +48,7 @@ async function init() {
     }
   } catch (err) {
     console.error("Failed to load admin stats:", err);
+    window.LWSkeleton?.settle?.(document, "Couldn't load this. Try refreshing the page.");
     window.LinguaWave?.showToast?.("Couldn't load stats from Firestore.", "error");
   }
 }

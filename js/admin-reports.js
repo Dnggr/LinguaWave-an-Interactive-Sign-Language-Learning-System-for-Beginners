@@ -88,9 +88,31 @@ function renderFeedbackUnavailable() {
   $("report-recent-feedback").innerHTML = msg;
 }
 
+// Refresh: put every placeholder back to its skeleton so a reload looks like a load, not a freeze.
+// (The first load uses the skeletons already in the HTML.)
+let loadedOnce = false;
+function showLoading() {
+  const S = window.LWSkeleton;
+  if (!S) return;
+  ["report-total-users", "report-total-signs", "report-total-questions", "report-total-feedback"].forEach((id) => {
+    const el = $(id);
+    el.setAttribute("data-sk-inline", "");
+    el.innerHTML = S.kpi();
+  });
+  $("report-new-users").textContent = "";
+  $("report-avg-rating").textContent = "";
+  $("report-signups").innerHTML = S.chart("Loading sign-ups\u2026");
+  $("report-feedback-summary").innerHTML = S.bars("Loading feedback snapshot\u2026", 4);
+  $("report-signs-by-level").innerHTML = S.bars("Loading lessons by chapter\u2026", 6);
+  $("report-questions-by-level").innerHTML = S.bars("Loading quiz questions by chapter\u2026", 6);
+  $("report-recent-users").innerHTML = S.list("Loading recent sign-ups\u2026", 5);
+  $("report-recent-feedback").innerHTML = S.list("Loading recent feedback\u2026", 5);
+}
+
 async function load() {
   const btn = $("report-refresh");
   btn.disabled = true;
+  if (loadedOnce) showLoading();
   try {
     const s = await getReportStats();
     $("report-total-users").textContent = s.totalUsers;
@@ -113,8 +135,10 @@ async function load() {
     $("report-updated").textContent = `Live snapshot \u00b7 updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
   } catch (err) {
     console.error("Failed to load report stats:", err);
+    window.LWSkeleton?.settle?.(document, "Couldn't load this. Try refreshing the page.");
     window.LinguaWave?.showToast?.("Couldn't load reports from Firestore.", "error");
   } finally {
+    loadedOnce = true;
     btn.disabled = false;
   }
 }
