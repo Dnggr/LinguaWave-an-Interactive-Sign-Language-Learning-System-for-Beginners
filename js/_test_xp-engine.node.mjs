@@ -129,10 +129,12 @@ check(expired.reason === 'expired', 'game session expires');
 
 check(E.applyStreak(null, '2026-10-03').current === 1, 'streak begins at one');
 check(E.applyStreak({ current: 3, longest: 3, lastDay: '2026-10-02' }, '2026-10-03').current === 4, 'streak grows on consecutive day');
-check(E.applyStreak({ current: 3, longest: 9, lastDay: '2026-10-01' }, '2026-10-03').current === 1, 'streak resets after missed day');
-check(E.applyStreak({ current: 3, longest: 9, lastDay: '2026-10-01' }, '2026-10-03').longest === 9, 'streak reset preserves longest');
+check(E.applyStreak({ current: 3, longest: 9, lastDay: '2026-10-01' }, '2026-10-03').current === 4, 'one missed day is forgiven');
+check(E.applyStreak({ current: 3, longest: 9, lastDay: '2026-09-30' }, '2026-10-03').current === 1, 'streak resets after two missed days in a row');
+check(E.applyStreak({ current: 3, longest: 9, lastDay: '2026-09-30' }, '2026-10-03').longest === 9, 'streak reset preserves longest');
 check(E.effectiveStreak({ current: 4, lastDay: '2026-10-03' }, '2026-10-04') === 4, 'yesterday streak remains live');
-check(E.effectiveStreak({ current: 4, lastDay: '2026-10-02' }, '2026-10-04') === 0, 'stale streak displays zero');
+check(E.effectiveStreak({ current: 4, lastDay: '2026-10-02' }, '2026-10-04') === 4, 'one missed day still displays the streak');
+check(E.effectiveStreak({ current: 4, lastDay: '2026-10-01' }, '2026-10-04') === 0, 'stale streak displays zero');
 check(E.dayKey(Date.UTC(2026, 9, 3, 16, 0), 'Asia/Manila') === '2026-10-04', 'Manila day rollover');
 check(E.shiftDayKey('2026-03-01', -1) === '2026-02-28', 'day shift crosses month boundary');
 check(E.isValidTz('Asia/Manila') && !E.isValidTz('not-a-zone'), 'timezone validation');

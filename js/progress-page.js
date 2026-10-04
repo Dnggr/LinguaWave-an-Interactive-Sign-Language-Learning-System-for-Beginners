@@ -207,9 +207,9 @@ function getActiveDaySet(streak) {
   return new Set((streak && streak.recentDays) || []);
 }
 
-/* Day Streak tile's visual: this calendar week (Mon–Sun), one cell per
- * day, using the SAME .heatmap-cell states as the Learning Activity
- * card below (active = green, inactive = track grey, future = dashed)
+/* Day Streak tile's visual: the last 7 days ending today (oldest left, today
+ * right), one cell per day, using the SAME .heatmap-cell states as the Learning Activity
+ * card below (active = green, inactive = track grey)
  * so the tile reads as a "zoomed-in" slice of that heatmap rather than
  * a second, different visual language. Today gets a ring so a learner
  * can see at a glance whether today has counted yet. The strip is
@@ -219,31 +219,31 @@ function getActiveDaySet(streak) {
 const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const WEEKDAY_LETTER = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 function buildStreakWeek(activeDays) {
+  // The LAST 7 DAYS ending today (oldest first, today on the right), not the Mon-Sun calendar week. A calendar
+  // week is empty on every Monday - the day after a Sat/Sun streak looked broken - while a rolling window always
+  // shows the days that actually make up the streak. The dialog's check boxes use the same rolling idea.
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const todayDow = (now.getDay() + 6) % 7; // Mon=0..Sun=6, same as profile-page.js's renderConsistency()
-  const monday = new Date(now);
-  monday.setDate(monday.getDate() - todayDow);
 
   const activeNames = [];
-  const cols = WEEKDAY_LETTER.map((letter, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+  const cols = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (6 - i));
+    const dow = (d.getDay() + 6) % 7; // Mon=0..Sun=6
     const key = localDateKey(d.toISOString());
-    const isFuture = d > now;
-    const active = !isFuture && activeDays.has(key);
-    if (active) activeNames.push(WEEKDAY_SHORT[i]);
-    const state = isFuture ? 'future' : active ? 'active' : 'inactive';
-    const today = i === todayDow ? ' streak-week__cell--today' : '';
+    const active = activeDays.has(key);
+    if (active) activeNames.push(i === 6 ? 'today' : WEEKDAY_SHORT[dow]);
+    const state = active ? 'active' : 'inactive';
+    const today = i === 6 ? ' streak-week__cell--today' : '';
     return `<span class="streak-week__day" aria-hidden="true">
         <span class="heatmap-cell heatmap-cell--${state} streak-week__cell${today}" title="${key}"></span>
-        <span class="streak-week__letter">${letter}</span>
+        <span class="streak-week__letter">${WEEKDAY_LETTER[dow]}</span>
       </span>`;
   }).join('');
 
   const label = activeNames.length
-    ? `This week you practiced on ${activeNames.join(', ')}.`
-    : 'No practice recorded yet this week.';
+    ? `In the last 7 days you practiced on ${activeNames.join(', ')}.`
+    : 'No practice recorded in the last 7 days.';
   return `<span class="streak-week" role="img" aria-label="${label}">${cols}</span>`;
 }
 

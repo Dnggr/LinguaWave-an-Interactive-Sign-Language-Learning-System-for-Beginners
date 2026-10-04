@@ -262,16 +262,36 @@ export function weekKeyUtc(ms) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-export function applyStreak(streak, today) {
-  const current = streak || { current: 0, longest: 0, lastDay: null };
-  if (current.lastDay === today) return { ...current };
-  const next = current.lastDay === shiftDayKey(today, -1) ? current.current + 1 : 1;
-  return { current: next, longest: Math.max(current.longest || 0, next), lastDay: today };
+/* ── Day Streak (same GRACE rule as js/missions.js) ───────────────────
+ * ONE missed day in a row is forgiven (the streak counts ACTIVE days, so Tue, Thu, Fri = 3),
+ * TWO missed days in a row reset it. Keep this in step with STREAK_MAX_MISSED_DAYS in missions.js. */
+export const STREAK_MAX_MISSED_DAYS = 1;
+
+/** Whole calendar days from day key `from` to day key `to` (negative when `to` is earlier). */
+export function dayGap(from, to) {
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
 }
 
+export function applyStreak(streak, today) {
+  const current = streak || { current: 0, longest: 0, lastDay: null };
+  if (current.lastDay) {
+    const gap = dayGap(current.lastDay, today);
+    if (gap <= 0) return { ...current };            // same day, or the device clock went backwards: nothing changes
+    if (gap - 1 <= STREAK_MAX_MISSED_DAYS) {
+      const next = (current.current || 0) + 1;
+      return { current: next, longest: Math.max(current.longest || 0, next), lastDay: today };
+    }
+  }
+  return { current: 1, longest: Math.max(current.longest || 0, 1), lastDay: today };
+}
+
+/** What to DISPLAY on local day `today`: live until a SECOND missed day in a row has passed. */
 export function effectiveStreak(streak, today) {
   if (!streak?.lastDay) return 0;
-  return (streak.lastDay === today || streak.lastDay === shiftDayKey(today, -1)) ? streak.current : 0;
+  const gap = dayGap(streak.lastDay, today);
+  return gap - 1 <= STREAK_MAX_MISSED_DAYS ? (streak.current || 0) : 0;
 }
 
 export function lessonItemXp(kind, bonusXP = 0) {
@@ -406,6 +426,27 @@ export function grantBadge(state, id, out, now) {
 export function applyActivityStreak(state, today, out, now) {
   state.streak = applyStreak(state.streak, today);
   streakBadgesFor(state.streak.current).forEach((id) => grantBadge(state, id, out, now));
+}
+
+/**
+ * Catch-up for a streak that was stored under the old strict rule (Tue, Thu, Fri saved as 2, should be 3).
+ * `missions` is the summary js/missions.js keeps from the real activity days: { currentStreak, lastActivityDate }.
+ * Raises state.streak.current toward it and grants the streak badges that unlocks. Returns true when it changed.
+ * It only ever RAISES a streak that is still live and ends on the same day as the missions one, and it moves
+ * ONE step per call because firestore.rules cap a single write at streak.current <= previous + 1
+ * (js/xp.js syncStreak() simply calls it again until it reports nothing left to heal).
+ */
+export function healStreakFromMissions(state, today, out, now, missions) {
+  const last = state.streak?.lastDay;
+  if (!last || !missions || missions.lastActivityDate !== last) return false;
+  if (!effectiveStreak(state.streak, today)) return false;
+  const target = Math.floor(Number(missions.currentStreak) || 0);
+  const have = state.streak.current || 0;
+  if (target <= have) return false;
+  const next = have + 1;
+  state.streak = { ...state.streak, current: next, longest: Math.max(state.streak.longest || 0, next) };
+  streakBadgesFor(next).forEach((id) => grantBadge(state, id, out, now));
+  return true;
 }
 
 export function applyLessonItem(state, mission, itemIndex, { now, today }) {
@@ -759,7 +800,7 @@ export function profileData(state, name, now, avatar) {
     weekKey: state.weekKey,
     streak,
     longestStreak: state.streak.longest,
-    streakExpiresAt: streak ? startOfDayMs(shiftDayKey(state.streak.lastDay, 2), tz) : null,
+    streakExpiresAt: streak ? startOfDayMs(shiftDayKey(state.streak.lastDay, STREAK_MAX_MISSED_DAYS + 2), tz) : null,
     badgeCount: Object.keys(state.badges).length,
     recentBadges,
     // XP earned per game, for the per-game leaderboards (each is part of the shared daily game cap).

@@ -42,19 +42,19 @@
     // effective streak = the grace rule lives in js/xp.js (one missed day is forgiven, two in a row reset it)
     if (st) st.__liveStreak = X.liveStreakOf ? X.liveStreakOf(st) : 0;
     draw(st || { xp: 0, badges: {} });
-    let badgeTotal = st && st.badges ? Object.keys(st.badges).length : 0;
-    X.onUpdate((res) => { badgeTotal += (res.newBadges || []).length; draw({ xp: res.xp, streak: res.streak, badgeCount: badgeTotal, __liveStreak: res.streak }); });
-    // Streaks saved before the grace rule are one short: catch them up, then redraw.
-    if (st && X.syncStreak) {
-      X.syncStreak().then((res) => {
-        if (!res || !res.ok || typeof res.streak !== 'number') return;
-        badgeTotal += (res.newBadges || []).length;
-        if (res.streak !== st.__liveStreak || (res.newBadges || []).length) {
-          st.__liveStreak = res.streak;
-          draw({ xp: res.xp, streak: res.streak, badgeCount: badgeTotal, __liveStreak: res.streak });
-        }
-      }).catch(() => {});
-    }
+    // What the card shows right now. Updates MERGE into it, so a partial result can never blank the card
+    // (an update without xp used to redraw it as Level 1 / 0 XP / 0-day streak).
+    const view = { xp: (st && st.xp) || 0, streak: (st && st.__liveStreak) || 0, badgeCount: st && st.badges ? Object.keys(st.badges).length : 0 };
+    X.onUpdate((res) => {
+      if (!res || typeof res.xp !== 'number') return;   // not a full XP summary: keep what is on screen
+      view.xp = res.xp;
+      if (typeof res.streak === 'number') view.streak = res.streak;
+      view.badgeCount += (res.newBadges || []).length;
+      draw({ xp: view.xp, streak: view.streak, badgeCount: view.badgeCount, __liveStreak: view.streak });
+    });
+    // Streaks saved before the grace rule are one short: catch them up. Each step is published through
+    // onUpdate above (which redraws), so nothing more to do with the result here.
+    if (st && X.syncStreak) X.syncStreak().catch(() => {});
   }
   if (window.LWXP) init(); else document.addEventListener('lwxp-ready', init, { once: true });
 })();
