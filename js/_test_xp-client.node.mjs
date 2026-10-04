@@ -128,7 +128,7 @@ const context = {
   where: sdk.where,
   runTransaction: sdk.runTransaction,
   serverTimestamp: sdk.serverTimestamp,
-  SIGN_DICTIONARY: { A: {}, B: {} },
+  SIGN_DICTIONARY: { A: {}, B: {}, C: {}, E: {}, G: {}, H: {}, I: {}, K: {}, M: {}, R: {}, U: {}, '4': {}, '7': {} },   // letters/numbers used by the Time Attack words
   E,
   window,
   document,
@@ -186,6 +186,27 @@ result = await X.finishGame(session.sessionId, [{ s: 'A', t: 500, m: false }], 0
 assert.ok(result.ok && result.xpGained === 7);
 assert.equal(store.get(`xpState/${uid}`).daily.gameXp, 7);
 assert.equal(store.get(`publicProfiles/${uid}`).xp, store.get(`xpState/${uid}`).xp);
+
+// Time Attack (fingerspelling): letters repeat inside a word, so the session carries word ids plus the unique letters.
+{
+  const letters = ['C', 'A', 'R', 'M', 'E', 'I', 'K', '4', '7', 'H', 'B', 'U', 'G'];
+  const fsWords = ['car', 'america', 'ak47', 'hamburger'];
+  assert.equal(await X.startGame(letters, 'fingerspell', { words: ['car', 'car'] }), null, 'duplicate words are refused');
+  assert.equal(await X.startGame(['C', 'A'], 'fingerspell', { words: ['car'] }), null, 'letters must match the words');
+  store.set(`xpState/${uid}`, { ...store.get(`xpState/${uid}`), learnedSigns: [...new Set([...(store.get(`xpState/${uid}`).learnedSigns || []), ...letters])] });
+  const fs = await X.startGame(letters, 'fingerspell', { words: fsWords });
+  assert.ok(fs.ok && fs.xpEligible && fs.payableWords.length === 4 && fs.sessionId, 'fingerspell session starts with every word payable');
+  const beforeXp = store.get(`xpState/${uid}`).xp, beforeGame = store.get(`xpState/${uid}`).daily.gameXp;
+  fakeNow += 14000;
+  result = await X.finishGame(fs.sessionId, [{ w: 0, t: 2000 }, { w: 1, t: 6000 }, { w: 2, t: 8500 }, { w: 3, t: 13000 }], 0);
+  assert.ok(result.ok && result.counted && result.xpGained === 29, `fingerspell run pays 29 XP (${result.xpGained})`);
+  const after = store.get(`xpState/${uid}`);
+  assert.equal(after.xp, beforeXp + 29);
+  assert.equal(after.daily.gameXp, beforeGame + 29, 'fingerspell XP counts toward the shared 90 XP/day game cap');
+  assert.equal(after.totals.timeAttackXp >= 29, true);
+  assert.equal(store.get(`publicProfiles/${uid}`).xp, after.xp);
+  assert.equal(store.get(`publicProfiles/${uid}`).timeAttackXp, after.totals.timeAttackXp);
+}
 
 // Offline jobs stay queued and retry after the connection comes back.
 failWith = 'unavailable';

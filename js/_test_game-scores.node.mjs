@@ -15,11 +15,11 @@ const order = (game, difficulty, rows) => C.rankResults(game, difficulty, rows).
 // ---- boards use the games' own difficulty values
 eq(C.GAMES.construct.boards.map((b) => b.id), ['easy', 'medium', 'hard'], 'construct boards = its existing difficulties');
 eq(C.GAMES.wall.boards.map((b) => b.id), ['9', '15', '21'], 'wall boards = the existing wall sizes');
-eq(C.GAMES.timeAttack.boards.map((b) => b.id), ['standard'], 'time attack has a single board (no difficulty setting exists)');
+eq(C.GAMES.timeAttack.boards.map((b) => b.id), ['fingerspell'], 'time attack has a single board (no difficulty setting exists)');
 check(C.boardId('construct', 'medium') === 'construct__medium', 'board id format');
 check(C.boardOf('wall', 15) && C.boardOf('wall', '15'), 'numeric 15 resolves to the "15" board');
 check(!C.boardOf('wall', '12') && !C.boardOf('nope', 'easy'), 'unknown wall size / game has no board');
-eq(C.allBoardIds(), ['construct__easy', 'construct__medium', 'construct__hard', 'timeAttack__standard', 'wall__9', 'wall__15', 'wall__21'],
+eq(C.allBoardIds(), ['construct__easy', 'construct__medium', 'construct__hard', 'timeAttack__fingerspell', 'wall__9', 'wall__15', 'wall__21'],
    'board id list (must match firestore.rules validBoard)');
 
 // ---- Construct: time only, then earliest, then uid. Misses are NOT a ranking key.
@@ -34,7 +34,7 @@ eq(order('construct', 'medium', [
 ]), ['abe', 'zed'], 'construct: identical time + moment -> uid keeps the order stable');
 
 // ---- Time Attack / Wall Breaker: time, then misses, then earliest, then uid
-for (const [game, diff] of [['timeAttack', 'standard'], ['wall', '15']]) {
+for (const [game, diff] of [['timeAttack', 'fingerspell'], ['wall', '15']]) {
   eq(order(game, diff, [
     e('c', game, diff, 51000, 0, 3), e('a', game, diff, 42000, 4, 2), e('b', game, diff, 48000, 0, 1),
   ]), ['a', 'b', 'c'], `${game}: faster beats fewer misses (time is primary)`);

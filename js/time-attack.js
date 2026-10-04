@@ -1,30 +1,35 @@
 /*
-  js/time-attack.js — Time Attack page controller
-  PURPOSE  : Presents one learned ASL sign demo and checks the learner's live camera signing.
-  CONNECTS : Reuses cameraUtils, MediaPipe, renderer, classifier, dictionary, LWMissions media and LWXP game sessions.
+  js/time-attack.js — Time Attack page controller (fingerspelling)
+  PURPOSE  : Shows a word, demos the current letter/number sign, and checks the learner's live camera fingerspelling
+             one letter at a time. Longer words are worth more XP (see CONFIG.FINGERSPELL in xp-engine.mjs).
+  CONNECTS : Reuses cameraUtils, MediaPipe, renderer, the static classifier, dictionary, LWMissions media and LWXP game sessions.
 */
 import { startCamera, stopCamera } from './camera/cameraUtils.js';
+import * as E from './xp-engine.mjs';
 // Game Leaderboards: loaded on demand, so a problem in that module can never stop this game from loading.
 const reportScore = (game, difficulty, result) => import('./game-scores.js').then((m) => m.submitScore(game, difficulty, result)).catch((error) => console.warn('[game-scores] unavailable:', error));
 import { initMediaPipe, processFrame, isModelReady, resetTracking } from './tracking/mediapipe.js';
 import { drawSkeleton, clearCanvas } from './engine/renderer.js';
 import { getDetectionType, getSignData } from './engine/dictionary.js';
-import { classifyGesture, classifyMotion, resetMotionBuffer, loadModels, loadModelLabels,
-  isClassifierReady, isMotionModelReady, getClassifiableSigns, isSignClassifiable,
-  getMotionBufferStatus, finalizeMotionWindow, getSignGroup, getAllowedLabelsForSign } from './engine/classifier.js';
+import { classifyGesture, resetMotionBuffer, loadModels, loadModelLabels,
+  isClassifierReady, isSignClassifiable, getAllowedLabelsForSign } from './engine/classifier.js';
 
 const $ = (id) => document.getElementById(id);
 const videoEl = $('ta-video'), canvasEl = $('ta-canvas'), ctx = canvasEl.getContext('2d');
-let ready = false, running = false, finishing = false, rafId = null, tickId = null, phase = 'static', timers = new Set();
+const HOLD_MS = 500;                       // a letter must be held steady this long (also the engine's MIN_MS_PER_LETTER basis)
+const WORD_DEFS = E.CONFIG.FINGERSPELL.WORDS;
+let ready = false, running = false, finishing = false, rafId = null, tickId = null, timers = new Set();
 let bootPromise = null, bootGeneration = 0, trackingPromise = null, modelsPromise = null, labelsPromise = null;
-let targets = [], targetIndex = 0, misses = 0, heldSince = 0, wrongSince = 0, wrongLabel = '', lastMissAt = 0;
-let startedAt = 0, brokenLog = [], xpSessionP = Promise.resolve(null), motionWaitAt = 0, handLostAt = null;
+let words = [], targets = [], targetIndex = 0, misses = 0, heldSince = 0, wrongSince = 0, wrongLabel = '', lastMissAt = 0;
+let startedAt = 0, wordLog = [], xpSessionP = Promise.resolve(null);
 const currentTarget = () => targets[targetIndex] || null;
-// Per-run caches. The dictionary scans below are O(number of signs) and used to run on EVERY animation frame.
-let lastFrame = null, motionAllowedCache = null;
-const getMotionAllowed = () => (motionAllowedCache ??= new Set(getClassifiableSigns().filter((sign) => isSignClassifiable(sign) && getDetectionType(sign) === 'motion')));
+// Per-run cache: processFrame() hands back the SAME object until a new detection runs (~20/s).
+let lastFrame = null;
 const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
 const setStatus = (message) => { $('ta-status').textContent = message; };
+const wordXp = (word) => E.fingerspellWordXp(word.symbols.length);
+const kindOf = (symbol) => (/^[0-9]$/.test(symbol) ? 'NUMBER' : 'LETTER');
+
 // Overlays are shown/hidden with an inline display as well as [hidden]: a CSS rule that sets display on them overrides the
 // hidden attribute, which left the 'Still loading...' message stuck on top of a working camera.
 const toggle = (el, visible) => {
@@ -43,19 +48,13 @@ function setMode(mode) { $('ta-cam').dataset.mode = mode; $('ta-right').dataset.
 function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); }
 function clearTimers() { timers.forEach(clearTimeout); timers.clear(); }
 
+
 function withTimeout(promise, ms, label) {
   let timeoutId;
   return Promise.race([
     Promise.resolve(promise),
     new Promise((_, reject) => { timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)} seconds.`)), ms); })
   ]).finally(() => clearTimeout(timeoutId));
-}
-
-async function getLearnedSignIds() {
-  if (typeof window.LWXP?.getLearnedSigns !== 'function') {
-    throw new Error('The learned-sign service is unavailable. Reload Time Attack and try again.');
-  }
-  return new Set(await withTimeout(window.LWXP.getLearnedSigns(), 12000, 'Loading learned signs'));
 }
 
 function signContentFor(signId) {
@@ -66,13 +65,13 @@ function signContentFor(signId) {
   return entry ? (M?.getSign?.(entry.level, signId, entry.category) || entry) : null;
 }
 
-function makeTarget(signId) {
-  const type = getDetectionType(signId) === 'motion' ? 'motion' : 'static';
+
+function makeTarget(signId, wordIndex, pos) {
   const content = signContentFor(signId);
   const videos = content && window.LWMissions?.getSignVideoUrls
     ? window.LWMissions.getSignVideoUrls(signId, content.videoUrl)
     : [content?.videoUrl].filter(Boolean);
-  return { signId, type, content, videos: [...new Set(videos)], imageUrl: content?.imageUrl || '' };
+  return { signId, type: 'static', wordIndex, pos, content, videos: [...new Set(videos)], imageUrl: content?.imageUrl || '' };
 }
 
 function youtubeEmbed(url) {
@@ -132,20 +131,57 @@ function renderTargetDemo(target) {
   showDemoFallback(target, `ASL sign ${target.signId}`);
 }
 
+// ── Word / letter display ──────────────────────────────────────────────────────
+function renderWordList() {
+  const list = $('ta-words');
+  list.replaceChildren();
+  words.forEach((word, index) => {
+    const li = document.createElement('li');
+    li.className = 'ta-wordchip'; li.dataset.index = String(index);
+    const name = document.createElement('span'); name.className = 'ta-wordchip__name'; name.textContent = word.label;
+    const xp = document.createElement('span'); xp.className = 'ta-wordchip__xp'; xp.textContent = `+${wordXp(word)} XP`;
+    li.append(name, xp); list.append(li);
+  });
+}
+function renderLetters(wordIndex, doneCount) {
+  const host = $('ta-letters'), word = words[wordIndex];
+  host.replaceChildren();
+  if (!word) return;
+  word.symbols.forEach((symbol, i) => {
+    const tile = document.createElement('span');
+    tile.className = 'ta-letter'; tile.textContent = symbol;
+    tile.dataset.state = i < doneCount ? 'done' : i === doneCount ? 'current' : 'todo';
+    host.append(tile);
+  });
+  host.setAttribute('aria-label', `Spell ${word.label}: ${word.symbols.join(' ')}`);
+}
+function refreshWordChips(activeIndex) {
+  $('ta-words').querySelectorAll('.ta-wordchip').forEach((chip) => {
+    const index = Number(chip.dataset.index);
+    chip.dataset.state = index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'todo';
+  });
+}
+
 function setTarget() {
   clearTimers();
   const target = currentTarget();
   $('ta-count').textContent = `${Math.min(targetIndex + 1, targets.length)}/${targets.length}`;
   $('ta-target').textContent = target?.signId || 'Complete';
-  $('ta-sign-type').textContent = target?.type === 'motion' ? 'MOTION SIGN' : 'STATIC SIGN';
-  $('ta-sign-type').dataset.type = target?.type || 'static';
+  $('ta-sign-type').textContent = target ? kindOf(target.signId) : '';
+  $('ta-sign-type').dataset.type = 'static';
   $('ta-sign-type').hidden = !target;
   $('ta-hint').textContent = target ? (target.content?.description || getSignData(target.signId)?.description || '') : '';
   document.querySelector('.ta-progress')?.style.setProperty('--p', targets.length ? targetIndex / targets.length : 0);
-  heldSince = 0; wrongSince = 0; wrongLabel = ''; resetMotionBuffer(); phase = 'static';
-  setMode(target ? target.type : 'idle');
-  $('ta-motion').disabled = !target || target.type !== 'motion';
-  if (target) renderTargetDemo(target);
+  heldSince = 0; wrongSince = 0; wrongLabel = ''; resetMotionBuffer();
+  setMode(target ? 'static' : 'idle');
+  if (target) {
+    const word = words[target.wordIndex];
+    $('ta-word-name').textContent = word.label;
+    $('ta-word-meta').textContent = `Word ${target.wordIndex + 1}/${words.length} · ${word.symbols.length} signs · +${wordXp(word)} XP`;
+    renderLetters(target.wordIndex, target.pos);
+    refreshWordChips(target.wordIndex);
+    renderTargetDemo(target);
+  }
 }
 
 async function boot() {
@@ -228,22 +264,26 @@ function recordMiss(label) {
 function acceptTarget() {
   const target = currentTarget();
   if (!target) return;
-  brokenLog.push({ s: target.signId, t: Date.now() - startedAt, m: target.type === 'motion' });
+  const word = words[target.wordIndex];
+  const wordDone = target.pos === word.symbols.length - 1;
+  // One log entry per finished WORD: the XP engine checks that the word took at least 450 ms per letter.
+  if (wordDone) wordLog.push({ w: target.wordIndex, t: Date.now() - startedAt });
   targetIndex++;
-  if (targetIndex >= targets.length) finish();
-  else { setStatus('Correct! Next target.'); setTarget(); }
+  if (targetIndex >= targets.length) { finish(); return; }
+  setStatus(wordDone ? `${word.label} complete! +${wordXp(word)} XP. Next word.` : 'Correct! Next letter.');
+  setTarget();
 }
 
 function detectStatic(left, right, face, pose, anyHandPresent, now, fresh = true) {
   const target = currentTarget();
-  if (!target || target.type !== 'static') return;
+  if (!target) return;
   if (!anyHandPresent) { heldSince = 0; wrongSince = 0; wrongLabel = ''; return; }
   if (!fresh) return;   // same landmarks as the last tick: nothing new to classify (the hold timer is wall-clock, so it keeps counting)
   target.allowedLabels ??= getAllowedLabelsForSign(target.signId);
   const result = classifyGesture(left, right, face, target.allowedLabels, pose, target.signId);
   if (result?.matched && result.label === target.signId) {
     if (!heldSince) heldSince = now;
-    if (now - heldSince >= 500) acceptTarget();
+    if (now - heldSince >= HOLD_MS) acceptTarget();
     return;
   }
   heldSince = 0;
@@ -253,71 +293,18 @@ function detectStatic(left, right, face, pose, anyHandPresent, now, fresh = true
   } else { wrongSince = 0; wrongLabel = ''; }
 }
 
-function recordMotion() {
-  const target = currentTarget();
-  if (!running || phase !== 'static' || !target || target.type !== 'motion') return;
-  phase = 'countdown'; handLostAt = null; resetMotionBuffer(); setMode('motion');
-  $('ta-motion').disabled = true;
-  countdown(0);
-}
-
-function countdown(step) {
-  if (!running || phase !== 'countdown') return;
-  const steps = ['3', '2', '1', 'GO!'];
-  if (step >= steps.length) {
-    phase = 'waiting'; motionWaitAt = Date.now(); handLostAt = null; resetMotionBuffer();
-    setStatus('Sign now!'); return;
-  }
-  setStatus(`Get ready: ${steps[step]}`);
-  later(() => countdown(step + 1), 600);
-}
-
-function handleMotion(left, right, face, pose, anyHandPresent, now, fresh = true) {
-  if (phase !== 'waiting' && phase !== 'recording') return;
-  if (!anyHandPresent) {
-    if (phase === 'waiting' && now - motionWaitAt > 6000) { phase = 'static'; setMode('motion'); setStatus('No hand detected. Press Record motion sign to try again.'); }
-    if (phase === 'recording') {
-      handLostAt ??= now;
-      if (now - handLostAt > 1200) {
-        const target = currentTarget(), allowed = getMotionAllowed();
-        const result = finalizeMotionWindow(allowed, target?.signId || null);
-        if (result) return finishMotionAttempt(result);
-        phase = 'static'; resetMotionBuffer(); setMode('motion'); setStatus('Not enough motion captured. Press Record motion sign to try again.');
-      }
-    }
-    return;
-  }
-  handLostAt = null;
-  if (!fresh) return;   // do not feed the same detection into the motion buffer more than once
-  const allowed = getMotionAllowed();
-  const result = classifyMotion(left, right, face, allowed, pose, currentTarget()?.signId || null);
-  if (result?.buffering) { phase = 'recording'; setStatus(`Recording… ${formatTime(getMotionBufferStatus().elapsedMs || 0)}`); return; }
-  if (!result) return;
-  if (phase === 'recording') finishMotionAttempt(result);
-}
-
-function finishMotionAttempt(result) {
-  phase = 'static'; setMode('motion'); $('ta-motion').disabled = false;
-  const target = currentTarget();
-  if (result.matched && target?.type === 'motion' && result.label === target.signId) acceptTarget();
-  else { recordMiss(result.label || 'Unrecognized sign'); setStatus('That was not the target. Press Record motion sign to try again.'); }
-}
-
 function loop() {
   rafId = requestAnimationFrame(loop);
   if (!videoEl || videoEl.readyState < 2) return;
   try {
     const frame = processFrame(videoEl);
     const { leftHandLandmarks:left, rightHandLandmarks:right, faceLandmarks:face, poseLandmarks:pose, anyHandPresent } = frame;
-    // processFrame() hands back the SAME object until a new detection runs (~20/s), while this loop ticks at the display rate.
     const fresh = frame !== lastFrame; lastFrame = frame;
     const hands = [left, right].filter(Boolean);
     if (hands.length) drawSkeleton(ctx, hands, canvasEl.width, canvasEl.height);
     else clearCanvas(ctx, canvasEl.width, canvasEl.height);
     if (!running) return;
-    const now = Date.now();
-    if (currentTarget()?.type === 'static') detectStatic(left, right, face, pose, anyHandPresent, now, fresh);
-    else if (currentTarget()?.type === 'motion') handleMotion(left, right, face, pose, anyHandPresent, now, fresh);
+    detectStatic(left, right, face, pose, anyHandPresent, Date.now(), fresh);
   } catch (error) {
     console.error('[time-attack] frame processing failed:', error);
     shutdown();
@@ -331,63 +318,78 @@ function loop() {
 
 async function start() {
   if (running || finishing || $('ta-start').disabled) return;
-  $('ta-start').disabled = true; toggle($('ta-loading'), true); setStatus('Preparing your learned signs…');
+  $('ta-start').disabled = true; toggle($('ta-loading'), true); setStatus('Getting your words ready…');
   if (!await boot()) { toggle($('ta-loading'), false); $('ta-start').disabled = false; return; }
   toggle($('ta-loading'), false);
   try {
-  const startGeneration = bootGeneration;
-  const learned = await getLearnedSignIds();
-  if (startGeneration !== bootGeneration || document.hidden) return;
-  const playableIds = getClassifiableSigns().filter((signId) => learned.has(signId) && isSignClassifiable(signId) &&
-    (getDetectionType(signId) === 'motion' ? isMotionModelReady() : isClassifierReady()));
-  // Keep only one member of each classifier twin group; both labels describe the same recognized gesture.
-  const seenGroups = new Set();
-  const pool = playableIds.filter((signId) => {
-    const group = getSignGroup(signId) || [signId];
-    const key = group.length > 1 ? [...group].sort().join('|') : signId;
-    if (seenGroups.has(key)) return false;
-    seenGroups.add(key); return true;
-  });
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  targets = pool.map(makeTarget).filter((target) => target.videos.length || target.imageUrl).slice(0, 10);
-  if (!targets.length) { setStatus('No learned signs with playable model demos are available yet. Complete a lesson first.'); $('ta-start').disabled = false; return; }
-  targetIndex = 0; misses = 0; brokenLog = []; lastFrame = null; motionAllowedCache = null; $('ta-misses').textContent = '0'; $('ta-time').textContent = '0.0s';
-  $('ta-result').hidden = true; $('ta-start').hidden = true; $('ta-quit').disabled = false;
-  running = true; startedAt = Date.now(); lastMissAt = 0;
-  xpSessionP = Promise.resolve(window.LWXP?.startGame(targets.map((target) => target.signId), 'timeAttack') || null)
-    .catch((error) => { console.warn('[time-attack] XP session could not start:', error); return null; });
-  clearInterval(tickId); tickId = setInterval(() => { $('ta-time').textContent = formatTime(Date.now() - startedAt); }, 100);
-  setStatus('Follow the demo and sign the displayed target.'); setTarget();
-  if (!rafId) loop();
+    const startGeneration = bootGeneration;
+    if (startGeneration !== bootGeneration || document.hidden) return;
+    // Every letter/number must be recognisable by the static classifier; a word that is not is left out of the run.
+    words = WORD_DEFS.filter((word) => isClassifierReady() &&
+      word.symbols.every((symbol) => isSignClassifiable(symbol) && getDetectionType(symbol) !== 'motion'));
+    if (!words.length) { setStatus('Fingerspelling recognition is not available right now. Reload and try again.'); $('ta-start').disabled = false; return; }
+    targets = words.flatMap((word, wordIndex) => word.symbols.map((symbol, pos) => makeTarget(symbol, wordIndex, pos)));
+    targetIndex = 0; misses = 0; wordLog = []; lastFrame = null; $('ta-misses').textContent = '0'; $('ta-time').textContent = '0.0s';
+    $('ta-result').hidden = true; $('ta-start').hidden = true; $('ta-quit').disabled = false;
+    renderWordList();
+    running = true; startedAt = Date.now(); lastMissAt = 0;
+    const uniqueSigns = [...new Set(words.flatMap((word) => word.symbols))];
+    xpSessionP = Promise.resolve(window.LWXP?.startGame(uniqueSigns, 'fingerspell', { words: words.map((word) => word.id) }) || null)
+      .then((session) => {
+        // Tell the learner up front which words will not pay XP yet (a letter in them has not been learned).
+        if (session?.ok && Array.isArray(session.payableWords) && session.payableWords.length < words.length) {
+          const unpaid = words.filter((word) => !session.payableWords.includes(word.id)).map((word) => word.label);
+          setStatus(`Spell each word. No XP for ${unpaid.join(', ')} until you learn all of its letters.`);
+        }
+        return session;
+      })
+      .catch((error) => { console.warn('[time-attack] XP session could not start:', error); return null; });
+    clearInterval(tickId); tickId = setInterval(() => { $('ta-time').textContent = formatTime(Date.now() - startedAt); }, 100);
+    setStatus('Follow the demo and fingerspell the highlighted letter.'); setTarget();
+    if (!rafId) loop();
   } catch (error) {
     console.error('[time-attack] could not prepare run:', error);
     $('ta-start').disabled = false;
-    $('ta-error-message').textContent = error?.message || 'Time Attack could not prepare your learned signs. Try again.';
+    $('ta-error-message').textContent = error?.message || 'Time Attack could not get your words ready. Try again.';
     $('ta-error').hidden = false;
   } finally {
     toggle($('ta-loading'), false);
   }
 }
 
+function showBreakdown(result) {
+  const host = $('ta-breakdown');
+  host.replaceChildren();
+  for (const word of result?.words || []) {
+    const li = document.createElement('li');
+    li.textContent = word.eligible ? `${word.label}: +${word.xp} XP` : `${word.label}: no XP yet (learn all of its letters first)`;
+    host.append(li);
+  }
+  host.hidden = !host.children.length;
+}
+
 async function finish() {
   if (finishing || !running) return;
-  finishing = true; running = false; phase = 'completed'; clearInterval(tickId); tickId = null; clearTimers();
+  finishing = true; running = false; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
   clearCanvas(ctx, canvasEl.width, canvasEl.height);
   const elapsed = Date.now() - startedAt;
   $('ta-time').textContent = formatTime(elapsed); document.querySelector('.ta-progress')?.style.setProperty('--p', 1);
-  $('ta-start').hidden = false; $('ta-start').disabled = true; $('ta-quit').disabled = true; setStatus('Sequence complete.');
-  $('ta-summary').textContent = `Completion time: ${formatTime(elapsed)} · Correct: ${targets.length} · Misses: ${misses} · Accuracy: ${Math.round(targets.length / (targets.length + misses) * 100)}%`;
-  $('ta-result').hidden = false; $('ta-xp').textContent = 'Counting XP…'; $('ta-badges').replaceChildren();
-  // Leaderboard: only a FULL run (10 targets) is ranked. Shorter runs happen when a learner knows fewer than 10 signs,
-  // and their time is not comparable. finish() runs only after the last target, never on Quit.
-  if (targets.length === 10) void reportScore('timeAttack', 'standard', { timeMs: elapsed, misses });
+  $('ta-start').hidden = false; $('ta-start').disabled = true; $('ta-quit').disabled = true; setStatus('All words spelled.');
+  refreshWordChips(words.length);
+  $('ta-summary').textContent = `Completion time: ${formatTime(elapsed)} · Letters: ${targets.length} · Misses: ${misses} · Accuracy: ${Math.round(targets.length / (targets.length + misses) * 100)}%`;
+  $('ta-result').hidden = false; $('ta-xp').textContent = 'Counting XP…'; $('ta-badges').replaceChildren(); showBreakdown(null);
+  // Leaderboard: only a run with EVERY word is ranked, so all times are comparable. finish() runs only after the last
+  // letter, never on Quit.
+  if (words.length === WORD_DEFS.length) void reportScore('timeAttack', 'fingerspell', { timeMs: elapsed, misses });
   try {
     const session = await withTimeout(xpSessionP, 12000, 'Starting the XP session');
-    const result = session?.sessionId && window.LWXP ? await withTimeout(window.LWXP.finishGame(session.sessionId, brokenLog, misses), 15000, 'Saving the result') : null;
-    if (!result?.ok) $('ta-xp').textContent = `XP not counted: ${session?.sessionId ? (window.LWXP?.reasonText?.(result?.reason) || 'unknown reason') : 'no XP session (sign in with a verified account and complete the lessons first)'}`;
+    const result = session?.sessionId && window.LWXP ? await withTimeout(window.LWXP.finishGame(session.sessionId, wordLog, misses), 15000, 'Saving the result') : null;
+    if (!result?.ok) $('ta-xp').textContent = `XP not counted: ${session?.sessionId ? (window.LWXP?.reasonText?.(result?.reason) || 'unknown reason') : 'no XP session (sign in with a verified account first)'}`;
     else {
-      $('ta-xp').textContent = result.counted ? `+${result.xpGained} XP${result.levelUps?.length ? ` · Level ${result.level}` : ''}` : `No XP: ${window.LWXP?.reasonText?.(result.reason) || result.reason || 'daily game limit reached'}`;
+      showBreakdown(result);
+      if (result.reason === 'not_enough_learned') $('ta-xp').textContent = 'No XP: learn the letters and numbers in these words first (Letters and Numbers lessons).';
+      else $('ta-xp').textContent = result.counted ? `+${result.xpGained} XP${result.levelUps?.length ? ` · Level ${result.level}` : ''}` : `No XP: ${window.LWXP?.reasonText?.(result.reason) || result.reason || 'daily game limit reached'}`;
       for (const id of result.newBadges || []) {
         const info = window.LWXP.badgeInfo?.(id), badge = document.createElement('span');
         badge.textContent = info?.name || id; $('ta-badges').append(badge);
@@ -404,28 +406,23 @@ function shutdown() {
   bootGeneration++;
   running = false; clearInterval(tickId); tickId = null; clearTimers();
   if (rafId) cancelAnimationFrame(rafId); rafId = null;
-  stopCamera(videoEl); ready = false; resetMotionBuffer(); resetTracking(); lastFrame = null; motionAllowedCache = null;
-  if (wasRunning) phase = 'cancelled';
-  $('ta-motion').disabled = true;
+  stopCamera(videoEl); ready = false; resetMotionBuffer(); resetTracking(); lastFrame = null;
   $('ta-start').hidden = false; $('ta-start').disabled = false;
   $('ta-quit').disabled = true;
+  return wasRunning;
 }
 
 $('ta-start').addEventListener('click', start);
 $('ta-again').addEventListener('click', start);
-$('ta-motion').addEventListener('click', recordMotion);
 $('ta-quit').addEventListener('click', () => { $('ta-quit-modal').hidden = false; $('ta-quit-cancel').focus(); });
 $('ta-quit-cancel').addEventListener('click', () => { $('ta-quit-modal').hidden = true; $('ta-quit').focus(); });
 $('ta-quit-confirm').addEventListener('click', () => {
-  $('ta-quit-modal').hidden = true; shutdown(); finishing = false; xpSessionP = Promise.resolve(null); brokenLog = []; targets = []; targetIndex = 0; setMode('idle');
+  $('ta-quit-modal').hidden = true; shutdown(); finishing = false; xpSessionP = Promise.resolve(null); wordLog = []; targets = []; words = []; targetIndex = 0; setMode('idle');
+  $('ta-words').replaceChildren(); $('ta-letters').replaceChildren();
   $('ta-start').hidden = false; $('ta-start').disabled = false; setStatus('Run abandoned.');
 });
 $('ta-error-close').addEventListener('click', () => { $('ta-error').hidden = true; });
 $('ta-error-retry').addEventListener('click', () => { $('ta-error').hidden = true; start(); });
-document.addEventListener('keydown', (event) => {
-  if (event.code !== 'Space' || event.repeat || !running || /^(BUTTON|A|INPUT|SELECT)$/.test(event.target?.tagName || '')) return;
-  event.preventDefault(); recordMotion();
-});
 window.addEventListener('pagehide', shutdown);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {

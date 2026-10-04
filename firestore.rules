@@ -75,6 +75,10 @@
 //      PUBLISH THESE RULES BEFORE DEPLOYING THE NEW JS: the new client writes totals.sentences on every XP write,
 //      and the old rules reject that key (every XP write would fail with permission-denied until the rules are published).
 //      Sentence XP shares the existing limits: the 90 XP/day game cap, the +100 XP per write ceiling and the 2 s pacing.
+// CHANGED (Time Attack fingerspelling): Time Attack is now a fingerspelling game paying about 29 XP for a full run, balanced
+//      like Construct a Sentence, so NO XP limit moved: it shares the 90 XP/day game cap and the +100 per-write ceiling.
+//      The only change is the leaderboard board timeAttack__fingerspell (timeAttack__standard is kept so old rows stay valid).
+//      PUBLISH THESE RULES BEFORE DEPLOYING THE NEW JS, or the first Time Attack score write fails with permission-denied.
 // CHANGED (per-game leaderboards): xpState.totals accepts three more OPTIONAL keys, wallXp, timeAttackXp and
 //      sentenceXp (XP earned in each game; together they can never exceed totals.gameXp). publicProfiles accepts the same
 //      three optional keys, and when present each must equal the value in xpState.totals (a missing key counts as 0).
@@ -371,7 +375,7 @@ service cloud.firestore {
     match /gameScores/{board}/entries/{uid} {
       function validBoard() {
         return board in ['construct__easy', 'construct__medium', 'construct__hard',
-                         'timeAttack__standard', 'wall__9', 'wall__15', 'wall__21'];
+                         'timeAttack__standard', 'timeAttack__fingerspell', 'wall__9', 'wall__15', 'wall__21'];
       }
       function validScore(d) {
         return d.keys().hasOnly(['uid', 'game', 'difficulty', 'timeMs', 'misses', 'completed', 'achievedAt', 'gameVersion'])

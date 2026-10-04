@@ -51,6 +51,19 @@ export const CONFIG = Object.freeze({
     MIN_MS_PER_WORD: 500,
     VETERAN_RUNS: 5,
   }),
+  // Time Attack (fingerspelling). The learner spells each word letter by letter; the longer the word, the more XP.
+  // Balanced like Construct a Sentence: small per-letter XP plus the shared CLEAR/FLAWLESS bonuses, and it counts
+  // against the same GAME.DAILY_XP_CAP (90/day). car 3, ak 47 4, america 7, hamburger 9 (+3 clear, +3 flawless = 29 per run).
+  FINGERSPELL: Object.freeze({
+    WORDS: Object.freeze([
+      Object.freeze({ id: 'car', label: 'car', symbols: Object.freeze(['C', 'A', 'R']) }),
+      Object.freeze({ id: 'america', label: 'america', symbols: Object.freeze(['A', 'M', 'E', 'R', 'I', 'C', 'A']) }),
+      Object.freeze({ id: 'ak47', label: 'ak 47', symbols: Object.freeze(['A', 'K', '4', '7']) }),
+      Object.freeze({ id: 'hamburger', label: 'hamburger', symbols: Object.freeze(['H', 'A', 'M', 'B', 'U', 'R', 'G', 'E', 'R']) }),
+    ]),
+    LETTER_XP: 1,               // XP per letter/number, so a word is worth its length
+    MIN_MS_PER_LETTER: 450,     // a letter needs a 500 ms steady hold, so nobody can honestly beat this
+  }),
 });
 
 export const TIERS = Object.freeze([
@@ -399,6 +412,92 @@ export function validateGameSigns(signs, mode, signTypes) {
   return true;
 }
 
+/** XP for one fingerspelling word at 100% accuracy (before the run bonuses): longer words are worth more. */
+export const fingerspellWordXp = (symbolCount) => CONFIG.FINGERSPELL.LETTER_XP * symbolCount;
+export const fingerspellWordById = (id) => CONFIG.FINGERSPELL.WORDS.find((word) => word.id === id) || null;
+
+/**
+ * Time Attack (fingerspelling) session check. `session` = { signs, words: [wordId, ...] }.
+ * `signs` is the de-duplicated letters/numbers across the chosen words (letters repeat inside a word, so the
+ * one-of-each rule of Wall Breaker cannot apply). `signTypes` maps signId -> 'static' | 'motion'.
+ */
+export function validateFingerspellSession(session, signTypes) {
+  if (!session || !Array.isArray(session.words) || !Array.isArray(session.signs)) return false;
+  const { words, signs } = session;
+  if (!words.length || words.length > CONFIG.FINGERSPELL.WORDS.length || new Set(words).size !== words.length) return false;
+  const used = new Set();
+  for (const id of words) {
+    const word = fingerspellWordById(id);
+    if (!word) return false;
+    for (const symbol of word.symbols) {
+      if (signTypes[symbol] !== 'static') return false;   // fingerspelling is checked with the static model only
+      used.add(symbol);
+    }
+  }
+  if (signs.some((sign) => typeof sign !== 'string') || new Set(signs).size !== signs.length) return false;
+  return signs.length === used.size && signs.every((sign) => used.has(sign));
+}
+
+/** Timing/order check for a fingerspelling run. `log` = [{ w, t }]: word index and ms from the session start. */
+export function validateFingerspellTiming({ words, log, elapsedMs }) {
+  const cfg = CONFIG.FINGERSPELL;
+  if (!Array.isArray(log) || log.length !== words.length) return 'incomplete_run';
+  let previous = 0;
+  let minTotal = 0;
+  for (let index = 0; index < log.length; index++) {
+    const entry = log[index];
+    if (!entry || entry.w !== index) return 'bad_bricks';
+    if (typeof entry.t !== 'number' || !Number.isFinite(entry.t) || entry.t < previous) return 'bad_timing';
+    const minGap = fingerspellWordById(words[index]).symbols.length * cfg.MIN_MS_PER_LETTER;
+    if (entry.t - previous < minGap) return 'too_fast';
+    minTotal += minGap;
+    previous = entry.t;
+  }
+  if (previous > elapsedMs + CONFIG.GAME.CLOCK_SLACK_MS) return 'clock_mismatch';
+  if (elapsedMs < minTotal) return 'too_fast';
+  return null;
+}
+
+export function applyFingerspellFinish(state, session, log, wrong, learnedSigns, { now, today }) {
+  const cfg = CONFIG.FINGERSPELL;
+  const game = CONFIG.GAME;
+  const elapsed = now - session.startedAt;
+  if (elapsed > game.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
+  const timingIssue = validateFingerspellTiming({ words: session.words, log, elapsedMs: elapsed });
+  if (timingIssue) return { ok: false, reason: timingIssue };
+
+  const learned = new Set(learnedSigns);
+  const words = session.words.map((id) => fingerspellWordById(id));
+  const letters = words.reduce((sum, word) => sum + word.symbols.length, 0);
+  const accuracy = letters / Math.max(1, letters + wrong);
+  const accMult = (game.ACC_TIERS.find((tier) => accuracy >= tier.min) || game.ACC_TIERS.at(-1)).mult;
+  // A word pays out only when every letter/number in it has been learned (same gate the old Time Attack used).
+  const perWord = words.map((word) => {
+    const eligible = word.symbols.every((symbol) => learned.has(symbol));
+    return { id: word.id, label: word.label, letters: word.symbols.length, eligible,
+      xp: eligible ? Math.round(fingerspellWordXp(word.symbols.length) * accMult) : 0 };
+  });
+  if (!perWord.some((word) => word.eligible)) {
+    return { ok: true, reason: 'not_enough_learned', xpGained: 0, counted: false, skipStateWrite: true, words: perWord };
+  }
+  // Same shape as Construct a Sentence and Wall Breaker: base XP x accuracy, plus one clear bonus and a flawless bonus.
+  const flawless = wrong === 0;
+  const raw = perWord.reduce((sum, word) => sum + word.xp, 0) + game.CLEAR_BONUS + (flawless ? game.FLAWLESS_BONUS : 0);
+  const room = Math.max(0, game.DAILY_XP_CAP - state.daily.gameXp);
+  const xp = Math.min(raw, room);
+  const out = { ok: true, counted: false };
+  state.daily.gameXp += xp;
+  state.daily.timeAttacks += 1;
+  state.totals.gameXp += xp;
+  state.totals.timeAttackXp = (state.totals.timeAttackXp || 0) + xp;
+  state.totals.timeAttacks += 1;
+  addXp(state, xp, out);
+  if (xp > 0) applyActivityStreak(state, today, out, now);
+  Object.assign(out, { counted: xp > 0, xpGained: xp, rawXp: raw, accuracy, flawless, words: perWord,
+    reason: xp ? null : 'daily_cap' });
+  return out;
+}
+
 /**
  * Construct a Sentence session check. `session` = { signs, rounds: [[signId, ...], ...], difficulty }.
  * `isKnown(signId)` says whether a sign exists in the app. Pure: no DOM, no Firebase.
@@ -479,6 +578,7 @@ export function applySentenceFinish(state, session, log, wrong, _learnedSigns, {
 
 export function applyGameFinish(state, session, broken, wrong, learnedSigns, signTypes, { now, today }) {
   if (session.mode === 'sentence') return applySentenceFinish(state, session, broken, wrong, learnedSigns, { now, today });
+  if (session.mode === 'fingerspell') return applyFingerspellFinish(state, session, broken, wrong, learnedSigns, { now, today });
   const elapsed = now - session.startedAt;
   if (elapsed > CONFIG.GAME.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
   const timingIssue = validateGameTiming({ sessionSigns: session.signs, broken, elapsedMs: elapsed });

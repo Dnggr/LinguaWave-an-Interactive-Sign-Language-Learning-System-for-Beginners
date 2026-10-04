@@ -311,3 +311,21 @@
 @media (prefers-reduced-motion:reduce){
   .gm *,.gm *::before{animation:none!important;transition:none!important}
 }
+
+/* Time Attack — fingerspelling word display */
+.ta-wordbox{display:grid;gap:10px;padding:12px 14px;border:1px solid var(--border,rgba(148,163,184,.3));border-radius:14px;background:var(--surface,rgba(148,163,184,.08));margin-bottom:12px}
+.ta-wordbox__head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.ta-wordbox__name{margin:0;font-size:1.6rem;text-transform:uppercase;letter-spacing:.06em}
+.ta-wordbox__meta{margin:0;font-size:.85rem;opacity:.8}
+.ta-letters{display:flex;flex-wrap:wrap;gap:6px}
+.ta-letter{min-width:2.2rem;padding:6px 8px;text-align:center;font-weight:700;font-size:1.15rem;border-radius:10px;border:2px solid transparent;background:rgba(148,163,184,.15)}
+.ta-letter[data-state="done"]{background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.55)}
+.ta-letter[data-state="current"]{background:rgba(56,189,248,.25);border-color:#38bdf8;transform:translateY(-2px)}
+.ta-words{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.ta-wordchip{display:flex;gap:8px;align-items:center;padding:4px 10px;border-radius:999px;font-size:.8rem;background:rgba(148,163,184,.15)}
+.ta-wordchip__xp{font-weight:700;opacity:.85}
+.ta-wordchip[data-state="current"]{outline:2px solid #38bdf8}
+.ta-wordchip[data-state="done"]{background:rgba(34,197,94,.22);text-decoration:line-through}
+.ta-breakdown{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:2px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.ta-letter[data-state="current"]{transform:none}}
+
