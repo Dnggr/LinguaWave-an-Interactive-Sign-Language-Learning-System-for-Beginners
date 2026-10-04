@@ -24,7 +24,7 @@ export const GAME_VERSION = 1;               // bump if a game's scoring changes
 export const MIN_TIME_MS = 1000;             // firestore.rules enforces the same bounds
 export const MAX_TIME_MS = 3600000;
 export const MAX_MISSES = 500;
-export const TIME_ATTACK_RUN_LENGTH = 4;     // Time Attack fingerspells 4 words (car, america, ak 47, hamburger); only runs with every word are comparable
+export const TIME_ATTACK_RUN_LENGTH = 4;     // Time Attack fingerspells 4 random words (one each of 3, 4, 7 and 9 letters = 23 letters); only runs with all 4 are ranked
 
 export const GAMES = {
   construct: {
@@ -51,7 +51,7 @@ export const GAMES = {
     showMisses: true,
     difficultyLabel: '',
     boards: [{ id: 'fingerspell', label: 'Fingerspell' }],   // single board: no selector is drawn
-    note: `Only runs that fingerspell all ${TIME_ATTACK_RUN_LENGTH} words are ranked, so every time is comparable. Faster wins; fewer misses break ties.`,
+    note: `Only runs that fingerspell all ${TIME_ATTACK_RUN_LENGTH} words are ranked. Every run draws new words but always 23 letters (3, 4, 7 and 9 letters long), so times are comparable. Faster wins; fewer misses break ties.`,
   },
   wall: {
     label: 'Wall Breaker',

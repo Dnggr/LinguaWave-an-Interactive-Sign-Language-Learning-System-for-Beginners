@@ -216,13 +216,33 @@ check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initialize
   const types = {};
   for (const w of F.WORDS) for (const sym of w.symbols) types[sym] = 'static';
   const ids = ['car', 'america', 'ak47', 'hamburger'];
-  const uniq = [...new Set(F.WORDS.flatMap((w) => w.symbols))];
+  const uniq = [...new Set(ids.flatMap((id) => word(id).symbols))];   // the letters of THIS run (the bank has 1,300+ words)
   check(E.validateFingerspellSession({ signs: uniq, words: ids }, types), 'full fingerspell session is valid');
   check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'car'] }, types), 'duplicate word rejected');
-  check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'dog'] }, types), 'unknown word rejected');
+  check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'not-a-word'] }, types), 'unknown word rejected');
   check(!E.validateFingerspellSession({ signs: ['C', 'A'], words: ['car'] }, types), 'signs must match the words (missing R)');
   check(!E.validateFingerspellSession({ signs: ['C', 'A', 'R'], words: ['car'] }, { ...types, R: 'motion' }), 'motion letters rejected');
   check(!E.validateFingerspellSession({ signs: [...uniq, 'Z'], words: ids }, { ...types, Z: 'static' }), 'extra sign rejected');
+
+  // Word bank + run picker
+  const bank = F.WORDS, tiers = F.RUN_LENGTHS;
+  check(bank.length >= 500, `word bank has 500+ words (${bank.length})`);
+  check(new Set(bank.map((w) => w.id)).size === bank.length, 'word ids are unique');
+  check(bank.every((w) => w.symbols.every((ch) => /^[A-Y0-9]$/.test(ch) && ch !== 'J' && ch !== '6' && ch !== '9')), 'no motion signs (J, Z, 6, 9) in any word');
+  check(bank.every((w) => tiers.includes(w.symbols.length)), 'every word has a tier length');
+  check(tiers.every((n) => bank.filter((w) => w.symbols.length === n).length >= 100), 'every length tier has 100+ words');
+  for (let i = 0; i < 200; i++) {
+    const run = E.pickFingerspellRun();
+    if (run.map((w) => w.symbols.length).join() !== tiers.join() || new Set(run.map((w) => w.id)).size !== run.length) { check(false, 'run shape'); break; }
+  }
+  check(E.pickFingerspellRun().reduce((n, w) => n + w.symbols.length, 0) === E.FINGERSPELL_RUN_LETTERS && E.FINGERSPELL_RUN_LETTERS === 23, 'every run is exactly 23 letters');
+  const prev = E.pickFingerspellRun();
+  check(Array.from({ length: 50 }, () => E.pickFingerspellRun(() => true, { avoid: prev.map((w) => w.id) })).every((r) => r.every((w) => !prev.some((p) => p.id === w.id))), 'avoid list keeps the next run fresh');
+  check(E.pickFingerspellRun((w) => w.symbols.length !== 9).length === 3, 'a tier with no usable word is left out');
+  const longRun = bank.filter((w) => w.symbols.length === 9).slice(0, 3).map((w) => w.id);
+  check(!E.validateFingerspellSession({ signs: [...new Set(longRun.flatMap((id) => word(id).symbols))], words: longRun }, types), 'a run longer than 23 letters is rejected');
+  const drawn = E.pickFingerspellRun();
+  check(E.validateFingerspellSession({ signs: [...new Set(drawn.flatMap((w) => w.symbols))], words: drawn.map((w) => w.id) }, types), 'a randomly drawn run is a valid session');
 
   const learnedAll = uniq.slice();
   const mk = () => { const st = E.newState(baseTime); st.tz = 'UTC'; return st; };
