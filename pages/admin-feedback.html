@@ -46,6 +46,9 @@
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
   <script src="../js/skeleton.js" defer></script>
+  <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
+  <link rel="apple-touch-icon" href="../assets/icon/apple-touch-icon.png" />
 </head>
 <body class="admin-gate">
 
@@ -99,8 +102,12 @@
           Reports &amp; Analytics
         </a>
       </nav>
-      <div class="app-sidebar__foot" style="flex-direction:column; align-items:stretch; gap:var(--space-3);">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="app-sidebar__foot app-sidebar__foot--account app-sidebar__foot--admin">
+        <div class="app-sidebar__foot-row">
+          <a href="#" class="app-sidebar__logout" data-logout="../index.html">
+            <span class="app-sidebar__icon" aria-hidden="true" data-lw-icon="log_out"></span>
+            Log out
+          </a>
           <button class="theme-switch" id="theme-toggle" type="button" role="switch"
                   aria-checked="false" title="Switch to dark theme" aria-label="Switch to dark theme">
             <span class="theme-switch__check">
@@ -108,7 +115,6 @@
               <span data-lw-icon="theme_moon" data-lw-icon-self="1" data-lw-icon-class="theme-switch__icon theme-switch__icon--moon"></span>
             </span>
           </button>
-          <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
         </div>
       </div>
     </aside>

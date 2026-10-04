@@ -33,7 +33,7 @@
     { id: 'avatar-07', file: '7.png',   label: 'Profile picture 7' },
     { id: 'avatar-08', file: '8.png',   label: 'Profile picture 8' },
     { id: 'avatar-09', file: '9.png',   label: 'Profile picture 9' },
-    { id: 'avatar-10', file: 'aki.png', label: 'Aki' },
+    { id: 'avatar-10', file: '10.png', label: 'Profile picture 10' },
     // Add more here: next free id is 'avatar-11'.
   ];
 

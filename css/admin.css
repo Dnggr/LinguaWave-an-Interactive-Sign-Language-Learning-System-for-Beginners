@@ -537,3 +537,6 @@ body.admin-gate:not(.admin-ready) .admin-boot {
 }
 .admin-table__sk:hover td { background: transparent; }
 .fb-state.fb-state--sk { padding: 0; border: 0; text-align: left; }
+
+/* admin sidebar footer (scripts/update-admin-sidebar.mjs) */
+.app-sidebar__foot--admin .app-sidebar__foot-row { margin-top: 0; padding-top: 0; border-top: 0; }
