@@ -19,7 +19,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let X, me = null, myState = null, view = 'level', lastBoard = 'level', dir = 'desc', token = 0, mineFilter = 'all', max = 10;   // mineFilter: 'all' | 'owned' (My badges view)
   let GS = null, gameKey = 'construct';                                   // GS = window.LWGameScores once loaded
-  const GAME_DEFAULT_DIFF = { construct: 'medium', timeAttack: 'standard', wall: '15' };   // each game's own default setting
+  const GAME_DEFAULT_DIFF = { construct: 'medium', timeAttack: 'fingerspell', wall: '15' };   // each game's own default setting
   const gameDiff = { ...GAME_DEFAULT_DIFF };                                              // last difficulty picked per game
   const gameCache = {};                                                   // 'game:difficulty' -> { at, data }; short-lived so a replay shows up soon
   const GAME_CACHE_MS = 60000;

@@ -265,7 +265,9 @@ async function applyJob(job, uid) {
       const knownSigns = session?.mode === 'sentence' ? knownSignIds() : null;
       const validSession = session && typeof session.id === 'string' && (knownSigns
         ? E.validateSentenceSession(session, (signId) => knownSigns.has(signId))
-        : E.validateGameSigns(session.signs, session.mode, types));
+        : session.mode === 'fingerspell'
+          ? E.validateFingerspellSession(session, types)
+          : E.validateGameSigns(session.signs, session.mode, types));
       if (!validSession) return { ok: false, reason: 'no_session' };
       const learned = [...new Set([...state.learnedSigns, ...localLearned])];
       result = E.applyGameFinish(state, session, job.broken, job.wrong, learned, types, { now, today });
@@ -366,9 +368,14 @@ async function startGame(signs, mode = 'wall', extra = {}) {
   // Construct a Sentence: `extra` = { rounds: [[signId, ...], ...], difficulty }; `signs` is the unique ids across the rounds.
   const sentence = mode === 'sentence';
   const rounds = sentence && Array.isArray(extra?.rounds) ? extra.rounds.map((words) => (Array.isArray(words) ? words.slice() : words)) : null;
+  // Time Attack (fingerspelling): `extra` = { words: [wordId, ...] }; `signs` is the unique letters/numbers across those words.
+  const fingerspell = mode === 'fingerspell';
+  const fsWords = fingerspell && Array.isArray(extra?.words) ? extra.words.slice() : null;
   if (sentence) {
     const known = knownSignIds();
     if (!Array.isArray(signs) || !E.validateSentenceSession({ signs, rounds, difficulty: extra?.difficulty }, (signId) => known.has(signId))) return null;
+  } else if (fingerspell) {
+    if (!Array.isArray(signs) || !E.validateFingerspellSession({ signs, words: fsWords }, signTypes())) return null;
   } else if (!Array.isArray(signs) || !E.validateGameSigns(signs, mode, signTypes())) return null;
   try {
     await window.LWMissions?.whenMissionsSyncReady?.();
@@ -380,9 +387,15 @@ async function startGame(signs, mode = 'wall', extra = {}) {
     const learned = combinedLearnedSigns(state);
     const learnedBricks = signs.filter((signId) => learned.includes(signId)).length;
     const id = randomId();
-    const session = { id, startedAt, signs: signs.slice(), mode, ...(sentence ? { rounds, difficulty: extra.difficulty } : {}) };
+    const session = { id, startedAt, signs: signs.slice(), mode, ...(sentence ? { rounds, difficulty: extra.difficulty } : {}),
+      ...(fingerspell ? { words: fsWords } : {}) };
     gameSessions.set(id, session);
     if (sentence) return { ok: true, sessionId: id, xpEligible: true };   // Construct a Sentence needs no learned signs
+    if (fingerspell) {
+      // A word pays XP only when every letter/number in it is learned; the run is playable either way.
+      const payable = fsWords.filter((wordId) => E.fingerspellWordById(wordId).symbols.every((symbol) => learned.includes(symbol)));
+      return { ok: true, sessionId: id, xpEligible: payable.length > 0, payableWords: payable, totalWords: fsWords.length };
+    }
     const minLearned = mode === 'timeAttack' ? signs.length : E.CONFIG.GAME.MIN_LEARNED_BRICKS;
     return { ok: true, sessionId: id, learnedBricks,
       xpEligible: mode === 'timeAttack' ? learnedBricks === signs.length : learnedBricks >= minLearned,

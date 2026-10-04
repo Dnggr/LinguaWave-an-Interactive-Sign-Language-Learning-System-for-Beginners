@@ -3,7 +3,7 @@
  * Exposes window.LWGameScores and fires `lwgamescores-ready` (same pattern as window.LWXP / 'lwxp-ready').
  *
  * DATA MODEL  (new; no game stored per-attempt time/misses in a readable place before this)
- *   gameScores/{board}/entries/{uid}      board = "<game>__<difficulty>", e.g. construct__medium, wall__15, timeAttack__standard
+ *   gameScores/{board}/entries/{uid}      board = "<game>__<difficulty>", e.g. construct__medium, wall__15, timeAttack__fingerspell
  *     { uid, game, difficulty, timeMs, misses, completed: true, achievedAt: serverTimestamp, gameVersion }
  *   ONE document per learner per board = their personal best, so there is nothing to de-duplicate and a board never
  *   holds more rows than there are players. Display name + avatar are NOT copied here: they are read from
