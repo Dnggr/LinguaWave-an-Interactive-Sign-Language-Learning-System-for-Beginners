@@ -1,0 +1,23 @@
+{
+  "name": "linguawave-an-interactive-sign-language-learning-system-for-beginners",
+  "version": "1.0.0",
+  "description": "<!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST — it has\r      project conventions, prior decisions, and an open-threads/session\r      log so you don't re-derive context or contradict earlier calls. -->",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dnggr/LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dnggr/LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners/issues"
+  },
+  "homepage": "https://github.com/Dnggr/LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners#readme",
+  "devDependencies": {
+    "vite": "^8.3.2"
+  }
+}
