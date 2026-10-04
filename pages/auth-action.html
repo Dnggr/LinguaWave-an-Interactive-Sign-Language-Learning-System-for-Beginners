@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Theme-flash prevention: same snippet as every page. Must stay first. -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('lw-theme') || 'system';
+      var resolved = pref === 'system'
+        ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : pref;
+      var root = document.documentElement;
+      root.setAttribute('data-theme', resolved);
+      root.setAttribute('data-theme-pref', pref);
+      try { if (JSON.parse(localStorage.getItem('lw-preferences') || '{}').reducedMotion) root.classList.add('lw-force-reduced-motion'); } catch (e) {}
+      root.style.colorScheme = resolved;
+      root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
+    })();
+  </script>
+  <!--
+    pages/auth-action.html — landing page for links in Firebase emails
+    ─────────────────────────────────────────────────────────────────
+    SET UP : Firebase console > Authentication > Templates > (pencil) >
+             Customize action URL  ->  https://<your-host>/pages/auth-action.html
+             (one URL serves every email type; js/auth-action.js sorts them
+             by the ?mode= parameter Firebase adds.)
+    MODES  : resetPassword (form), verifyEmail, verifyAndChangeEmail,
+             recoverEmail (applied on load, then a result screen).
+    CONTROLLER: js/auth-action.js. MUST be exempt from auth.js AUTO-GUARD
+             (add 'auth-action' to its exempt list) or logged-out visitors
+             get bounced to index.html before they can use the link.
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- The link carries a one-time code in the URL; don't leak it via Referer. -->
+  <meta name="referrer" content="no-referrer" />
+  <meta name="robots" content="noindex" />
+  <title>LinguaWave account link</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/verify-email.css" />
+  <link rel="stylesheet" href="../css/auth-action.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+  <script type="module" src="../js/auth-action.js"></script>
+  <script src="../js/theme.js" defer></script>
+  <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
+  <link rel="apple-touch-icon" href="../assets/icon/apple-touch-icon.png" />
+</head>
+<body class="verify-page">
+  <main class="verify-main">
+    <p class="verify-brand">Lingua<span>Wave</span></p>
+
+    <section class="auth-card verify-card" aria-live="polite">
+
+      <div id="aa-loading" class="verify-loading" role="status">
+        <span class="verify-spinner" aria-hidden="true"></span>
+        <p class="text-muted">Checking your link...</p>
+      </div>
+
+      <!-- RESET FORM -->
+      <div id="aa-form" hidden>
+        <h1 class="verify-title" tabindex="-1">Choose a new password</h1>
+        <p class="text-muted">For the account</p>
+        <p class="verify-address" id="aa-email"></p>
+
+        <form class="auth-form aa-form" id="aa-reset" novalidate>
+          <div class="form-group">
+            <input type="password" id="aa-password" class="form-input form-input--has-toggle" placeholder=" " autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <label for="aa-password">New password</label>
+          </div>
+
+          <div class="pw-panel" id="aa-panel" data-open="false">
+            <div class="pw-panel__inner">
+              <div class="pw-meter" id="aa-meter" data-level="empty">
+                <div class="pw-meter__track" aria-hidden="true"><div class="pw-meter__fill"></div></div>
+                <span class="pw-meter__label" role="status"><span class="pw-sr">Password strength: </span><span id="aa-level">Strength</span></span>
+              </div>
+            </div>
+          </div>
+          <small id="aa-pw-msg" class="field-status field-status--error aa-msg" role="status" hidden></small>
+
+          <div class="form-group mt-4">
+            <input type="password" id="aa-confirm" class="form-input form-input--has-toggle" placeholder=" " autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <label for="aa-confirm">Confirm new password</label>
+          </div>
+          <small id="aa-confirm-msg" class="field-status field-status--error aa-msg" role="status" hidden></small>
+
+          <p id="aa-error" class="verify-status verify-status--error" role="alert" hidden></p>
+
+          <button type="submit" class="btn btn--primary btn--full btn--lg aa-submit" id="aa-submit">Save new password</button>
+        </form>
+      </div>
+
+      <!-- RESULT: success, or a link that can't be used. JS fills the text. -->
+      <div id="aa-result" class="verify-loading aa-result" hidden>
+        <span class="aa-mark" id="aa-mark" aria-hidden="true"></span>
+        <h1 class="verify-title" id="aa-title" tabindex="-1"></h1>
+        <p class="text-muted" id="aa-text"></p>
+        <a class="btn btn--primary btn--lg" id="aa-cta" href="../index.html">Log In</a>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>

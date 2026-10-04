@@ -177,17 +177,15 @@
                sentence, so it never reveals whether an account exists,
                and Resend has a cooldown (LWAuth.RESEND_COOLDOWN_SECONDS).
 
-    2026-10-03 (RESET ONLY FOR EXISTING ACCOUNTS): the "Reset it" link and
-               the reset email are now gated on LWAuth.checkAccountExists()
-               (Cloud Function `checkAccountExists`, Admin SDK lookup). After
-               a wrong-password login the link appears ONLY if that email has
-               an account; if it has none, the sign-up line stays and the
-               message says so. The Forgot Password panel checks again before
-               sending, so retyping a different address can't get around it,
-               and showAuthTab('forgot') refuses to open unless the link is
-               showing. If the check itself fails, nothing is offered (fails
-               closed). Trade-off: this tells visitors whether an address is
-               registered (see the function's comment in functions/index.js).
+    2026-10-03 (REVERTED: NO ACCOUNT-EXISTS CHECK): a short-lived version
+               gated the reset link on a `checkAccountExists` Cloud Function.
+               The project is on the Spark plan (no Cloud Functions, see
+               AGENTS.md), so that check was removed. Now: after a wrong-
+               password / invalid-credential login the "Reset it" link shows
+               for any well-formed email, and the Forgot Password panel sends
+               through LWAuth.sendPasswordReset() with ONE generic confirmation
+               either way. Firebase itself only emails real accounts, and the
+               page never reveals whether an address is registered.
     ─────────────────────────────────────────────────────────────────
   -->
   <meta charset="UTF-8" />
@@ -593,9 +591,9 @@
         </form>
 
         <!-- ── FORGOT PASSWORD FORM ─────────────────────────────── -->
-        <!-- Opened from the login form's "Reset it" link, which only appears for
-             an existing account (LWAuth.checkAccountExists). Firebase emails a
-             reset LINK (LWAuth.sendPasswordReset). -->
+        <!-- Opened from the login form's "Reset it" link (shown after a wrong-password
+             login). Firebase emails a reset LINK (LWAuth.sendPasswordReset); the page
+             never says whether the address has an account. -->
         <form class="auth-form" id="forgot-form" style="display:none;" novalidate onsubmit="event.preventDefault(); handleForgotPassword();">
           <h3 class="auth-forgot__title">Reset your password</h3>
           <p class="auth-forgot__intro text-muted">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
@@ -784,9 +782,9 @@
 
     function showAuthTab(tab) {
       if (!AUTH_PANELS[tab]) tab = 'login';
-      // The reset panel is only for a confirmed, existing account: its link is
-      // revealed by handleLogin() after checkAccountExists() says yes. Anything
-      // else that asks for it (a stale click, the console) lands on Log In.
+      // The reset panel is reached through the "Reset it" link, which handleLogin()
+      // reveals after a wrong-password login. Anything else that asks for it
+      // (a stale click, the console) lands on Log In.
       if (tab === 'forgot' && document.getElementById('login-switch-forgot').hidden &&
           document.getElementById('forgot-form').style.display !== 'flex') {
         tab = 'login';
@@ -925,8 +923,6 @@
       document.getElementById('login-switch-signup').hidden = showForgot;
       document.getElementById('login-switch-forgot').hidden = !showForgot;
     }
-    const INCORRECT_PASSWORD_MESSAGE = 'Incorrect password. Please try again, or use "Reset it" below to choose a new one.';
-    const NO_ACCOUNT_MESSAGE = 'No account found with that email. Check the address or sign up first.';
 
     async function handleLogin() {
       if (authRequestInFlight) return;
@@ -948,24 +944,12 @@
         // re-checks Firebase on load and forwards them straight on.)
         window.location.href = result.verified ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
-        let message = LWAuth.describeAuthError(error);
-        let canReset = false;
-        // Wrong email/password pair: Firebase can't say which half was wrong, so
-        // ask the server whether the account exists. Only an existing account
-        // gets the reset link. If the check fails we can't tell, so we keep the
-        // generic message and offer nothing (fails closed).
-        if (error && WRONG_PASSWORD_CODES.includes(error.code)) {
-          try {
-            canReset = await LWAuth.checkAccountExists(email);
-            message = canReset ? INCORRECT_PASSWORD_MESSAGE : NO_ACCOUNT_MESSAGE;
-          } catch (checkError) {
-            console.warn('[login] account check failed:', checkError);
-          }
-        }
         authRequestInFlight = false;
         setSubmitBusy('login-form', false);
-        setLoginSwitch(canReset);
-        showAuthModal(message);
+        // Right email format but Firebase said no (Firebase can't say which half
+        // was wrong): offer the reset link. Other errors leave the sign-up line.
+        if (error && WRONG_PASSWORD_CODES.includes(error.code)) setLoginSwitch(true);
+        showAuthModal(LWAuth.describeAuthError(error));
       }
     }
 
@@ -1251,8 +1235,8 @@
     function onLoginEmailBlur() { onAuxEmailBlur('loginEmail'); }
 
     // ── FORGOT PASSWORD PANEL (2026-10-03) ──────────────────────────
-    // Firebase emails a reset LINK (LWAuth.sendPasswordReset), but only after
-    // LWAuth.checkAccountExists() confirms the address has an account. After a send,
+    // Firebase emails a reset LINK (LWAuth.sendPasswordReset). The page says the
+    // same thing whether or not the address has an account. After a send,
     // the button counts down before it can be used again; editing the email to
     // a different address clears the countdown (a typo fix shouldn't wait).
     let forgotCooldownTimer = null;
@@ -1332,26 +1316,14 @@
       const btn = document.getElementById('forgot-submit');
       authRequestInFlight = true;
       btn.disabled = true;
-      btn.textContent = 'Checking...';
+      btn.textContent = 'Sending...';
       try {
-        // Only an existing account gets a reset email (checked again here
-        // because the address in this panel can be edited after it opened).
-        const exists = await LWAuth.checkAccountExists(email);
-        if (!exists) {
-          authRequestInFlight = false;
-          btn.disabled = false;
-          btn.textContent = FORGOT_BTN_LABEL;
-          showRegStatus('forgotEmail', { ok: false, message: NO_ACCOUNT_MESSAGE });
-          document.getElementById('forgot-email').focus();
-          return;
-        }
-        btn.textContent = 'Sending...';
         await LWAuth.sendPasswordReset(email);
         authRequestInFlight = false;
         forgotSentTo = email;
         const sent = document.getElementById('forgot-sent');
         // textContent, never innerHTML: the address is whatever was typed.
-        sent.textContent = '✓ A password reset link is on its way to ' + email + '. Check your inbox and your spam folder.';
+        sent.textContent = '✓ If an account exists for ' + email + ', a password reset link is on its way. Check your inbox and your spam folder.';
         sent.hidden = false;
         startForgotCooldown();
       } catch (error) {
