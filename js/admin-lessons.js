@@ -474,6 +474,11 @@ async function init() {
     els.tbody.innerHTML = `<tr><td colspan="7" class="admin-table__empty">Couldn't load the lesson content (js/missions.js).</td></tr>`;
     return;
   }
+  // Admin-added lessons come from Firestore: show placeholder rows under the built-in ones until they arrive.
+  // (render() below rewrites the whole tbody, so these disappear by themselves.)
+  if (window.LWSkeleton) {
+    els.tbody.insertAdjacentHTML("beforeend", window.LWSkeleton.table("Loading the lessons you added\u2026", 2, [80,60,75,65,40,55]));
+  }
   // Admin-added lessons load after the built-in list is already on screen;
   // a failure here doesn't block it.
   try {
@@ -481,6 +486,7 @@ async function init() {
     render();
   } catch (err) {
     console.error("Failed to load admin-added lessons:", err);
+    render(); // drop the placeholder rows
     toast("Couldn't load the lessons you added (Firestore).", "error");
   }
 }
