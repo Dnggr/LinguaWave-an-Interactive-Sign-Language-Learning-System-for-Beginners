@@ -1,7 +1,40 @@
-# Hostinger/Apache: revalidate app files on each visit so deployments are
-# picked up without requiring learners to clear their browser cache.
+# Hostinger/Apache.
+# HTML/JS/CSS/JSON still revalidate on every visit so deployments show up
+# without learners clearing their cache (unchanged from before).
 <IfModule mod_headers.c>
-  <FilesMatch "(?i)\.(html?|css|js|mjs|json|bin|svg|png|jpe?g|webp|woff2?)$">
+  <FilesMatch "(?i)\.(html?|css|js|mjs|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
+
+  # Heavy, rarely-changing media: keep for a week.
+  # NOTE: .bin is deliberately NOT here - your asl_*_model weights must always
+  # be revalidated, otherwise a retrained model.json could be paired with an
+  # old cached .bin.
+  <FilesMatch "(?i)\.(mp4|webm|png|jpe?g|webp|svg|ico|woff2?)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+
+  # Self-hosted MediaPipe files (assets/mediapipe/). If you ever replace one,
+  # rename it (or bump CACHE in sw.js + CACHE_NAME in js/mediapipe-assets.js).
+  <FilesMatch "(?i)\.(task|wasm)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # sw.js must always be re-checked so service worker updates are picked up.
+  <Files "sw.js">
+    Header set Cache-Control "no-cache, must-revalidate"
+    Header set Service-Worker-Allowed "/"
+  </Files>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType application/wasm .wasm
+  AddType application/octet-stream .task
+</IfModule>
+
+# Compress text + wasm. NOT .task: it is already compact, and leaving it
+# uncompressed keeps Content-Length exact for the download progress bar.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript text/javascript application/json image/svg+xml application/wasm
 </IfModule>

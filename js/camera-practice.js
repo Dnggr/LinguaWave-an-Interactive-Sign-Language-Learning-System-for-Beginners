@@ -194,6 +194,8 @@ const btnClearLogEl      = document.getElementById('btn-clear-log');
 let classifierWarnEl  = null;
 // BUG 7 FIX: separate non-blocking face warning element.
 let faceWarnEl        = null;
+// True while the tracking model is still downloading (Skip keeps the lesson usable meanwhile).
+let modelDownloading = false;
 
 /* BUGFIX (dark-mode UX pass) — this used to be declared right above
    showFeedback() (~line 2750). boot() is invoked at MODULE LEVEL (see the
@@ -2347,14 +2349,152 @@ function setupNavButtons() {
 
 // ── Boot camera + models ───────────────────────────────────────────
 
+// ── Tracking-model download UI: progress bar, "skip for now", retry ───────────
+// The model (~14 MB) is the slow part of opening the camera. This shows real
+// progress, lets the learner keep studying meanwhile (Skip), and offers Retry
+// if the connection drops. Built in JS so no HTML change is needed.
+function formatMB(bytes) { return (bytes / 1048576).toFixed(bytes >= 10485760 ? 0 : 1); }
+
+function createModelLoaderUI() {
+  const viewport = document.querySelector('.camera-viewport');
+  if (!viewport) return null;
+
+  if (!document.getElementById('lw-model-loader-style')) {
+    const st = document.createElement('style');
+    st.id = 'lw-model-loader-style';
+    st.textContent =
+      '.lw-model-loader{position:absolute;inset:0;z-index:11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:var(--space-4,16px);text-align:center;background:var(--backdrop,rgba(15,23,42,.92));color:var(--clr-text,#e2e8f0);border-radius:inherit}' +
+      '.lw-model-loader[hidden],.lw-model-loader button[hidden]{display:none}' +
+      '.lw-model-loader__text{margin:0;font-size:var(--fs-sm,.9rem);font-weight:600}' +
+      '.lw-model-loader__hint{margin:0;font-size:var(--fs-xs,.8rem);color:var(--clr-text-muted,#94a3b8);max-width:38ch}' +
+      '.lw-model-loader__bar{width:min(320px,90%);height:10px;border-radius:999px;background:var(--clr-border,#334155);overflow:hidden}' +
+      '.lw-model-loader__fill{height:100%;width:0;background:var(--clr-accent,#38bdf8);transition:width .25s ease}' +
+      '.lw-model-loader__actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}' +
+      '.lw-model-loader.is-error .lw-model-loader__text{color:var(--clr-red-text,#fca5a5)}' +
+      '.lw-model-loader.is-compact{inset:auto 0 0 0;flex-direction:row;flex-wrap:wrap;padding:8px 12px;gap:8px;border-radius:0 0 var(--radius-lg,12px) var(--radius-lg,12px)}' +
+      '.lw-model-loader.is-compact .lw-model-loader__hint{display:none}' +
+      '.lw-model-loader.is-compact .lw-model-loader__bar{width:120px;flex:0 0 auto}' +
+      '.lw-model-loader.is-starting .lw-model-loader__fill{width:100%!important;animation:lwModelPulse 1.1s ease-in-out infinite}' +
+      '@keyframes lwModelPulse{0%,100%{opacity:.35}50%{opacity:1}}' +
+      '@media (prefers-reduced-motion:reduce){.lw-model-loader__fill{transition:none}.lw-model-loader.is-starting .lw-model-loader__fill{animation:none}}';
+    document.head.appendChild(st);
+  }
+
+  const box = document.createElement('div');
+  box.className = 'lw-model-loader';
+  box.hidden = true;
+  box.setAttribute('role', 'status');
+  box.setAttribute('aria-live', 'polite');
+  box.innerHTML =
+    '<p class="lw-model-loader__text"></p>' +
+    '<div class="lw-model-loader__bar" role="progressbar" aria-label="Tracking model download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="lw-model-loader__fill"></div></div>' +
+    '<p class="lw-model-loader__hint"></p>' +
+    '<div class="lw-model-loader__actions">' +
+      '<button type="button" class="btn btn--ghost lw-model-loader__skip">Skip for now \u2014 keep studying</button>' +
+      '<button type="button" class="btn btn--secondary lw-model-loader__retry" hidden>Retry</button>' +
+    '</div>';
+  viewport.appendChild(box);
+
+  const textEl = box.querySelector('.lw-model-loader__text');
+  const hintEl = box.querySelector('.lw-model-loader__hint');
+  const barEl  = box.querySelector('.lw-model-loader__bar');
+  const fillEl = box.querySelector('.lw-model-loader__fill');
+  const skipBtn  = box.querySelector('.lw-model-loader__skip');
+  const retryBtn = box.querySelector('.lw-model-loader__retry');
+  let revealTimer = null;
+  let retryResolve = null;
+
+  skipBtn.addEventListener('click', () => {
+    box.classList.add('is-compact');
+    skipBtn.hidden = true;
+    hintEl.textContent = 'The camera will start automatically when the download finishes.';
+  });
+  retryBtn.addEventListener('click', () => {
+    if (retryResolve) { const r = retryResolve; retryResolve = null; r(); }
+  });
+
+  return {
+    showProgress() {
+      setStatus('', 'ready');                       // hide the plain "Loading\u2026" overlay
+      box.classList.remove('is-error', 'is-starting');
+      retryBtn.hidden = true;
+      skipBtn.hidden = box.classList.contains('is-compact');
+      textEl.textContent = 'Downloading hand-tracking model (about 14 MB)\u2026';
+      hintEl.textContent = 'First time only \u2014 it is saved on this device for next time. You can keep studying this lesson meanwhile.';
+      fillEl.style.width = '0%';
+      // Already cached = instant: don't flash the box for a split second.
+      clearTimeout(revealTimer);
+      revealTimer = setTimeout(() => { box.hidden = false; }, 400);
+    },
+    update(loaded, total) {
+      const pct = loaded >= total ? 100 : Math.min(99, Math.floor((loaded / total) * 100));
+      fillEl.style.width = pct + '%';
+      barEl.setAttribute('aria-valuenow', String(pct));
+      textEl.textContent = 'Downloading hand-tracking model\u2026 ' + formatMB(loaded) + ' / ' + formatMB(total) + ' MB (' + pct + '%)';
+    },
+    startingEngine() {
+      clearTimeout(revealTimer);
+      box.hidden = false;
+      box.classList.add('is-starting');
+      textEl.textContent = 'Download complete \u2014 starting the hand-tracking engine\u2026';
+      hintEl.textContent = 'Almost ready. This can take a few seconds on slower connections and devices.';
+    },
+    showErrorAndWaitForRetry(err) {
+      clearTimeout(revealTimer);
+      box.hidden = false;
+      box.classList.add('is-error');
+      textEl.textContent = 'Could not download the tracking model.';
+      hintEl.textContent = (err && err.message ? err.message + ' ' : '') + 'Check your connection, then tap Retry.';
+      retryBtn.hidden = false;
+      skipBtn.hidden = true;
+      return new Promise((resolve) => { retryResolve = resolve; });
+    },
+    done() {
+      clearTimeout(revealTimer);
+      box.remove();
+    },
+  };
+}
+
 async function bootDetectionEngine() {
-  setStatus('Loading hand + face tracking model…', 'loading');
+  // The webcam (and the service worker that caches the model) only exist on https:// or http://localhost.
+  // Over plain http on a LAN address (e.g. http://192.168.x.x) the browser hides them entirely - say so
+  // up front instead of downloading 13 MB and then failing.
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const plainHttp = location.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(location.hostname);
+    setStatus(plainHttp
+      ? 'The camera only works on a secure address. Open this site with https:// (or http://localhost while testing).'
+      : 'Your browser does not support camera access. Please use Chrome or Edge.', 'error');
+    return;
+  }
+  const loader = createModelLoaderUI();
+  modelDownloading = true;
+  if (!loader) setStatus('Loading hand + face tracking model\u2026', 'loading');
 
   try {
-    await initMediaPipe();
-    setStatus('Starting camera…', 'loading');
+    // Download (or read from the browser cache) the tracking model. On failure
+    // show the error with a Retry button instead of dead-ending the page.
+    for (;;) {
+      try {
+        if (loader) loader.showProgress();
+        await initMediaPipe({
+          onProgress: (loaded, total) => { if (loader) loader.update(loaded, total); },
+          onPhase: (phase) => { if (loader && phase === 'starting') loader.startingEngine(); },
+        });
+        break;
+      } catch (err) {
+        console.error('[lesson.js] Tracking model failed to load:', err);
+        if (!loader) throw err;
+        await loader.showErrorAndWaitForRetry(err);
+      }
+    }
+    modelDownloading = false;
+    if (loader) loader.done();
+    setStatus('Starting camera\u2026', 'loading');
     await startCamera(videoEl, canvasEl);
   } catch (err) {
+    modelDownloading = false;
+    if (loader) loader.done();
     console.error('[lesson.js] Boot failed:', err);
     setStatus(`Failed to start: ${err.message}`, 'error');
     return;
@@ -2899,6 +3039,8 @@ function handlePracticeFrame(result) {
 // ── Assessment mode ────────────────────────────────────────────────
 
 function startAssessment() {
+  // Tracking model still downloading (learner pressed Skip): nothing could be detected yet.
+  if (modelDownloading) { showFeedback('Hand-tracking is still downloading \u2014 Practice Check unlocks as soon as it finishes.', 'info'); return; }
   // Backstop: retryLesson()/overlay buttons can reach here without going through
   // the button's own onclick — never run a check for a sign with no trained data.
   if (practiceCheckLocked) { openUntrainedModal(); return; }

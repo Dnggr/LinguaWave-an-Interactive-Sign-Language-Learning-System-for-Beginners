@@ -89,7 +89,10 @@
       // A bigger limit than what was fetched needs a refetch, unless the last fetch already returned everyone there is.
       const enough = have && (have.n >= max || have.rows.length < have.n);
       if (force || !enough) {
-        panel.innerHTML = '<p class="lb-note">Loading…</p>';
+        // Skeleton rows (same look as the Game Leaderboards) instead of a bare "Loading…" line.
+        panel.innerHTML = '<div class="sk-group" role="status"><span class="sr-only">Loading the leaderboard…</span>' +
+          [45, 35, 52, 40, 48, 38].map((w) => `<div class="sk-row"><span class="sk sk--line" style="--w:1.4rem"></span><span class="sk sk--circle" style="--s:36px"></span><span class="sk sk--line" style="--w:${w}%"></span><span class="sk sk--line" style="--w:4rem;margin-left:auto"></span></div>`).join('') +
+          '</div>';
         const n = max, rows = await X.loadBoard(kind, n);
         if (my !== token) return;
         cache[kind] = { rows, n };

@@ -80,7 +80,9 @@ function renderStats() {
 
 function resetStats() {
   ["total", "week", "latest"].forEach((k) => {
-    els[`fb-stat-${k}`].innerHTML = "&mdash;";
+    const el = els[`fb-stat-${k}`];
+    el.setAttribute("data-sk-inline", "");
+    el.innerHTML = window.LWSkeleton ? window.LWSkeleton.kpi(k === "latest" ? "7rem" : "3rem") : "&mdash;";
   });
   els["fb-charts-wrap"].hidden = true;
   els["fb-charts"].innerHTML = "";
@@ -212,6 +214,8 @@ async function loadFeedback() {
   loading = true;
   els["fb-refresh"].disabled = true;
   resetStats();
+  // Rebuild the skeleton on every load (Refresh / Try again), in case the 12s stall note replaced it earlier.
+  if (window.LWSkeleton) els["fb-loading"].innerHTML = window.LWSkeleton.cards("Loading feedback\u2026", 4);
   showState("loading");
   try {
     const [surveys, users] = await Promise.all([
@@ -231,6 +235,8 @@ async function loadFeedback() {
     console.error("[admin-feedback] Failed to load surveys:", err);
     allSurveys = [];
     filtered = [];
+    // The stat tiles are still showing skeletons: end the loading look now that we know it failed.
+    ["total", "week", "latest"].forEach((k) => { els[`fb-stat-${k}`].innerHTML = "&mdash;"; });
     showState("error");
   } finally {
     loading = false;

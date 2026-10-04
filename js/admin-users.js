@@ -94,7 +94,9 @@ function render() {
   }).join("");
 }
 async function loadUsers() {
-  els.tbody.innerHTML = `<tr><td colspan="4" class="admin-table__loading">Loading learners&hellip;</td></tr>`;
+  els.tbody.innerHTML = window.LWSkeleton?.table
+    ? window.LWSkeleton.table("Loading learners\u2026", 6, [70, 85, 55])
+    : `<tr><td colspan="4" class="admin-table__loading">Loading learners&hellip;</td></tr>`;
   try {
     allUsers = await listUsers();
     render();

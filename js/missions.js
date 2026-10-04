@@ -1412,7 +1412,7 @@ const SIGNS_V2 = [
       'The downward motion after clasping matters — this is a MOTION sign',
       'Keep the motion smooth and centered in front of your chest',
     ],
-    imageUrl: '../assets/images/medium/family/MARRIAGE.png', videoUrl: '../assets/videos/medium/family/MARRIAGE.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/family/MARRIAGE.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/marriage.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_family_SISTER', level: 'medium', category: 'family', signId: 'SISTER', title: 'Sister', order: 7,
@@ -1486,7 +1486,7 @@ const SIGNS_V2 = [
       'The tracing motion along the ring finger is what completes the sign',
       'This distinguishes SINGLE from a plain pinky-up letter I',
     ],
-    imageUrl: '../assets/images/medium/family/SINGLE.png', videoUrl: '../assets/videos/medium/family/SINGLE.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/family/SINGLE.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/single.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_family_DIVORCED', level: 'medium', category: 'family', signId: 'DIVORCED', title: 'Divorced', order: 14,
@@ -1496,7 +1496,7 @@ const SIGNS_V2 = [
       'Keep the pulling-apart motion deliberate and visible',
       'This is a MOTION sign — the split matters more than the starting handshape',
     ],
-    imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/medium/family/DIVORCED.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/family/DIVORCED.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/divorced.mp4', detectionType: 'motion',
   },
   /* ── MEDIUM · SCHOOL GROUP (Units 28–32) ──────────────────────
    * Lesson content for the School group's Batch 3b words that had
@@ -1544,7 +1544,7 @@ const SIGNS_V2 = [
       'Movement is a snipping open-close, not a wave',
       'Two quick snips is enough',
     ],
-    imageUrl: '../assets/images/medium/school_supplies/SCISSORS.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/31 school supplies/scissor.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/school_supplies/SCISSORS.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/31 school supplies/SCISSORS.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_school_supplies_RULER', level: 'medium', category: 'school_supplies', signId: 'RULER', title: 'Ruler', order: 4,
@@ -1587,7 +1587,7 @@ const SIGNS_V2 = [
       'Dominant hand traces a bag-like curve underneath it',
       'Keep the motion smooth, like tracing a shape once',
     ],
-    imageUrl: '../assets/images/medium/classroom/TRASH.png', videoUrl: '../assets/videos/medium/classroom/TRASH.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/classroom/TRASH.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/32 classroom object/TRASH.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_subjects_MATH', level: 'medium', category: 'subjects', signId: 'MATH', title: 'Math', order: 1,
@@ -1617,7 +1617,7 @@ const SIGNS_V2 = [
       'Dominant hand waves smoothly above it',
       'Let the motion flow — this is a graceful sign',
     ],
-    imageUrl: '../assets/images/medium/subjects/MUSIC.png', videoUrl: '../assets/videos/medium/subjects/MUSIC.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/subjects/MUSIC.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/34 school subjects/music.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_subjects_HISTORY', level: 'medium', category: 'subjects', signId: 'HISTORY', title: 'History', order: 4,
@@ -1627,7 +1627,7 @@ const SIGNS_V2 = [
       'Two downward movements, not a circle',
       'Slightly bend the wrist on each downward motion',
     ],
-    imageUrl: '../assets/images/medium/subjects/HISTORY.png', videoUrl: '../assets/videos/medium/subjects/HISTORY.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/subjects/HISTORY.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/34 school subjects/history.mp4', detectionType: 'motion',
   },
   /* ── MEDIUM · WORDS (auto-generated content — see BUGFIX notes) ── */
   // ── MEDIUM · PLACES ──
@@ -1649,7 +1649,7 @@ const SIGNS_V2 = [
       'Contact point is the wrist/heel of the hand, not the knuckles',
       'Two clear taps',
     ],
-    imageUrl: '../assets/images/medium/places/work.png', videoUrl: '../assets/videos/medium/places/work.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/work.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/work.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_SCHOOL', level: 'medium', category: 'places', signId: 'SCHOOL', title: 'School', order: 3,
@@ -1669,7 +1669,7 @@ const SIGNS_V2 = [
       'Small forward rotation from the wrist',
       'Repeat the motion twice',
     ],
-    imageUrl: '../assets/images/medium/places/store.png', videoUrl: '../assets/videos/medium/places/store.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/store.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/store.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_CHURCH', level: 'medium', category: 'places', signId: 'CHURCH', title: 'Church', order: 5,
@@ -1679,7 +1679,7 @@ const SIGNS_V2 = [
       'Dominant hand keeps a clear C-curve',
       'Two taps on the back of the fist',
     ],
-    imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/medium/places/church.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/church.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/church.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_CAR', level: 'medium', category: 'places', signId: 'CAR', title: 'Car / Drive', order: 8,
@@ -1694,7 +1694,7 @@ const SIGNS_V2 = [
       'Small, natural steering-wheel turns',
       'Motion sign — keep it continuous while holding',
     ],
-    imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/car.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_IN', level: 'medium', category: 'places', signId: 'IN', title: 'In', order: 9,
@@ -1711,7 +1711,7 @@ const SIGNS_V2 = [
       'Motion goes down and inward',
       'Fingers stay bunched together the whole time',
     ],
-    imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/medium/places/in.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/in.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/in.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_OUT', level: 'medium', category: 'places', signId: 'OUT', title: 'Out', order: 10,
@@ -1723,7 +1723,7 @@ const SIGNS_V2 = [
       'Motion goes up and outward — the reverse of IN',
       'Fingers open as they exit',
     ],
-    imageUrl: '../assets/images/medium/places/out.png', videoUrl: '../assets/videos/medium/places/out.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/out.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/inside - out.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_places_WITH', level: 'medium', category: 'places', signId: 'WITH', title: 'With', order: 11,
@@ -1733,7 +1733,7 @@ const SIGNS_V2 = [
       'Knuckles meet in the middle',
       'Hold briefly once they touch',
     ],
-    imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/medium/places/with.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/with.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/with.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · TIME ──
   {
@@ -1750,7 +1750,7 @@ const SIGNS_V2 = [
       'Elbow stays anchored on the back of your other hand throughout',
       'One smooth downward sweep, not a bounce',
     ],
-    imageUrl: '../assets/images/medium/time/day.png', videoUrl: '../assets/videos/medium/time/day.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/day.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/day.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_NIGHT', level: 'medium', category: 'time', signId: 'NIGHT', title: 'Night', order: 2,
@@ -1767,7 +1767,7 @@ const SIGNS_V2 = [
       'The wrist (not the back of the hand) rests on your other hand',
       'A settled placement, not a wide sweeping arc',
     ],
-    imageUrl: '../assets/images/medium/time/night.png', videoUrl: '../assets/videos/medium/time/night.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/night.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/night.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_WEEK', level: 'medium', category: 'time', signId: 'WEEK', title: 'Week', order: 3,
@@ -1779,7 +1779,7 @@ const SIGNS_V2 = [
       'One continuous sliding motion, not a tap',
       'Ends past the fingertips of the base hand',
     ],
-    imageUrl: '../assets/images/medium/time/week.png', videoUrl: '../assets/videos/medium/time/week.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/week.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/week.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_MONTH', level: 'medium', category: 'time', signId: 'MONTH', title: 'Month', order: 4,
@@ -1794,7 +1794,7 @@ const SIGNS_V2 = [
       'Dominant palm faces back toward you, not down',
       'Motion goes top to bottom, tracing the finger',
     ],
-    imageUrl: '../assets/images/medium/time/month.png', videoUrl: '../assets/videos/medium/time/month.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/month.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/month.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_YEAR', level: 'medium', category: 'time', signId: 'YEAR', title: 'Year', order: 5,
@@ -1806,7 +1806,7 @@ const SIGNS_V2 = [
       'One complete circle, not a partial motion',
       'Ends exactly where it started, on top',
     ],
-    imageUrl: '../assets/images/medium/time/year.png', videoUrl: '../assets/videos/medium/time/year.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/year.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/year.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_WILL', level: 'medium', category: 'time', signId: 'WILL', title: 'Will (future)', order: 6,
@@ -1816,7 +1816,7 @@ const SIGNS_V2 = [
       'One forward push, not a wave',
       'Also used more generally to mean ‘future’',
     ],
-    imageUrl: '../assets/images/medium/time/will.png', videoUrl: '../assets/videos/medium/time/will.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/will.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/will.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_BEFORE', level: 'medium', category: 'time', signId: 'BEFORE', title: 'Before', order: 7,
@@ -1826,7 +1826,7 @@ const SIGNS_V2 = [
       'Dominant hand pulls backward, toward the body',
       'Short, controlled motion',
     ],
-    imageUrl: '../assets/images/medium/time/before.png', videoUrl: '../assets/videos/medium/time/before.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/before.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/before.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_NOW', level: 'medium', category: 'time', signId: 'NOW', title: 'Now', order: 8,
@@ -1843,7 +1843,7 @@ const SIGNS_V2 = [
       'One short downward drop — NOT repeated (that\'s TODAY)',
       'Same handshape as TODAY, just a single motion instead of two',
     ],
-    imageUrl: '../assets/images/medium/time/now.png', videoUrl: '../assets/videos/medium/time/now.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/now.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/now.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_TODAY', level: 'medium', category: 'time', signId: 'TODAY', title: 'Today', order: 8.5,
@@ -1857,7 +1857,7 @@ const SIGNS_V2 = [
       'The repeat/bounce is what makes it TODAY instead of NOW',
       'Keep both repeats short — this isn\'t a big motion either time',
     ],
-    imageUrl: '../assets/images/medium/time/today.png', videoUrl: '../assets/videos/medium/time/today.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/today.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/today.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_time_FINISH', level: 'medium', category: 'time', signId: 'FINISH', title: 'Finish', order: 9,
@@ -1871,7 +1871,7 @@ const SIGNS_V2 = [
       'A quick twist, not a slow turn',
       'Both hands move together, in sync',
     ],
-    imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/medium/time/finish.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/time/finish.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/finished.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · TEMPERATURE ──
   {
@@ -1952,7 +1952,7 @@ const SIGNS_V2 = [
       'Small side-to-side rubbing motion',
       'Fingers stay parallel and close together',
     ],
-    imageUrl: '../assets/images/medium/clothes/socks.png', videoUrl: '../assets/videos/medium/clothes/socks.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/clothes/socks.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/43 clothes/socks.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_clothes_SHOES', level: 'medium', category: 'clothes', signId: 'SHOES', title: 'Shoes', order: 4,
@@ -1982,7 +1982,7 @@ const SIGNS_V2 = [
       'Contact point is the hip',
       'Two light taps',
     ],
-    imageUrl: '../assets/images/medium/clothes/underwear.png', videoUrl: '../assets/videos/medium/clothes/underwear.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/clothes/underwear.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/43 clothes/underwear.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_clothes_SHORTS', level: 'medium', category: 'clothes', signId: 'SHORTS', title: 'Shorts', order: 7,
@@ -2002,7 +2002,7 @@ const SIGNS_V2 = [
       'One long single sweep — not a short double brush',
       'A shorter, double-brush version of this same motion means CLOTHES instead',
     ],
-    imageUrl: '../assets/images/medium/clothes/dress.png', videoUrl: '../assets/videos/medium/clothes/dress.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/clothes/dress.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/43 clothes/dress.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dress.htm',
   },
   {
@@ -2013,7 +2013,7 @@ const SIGNS_V2 = [
       'Contact is at the heel of the hand, not the thumbtip',
       'A single outward-and-down motion',
     ],
-    imageUrl: '../assets/images/medium/clothes/skirt.png', videoUrl: '../assets/videos/medium/clothes/skirt.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/clothes/skirt.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/43 clothes/skirt.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/skirt.htm',
   },
   {
@@ -2313,7 +2313,7 @@ const SIGNS_V2 = [
       'Cross at the chest, like a hug',
       'Hold briefly once crossed',
     ],
-    imageUrl: '../assets/images/medium/feelings/love.png', videoUrl: '../assets/videos/medium/feelings/love.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/feelings/love.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/6. basic feelings/love.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_feelings_SCARED', level: 'medium', category: 'feelings', signId: 'SCARED', title: 'Scared', order: 10,
@@ -2447,7 +2447,7 @@ const SIGNS_V2 = [
       'One smooth brushing motion',
       'Used for ‘excuse me’ in context',
     ],
-    imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/4. polite words/excuse me.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/4. polite words/EXCUSE.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_requests_THANK_YOU', level: 'medium', category: 'essentials_polite_expressions', signId: 'THANK YOU', title: 'Thank You', order: 3,
@@ -2893,7 +2893,7 @@ const SIGNS_V2 = [
       'Motion rubs straight up and down, no arc',
       'Keep the motion at chest height',
     ],
-    imageUrl: '../assets/images/medium/actions/bath.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/take a bath.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/bath.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/BATH.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bath.htm',
   },
   /* ── MEDIUM · HAND ACTIONS (Unit 10) ────────────────────────────
@@ -3147,7 +3147,7 @@ const SIGNS_V2 = [
       'Dominant forearm rises up from underneath it, fingertips leading the way',
       'Same sign already used for MORNING under Daytime',
     ],
-    imageUrl: '../assets/images/medium/daytime/morning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good morning.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/morning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/MORNING.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_daytime_AFTERNOON.
@@ -3158,7 +3158,7 @@ const SIGNS_V2 = [
       'Angle points slightly upward and forward, not straight out',
       'Same sign already used for AFTERNOON under Daytime',
     ],
-    imageUrl: '../assets/images/medium/daytime/afternoon.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good afternoon.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/afternoon.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/AFTERNOON.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_daytime_EVENING.
@@ -3169,7 +3169,7 @@ const SIGNS_V2 = [
       'Non-dominant arm stays flat and still, like a horizon line',
       'Same sign already used for EVENING under Daytime',
     ],
-    imageUrl: '../assets/images/medium/daytime/evening.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good evening.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/evening.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/EVENING.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_daytime_NIGHT.
@@ -3180,7 +3180,7 @@ const SIGNS_V2 = [
       'Dominant hand droops down over it instead of rising, like a sunset',
       'Same sign already used for NIGHT under Daytime',
     ],
-    imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/medium/daytime/night.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/night.mp4', detectionType: 'motion',
   },
   {
     // NEW — no prior entry for GOODBYE. ASLU: "wave hello with a side to
@@ -3731,7 +3731,7 @@ const SIGNS_V2 = [
       'A stronger, more pinched facial expression sets it apart',
       'Context usually makes the exact meaning clear',
     ],
-    imageUrl: '../assets/images/medium/taste/bitter.png', videoUrl: '../assets/videos/medium/taste/bitter.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/taste/bitter.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/18. taste/bitter.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_taste_SPICY', level: 'medium', category: 'taste', signId: 'SPICY', title: 'Spicy', order: 5,
@@ -3966,7 +3966,7 @@ const SIGNS_V2 = [
       'Fingers CLOSE together as the circle finishes — the opposite of BEAUTIFUL',
       'Same movement family as BEAUTIFUL, distinguished by closing instead of opening',
     ],
-    imageUrl: '../assets/images/medium/appearance/pretty.png', videoUrl: '../assets/videos/medium/appearance/pretty.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/appearance/pretty.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/16. appearance/pretty.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pretty.htm',
   },
   {
@@ -4327,7 +4327,7 @@ const SIGNS_V2 = [
       'Pull outward, away from the face',
       'Repeat on one or both sides',
     ],
-    imageUrl: '../assets/images/medium/animals/cat.png', videoUrl: '../assets/videos/medium/animals/cat.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/cat.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/cat.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_animals_DOG', level: 'medium', category: 'animals', signId: 'DOG', title: 'Dog', order: 2,
@@ -4377,7 +4377,7 @@ const SIGNS_V2 = [
       'Repeat the stroke twice',
       'Edge of the hand does the ‘shearing’',
     ],
-    imageUrl: '../assets/images/medium/animals/sheep.png', videoUrl: '../assets/videos/medium/animals/sheep.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/sheep.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/sheep.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_animals_PIG', level: 'medium', category: 'animals', signId: 'PIG', title: 'Pig', order: 7,
@@ -4397,7 +4397,7 @@ const SIGNS_V2 = [
       'Index and middle fingers stay bent, like antennae',
       'Small twitching motion',
     ],
-    imageUrl: '../assets/images/medium/animals/bug.png', videoUrl: '../assets/videos/medium/animals/bug.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/bug.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/bug.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_animals_BIRD (lifeprint: "the sign BIRD can in context be used to mean chicken").
@@ -4408,7 +4408,7 @@ const SIGNS_V2 = [
       'Opens and closes like a beak',
       'Same sign already used for BIRD — context tells them apart',
     ],
-    imageUrl: '../assets/images/medium/animals/bird.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/bird.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/bird.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/chicken.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_animals_DUCK', level: 'medium', category: 'animals', signId: 'DUCK', title: 'Duck', order: 10,
@@ -4429,7 +4429,7 @@ const SIGNS_V2 = [
       'The side-to-side wiggle mimics a fish\u2019s tail',
       'Moves forward as it wiggles, not in place',
     ],
-    imageUrl: '../assets/images/medium/animals/fish.png', videoUrl: '../assets/videos/medium/animals/fish.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/fish.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/fish.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/fish.htm',
   },
   {
@@ -4440,7 +4440,7 @@ const SIGNS_V2 = [
       'Hands rest at the sides of the head',
       'A double backward bend, like ears flopping',
     ],
-    imageUrl: '../assets/images/medium/animals/rabbit.png', videoUrl: '../assets/videos/medium/animals/rabbit.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/animals/rabbit.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/40 common animals/rabbit.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rabbit.htm',
   },
   {
@@ -4522,7 +4522,7 @@ const SIGNS_V2 = [
       'Second part (ROOM): hands trace a box shape',
       'This is POLITE + ROOM — the standard way to sign ‘living room’',
     ],
-    imageUrl: '../assets/images/medium/home/living.png', videoUrl: '../assets/videos/medium/home/living.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/home/living.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/25. rooms/living room.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/living-room.htm',
   },
   {
@@ -4533,7 +4533,7 @@ const SIGNS_V2 = [
       'Second part (ROOM): hands trace a box shape',
       'This is EAT + ROOM — the standard way to sign ‘dining room’',
     ],
-    imageUrl: '../assets/images/medium/home/dining.png', videoUrl: '../assets/videos/medium/home/dining.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/home/dining.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/25. rooms/dining room.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dining-room.htm',
   },
   {
@@ -4544,7 +4544,7 @@ const SIGNS_V2 = [
       'Top hand stays flat and still, like a ceiling',
       'Double forward-back motion for the noun ‘garage’',
     ],
-    imageUrl: '../assets/images/medium/home/garage.png', videoUrl: '../assets/videos/medium/home/garage.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/home/garage.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/25. rooms/garage.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garage.htm',
   },
   {
@@ -4555,7 +4555,7 @@ const SIGNS_V2 = [
       'Opens into a spread hand as it rises',
       'Repeated motion — a single motion means GROW instead',
     ],
-    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/medium/home/garden.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/home/garden.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/25. rooms/garden.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/g/garden.htm',
   },
   {
@@ -4617,7 +4617,7 @@ const SIGNS_V2 = [
       'Two taps make it the noun CHAIR; one tap means the verb SIT',
       'Base hand stays flat and still underneath',
     ],
-    imageUrl: '../assets/images/medium/furniture/chair.png', videoUrl: '../assets/videos/medium/furniture/chair.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/furniture/chair.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/26. furniture/chair.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/chair.htm',
   },
   {
@@ -4735,7 +4735,7 @@ const SIGNS_V2 = [
       'BATH uses the same rubbing handshape as washing your body, not a flat hand',
       'lifeprint.com documents this as sign + fingerspell, not a single fixed sign',
     ],
-    imageUrl: '../assets/images/medium/bathroom/bathtub.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/28 bathoom/bathub.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/bathroom/bathtub.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/28 bathoom/BATHTUB.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bathtub.htm',
   },
   {
@@ -4746,7 +4746,7 @@ const SIGNS_V2 = [
       'Two short brushing strokes across the palm',
       'Fingertips do the brushing \u2014 not a flat-hand rub',
     ],
-    imageUrl: '../assets/images/medium/bathroom/soap.png', videoUrl: '../assets/videos/medium/bathroom/soap.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/bathroom/soap.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/28 bathoom/SOAP.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/soap.htm',
   },
   {
@@ -4828,7 +4828,7 @@ const SIGNS_V2 = [
       'Thumb and index finger stay close together as they trace \u2014 like tracing a rim',
       'Same sign covers both "plate" and "dish"',
     ],
-    imageUrl: '../assets/images/medium/kitchen/plate.png', videoUrl: '../assets/videos/medium/kitchen/plate.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/kitchen/plate.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/29 kitchen/plate.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dish.htm',
   },
   {
@@ -4896,7 +4896,7 @@ const SIGNS_V2 = [
       'The slicing motion happens right at the non-dominant knuckle',
       'Don\u2019t confuse with CAN\u2019T, which whacks straight down instead of slicing',
     ],
-    imageUrl: '../assets/images/medium/kitchen/knife.png', videoUrl: '../assets/videos/medium/kitchen/knife.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/kitchen/knife.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/29 kitchen/knife.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/k/knife.htm',
   },
   // ── MEDIUM · HOUSEHOLD (Unit 25) ── (researched against lifeprint.com,
@@ -4979,7 +4979,7 @@ const SIGNS_V2 = [
       'A small twisting motion at the wrist, not the whole arm',
       'A bigger, slower version of this same motion can mean SEEM/appears',
     ],
-    imageUrl: '../assets/images/medium/household/mirror.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/27. household object/miror.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/household/mirror.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/27. household object/MIRROR.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mirror.htm',
   },
   {
@@ -5078,7 +5078,7 @@ const SIGNS_V2 = [
       'Only the index and middle fingers extend — the rest of the hand stays closed',
       'Many signers instead use the general sign BUG, or just fingerspell A-N-T',
     ],
-    imageUrl: '../assets/images/medium/insects/ant.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/42 insects/ants.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/insects/ant.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/42 insects/ANTS.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_insects_BUTTERFLY', level: 'medium', category: 'insects', signId: 'BUTTERFLY', title: 'Butterfly', order: 2,
@@ -5124,7 +5124,7 @@ const SIGNS_V2 = [
       'Dominant hand opens from a pinched point into a spread ‘5’ as it rises',
       'This same single-motion handshape change is also used for GROW',
     ],
-    imageUrl: '../assets/images/medium/seasons/spring.png', videoUrl: '../assets/videos/medium/seasons/spring.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/seasons/spring.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/49 seasons/spring.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_seasons_SUMMER', level: 'medium', category: 'seasons', signId: 'SUMMER', title: 'Summer', order: 2,
@@ -5134,7 +5134,7 @@ const SIGNS_V2 = [
       'One smooth pass across the forehead, palm down',
       'Different from BLACK, which uses the same path but keeps the index finger straight',
     ],
-    imageUrl: '../assets/images/medium/seasons/summer.png', videoUrl: '../assets/videos/medium/seasons/summer.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/seasons/summer.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/49 seasons/summer.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_seasons_FALL', level: 'medium', category: 'seasons', signId: 'FALL', title: 'Fall', order: 3,
@@ -5144,7 +5144,7 @@ const SIGNS_V2 = [
       'Dominant hand brushes downward along it in a falling motion',
       'Also commonly labeled AUTUMN in ASL dictionaries — same sign',
     ],
-    imageUrl: '../assets/images/medium/seasons/fall.png', videoUrl: '../assets/videos/medium/seasons/fall.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/seasons/fall.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/49 seasons/fall.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_seasons_WINTER', level: 'medium', category: 'seasons', signId: 'WINTER', title: 'Winter', order: 4,
@@ -5154,7 +5154,7 @@ const SIGNS_V2 = [
       'A slight shoulder hunch and an uncomfortable facial expression reinforce the meaning',
       'Some signers add a ‘W’ handshape instead of a plain fist to make WINTER unambiguous',
     ],
-    imageUrl: '../assets/images/medium/seasons/winter.png', videoUrl: '../assets/videos/medium/seasons/winter.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/seasons/winter.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/49 seasons/winter.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · DAYTIME ── (new this pass — unlocks Unit 54)
   // Researched on lifeprint.com (ASLU), cross-checked against
@@ -5169,7 +5169,7 @@ const SIGNS_V2 = [
       'Dominant forearm rises up from underneath it, fingertips leading the way',
       'Keep the movement smooth and unhurried, not a sudden jerk upward',
     ],
-    imageUrl: '../assets/images/medium/daytime/morning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good morning.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/morning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/morning.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_daytime_AFTERNOON', level: 'medium', category: 'daytime', signId: 'AFTERNOON', title: 'Afternoon', order: 2,
@@ -5179,7 +5179,7 @@ const SIGNS_V2 = [
       'Angle points slightly upward and forward, not straight out',
       'Just hold the position briefly — no repeated movement needed',
     ],
-    imageUrl: '../assets/images/medium/daytime/afternoon.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good afternoon.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/afternoon.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/afternoon.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_daytime_EVENING', level: 'medium', category: 'daytime', signId: 'EVENING', title: 'Evening', order: 3,
@@ -5189,7 +5189,7 @@ const SIGNS_V2 = [
       'Non-dominant arm stays flat and still, like a horizon line',
       'Dominant hand droops down over it, fingers pointing toward the floor',
     ],
-    imageUrl: '../assets/images/medium/daytime/evening.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/3. greetings/good evening.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/evening.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/evening.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_daytime_NIGHT', level: 'medium', category: 'daytime', signId: 'NIGHT', title: 'Night', order: 4,
@@ -5199,7 +5199,7 @@ const SIGNS_V2 = [
       'Dominant hand droops down over it instead of rising, like a sunset',
       'This same sign also covers EVENING',
     ],
-    imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/medium/daytime/night.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/daytime/night.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/56 parts of the day/night.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · DAYS ── (new this pass — unlocks Unit 55)
   // Researched on lifeprint.com (ASLU), cross-checked against
@@ -5218,7 +5218,7 @@ const SIGNS_V2 = [
       'The circular movement comes mostly from the elbow, kept small',
       'Palm most often faces up or back, not straight down',
     ],
-    imageUrl: '../assets/images/medium/days/monday.png', videoUrl: '../assets/videos/medium/days/monday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/monday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/monday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_TUESDAY', level: 'medium', category: 'days', signId: 'TUESDAY', title: 'Tuesday', order: 2,
@@ -5228,7 +5228,7 @@ const SIGNS_V2 = [
       'Keep the circle small and controlled, moving mostly from the wrist',
       'Distinguished from THURSDAY, which uses an \u2018H\u2019 instead',
     ],
-    imageUrl: '../assets/images/medium/days/tuesday.png', videoUrl: '../assets/videos/medium/days/tuesday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/tuesday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/tuesday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_WEDNESDAY', level: 'medium', category: 'days', signId: 'WEDNESDAY', title: 'Wednesday', order: 3,
@@ -5238,7 +5238,7 @@ const SIGNS_V2 = [
       'Keep the circle small and centered near your shoulder',
       'Same circular-movement family as MONDAY, TUESDAY, and FRIDAY',
     ],
-    imageUrl: '../assets/images/medium/days/wednesday.png', videoUrl: '../assets/videos/medium/days/wednesday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/wednesday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/wednesday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_THURSDAY', level: 'medium', category: 'days', signId: 'THURSDAY', title: 'Thursday', order: 4,
@@ -5248,7 +5248,7 @@ const SIGNS_V2 = [
       'Some signers briefly show a \u2018T\u2019 changing into the \u2018H\u2019 before circling',
       'Keep the circle small and controlled, from the wrist',
     ],
-    imageUrl: '../assets/images/medium/days/thursday.png', videoUrl: '../assets/videos/medium/days/thursday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/thursday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/thursday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_FRIDAY', level: 'medium', category: 'days', signId: 'FRIDAY', title: 'Friday', order: 5,
@@ -5258,7 +5258,7 @@ const SIGNS_V2 = [
       'Small circular movement, not a large sweep',
       'Same family of movement as MONDAY, TUESDAY, and WEDNESDAY',
     ],
-    imageUrl: '../assets/images/medium/days/friday.png', videoUrl: '../assets/videos/medium/days/friday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/friday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/friday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_SATURDAY', level: 'medium', category: 'days', signId: 'SATURDAY', title: 'Saturday', order: 6,
@@ -5268,7 +5268,7 @@ const SIGNS_V2 = [
       'Most signers do this with the palm facing up, which is easier on the wrist',
       'Same circular-movement pattern as the other weekday signs',
     ],
-    imageUrl: '../assets/images/medium/days/saturday.png', videoUrl: '../assets/videos/medium/days/saturday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/saturday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/saturday.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_days_SUNDAY', level: 'medium', category: 'days', signId: 'SUNDAY', title: 'Sunday', order: 7,
@@ -5278,7 +5278,7 @@ const SIGNS_V2 = [
       'One hand circles clockwise while the other circles counterclockwise',
       'Don\u2019t confuse this with WONDERFUL, which uses a different movement',
     ],
-    imageUrl: '../assets/images/medium/days/sunday.png', videoUrl: '../assets/videos/medium/days/sunday.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/days/sunday.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/57. days/SUNDAY.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · DISTANCE ── (new this pass — unlocks Unit 60)
   // Researched on lifeprint.com (ASLU), cross-checked against
@@ -5297,7 +5297,7 @@ const SIGNS_V2 = [
       'Start by touching your nose, then pull the hand away and down in one motion',
       'This is the same sign as CLOSE; only the English gloss differs',
     ],
-    imageUrl: '../assets/images/medium/distance/near.png', videoUrl: '../assets/videos/medium/distance/near.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/distance/near.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/near - far.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_distance_FAR', level: 'medium', category: 'distance', signId: 'FAR', title: 'Far', order: 2,
@@ -5307,7 +5307,7 @@ const SIGNS_V2 = [
       'Dominant hand arcs outward and away from it',
       'A bigger, longer arc conveys a greater distance',
     ],
-    imageUrl: '../assets/images/medium/distance/far.png', videoUrl: '../assets/videos/medium/distance/far.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/distance/far.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/near - far.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_distance_HERE', level: 'medium', category: 'distance', signId: 'HERE', title: 'Here', order: 3,
@@ -5606,7 +5606,7 @@ const SIGNS_V2 = [
       'Dominant hand pinches and slides along its whole length',
       'One smooth pull from base to tip, not a repeated motion',
     ],
-    imageUrl: '../assets/images/medium/vegetables/bean.png', videoUrl: '../assets/videos/medium/vegetables/bean.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vegetables/bean.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/37 vegetables/bean.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_vegetables_CABBAGE', level: 'medium', category: 'vegetables', signId: 'CABBAGE', title: 'Cabbage', order: 9,
@@ -5626,7 +5626,7 @@ const SIGNS_V2 = [
       'Twisting motion at the wrist, done twice',
       'Easy to mix up with CABBAGE — that one strikes the head instead of twisting against it',
     ],
-    imageUrl: '../assets/images/medium/vegetables/lettuce.png', videoUrl: '../assets/videos/medium/vegetables/lettuce.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vegetables/lettuce.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/37 vegetables/lettuce.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_vegetables_PUMPKIN', level: 'medium', category: 'vegetables', signId: 'PUMPKIN', title: 'Pumpkin', order: 11,
@@ -5751,7 +5751,7 @@ const SIGNS_V2 = [
       'Alternate which hand moves forward',
       'Same sign already used for WALK under Actions',
     ],
-    imageUrl: '../assets/images/medium/actions/walk.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/walk.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/walk.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/WALK.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_actions_RIDE.
@@ -5762,7 +5762,7 @@ const SIGNS_V2 = [
       'Base hand keeps a loose \u2018C\u2019 curve',
       'Same sign already used for RIDE under Actions',
     ],
-    imageUrl: '../assets/images/medium/actions/ride.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/ride.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/ride.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/ride.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_transportation_DRIVE', level: 'medium', category: 'transportation', signId: 'DRIVE', title: 'Drive', order: 3,
@@ -5772,7 +5772,7 @@ const SIGNS_V2 = [
       'Use a bigger, more sustained motion than CAR — a smaller version of this same motion means CAR instead of DRIVE',
       'Hands move as a pair, like turning a wheel back and forth',
     ],
-    imageUrl: '../assets/images/medium/transportation/drive.png', videoUrl: '../assets/videos/medium/transportation/drive.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/transportation/drive.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/drive.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_transportation_FLY', level: 'medium', category: 'transportation', signId: 'FLY', title: 'Fly', order: 4,
@@ -5782,7 +5782,7 @@ const SIGNS_V2 = [
       'Palm faces down as the hand travels forward',
       'A different sign from FLY-insect (pinching an \u2018F\u2019 hand) or a bird flapping wings',
     ],
-    imageUrl: '../assets/images/medium/transportation/fly.png', videoUrl: '../assets/videos/medium/transportation/fly.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/transportation/fly.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/fly.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_actions_GO.
@@ -5793,7 +5793,7 @@ const SIGNS_V2 = [
       'Motion pushes outward, away from your body — the reverse of COME',
       'Same sign already used for GO under Actions',
     ],
-    imageUrl: '../assets/images/medium/actions/go.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/go.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/go.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/go.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_actions_STOP.
@@ -5804,7 +5804,7 @@ const SIGNS_V2 = [
       'One sharp, decisive chopping motion',
       'Same sign already used for STOP under Actions',
     ],
-    imageUrl: '../assets/images/medium/actions/stop.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/stop.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/stop.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/stop.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_actions_WAIT.
@@ -5815,7 +5815,7 @@ const SIGNS_V2 = [
       'Wiggle the fingers gently, hands mostly still',
       'Same sign already used for WAIT under Actions',
     ],
-    imageUrl: '../assets/images/medium/actions/wait.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/wait.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/wait.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/52. transportation actions/wait.mp4', detectionType: 'motion',
   },
   // ── MEDIUM · MANNERS (unlocked 2026-09-02) ──
   {
@@ -5875,7 +5875,7 @@ const SIGNS_V2 = [
       'One smooth brushing motion',
       'Same sign already used for EXCUSE under Polite Words',
     ],
-    imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/4. polite words/excuse me.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/requests/excuse.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/4. polite words/EXCUSE.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_requests_HELP.
@@ -5928,7 +5928,7 @@ const SIGNS_V2 = [
       'This is the WRISTWATCH sign, different from WATCH meaning "to look at"',
       'A brief held position — no repeated motion needed',
     ],
-    imageUrl: '../assets/images/medium/personal_items/watch.png', videoUrl: '../assets/videos/personal_items/watch.mp4', detectionType: 'static',
+    imageUrl: '../assets/images/medium/personal_items/watch.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/45 personal items/watch.mp4', detectionType: 'static',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/watch.htm',
   },
   {
@@ -6082,7 +6082,7 @@ const SIGNS_V2 = [
       'A single twist reads as more final/definite; a couple of quick twists is also common',
       'Different from FINISH used to mean "stop it!" — that version uses a sharper, single-handed motion with an intense expression',
     ],
-    imageUrl: '../assets/images/medium/turn_taking/finished.png', videoUrl: '../assets/videos/turn_taking/finished.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/turn_taking/finished.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/finished.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/finish.htm',
   },
   // ── MEDIUM · FREQUENCY (unlocked 2026-09-02) ──
@@ -6096,7 +6096,7 @@ const SIGNS_V2 = [
       'The circle is small and steady, not a big sweeping motion',
       'Keep circling for a beat to show the ongoing, repeated idea of "always"',
     ],
-    imageUrl: '../assets/images/medium/frequency/always.png', videoUrl: '../assets/videos/frequency/always.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/always.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/always.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/topics/signingnotes.htm',
   },
   {
@@ -6109,7 +6109,7 @@ const SIGNS_V2 = [
       'The tap-lift-tap-forward pattern is what separates OFTEN from a single tap',
       'A faster, doubled version of this same motion can mean "frequently"',
     ],
-    imageUrl: '../assets/images/medium/frequency/often.png', videoUrl: '../assets/videos/frequency/often.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/often.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/often.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/often.htm',
   },
   {
@@ -6121,7 +6121,7 @@ const SIGNS_V2 = [
       'Only the dominant index finger moves — the base hand stays still',
       'A relaxed, neutral expression fits "once in a while"',
     ],
-    imageUrl: '../assets/images/medium/frequency/sometimes.png', videoUrl: '../assets/videos/frequency/sometimes.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/sometimes.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/sometimes.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sometimes.htm',
   },
   {
@@ -6137,7 +6137,7 @@ const SIGNS_V2 = [
       'A bigger, slower oval reads as "rarely" rather than "sometimes"',
       'The squint and head shake are part of what signals the "rarely" meaning',
     ],
-    imageUrl: '../assets/images/medium/frequency/rarely.png', videoUrl: '../assets/videos/frequency/rarely.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/rarely.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/rarely.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sometimes.htm',
   },
   {
@@ -6149,7 +6149,7 @@ const SIGNS_V2 = [
       'The path curves slightly, like a stretched-out question mark',
       'One firm downward-and-out swipe, not a repeated motion',
     ],
-    imageUrl: '../assets/images/medium/frequency/never.png', videoUrl: '../assets/videos/frequency/never.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/never.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/never.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/never.htm',
   },
   {
@@ -6162,7 +6162,7 @@ const SIGNS_V2 = [
       'Keep both taps short and at the same spot near the temple',
       'Also glossed as EVERYDAY',
     ],
-    imageUrl: '../assets/images/medium/frequency/daily.png', videoUrl: '../assets/videos/frequency/daily.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/daily.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/daily.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/lessons/lesson06.htm',
   },
   {
@@ -6177,7 +6177,7 @@ const SIGNS_V2 = [
       'The repeated slide (done twice) is what turns WEEK into WEEKLY',
       'Keep the motion along the palm, not off to the side',
     ],
-    imageUrl: '../assets/images/medium/frequency/weekly.png', videoUrl: '../assets/videos/frequency/weekly.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/weekly.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/weekly.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/lessons/lesson12.htm',
   },
   {
@@ -6192,7 +6192,7 @@ const SIGNS_V2 = [
       'The repeated downward slide (done twice) is what turns MONTH into MONTHLY',
       'Keep the non-dominant finger straight and still as the "calendar"',
     ],
-    imageUrl: '../assets/images/medium/frequency/monthly.png', videoUrl: '../assets/videos/frequency/monthly.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/frequency/monthly.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/60. frequency/monthly.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/lessons/lesson12.htm',
   },
   // ── MEDIUM · RESPONSES (unlocked 2026-09-02) ──
@@ -6496,7 +6496,7 @@ const SIGNS_V2 = [
       'The path slithers forward, not straight ahead',
       'A short, few-inch motion is enough',
     ],
-    imageUrl: '../assets/images/medium/wild_animals/snake.png', videoUrl: '../assets/videos/medium/wild_animals/snake.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/wild_animals/snake.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/41 wild animals/snake.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/snake.htm',
   },
   {
@@ -6592,7 +6592,7 @@ const SIGNS_V2 = [
       'The path curves forward and together, like the outline of a ring',
       'A second common variant pinches a \u2018C\u2019-like shape near the cheeks instead \u2014 both are accepted',
     ],
-    imageUrl: '../assets/images/medium/snacks/donut.png', videoUrl: '../assets/videos/medium/snacks/donut.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/snacks/donut.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/donut.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/donut.htm',
   },
   {
@@ -6603,7 +6603,7 @@ const SIGNS_V2 = [
       'Two clear slices, angled to form a wedge, not parallel lines',
       'The cutting hand does the work; the base hand stays still',
     ],
-    imageUrl: '../assets/images/medium/snacks/pie.png', videoUrl: '../assets/videos/medium/snacks/pie.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/snacks/pie.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/pie.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/pie.htm',
   },
   {
@@ -6636,7 +6636,7 @@ const SIGNS_V2 = [
       'As with most compound signs, drop any repeated movement from the individual parts',
       'Some signers instead use a version of CAKE done with the base hand palm-up to mean small pastries \u2014 both are seen',
     ],
-    imageUrl: '../assets/images/medium/snacks/cupcake.png', videoUrl: '../assets/videos/medium/snacks/cupcake.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/snacks/cupcake.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/cupcake.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cupcake.htm',
   },
   {
@@ -6647,7 +6647,7 @@ const SIGNS_V2 = [
       'Two short downward movements in front of the mouth',
       'You don\u2019t need to actually stick your tongue out \u2014 the hand motion carries the meaning',
     ],
-    imageUrl: '../assets/images/medium/snacks/icecream.png', videoUrl: '../assets/videos/medium/snacks/icecream.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/snacks/icecream.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/icecream.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/icecream.htm',
   },
   /* ── MEDIUM · WEATHER (Unit 46) ── (NEW this session — unlocks Unit
@@ -6667,7 +6667,7 @@ const SIGNS_V2 = [
       'The \u2018C\u2019 handshape is paired with the sign for MOON, which uses just the thumb and index finger instead',
       'A second version circles a flattened \u2018O\u2019 hand and opens it, meaning \u2018sunlight\u2019 when the motion is bigger',
     ],
-    imageUrl: '../assets/images/medium/weather/sunny.png', videoUrl: '../assets/videos/medium/weather/sunny.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/sunny.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/sunny.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sun.htm',
   },
   {
@@ -6678,7 +6678,7 @@ const SIGNS_V2 = [
       'The motion repeats \u2014 a single drop isn\u2019t enough',
       'A sideways version of this same motion can show wind-driven rain',
     ],
-    imageUrl: '../assets/images/medium/weather/rainy.png', videoUrl: '../assets/videos/medium/weather/rainy.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/rainy.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/rainy.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/rain.htm',
   },
   {
@@ -6689,7 +6689,7 @@ const SIGNS_V2 = [
       'The circling is alternating \u2014 one hand leads while the other follows',
       'Palms face up throughout',
     ],
-    imageUrl: '../assets/images/medium/weather/cloudy.png', videoUrl: '../assets/videos/medium/weather/cloudy.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/cloudy.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/cloudy.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cloudy.htm',
   },
   {
@@ -6700,7 +6700,7 @@ const SIGNS_V2 = [
       'The bigger and faster the sway, the stronger the wind being described',
       'Keep the palms facing each other throughout',
     ],
-    imageUrl: '../assets/images/medium/weather/windy.png', videoUrl: '../assets/videos/medium/weather/windy.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/windy.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/windy.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/wind.htm',
   },
   {
@@ -6715,7 +6715,7 @@ const SIGNS_V2 = [
       'ASLU also documents specific variants for a lightning storm, rainstorm, or snowstorm \u2014 those swap in the LIGHTNING, RAIN, or SNOW handshape instead',
       'A tense, serious facial expression helps convey the intensity',
     ],
-    imageUrl: '../assets/images/medium/weather/stormy.png', videoUrl: '../assets/videos/medium/weather/stormy.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/stormy.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/stormy.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/storm.htm',
   },
   {
@@ -6727,7 +6727,7 @@ const SIGNS_V2 = [
       'The twist-and-pull is sharp and fast',
       'Same sign already used for HOT under Touch',
     ],
-    imageUrl: '../assets/images/medium/temperature/hot.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/17. touch/hot.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/temperature/hot.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/hot.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_temperature_COLD.
@@ -6738,7 +6738,7 @@ const SIGNS_V2 = [
       'Both fists move together',
       'Same sign already used for COLD under Touch',
     ],
-    imageUrl: '../assets/images/medium/temperature/cold.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/17. touch/cold.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/temperature/cold.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/cold.mp4', detectionType: 'motion',
   },
   {
     // NEW — no SIGNS_V2 entry existed for WARM anywhere in this file,
@@ -6766,7 +6766,7 @@ const SIGNS_V2 = [
       'Motion is toward your own face, not pushing outward',
       'A relaxed, pleasant expression fits the meaning \u2014 unlike the sharp pull-away of HOT',
     ],
-    imageUrl: '../assets/images/medium/weather/cool.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/17. touch/cool.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/cool.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/cool.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cool.htm',
   },
   {
@@ -6777,7 +6777,7 @@ const SIGNS_V2 = [
       'The back-and-forth motion should look firm and forceful, not gentle',
       'Both hands move at the same time, mirroring each other',
     ],
-    imageUrl: '../assets/images/medium/weather/thunder.png', videoUrl: '../assets/videos/medium/weather/thunder.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/thunder.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/thunder.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/thunder.htm',
   },
   {
@@ -6788,7 +6788,7 @@ const SIGNS_V2 = [
       'The path is a zigzag, not a straight line or curve',
       'A quick, sudden motion matches the meaning better than a slow one',
     ],
-    imageUrl: '../assets/images/medium/weather/lightning.png', videoUrl: '../assets/videos/medium/weather/lightning.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/lightning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/lightning.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/lightning.htm',
   },
   {
@@ -6799,7 +6799,7 @@ const SIGNS_V2 = [
       'Motion drifts side to side on the way down, not straight down',
       'ASLU notes this sign varies quite a bit by region \u2014 this is the simplest common version',
     ],
-    imageUrl: '../assets/images/medium/weather/snow.png', videoUrl: '../assets/videos/medium/weather/snow.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/weather/snow.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/48. weather/snow.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/snow.htm',
   },
   /* ── MEDIUM · MONTHS (Unit 56) ──────────────────────────────────
@@ -6822,7 +6822,7 @@ const SIGNS_V2 = [
       'Only three letters \u2014 January is long enough to be abbreviated',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/january.png', videoUrl: '../assets/videos/medium/months/january.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/january.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/january.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/j/january.htm',
   },
   {
@@ -6833,7 +6833,7 @@ const SIGNS_V2 = [
       'Three letters only, not the full word',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/february.png', videoUrl: '../assets/videos/medium/months/february.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/february.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/february.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/february.htm',
   },
   {
@@ -6844,7 +6844,7 @@ const SIGNS_V2 = [
       'Spelled out completely \u2014 not shortened like the longer months',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/march.png', videoUrl: '../assets/videos/medium/months/march.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/march.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/march.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/march.htm',
   },
   {
@@ -6855,7 +6855,7 @@ const SIGNS_V2 = [
       'Spelled out completely, same as March',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/april.png', videoUrl: '../assets/videos/medium/months/april.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/april.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/april.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6866,7 +6866,7 @@ const SIGNS_V2 = [
       'Only three letters, spelled in full',
       'Watch for confusion with the modal MAY \u2014 this is the fingerspelled month, a different sign entirely',
     ],
-    imageUrl: '../assets/images/medium/months/may.png', videoUrl: '../assets/videos/medium/months/may.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/may.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/may.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6877,7 +6877,7 @@ const SIGNS_V2 = [
       'Spelled out completely, not abbreviated',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/june.png', videoUrl: '../assets/videos/medium/months/june.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/june.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/june.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6888,7 +6888,7 @@ const SIGNS_V2 = [
       'Spelled out completely, not abbreviated',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/july.png', videoUrl: '../assets/videos/medium/months/july.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/july.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/july.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6899,7 +6899,7 @@ const SIGNS_V2 = [
       'Three letters only, not the full word',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/august.png', videoUrl: '../assets/videos/medium/months/august.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/august.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/august.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6910,7 +6910,7 @@ const SIGNS_V2 = [
       'Four letters, not three \u2014 the one exception in the months set',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/september.png', videoUrl: '../assets/videos/medium/months/september.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/september.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/september.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6921,7 +6921,7 @@ const SIGNS_V2 = [
       'Three letters only, not the full word',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/october.png', videoUrl: '../assets/videos/medium/months/october.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/october.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/october.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6932,7 +6932,7 @@ const SIGNS_V2 = [
       'Three letters only, not the full word',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/november.png', videoUrl: '../assets/videos/medium/months/november.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/november.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/november.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   {
@@ -6943,7 +6943,7 @@ const SIGNS_V2 = [
       'Three letters only, not the full word',
       'Keep the letters crisp and evenly paced rather than rushed',
     ],
-    imageUrl: '../assets/images/medium/months/december.png', videoUrl: '../assets/videos/medium/months/december.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/months/december.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/58. months/december.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/month.htm',
   },
   /* ── MEDIUM · SEQUENCE (Unit 57) ─────────────────────────────────
@@ -6960,7 +6960,7 @@ const SIGNS_V2 = [
       'Ordinal numbers 1st\u20139th all use this same twist; only the base number handshape changes',
       'Numbers 10th and beyond switch to fingerspelling \u201cTH\u201d instead of twisting \u2014 a different pattern',
     ],
-    imageUrl: '../assets/images/medium/sequence/first.png', videoUrl: '../assets/videos/medium/sequence/first.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/first.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/first.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/first.htm',
   },
   {
@@ -6971,7 +6971,7 @@ const SIGNS_V2 = [
       'The twist is small and quick, not a big rotation',
       'Keep the index and middle fingers together and straight',
     ],
-    imageUrl: '../assets/images/medium/sequence/second.png', videoUrl: '../assets/videos/medium/sequence/second.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/second.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/second.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/numbersordianlandcardinal.htm',
   },
   {
@@ -6982,7 +6982,7 @@ const SIGNS_V2 = [
       'The twist is small and quick, not a big rotation',
       'This ordinal-twist pattern continues up through 9th',
     ],
-    imageUrl: '../assets/images/medium/sequence/third.png', videoUrl: '../assets/videos/medium/sequence/third.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/third.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/third.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/numbersordianlandcardinal.htm',
   },
   {
@@ -6993,7 +6993,7 @@ const SIGNS_V2 = [
       'The motion arcs up and over, landing flat in front of the other hand',
       'Not used for \u201cnext week/month/year\u201d \u2014 those use their own modified signs instead',
     ],
-    imageUrl: '../assets/images/medium/sequence/next.png', videoUrl: '../assets/videos/medium/sequence/next.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/next.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/next.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/next.htm',
   },
   {
@@ -7004,7 +7004,7 @@ const SIGNS_V2 = [
       'Can also mean \u201csecondly,\u201d as in listing a second point',
       'In real conversation, this sign is often skipped when the order of events is already obvious \u2014 flagging in case FINISH ends up being the more natural sign to teach instead',
     ],
-    imageUrl: '../assets/images/medium/sequence/then.png', videoUrl: '../assets/videos/medium/sequence/then.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/then.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/then.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/then.htm',
   },
   {
@@ -7015,7 +7015,7 @@ const SIGNS_V2 = [
       'The dominant finger twists as it inserts, like a key turning',
       'Also covers \u201cstart / begin / initiate\u201d',
     ],
-    imageUrl: '../assets/images/medium/sequence/beginning.png', videoUrl: '../assets/videos/medium/sequence/beginning.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/beginning.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/beginning.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/beginning.htm',
   },
   {
@@ -7026,7 +7026,7 @@ const SIGNS_V2 = [
       'The motion is a small circle before the finger lands in the palm',
       'Same core sign as CENTER',
     ],
-    imageUrl: '../assets/images/medium/sequence/middle.png', videoUrl: '../assets/videos/medium/sequence/middle.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/middle.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/middle.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/middle.htm',
   },
   {
@@ -7037,7 +7037,7 @@ const SIGNS_V2 = [
       'Keep the non-dominant hand still \u2014 only the dominant hand moves',
       'In everyday conversation FINISH/FINISHED is often preferred over END for phrases like \u201cthe movie ended\u201d',
     ],
-    imageUrl: '../assets/images/medium/sequence/end.png', videoUrl: '../assets/videos/medium/sequence/end.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/end.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/end.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/e/end.htm',
   },
   {
@@ -7051,7 +7051,7 @@ const SIGNS_V2 = [
       'Many signers mouth \u201cpah\u201d as they complete the sign',
       'Conveys something happening at last, often after difficulty or delay',
     ],
-    imageUrl: '../assets/images/medium/sequence/finally.png', videoUrl: '../assets/videos/medium/sequence/finally.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/sequence/finally.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/finally.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.handspeak.com/word/790/',
   },
   {
@@ -7063,7 +7063,7 @@ const SIGNS_V2 = [
       'A single twist reads as more final/definite; a couple of quick twists is also common',
       'Same sign already used for FINISHED under Turn-Taking',
     ],
-    imageUrl: '../assets/images/medium/turn_taking/finished.png', videoUrl: '../assets/videos/turn_taking/finished.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/turn_taking/finished.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/59. sequence/finished.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/finish.htm',
   },
   /* ── MEDIUM · VEHICLES ──────────────────────────────────────────
@@ -7086,7 +7086,7 @@ const SIGNS_V2 = [
       'Small, natural steering-wheel turns',
       'Same sign already used for CAR under Places',
     ],
-    imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/medium/places/car.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/car.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/car.mp4', detectionType: 'motion',
   },
   {
     // NEW — ASLU's recommended version of BUS is lexicalized
@@ -7101,7 +7101,7 @@ const SIGNS_V2 = [
       'A regional variant exists: a bent-V handshape pulled backward twice, like tugging an old bus signal cord',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/vehicles/bus.png', videoUrl: '../assets/videos/medium/vehicles/bus.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/bus.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/bus.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bus.htm',
   },
   {
@@ -7115,7 +7115,7 @@ const SIGNS_V2 = [
       'The reduced \u2018C\u2019 handshape is what keeps it fast',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/vehicles/truck.png', videoUrl: '../assets/videos/medium/vehicles/truck.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/truck.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/truck.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/truck.htm',
   },
   {
@@ -7130,7 +7130,7 @@ const SIGNS_V2 = [
       'Keep the handshapes crisp even though the spelling is quick',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/vehicles/van.png', videoUrl: '../assets/videos/medium/vehicles/van.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/van.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/van.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.signingsavvy.com/sign/VAN/8205/1',
   },
   {
@@ -7144,7 +7144,7 @@ const SIGNS_V2 = [
       'Also covers "taxicab / cab"',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/vehicles/taxi.png', videoUrl: '../assets/videos/medium/vehicles/taxi.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/taxi.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/taxi.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.signingsavvy.com/sign/TAXI/5723/1',
   },
   {
@@ -7158,7 +7158,7 @@ const SIGNS_V2 = [
       'Base hand stays completely still — only the dominant hand slides',
       'Also the base for the idiom "train-gone-sorry" (you missed it)',
     ],
-    imageUrl: '../assets/images/medium/vehicles/train.png', videoUrl: '../assets/videos/medium/vehicles/train.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/train.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/train.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/t/train.htm',
   },
   {
@@ -7172,7 +7172,7 @@ const SIGNS_V2 = [
       'One hand is always roughly opposite the other in the circle',
       'Also see MOTORCYCLE — a different handshape, so don\u2019t mix them up',
     ],
-    imageUrl: '../assets/images/medium/vehicles/bike.png', videoUrl: '../assets/videos/medium/vehicles/bike.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/bike.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/bike.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bicycle.htm',
   },
   {
@@ -7185,7 +7185,7 @@ const SIGNS_V2 = [
       'The twisting motion is at the wrists, not the whole arm',
       'Also see BIKE — same general idea (grip + motion), different handshape story',
     ],
-    imageUrl: '../assets/images/medium/vehicles/motorcycle.png', videoUrl: '../assets/videos/medium/vehicles/motorcycle.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/motorcycle.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/motorcycle.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/motorcycle.htm',
   },
   {
@@ -7198,7 +7198,7 @@ const SIGNS_V2 = [
       'Small double-forward motion, not one long push',
       'Angle the palm slightly downward',
     ],
-    imageUrl: '../assets/images/medium/vehicles/airplane.png', videoUrl: '../assets/videos/medium/vehicles/airplane.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/airplane.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/airplane.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/airplane.htm',
   },
   {
@@ -7212,7 +7212,7 @@ const SIGNS_V2 = [
       'The rocking motion happens as the hands move forward',
       'A bigger, farther-forward version of this same sign means "cruise"',
     ],
-    imageUrl: '../assets/images/medium/vehicles/boat.png', videoUrl: '../assets/videos/medium/vehicles/boat.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/boat.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/boat.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/boat.htm',
   },
   {
@@ -7227,7 +7227,7 @@ const SIGNS_V2 = [
       'Context (and a slightly bigger movement) is what signals "ship" over "boat"',
       'Don\u2019t confuse with the CL:3 vehicle classifier, which is used for smaller boats and submarines',
     ],
-    imageUrl: '../assets/images/medium/vehicles/ship.png', videoUrl: '../assets/videos/medium/vehicles/ship.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/vehicles/ship.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/51. vehicles/ship.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.aslbloom.com/signs/ship',
   },
   /* ── MEDIUM · COMMUNITY ─────────────────────────────────────────
@@ -7262,7 +7262,7 @@ const SIGNS_V2 = [
       'The motion traces a cross — down, then across',
       'Also see PATIENT (medical version) for a related sign',
     ],
-    imageUrl: '../assets/images/medium/community/hospital.png', videoUrl: '../assets/videos/medium/community/hospital.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/hospital.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/hospital.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/h/hospital.htm',
   },
   {
@@ -7277,7 +7277,7 @@ const SIGNS_V2 = [
       'Two clear taps in the same badge-height spot',
       'Also covers "cop" / "person who wears a badge" generally (ranger, warden, etc.)',
     ],
-    imageUrl: '../assets/images/medium/community/police.png', videoUrl: '../assets/videos/medium/community/police.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/police.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/POLICE.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/police.htm',
   },
   {
@@ -7291,7 +7291,7 @@ const SIGNS_V2 = [
       'Hands alternate — one goes up while the other goes down',
       'This is the "flame/burning" sense, not "fired from a job"',
     ],
-    imageUrl: '../assets/images/medium/community/fire.png', videoUrl: '../assets/videos/medium/community/fire.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/fire.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/54 community places/fire station.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/fire.htm',
   },
   {
@@ -7304,7 +7304,7 @@ const SIGNS_V2 = [
       'Right-handed signers typically circle clockwise from their own view',
       'LIBRARY + the flat-hand PERSON sign means "librarian"',
     ],
-    imageUrl: '../assets/images/medium/community/library.png', videoUrl: '../assets/videos/medium/community/library.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/library.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/library.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/library.htm',
   },
   {
@@ -7318,7 +7318,7 @@ const SIGNS_V2 = [
       'Letters blend together — don\u2019t pause between them',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/community/bank.png', videoUrl: '../assets/videos/medium/community/bank.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/bank.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/bank.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/bank.htm',
   },
   {
@@ -7330,7 +7330,7 @@ const SIGNS_V2 = [
       'Small forward rotation from the wrist, repeated twice',
       'Same sign already used for STORE under Places',
     ],
-    imageUrl: '../assets/images/medium/places/store.png', videoUrl: '../assets/videos/medium/places/store.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/places/store.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/store.mp4', detectionType: 'motion',
   },
   {
     // NEW — researched against lifeprint.com, which describes an
@@ -7342,7 +7342,7 @@ const SIGNS_V2 = [
       'Two clear touches — corner to corner',
       'A related but different sign covers "cafeteria / cafe"',
     ],
-    imageUrl: '../assets/images/medium/community/restaurant.png', videoUrl: '../assets/videos/medium/community/restaurant.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/restaurant.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/restaurant.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/r/restaurant.htm',
   },
   {
@@ -7358,7 +7358,7 @@ const SIGNS_V2 = [
       'Keep letters distinct — this one isn\u2019t blended as fast as BANK or BUS',
       'Fingerspelling — flag for review before wiring to the motion classifier',
     ],
-    imageUrl: '../assets/images/medium/community/park.png', videoUrl: '../assets/videos/medium/community/park.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/park.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/54 community places/park.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/park.htm',
   },
   /* ── MEDIUM · DIRECTIONS ────────────────────────────────────────
@@ -7408,7 +7408,7 @@ const SIGNS_V2 = [
       'Keep the point roughly at or below head height',
       'The mirror image of DOWN',
     ],
-    imageUrl: '../assets/images/medium/directions/up.png', videoUrl: '../assets/videos/medium/directions/up.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/directions/up.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/up - down.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/topics/signingnotes.htm',
   },
   {
@@ -7420,7 +7420,7 @@ const SIGNS_V2 = [
       'The mirror image of UP',
       'Keep the motion small and controlled, not a big sweep',
     ],
-    imageUrl: '../assets/images/medium/directions/down.png', videoUrl: '../assets/videos/medium/directions/down.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/directions/down.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/up - down.mp4', detectionType: 'motion',
   },
   {
     // NEW — cross-checked against Signing Savvy, which groups FORWARD
@@ -7762,7 +7762,7 @@ const SIGNS_V2 = [
       'One forward rotation means "later"; a repeated rotation shifts it toward "possible/someday"',
       'A different, one-handed sign near the cheek is used for the casual "see you later"',
     ],
-    imageUrl: '../assets/images/medium/conversation/later.png', videoUrl: '../assets/videos/medium/conversation/later.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/conversation/later.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/55 basic time words/later.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/later.htm',
   },
   {
@@ -7815,7 +7815,7 @@ const SIGNS_V2 = [
       'Both hands lift together in one smooth motion',
       'Same sign already used for Help under Needs',
     ],
-    imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/7. basic needs/help.mp4', detectionType: 'motion',
   },
   {
     // DUPLICATE — same sign as medium_hand_actions_GIVE.
@@ -8060,7 +8060,7 @@ const SIGNS_V2 = [
       'Both hands lift together',
       'One smooth upward motion',
     ],
-    imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/medium/requests/help.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/requests/help.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/7. basic needs/help.mp4', detectionType: 'motion',
   },
   // ---- RESTORED (2026-09-30) · MEDIUM · NATURE (17 signs, ported from the retired data.js) ----
   {
@@ -8200,7 +8200,7 @@ const SIGNS_V2 = [
       'Keep the rubbing small and continuous',
       'Often paired with BEACH when describing a shoreline',
     ],
-    imageUrl: '../assets/images/medium/nature/sand.png', videoUrl: '../assets/videos/medium/nature/sand.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/nature/sand.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/46 nature/sand.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/s/sand.htm',
   },
   {
@@ -8244,7 +8244,7 @@ const SIGNS_V2 = [
       'Many signers just fingerspell BEACH in everyday conversation',
       'The sliding motion can be repeated to show waves washing in and out',
     ],
-    imageUrl: '../assets/images/medium/nature/beach.png', videoUrl: '../assets/videos/medium/nature/beach.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/nature/beach.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/50. common places/beach.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/beach.htm',
   },
   {
@@ -8338,7 +8338,7 @@ const SIGNS_V2 = [
       'Only the index finger is extended on the dominant hand',
       'The outward-and-up path is what reads as a "branch" rather than just pointing',
     ],
-    imageUrl: '../assets/images/medium/plants/branch.png', videoUrl: '../assets/videos/medium/plants/branch.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/plants/branch.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/47 plant/branch.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/b/branch.htm',
   },
   {
@@ -8390,7 +8390,7 @@ const SIGNS_V2 = [
       'Two light taps on the wrist, not a poke',
       'Some signers use a \u2018D\u2019 handshape instead of the bent hand \u2014 both are common',
     ],
-    imageUrl: '../assets/images/medium/professions/doctor.png', videoUrl: '../assets/videos/medium/professions/doctor.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/doctor.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/doctor.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/doctor.htm',
   },
   {
@@ -8401,7 +8401,7 @@ const SIGNS_V2 = [
       'The \u2018N\u2019 is formed with the index and middle fingers extended, other fingers tucked, thumb between them',
       'At fast signing speed you may see just one tap instead of two',
     ],
-    imageUrl: '../assets/images/medium/professions/nurse.png', videoUrl: '../assets/videos/medium/professions/nurse.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/nurse.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/nurse.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/n/nurse.htm',
   },
   {
@@ -8413,7 +8413,7 @@ const SIGNS_V2 = [
       'Two clear taps in the same badge-height spot',
       'Also covers "cop" / "person who wears a badge" generally (ranger, warden, etc.)',
     ],
-    imageUrl: '../assets/images/medium/community/police.png', videoUrl: '../assets/videos/medium/community/police.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/community/police.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/POLICE.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/p/police.htm',
   },
   {
@@ -8424,7 +8424,7 @@ const SIGNS_V2 = [
       'Two light taps against the forehead',
       'Some Deaf firefighters instead sign FIRE followed by FIGHT rather than this sign',
     ],
-    imageUrl: '../assets/images/medium/professions/firefighter.png', videoUrl: '../assets/videos/medium/professions/firefighter.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/firefighter.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/firefighter.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/firefighter.htm',
   },
   {
@@ -8435,7 +8435,7 @@ const SIGNS_V2 = [
       'Follow immediately with the PERSON suffix (downward hands)',
       'Don\u2019t confuse the jaw-tracing motion with the sign SLOPPY, which ends with a flinging motion',
     ],
-    imageUrl: '../assets/images/medium/professions/farmer.png', videoUrl: '../assets/videos/medium/professions/farmer.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/farmer.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/farmer.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/f/farm.htm',
   },
   {
@@ -8446,7 +8446,7 @@ const SIGNS_V2 = [
       'Follow immediately with the PERSON suffix',
       'A single forward movement (without repeating) can instead mean "drive to" a place',
     ],
-    imageUrl: '../assets/images/medium/professions/driver.png', videoUrl: '../assets/videos/medium/professions/driver.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/driver.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/driver.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/drive.htm',
   },
   {
@@ -8458,7 +8458,7 @@ const SIGNS_V2 = [
       'Dominant hand flips completely over, palm up to palm down',
       'This same sign also covers CHEF — context carries the difference',
     ],
-    imageUrl: '../assets/images/medium/actions/cook.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/8. everyday actions/cook.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/actions/cook.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/cook.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/cook.htm',
   },
   {
@@ -8469,7 +8469,7 @@ const SIGNS_V2 = [
       'Some signers initialize the whole sign with a \u2018D\u2019 handshape instead and skip the PERSON ending',
       'In casual conversation, just the tooth-tap sign alone is often enough to mean "go to the dentist"',
     ],
-    imageUrl: '../assets/images/medium/professions/dentist.png', videoUrl: '../assets/videos/medium/professions/dentist.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/dentist.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/dentist.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/d/dentist.htm',
   },
   {
@@ -8480,7 +8480,7 @@ const SIGNS_V2 = [
       'With enough context, many signers drop the PERSON ending and just sign WRENCH',
       'The same sign, in the right context, can also mean "plumber"',
     ],
-    imageUrl: '../assets/images/medium/professions/mechanic.png', videoUrl: '../assets/videos/medium/professions/mechanic.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/mechanic.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/mechanic.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/m/mechanic.htm',
   },
   {
@@ -8491,7 +8491,7 @@ const SIGNS_V2 = [
       'Palm orientation faces to the side, not straight back \u2014 that\u2019s what distinguishes it from CREDIT CARD, which looks similar',
       'With enough context, "MY DAD CARPENTRY" can stand in without the PERSON ending',
     ],
-    imageUrl: '../assets/images/medium/professions/carpenter.png', videoUrl: '../assets/videos/medium/professions/carpenter.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/carpenter.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/carpenter.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/c/carpenter.htm',
   },
   {
@@ -8502,7 +8502,7 @@ const SIGNS_V2 = [
       'A single smack of an \u2018L\u2019 hand against the palm without the PERSON ending can instead mean "against the law" or "forbidden"',
       'The full LAW sign (used on its own) taps twice, moving slightly down the palm each time',
     ],
-    imageUrl: '../assets/images/medium/professions/lawyer.png', videoUrl: '../assets/videos/medium/professions/lawyer.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/lawyer.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/lawyer.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/l/lawyer.htm',
   },
   {
@@ -8513,7 +8513,7 @@ const SIGNS_V2 = [
       'The tapping motion is a firm double "thump," not a light touch',
       'The same sign covers ARMY and "military" more generally',
     ],
-    imageUrl: '../assets/images/medium/professions/soldier.png', videoUrl: '../assets/videos/medium/professions/soldier.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/soldier.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/soldier.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/army.htm',
   },
   {
@@ -8524,7 +8524,7 @@ const SIGNS_V2 = [
       'In some regions (especially California) a one-handed "circling horns" sign is used instead',
       'With context, many signers skip the PERSON ending altogether',
     ],
-    imageUrl: '../assets/images/medium/professions/waiter.png', videoUrl: '../assets/videos/medium/professions/waiter.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/waiter.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/waiter.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/waiter.htm',
   },
   {
@@ -8535,7 +8535,7 @@ const SIGNS_V2 = [
       'The tracing motion happens on the flat non-dominant palm, which acts like a canvas',
       'The same base sign can shift toward PAINT or DESIGN with small changes in movement',
     ],
-    imageUrl: '../assets/images/medium/professions/artist.png', videoUrl: '../assets/videos/medium/professions/artist.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/artist.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/artist.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/a/artist.htm',
   },
   {
@@ -8546,7 +8546,7 @@ const SIGNS_V2 = [
       'WORK on its own (without PERSON) is often used to mean "job" in context',
       'Related signs like PROFESSION or CAREER use a different motion \u2014 don\u2019t mix them up',
     ],
-    imageUrl: '../assets/images/medium/professions/worker.png', videoUrl: '../assets/videos/medium/professions/worker.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/worker.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/worker.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/w/work.htm',
   },
   {
@@ -8563,7 +8563,7 @@ const SIGNS_V2 = [
       'MYSELF can substitute for "my own" in casual conversation',
       'Not to be confused with BOSS, which taps a clawed hand on the shoulder instead',
     ],
-    imageUrl: '../assets/images/medium/professions/owner.png', videoUrl: '../assets/videos/medium/professions/owner.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/professions/owner.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/53. common professions/owner.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/own.htm',
   },
   // ---- RESTORED (2026-09-30) · MEDIUM · LOCATION (6 signs, ported from the retired data.js) ----
@@ -8586,7 +8586,7 @@ const SIGNS_V2 = [
       'The path angles slightly forward and to the side, not straight out',
       'This same movement, done bigger and higher, becomes \u2018outside\u2019 \u2014 see that entry',
     ],
-    imageUrl: '../assets/images/medium/location/out.png', videoUrl: '../assets/videos/medium/location/out.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/location/out.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/inside - out.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/o/outside.htm',
   },
   {
@@ -8597,7 +8597,7 @@ const SIGNS_V2 = [
       'The second movement is deliberately smaller than the first',
       'Handy for asking what\u2019s inside something, e.g. \u2018What\u2019s inside the box?\u2019',
     ],
-    imageUrl: '../assets/images/medium/location/inside.png', videoUrl: '../assets/videos/medium/location/inside.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/location/inside.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/21. common opposites/inside - out.mp4', detectionType: 'motion',
     referenceUrl: 'https://www.lifeprint.com/asl101/pages-signs/i/in.htm',
   },
   {

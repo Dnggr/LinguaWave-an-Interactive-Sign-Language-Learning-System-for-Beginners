@@ -48,8 +48,28 @@
   <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
+  <script src="../js/skeleton.js" defer></script>
 </head>
 <body class="admin-gate">
+
+  <!-- Loading skeleton for the admin shell. Visible only while body.admin-gate is closed
+       (css/admin.css "ADMIN LOADING"); requireAdmin() adds .admin-ready and it disappears. -->
+  <div class="admin-boot" role="status" aria-live="polite">
+    <span class="sr-only">Checking admin access&hellip;</span>
+    <div class="admin-boot__side" aria-hidden="true">
+      <span class="sk sk--title" style="--w:8.5rem;--h:1.4rem"></span>
+      <span class="sk sk--pill" style="--w:6.5rem;--h:1.2rem"></span>
+      <div class="admin-boot__nav"><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span><span class="sk sk--btn" style="--w:100%;--h:2.4rem"></span></div>
+    </div>
+    <div class="admin-boot__main">
+      <div class="sk-group" aria-hidden="true">
+        <span class="sk sk--title" style="--w:min(16rem,60%);--h:1.8rem"></span>
+        <span class="sk sk--line" style="--w:min(26rem,80%)"></span>
+        <div class="sk-cols" style="--cols:4;margin-top:var(--space-4)"><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span><span class="sk sk--block" style="--h:5.5rem"></span></div>
+        <div class="sk-cols" style="--cols:2"><span class="sk sk--block" style="--h:14rem"></span><span class="sk sk--block" style="--h:14rem"></span></div>
+      </div>
+    </div>
+  </div>
 
   <a href="#main" class="skip-link">Skip to User Management</a>
 
@@ -125,7 +145,7 @@
                 </tr>
               </thead>
               <tbody id="user-table-body">
-                <tr><td colspan="4" class="admin-table__loading">Loading learners&hellip;</td></tr>
+                <tr class="admin-table__sk" aria-hidden="false"><td><span class="sr-only">Loading learners…</span><span class="sk sk--line" style="--w:70%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:85%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:55%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr><tr class="admin-table__sk" aria-hidden="true"><td><span class="sk sk--line" style="--w:60%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:72%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:47%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr><tr class="admin-table__sk" aria-hidden="true"><td><span class="sk sk--line" style="--w:67%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:81%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:52%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr><tr class="admin-table__sk" aria-hidden="true"><td><span class="sk sk--line" style="--w:53%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:64%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:41%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr><tr class="admin-table__sk" aria-hidden="true"><td><span class="sk sk--line" style="--w:63%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:77%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:50%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr><tr class="admin-table__sk" aria-hidden="true"><td><span class="sk sk--line" style="--w:56%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:68%;--h:.9rem"></span></td><td><span class="sk sk--line" style="--w:44%;--h:.9rem"></span></td><td><span class="sk sk--btn" style="--w:4.5rem;--h:1.8rem"></span></td></tr>
               </tbody>
             </table>
           </div>
