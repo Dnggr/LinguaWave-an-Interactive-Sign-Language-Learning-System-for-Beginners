@@ -542,7 +542,6 @@
 
   <script src="../js/main.js"></script>
   <!-- Progress engine: tracks practiced signs / category & level assessments. -->
-  <script defer src="../js/engine/progress.js"></script>
   <!--
     BRIDGE (migration-analysis pass) — this page still records
     practice through V1's window.LWProgress above, but it's reached
@@ -553,7 +552,12 @@
     (title, description, tips, image) via window.LWMissions.getSign().
     Must load before camera-practice.js.
   -->
-  <script defer src="../js/missions.js"></script>
+  <!-- LOAD ORDER (do not add "defer"): js/camera-practice.js is a type="module", which Vite moves into <head>.
+       Module and deferred scripts run in document order, so a deferred missions.js would run AFTER the module and
+       window.LWMissions would be undefined when boot() renders the course sidebar. Classic (non-deferred) scripts
+       always finish before any module runs. missions.js must come first; progress.js reads from it. -->
+  <script src="../js/missions.js"></script>
+  <script src="../js/engine/progress.js"></script>
   <!--
     lesson.js is loaded as type="module" so it can use ES6 imports
     (cameraUtils, mediapipe, classifier, renderer, dictionary).

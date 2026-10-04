@@ -1098,6 +1098,15 @@ function showSidebarUnavailable(el, reason) {
   // now deleted); this page now lives in the same folder as
   // learn.html, so the link is same-folder.
   el.innerHTML = `<div class="alert alert--error sidebar-fallback-alert">Couldn't load the course outline. <a href="learn.html">Go to Learn</a> or reload.</div>`;
+  // Self-heal: if the data script is merely late (not failed), draw the real outline as soon as it arrives.
+  if (!window.LWMissions && !el.dataset.sidebarRetry) {
+    el.dataset.sidebarRetry = 'true';
+    let tries = 0;
+    const timer = setInterval(() => {
+      if (window.LWMissions) { clearInterval(timer); renderCourseSidebar(); }
+      else if (++tries >= 40) clearInterval(timer);   // give up after ~10 s
+    }, 250);
+  }
 }
 
 // NEW (this session) — single delegated listener that makes
