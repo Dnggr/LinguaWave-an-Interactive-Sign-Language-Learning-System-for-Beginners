@@ -2,7 +2,7 @@
  * css/missions-compare.css — pages/missions-compare.html only
  * ─────────────────────────────────────────────────────────────────
  * Throwaway dev-tool styling, same spirit as css/missions-preview.css
- * (reuses this repo's existing --clr-*/--space-*/--radius-* tokens).
+ * (reuses this repo's existing --clr-* /--space-* /--radius-* tokens).
  * Adds only what missions-preview.css doesn't already cover: the
  * side-by-side comparison columns and the drop-off marker row.
  * ─────────────────────────────────────────────────────────────────

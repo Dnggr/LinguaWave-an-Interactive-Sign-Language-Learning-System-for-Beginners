@@ -2,7 +2,7 @@
  * css/missions-preview.css — pages/missions-preview.html only
  * ─────────────────────────────────────────────────────────────────
  * Throwaway dev-preview styling, not a designed screen. Reuses this
- * repo's existing tokens (css/style.css's --clr-*/--space-*/--radius-*
+ * repo's existing tokens (css/style.css's --clr-* /--space-* /--radius- *
  * custom properties) so it doesn't look jarringly out of place next
  * to the real app, but the layout itself (item list, chips, dev bar)
  * is specific to this one page and isn't meant to be reused elsewhere.
