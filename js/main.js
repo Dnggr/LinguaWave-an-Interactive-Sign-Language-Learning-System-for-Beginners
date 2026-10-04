@@ -134,7 +134,11 @@ function initSidebarNavGuard() {
 
       // Already on this page, or another nav click is already in
       // flight — swallow this one instead of firing another reload.
-      if (link.classList.contains('active') || navigating) {
+      // A link can be .active without pointing at this page (wall-breaker.html highlights Game, which links to
+      // game.html) — only swallow it when it really is the current page.
+      const isCurrent = link.classList.contains('active') &&
+        (!link.getAttribute('href') || link.href.split('#')[0].split('?')[0] === location.href.split('#')[0].split('?')[0]);
+      if (isCurrent || navigating) {
         e.preventDefault();
         return;
       }
