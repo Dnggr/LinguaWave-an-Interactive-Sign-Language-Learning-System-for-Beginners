@@ -1,7 +1,22 @@
-# Hostinger/Apache: revalidate app files on each visit so deployments are
-# picked up without requiring learners to clear their browser cache.
+# Hostinger/Apache.
+# HTML/JS/CSS/JSON still revalidate on every visit so deployments show up
+# without learners clearing their cache (same as before).
 <IfModule mod_headers.c>
-  <FilesMatch "(?i)\.(html?|css|js|mjs|json|bin|svg|png|jpe?g|webp|woff2?)$">
+  <FilesMatch "(?i)\.(html?|css|js|mjs|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
+
+  # Heavy, rarely-changing files: keep them in the browser for a week.
+  # This is the big win on slow internet - the ASL demo videos, images,
+  # fonts and the TF.js model weights are not re-downloaded on every visit.
+  # If you retrain a model or replace a video, rename the file (or lower
+  # max-age) so learners pick up the new one.
+  <FilesMatch "(?i)\.(mp4|webm|png|jpe?g|webp|svg|ico|woff2?|bin)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
+
+# Compress text files (JS/CSS/HTML/JSON shrink ~70-80%).
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript text/javascript application/json image/svg+xml
 </IfModule>
