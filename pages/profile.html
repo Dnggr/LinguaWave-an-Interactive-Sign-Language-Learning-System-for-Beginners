@@ -48,6 +48,7 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/profile.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
   <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
@@ -59,7 +60,7 @@
   <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
   <link rel="apple-touch-icon" href="../assets/icon/apple-touch-icon.png" />
 </head>
-<body>
+<body data-tour="profile">
 
   <a href="#main" class="skip-link">Skip to Profile</a>
 
@@ -193,6 +194,8 @@
   <script src="../js/profile-page.js"></script>
   <script src="../js/xp-ui.js"></script>
   <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
   <script src="../js/skeleton.js"></script>
 </body>
 </html>

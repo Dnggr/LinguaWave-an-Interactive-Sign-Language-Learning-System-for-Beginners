@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/game.css" />
+  <link rel="stylesheet" href="../css/tour.css" />
   <link rel="stylesheet" href="../css/responsive.css" />
   <script type="module" src="../js/auth.js"></script>
   <script src="../js/icons.js"></script>
@@ -30,12 +31,12 @@
   <script>window.addEventListener('lwauth-ready', () => { LWAuth.requireAuth('../index.html'); });</script>
   <script src="../js/role-guard.js"></script>
   <script src="../js/mobile-nav.js" defer></script>
-  <script src="../js/game-gate.js" defer></script>
+  <script src="../js/game-gate.js"></script>
   <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
   <link rel="apple-touch-icon" href="../assets/icon/apple-touch-icon.png" />
 </head>
-<body>
+<body data-tour="game">
   <a href="#main" class="skip-link">Skip to game modes</a>
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -92,6 +93,8 @@
       </section>
     </main>
   </div>
+  <script src="../js/tour-guides.js"></script>
+  <script src="../js/tour.js"></script>
   <script src="../js/main.js"></script>
 </body>
 </html>

@@ -35,6 +35,9 @@
  *            can block a replay. resetAll() (the "Replay all guides"
  *            button in Settings) forgets every guide and any Skip all,
  *            so the whole tour plays again from the next page visit.
+ *            js/settings-page.js asks for confirmation first (the guard
+ *            modal), calls resetAll(), then opens dashboard.html?tour=1
+ *            so the replay starts straight away.
  *            `?tour=1` in a page's URL, and start(id, {manual: true}),
  *            start a guide regardless of what was seen or skipped.
  *
