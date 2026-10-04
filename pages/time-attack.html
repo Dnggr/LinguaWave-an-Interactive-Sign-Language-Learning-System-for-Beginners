@@ -56,10 +56,10 @@
     <main class="app-main" id="main">
       <div class="ta">
         <header class="gm-head ta-head">
-          <div class="gm-head__text"><h1 class="gm-title">Time Attack</h1><p>Sign each target in order. Finish the sequence as quickly as you can.</p></div>
+          <div class="gm-head__text"><h1 class="gm-title">Time Attack</h1><p>Fingerspell each word, one letter at a time. The longer the word, the more XP.</p></div>
           <a class="btn btn--ghost btn--sm ta-back" href="game.html" aria-label="Back to game modes">← Back</a>
           <div class="gm-stats" role="status" aria-live="polite">
-            <span class="gm-chip">Target <b id="ta-count">0/0</b></span>
+            <span class="gm-chip">Letter <b id="ta-count">0/0</b></span>
             <span class="gm-chip">Time <b id="ta-time">0.0s</b></span>
             <span class="gm-chip gm-chip--miss">Misses <b id="ta-misses">0</b></span>
           </div>
@@ -67,12 +67,18 @@
         <div class="ta-progress" aria-hidden="true"><span class="ta-progress__fill" id="ta-progress"></span></div>
         <div class="ta-stage">
           <section class="ta-primary" aria-label="ASL target demonstration">
+            <div class="ta-wordbox" id="ta-wordbox">
+              <div class="ta-wordbox__head"><h2 class="ta-wordbox__name" id="ta-word-name">Ready</h2><p class="ta-wordbox__meta" id="ta-word-meta">Press Start to see your first word.</p></div>
+              <div class="ta-letters" id="ta-letters" role="img" aria-label="Letters of the current word"></div>
+              <div class="ta-signed" id="ta-signed" aria-hidden="true"></div>
+              <ol class="ta-words" id="ta-words" aria-label="Words in this run"></ol>
+            </div>
             <div class="ta-demo" id="ta-demo">
-              <div class="ta-demo__empty" id="ta-demo-empty"><span data-lw-icon="chapter_hand" aria-hidden="true"></span><p>Press Start to load your first learned sign.</p></div>
+              <div class="ta-demo__empty" id="ta-demo-empty"><span data-lw-icon="chapter_hand" aria-hidden="true"></span><p>Press Start to see the first sign.</p></div>
             </div>
             <div class="ta-sign-caption">
-              <div><p class="ta-target-card__eyebrow">TARGET</p><h2 id="ta-target">Ready</h2></div>
-              <span class="ta-sign-type" id="ta-sign-type" data-type="static" hidden>STATIC SIGN</span>
+              <div><p class="ta-target-card__eyebrow">SIGN THIS</p><h2 id="ta-target">Ready</h2></div>
+              <span class="ta-sign-type" id="ta-sign-type" data-type="static" hidden>LETTER</span>
             </div>
             <p id="ta-hint" class="ta-target-card__hint"></p>
           </section>
@@ -83,15 +89,14 @@
               <div id="camera-status" class="gm-cam__status">Press Start to turn on the camera.</div>
               <div class="gm-target" aria-hidden="true">Live camera</div>
             </div>
-            <p id="ta-status" class="ta-status" role="status" aria-live="polite">Your learned signs will be selected when you start.</p>
+            <p id="ta-status" class="ta-status" role="status" aria-live="polite">Your words will appear when you start.</p>
             <div class="ta-controls">
               <button class="btn btn--primary" id="ta-start" type="button">Start</button>
-              <button class="btn btn--sm gm-motion-btn" id="ta-motion" type="button" disabled>Record motion sign <kbd>Space</kbd></button>
               <button class="btn btn--ghost btn--sm" id="ta-quit" type="button" disabled>Quit run</button>
             </div>
             <div class="ta-instructions">
               <h2>How to play</h2>
-              <p>Follow the demo. Hold static signs steady; press Space or Record motion sign before performing a motion sign.</p>
+              <p>Spell each word in order: copy the demo for the highlighted letter and hold it steady until it is accepted. Finish all four words to earn XP and a leaderboard time.</p>
               <a class="btn btn--ghost btn--sm" href="game.html">All game modes</a>
             </div>
           </section>
@@ -102,6 +107,7 @@
             <h2>Time Attack complete</h2>
             <p id="ta-summary"></p>
             <div class="gm-result__xp" id="ta-xp"></div>
+            <ul class="ta-breakdown" id="ta-breakdown" hidden></ul>
             <div class="gm-badges" id="ta-badges"></div>
             <div class="ta-result-actions"><button class="btn btn--primary" id="ta-again" type="button">Play again</button><a class="btn btn--ghost" href="game.html">Game modes</a></div>
           </div>

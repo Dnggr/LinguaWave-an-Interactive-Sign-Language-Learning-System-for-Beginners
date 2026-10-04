@@ -9,7 +9,8 @@
  *     construct   easy | medium | hard           (DIFFICULTY in js/construct-sentence.js)
  *     wall        9 | 15 | 21                    (the wall-size <select id="gm-size"> in pages/wall-breaker.html;
  *                                                 shown as Small / Medium / Large)
- *     timeAttack  standard                       (Time Attack has no difficulty setting, so it has ONE board)
+ *     timeAttack  fingerspell                    (Time Attack has no difficulty setting, so it has ONE board; the old 'standard'
+ *                                                 10-sign board is retired because its times are not comparable)
  *   Nothing here invents a second difficulty system.
  *
  * Ranking (lower is better everywhere)
@@ -23,7 +24,7 @@ export const GAME_VERSION = 1;               // bump if a game's scoring changes
 export const MIN_TIME_MS = 1000;             // firestore.rules enforces the same bounds
 export const MAX_TIME_MS = 3600000;
 export const MAX_MISSES = 500;
-export const TIME_ATTACK_RUN_LENGTH = 10;    // Time Attack builds up to 10 targets from the learner's own signs; only full runs are comparable
+export const TIME_ATTACK_RUN_LENGTH = 4;     // Time Attack fingerspells 4 random words (one each of 3, 4, 7 and 9 letters = 23 letters); only runs with all 4 are ranked
 
 export const GAMES = {
   construct: {
@@ -43,14 +44,14 @@ export const GAMES = {
   },
   timeAttack: {
     label: 'Time Attack',
-    blurb: 'Complete the challenge quickly while minimizing misses.',
+    blurb: 'Fingerspell every word quickly while minimizing misses.',
     icon: 'zap',
     page: 'time-attack.html',
     ranksOnMisses: true,
     showMisses: true,
     difficultyLabel: '',
-    boards: [{ id: 'standard', label: 'Standard' }],   // single board: no selector is drawn
-    note: `Only full ${TIME_ATTACK_RUN_LENGTH}-sign runs are ranked, so every time is comparable. Faster wins; fewer misses break ties.`,
+    boards: [{ id: 'fingerspell', label: 'Fingerspell' }],   // single board: no selector is drawn
+    note: `Only runs that fingerspell all ${TIME_ATTACK_RUN_LENGTH} words are ranked. Every run draws new words but always 23 letters (3, 4, 7 and 9 letters long), so times are comparable. Faster wins; fewer misses break ties.`,
   },
   wall: {
     label: 'Wall Breaker',

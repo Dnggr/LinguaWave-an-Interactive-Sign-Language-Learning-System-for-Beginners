@@ -8,6 +8,96 @@
  * claims inside the Firestore caps.
  */
 
+// ── Time Attack word bank ─────────────────────────────────────────────────────────────────────────────────────
+// Only handshapes the static model can classify: no J or Z (motion letters) and no 6 or 9 (motion digits). 'ak 47' etc. use '_'
+// for a space in the label. The first four words are the original run and keep their ids.
+const FINGERSPELL_WORD_LIST =
+  'car america ak_47 hamburger ' +
+  // 3-letter words (338)
+  'ace add age ago aid aim air all and ant any ape arc are arm art ash ask ate awe axe bad bag ban bar bat bay bed ' +
+  'bee beg bet bib bid big bin bit bow box boy bud bug bun bus but buy cab cam can cap cat cob cod cog cot cow cry ' +
+  'cub cup cut dad dam day den dew did die dig dim dip doe dog dot dry due dug duo dye ear eat eel egg elf elk elm ' +
+  'end era eve ewe eye fan far fat fed fee few fig fin fir fit fix fly foe fog for fox fry fun fur gap gas gel gem ' +
+  'get got gum guy gym had ham has hat hay hem hen her hid him hip his hog hop hot how hub hue hug hum hut ice icy ' +
+  'ill ink inn ion ivy kid key kin kit lab lad lag lap law lay led leg let lid lie lip lit log lot low mad man map ' +
+  'mat may men met mix mom mop mud mug nap net new nod nor not now nun nut oak oar oat odd off oil old one orb our ' +
+  'out owe owl own pad pal pan pat paw pay pea peg pen pet pie pig pin pit pod pop pup put rag ram ran rat raw ray ' +
+  'red rib rid rim rip rod rot row rub rug run rye sad sap sat saw say sea see set sew shy sip sir sit six ski sky ' +
+  'sly son sow soy spa spy sub sum sun tab tag tan tap tar tax tea ten the tie tin tip toe ton too top toy try tub ' +
+  'tug two urn use van vat vet vow wag war was wax way web wed wet who why wig win wit woe won wow yak yam yes yet ' +
+  'you yum mp3 b12 4wd h2o co2 abc dvd gps usa atm cpu diy faq fyi 123 321 505 247 380 150 720 840 100 200 300 400 ' +
+  '500 700 ' +
+  // 4-letter words (559)
+  'able arch area army aunt baby back ball band bank barn base bath bean bear beat bell belt bend bike bird blue ' +
+  'boat body bone book boom boot born bowl bulb bush busy cake call calm camp card care cart case cash cave chin ' +
+  'chip city clam clap clay clip club coat code coin cold cook cool corn cost crab crew crop cube cure dark dart ' +
+  'data date dawn deal deer desk dial dice diet dime dish dive door dove down drag draw drum duck dust duty each ' +
+  'earn east easy edge face fact fail fair fall farm fast fear feed feel fern file fill film find fine fire firm ' +
+  'fish five flag flat flew flip flow foam fold folk food foot fork form fort four free frog from fuel full fund ' +
+  'game gate gear gift girl give glad glow glue goal goat gold golf good grab gray grew grid grin grip grow gulf ' +
+  'hair half hall hand hang hard harm hawk heal heap hear heat help herb hero hide high hike hill hint hive hold ' +
+  'hole home hood hook hope horn host hour huge hunt hurt idea inch iron isle item keen keep kick kind king kite ' +
+  'knee knit knob knot know lace lack lady lake lamb lamp land lane last late lawn lead leaf lean leap left lend ' +
+  'lens life lift like lily limb lime line link lion list live load loaf loan lock loft long look loop lose loud ' +
+  'love luck lung made mail main make mall many mark mask mass mate meal mean meat meet melt menu mild milk mind ' +
+  'mine mint miss mist moon more moss most moth move much nail name navy near neck need nest news nice nine node ' +
+  'noon nose note once only open oval oven over pace pack page pail pain pair palm park part pass past path peak ' +
+  'pear peel pink pipe plan play plot plug plum poem pole pond pony pool poor port pose post pour pray pull pump ' +
+  'pure push quit race rain rank rare rate read real rent rest rice rich ride ring rise risk road roar rock role ' +
+  'roll roof room root rope rose ruby rule rush safe sail salt same sand save seal seat seed seek self sell send ' +
+  'shed ship shoe shop show shut sick side sign silk sing sink site skin skip slam slap sled slid slim slip slow ' +
+  'snow soap sock soft soil sold sole some song soon sort soul soup spin spot star stay stem step stir stop such ' +
+  'suit sure swan swim tail take tale talk tall tank tape task team tear tell tent term test text than that them ' +
+  'then they thin this tide tidy tile till time tiny tire toad told toll tone took tool town trap tray tree trim ' +
+  'trio trip true tube tune turn twin type unit upon used vase vast verb very vest view vine visa vote wage wait ' +
+  'wake walk wall want warm warn wash wave weak wear week well went were west what when whom wide wife wild will ' +
+  'wind wine wing wink wise wish with wolf wood wool word wore work worm wrap yard yarn yawn year yell yoga your ' +
+  '1234 4321 2024 2025 2020 2010 2000 1812 8421 1357 1010 3030 4040 5050 7070 8080 1111 2222 3333 4444 5555 7777 ' +
+  '8888 1212 1313 2323 2345 3245 4528 5421 7245 ' +
+  // 7-letter words (181)
+  'animals balance balloon bananas bedroom blanket brother cabbage cabinet captain carpets carrots chicken chimney ' +
+  'clothes college compass concert cookies cottage country courage cousins cricket curtain dentist diamond dolphin ' +
+  'dragons drawing dresser explore fabrics factory farmers feather fiction fishing flowers freedom friends general ' +
+  'giraffe glasses grocery habitat hammock harvest healthy helpers history holiday husband kitchen kingdom ladders ' +
+  'lantern leaders leaving lessons letters library lobster machine magnets mailbox mammals marbles markets meadows ' +
+  'medical members mineral mirrors monkeys morning mothers mystery napkins natural needles network nothing numbers ' +
+  'octopus orchard outdoor oysters package painter palaces parents parrots pastels patient pattern peanuts penguin ' +
+  'pencils pickles picnics pigeons pillows pirates planets plastic players pockets popcorn pottery printer pumpkin ' +
+  'puppets rabbits railway rainbow readers recipes reports rockets rooster sailors sandals scarves schools scooter ' +
+  'seagull seasons shadows sharing shelter shovels skating sneaker snowman soldier spiders sponges stadium station ' +
+  'stories streets student sunrise sunsets teacher tickets trouble trumpet tunnels turkeys turtles uniform vehicle ' +
+  'village violins visitor walnuts weather weekend whistle windows wonders workers writers younger grandpa harmony ' +
+  'oatmeal quietly thirsty victory whisper 1234578 8754321 1357024 catch_22 2345781 3457812 8123457 7531248 ' +
+  // 9-letter words (250)
+  'bookshelf butterfly dragonfly evergreen footsteps furniture gymnasium hairbrush happiness important pineapple ' +
+  'raspberry snowflake spaghetti starlight stopwatch tangerine valentine vegetable volcanoes waterfall wonderful ' +
+  'adventure afternoon alligator ambulance beautiful blueberry bookstore breakfast chocolate classroom community ' +
+  'crocodile delicious dinosaurs education elephants excellent exercises favorites fireworks flamingos fountains ' +
+  'gardening gentleman hurricane knowledge landscape mountains neighbors newspaper nightmare orchestra porcupine ' +
+  'president scarecrow scientist seahorses signature snowstorm sparkling squirrels sunflower surprised telephone ' +
+  'thousands tornadoes tradition treasures umbrellas yesterday abilities apartment artichoke astronaut attention ' +
+  'beginning blackbird boardwalk bookmarks brightest broadcast buildings cardboard carefully carpenter catalogue ' +
+  'celebrate challenge champions character clubhouse collected companion competing conductor connected continent ' +
+  'cranberry creatures cucumbers customers daffodils dandelion daydreams delighted detective different discovery ' +
+  'dumplings elevators emergency energetic engineers envelopes expensive explorers fantastic fireplace fisherman ' +
+  'fragrance frequency gathering geography gladiator goldfinch grassland gratitude guidebook hairdryer halloween ' +
+  'handshake harmonica headlight heartbeat hibernate historian honeybees horseback hospitals household imaginary ' +
+  'interview invention invisible kilometer leftovers lifeboats lightning limestone lollipops lunchtime marmalade ' +
+  'meanwhile meatballs megaphone memorable merchants milkshake moonlight motorbike mushrooms mysteries nightfall ' +
+  'notebooks nutrition occasions octopuses offspring operation opponents orangutan ornaments outsiders overnight ' +
+  'packaging paintings parachute paragraph passenger pavements performer periscope pinecones pirouette policemen ' +
+  'pollution principal professor protected railroads reception recycling relatives remainder resources riverbank ' +
+  'sailboats saxophone scorpions seashells secretary sentences seventeen shipwreck shoelaces shortcake skeletons ' +
+  'snowboard solutions somewhere sparklers spectacle spiderweb spotlight sprinkler stockings stoplight storybook ' +
+  'submarine superhero supporter surprises survivors swordfish teaspoons telescope textbooks toothache transport ' +
+  'traveling triangles turquoise vacations violinist volunteer warehouse wardrobes whirlwind wolfhound woodlands ' +
+  'workbench wristband 123457810 187543210 102030405 345781234 827412345 120345781 ' +
+  '';
+const FINGERSPELL_WORDS = Object.freeze(FINGERSPELL_WORD_LIST.split(/\s+/).filter(Boolean).map((entry) => {
+  const label = entry.replace(/_/g, ' '), id = entry.replace(/_/g, '').toLowerCase();
+  return Object.freeze({ id, label, symbols: Object.freeze([...id.toUpperCase()]) });
+}));
+
 export const CONFIG = Object.freeze({
   VERSION: 1,
   MAX_LEVEL: 30,
@@ -50,6 +140,17 @@ export const CONFIG = Object.freeze({
     MAX_WORDS: 8,
     MIN_MS_PER_WORD: 500,
     VETERAN_RUNS: 5,
+  }),
+  // Time Attack (fingerspelling). The learner spells each word letter by letter; the longer the word, the more XP.
+  // Balanced like Construct a Sentence: small per-letter XP plus the shared CLEAR/FLAWLESS bonuses, and it counts
+  // against the same GAME.DAILY_XP_CAP (90/day). car 3, ak 47 4, america 7, hamburger 9 (+3 clear, +3 flawless = 29 per run).
+  FINGERSPELL: Object.freeze({
+    // 1332 words, listed in FINGERSPELL_WORD_LIST below. Every run spells ONE random word per length in RUN_LENGTHS, so every
+    // run is 23 letters and worth the same XP/leaderboard weight as any other run, whichever words were drawn.
+    RUN_LENGTHS: Object.freeze([3, 4, 7, 9]),
+    WORDS: FINGERSPELL_WORDS,
+    LETTER_XP: 1,               // XP per letter/number, so a word is worth its length
+    MIN_MS_PER_LETTER: 450,     // a letter needs a 500 ms steady hold, so nobody can honestly beat this
   }),
 });
 
@@ -399,6 +500,115 @@ export function validateGameSigns(signs, mode, signTypes) {
   return true;
 }
 
+/** XP for one fingerspelling word at 100% accuracy (before the run bonuses): longer words are worth more. */
+export const fingerspellWordXp = (symbolCount) => CONFIG.FINGERSPELL.LETTER_XP * symbolCount;
+const FINGERSPELL_BY_ID = new Map(CONFIG.FINGERSPELL.WORDS.map((word) => [word.id, word]));
+export const fingerspellWordById = (id) => FINGERSPELL_BY_ID.get(id) || null;
+/** Most letters a run may contain: one word per RUN_LENGTHS entry. */
+export const FINGERSPELL_RUN_LETTERS = CONFIG.FINGERSPELL.RUN_LENGTHS.reduce((sum, n) => sum + n, 0);
+
+/**
+ * Draw a Time Attack run: one random word for each length in RUN_LENGTHS (short -> long), so every run has the same
+ * number of letters. `usable(word)` filters words the classifier cannot check; `avoid` is a list of word ids to skip
+ * (the previous run) unless that would leave a length with nothing to draw. A length with no usable word is left out.
+ */
+export function pickFingerspellRun(usable = () => true, { rng = Math.random, avoid = [] } = {}) {
+  const skip = new Set(avoid);
+  const run = [];
+  for (const length of CONFIG.FINGERSPELL.RUN_LENGTHS) {
+    const pool = CONFIG.FINGERSPELL.WORDS.filter((word) => word.symbols.length === length && usable(word));
+    const fresh = pool.filter((word) => !skip.has(word.id));
+    const from = fresh.length ? fresh : pool;
+    if (from.length) run.push(from[Math.min(from.length - 1, Math.floor(rng() * from.length))]);
+  }
+  return run;
+}
+
+/**
+ * Time Attack (fingerspelling) session check. `session` = { signs, words: [wordId, ...] }.
+ * `signs` is the de-duplicated letters/numbers across the chosen words (letters repeat inside a word, so the
+ * one-of-each rule of Wall Breaker cannot apply). `signTypes` maps signId -> 'static' | 'motion'.
+ */
+export function validateFingerspellSession(session, signTypes) {
+  if (!session || !Array.isArray(session.words) || !Array.isArray(session.signs)) return false;
+  const { words, signs } = session;
+  if (!words.length || words.length > CONFIG.FINGERSPELL.RUN_LENGTHS.length || new Set(words).size !== words.length) return false;
+  const used = new Set();
+  let letters = 0;
+  for (const id of words) {
+    const word = fingerspellWordById(id);
+    if (!word) return false;
+    letters += word.symbols.length;
+    for (const symbol of word.symbols) {
+      if (signTypes[symbol] !== 'static') return false;   // fingerspelling is checked with the static model only
+      used.add(symbol);
+    }
+  }
+  if (letters > FINGERSPELL_RUN_LETTERS) return false;   // a run can never be longer than one word per length tier
+  if (signs.some((sign) => typeof sign !== 'string') || new Set(signs).size !== signs.length) return false;
+  return signs.length === used.size && signs.every((sign) => used.has(sign));
+}
+
+/** Timing/order check for a fingerspelling run. `log` = [{ w, t }]: word index and ms from the session start. */
+export function validateFingerspellTiming({ words, log, elapsedMs }) {
+  const cfg = CONFIG.FINGERSPELL;
+  if (!Array.isArray(log) || log.length !== words.length) return 'incomplete_run';
+  let previous = 0;
+  let minTotal = 0;
+  for (let index = 0; index < log.length; index++) {
+    const entry = log[index];
+    if (!entry || entry.w !== index) return 'bad_bricks';
+    if (typeof entry.t !== 'number' || !Number.isFinite(entry.t) || entry.t < previous) return 'bad_timing';
+    const minGap = fingerspellWordById(words[index]).symbols.length * cfg.MIN_MS_PER_LETTER;
+    if (entry.t - previous < minGap) return 'too_fast';
+    minTotal += minGap;
+    previous = entry.t;
+  }
+  if (previous > elapsedMs + CONFIG.GAME.CLOCK_SLACK_MS) return 'clock_mismatch';
+  if (elapsedMs < minTotal) return 'too_fast';
+  return null;
+}
+
+export function applyFingerspellFinish(state, session, log, wrong, learnedSigns, { now, today }) {
+  const cfg = CONFIG.FINGERSPELL;
+  const game = CONFIG.GAME;
+  const elapsed = now - session.startedAt;
+  if (elapsed > game.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
+  const timingIssue = validateFingerspellTiming({ words: session.words, log, elapsedMs: elapsed });
+  if (timingIssue) return { ok: false, reason: timingIssue };
+
+  const learned = new Set(learnedSigns);
+  const words = session.words.map((id) => fingerspellWordById(id));
+  const letters = words.reduce((sum, word) => sum + word.symbols.length, 0);
+  const accuracy = letters / Math.max(1, letters + wrong);
+  const accMult = (game.ACC_TIERS.find((tier) => accuracy >= tier.min) || game.ACC_TIERS.at(-1)).mult;
+  // A word pays out only when every letter/number in it has been learned (same gate the old Time Attack used).
+  const perWord = words.map((word) => {
+    const eligible = word.symbols.every((symbol) => learned.has(symbol));
+    return { id: word.id, label: word.label, letters: word.symbols.length, eligible,
+      xp: eligible ? Math.round(fingerspellWordXp(word.symbols.length) * accMult) : 0 };
+  });
+  if (!perWord.some((word) => word.eligible)) {
+    return { ok: true, reason: 'not_enough_learned', xpGained: 0, counted: false, skipStateWrite: true, words: perWord };
+  }
+  // Same shape as Construct a Sentence and Wall Breaker: base XP x accuracy, plus one clear bonus and a flawless bonus.
+  const flawless = wrong === 0;
+  const raw = perWord.reduce((sum, word) => sum + word.xp, 0) + game.CLEAR_BONUS + (flawless ? game.FLAWLESS_BONUS : 0);
+  const room = Math.max(0, game.DAILY_XP_CAP - state.daily.gameXp);
+  const xp = Math.min(raw, room);
+  const out = { ok: true, counted: false };
+  state.daily.gameXp += xp;
+  state.daily.timeAttacks += 1;
+  state.totals.gameXp += xp;
+  state.totals.timeAttackXp = (state.totals.timeAttackXp || 0) + xp;
+  state.totals.timeAttacks += 1;
+  addXp(state, xp, out);
+  if (xp > 0) applyActivityStreak(state, today, out, now);
+  Object.assign(out, { counted: xp > 0, xpGained: xp, rawXp: raw, accuracy, flawless, words: perWord,
+    reason: xp ? null : 'daily_cap' });
+  return out;
+}
+
 /**
  * Construct a Sentence session check. `session` = { signs, rounds: [[signId, ...], ...], difficulty }.
  * `isKnown(signId)` says whether a sign exists in the app. Pure: no DOM, no Firebase.
@@ -479,6 +689,7 @@ export function applySentenceFinish(state, session, log, wrong, _learnedSigns, {
 
 export function applyGameFinish(state, session, broken, wrong, learnedSigns, signTypes, { now, today }) {
   if (session.mode === 'sentence') return applySentenceFinish(state, session, broken, wrong, learnedSigns, { now, today });
+  if (session.mode === 'fingerspell') return applyFingerspellFinish(state, session, broken, wrong, learnedSigns, { now, today });
   const elapsed = now - session.startedAt;
   if (elapsed > CONFIG.GAME.SESSION_TTL_MS) return { ok: false, reason: 'expired' };
   const timingIssue = validateGameTiming({ sessionSigns: session.signs, broken, elapsedMs: elapsed });

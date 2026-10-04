@@ -206,5 +206,91 @@ check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initialize
   check(E.profileData(vet, 'Ana', baseTime).sentenceXp === 125 && E.profileData(vet, 'Ana', baseTime).wallXp === 0, 'public profile carries per-game XP');
 }
 
+// ---- Time Attack (fingerspelling) ----
+{
+  const F = E.CONFIG.FINGERSPELL;
+  const word = (id) => E.fingerspellWordById(id);
+  check(['car', 'ak47', 'america', 'hamburger'].map((id) => E.fingerspellWordXp(word(id).symbols.length)).join() === '3,4,7,9', 'word XP is its length: car 3, ak 47 4, america 7, hamburger 9');
+  check(E.fingerspellWordXp(9) > E.fingerspellWordXp(7) && E.fingerspellWordXp(7) > E.fingerspellWordXp(4) && E.fingerspellWordXp(4) > E.fingerspellWordXp(3), 'longer words pay more');
+
+  const types = {};
+  for (const w of F.WORDS) for (const sym of w.symbols) types[sym] = 'static';
+  const ids = ['car', 'america', 'ak47', 'hamburger'];
+  const uniq = [...new Set(ids.flatMap((id) => word(id).symbols))];   // the letters of THIS run (the bank has 1,300+ words)
+  check(E.validateFingerspellSession({ signs: uniq, words: ids }, types), 'full fingerspell session is valid');
+  check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'car'] }, types), 'duplicate word rejected');
+  check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'not-a-word'] }, types), 'unknown word rejected');
+  check(!E.validateFingerspellSession({ signs: ['C', 'A'], words: ['car'] }, types), 'signs must match the words (missing R)');
+  check(!E.validateFingerspellSession({ signs: ['C', 'A', 'R'], words: ['car'] }, { ...types, R: 'motion' }), 'motion letters rejected');
+  check(!E.validateFingerspellSession({ signs: [...uniq, 'Z'], words: ids }, { ...types, Z: 'static' }), 'extra sign rejected');
+
+  // Word bank + run picker
+  const bank = F.WORDS, tiers = F.RUN_LENGTHS;
+  check(bank.length >= 500, `word bank has 500+ words (${bank.length})`);
+  check(new Set(bank.map((w) => w.id)).size === bank.length, 'word ids are unique');
+  check(bank.every((w) => w.symbols.every((ch) => /^[A-Y0-9]$/.test(ch) && ch !== 'J' && ch !== '6' && ch !== '9')), 'no motion signs (J, Z, 6, 9) in any word');
+  check(bank.every((w) => tiers.includes(w.symbols.length)), 'every word has a tier length');
+  check(tiers.every((n) => bank.filter((w) => w.symbols.length === n).length >= 100), 'every length tier has 100+ words');
+  for (let i = 0; i < 200; i++) {
+    const run = E.pickFingerspellRun();
+    if (run.map((w) => w.symbols.length).join() !== tiers.join() || new Set(run.map((w) => w.id)).size !== run.length) { check(false, 'run shape'); break; }
+  }
+  check(E.pickFingerspellRun().reduce((n, w) => n + w.symbols.length, 0) === E.FINGERSPELL_RUN_LETTERS && E.FINGERSPELL_RUN_LETTERS === 23, 'every run is exactly 23 letters');
+  const prev = E.pickFingerspellRun();
+  check(Array.from({ length: 50 }, () => E.pickFingerspellRun(() => true, { avoid: prev.map((w) => w.id) })).every((r) => r.every((w) => !prev.some((p) => p.id === w.id))), 'avoid list keeps the next run fresh');
+  check(E.pickFingerspellRun((w) => w.symbols.length !== 9).length === 3, 'a tier with no usable word is left out');
+  const longRun = bank.filter((w) => w.symbols.length === 9).slice(0, 3).map((w) => w.id);
+  check(!E.validateFingerspellSession({ signs: [...new Set(longRun.flatMap((id) => word(id).symbols))], words: longRun }, types), 'a run longer than 23 letters is rejected');
+  const drawn = E.pickFingerspellRun();
+  check(E.validateFingerspellSession({ signs: [...new Set(drawn.flatMap((w) => w.symbols))], words: drawn.map((w) => w.id) }, types), 'a randomly drawn run is a valid session');
+
+  const learnedAll = uniq.slice();
+  const mk = () => { const st = E.newState(baseTime); st.tz = 'UTC'; return st; };
+  const day = '2026-10-03';
+  const session = { id: 'fs', startedAt: baseTime, mode: 'fingerspell', signs: uniq, words: ids };
+  const goodLog = [{ w: 0, t: 2000 }, { w: 1, t: 6000 }, { w: 2, t: 8500 }, { w: 3, t: 13000 }];
+  const fin = (st, log, wrong, learned, sess = session) => E.applyGameFinish(st, sess, log, wrong, learned, types, { now: baseTime + 14000, today: day });
+
+  let st = mk(); let r = fin(st, goodLog, 0, learnedAll);
+  check(r.ok && r.counted && r.xpGained === 29, `flawless full run pays 23 + 3 clear + 3 flawless = 29 (${r.xpGained})`);
+  check(r.words.map((w) => w.xp).join() === '3,7,4,9', 'per-word XP is reported in run order');
+  check(r.xpGained <= 30, 'a full run stays in the same range as a Construct a Sentence run (~25 XP)');
+  check(st.xp === 29 && st.daily.gameXp === 29 && st.totals.timeAttackXp === 29 && st.totals.gameXp === 29, 'XP lands in xp, daily.gameXp, timeAttackXp, gameXp');
+  check(st.totals.wallXp + st.totals.timeAttackXp + st.totals.sentenceXp <= st.totals.gameXp, 'per-game XP never exceeds gameXp (firestore rules invariant)');
+  check(st.totals.timeAttacks === 1 && st.daily.timeAttacks === 1, 'run counters increase');
+  check(!('fingerXp' in st.daily), 'no separate fingerspell daily counter: it shares the game cap');
+
+  st = mk(); r = fin(st, goodLog, 100, learnedAll);
+  check(r.xpGained === Math.round(3 * 0.5) + Math.round(7 * 0.5) + Math.round(4 * 0.5) + Math.round(9 * 0.5) + 3, 'low accuracy halves the word XP and drops the flawless bonus');
+
+  st = mk(); st.daily = { ...st.daily, day, gameXp: 80 };
+  r = fin(st, goodLog, 0, learnedAll);
+  check(r.counted && r.xpGained === 10 && st.daily.gameXp === 90, 'XP is trimmed to what is left of the 90 XP/day game cap');
+  r = fin(st, goodLog, 0, learnedAll);
+  check(r.ok && !r.counted && r.xpGained === 0 && r.reason === 'daily_cap', 'once the shared daily game cap is spent, Time Attack pays nothing');
+  check(st.daily.gameXp <= E.CONFIG.GAME.DAILY_XP_CAP, 'daily game XP never passes the cap');
+
+  const sentenceFirst = mk(); sentenceFirst.daily = { ...sentenceFirst.daily, day, gameXp: 90 };
+  r = fin(sentenceFirst, goodLog, 0, learnedAll);
+  check(r.reason === 'daily_cap', 'Wall Breaker / Sentence XP already at the cap also blocks Time Attack (one shared cap)');
+
+  st = mk(); r = fin(st, goodLog, 0, learnedAll.filter((sign) => sign !== '4'));
+  check(r.xpGained === 3 + 7 + 9 + 3 + 3 && r.words.find((w) => w.id === 'ak47').eligible === false, 'a word with an unlearned letter pays nothing, the rest still pays');
+  st = mk(); r = fin(st, goodLog, 0, []);
+  check(r.reason === 'not_enough_learned' && r.xpGained === 0 && st.xp === 0, 'nothing learned: no XP and no state write');
+
+  st = mk(); r = fin(st, [{ w: 0, t: 100 }, { w: 1, t: 6000 }, { w: 2, t: 8500 }, { w: 3, t: 13000 }], 0, learnedAll);
+  check(r.reason === 'too_fast', 'spelling a word faster than 450 ms per letter is rejected');
+  r = fin(mk(), goodLog.slice(0, 3), 0, learnedAll);
+  check(r.reason === 'incomplete_run', 'a run missing a word is rejected');
+  r = fin(mk(), [{ w: 0, t: 2000 }, { w: 2, t: 6000 }, { w: 1, t: 8500 }, { w: 3, t: 13000 }], 0, learnedAll);
+  check(r.reason === 'bad_bricks', 'words logged out of order are rejected');
+  r = E.applyGameFinish(mk(), session, goodLog, 0, learnedAll, types, { now: baseTime + 3000, today: day });
+  check(r.reason === 'clock_mismatch', 'log longer than the session clock is rejected');
+  r = E.applyGameFinish(mk(), session, goodLog, 0, learnedAll, types, { now: baseTime + E.CONFIG.GAME.SESSION_TTL_MS + 1, today: day });
+  check(r.reason === 'expired', 'fingerspell session expires');
+  check(E.profileData(st, 'Ana', baseTime).timeAttackXp === st.totals.timeAttackXp, 'public profile carries Time Attack XP');
+}
+
 console.log(`${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

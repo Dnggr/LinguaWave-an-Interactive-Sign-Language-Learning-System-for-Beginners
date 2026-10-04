@@ -311,3 +311,33 @@
 @media (prefers-reduced-motion:reduce){
   .gm *,.gm *::before{animation:none!important;transition:none!important}
 }
+
+/* Time Attack — fingerspelling word display */
+.ta-wordbox{display:grid;gap:10px;padding:12px 14px;border:1px solid var(--border,rgba(148,163,184,.3));border-radius:14px;background:var(--surface,rgba(148,163,184,.08));margin-bottom:12px}
+.ta-wordbox__head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.ta-wordbox__name{margin:0;font-size:1.6rem;text-transform:uppercase;letter-spacing:.06em}
+.ta-wordbox__meta{margin:0;font-size:.85rem;opacity:.8}
+.ta-letters{display:flex;flex-wrap:wrap;gap:6px}
+.ta-letter{min-width:2.2rem;padding:6px 8px;text-align:center;font-weight:700;font-size:1.15rem;border-radius:10px;border:2px solid transparent;background:rgba(148,163,184,.15)}
+.ta-letter[data-state="done"]{background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.55)}
+.ta-letter[data-state="current"]{background:rgba(56,189,248,.25);border-color:#38bdf8;transform:translateY(-2px)}
+.ta-words{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.ta-wordchip{display:flex;gap:8px;align-items:center;padding:4px 10px;border-radius:999px;font-size:.8rem;background:rgba(148,163,184,.15)}
+.ta-wordchip__xp{font-weight:700;opacity:.85}
+.ta-wordchip[data-state="current"]{outline:2px solid #38bdf8}
+.ta-wordchip[data-state="done"]{background:rgba(34,197,94,.22);text-decoration:line-through}
+.ta-breakdown{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:2px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.ta-letter[data-state="current"]{transform:none}}
+/* Time Attack: signed-letters row, hold bar, skeleton placeholders */
+.ta-signed{display:flex;flex-wrap:wrap;gap:6px}
+.ta-slot{min-width:2.2rem;height:2.4rem;padding:6px 8px;text-align:center;font-weight:700;font-size:1.15rem;border-radius:10px;border:2px dashed rgba(148,163,184,.4);background:transparent}
+.ta-slot[data-state="done"]{border-style:solid;border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.22)}
+.ta-slot[data-state="current"]{border-color:#38bdf8}
+.ta-slot[data-fresh="1"]{animation:ta-pop .25s ease-out}
+@keyframes ta-pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.ta-letter{position:relative;overflow:hidden}
+.ta-letter__char{position:relative;z-index:1}
+.ta-letter__hold{position:absolute;left:0;bottom:0;height:4px;width:calc(var(--hold,0) * 100%);background:#38bdf8}
+.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{min-width:2.2rem;height:2.4rem;border-color:transparent;background:linear-gradient(90deg,rgba(148,163,184,.12),rgba(148,163,184,.28),rgba(148,163,184,.12));background-size:200% 100%;animation:ta-shimmer 1.4s linear infinite}
+@keyframes ta-shimmer{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.ta-slot[data-fresh="1"],.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{animation:none}}
