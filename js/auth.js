@@ -47,17 +47,16 @@
  * SIGNUP  : normalize email -> validate email FORMAT -> validate PROVIDER
  *   domain (SUPPORTED_EMAIL_DOMAINS) -> validate password (5-rule policy
  *   + common/personal-password block, see PASSWORD POLICY + STRENGTH
- *   below) -> validate confirm password -> Reacher pre-check (via the
- *   `checkEmailDeliverability` Cloud Function, see functions/index.js;
- *   the Reacher secret only ever exists server-side) -> Firebase
+ *   below) -> validate confirm password -> Firebase
  *   createUserWithEmailAndPassword (this IS the "account already exists?"
  *   check: it throws auth/email-already-in-use before anything is sent)
  *   -> Firestore profile -> sendEmailVerification -> stay signed in, go
  *   to verify-email.html. A verification email is sent ONLY after every
  *   earlier step has passed. If any step rejects, NO Firebase account is
  *   created (except the last two, which only run after creation).
- *   Reacher is a pre-filter only: "safe" does NOT prove mailbox
- *   ownership — the Firebase link does.
+ *   There is no server-side deliverability pre-check (the old Reacher /
+ *   Cloud Function one was retired): only the Firebase link proves that
+ *   the address belongs to this person.
  *   Keep these three facts separate (see SIGNUP VALIDATION below):
  *     1. valid FORMAT        2. SUPPORTED PROVIDER        3. VERIFIED
  *   1 and 2 say nothing about whether the mailbox exists or belongs to
@@ -118,10 +117,6 @@ import {
   orderBy,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import {
-  getFunctions,
-  httpsCallable,
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 // Your web app's Firebase configuration
@@ -139,7 +134,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
 'use strict';
 // Set by loginWithGoogle() when it hits account-exists-with-different-
 // credential — see linkPendingGoogleCredential() below for how it's
@@ -326,7 +320,7 @@ function isLoggedIn() {
 }
 /* ── SMALL HELPERS (2026-09-29) ───────────────────────────────── */
 // ONE canonical email value, used for BOTH validation and the value sent
-// to Firebase/Reacher, in login AND register (before, register validated
+// to Firebase, in login AND register (before, register validated
 // `trimmedEmail` but sent the untrimmed `email` to Firebase). Trim only —
 // deliberately NOT lowercased: the local part is technically
 // case-sensitive and Firebase already treats addresses case-insensitively.
@@ -341,7 +335,6 @@ function lwError(code, message) {
   return err;
 }
 const INVALID_EMAIL_MESSAGE = "That doesn't look like a valid email address. Please check it and try again.";
-const CANT_RECEIVE_MESSAGE = 'This email address does not appear to be able to receive email. Please check the address and try again.';
 const GENERIC_AUTH_MESSAGE = 'Something went wrong. Please try again.';
 /* ── SIGNUP VALIDATION (2026-10-01) ───────────────────────────────
  * ONE implementation, used twice: register() below enforces it (the
@@ -351,9 +344,7 @@ const GENERIC_AUTH_MESSAGE = 'Something went wrong. Please try again.';
  *
  * SUPPORTED_EMAIL_DOMAINS is the single provider list. To accept another
  * legitimate provider, add its domain here (lowercase) — nothing else in
- * this file or in index.html needs to change. functions/email-check.js
- * (the Cloud Function) should be given the same list; it is a separate
- * deployment and can't import this file.
+ * this file or in index.html needs to change.
  *
  * Domains are matched EXACTLY after lowercasing — never with
  * includes()/endsWith()/startsWith() — so "gmail.com.evil.io",
@@ -778,43 +769,6 @@ function describeAuthError(err, context) {
       return GENERIC_AUTH_MESSAGE;
   }
 }
-/* ── SIGNUP PRE-CHECK (Reacher, via Cloud Function) ──────────────
- * Asks the `checkEmailDeliverability` Cloud Function (functions/index.js)
- * whether the address looks usable BEFORE any Firebase account exists.
- * The browser never talks to Reacher and never holds its secret.
- *
- *  - Function says ok:false -> throws lw/email-rejected (message tells
- *    the learner what to fix). No account gets created.
- *  - Function says ok:true (including risky/unknown) -> returns.
- *  - Function unreachable / slow / errors -> returns (FAILS OPEN): an
- *    account with an unverified email gets zero access anyway, so an
- *    infrastructure hiccup must not lock real learners out of signing up.
- *  - Rate limited (functions/resource-exhausted) -> throws; that one is
- *    NOT failed open or the limiter would be pointless.
- * Reacher "safe" != verified. Only Firebase's emailVerified proves that. */
-const EMAIL_REJECT_MESSAGES = {
-  'invalid-syntax': INVALID_EMAIL_MESSAGE,
-  'no-mail-server': CANT_RECEIVE_MESSAGE,
-  'undeliverable': CANT_RECEIVE_MESSAGE,
-  'disposable': "Temporary or disposable email addresses can't be used. Please use your regular email address.",
-};
-async function precheckEmail(normalizedEmail) {
-  let data = null;
-  try {
-    const checkEmailDeliverability = httpsCallable(functions, 'checkEmailDeliverability', { timeout: 20000 });
-    const response = await checkEmailDeliverability({ email: normalizedEmail });
-    data = response && response.data;
-  } catch (callErr) {
-    if (callErr && callErr.code === 'functions/resource-exhausted') {
-      throw lwError('lw/too-many-checks', 'Too many attempts. Please wait a minute and try again.');
-    }
-    console.warn('[auth] Email pre-check unavailable, continuing without it:', callErr);
-    return;
-  }
-  if (data && data.ok === false) {
-    throw lwError('lw/email-rejected', EMAIL_REJECT_MESSAGES[data.reason] || CANT_RECEIVE_MESSAGE);
-  }
-}
 /* ── VERIFICATION EMAIL: send / cooldown / re-check ──────────────── */
 function resendKey(uid) { return RESEND_KEY_PREFIX + uid; }
 /* Seconds left before another verification email may be requested
@@ -891,7 +845,7 @@ async function sendVerificationEmail(firebaseUser) {
  * checks it. localStorage is never consulted.
  *
  * When verified it also force-refreshes the ID token (so the
- * `email_verified` claim that Firestore rules / Cloud Functions read is
+ * `email_verified` claim that Firestore rules read is
  * current) and writes the normal session cache, exactly like a fresh
  * login. onAuthStateChanged does NOT fire after reload(), which is why
  * this has to build the session itself.
@@ -991,13 +945,11 @@ async function login(email, password) {
  *   1. normalize + validate, in this order: email format -> email
  *      provider -> password -> confirm password. The first failure
  *      throws; nothing is created and nothing is sent.
- *   2. Reacher pre-check (precheckEmail) — a rejected address never
- *      becomes a Firebase account
- *   3. createUserWithEmailAndPassword (with the SAME normalized email).
+ *   2. createUserWithEmailAndPassword (with the SAME normalized email).
  *      This is the "account already exists?" check: Firebase throws
- *      auth/email-already-in-use here, before step 5 can run.
- *   4. Firestore profile write `users/{uid}` (rolled back on failure)
- *   5. sendVerificationEmail — reachable ONLY if steps 1-4 all passed
+ *      auth/email-already-in-use here, before step 4 can run.
+ *   3. Firestore profile write `users/{uid}` (rolled back on failure)
+ *   4. sendVerificationEmail — reachable ONLY if steps 1-3 all passed
  * The new user is then AUTHENTICATED BUT UNVERIFIED: still signed in
  * (so verify-email.html can resend/reload) but with no session cache and
  * no learner access until Firebase reports emailVerified === true.
@@ -1051,10 +1003,6 @@ async function register(name, email, password, confirmPassword) {
   if (!confirmCheck.valid) {
     throw lwError('lw/password-mismatch', confirmCheck.message);
   }
-  // Reacher pre-check — see precheckEmail() for what it rejects and
-  // why it fails open. (Replaces the earlier never-deployed
-  // `checkEmailDomain` DNS-only call.)
-  await precheckEmail(normalizedEmail);
   // Also the "account already exists?" check: throws
   // auth/email-already-in-use (see describeAuthError) and no email is sent.
   const result = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
@@ -1272,12 +1220,13 @@ async function reauthenticate(currentPassword) {
   return firebaseUser;
 }
 /* ── ADMIN-DELETED ACCOUNTS (2026-10-03) ──────────────────────────
- * When the admin deletes a learner, users/{uid} is removed. If the
- * `deleteLearnerAccount` Cloud Function is not deployed (Spark plan),
- * admin-firebase.js only deletes the Firestore data, so the learner's Firebase
- * LOGIN SURVIVES. A "profile missing" check therefore must NOT depend on the
- * login being gone: a missing users/{uid} doc IS the signal that the account
- * was removed.
+ * When the admin deletes a learner, admin-firebase.js deletes their Firebase
+ * Auth login (through the Cloudflare Worker) and then users/{uid}. An ID token
+ * that was already issued stays valid for up to an hour, and a retry after a
+ * half-finished delete can leave a login without a profile, so a "profile
+ * missing" check must NOT depend on the login being gone: a missing users/{uid}
+ * doc IS the signal that the account was removed. (This watcher only signs the
+ * learner out on this device; it never deletes the Auth user itself.)
  *
  * Two things act on that signal:
  *   1. startProfileWatch(): a live listener on users/{uid}. When the doc
@@ -1459,12 +1408,13 @@ async function changePassword(currentPassword, newPassword) {
  *
  * IMPORTANT — LIMITATION (stated plainly, not a silent gap): actually
  * purging accounts once DELETION_GRACE_PERIOD_DAYS has passed needs a
- * server-side scheduled job (e.g. a Cloud Function that checks
+ * server-side scheduled job (e.g. a Cloudflare Worker cron trigger that checks
  * `deletionRequestedAt` on a schedule and deletes anything past the
  * window, including `userProgressV2/{uid}` and the Auth user). That
  * job does not exist in this repo — building one requires knowing this
- * project's Firebase setup (Blaze plan, existing functions, etc.) and
- * isn't something to add blind. Until it's built and deployed, a
+ * project's setup (a Worker cron trigger plus the Firebase Auth admin
+ * credential from worker/src/firebase-auth-admin.js) and isn't something
+ * to add blind. Until it's built and deployed, a
  * "deleted" account is inert (signed out, and should be treated as
  * gone by anything that checks `deletionRequested`) but its data is
  * not physically gone yet. */

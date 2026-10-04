@@ -19,12 +19,15 @@
  * No R2 credential exists in this file. The checks below (type/size) are for
  * fast feedback only; the Worker repeats them where they can't be bypassed.
  *
- * CONFIG: set MEDIA_API_URL to your deployed Worker URL (R2_SETUP.md, step 5).
+ * CONFIG: the deployed Worker URL is WORKER_URL in js/admin-worker.js (R2_SETUP.md, step 5).
  * ─────────────────────────────────────────────────────────────────
  */
 import { auth } from "./admin-firebase.js";
+// The Worker URL now lives in js/admin-worker.js (shared with learner deletion). Re-exported under
+// the old name so nothing that imports MEDIA_API_URL has to change.
+import { WORKER_URL } from "./admin-worker.js";
 
-export const MEDIA_API_URL = "https://linguawave-media.johnjewelrydelacruz.workers.dev";
+export const MEDIA_API_URL = WORKER_URL;
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // keep in sync with worker/src/index.js
 // MP4 only: the learner players hard-code type="video/mp4" (see worker/src/index.js).
 export const VIDEO_TYPES = { mp4: "video/mp4" };
@@ -48,7 +51,7 @@ export function validateVideoFile(file) {
 }
 
 function configError() {
-  const err = new Error("Media storage isn't set up yet: set MEDIA_API_URL in js/admin-media.js (see R2_SETUP.md).");
+  const err = new Error("Media storage isn't set up yet: set WORKER_URL in js/admin-worker.js (see R2_SETUP.md).");
   err.code = "media/not-configured";
   return err;
 }
@@ -70,7 +73,7 @@ async function callWorker(path, body) {
       body: JSON.stringify(body),
     });
   } catch (e) {
-    const err = new Error("Couldn't reach the media service. Check MEDIA_API_URL and that the Worker's ALLOWED_ORIGINS includes this site.");
+    const err = new Error("Couldn't reach the media service. Check WORKER_URL in js/admin-worker.js and that the Worker's ALLOWED_ORIGINS includes this site.");
     err.code = "media/unreachable";
     err.cause = e;
     throw err;
