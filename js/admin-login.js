@@ -5,7 +5,7 @@
  * a learner can't hold an admin-app session.
  * Load as: <script type="module" src="../js/admin-login.js"></script>
  */
-import { auth, adminSignIn, adminGoogleSignIn, adminSignOut } from "./admin-firebase.js";
+import { auth } from "./admin-firebase.js";
 
 const ADMIN_EMAIL = "linguawave.project@gmail.com"; // keep in sync (see admin-auth.js)
 const DASHBOARD = "admin-dashboard.html";
