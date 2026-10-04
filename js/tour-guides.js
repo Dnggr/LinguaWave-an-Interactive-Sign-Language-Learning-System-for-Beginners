@@ -62,7 +62,16 @@
           fit: 'children',
           placement: 'right',
           title: 'Move around from the menu',
-          body: 'Learn holds every mission, Progress tracks how far you have come, and Settings keeps your preferences.',
+          body: 'Learn holds every mission, Progress tracks how far you have come, Game and Leaderboard are for practice and ranking, and Settings keeps your preferences.',
+        },
+        {
+          // The account card js/main.js adds to the foot of the sidebar
+          // (initSidebarAccountLinks). Hidden with the sidebar on phones.
+          target: '.app-sidebar__user',
+          optional: true,
+          placement: 'right',
+          title: 'Open your profile',
+          body: 'Select your name to see your level, achievements and activity, or to change your picture.',
         },
         {
           target: '#mission-banner',
@@ -287,6 +296,66 @@
           placement: 'bottom',
           title: 'Check how XP works',
           body: 'Open this any time to see what earns XP, how the boards are ranked and how streaks count.',
+        },
+      ],
+    },
+
+    /* ── Game picker ───────────────────────────────────────────── */
+    // Only the picker (pages/game.html). The three game pages are
+    // played full screen and have no guide. A learner who has not
+    // unlocked the Game never reaches this page (js/game-gate.js).
+    game: {
+      steps: [
+        {
+          target: '.game-picker__intro',
+          placement: 'bottom',
+          title: 'Choose a game',
+          body: 'Each mode practices your signs in a different way. Pick one to start.',
+        },
+        {
+          target: '.game-mode--sentence',
+          title: 'Build sentences from memory',
+          body: 'Memorize the signs, then drag the videos into the right order. No camera needed.',
+        },
+        {
+          target: '.game-mode--wall',
+          title: 'Break the wall in any order',
+          body: 'Hold static signs or record motion signs to break each brick. This one uses your camera.',
+        },
+        {
+          target: '.game-mode--time',
+          title: 'Race the clock',
+          body: 'Fingerspell the words in order against the clock. Longer words earn more XP. This one uses your camera.',
+        },
+      ],
+    },
+
+    /* ── Profile ───────────────────────────────────────────────── */
+    profile: {
+      steps: [
+        {
+          target: '.profile-side__avatar-wrap',
+          placement: 'right',
+          title: 'Pick your picture',
+          body: 'Select the round button on your picture to choose a new one. It shows next to your name on the leaderboard.',
+        },
+        {
+          target: '#xp-card',
+          placement: 'bottom',
+          title: 'Check your level',
+          body: 'See your level, total XP and how much is left until the next level. The streak and badge chips open the leaderboard.',
+        },
+        {
+          target: '#profile-achievements',
+          placement: 'right',
+          title: 'Collect achievements',
+          body: 'Earned achievements light up. Point at a locked one to see what unlocks it.',
+        },
+        {
+          target: '#profile-activity',
+          placement: 'top',
+          title: 'Look back on your practice',
+          body: 'Each square is one day over the past year, so you can see when you practiced.',
         },
       ],
     },

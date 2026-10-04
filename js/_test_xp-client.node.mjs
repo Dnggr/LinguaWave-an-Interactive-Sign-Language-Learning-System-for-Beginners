@@ -31,6 +31,7 @@ const mission = {
   ],
 };
 const completed = new Set();
+let missionStreak = { currentStreak: 0, longestStreak: 0, lastActivityDate: null };   // what window.LWMissions.getStreakSummary() returns
 store.set(`users/${uid}`, { name: 'Ana' });
 
 function clone(value) { return value === undefined ? undefined : structuredClone(value); }
@@ -102,6 +103,7 @@ const window = {
   LWProgress: {},
   LWMissions: {
     getAllMissions: () => [mission],
+    getStreakSummary: () => missionStreak,
     whenMissionsSyncReady: async () => undefined,
     isItemComplete: (_mission, index) => completed.has(index),
     content: { SIGNS: [{ signId: 'A' }, { signId: 'B' }] },
@@ -227,6 +229,38 @@ const permissionToasts = toasts.filter((toast) => toast.message === 'XP rules re
 assert.equal(permissionToasts.length, 1, 'same error toast is throttled for 30 seconds');
 assert.equal(X.debug().lastError.code, 'permission-denied');
 failWith = null;
+
+// Streak catch-up (syncStreak). REGRESSION: with nothing to heal it used to publish a bare { ok: true } with no xp / level /
+// streak, and the Profile "Level" card redrew itself as Level 1, 0 XP, 0-day streak. Every published result must now be a full summary.
+{
+  const published = [];
+  const stop = X.onUpdate((res) => published.push(res));
+  const before = clone(store.get(`xpState/${uid}`));
+  const todayKey = E.dayKey(fakeNow, before.tz || 'UTC');
+  missionStreak = { currentStreak: before.streak.current, longestStreak: before.streak.current, lastActivityDate: before.streak.lastDay };
+  let res = await X.syncStreak();
+  assert.ok(res.ok && !res.streakHealed, 'nothing to heal: ok, not healed');
+  assert.equal(typeof res.xp, 'number'); assert.equal(typeof res.level, 'number'); assert.equal(typeof res.streak, 'number');
+  assert.equal(res.xp, before.xp, 'nothing to heal: the summary carries the real XP');
+  assert.equal(store.get(`xpState/${uid}`).xp, before.xp, 'nothing to heal: no state write');
+  assert.deepEqual(store.get(`xpState/${uid}`).streak, before.streak, 'nothing to heal: streak untouched');
+
+  // A streak saved under the old strict rule (1) while Missions, which keeps the real days, says 3: healed one step per write.
+  store.set(`xpState/${uid}`, { ...before, streak: { current: 1, longest: 1, lastDay: before.streak.lastDay }, badges: {} });
+  missionStreak = { currentStreak: 3, longestStreak: 3, lastActivityDate: before.streak.lastDay };
+  published.length = 0;
+  res = await X.syncStreak();
+  const healed = store.get(`xpState/${uid}`);
+  assert.equal(healed.streak.current, 3, 'heal: streak raised to the Missions streak');
+  assert.equal(healed.streak.longest, 3, 'heal: longest follows');
+  assert.ok(healed.badges.streak_3, 'heal: the 3-day badge is granted');
+  assert.equal(store.get(`publicProfiles/${uid}`).streak, 3, 'heal: leaderboard row matches');
+  assert.equal(res.xp, healed.xp, 'heal: the final summary carries the real XP');
+  assert.ok(published.length >= 2 && published.every((r) => typeof r.xp === 'number' && typeof r.streak === 'number'), 'every published streak result is a full summary');
+  assert.equal(published.flatMap((r) => r.newBadges || []).filter((id) => id === 'streak_3').length, 1, 'the new badge is reported exactly once');
+  stop();
+  missionStreak = { currentStreak: 0, longestStreak: 0, lastActivityDate: null };
+}
 
 // Every successful XP write was asserted above to have a consistent profile row.
 assert.ok(transactionCount >= 8, 'transaction path exercised repeatedly');

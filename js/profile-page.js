@@ -121,6 +121,9 @@ function renderConsistency(missions) {
     byDay.set(k, b);
   });
   const streak = window.LWMissions.getStreakSummary();
+  // Days the Day Streak counted (lessons, reviews AND counted game runs). Games leave no per-item completion, so
+  // without this a game-only day stayed grey even though it kept the streak alive.
+  const streakDays = new Set((streak && streak.recentDays) || []);
 
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -141,17 +144,20 @@ function renderConsistency(missions) {
         cells.push(`<span class="gh-cell gh-cell--future" style="${pos}"></span>`);
         continue;
       }
-      const b = byDay.get(localDateKey(date.toISOString())) || { signs: 0, other: 0 };
+      const dayKey = localDateKey(date.toISOString());
+      const b = byDay.get(dayKey) || { signs: 0, other: 0 };
       const n = b.signs + b.other;
+      const streakOnly = n === 0 && streakDays.has(dayKey);   // counted for the streak, but no mission item that day
       total += n;
       signsTotal += b.signs;
       const when = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       const parts = [];
       if (b.signs) parts.push(`${b.signs} sign${b.signs === 1 ? '' : 's'} learned`);
       if (b.other) parts.push(`${b.other} practice or quiz ${b.other === 1 ? 'item' : 'items'}`);
+      if (streakOnly) parts.push('practice (game or review)');
       const what = parts.length ? parts.join(', ') : 'No activity';
       const isToday = date.getTime() === now.getTime();
-      cells.push(`<span class="gh-cell gh-cell--l${activityLevel(n)}${isToday ? ' gh-cell--today' : ''}" style="${pos}" title="${what} on ${when}"></span>`);
+      cells.push(`<span class="gh-cell gh-cell--l${streakOnly ? 1 : activityLevel(n)}${isToday ? ' gh-cell--today' : ''}" style="${pos}" title="${what} on ${when}"></span>`);
     }
     if (w === 0) marks.push({ w, m: monthStartsHere !== null ? monthStartsHere : start.getMonth() });
     else if (monthStartsHere !== null) marks.push({ w, m: monthStartsHere });

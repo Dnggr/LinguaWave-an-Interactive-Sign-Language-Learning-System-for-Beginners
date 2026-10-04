@@ -23,7 +23,7 @@ const listeners = new Set();
 const gameSessions = new Map();
 const pendingResolvers = new Map();
 const toastTimes = new Map();
-let latest = null, flushing = null, lastError = null, retryTimer = null;
+let latest = null, flushing = null, flushQueued = false, lastError = null, retryTimer = null;
 let pageActive = true;
 const waitTimers = new Map();
 function delay(ms) {
@@ -61,7 +61,7 @@ function randomId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
 /* Streak shown for a stored xpState doc, as of right now in that doc's own timezone.
- * Needs E.effectiveStreak and E.dayKey from xp-engine.mjs (the grace-rule logic from main). */
+ * Uses E.effectiveStreak (the grace rule) and E.dayKey from xp-engine.mjs. */
 function liveStreakOf(state) {
   if (!state?.streak) return 0;
   try { return E.effectiveStreak(state.streak, E.dayKey(Date.now(), state.tz || 'UTC')); } catch { return 0; }
@@ -143,7 +143,7 @@ function enqueue(job) {
   const promise = new Promise((resolve) => pendingResolvers.set(queued.qid, { resolve, promise: null }));
   const resolver = pendingResolvers.get(queued.qid);
   resolver.promise = promise;
-  void flush();
+  requestFlush();
   return promise;
 }
 function settleJob(job, result) {
@@ -229,6 +229,8 @@ async function applyJob(job, uid) {
   const missions = runtimeMissions().map((mission) => missionForId(mission.id)).filter(Boolean);
   const types = signTypes();
   const localLearned = localLearnedSigns();
+  // Read before the transaction (it may re-run): the Missions streak the 'streak' job heals toward.
+  const missionStreak = job.type === 'streak' ? (window.LWMissions?.getStreakSummary?.() || null) : null;
   return runTransaction(db, async (transaction) => {
     if (auth.currentUser?.uid !== uid) return { ok: false, reason: 'unauthenticated' };
     const [stateSnap, userSnap] = await Promise.all([transaction.get(stateRef), transaction.get(userRef)]);
@@ -256,10 +258,12 @@ async function applyJob(job, uid) {
     } else if (job.type === 'profile') {
       result = { ok: true, xpGained: 0 };
     } else if (job.type === 'streak') {
-      // Catch-up for streaks stored before the grace rule; needs E.healStreakFromMissions in xp-engine.mjs.
-      const healed = typeof E.healStreakFromMissions === 'function' && E.healStreakFromMissions(state, today, {}, now);
-      if (!healed) return { ok: true, skipStateWrite: true, xpGained: 0 };
-      result = { ok: true, xpGained: 0 };
+      // Catch-up for streaks stored before the grace rule (see E.healStreakFromMissions).
+      // Nothing to heal -> skipStateWrite, which falls through to E.summary() below, so the result still carries
+      // the real xp / level / streak. (Returning a bare object here made the Level card redraw as Level 1, 0 XP.)
+      const out = {};
+      const healed = E.healStreakFromMissions(state, today, out, now, missionStreak);
+      result = healed ? { ok: true, ...out, xpGained: 0, streakHealed: true } : { ok: true, skipStateWrite: true, xpGained: 0 };
     } else if (job.type === 'game') {
       const session = job.session;
       const knownSigns = session?.mode === 'sentence' ? knownSignIds() : null;
@@ -322,8 +326,18 @@ async function flush() {
         settleJob(job, { ok: false, reason: error?.code || 'write_failed' });
       }
     }
-  })().finally(() => { flushing = null; });
+  })().finally(() => {
+    flushing = null;
+    // A job queued while the loop above was finishing (e.g. the next step of syncStreak(), enqueued the moment the
+    // previous one settled) found `flushing` still set and never got a loop of its own: run once more for it.
+    if (flushQueued) { flushQueued = false; void flush(); }
+  });
   return flushing;
+}
+/** enqueue() uses this instead of flush(): same call, but remembers a request that arrives while a loop is winding down. */
+function requestFlush() {
+  if (flushing) flushQueued = true;
+  void flush();
 }
 const REASON_TEXT = {
   unauthenticated: 'sign in with a verified account',
@@ -411,6 +425,12 @@ async function finishGame(sessionId, broken, wrong = 0) {
   if (!Array.isArray(broken) || !Number.isInteger(wrong) || wrong < 0 || wrong > 500) return { ok: false, reason: 'bad_input' };
   const result = await enqueue({ type: 'game', session: { ...session }, broken: broken.map((brick) => ({ ...brick })), wrong });
   gameSessions.delete(sessionId);
+  // DAY STREAK (js/missions.js): a game run that EARNED XP also counts as practice for the Missions streak, the same
+  // condition under which the XP engine extends its own streak. Without this the Profile chip said 3 days while
+  // Progress / the Learning Activity label said 2. Best-effort: a streak problem never affects the game result.
+  if (result?.ok && result.counted) {
+    try { window.LWMissions?.recordActivity?.('game'); } catch (error) { console.warn('[xp] could not record game streak activity:', error?.message || error); }
+  }
   return result;
 }
 async function getMyState() {
@@ -453,7 +473,10 @@ async function loadBoard(kind, max = 10) {
 async function syncStreak() {
   for (let i = 0; i < 30 && pageActive && !window.LWMissions?.getStreakSummary; i++) await delay(100); // missions.js is a deferred classic script
   if (!window.LWMissions) return { ok: false, reason: 'no_missions' };
-  return enqueue({ type: 'streak' });
+  let res = await enqueue({ type: 'streak' });
+  // A heal moves the streak one step (the rules allow +1 per write); repeat until nothing is left to heal.
+  for (let i = 0; i < 12 && pageActive && res?.ok && res.streakHealed; i++) res = await enqueue({ type: 'streak' });
+  return res;
 }
 async function setVisibility(visible) {
   return enqueue({ type: 'visibility', visible: !!visible });

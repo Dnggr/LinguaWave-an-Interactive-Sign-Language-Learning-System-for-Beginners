@@ -9649,7 +9649,8 @@ function getCategoriesForUnitV2(unitOrder) {
    *
    * Pure rules live in applyStreakActivity()/liveStreak(); storage and Firestore
    * sync sit below them. Call sites: js/lesson.js (lesson/recall/practice items),
-   * js/mastery-quiz.js (a PASS), js/camera-practice.js (a PASSED camera check).
+   * js/mastery-quiz.js (a PASS), js/camera-practice.js (a PASSED camera check),
+   * js/xp.js finishGame() (a game run that earned XP -> type 'game').
    * markItemComplete() deliberately does NOT record streak activity any more -
    * it also fires on replays and on bridge/reconfirm calls. */
   const STREAK_RECENT_DAYS = 14;
@@ -9665,6 +9666,8 @@ function getCategoriesForUnitV2(unitOrder) {
     recall: true,          // a BOOSTER / quick-check recall question
     review: true,          // re-answering a recall/practice question on a finished item
     camera_practice: true, // PASSING the camera check
+    game: true,            // a COUNTED game run (Wall Breaker, Time Attack, Construct a Sentence) - the same condition
+                           // the XP engine uses to extend its own streak, so the two streaks cannot drift apart
   });
   /* Local calendar day ('YYYY-MM-DD') of a Date/ISO string. Never UTC. */
   function localDayKey(dateLike) {

@@ -136,7 +136,7 @@ const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
 }
 
 // 5. Every qualifying type works; unknown / non-learning types are ignored.
-['lesson', 'mission', 'mastery_quiz', 'practice', 'recall', 'review', 'camera_practice'].forEach((t) => {
+['lesson', 'mission', 'mastery_quiz', 'practice', 'recall', 'review', 'camera_practice', 'game'].forEach((t) => {
   const { L, setNow } = makeEnv();
   setNow(2026, 9, 10, 9, 0);
   assert(act(L, t).counted === true && L.getStreakSummary().currentStreak === 1, `qualifying type "${t}" starts a streak`);
@@ -147,6 +147,19 @@ const raw = (store) => JSON.parse(store.lw_missions_streak_v1);
   const r = L.recordActivity(t);
   assert(r.counted === false && L.getStreakSummary().currentStreak === 0 && !store.lw_missions_streak_v1, `non-qualifying type ${JSON.stringify(t)} never counts`);
 });
+
+// 5b. A day with ONLY a counted game run extends the streak (Sat lesson, Sun lesson, Mon game-only -> 3), and it
+//     appears in recentDays so the Progress strip and the Profile heatmap can show it.
+{
+  const { L, setNow } = makeEnv();
+  setNow(2026, 10, 3, 10, 0); act(L, 'lesson');
+  setNow(2026, 10, 4, 10, 0); act(L, 'review');
+  setNow(2026, 10, 5, 10, 0);
+  assert(L.getStreakSummary().currentStreak === 2 && L.getStreakSummary().practicedToday === false, 'before the game: 2, not practiced today');
+  assert(act(L, 'game').counted === true, 'a counted game run is the first activity of the day');
+  const s = L.getStreakSummary();
+  assert(s.currentStreak === 3 && s.practicedToday === true && s.recentDays.includes('2026-10-05'), `game-only day -> streak 3 and today in recentDays (got ${s.currentStreak})`);
+}
 
 // 6. markItemComplete() by itself (replays, bridge, bulk mission marking) must
 //    NOT touch the streak any more.

@@ -1,0 +1,36 @@
+/**
+ * css/auth-action.css — pages/auth-action.html only
+ * Builds on verify-email.css (page shell, card, address chip, spinner,
+ * status line) and auth.css (.form-input, .pw-meter, .field-status).
+ */
+.aa-form { text-align: left; margin-top: var(--space-4); }
+.aa-form .pw-meter { margin-left: 0; margin-right: 0; }
+.aa-msg { margin-left: 0; }
+.aa-form .verify-status { margin-top: var(--space-4); }
+.aa-submit { margin-top: var(--space-6); }
+.aa-submit[aria-busy="true"] { opacity: .7; cursor: progress; }
+
+/* Result screen: a ring with a mark, colored by outcome. */
+.aa-result { gap: var(--space-3); }
+.aa-result .verify-title { margin: 0; }
+.aa-mark {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid var(--clr-accent);
+  background: var(--clr-accent-soft);
+  color: var(--clr-accent);
+}
+.aa-mark svg { width: 28px; height: 28px; }
+.aa-result[data-kind="error"] .aa-mark {
+  border-color: var(--clr-red);
+  background: var(--clr-red-soft);
+  color: var(--clr-red-text);
+}
+.aa-result .btn { margin-top: var(--space-3); }
+
+/* Once, on arrival: the ring draws in. Skipped for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .aa-result:not([hidden]) .aa-mark { animation: aa-pop 420ms cubic-bezier(.22, 1, .36, 1); }
+  @keyframes aa-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+html.lw-force-reduced-motion .aa-mark { animation: none !important; }
