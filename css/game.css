@@ -328,16 +328,37 @@
 .ta-wordchip[data-state="done"]{background:rgba(34,197,94,.22);text-decoration:line-through}
 .ta-breakdown{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:2px;font-size:.9rem}
 @media (prefers-reduced-motion:reduce){.ta-letter[data-state="current"]{transform:none}}
-/* Time Attack: signed-letters row, hold bar, skeleton placeholders */
-.ta-signed{display:flex;flex-wrap:wrap;gap:6px}
-.ta-slot{min-width:2.2rem;height:2.4rem;padding:6px 8px;text-align:center;font-weight:700;font-size:1.15rem;border-radius:10px;border:2px dashed rgba(148,163,184,.4);background:transparent}
-.ta-slot[data-state="done"]{border-style:solid;border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.22)}
+/* ── Time Attack: letter rows, hold bar, skeletons ───────────────────────────────
+   #ta-letters and #ta-signed share one fixed-size grid, so both rows wrap at the same letter
+   (wide glyphs like W/M no longer push the rows out of step). */
+.ta-letters,.ta-signed{display:grid;grid-template-columns:repeat(auto-fill,2.6rem);gap:6px;justify-content:start}
+.ta-letter,.ta-slot{box-sizing:border-box;display:grid;place-items:center;width:2.6rem;height:2.6rem;min-width:0;padding:0;border-radius:10px;font-weight:700;font-size:1.15rem;line-height:1}
+.ta-slot{border:2px dashed rgba(148,163,184,.4);background:transparent}
 .ta-slot[data-state="current"]{border-color:#38bdf8}
+.ta-slot[data-state="done"]{border-style:solid;border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.22)}
 .ta-slot[data-fresh="1"]{animation:ta-pop .25s ease-out}
 @keyframes ta-pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 .ta-letter{position:relative;overflow:hidden}
 .ta-letter__char{position:relative;z-index:1}
 .ta-letter__hold{position:absolute;left:0;bottom:0;height:4px;width:calc(var(--hold,0) * 100%);background:#38bdf8}
-.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{min-width:2.2rem;height:2.4rem;border-color:transparent;background:linear-gradient(90deg,rgba(148,163,184,.12),rgba(148,163,184,.28),rgba(148,163,184,.12));background-size:200% 100%;animation:ta-shimmer 1.4s linear infinite}
+.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{border:2px solid transparent;background:linear-gradient(90deg,rgba(148,163,184,.12),rgba(148,163,184,.28),rgba(148,163,184,.12));background-size:200% 100%;animation:ta-shimmer 1.4s linear infinite}
 @keyframes ta-shimmer{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.ta-slot[data-fresh="1"],.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{animation:none}}
+
+/* ── Time Attack: layout fixes ───────────────────────────────────────────────────
+   1) The page used to be exactly one viewport tall on desktop, so once the word box grew (letter rows +
+      word chips) the left card's content (sign name, description) spilled out below it. The page is now
+      "at least one screen" and grows with its content instead.
+   2) The sidebar takes ~240px, so a viewport of 901-1180px leaves only ~660px for the game: two columns
+      were ~290px each and cramped. Stack them there, like the <=900px layout does. */
+@media (min-width:901px){
+  .ta{height:auto;min-height:max(100dvh,540px)}
+  .ta-stage{flex:1 0 auto}
+  .ta-primary{min-height:auto}
+}
+@media (min-width:901px) and (max-width:1180px){
+  .ta-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .ta-demo{flex:none;min-height:clamp(260px,40dvh,420px)}
+  .ta-demo__video,.ta-demo__frame{min-height:clamp(260px,40dvh,420px)}
+  .ta-cam{flex:none;height:clamp(200px,32dvh,320px);min-height:0;border-radius:var(--radius-lg)}
+}
