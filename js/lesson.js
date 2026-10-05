@@ -201,35 +201,14 @@ function cameraPracticeLinkHtml(mission, signId) {
   // signOrder[0] when absent/invalid (see its computeSignOrder()/
   // `sign` const), so this is purely additive — nothing regresses if
   // signId is ever missing.
-  // TAB-SPAM FIX — this link is re-rendered on EVERY Watch stage (up
-  // to ~40 times per mission), and target="_blank" opens a brand-new
-  // tab on every single click. A learner clicking it from a few
-  // different items in the same session — the exact way this link is
-  // meant to be used — quietly accumulated a new camera-practice tab
-  // each time, with no way to tell the old ones apart.
-  // Using a fixed, named target instead of "_blank" is the browser's
-  // own built-in fix for this: a name reuses the SAME tab across
-  // clicks (any browsing context already open under that name gets
-  // re-navigated) and only opens a fresh one if that tab was closed
-  // or never existed. No click-tracking/debounce JS needed, and
-  // clicking from a different sign correctly updates the existing
-  // tab to that sign instead of leaving a stale one open elsewhere.
-  //
-  // CORRECTNESS FIX (this pass) — the first version of this kept
-  // rel="noopener" alongside the named target, which silently
-  // defeats the whole thing: per spec/MDN, noopener forces every
-  // non-special target name to be "treated like _blank ... when
-  // deciding whether to open a new window/tab" — so every click was
-  // STILL opening a brand-new tab, just one that happened to share a
-  // name none of them ever looked up. noopener only matters for
-  // isolating untrusted/external destinations from window.opener;
-  // camera-practice.html is our own same-origin page in this same
-  // app, so there's nothing to isolate it from — dropping noopener
-  // here is what actually lets the name-based reuse take effect.
+  // SAME-TAB NAVIGATION — this link has no target attribute, so clicking it
+  // navigates the CURRENT tab to camera-practice.html instead of opening a
+  // second tab. (It previously used a named target, which still opened a
+  // separate tab and left the mission page behind.)
   const url = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}${signId ? `&sign=${encodeURIComponent(signId)}` : ''}`;
   return `
-    <a class="lesson-camera-link" href="${url}" target="lw-camera-practice">
-      ${window.LWIcons.markup('camera', { size: 'sm' })}<span class="lw-icon-label">Practice with your camera</span> <span class="text-muted">(same tab)</span>
+    <a class="lesson-camera-link" href="${url}">
+      ${window.LWIcons.markup('camera', { size: 'sm' })}<span class="lw-icon-label">Practice with your camera</span>
     </a>
   `;
 }
