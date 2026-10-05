@@ -26,6 +26,11 @@
               header comment for the 65-vs-10-missions open question;
               this page shows all 65 live missions, not a hardcoded 10.
 
+    ORIENTATION GATE : new learners must finish Orientation
+              (pages/orientation.html) before Chapter 1 unlocks. The
+              Orientation card above the chapters shows Start here /
+              Completed; until it is done every chapter below renders
+              Locked. Rule: js/missions.js isOrientationComplete().
     ROW CLICK : each unlocked row currently links to the mission's
               existing quiz entry point (pages/quiz.html) as a
               stand-in "open this mission" destination — a real
@@ -47,6 +52,8 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <!-- Orientation gate styles (note under the Orientation card). -->
+  <link rel="stylesheet" href="../css/orientation-gate.css" />
   <link rel="stylesheet" href="../css/tour.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>

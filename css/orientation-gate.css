@@ -1,0 +1,44 @@
+/* css/orientation-gate.css
+ * ─────────────────────────────────────────────────────────────────
+ * Styles for the "finish Orientation first" gate. New learners must
+ * complete Orientation (pages/orientation.html) before Chapter 1
+ * unlocks; see js/missions.js isOrientationComplete().
+ *
+ * Linked from pages/dashboard.html and pages/learn.html, after
+ * css/app.css and before css/responsive.css (which must stay last).
+ * Uses the existing design tokens only, so light and dark themes
+ * follow automatically.
+ * ───────────────────────────────────────────────────────────────── */
+
+/* Note under the Orientation card on Learn: why the chapters are locked. */
+.orientation-gate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: calc(var(--space-2) * -1) 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--clr-accent-soft, var(--clr-orange-soft));
+  color: var(--clr-text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.orientation-gate-note .lw-icon { flex: none; margin-top: 2px; }
+
+/* Orientation row once it is done: success border instead of the accent one. */
+.path-row--orientation.path-row--done {
+  border-color: var(--clr-success);
+}
+
+/* Dashboard shortcuts that need an unlocked mission, while Orientation is pending. */
+.rec-card--locked .rec-card__title,
+.rec-card--locked .rec-card__desc {
+  color: var(--clr-text-muted);
+}
+.rec-card__cta[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Dashboard Orientation section: keep [hidden] working even if a layout rule sets display. */
+#orientation-section[hidden] { display: none; }

@@ -8820,8 +8820,18 @@ function getCategoriesForUnitV2(unitOrder) {
       normalizeStreak(local.streak, mergedCompletedAt),
       normalizeStreak(remoteStreak, mergedCompletedAt)
     );
+    // Orientation (see the Orientation block below): done on EITHER device means done.
+    // Keep the earliest timestamp so every device converges on the same value.
+    const orientationDoneAt = [local.progress.orientationDoneAt, remoteProgress.orientationDoneAt]
+      .filter(Boolean)
+      .sort()[0];
     return {
-      progress: { ...local.progress, completedItemIds: mergedIds, completedAt: mergedCompletedAt },
+      progress: {
+        ...local.progress,
+        completedItemIds: mergedIds,
+        completedAt: mergedCompletedAt,
+        ...(orientationDoneAt ? { orientationDoneAt } : {}),
+      },
       streak: mergedStreak,
       hearts: { ...local.hearts, lostAt: (remoteHearts.lostAt || []).slice() },
     };
@@ -9543,7 +9553,10 @@ function getCategoriesForUnitV2(unitOrder) {
   /* ── Chapter gating ──────────────────────────────────────────────
    * REVISED RULE (was: strictly sequential, each chapter needed every
    * earlier chapter 100% done):
-   *   - Chapter 1 (asl_foundations)   : always open.
+   *   - Orientation                   : must be completed FIRST. Until it is,
+   *                                     every chapter (Chapter 1 included) is
+   *                                     locked. See isOrientationComplete().
+   *   - Chapter 1 (asl_foundations)   : open once Orientation is complete.
    *   - Chapter 2 (express_feelings)  : opens once Chapter 1 is 100%.
    *   - Chapters 3 and up             : ALL open at once as soon as
    *                                     Chapter 2 (and so Chapter 1) is
@@ -9570,6 +9583,10 @@ function getCategoriesForUnitV2(unitOrder) {
     if (!categoryGroupId) return true;
     const chapter = getCategoryGroupsV2().find((c) => c.id === categoryGroupId);
     if (!chapter) return true; // unknown/unlisted chapter id — don't hide it
+    // New learners: Orientation comes before everything else. This sits above the
+    // per-chapter rules so Chapters 2+ can never open early even if Chapter 1
+    // happens to have no live missions (which would count as vacuously complete).
+    if (!isOrientationComplete()) return false;
     if (chapter.id === CHAPTER_1_ID) return true;
     if (chapter.id === CHAPTER_2_ID) return isChapterComplete(CHAPTER_1_ID, allMissions);
     // Chapter 3+: everything opens together once Chapters 1 AND 2 are done.
@@ -9996,16 +10013,25 @@ function getCategoriesForUnitV2(unitOrder) {
     }
     return getHeartsState();
   }
-  /* ── Orientation (this session) ──────────────────────────────────
-   * A single, ungated, always-visible entry learn.js pins ABOVE
-   * the 12 chapter sections — not a mission (no signs, no items, no
-   * hearts/progress), just a pointer to pages/orientation.html's
-   * reading + video content. Exists because V1's equivalent content
-   * (pages/homepage.html / intro-to-asl.html) lives only on the
-   * post-login landing page — easy to skip once and never see again
-   * since neither is part of the trail. Putting a row for it inside
-   * the actual Learning Path (rather than only the landing page)
-   * means every learner passes it, without it blocking anything.
+  /* ── Orientation ───────────────────────────────────────────────────
+   * pages/orientation.html is the REQUIRED first step for new learners.
+   * Until it is complete every chapter is locked (isChapterUnlocked()
+   * above), so Chapter 1 opens only after:
+   *   - the learner scrolls to the bottom of the Orientation page, or
+   *   - clicks "Continue to the Learning Path" (js/orientation.js calls
+   *     markOrientationComplete() for both).
+   *
+   * Stored as `orientationDoneAt` (ISO timestamp) inside the progress
+   * state (`lw_missions_progress_v1`), so it is scoped per account like
+   * the rest of the progress and syncs through the same Firestore doc
+   * (reconcileMissionsState() keeps the earliest value across devices).
+   *
+   * Returning learners are grandfathered in: anyone who already has a
+   * completed item has plainly been past the start, so they are NOT sent
+   * back to Orientation or locked out of the chapter they are on.
+   *
+   * Orientation is still not a mission: no signs, items, hearts or
+   * progress bar. It can be reopened any time from Learn.
    */
   const ORIENTATION = {
     id: 'orientation',
@@ -10013,8 +10039,35 @@ function getCategoriesForUnitV2(unitOrder) {
     goal: 'Where ASL comes from, why it matters, and how to learn it well — start here.',
     href: 'orientation.html',
   };
+  function isOrientationComplete() {
+    const state = loadProgressState();
+    if (state.orientationDoneAt) return true;
+    // Grandfather learners who were already working before Orientation became required.
+    return Array.isArray(state.completedItemIds) && state.completedItemIds.length > 0;
+  }
+  // Idempotent. Returns true only on the call that actually flips the state, so callers
+  // can show their "Chapter 1 unlocked" feedback exactly once.
+  function markOrientationComplete() {
+    if (isOrientationComplete()) {
+      // Also stamp grandfathered learners so the state stays true even if their progress
+      // is ever reset; but don't report it as newly completed.
+      const existing = loadProgressState();
+      if (!existing.orientationDoneAt) {
+        existing.orientationDoneAt = new Date().toISOString();
+        saveProgressState(existing);
+      }
+      return false;
+    }
+    const state = loadProgressState();
+    state.orientationDoneAt = new Date().toISOString();
+    saveProgressState(state);
+    try {
+      global.dispatchEvent(new CustomEvent('lw-orientation-complete'));
+    } catch (e) { /* event is a convenience only */ }
+    return true;
+  }
   function getOrientation() {
-    return ORIENTATION;
+    return Object.assign({}, ORIENTATION, { complete: isOrientationComplete() });
   }
   /* ── UI config (§3.9, §3.10, §3.5, §3.12) ───────────────────────
    * Plain config, read by the preview renderer (js/missions-preview.js)
@@ -10074,7 +10127,9 @@ function getCategoriesForUnitV2(unitOrder) {
     getHeartsState,          // NEW — Mission Overview + Hearts module
     consumeHeartForMastery,          // Mission Overview + Hearts module (unchanged — still used by the V1-quiz.js fallback path, see file header)
     consumeHeartForIncorrectAnswer,  // NEW (Task 2) — additive; used only by the-native Mastery Quiz (js/mastery-quiz.js)
-    getOrientation,          // NEW — Orientation row above the chapters
+    getOrientation,          // NEW — Orientation row above the chapters (now includes `complete`)
+    isOrientationComplete,   // NEW — Orientation gate: false locks every chapter (see isChapterUnlocked)
+    markOrientationComplete, // NEW — called by js/orientation.js at the bottom of the page / on Continue
     whenMissionsSyncReady,     // NEW — cross-device Firestore sync (call once per page load)
     registerCustomSigns,       // NEW — merges admin-added lessons (Firestore `signs`) into SIGNS_V2; used by js/custom-lessons.js
     isChapterUnlocked,       // NEW (Task 1) — chapter gating (revised: Ch1 -> Ch2 -> all others)

@@ -57,6 +57,8 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
+  <!-- Orientation gate styles (locked shortcut buttons, gate note). -->
+  <link rel="stylesheet" href="../css/orientation-gate.css" />
   <link rel="stylesheet" href="../css/tour.css" />
   <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
@@ -143,6 +145,20 @@
               <div class="sk-group" role="status"><span class="sr-only">Loading your progress…</span><div class="sk-row"><span class="sk sk--circle" style="--s:88px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:5rem;--h:.75rem"></span><span class="sk sk--title" style="--w:10rem;--h:1.2rem"></span></div></div><div class="sk-cols" style="margin-top:var(--space-2)"><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div></div></div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ── Orientation (new learners only) ──────────────────────────
+           New learners must finish Orientation before Chapter 1 unlocks
+           (js/missions.js isOrientationComplete()). js/dashboard.js
+           renderOrientationCard() un-hides this section while it is pending
+           and keeps it hidden for everyone else. -->
+      <section class="section section--sm section--tight" id="orientation-section" hidden>
+        <div class="container">
+          <div class="section-heading-row">
+            <h2>Start Here</h2>
+          </div>
+          <div id="orientation-card"></div>
         </div>
       </section>
 
