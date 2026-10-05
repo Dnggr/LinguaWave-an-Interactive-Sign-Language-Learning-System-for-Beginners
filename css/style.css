@@ -1331,6 +1331,47 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 @media (prefers-reduced-motion: reduce) {
   .lw-shake-invalid { animation: none; }
 }
+
+/* ── 19b. UNLOCK PULSE (shared) ──────────────────────────────────────
+   A clearly visible two-beat highlight (~1.8s) on content that has JUST gone
+   locked -> unlocked: the Game sidebar item (js/game-gate.js) and chapter rows
+   on Learn (js/learn.js). Both go through window.LWUnlockFx, which adds this
+   class only on a real locked -> unlocked change, only while the element is on
+   screen in a visible tab, and removes it again on 'animationend'.
+
+   Each beat = an accent ring + soft outer glow + a faint accent wash behind the
+   content + a small swell (scale). The wash and swell stay visible even where a
+   scrolling sidebar would clip the outer glow. Only the 40% keyframe is defined,
+   so the start and end are each element's own resting box-shadow / background /
+   transform and it settles back exactly: nothing to restore. The swell is a
+   transform, so it never changes layout (a chapter row swells less than a
+   sidebar item so it can't crowd its neighbours).
+   Reduced motion: no animation at all (OS setting, or the in-app toggle's
+   html.lw-force-reduced-motion — see section 15). */
+.lw-unlock-pulse {
+  --lw-unlock-ring: var(--clr-accent);
+  --lw-unlock-glow: var(--clr-accent-soft);   /* fallbacks where color-mix() is unsupported */
+  --lw-unlock-wash: var(--clr-accent-soft);
+  animation: lw-unlock-pulse 900ms var(--ease) 2;
+}
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+  .lw-unlock-pulse {
+    --lw-unlock-glow: color-mix(in srgb, var(--clr-accent) 55%, transparent);
+    --lw-unlock-wash: color-mix(in srgb, var(--clr-accent) 22%, transparent);
+  }
+}
+.trail-group.lw-unlock-pulse { --lw-unlock-scale: 1.012; }
+@keyframes lw-unlock-pulse {
+  40% {
+    box-shadow: 0 0 0 4px var(--lw-unlock-ring), 0 0 32px 8px var(--lw-unlock-glow);
+    background-color: var(--lw-unlock-wash);
+    transform: scale(var(--lw-unlock-scale, 1.04));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lw-unlock-pulse { animation: none; }
+}
+html.lw-force-reduced-motion .lw-unlock-pulse { animation: none; }
 /* ── 20. LOADING SKELETONS (shared, page-agnostic) ──────────────────
    Why: containers like #mission-banner, #path-list or #xp-card start
    empty (or with a one-line "Loading…") and get filled by JS a moment
