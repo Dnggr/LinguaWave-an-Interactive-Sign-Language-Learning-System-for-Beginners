@@ -128,7 +128,14 @@ function signChipState(mission, signId) {
 // approximation of it), so a chip here and that page's own
 // boot()/course-sidebar guard never disagree about which signs count
 // as "pending".
+//
+// FULL CURRICULUM BYPASS — once Chapter 2 is complete (window.LWMissions
+// .isFullCurriculumUnlocked(), the global "everything is open" state) this
+// sequential rule no longer applies: every sign of an unlocked mission is
+// reachable straight away, in any order. camera-practice.js's copy has the
+// identical bypass, so chips and the camera page keep agreeing.
 function isSignAccessible(mission, signs, signId) {
+  if (window.LWMissions.isFullCurriculumUnlocked?.()) return true;
   if (isSignLearned(mission, signId)) return true;
   const idx = signs.indexOf(signId);
   if (idx <= 0) return true;
