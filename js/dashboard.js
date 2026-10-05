@@ -16,6 +16,18 @@
  * #journey-rail) is gone from pages/dashboard.html — see that
  * file's header comment for the new element ids this now targets.
  *
+ * ORIENTATION GATE (this revision) : new learners must finish Orientation
+ * before Chapter 1 unlocks (rule: js/missions.js isOrientationComplete()).
+ * While it is pending this page:
+ *   - turns the Today's Mission banner into "Start Orientation" (the
+ *     first real mission is locked, so it must not be offered);
+ *   - shows an Orientation card (#orientation-card) above the Learning Path;
+ *   - locks the Practice / Quiz / Daily Challenge shortcuts, which all
+ *     point at a mission;
+ *   - tells the learner why when they tap a locked tile.
+ * Once Orientation is done everything below reverts to normal and the
+ * Orientation card disappears.
+ *
  * "Recommended for You" is the one section with copy that isn't a
  * live number (icons/labels/blurbs are static, like the homepage's
  * feature cards) — but every link it produces is a real, working
@@ -29,6 +41,17 @@ function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+// True while the learner still has to finish Orientation. A missing/old missions
+// layer answers false, so this can never lock anyone out by itself.
+function orientationPending() {
+  const m = window.LWMissions;
+  return !!(m && typeof m.isOrientationComplete === 'function' && !m.isOrientationComplete());
+}
+
+function toastLocked() {
+  window.LinguaWave?.showToast?.('Finish Orientation first. It unlocks Chapter 1.', 'info');
 }
 
 function pickCurrentMission(missions) {
@@ -96,8 +119,38 @@ function renderGreeting() {
 }
 
 /* ── Today's Mission banner ──────────────────────────────────────── */
+const BANNER_ART = `
+<div class="mission-banner__art" aria-hidden="true">
+      <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="160" cy="160" r="150" fill="rgba(255,255,255,.14)" />
+        <path d="M110 220c-6-40-14-70-14-100 0-14 10-24 22-24s20 10 20 24v50" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M138 170V90c0-13 9-23 21-23s21 10 21 23v80" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M180 170V100c0-13 9-23 21-23s21 10 21 23v90" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M222 190v-60c0-12 8-21 19-21s19 9 19 21v70c0 44-30 80-74 80h-14c-38 0-58-20-70-50l-16-40c-5-13 1-24 12-28 9-3 18 1 23 12l14 28" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,.12)"/>
+        <path d="M90 250c22 20 46 30 72 30" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".5"/>
+      </svg>
+    </div>
+`;
+
+// Orientation pending: the banner's one job is to send the learner to Orientation.
+function renderOrientationBanner(el) {
+  const o = window.LWMissions.getOrientation();
+  el.innerHTML = `
+    <div class="mission-banner__text">
+      <p class="mission-banner__eyebrow">Start here</p>
+      <h2 class="mission-banner__title">${escapeHtml(o.title)}</h2>
+      <p class="mission-banner__desc">${escapeHtml(o.goal)} Finish it to unlock Chapter 1.</p>
+      <a href="${o.href}" class="btn btn--primary btn--lg mission-banner__cta">
+        ${window.LWIcons.markup('continue_mission', { size: 'sm' })}<span class="lw-icon-label">Start Orientation</span>
+      </a>
+    </div>
+    ${BANNER_ART}
+  `;
+}
+
 function renderMissionBanner(missions) {
   const el = document.getElementById('mission-banner');
+  if (orientationPending()) { renderOrientationBanner(el); return; }
   const mission = pickCurrentMission(missions);
 
   if (!mission) {
@@ -117,16 +170,7 @@ function renderMissionBanner(missions) {
         ${window.LWIcons.markup('continue_mission', { size: 'sm' })}<span class="lw-icon-label">${started ? 'Continue Mission' : 'Start Mission'}</span>
       </a>
     </div>
-    <div class="mission-banner__art" aria-hidden="true">
-      <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="160" cy="160" r="150" fill="rgba(255,255,255,.14)" />
-        <path d="M110 220c-6-40-14-70-14-100 0-14 10-24 22-24s20 10 20 24v50" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M138 170V90c0-13 9-23 21-23s21 10 21 23v80" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M180 170V100c0-13 9-23 21-23s21 10 21 23v90" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M222 190v-60c0-12 8-21 19-21s19 9 19 21v70c0 44-30 80-74 80h-14c-38 0-58-20-70-50l-16-40c-5-13 1-24 12-28 9-3 18 1 23 12l14 28" stroke="#fff" stroke-opacity=".9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,.12)"/>
-        <path d="M90 250c22 20 46 30 72 30" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".5"/>
-      </svg>
-    </div>
+    ${BANNER_ART}
   `;
 }
 
@@ -141,7 +185,8 @@ function renderProgressCard(missions) {
   const items = tallyItems(missions);
   const chapters = window.LWMissions.getCategoryGroups();
   const currentChId = window.LWMissions.getCurrentChapterId(missions);
-  const chapter = chapters.find((c) => c.id === currentChId) || null;
+  // Orientation pending: the learner isn't in Chapter 1 yet, so don't say they are.
+  const chapter = orientationPending() ? null : (chapters.find((c) => c.id === currentChId) || null);
   const missionsCompleted = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
   const streak = window.LWMissions.getStreakSummary();
   const hearts = window.LWMissions.getHeartsState();
@@ -152,8 +197,8 @@ function renderProgressCard(missions) {
         <span class="progress-ring__pct">${items.pct}%</span>
       </div>
       <div class="progress-card__level">
-        <span class="progress-card__level-eyebrow">${chapter ? `Chapter ${chapter.order}` : 'Your Progress'}</span>
-        <span class="progress-card__level-title">${chapter ? escapeHtml(chapter.title) : 'Overall Progress'}</span>
+        <span class="progress-card__level-eyebrow">${chapter ? `Chapter ${chapter.order}` : (orientationPending() ? 'Your first step' : 'Your Progress')}</span>
+        <span class="progress-card__level-title">${chapter ? escapeHtml(chapter.title) : (orientationPending() ? 'Orientation' : 'Overall Progress')}</span>
       </div>
     </div>
     <div class="progress-card__stats">
@@ -173,6 +218,37 @@ function renderProgressCard(missions) {
   `;
   const ring = document.getElementById('dash-progress-ring');
   if (ring) ring.style.setProperty('--pct', items.pct);
+}
+
+/* ── Orientation card ───────────────────────────────────────────────
+ * Only while Orientation is pending. #orientation-section stays hidden
+ * (and empty) for everyone else, including returning learners. */
+function renderOrientationCard() {
+  const section = document.getElementById('orientation-section');
+  const el = document.getElementById('orientation-card');
+  if (!section || !el) return;
+  if (!orientationPending()) {
+    section.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+  const o = window.LWMissions.getOrientation();
+  section.hidden = false;
+  el.innerHTML = `
+    <a href="${o.href}" class="card path-row path-row--orientation">
+      <span class="path-row__num" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      </span>
+      <div class="path-row__body">
+        <p class="path-row__title">${escapeHtml(o.title)}</p>
+        <p class="path-row__goal">Read it through to unlock Chapter 1.</p>
+      </div>
+      <div class="path-row__meta">
+        <span class="badge badge--basic">Start here</span>
+        <svg class="path-row__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </a>
+  `;
 }
 
 /* ── Learning Path tile grid ────────────────────────────────────────
@@ -235,7 +311,9 @@ function renderLearningPath(missions) {
  * placeholder "#" link. */
 function renderRecommended(missions) {
   const el = document.getElementById('recommended-grid');
-  const mission = pickCurrentMission(missions);
+  // Orientation pending: every mission is locked, so there is no mission to point at.
+  const gated = orientationPending();
+  const mission = gated ? null : pickCurrentMission(missions);
   const signId = currentSignInProgress(mission);
 
   const practiceHref = mission
@@ -253,19 +331,19 @@ function renderRecommended(missions) {
       icon: 'camera', tone: 'teal',
       title: 'Practice Check',
       desc: 'Record your sign and get instant feedback.',
-      cta: 'Start Practice', href: practiceHref, btn: 'btn--secondary',
+      cta: 'Start Practice', href: practiceHref, btn: 'btn--secondary', gated: true,
     },
     {
       icon: 'asking_questions', tone: 'violet',
       title: 'Quick Quiz',
       desc: 'Test your knowledge in a short mastery quiz.',
-      cta: 'Take Quiz', href: quizHref, btn: 'btn--secondary',
+      cta: 'Take Quiz', href: quizHref, btn: 'btn--secondary', gated: true,
     },
     {
       icon: 'celebration', tone: 'orange',
       title: 'Daily Challenge',
       desc: mission ? `Keep your streak alive with &ldquo;${escapeHtml(mission.title)}.&rdquo;` : 'Keep your streak alive.',
-      cta: 'Start Challenge', href: missionHref, btn: 'btn--secondary',
+      cta: 'Start Challenge', href: missionHref, btn: 'btn--secondary', gated: true,
     },
     {
       icon: 'phrasebook', tone: 'success',
@@ -275,14 +353,19 @@ function renderRecommended(missions) {
     },
   ];
 
-  el.innerHTML = cards.map((c) => `
-    <div class="card rec-card">
+  el.innerHTML = cards.map((c) => {
+    const locked = gated && c.gated;
+    return `
+    <div class="card rec-card${locked ? ' rec-card--locked' : ''}">
       <span class="rec-card__icon rec-card__icon--${c.tone}">${window.LWIcons.markup(c.icon, { size: 'md' })}</span>
       <p class="rec-card__title">${c.title}</p>
       <p class="rec-card__desc">${c.desc}</p>
-      <a href="${c.href}" class="btn ${c.btn} btn--sm rec-card__cta">${c.cta}</a>
+      ${locked
+        ? `<a role="link" aria-disabled="true" tabindex="0" class="btn ${c.btn} btn--sm rec-card__cta" title="Finish Orientation to unlock">${window.LWIcons.markup('chapter_lock', { size: 'sm' })}<span class="lw-icon-label">Locked</span></a>`
+        : `<a href="${c.href}" class="btn ${c.btn} btn--sm rec-card__cta">${c.cta}</a>`}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderDashboard() {
@@ -290,6 +373,7 @@ function renderDashboard() {
   renderGreeting();
   renderMissionBanner(missions);
   renderProgressCard(missions);
+  renderOrientationCard();
   renderLearningPath(missions);
   renderRecommended(missions);
 }
@@ -308,6 +392,24 @@ function initPage() {
   // completed item merged in from another device).
   renderDashboard();
   window.LWMissions.whenMissionsSyncReady().then(renderDashboard);
+
+  // Locked tiles / shortcuts: say WHY while Orientation is pending (these elements are
+  // re-rendered wholesale, so the listeners sit on their stable containers).
+  function explainLock(e, selector) {
+    const hit = e.target.closest(selector);
+    if (!hit || !orientationPending()) return;
+    e.preventDefault();
+    window.LinguaWave?.triggerLockedFeedback?.(hit);
+    toastLocked();
+  }
+  document.getElementById('learning-path-grid')?.addEventListener('click', (e) => explainLock(e, '.path-tile--locked'));
+  document.getElementById('recommended-grid')?.addEventListener('click', (e) => explainLock(e, '.rec-card__cta[aria-disabled="true"]'));
+  document.getElementById('recommended-grid')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') explainLock(e, '.rec-card__cta[aria-disabled="true"]');
+  });
+
+  // Back/forward cache restore (Orientation -> Continue -> Back) would show the old lock state.
+  window.addEventListener('pageshow', (e) => { if (e.persisted) renderDashboard(); });
 }
 
 if (document.readyState === 'loading') {

@@ -1,5 +1,5 @@
 /**
- * js/tour-guides.js: the copy for every page guide           (NEW)
+ * js/tour-guides.js: the copy for every page guide
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE  : One plain data file that holds what each guided tour says
  *            and what it points at. Edit wording or add a step here;
@@ -28,7 +28,33 @@
  *                have at least one NON-optional target, because the
  *                engine waits for those before it starts, which is
  *                how it copes with content a page renders after load.
+ *     when:      (NEW) function returning true/false, evaluated once
+ *                when the guide starts. A step whose `when` returns
+ *                false is dropped, exactly like a missing target. This
+ *                is how one guide shows different copy depending on
+ *                state (e.g. Orientation done or not). Keep it cheap
+ *                and side-effect free; if it throws, the step is kept.
  *   }
+ *
+ * GUIDE-LEVEL OPTIONS (NEW, all optional)
+ *   requires:  function. The guide only auto-starts when it returns
+ *              true. (It does not block start(id) / ?tour=1.)
+ *   followUps: array of guide ids. After this page's own guide, the
+ *              engine auto-starts these in order, each only if its own
+ *              `requires` passes and it has not been seen. A follow-up
+ *              runs right after the primary guide FINISHES (Done), or
+ *              on its own when the primary was already seen. It never
+ *              chains after a Skip.
+ *
+ * ORIENTATION: new learners must finish Orientation before Chapter 1
+ *            unlocks (js/missions.js isOrientationComplete()). The
+ *            helpers just below read that single source of truth, so
+ *            the tour never keeps a second copy of the state:
+ *              - dashboard / learn guides tell a new user to start
+ *                with Orientation;
+ *              - the `orientation` guide explains how to finish it;
+ *              - the `chapter1-unlocked` follow-up points at Chapter 1
+ *                once Orientation is done and Chapter 1 is untouched.
  *
  * REMINDERS : window.LWTourReminders (bottom of this file) holds the copy
  *            for one-step "Got it" popups that are NOT guides: they are
@@ -47,12 +73,49 @@
 (function () {
   'use strict';
 
+  /* ── State helpers (read-only; the source of truth is LWMissions) ── */
+  function missionsApi() { return window.LWMissions || null; }
+
+  // True when Orientation is done. If the missions layer isn't on the page
+  // we answer "done" on purpose, so a missing script can never make the tour
+  // nag a returning learner to redo Orientation.
+  function orientationDone() {
+    try {
+      var m = missionsApi();
+      if (!m || typeof m.isOrientationComplete !== 'function') return true;
+      return !!m.isOrientationComplete();
+    } catch (e) { return true; }
+  }
+  function orientationPending() { return !orientationDone(); }
+
+  // Chapter 1 exists and nothing in it has been started yet.
+  function chapter1Untouched() {
+    try {
+      var m = missionsApi();
+      if (!m || !m.getAllMissions || !m.getMissionProgress) return false;
+      var list = m.getAllMissions().filter(function (x) { return x.categoryGroup === 'asl_foundations'; });
+      return list.length > 0 && list.every(function (x) { return m.getMissionProgress(x) === 0; });
+    } catch (e) { return false; }
+  }
+
+  function currentPage() {
+    return document.body && document.body.dataset ? document.body.dataset.tour : '';
+  }
+  function onPage(id) { return function () { return currentPage() === id; }; }
+
   window.LWTourGuides = {
 
     /* ── Dashboard ─────────────────────────────────────────────── */
     dashboard: {
+      followUps: ['chapter1-unlocked'],
       steps: [
         {
+          when: orientationPending,
+          title: 'Welcome to LinguaWave',
+          body: 'Your first step is Orientation. It unlocks Chapter 1. Here is a 30-second tour. You can skip it at any time.',
+        },
+        {
+          when: orientationDone,
           title: 'Welcome to your dashboard',
           body: 'Here is a 30-second tour of where everything is. You can skip it at any time.',
         },
@@ -74,6 +137,14 @@
           body: 'Select your name to see your level, achievements and activity, or to change your picture.',
         },
         {
+          when: orientationPending,
+          target: '#mission-banner',
+          placement: 'bottom',
+          title: 'Start with Orientation',
+          body: 'This button opens Orientation. Finish it and your first mission appears here.',
+        },
+        {
+          when: orientationDone,
           target: '#mission-banner',
           placement: 'bottom',
           title: 'Pick up your next mission',
@@ -85,6 +156,23 @@
           body: 'See your overall progress, day streak and Mastery Hearts. Hearts are spent on wrong answers in a Mastery Quiz.',
         },
         {
+          // The Orientation card added to the dashboard (#orientation-card).
+          when: orientationPending,
+          target: '#orientation-card .path-row',
+          optional: true,
+          placement: 'top',
+          title: 'Orientation comes first',
+          body: 'Open this card and read through the page. Chapter 1, and every chapter after it, stays locked until you finish.',
+        },
+        {
+          when: orientationPending,
+          target: '#learning-path-grid',
+          placement: 'top',
+          title: 'Chapter 1 unlocks after Orientation',
+          body: 'These tiles open once Orientation is done. After that, finish every mission in a chapter to unlock the next one.',
+        },
+        {
+          when: orientationDone,
           target: '#learning-path-grid',
           placement: 'top',
           title: 'Jump into any open mission',
@@ -95,6 +183,7 @@
 
     /* ── Learn ─────────────────────────────────────────────────── */
     learn: {
+      followUps: ['chapter1-unlocked'],
       steps: [
         {
           target: '#path-search-input',
@@ -103,17 +192,72 @@
           body: 'Type a mission name or a topic to narrow the list.',
         },
         {
+          when: orientationPending,
           target: '#orientation-slot .path-row',
           optional: true,
           placement: 'bottom',
-          title: 'New to ASL? Start here',
-          body: 'This short orientation introduces the basics before your first mission.',
+          title: 'Start with Orientation',
+          body: 'Open this first. Chapter 1 stays locked until you finish it.',
         },
         {
+          when: orientationDone,
+          target: '#orientation-slot .path-row',
+          optional: true,
+          placement: 'bottom',
+          title: 'Orientation is done',
+          body: 'You can reopen the orientation here any time.',
+        },
+        {
+          when: orientationPending,
+          target: '#path-list .trail-group',
+          placement: 'top',
+          title: 'Chapters open in order',
+          body: 'Missions are grouped into chapters. Chapter 1 unlocks once Orientation is done, and later chapters unlock as you finish earlier ones.',
+        },
+        {
+          when: orientationDone,
           target: '#path-list .trail-group',
           placement: 'top',
           title: 'Work through the chapters',
           body: 'Missions are grouped into chapters. Open a chapter to see its missions. Later chapters unlock as you finish earlier ones.',
+        },
+      ],
+    },
+
+    /* ── Orientation (new learners only) ───────────────────────── */
+    // One centred card, deliberately with no target: spotlighting the
+    // Continue button would scroll the page to the end, and scrolling to
+    // the end is what completes Orientation (js/orientation.js).
+    orientation: {
+      requires: orientationPending,
+      steps: [
+        {
+          title: 'Start with Orientation',
+          body: 'Read through this page. When you reach the end, or press Continue to the Learning Path, Orientation is complete and Chapter 1 unlocks.',
+        },
+      ],
+    },
+
+    /* ── Chapter 1 unlocked (follow-up on dashboard + learn) ───── */
+    // Auto-starts only after Orientation is done AND Chapter 1 has not been
+    // touched, so it appears once, right when it is useful. Each step is
+    // tied to the page it belongs to through `when`.
+    'chapter1-unlocked': {
+      requires: function () { return orientationDone() && chapter1Untouched(); },
+      steps: [
+        {
+          when: onPage('learn'),
+          target: '#path-list .trail-group[data-chapter="asl_foundations"]',
+          placement: 'top',
+          title: 'Chapter 1 is unlocked',
+          body: 'Orientation is complete. Open Chapter 1 and start your first mission.',
+        },
+        {
+          when: onPage('dashboard'),
+          target: '#mission-banner',
+          placement: 'bottom',
+          title: 'Chapter 1 is unlocked',
+          body: 'Orientation is complete. Start your first Chapter 1 mission here.',
         },
       ],
     },

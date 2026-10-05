@@ -16,6 +16,18 @@
  * dashboard.js/mission-overview.js, are gone in favor of that
  * single shared rule).
  *
+ * ORIENTATION GATE (this revision) : new learners must finish Orientation
+ * (pages/orientation.html) before Chapter 1 unlocks. The rule lives in
+ * js/missions.js (isOrientationComplete(), enforced by isChapterUnlocked()),
+ * so every chapter and row here already renders 'Locked' without any
+ * lock logic of its own. What this file adds on top:
+ *   - the Orientation card shows Start here / Completed, plus a short note
+ *     explaining why the chapters below are locked;
+ *   - while Orientation is pending NO chapter is auto-opened or scrolled to
+ *     (the learner should land on the Orientation card, not on a locked
+ *     Chapter 1 below it);
+ *   - tapping a locked row explains why, instead of only shaking.
+ *
  * ROW CLICK (updated) : unlocked rows now open mission-overview.html
  * (guide §6) instead of handing off straight to pages/quiz.html — see
  * Missions_LinguaWave_Progress_Tracker.md session log for the Mission
@@ -70,6 +82,13 @@ function scrollToOpenChapter() {
 // chapter can change once merged progress arrives) without yanking the
 // page out from under someone who has already started scrolling.
 let userTookOverScroll = false;
+
+// True while the learner still has to finish Orientation. A missing/old
+// missions layer answers false, so this can never lock anyone out by itself.
+function orientationPending() {
+  const m = window.LWMissions;
+  return !!(m && typeof m.isOrientationComplete === 'function' && !m.isOrientationComplete());
+}
 
 function statusMeta(status) {
   switch (status) {
@@ -190,7 +209,7 @@ function renderChapterRail(model) {
 
   const orientationEl = document.getElementById('orientation-slot');
   if (orientationEl && orientationEl.firstElementChild) {
-    railItems.push({ key: 'orientation', el: orientationEl, label: 'Orientation', sub: 'Start here', icon: 'chapter_compass' });
+    railItems.push({ key: 'orientation', el: orientationEl, label: 'Orientation', sub: orientationPending() ? 'Start here' : 'Completed', icon: 'chapter_compass' });
   }
   model.forEach((m) => {
     const el = document.querySelector(`#path-list .trail-group[data-chapter="${m.id}"]`);
@@ -297,20 +316,28 @@ function renderRow(mission, index, status, displayNumber) {
 function renderOrientationCard() {
   if (!window.LWMissions || !window.LWMissions.getOrientation) return '';
   const o = window.LWMissions.getOrientation();
+  const done = !!o.complete;
+  const numIcon = done
+    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
+    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`;
+  const lockIcon = window.LWIcons && window.LWIcons.markup ? window.LWIcons.markup('chapter_lock', { size: 'sm' }) : '';
   return `
-    <a href="${o.href}" class="card path-row path-row--orientation">
-      <span class="path-row__num" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      </span>
+    <a href="${o.href}" class="card path-row path-row--orientation${done ? ' path-row--done' : ''}">
+      <span class="path-row__num" aria-hidden="true">${numIcon}</span>
       <div class="path-row__body">
         <p class="path-row__title">${o.title}</p>
         <p class="path-row__goal">${o.goal}</p>
       </div>
       <div class="path-row__meta">
-        <span class="badge badge--basic">Start here</span>
+        <span class="badge ${done ? 'badge--done' : 'badge--basic'}">${done ? 'Completed' : 'Start here'}</span>
         <svg class="path-row__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
       </div>
     </a>
+    ${done ? '' : `
+    <p class="orientation-gate-note" role="note">
+      ${lockIcon}
+      <span>Finish Orientation first. Chapter 1, and every chapter after it, stays locked until you reach the end of the Orientation page or press Continue.</span>
+    </p>`}
   `;
 }
 
@@ -359,6 +386,9 @@ function renderList(filterText) {
   // match rather than only the "current" one — same reasoning as
   // js/learn.js's applySearchFilter for the V1 trail.
   const isFiltering = query !== '';
+  // Orientation still pending: every chapter is locked, so don't auto-open one
+  // (and don't scroll past the Orientation card to reach it).
+  const pendingOrientation = orientationPending();
 
   const byChapter = new Map();
   const ungrouped = [];
@@ -374,7 +404,7 @@ function renderList(filterText) {
     .map((ch) => {
       const missionsInChapter = byChapter.get(ch.id);
       const doneCount = missionsInChapter.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
-      const isOpen = isFiltering || ch.id === currentChapterId;
+      const isOpen = isFiltering || (!pendingOrientation && ch.id === currentChapterId);
       // Task 1 — a chapter is locked as a whole until its gate is met
       // (Ch2 needs Ch1 done; Ch3+ need Ch1 AND Ch2 done — see missions.js). The row-level UI already carries that
       // (each mission inside renders 'locked' via getMissionStatus()
@@ -387,7 +417,7 @@ function renderList(filterText) {
       // to the success color instead of the neutral default.
       const chapterComplete = doneCount === missionsInChapter.length;
       const chapterMeta = chapterLocked
-        ? `<span class="badge badge--locked trail-group__lock-badge">Locked</span>`
+        ? `<span class="badge badge--locked trail-group__lock-badge"${pendingOrientation ? ' title="Finish Orientation to unlock"' : ''}>Locked</span>`
         : `<span class="trail-group__meta">${doneCount}/${missionsInChapter.length} complete</span>`;
       railModel.push({ id: ch.id, order: ch.order, title: ch.title, locked: chapterLocked, complete: chapterComplete, done: doneCount, total: missionsInChapter.length });
       return `
@@ -451,6 +481,9 @@ function initPage() {
     if (!lockedRow) return;
     e.preventDefault();
     window.LinguaWave?.triggerLockedFeedback?.(lockedRow);
+    if (orientationPending()) {
+      window.LinguaWave?.showToast?.('Finish Orientation first. It unlocks Chapter 1.', 'info');
+    }
   });
 
   // Debounced (150ms) — see debounce()'s comment above. A learner
@@ -463,6 +496,15 @@ function initPage() {
     renderList(searchInput.value);
     if (!searchInput.value.trim()) scrollToOpenChapter();
   }, 150));
+
+  // Coming back to this page from the browser's back/forward cache (e.g. Orientation ->
+  // Continue -> Back -> Forward) would otherwise show the old lock state.
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    allMissions = window.LWMissions.getAllMissions();
+    if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
+    renderList(searchInput.value);
+  });
 
   window.LWMissions.whenMissionsSyncReady().then(() => {
     allMissions = window.LWMissions.getAllMissions();
