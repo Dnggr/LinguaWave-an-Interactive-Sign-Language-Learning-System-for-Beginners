@@ -14,6 +14,18 @@
  * before Orientation became required) are left alone: no observer, no
  * note, no toast.
  *
+ * READING-PROGRESS BAR (right edge, .scroll-progress in css/app.css):
+ *   - Fills top-to-bottom with scroll position, but is ONE-WAY: it keeps
+ *     the furthest point reached, so scrolling back up never shrinks it.
+ *     The furthest point is also remembered per account (localStorage) so
+ *     a reload does not reset it.
+ *   - Already full for learners whose Orientation is complete, including
+ *     the grandfathered ones (isOrientationComplete()). It stays hidden
+ *     until the account's progress is known, so there is no empty flash.
+ *   - Jumps to full the moment Orientation completes (bottom reached or
+ *     Continue clicked), and also if the cross-device sync later reveals
+ *     that this account had already completed it.
+ *
  * AUTH TIMING: progress is stored per account, so nothing is written until
  * Firebase has restored the session (LWAuth.whenAuthReady()). Writing
  * earlier would save the flag under "no user" and the real account would
@@ -25,6 +37,7 @@
   'use strict';
 
   var NOTE_ID = 'orientation-gate-note';
+  var PROGRESS_KEY_PREFIX = 'lw-orientation-read-max:';
 
   function missions() { return window.LWMissions || null; }
 
@@ -54,12 +67,106 @@
     var note = null;
     var sentinel = null;
 
+    // ── Reading-progress bar (one-way) ────────────────────────────
+    var bar = document.querySelector('.scroll-progress');
+    var barReady = false;      // .is-ready added (account progress known)
+    var maxProgress = 0;       // furthest point reached, 0..1. Only ever goes up.
+    var barFrame = 0;
+    var storageKey = null;
+
+    function progressKey() {
+      if (storageKey) return storageKey;
+      var uid = 'guest';
+      try {
+        var u = window.LWAuth && window.LWAuth.getCurrentUser && window.LWAuth.getCurrentUser();
+        if (u && u.uid) uid = u.uid;
+      } catch (e) {}
+      storageKey = PROGRESS_KEY_PREFIX + uid;
+      return storageKey;
+    }
+
+    function readSaved() {
+      try {
+        var v = parseFloat(localStorage.getItem(progressKey()));
+        return isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+      } catch (e) { return 0; }
+    }
+
+    function writeSaved(v) {
+      try { localStorage.setItem(progressKey(), String(Math.round(v * 1000) / 1000)); } catch (e) {}
+    }
+
+    function clearSaved() {
+      try { localStorage.removeItem(progressKey()); } catch (e) {}
+    }
+
+    // Raise the bar to `v` (0..1). Lower values are ignored: this is what makes it one-way.
+    function raiseProgress(v) {
+      if (!(v > maxProgress)) return;
+      maxProgress = Math.min(1, v);
+      if (bar) bar.style.setProperty('--orientation-progress', String(maxProgress));
+      if (barReady && !finished) writeSaved(maxProgress);
+    }
+
+    function scrollRatio() {
+      var doc = document.documentElement;
+      var scrollable = doc.scrollHeight - window.innerHeight;
+      if (scrollable <= 0) return 1;     // everything already fits on screen
+      return Math.min(1, Math.max(0, window.scrollY / scrollable));
+    }
+
+    function onBarScroll() {
+      if (barFrame) return;
+      barFrame = window.requestAnimationFrame(function () {
+        barFrame = 0;
+        raiseProgress(scrollRatio());
+      });
+    }
+
+    function stopBarTracking() {
+      window.removeEventListener('scroll', onBarScroll);
+      window.removeEventListener('resize', onBarScroll);
+      if (barFrame) { window.cancelAnimationFrame(barFrame); barFrame = 0; }
+    }
+
+    // Show the bar. `isDone` = this account has already completed Orientation.
+    function showBar(isDone) {
+      if (!bar || barReady) return;
+      barReady = true;
+      if (isDone) {
+        raiseProgress(1);
+        clearSaved();
+      } else {
+        raiseProgress(Math.max(readSaved(), scrollRatio()));
+        window.addEventListener('scroll', onBarScroll, { passive: true });
+        window.addEventListener('resize', onBarScroll, { passive: true });
+      }
+      bar.classList.add('is-ready');
+    }
+
+    // Orientation turned out to be done already (e.g. the cross-device sync arrived late).
+    function settleAsAlreadyDone() {
+      if (finished) return;
+      finished = true;
+      if (observer) { observer.disconnect(); observer = null; }
+      window.removeEventListener('scroll', onScrollFallback);
+      window.removeEventListener('resize', onScrollFallback);
+      stopBarTracking();
+      if (note && note.parentNode) note.parentNode.removeChild(note);
+      note = null;
+      if (barReady) clearSaved();
+      raiseProgress(1);
+    }
+
     function complete() {
       if (finished) return;
       finished = true;
       if (observer) { observer.disconnect(); observer = null; }
       window.removeEventListener('scroll', onScrollFallback);
       window.removeEventListener('resize', onScrollFallback);
+      stopBarTracking();
+      raiseProgress(1);                  // completed = full bar, never partial
+      if (barReady) clearSaved();
 
       var newlyDone = false;
       try { newlyDone = !!m.markOrientationComplete(); } catch (e) { console.warn('[orientation.js] could not save Orientation:', e); }
@@ -127,12 +234,23 @@
 
     whenAuthReady(function () {
       authReady = true;
-      if (finished) return;
+      if (finished) { showBar(true); return; }   // completed (Continue) before auth was ready
       var already = false;
       try { already = !!(m.isOrientationComplete && m.isOrientationComplete()); } catch (e) {}
-      if (already) { finished = true; return; }
+      if (already) { finished = true; showBar(true); return; }
       addNote();
       watchBottom();
+      showBar(false);
+
+      // Progress may live only in Firestore (new device): once the sync has run, re-check, so
+      // a learner who had already finished sees a full bar and no "unlock Chapter 1" note.
+      try {
+        Promise.resolve(m.whenMissionsSyncReady && m.whenMissionsSyncReady()).then(function () {
+          var doneNow = false;
+          try { doneNow = !!(m.isOrientationComplete && m.isOrientationComplete()); } catch (e) {}
+          if (doneNow) settleAsAlreadyDone();
+        }, function () {});
+      } catch (e) {}
     });
   }
 

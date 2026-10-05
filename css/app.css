@@ -1922,3 +1922,46 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Reading-progress bar (pages/orientation.html) ───────────────
+ * A thin vertical bar on the RIGHT edge that fills top-to-bottom as the
+ * learner reads Orientation. js/orientation.js drives it by setting one
+ * custom property on the bar, `--orientation-progress` (0 to 1); the fill
+ * is a full-height element scaled on Y from that value (transform only,
+ * so nothing re-lays-out while scrolling).
+ *
+ * ONE-WAY: the value only ever goes up. Scrolling back up does not shrink
+ * the bar (the script keeps the furthest point reached), and once
+ * Orientation is complete the bar is simply full. Learners who already had
+ * progress before Orientation became required are treated as complete, so
+ * they see it full from the start.
+ *
+ * Hidden until js/orientation.js adds `.is-ready` (after the account's
+ * progress is known), so a returning learner never sees a flash of an
+ * empty bar, and a page where the script does not run shows nothing.
+ * Decorative (aria-hidden); the page itself is the content.
+ *
+ * Reduced motion: the bar only moves as far as the learner scrolls, and
+ * §15 in style.css shortens every transition to .01ms, so it just steps
+ * instead of easing. Nothing here needs an opt-out. */
+.scroll-progress { display: none; }
+
+.scroll-progress.is-ready {
+  display: block;
+  position: fixed;
+  top: 0; bottom: 0;
+  right: env(safe-area-inset-right, 0px);
+  width: 4px;
+  z-index: 110;                   /* above sticky .navbar (100) and the mobile sidebar bar (90) */
+  background: var(--clr-border);
+  pointer-events: none;
+}
+.scroll-progress__fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, var(--clr-accent), var(--clr-violet));
+  border-radius: 0 0 var(--radius-pill) var(--radius-pill);
+  transform-origin: top;
+  transform: scaleY(var(--orientation-progress, 0));
+  transition: transform .15s linear;
+}
