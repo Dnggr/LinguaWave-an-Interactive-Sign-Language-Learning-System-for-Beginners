@@ -90,6 +90,10 @@
 </head>
 <body>
 
+  <!-- Reading-progress bar (right edge, fills top to bottom). One-way: it never shrinks when you scroll up, and it is
+       already full for learners who completed Orientation. Driven by js/orientation.js; styles under "Reading-progress bar" in css/app.css. -->
+  <div class="scroll-progress" aria-hidden="true"><div class="scroll-progress__fill"></div></div>
+
   <a href="#orientation-main" class="skip-link">Skip to content</a>
 
   <div class="app-shell">
