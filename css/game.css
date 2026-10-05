@@ -362,3 +362,38 @@
   .ta-demo__video,.ta-demo__frame{min-height:clamp(260px,40dvh,420px)}
   .ta-cam{flex:none;height:clamp(200px,32dvh,320px);min-height:0;border-radius:var(--radius-lg)}
 }
+
+/* Game picker lock (js/game-gate.js). The Game tab is never locked; instead pages/game.html shows the #game-lock banner
+   and every .game-mode card gets .game-mode--locked until Chapter 1 is finished. Locked cards stay fully readable: they
+   only swap the mode color for the muted neutral (so eyebrow, icon, bottom edge and Play pill all go quiet at once),
+   lose the hover lift, and show a "Locked" pill. Keyboard focus keeps its ring because a locked card opens the modal.
+   NO FLASH: js/game-gate.js sets <html data-game-gate="checking|locked|unlocked"> while the page is still loading, from the
+   state it remembered for this account. "locked" gives the same look as .game-mode--locked and shows the banner before JS runs;
+   "checking" (nothing remembered yet) dims the cards and makes them inert so they never look playable by mistake. */
+.game-lock{display:flex;align-items:center;gap:var(--space-5);margin-bottom:clamp(var(--space-5),3vw,var(--space-8));padding:var(--space-5);border:1px solid var(--clr-border);border-left:5px solid var(--clr-accent);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
+.game-lock[hidden]{display:none}
+.game-lock:focus{outline:none}
+.game-lock__mark{display:grid;flex:0 0 auto;place-items:center;width:48px;height:48px;border:2px solid var(--clr-accent);border-radius:50%;background:var(--clr-accent-soft);color:var(--clr-accent)}
+.game-lock__mark svg{width:22px;height:22px}
+.game-lock__body{display:flex;flex:1 1 auto;min-width:0;flex-direction:column;gap:var(--space-2)}
+.game-lock__title{margin:0;font-family:var(--font-display);font-size:var(--fs-lg);letter-spacing:-.01em}
+.game-lock__text{margin:0;color:var(--clr-text-muted);line-height:1.5}
+.game-lock__progress{max-width:420px;margin-top:var(--space-1)}
+.game-lock__label{display:flex;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-1);font-size:var(--fs-sm);font-weight:600}
+.game-lock__track{height:8px;overflow:hidden;border-radius:var(--radius-pill);background:var(--clr-track)}
+.game-lock__fill{width:100%;height:100%;border-radius:inherit;background:var(--clr-accent);transform-origin:left;transform:scaleX(var(--lock-fill,0))}
+.game-lock__go{flex:0 0 auto}
+@keyframes game-lock-flash{0%{box-shadow:var(--shadow-card),0 0 0 0 var(--clr-accent-soft)}40%{box-shadow:var(--shadow-card),0 0 0 8px var(--clr-accent-soft)}100%{box-shadow:var(--shadow-card),0 0 0 0 transparent}}
+@media(prefers-reduced-motion:no-preference){.game-lock--flash{animation:game-lock-flash 1.2s var(--ease) 1}}
+html.lw-force-reduced-motion .game-lock--flash{animation:none}
+@media(max-width:720px){.game-lock{flex-direction:column;align-items:stretch}.game-lock__go{width:100%;justify-content:center}}
+
+html[data-game-gate="locked"] .game-lock[hidden]{display:flex}
+html[data-game-gate="checking"] .game-picker .game-mode{opacity:.55;pointer-events:none}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode){--mode-color:var(--clr-text-muted);--mode-soft:var(--clr-surface-2);cursor:default}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode) .game-mode__action{background:var(--clr-surface-2);color:var(--clr-text-muted);border:1px solid var(--clr-border)}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode) .game-mode__action svg{width:14px;height:14px;flex:0 0 auto}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode):hover{transform:none;border-color:var(--clr-border);box-shadow:var(--shadow-card)}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode):hover::before{transform:none}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode):hover .game-mode__action{gap:var(--space-2)}
+:is(.game-mode--locked,html[data-game-gate="locked"] .game-mode):focus-visible{transform:none;border-color:var(--clr-accent);box-shadow:var(--shadow-card),0 0 0 3px var(--clr-accent-soft)}

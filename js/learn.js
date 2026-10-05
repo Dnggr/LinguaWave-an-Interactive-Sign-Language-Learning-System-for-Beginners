@@ -32,6 +32,14 @@
  * (guide §6) instead of handing off straight to pages/quiz.html — see
  * Missions_LinguaWave_Progress_Tracker.md session log for the Mission
  * Overview + Hearts module entry.
+ *
+ * UNLOCK PULSE (this revision) : a chapter that goes locked -> unlocked since
+ * the learner last saw this page glows (two beats, ~1.8s) once it is actually on
+ * screen in a visible tab. celebrateNewUnlocks()
+ * below asks LWMissions.isChapterUnlocked() (the rule renderList() already
+ * uses for the "Locked" badge) and window.LWUnlockFx (js/game-gate.js) only
+ * compares that with what this account last saw, so a normal page load never
+ * replays it. No unlock logic of its own.
  * ─────────────────────────────────────────────────────────────────
  */
 'use strict';
@@ -440,6 +448,24 @@ function renderList(filterText) {
   renderChapterRail(railModel);
 }
 
+// UNLOCK PULSE — glows each chapter ONCE when it flips locked -> unlocked. Called only after the
+// Firestore sync (local progress alone can be stale on a second device) and on a bfcache restore,
+// never from the first local-only paint. Only chapters currently rendered are observed, so a
+// search that hides a chapter neither fires nor records it. Cosmetic: a failure here is swallowed.
+function celebrateNewUnlocks() {
+  try {
+    const fx = window.LWUnlockFx;
+    const M = window.LWMissions;
+    if (!fx || !M || typeof M.isChapterUnlocked !== 'function') return;
+    const groups = Array.from(document.querySelectorAll('#path-list .trail-group[data-chapter]'));
+    const states = {};
+    groups.forEach((el) => { states[el.dataset.chapter] = M.isChapterUnlocked(el.dataset.chapter, allMissions); });
+    const fired = fx.observe('chapters', states);
+    // play() waits until each row is on screen in a visible tab, and only then records the unlock as seen
+    if (fired.length) fx.play(groups.filter((el) => fired.includes(el.dataset.chapter)), { group: 'chapters', ids: fired });
+  } catch (e) { /* cosmetic only */ }
+}
+
 function initPage() {
   if (!window.LWMissions) {
     document.getElementById('path-list').innerHTML =
@@ -504,6 +530,7 @@ function initPage() {
     allMissions = window.LWMissions.getAllMissions();
     if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
     renderList(searchInput.value);
+    celebrateNewUnlocks();
   });
 
   window.LWMissions.whenMissionsSyncReady().then(() => {
@@ -511,6 +538,7 @@ function initPage() {
     if (orientationSlot) orientationSlot.innerHTML = renderOrientationCard();
     renderList(searchInput.value);
     if (!userTookOverScroll && !searchInput.value.trim()) scrollToOpenChapter();
+    celebrateNewUnlocks();   // after the re-render + scroll, so the glow lands where the learner is looking
   });
 }
 

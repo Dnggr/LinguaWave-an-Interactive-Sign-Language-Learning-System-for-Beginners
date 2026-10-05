@@ -57,7 +57,19 @@
     </aside>
     <main class="app-main" id="main">
       <section class="game-picker">
-        <header class="game-picker__intro"><div><p class="gm-kicker">PRACTICE GAMES</p><h1 class="gm-title">Choose a game</h1><p>Pick a mode and start practicing. Construct a Sentence is open to everyone, even before you finish a lesson.</p></div></header>
+        <header class="game-picker__intro"><div><p class="gm-kicker">PRACTICE GAMES</p><h1 class="gm-title">Choose a game</h1><p>Pick a mode and start practicing.</p></div></header>
+        <aside class="game-lock" id="game-lock" role="region" aria-labelledby="game-lock-title" hidden>
+          <span class="game-lock__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+          <div class="game-lock__body">
+            <h2 class="game-lock__title" id="game-lock-title">Finish Chapter 1 to unlock the games</h2>
+            <p class="game-lock__text" id="game-lock-text">Complete every mission in Chapter 1 to start playing. You can look around until then.</p>
+            <div class="game-lock__progress" id="game-lock-progress" hidden>
+              <div class="game-lock__label"><span>Chapter 1 · ASL Foundations</span><span id="game-lock-count"></span></div>
+              <div class="game-lock__track" aria-hidden="true"><div class="game-lock__fill" id="game-lock-fill"></div></div>
+            </div>
+          </div>
+          <a class="btn btn--primary game-lock__go" id="game-lock-go" href="learn.html">Go to Chapter 1</a>
+        </aside>
         <div class="game-picker__grid">
           <a class="game-mode game-mode--sentence" href="construct-sentence.html">
             <span class="game-mode__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="5" height="6" rx="1"/><rect x="10" y="5" width="5" height="6" rx="1"/><rect x="17" y="5" width="4" height="6" rx="1"/><path d="M5 17h14"/></svg></span>
