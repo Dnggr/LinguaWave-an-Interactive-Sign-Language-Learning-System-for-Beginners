@@ -968,8 +968,16 @@ function missionSignOrder(mission) {
 // about which signs count as "pending". A sign already learned is
 // always accessible; the mission's first sign (or any signId this
 // mission doesn't track an order position for) is never gated.
+//
+// FULL CURRICULUM BYPASS — once Chapter 2 is complete
+// (window.LWMissions.isFullCurriculumUnlocked(), the global "everything is
+// open" state) there is no sequential sign gating at all: this is the single
+// choke point for the course sidebar rows, boot()'s direct-URL guard, the
+// sidebar's "continue" target and the Next Sign button, so bypassing here
+// opens all of them together. mission-overview.js's copy matches.
 function isSignAccessible(mission, signId) {
   if (!mission) return true; // no live mission for this category -> nothing to gate
+  if (window.LWMissions?.isFullCurriculumUnlocked?.()) return true;
   if (isSignLearnedInMission(mission, signId)) return true;
   const order = missionSignOrder(mission);
   const idx = order.indexOf(signId);

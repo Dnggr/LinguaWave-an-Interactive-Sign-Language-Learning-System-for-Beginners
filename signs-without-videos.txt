@@ -1,0 +1,99 @@
+medium_family_MARRIAGE	../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/marriage.mp4
+medium_family_SINGLE	../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/single.mp4
+medium_family_DIVORCED	../assets/videos/basic/asl_vid_diy_raw/22. Immediate family/divorced.mp4
+medium_school_PRINCIPAL	../assets/videos/medium/school/PRINCIPAL.mp4
+medium_subjects_MUSIC	../assets/videos/basic/asl_vid_diy_raw/34 school subjects/music.mp4
+medium_subjects_HISTORY	../assets/videos/basic/asl_vid_diy_raw/34 school subjects/history.mp4
+medium_places_WORK	../assets/videos/basic/asl_vid_diy_raw/50. common places/work.mp4
+medium_places_IN	../assets/videos/basic/asl_vid_diy_raw/50. common places/in.mp4
+medium_places_WITH	../assets/videos/basic/asl_vid_diy_raw/50. common places/with.mp4
+medium_time_DAY	../assets/videos/basic/asl_vid_diy_raw/55 basic time words/day.mp4
+medium_time_WEEK	../assets/videos/basic/asl_vid_diy_raw/55 basic time words/week.mp4
+medium_time_MONTH	../assets/videos/basic/asl_vid_diy_raw/55 basic time words/month.mp4
+medium_time_YEAR	../assets/videos/basic/asl_vid_diy_raw/55 basic time words/year.mp4
+medium_time_WILL	../assets/videos/basic/asl_vid_diy_raw/55 basic time words/will.mp4
+medium_clothes_SOCKS	../assets/videos/basic/asl_vid_diy_raw/43 clothes/socks.mp4
+medium_clothes_UNDERWEAR	../assets/videos/basic/asl_vid_diy_raw/43 clothes/underwear.mp4
+medium_clothes_DRESS	../assets/videos/basic/asl_vid_diy_raw/43 clothes/dress.mp4
+medium_clothes_SKIRT	../assets/videos/basic/asl_vid_diy_raw/43 clothes/skirt.mp4
+medium_health_HURT	../assets/videos/medium/health/hurt.mp4
+medium_health_BRUSH_TEETH	../assets/videos/medium/health/brush_teeth.mp4
+medium_feelings_LOVE	../assets/videos/basic/asl_vid_diy_raw/6. basic feelings/love.mp4
+medium_requests_WHO	../assets/videos/medium/requests/who.mp4
+medium_requests_WHAT	../assets/videos/medium/requests/what.mp4
+medium_requests_WHEN	../assets/videos/medium/requests/when.mp4
+medium_requests_WHERE	../assets/videos/medium/requests/where.mp4
+medium_requests_WHY	../assets/videos/medium/requests/why.mp4
+medium_requests_HOW	../assets/videos/medium/requests/how.mp4
+medium_taste_BITTER	../assets/videos/basic/asl_vid_diy_raw/18. taste/bitter.mp4
+medium_appearance_PRETTY	../assets/videos/basic/asl_vid_diy_raw/16. appearance/pretty.mp4
+medium_money_DOLLARS	../assets/videos/medium/money/dollars.mp4
+medium_money_CENTS	../assets/videos/medium/money/cents.mp4
+medium_money_COST	../assets/videos/medium/money/cost.mp4
+medium_animals_CAT	../assets/videos/basic/asl_vid_diy_raw/40 common animals/cat.mp4
+medium_animals_SHEEP	../assets/videos/basic/asl_vid_diy_raw/40 common animals/sheep.mp4
+medium_animals_BUG	../assets/videos/basic/asl_vid_diy_raw/40 common animals/bug.mp4
+medium_animals_CHICKEN	../assets/videos/basic/asl_vid_diy_raw/40 common animals/chicken.mp4
+medium_animals_FISH	../assets/videos/basic/asl_vid_diy_raw/40 common animals/fish.mp4
+medium_animals_RABBIT	../assets/videos/basic/asl_vid_diy_raw/40 common animals/rabbit.mp4
+medium_home_GARAGE	../assets/videos/basic/asl_vid_diy_raw/25. rooms/garage.mp4
+medium_home_GARDEN	../assets/videos/basic/asl_vid_diy_raw/25. rooms/garden.mp4
+medium_furniture_CHAIR	../assets/videos/basic/asl_vid_diy_raw/26. furniture/chair.mp4
+medium_kitchen_PLATE	../assets/videos/basic/asl_vid_diy_raw/29 kitchen/plate.mp4
+medium_kitchen_KNIFE	../assets/videos/basic/asl_vid_diy_raw/29 kitchen/knife.mp4
+medium_distance_HERE	../assets/videos/medium/distance/here.mp4
+medium_distance_THERE	../assets/videos/medium/distance/there.mp4
+medium_distance_CLOSE	../assets/videos/medium/distance/close.mp4
+medium_distance_AWAY	../assets/videos/medium/distance/away.mp4
+medium_vegetables_BEAN	../assets/videos/basic/asl_vid_diy_raw/37 vegetables/bean.mp4
+medium_vegetables_LETTUCE	../assets/videos/basic/asl_vid_diy_raw/37 vegetables/lettuce.mp4
+medium_personal_items_WATCH	../assets/videos/basic/asl_vid_diy_raw/45 personal items/watch.mp4
+medium_turn_taking_TURN	../assets/videos/turn_taking/turn.mp4
+medium_turn_taking_AGAIN	../assets/videos/turn_taking/again.mp4
+medium_frequency_DAILY	../assets/videos/basic/asl_vid_diy_raw/60. frequency/daily.mp4
+medium_frequency_WEEKLY	../assets/videos/basic/asl_vid_diy_raw/60. frequency/weekly.mp4
+medium_frequency_MONTHLY	../assets/videos/basic/asl_vid_diy_raw/60. frequency/monthly.mp4
+medium_responses_SURE	../assets/videos/responses/sure.mp4
+medium_responses_MAYBE	../assets/videos/responses/maybe.mp4
+medium_responses_REALLY	../assets/videos/responses/really.mp4
+medium_responses_UNDERSTAND	../assets/videos/responses/understand.mp4
+medium_answers_SURE	../assets/videos/responses/sure.mp4
+medium_answers_MAYBE	../assets/videos/responses/maybe.mp4
+medium_answers_KNOW	../assets/videos/answers/know.mp4
+medium_answers_DONT	../assets/videos/answers/dont_know.mp4
+medium_answers_UNDERSTAND	../assets/videos/responses/understand.mp4
+medium_wild_animals_SNAKE	../assets/videos/basic/asl_vid_diy_raw/41 wild animals/snake.mp4
+medium_snacks_DONUT	../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/donut.mp4
+medium_snacks_PIE	../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/pie.mp4
+medium_snacks_CUPCAKE	../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/cupcake.mp4
+medium_snacks_ICECREAM	../assets/videos/basic/asl_vid_diy_raw/38 snacks & desserts/icecream.mp4
+medium_weather_STORMY	../assets/videos/basic/asl_vid_diy_raw/48. weather/stormy.mp4
+medium_weather_LIGHTNING	../assets/videos/basic/asl_vid_diy_raw/48. weather/lightning.mp4
+medium_weather_SNOW	../assets/videos/basic/asl_vid_diy_raw/48. weather/snow.mp4
+medium_months_MARCH	../assets/videos/basic/asl_vid_diy_raw/58. months/march.mp4
+medium_vehicles_SHIP	../assets/videos/basic/asl_vid_diy_raw/51. vehicles/ship.mp4
+medium_community_PARK	../assets/videos/basic/asl_vid_diy_raw/54 community places/park.mp4
+medium_directions_LEFT	../assets/videos/medium/directions/left.mp4
+medium_directions_RIGHT	../assets/videos/medium/directions/right.mp4
+medium_directions_FORWARD	../assets/videos/medium/directions/forward.mp4
+medium_directions_TURN	../assets/videos/turn_taking/turn.mp4
+medium_social_CLASSMATE	../assets/videos/medium/social/classmate.mp4
+medium_social_NEIGHBOR	../assets/videos/medium/social/neighbor.mp4
+medium_social_MEET	../assets/videos/medium/social/meet.mp4
+medium_social_VISIT	../assets/videos/medium/social/visit.mp4
+medium_social_LOVE	../assets/videos/medium/feelings/love.mp4
+medium_social_TOGETHER	../assets/videos/medium/social/together.mp4
+medium_conversation_NICE	../assets/videos/medium/conversation/nice.mp4
+medium_conversation_MEET	../assets/videos/medium/social/meet.mp4
+medium_making_requests_HAVE	../assets/videos/medium/making_requests/have.mp4
+medium_making_requests_CAN	../assets/videos/medium/making_requests/can.mp4
+medium_making_requests_WHERE	../assets/videos/medium/requests/where.mp4
+medium_making_requests_THIS	../assets/videos/medium/making_requests/this.mp4
+medium_making_requests_THAT	../assets/videos/medium/making_requests/that.mp4
+medium_nature_SAND	../assets/videos/basic/asl_vid_diy_raw/46 nature/sand.mp4
+medium_plants_BRANCH	../assets/videos/basic/asl_vid_diy_raw/47 plant/branch.mp4
+medium_professions_WORKER	../assets/videos/basic/asl_vid_diy_raw/53. common professions/worker.mp4
+medium_professions_OWNER	../assets/videos/basic/asl_vid_diy_raw/53. common professions/owner.mp4
+medium_location_IN	../assets/videos/medium/location/in.mp4
+medium_location_OUTSIDE	../assets/videos/medium/location/outside.mp4
+medium_location_FRONT	../assets/videos/medium/location/front.mp4
