@@ -1,18 +1,4 @@
-/* lesson.css — Lesson Viewer styles | CONNECTS: pages/camera-practice.html */
 
-/* ── COURSE SIDEBAR (NEW — "course player" merge, this session) ─────
-   Persistent left-hand course outline: every UNIT, collapsible, with
-   per-unit progress — merges js/learn.js's trail browsing directly
-   into this page so Learn + Lesson read as one continuous screen
-   instead of a learn.html -> lesson.html click-through. Populated by
-   js/camera-practice.js's renderCourseSidebar() from the exact same
-   window.LWData / window.LWProgress calls js/learn.js's trail and
-   js/dashboard.js's unit rows already use, so locked/current/done
-   here can't drift out of sync with either of those screens.
-   Every row is a plain <a href> — real full-page navigation, same as
-   every other link already on this page — so the camera/detection
-   code below is completely untouched: shutdown() already runs on
-   `beforeunload` regardless of which link sends the learner away. */
 .course-layout { display: flex; gap: var(--space-8); align-items: flex-start; }
 .course-sidebar {
   width: 260px; flex-shrink: 0;
@@ -47,8 +33,6 @@
 .course-sidebar__unit--current .course-sidebar__unit-title { color: var(--clr-accent); }
 .course-sidebar__chevron { color: var(--clr-text-muted); font-size: var(--fs-xs); flex-shrink: 0; }
 .course-sidebar__unit-bar { height: 3px; background: var(--clr-surface-2); border-radius: var(--radius-pill); margin: 0 var(--space-3) var(--space-2); overflow: hidden; }
-/* CHANGED (Impeccable pass): transform, not width, same scheme as
-   .progress-bar__fill in css/style.css (--p is 0 to 100, set inline). */
 .course-sidebar__unit-bar-fill { width: 100%; height: 100%; background: var(--clr-accent); border-radius: var(--radius-pill); transform: translateX(calc((var(--p, 0) - 100) * 1%)); transition: transform var(--dur-slow) var(--ease); }
 .course-sidebar__unit-body { padding-bottom: var(--space-2); }
 
@@ -74,26 +58,11 @@
 .course-sidebar__sign--done { color: var(--clr-text); }
 .course-sidebar__sign--done .course-sidebar__sign-icon { color: var(--clr-success); }
 
-/* Practicing — LESSON done, but BOOSTER/PRACTICE aren't. Orange so the
- * sidebar never shows a green "done" check while the mission's own
- * progress bar is still behind it. Turns green (--done) only once every
- * item for the sign is complete. Same tokens as .sign-chip--practicing. */
 .course-sidebar__sign--practicing { color: var(--clr-text); }
 .course-sidebar__sign--practicing .course-sidebar__sign-icon { color: var(--clr-orange); }
-.course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent-text); font-weight: 600; } /* CHANGED (dark pass) was --clr-accent: 4.34:1 in dark */
+.course-sidebar__sign--current { background: var(--clr-accent-soft); color: var(--clr-accent-text); font-weight: 600; } 
 .course-sidebar__sign--current .course-sidebar__sign-icon { color: var(--clr-accent-text); }
 
-/* NEW — locked/pending sign rows (this revision) — js/camera-practice.js's
- * sidebarSignRow() renders BOTH states as a plain <span>, not an
- * <a>, so there's no href to navigate to regardless of these rules;
- * this is the visual half only (same split as css/app.css's
- * `.sign-chip--locked`/`.sign-chip--pending` on mission-overview.html
- * — hoverable for the "this is a real row" feedback, default cursor
- * so it never promises a click that wouldn't do anything). `--pending`
- * (mission open, this sign just not reached yet) gets a dashed left
- * edge instead of `--locked`'s (whole mission chapter-locked) solid
- * dim, so the two read apart at a glance the same way their two
- * `title` tooltips already read apart on hover. */
 .course-sidebar__sign--locked,
 .course-sidebar__sign--pending {
   cursor: default;
@@ -108,31 +77,11 @@
   padding-left: calc(var(--space-3) - 2px);
 }
 
-/* NEW — a chapter-locked category head (sidebarCategoryBlock()'s own
- * `missionLocked` branch): same plain-<span>, non-navigable, dimmed
- * treatment as `.course-sidebar__unit--locked` above, just scoped to
- * one category's head row instead of a whole unit. */
 .course-sidebar__cat-head--locked {
   cursor: default;
   opacity: .55;
 }
 
-/* ── :focus-visible ring (Design pass, 2026-08-23) ──────────────────
-   PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar not
-   yet matching dashboard". Same outline:none + box-shadow-ring
-   substitution as css/dashboard.css's a.unit-progress-row and this
-   session's matching addition to css/learn.css — see either of those
-   files' own comment for the full "why not outline" reasoning. Every
-   interactive row type in the sidebar gets one: the flat single-link
-   units (Unit 0/Unit 2, `.course-sidebar__unit--flat`), the
-   collapsible unit header (`.course-sidebar__unit-head`, a <button>),
-   the category header inside an open unit (`.course-sidebar__cat-head`),
-   and individual sign rows (`.course-sidebar__sign`). `.course-sidebar`
-   itself scrolls (`overflow-y: auto`) but doesn't clip square corners
-   the way dashboard's `.unit-progress-list` does, so a normal (non-
-   inset) ring is enough here, same call as css/learn.css made for the
-   same reason. Locked units (`.course-sidebar__unit--locked`) render as
-   plain, non-interactive <div>s — not focusable, nothing to add. */
 .course-sidebar__unit--flat:focus-visible,
 .course-sidebar__unit-head:focus-visible,
 .course-sidebar__cat-head:focus-visible,
@@ -141,14 +90,6 @@
   box-shadow: 0 0 0 2px var(--clr-accent);
 }
 
-/* ── Error fallback (Design pass, 2026-08-23) ────────────────────────
-   Same item, gap #4. js/camera-practice.js's renderCourseSidebar() used to
-   silently `return` and leave the sidebar however it last looked
-   (including this session's new static loading placeholder, forever)
-   if window.LWData wasn't available, or leave a half-built list if it
-   threw partway through — reuses css/style.css's `.alert`/`.alert--error`
-   component, same pattern as `.learn-fallback-alert`/`.dash-fallback-alert`,
-   just sized for the narrower sidebar column instead of a full-width grid. */
 .sidebar-fallback-alert {
   margin: var(--space-2);
   padding: var(--space-3);
@@ -166,12 +107,6 @@
   font-family: var(--font-display); font-size: var(--fs-3xl); font-weight: 700; color: var(--clr-accent);
   flex-shrink: 0;
 }
-/* Numbered steps, not bullets — "How to perform the sign" reads as a
-   short sequence (this content genuinely is ordered: hand shape, then
-   placement, then movement), so a numbered marker earns its place
-   here. counter-reset/counter-increment do the numbering; the <li>
-   itself carries no list-style so the circled number is the only
-   marker. */
 .lesson-desc .lesson-desc__tips {
   display: flex; flex-direction: column; gap: var(--space-3);
   font-size: var(--fs-sm); color: var(--clr-text);
@@ -190,19 +125,13 @@
 }
 .lesson-video { position: relative; border-radius: var(--radius-lg); overflow: hidden; background: #000; }
 .lesson-video video { width: 100%; max-height: 400px; }
-/* YouTube embed (js/camera-practice.js applyLessonVideo()) — fluid 16:9 instead of
- * the iframe's fixed width/height attributes. */
 .lesson-video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; }
-/* Invisible click-catcher over the YouTube iframe: the first click reloads the embed
- * with YouTube's controls (js/camera-practice.js revealEmbedControls()), then it hides. */
 .lesson-video__shield {
   position: absolute; inset: 0; z-index: 1;
   width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit;
   background: transparent; cursor: pointer;
 }
 .lesson-video__shield:focus-visible { outline: 3px solid var(--clr-accent, #6c8cff); outline-offset: -3px; }
-/* Only one of <video>/<iframe> is shown per sign. style.css sets `video { display:block }`,
- * which would otherwise beat the UA `[hidden]` rule. */
 .lesson-video [hidden] { display: none !important; }
 .lesson-video-tip { margin-bottom: 0; }
 .lesson-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }

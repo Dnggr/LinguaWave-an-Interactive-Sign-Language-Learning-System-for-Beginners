@@ -15,36 +15,12 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/learn.html — Learning Path
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE : "Your Learning Journey" list per the implementation
-              guide's §4.3/§5 — heading, subtext, search field, then
-              one ordered row per mission (number, title, one-line
-              goal, status pill, progress, chevron). Sourced from
-              window.LWMissions.getAllMissions() — see dashboard.html's
-              header comment for the 65-vs-10-missions open question;
-              this page shows all 65 live missions, not a hardcoded 10.
-
-    ORIENTATION GATE : new learners must finish Orientation
-              (pages/orientation.html) before Chapter 1 unlocks. The
-              Orientation card above the chapters shows Start here /
-              Completed; until it is done every chapter below renders
-              Locked. Rule: js/missions.js isOrientationComplete().
-    ROW CLICK : each unlocked row currently links to the mission's
-              existing quiz entry point (pages/quiz.html) as a
-              stand-in "open this mission" destination — a real
-              Mission Overview screen (guide §6) doesn't exist yet.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Learn | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <!-- PERF FIX (this revision) — was a plain render-blocking
-       <link rel="stylesheet">; see index.html's matching note for why. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -52,12 +28,9 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
-  <!-- Orientation gate styles (note under the Orientation card). -->
   <link rel="stylesheet" href="../css/orientation-gate.css" />
   <link rel="stylesheet" href="../css/tour.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -132,12 +105,10 @@
           </div>
 
           <div id="orientation-slot" data-sk>
-            <!-- filled by js/learn.js — always visible, unaffected by search -->
             <div class="sk-group" role="status"><span class="sr-only">Loading…</span><div class="card"><div class="sk-row"><span class="sk sk--square" style="--s:48px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:40%;--h:1.1rem"></span><span class="sk sk--line" style="--w:75%;--h:.8rem"></span></div><span class="sk sk--pill" style="--w:5rem"></span></div></div></div>
           </div>
 
           <div class="path-list" id="path-list" data-sk>
-            <!-- filled by js/learn.js -->
             <div class="sk-group" role="status"><span class="sr-only">Loading missions…</span><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div><div class="trail-group"><div class="sk-row sk--pad" style="padding:var(--space-4) var(--space-5)"><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:min(16rem,70%);--h:1.2rem"></span><span class="sk sk--line" style="--w:min(24rem,90%);--h:.8rem"></span></div><span class="sk sk--pill" style="--w:6rem"></span></div></div></div>
           </div>
         </div>
@@ -146,9 +117,6 @@
     </div>
   </div>
 
-  <!-- Chapter rail (NEW): fixed icon dock on the right edge of the viewport, one Lucide icon per
-       chapter (+ Orientation). Filled by js/learn.js (renderChapterRail), styled in css/learn.css.
-       The tooltip is a single shared element positioned by JS so the rail's own overflow can't clip it. -->
   <nav class="chapter-rail" id="chapter-rail" aria-label="Jump to a chapter" hidden></nav>
   <div class="chapter-rail__tip" id="chapter-rail-tip" aria-hidden="true">
     <span class="chapter-rail__tip-title" id="chapter-rail-tip-title"></span>
@@ -159,23 +127,12 @@
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
   <script defer src="../js/missions.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
-  <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
-       and, critically, wires up every [data-logout] button (the sidebar's
-       Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/learn.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="learn">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
   <script type="module" src="../js/model-prefetch.js"></script>
 </body>

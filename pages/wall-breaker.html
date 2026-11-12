@@ -13,31 +13,11 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/wall-breaker.html — Wall Breaker game panel
-    Self-contained: only js/game.js + css/game.css are new. It REUSES the
-    existing engine modules (cameraUtils, mediapipe, classifier, dictionary,
-    renderer) read-only and never edits them.
-    Ids kept for the engine: lw-webcam, lw-canvas, camera-status.
-
-    DESIGN ALIGNMENT PASS — this page now matches the rest of the app shell:
-      - viewport-fit=cover, non-blocking Space Grotesk load, css/responsive.css + js/mobile-nav.js
-        (the other app pages all have these; without them the sidebar never collapsed on phones)
-      - js/main.js added: it wires every [data-logout] link, so "Log out" did nothing on this page before
-      - styling lives in css/game.css and now reads only the shared tokens (no hard-coded hex)
-    Markup ids/classes the game logic uses are unchanged, so js/game.js needed no logic changes.
-
-    ONE-SCREEN LAYOUT PASS — the page used to be a vertical stack (camera -> timers -> wall), so the wall sat below
-    the fold and a player with their hands up could not reach it. Now .gm-stage puts camera and wall side by side and
-    css/game.css locks the page to the viewport on desktop. Only elements were re-parented (wall footer now holds the
-    hint, legend and Quit button; the log moved under the wall); every id read by js/game.js is unchanged.
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Wall Breaker | LinguaWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <!-- Same non-blocking font load as dashboard.html / learn.html -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -132,8 +112,6 @@
           <span class="gm-progress__reward" id="gm-reward" data-lw-icon="gift"></span>
         </div>
 
-        <!-- ONE-SCREEN STAGE: camera + timers on the left, the wall (or Setup before Start) on the right,
-             so the sign you need is always next to the camera and nobody has to scroll with their hands up. -->
         <div class="gm-stage">
           <section class="gm-left">
             <div class="gm-cam" id="gm-cam" data-mode="idle">
@@ -157,7 +135,6 @@
           </section>
 
           <div class="gm-right">
-            <!-- Before Start: Setup. After Start: it is hidden (game.js) and the wall takes its place. -->
             <section class="gm-setup" id="gm-start" aria-labelledby="gm-setup-title">
               <h2 id="gm-setup-title">Setup</h2>
               <p class="text-muted gm-setup__how">Bricks come from signs you've finished in your lessons. Sign them in any order. <b class="gm-tag-static">HOLD</b> = hold the sign steady. <b class="gm-tag-motion">MOVE</b> = press Space, wait for 3-2-1, then sign.</p>
@@ -217,14 +194,10 @@
     </div>
   </div>
 
-  <!-- Progress sources for the sign pool: LWProgress (lw_progress_v3) + LWMissions (completed LESSON
-       items). Same plain deferred scripts, same order, as camera-practice.html. Must sit before game.js,. -->
   <script defer src="../js/engine/progress.js"></script>
   <script defer src="../js/missions.js"></script>
   <script src="../js/main.js"></script>
-  <!-- DEV-TEST (TEMPORARY) — developer test panel for letters/numbers. Delete this tag, js/game-dev-test.js and the
-       "DEV-TEST" lines in js/game.js before the final defense. Must stay BEFORE game.js (module scripts run in order). -->
-  <script type="module" src="../js/game-dev-test.js"></script> <!-- DEV-TEST -->
+  <script type="module" src="../js/game-dev-test.js"></script> 
   <script type="module" src="../js/game.js"></script>
 </body>
 </html>

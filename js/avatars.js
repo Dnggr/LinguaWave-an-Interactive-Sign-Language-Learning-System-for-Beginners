@@ -1,22 +1,3 @@
-/**
- * js/avatars.js — the fixed set of profile pictures
- * ─────────────────────────────────────────────────────────────────
- * Learners CHOOSE from this list; they can never upload their own picture.
- * Only the picture's ID is stored: users/{uid}.avatar (their account) and
- * publicProfiles/{uid}.avatar (the leaderboard row). The image itself always
- * comes from assets/profile_images/, so a stored ID can never point anywhere else.
- *
- * TO ADD / CHANGE PICTURES: put the image in assets/profile_images/ and edit LIST.
- *   - `id`   must match /^avatar-\d{2}$/ (firestore.rules enforces the same
- *            pattern). Never reuse or renumber an ID — learners already have
- *            it saved.
- *   - `file` is the real file name inside assets/profile_images/ (any name,
- *            e.g. '7.png' or 'aki.png' — it does not have to match the id).
- *
- * Exposes window.LWAvatars. Plain script (not a module); load it before the
- * page script that uses it. All pages that use it live in /pages, hence BASE.
- * ─────────────────────────────────────────────────────────────────
- */
 (function () {
   'use strict';
 
@@ -34,7 +15,6 @@
     { id: 'avatar-08', file: '8.png',   label: 'Profile picture 8' },
     { id: 'avatar-09', file: '9.png',   label: 'Profile picture 9' },
     { id: 'avatar-10', file: '10.png', label: 'Profile picture 10' },
-    // Add more here: next free id is 'avatar-11'.
   ];
 
   function esc(s) {
@@ -54,11 +34,6 @@
     return a ? BASE + a.file : null;
   }
 
-  /* HTML for one avatar. An unknown / missing ID (learner never picked one,
-   * or a picture was retired) falls back to a circle with their initial, so
-   * a row never shows a broken image. `opts.size`: 'lg' | 'xl' (default 40px).
-   * `opts.name` is only used for that initial. alt="" because the name is
-   * always printed right next to it. */
   function markup(id, opts) {
     opts = opts || {};
     var cls = 'lw-avatar' + (opts.size ? ' lw-avatar--' + opts.size : '');

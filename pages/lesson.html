@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Same theme-flash-prevention snippet every page in this repo uses.
-       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -17,46 +15,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/lesson.html — Lesson (NEW)
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE : The first real screen that walks a mission's own
-              items (LESSON/BOOSTER/PRACTICE/QUIZ, unchanged shape
-              from js/missions.js) using the six-stage loop from
-              LinguaWaveV2_Learning_Psychology_Analysis.docx and its
-              chapter-level follow-up: Watch → Recognize →
-              Discriminate → Contextualize → (Produce, handed off) →
-              Celebrate. All planning logic lives in
-              js/lesson-loop.js; this page + js/lesson.js only
-              render it and call the EXISTING js/missions.js progress
-              functions (markItemComplete, getDropOffIndex, ...) — no
-              new progress store.
-
-    ENTRY   : ?mission=<categoryId> — same param convention every
-              other page already uses.
-
-    REPLACES: pages/mission-overview.html's "Start Mission" button
-              used to link straight to ../pages/camera-practice.html (V1).
-              It now links here instead; the Mastery Quiz button is
-              UNCHANGED and still links to ../pages/quiz.html (V1)
-              — this page does not touch the quiz engine.
-
-    PRODUCE STAGE / KNOWN LIMITATION : camera-based sign production
-              (js/camera-practice.js's detection engine) is NOT reimplemented
-              here — that is a large, separate isolated system this
-              revision deliberately does not touch. Each Watch-stage
-              item instead offers an explicit "Practice with your
-              camera" link out to the existing pages/camera-practice.html for
-              that category (same page Start Mission used to open
-              directly), opened in a new tab, clearly labeled rather
-              than silently skipped. Likewise, the closing QUIZ item
-              still hands off to pages/quiz.html exactly as Mission
-              Overview already did — see Missions_LinguaWave_Progress_
-              Tracker.md §5 open question 7 for the pre-existing (not
-              introduced here) gap around when that item is marked
-              complete.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -69,9 +27,7 @@
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/tour.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -138,44 +94,12 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
               Exit lesson
             </a>
-            <!--
-              Review nav (Priority 2, item 5) — ONLY unhidden by
-              js/lesson.js when window.LWMissions.canReviewMission(mission)
-              is true: the mission is 100% complete, OR the learner has
-              worked through every item up to the closing Mastery Quiz
-              (so they can prepare for it, or look things up after running
-              out of hearts). Stays `hidden` (both the attribute and no
-              inline style) for any other in-progress/locked mission so
-              it can never be used to skip ahead of required progression
-              — see that file's renderItem()/updateReviewNav() for the
-              single place this is decided, on every render (not just
-              page load), so the buttons always reflect whichever item is
-              on screen right now. The label text below is only a
-              default: updateReviewNav() sets it to "Reviewing before the
-              Mastery Quiz" while the mission isn't finished yet. Per
-              explicit follow-up, this steps one item at a time
-              (‹ Previous / Next ›) rather than jumping straight to the
-              first/last item — js/lesson.js disables whichever side has
-              no further item to step to.
-            -->
             <div class="lesson-review-nav" id="lesson-review-nav" hidden>
               <span class="lesson-review-nav__label">Reviewing a completed mission</span>
               <button type="button" class="btn btn--ghost btn--sm lesson-review-nav__btn" id="lesson-nav-prev" aria-label="Previous item">&lsaquo;</button>
               <button type="button" class="btn btn--ghost btn--sm lesson-review-nav__btn" id="lesson-nav-next" aria-label="Next item">&rsaquo;</button>
             </div>
             <div class="lesson-track">
-              <!--
-                Task 2 — dot marker + Review-Mission full-bar behavior.
-                .lesson-track__bar is a scoping class only (adds
-                position:relative for the dot below) — the shared
-                .progress-bar/.progress-bar__fill rules in
-                css/style.css are untouched, so nowhere else that
-                reuses them (Mission Overview's list rows, the Mastery
-                Quiz's own .quiz-progress-bar) is affected. See
-                js/lesson.js's updateTrack() for the fill%/dot%
-                math (js/lesson.js is the single place that decides
-                both).
-              -->
               <div class="progress-bar lesson-track__bar">
                 <div class="progress-bar__fill" id="lesson-track-fill" style="--p:0"></div>
                 <div class="lesson-track__dot" id="lesson-track-dot" style="--p:0"></div>
@@ -185,7 +109,6 @@
           </div>
 
           <div id="lesson-content" data-sk>
-            <!-- filled by js/lesson.js -->
             <div class="sk-group" role="status"><span class="sr-only">Loading lesson…</span><div class="card"><div class="sk-row" style="align-items:flex-start;gap:var(--space-6);flex-wrap:wrap"><span class="sk sk--block" style="--h:15rem;--w:min(22rem,100%)"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:40%;--h:1.6rem"></span><span class="sk sk--line" style="--w:90%"></span><span class="sk sk--line" style="--w:75%"></span><span class="sk sk--line" style="--w:60%"></span></div></div></div><span class="sk sk--btn" style="--w:8rem;--h:2.75rem"></span></div>
           </div>
         </div>
@@ -199,23 +122,12 @@
   <script type="module" src="../js/xp.js"></script>
   <script defer src="../js/missions.js"></script>
   <script src="../js/lesson-loop.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
-  <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
-       and, critically, wires up every [data-logout] button (the sidebar's
-       Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/lesson.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="lesson">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
   <script type="module" src="../js/model-prefetch.js"></script>
 </body>

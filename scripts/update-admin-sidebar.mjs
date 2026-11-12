@@ -1,10 +1,3 @@
-// scripts/update-admin-sidebar.mjs
-// Gives the ADMIN sidebar the same bottom row as the learner sidebar:
-//     [→ Log out ................ (theme switch)]
-// It rewrites the footer markup of every pages/admin-*.html and adds one small rule to css/admin.css.
-// Safe to re-run (it skips pages that are already updated).
-//   Run from the project root:   node scripts/update-admin-sidebar.mjs
-//   Preview without changing:    node scripts/update-admin-sidebar.mjs --dry
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -21,18 +14,17 @@ for (const name of readdirSync(pagesDir).filter((n) => /^admin-.*\.html$/.test(n
   const html = readFileSync(file, 'utf8');
   const nl = html.includes('\r\n') ? '\r\n' : '\n';
 
-  if (html.includes('app-sidebar__foot--admin')) { same++; continue; }          // already done
+  if (html.includes('app-sidebar__foot--admin')) { same++; continue; }
 
   const start = html.search(/[ \t]*<div class="app-sidebar__foot"[^>]*>/);
   const end = html.indexOf('</aside>', start);
   if (start < 0 || end < 0) { console.log(`skip (no sidebar footer found): ${name}`); problems++; continue; }
 
   const oldFoot = html.slice(start, end);
-  const theme = oldFoot.match(/<button\b[^>]*\bclass="theme-switch"[\s\S]*?<\/button>/);   // reused as-is, so its id/wiring stay
+  const theme = oldFoot.match(/<button\b[^>]*\bclass="theme-switch"[\s\S]*?<\/button>/);
   const logout = oldFoot.match(/<a\b[^>]*\bdata-logout="([^"]*)"[^>]*>/);
   if (!theme || !logout) { console.log(`skip (theme switch or Log out link not found): ${name}`); problems++; continue; }
 
-  // The button keeps its original lines: it sits at the same depth in the new row, so the indentation still matches.
   const themeBlock = ['          ' + theme[0]];
 
   const newFoot = [
@@ -53,8 +45,6 @@ for (const name of readdirSync(pagesDir).filter((n) => /^admin-.*\.html$/.test(n
   changed++;
 }
 
-// One rule in css/admin.css: the admin sidebar has no profile card above the row, so drop the row's own top line
-// (the footer already draws one) — otherwise two hairlines would sit right on top of each other.
 const cssFile = join(root, 'css', 'admin.css');
 const MARK = '/* admin sidebar footer (scripts/update-admin-sidebar.mjs) */';
 if (existsSync(cssFile)) {

@@ -1,4 +1,3 @@
-// Run: cd worker && npm test   (Node 20+, no dependencies, no network)
 import test from "node:test";
 import assert from "node:assert/strict";
 import worker, { presignUrl, verifyFirebaseToken, sniffVideo, parseRange, MAX_VIDEO_BYTES } from "../src/index.js";
@@ -9,7 +8,6 @@ import {
 
 const b64u = (b) => Buffer.from(b).toString("base64url");
 
-/* ── SigV4: AWS's own published presigned-URL example ──────────── */
 test("presignUrl matches the AWS documentation test vector", async () => {
   const url = await presignUrl({
     method: "GET", host: "examplebucket.s3.amazonaws.com", path: "/test.txt", region: "us-east-1",
@@ -19,7 +17,6 @@ test("presignUrl matches the AWS documentation test vector", async () => {
   assert.ok(url.endsWith("X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404"), url);
 });
 
-/* ── Firebase token verification with a locally generated key ───── */
 const PROJECT = "linguawave-63911";
 const ADMIN = "linguawave.project@gmail.com";
 const kp = await crypto.subtle.generateKey(
@@ -56,8 +53,7 @@ test("rejects expired, wrong aud/iss, bad signature, unknown kid", async () => {
   await assert.rejects(verify("not.a.jwt"), { status: 401 });
 });
 
-/* ── routes, with a fake R2 bucket ─────────────────────────────── */
-const MP4 = Uint8Array.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]); // ....ftypisom
+const MP4 = Uint8Array.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
 const WEBM = Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 function fakeBucket(objects = {}) {
   return {
@@ -111,7 +107,6 @@ test("finalize: real MP4 passes; WebM refused; fake, oversize and wrong-extensio
     "videos/admin/swap/1790000000000.mp4": { bytes: WEBM },
   });
   assert.equal((await call("/v1/finalize", { key: `${k}.mp4` }, { bucket })).res.status, 200);
-  // WebM is intentionally not accepted yet (learner players hard-code video/mp4).
   assert.equal((await call("/v1/finalize", { key: `${k}1.webm` }, { bucket })).res.status, 400);
   for (const [key, status] of [["videos/admin/fake/1790000000000.mp4", 415], ["videos/admin/big/1790000000000.mp4", 413], ["videos/admin/swap/1790000000000.mp4", 415]]) {
     assert.equal((await call("/v1/finalize", { key }, { bucket })).res.status, status, key);
@@ -140,7 +135,6 @@ test("sniffVideo", () => {
   assert.equal(sniffVideo(Uint8Array.from([1, 2, 3])), "");
 });
 
-/* ── public media: GET /media/<key> ────────────────────────────── */
 const MKEY = "videos/admin/nono/1790923020324.mp4";
 const BYTES = Uint8Array.from({ length: 100 }, (_, i) => i);
 function mediaBucket() {
@@ -161,11 +155,11 @@ test("media: parseRange", () => {
   assert.equal(parseRange(null, 100), null);
   assert.deepEqual(parseRange("bytes=0-", 100), { offset: 0, length: 100 });
   assert.deepEqual(parseRange("bytes=10-19", 100), { offset: 10, length: 10 });
-  assert.deepEqual(parseRange("bytes=90-500", 100), { offset: 90, length: 10 });   // end clamped
-  assert.deepEqual(parseRange("bytes=-5", 100), { offset: 95, length: 5 });        // suffix
+  assert.deepEqual(parseRange("bytes=90-500", 100), { offset: 90, length: 10 });
+  assert.deepEqual(parseRange("bytes=-5", 100), { offset: 95, length: 5 });
   assert.equal(parseRange("bytes=100-", 100), "invalid");
   assert.equal(parseRange("bytes=20-10", 100), "invalid");
-  assert.equal(parseRange("bytes=0-1,5-6", 100), null);                            // multi-range: serve whole
+  assert.equal(parseRange("bytes=0-1,5-6", 100), null);
   assert.equal(parseRange("garbage", 100), null);
 });
 
@@ -196,10 +190,10 @@ test("media: unsatisfiable range -> 416; HEAD -> headers only; missing/odd keys 
   assert.equal(head.status, 200);
   assert.equal(head.headers.get("content-length"), "100");
   assert.equal((await head.arrayBuffer()).byteLength, 0);
-  assert.equal((await getMedia("/media/videos/admin/nono/1790923020999.mp4")).status, 404);   // not in bucket
-  assert.equal((await getMedia("/media/secrets.txt")).status, 404);                           // not a valid key
-  assert.equal((await getMedia("/media/videos/admin/../../x/1790923020324.mp4")).status, 404); // traversal
-  assert.equal((await getMedia("/media/%E0%A4%A")).status, 404);                              // bad escape
+  assert.equal((await getMedia("/media/videos/admin/nono/1790923020999.mp4")).status, 404);
+  assert.equal((await getMedia("/media/secrets.txt")).status, 404);
+  assert.equal((await getMedia("/media/videos/admin/../../x/1790923020324.mp4")).status, 404);
+  assert.equal((await getMedia("/media/%E0%A4%A")).status, 404);
 });
 
 test("media: GET on the POST routes still refused", async () => {
@@ -207,8 +201,6 @@ test("media: GET on the POST routes still refused", async () => {
   assert.equal(res.status, 405);
 });
 
-/* ── POST /v1/delete-user (privileged Firebase Auth deletion) ───── */
-// The Firebase Admin API is faked through deps.deleteAuthUser: no Google credential, no network.
 function fakeAuthDeleter(behaviour = async () => ({})) {
   const calls = [];
   const fn = async (envArg, uid, now) => { calls.push({ uid, now, hasEnv: !!envArg }); return behaviour(uid); };
@@ -248,7 +240,7 @@ test("delete-user: admin email without email_verified -> 403", async () => {
 });
 test("delete-user: the admin can't delete their own uid -> 400", async () => {
   const del = fakeAuthDeleter();
-  const { res, data } = await delUser({ uid: "uid-1" }, { deps: { deleteAuthUser: del } }); // default token sub is "uid-1"
+  const { res, data } = await delUser({ uid: "uid-1" }, { deps: { deleteAuthUser: del } });
   assert.equal(res.status, 400);
   assert.match(data.error, /own account/);
   assert.equal(del.calls.length, 0);
@@ -259,7 +251,7 @@ test("delete-user: missing / malformed uid -> 400", async () => {
     const { res } = await delUser({ uid }, { deps: { deleteAuthUser: del } });
     assert.equal(res.status, 400, JSON.stringify(uid));
   }
-  assert.equal((await delUser(undefined, { deps: { deleteAuthUser: del } })).res.status, 400); // body is not JSON
+  assert.equal((await delUser(undefined, { deps: { deleteAuthUser: del } })).res.status, 400);
   assert.equal(del.calls.length, 0);
 });
 test("delete-user: verified admin + valid target -> deletes the Auth user", async () => {
@@ -297,7 +289,7 @@ test("delete-user: unexpected thrown error -> 500, not success", async () => {
 test("delete-user: server secrets missing -> 500 'not set up' (real module, nothing sent to Google)", async () => {
   const quiet = console.error; console.error = () => {};
   let out;
-  try { out = await delUser({ uid: LEARNER_UID }); } finally { console.error = quiet; } // env() has no service-account secrets
+  try { out = await delUser({ uid: LEARNER_UID }); } finally { console.error = quiet; }
   assert.equal(out.res.status, 500);
   assert.match(out.data.error, /isn't set up/);
 });
@@ -321,7 +313,6 @@ test("delete-user: only POST is accepted", async () => {
   assert.equal(del.calls.length, 0);
 });
 
-/* ── firebase-auth-admin.js against a faked Google ─────────────── */
 const saKeys = await crypto.subtle.generateKey(
   { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
 const pkcs8 = Buffer.from(await crypto.subtle.exportKey("pkcs8", saKeys.privateKey)).toString("base64");
@@ -329,7 +320,6 @@ const PEM = `-----BEGIN PRIVATE KEY-----\n${pkcs8.match(/.{1,64}/g).join("\n")}\
 const SA_EMAIL = "svc@linguawave-63911.iam.gserviceaccount.com";
 const saEnv = (over = {}) => ({ FIREBASE_PROJECT_ID: PROJECT, FIREBASE_SERVICE_ACCOUNT_EMAIL: SA_EMAIL, FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: PEM, ...over });
 
-/** Fake Google: records requests, checks the JWT signature, answers token + accounts:delete. */
 function fakeGoogle({ deleteStatus = 200, deleteBody = { kind: "identitytoolkit#DeleteAccountResponse" }, tokenStatus = 200 } = {}) {
   const log = { token: [], del: [] };
   const fetchFn = async (url, init) => {
@@ -363,7 +353,7 @@ test("getGoogleAccessToken: signs a valid RS256 service-account JWT and caches t
   assert.equal(t.claims.scope, IDENTITY_TOOLKIT_SCOPE);
   assert.equal(t.claims.iat, Math.floor(NOW / 1000));
   assert.equal(t.claims.exp - t.claims.iat, 3600);
-  await getGoogleAccessToken(saEnv(), NOW + 3_500_000, { fetchFn: g.fetchFn }); // near expiry -> refreshed
+  await getGoogleAccessToken(saEnv(), NOW + 3_500_000, { fetchFn: g.fetchFn });
   assert.equal(g.log.token.length, 2);
 });
 test("getGoogleAccessToken: accepts the key with literal \\n sequences (as pasted from the JSON file)", async () => {
@@ -406,7 +396,7 @@ test("end to end: Worker route -> real firebase-auth-admin -> (stubbed) Google",
   clearTokenCache();
   const g = fakeGoogle();
   const realFetch = globalThis.fetch;
-  globalThis.fetch = g.fetchFn; // JWKS comes from the injected getJwks, so Google is the only fetch target
+  globalThis.fetch = g.fetchFn;
   try {
     const { res, data } = await call("/v1/delete-user", { uid: LEARNER_UID }, { envOver: saEnv() });
     assert.equal(res.status, 200);

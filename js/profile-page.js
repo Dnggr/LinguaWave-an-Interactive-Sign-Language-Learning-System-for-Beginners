@@ -1,30 +1,6 @@
-/**
- * js/profile-page.js — pages/profile.html
- * ─────────────────────────────────────────────────────────────────
- * Four things on this page:
- *   1. Profile picture picker — the learner picks ONE of the pictures in
- *      js/avatars.js (no uploads). It opens from the round button on the big
- *      picture. Saving stores only the ID, via window.LWAuth.updateAvatar()
- *      (js/auth.js), which also updates their leaderboard row.
- *   2. Learning Activity   (#profile-activity)   — GitHub-style grid: one box
- *      per day for the last year, month names across the top, weekday names
- *      down the side, darker box = more activity that day. Built from the
- *      same completions the Progress page counts (signs learned + practice).
- *   3. Your Highlights     (#profile-highlights) — personal bests.
- *      Achievements       (#profile-achievements) — badges under the picture,
- *      earned from the same real progress numbers (signs learned, missions
- *      completed, longest streak). Locked ones are shown dimmed.
- *   4. Recent Activity     (#profile-recent)     — per-day list ("+N signs
- *      learned"). Same code js/progress-page.js's renderActivity() had.
- * (2), (3) and (4) MOVED here from the Progress page. Same data source
- * (window.LWMissions only), nothing fabricated. The helpers
- * are re-derived per file on purpose — this repo's convention (see the note
- * above tallyItems() in js/progress-page.js).
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 
-const HEATMAP_WEEKS = 53;            // a full year of week columns, like GitHub
+const HEATMAP_WEEKS = 53;
 const RECENT_ACTIVITY_MAX_DAYS = 6;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -98,7 +74,6 @@ function todayKey() {
   return localDateKey(new Date().toISOString());
 }
 
-/* Shade 0..4 for a day with n completed items (lessons, boosters, practice, quizzes). */
 function activityLevel(n) {
   if (n <= 0) return 0;
   if (n === 1) return 1;
@@ -107,12 +82,8 @@ function activityLevel(n) {
   return 4;
 }
 
-/* One box per day for the last year. Columns are weeks (Sunday first), rows are
- * Sun..Sat. Every month is named above the column where it starts and every
- * weekday is named down the side. Boxes after today stay empty placeholders. */
 function renderConsistency(missions) {
   const el = document.getElementById('profile-activity');
-  // Per day: signs learned (LESSON items) and other practice (booster / practice / quiz).
   const byDay = new Map();
   collectAllCompletions(missions).forEach((c) => {
     const k = localDateKey(c.completedAt);
@@ -121,14 +92,12 @@ function renderConsistency(missions) {
     byDay.set(k, b);
   });
   const streak = window.LWMissions.getStreakSummary();
-  // Days the Day Streak counted (lessons, reviews AND counted game runs). Games leave no per-item completion, so
-  // without this a game-only day stayed grey even though it kept the streak alive.
   const streakDays = new Set((streak && streak.recentDays) || []);
 
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const start = new Date(now);
-  start.setDate(start.getDate() - now.getDay() - (HEATMAP_WEEKS - 1) * 7); // the Sunday that starts the oldest column
+  start.setDate(start.getDate() - now.getDay() - (HEATMAP_WEEKS - 1) * 7);
 
   let total = 0, signsTotal = 0;
   const cells = [];
@@ -147,7 +116,7 @@ function renderConsistency(missions) {
       const dayKey = localDateKey(date.toISOString());
       const b = byDay.get(dayKey) || { signs: 0, other: 0 };
       const n = b.signs + b.other;
-      const streakOnly = n === 0 && streakDays.has(dayKey);   // counted for the streak, but no mission item that day
+      const streakOnly = n === 0 && streakDays.has(dayKey);
       total += n;
       signsTotal += b.signs;
       const when = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -162,7 +131,6 @@ function renderConsistency(missions) {
     if (w === 0) marks.push({ w, m: monthStartsHere !== null ? monthStartsHere : start.getMonth() });
     else if (monthStartsHere !== null) marks.push({ w, m: monthStartsHere });
   }
-  // Drop a label that would sit on top of the next one (only the first can).
   marks = marks.filter((mk, i) => i === marks.length - 1 || marks[i + 1].w - mk.w >= 3);
 
   const months = marks.map((mk) => `<span class="gh-month" style="grid-column:${mk.w + 2}">${MONTH_NAMES[mk.m]}</span>`).join('');
@@ -184,16 +152,10 @@ function renderConsistency(missions) {
       <div class="gh-legend" aria-hidden="true"><span>Less</span>${legend}<span>More</span></div>
     </div>
   `;
-  // Start scrolled to today on narrow screens.
   const scroller = el.querySelector('.gh-scroll');
   if (scroller && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft = scroller.scrollWidth;
 }
 
-/* Recent Activity — moved from js/progress-page.js (renderActivity). Groups
- * every completed item by the real calendar day it was completed on:
- * "+N signs learned" (LESSON items) and "Completed <mission>" (a mission whose
- * LAST item finished that day). A day with only booster/practice/quiz work
- * shows "Practiced existing signs" so real activity never renders as empty. */
 function renderRecentActivity(missions) {
   const el = document.getElementById('profile-recent');
   if (!el) return;
@@ -209,7 +171,7 @@ function renderRecentActivity(missions) {
     return;
   }
 
-  const byDay = new Map(); // dateKey -> { signs, missionTitles: Set }
+  const byDay = new Map();
   const dayOf = (iso) => {
     const k = localDateKey(iso);
     if (!byDay.has(k)) byDay.set(k, { signs: 0, missionTitles: new Set() });
@@ -220,7 +182,6 @@ function renderRecentActivity(missions) {
     if (c.item.kind === 'LESSON') bucket.signs++;
   });
 
-  // Mission-completed lines attach to the day the mission's LAST item finished.
   missions.forEach((m) => {
     if (window.LWMissions.getMissionProgress(m) < 1 || !m.items.length) return;
     let latest = null;
@@ -312,10 +273,6 @@ function renderHighlights(missions, learnedSigns) {
   `;
 }
 
-/* ── ACHIEVEMENTS ─────────────────────────────────────────────────────
- * Every badge is a threshold on a real number: signs learned (LESSON items
- * completed), missions completed, longest streak. Nothing is stored — the
- * badges are re-derived on each render, so they always match Progress. */
 const BADGE_SVG = (inner) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
 const BADGE_ICONS = {
@@ -336,11 +293,6 @@ function renderAchievements(missions, learnedSigns) {
   const missionsDone = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
   const signs = learnedSigns.length;
 
-  // Each achievement links to where you can read more about it:
-  //  - a badge that also exists in the XP system (js/xp-config.js) opens that exact tile on Leaderboard -> My badges
-  //    (leaderboard.html#mine/badge-<id>, handled by revealTarget() in js/leaderboard.js);
-  //  - the "signs learned" / "3 missions" achievements have no XP-badge twin, so they open Progress -> Your Learning Journey.
-  // To repoint one, change only its `href`.
   const toBadge = (id) => `leaderboard.html#mine/badge-${id}`;
   const toJourney = 'progress.html#progress-chapters';
   const badges = [
@@ -371,9 +323,8 @@ function renderAchievements(missions, learnedSigns) {
   `;
 }
 
-/* ── PROFILE PICTURE ──────────────────────────────────────────────── */
-let savedAvatarId = null;      // what is stored on the account
-let selectedAvatarId = null;   // what is currently highlighted in the picker
+let savedAvatarId = null;
+let selectedAvatarId = null;
 
 function toast(msg, type) {
   if (window.LinguaWave && typeof window.LinguaWave.showToast === 'function') window.LinguaWave.showToast(msg, type);
@@ -406,10 +357,6 @@ function renderPicker() {
     </label>`).join('');
 }
 
-/* The picker is a native <dialog>: showModal() gives the focus trap and Esc.
- * Anything that closes it without saving (Esc, Cancel, X, a click on the
- * backdrop) puts the big picture back to what is saved — see the 'close'
- * listener in initAvatar(). */
 function setPickerOpen(open) {
   const dlg = document.getElementById('avatar-panel');
   const toggle = document.getElementById('btn-change-avatar');
@@ -442,13 +389,12 @@ async function saveAvatar() {
   try {
     await window.LWAuth.updateAvatar(selectedAvatarId);
     savedAvatarId = selectedAvatarId;
-    if (window.LinguaWave && window.LinguaWave.refreshSidebarUser) window.LinguaWave.refreshSidebarUser();   // repaint the sidebar account card
+    if (window.LinguaWave && window.LinguaWave.refreshSidebarUser) window.LinguaWave.refreshSidebarUser();
     toast('Profile picture updated.', 'success');
     setPickerOpen(false);
   } catch (e) {
     console.warn('[profile-page.js] could not save picture:', e);
     if (e && e.code === 'lw/account-removed') {
-      // Admin deleted this account while the tab was open; auth.js already signed them out.
       toast(e.message, 'error');
       setTimeout(() => { window.location.href = '../index.html'; }, 2500);
     } else {
@@ -477,12 +423,9 @@ async function initAvatar() {
   document.getElementById('btn-change-avatar').addEventListener('click', () => setPickerOpen(true));
   document.getElementById('btn-cancel-avatar').addEventListener('click', () => setPickerOpen(false));
   document.getElementById('btn-close-avatar').addEventListener('click', () => setPickerOpen(false));
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) setPickerOpen(false); });   // backdrop click
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) setPickerOpen(false); });
   dlg.addEventListener('close', onPickerClosed);
 
-  // The session cache can be stale (picture changed on another device), so
-  // confirm against the account once auth is ready — unless the learner has
-  // already started choosing something else.
   try {
     await window.LWAuth.whenAuthReady();
     const stored = await window.LWAuth.getAvatar();
@@ -495,7 +438,6 @@ async function initAvatar() {
   }
 }
 
-/* ── LEARNING ACTIVITY + HIGHLIGHTS ───────────────────────────────── */
 function renderStats() {
   try {
     const missions = window.LWMissions.getAllMissions();
@@ -519,12 +461,8 @@ function showStatsUnavailable() {
 function initPage() {
   initAvatar();
   if (!window.LWMissions) { showStatsUnavailable(); return; }
-  // Same approach as the Progress page: paint from local state straight
-  // away, then re-render once cross-device progress has synced.
   renderStats();
   window.LWMissions.whenMissionsSyncReady().then(renderStats);
-  // Keep the grid, highlights and badges in step with the learner's progress:
-  // re-read it whenever they come back to this tab after learning elsewhere.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderStats(); });
   window.addEventListener('pageshow', (e) => { if (e.persisted) renderStats(); });
 }

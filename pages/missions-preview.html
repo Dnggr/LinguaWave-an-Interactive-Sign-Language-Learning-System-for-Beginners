@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Sets data-theme before any CSS loads, so the page never flashes
-       the wrong theme on load. Must stay first in <head> — same
-       snippet every other page in this repo uses. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -18,33 +15,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/missions-preview.html — Missions Pilot Preview (INTERNAL / DEV ONLY)
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Renders window.LWMissions's pilot mission (js/missions.js)
-               so the "LinguaWave_SoloLearn_Learning_Psychology_
-               Missions_Integration_Plan" §7 Phase 1 ("reachable only
-               behind the feature flag ... not shown to real learners
-               yet") has somewhere real to be reachable FROM. This
-               page is intentionally NOT linked from any nav/sidebar —
-               the only way in is pages/settings.html's hidden
-               ?dev=1 block, or typing the URL directly.
-
-    ISOLATION : Does not touch js/learn.js, js/camera-practice.js, js/engine/
-               progress.js, or their pages. Loads js/missions.js (curriculum
-               content + this pilot's own module)
-               only — no other app script. If the Missions
-               feature flag is off, this page still renders (it's the
-               preview tool itself) but shows a banner saying so,
-               rather than silently doing nothing.
-
-    NOT PRODUCTION UI : layout reuses this repo's existing .card/.btn/
-               .badge/.progress-bar tokens (css/style.css) for visual
-               consistency, but the specific item-list/dual-bar layout
-               here is a throwaway preview shell, not a designed
-               screen — see css/missions-preview.css's own header.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -55,17 +25,9 @@
 
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/missions-preview.css" />
-  <!-- Reuses the compare page's .devcmp-picker styling for the new
-       mission <select> (Phase 3) — no new CSS needed for that alone. -->
   <link rel="stylesheet" href="../css/missions-compare.css" />
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
@@ -83,20 +45,14 @@
     <div class="container container--narrow section section--sm">
 
       <div class="dev-flagbar card" id="dev-flagbar">
-        <!-- filled by js/missions-preview.js -->
       </div>
 
-      <!-- NEW (Phase 3) — lets a dev browse any of the now-migrated
-           missions, not just the Phase 1 pilot. Defaults to
-           'essentials_greetings' so existing behavior/links to this
-           page are unaffected if this picker is never touched. -->
       <div class="devcmp-picker" id="dev-mission-picker">
         <label for="dev-mission-select"><strong>Mission:</strong></label>
         <select id="dev-mission-select"></select>
       </div>
 
       <div id="dev-root">
-        <!-- filled by js/missions-preview.js -->
       </div>
 
     </div>

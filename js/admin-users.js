@@ -1,21 +1,8 @@
-/**
- * admin-users.js — Controller for pages/admin-users.html (NEW)
- * Lists learner profiles from Firestore `users` and lets the admin delete a learner
- * COMPLETELY — Firebase Auth login + Firestore data (see deleteLearnerAccount in
- * js/admin-firebase.js). The login is removed first by the Cloudflare Worker; if that
- * fails nothing is deleted and the admin just sees an error, so there is no
- * "data gone but login remains" state to explain.
- * The admin's own row (matched by ADMIN_EMAIL) has no delete button,
- * so a stray click can't delete the admin account.
- * BULK ACTIONS (header buttons): "Reset all user data" wipes XP / streaks / badges / progress for every
- * learner but keeps their accounts; "Delete all users" removes every learner account. Both skip the admin
- * and require typing a confirmation word first. Logic lives in js/admin-firebase.js.
- */
 import { listUsers, deleteLearnerAccount, resetAllLearnersProgress, deleteAllLearners } from "./admin-firebase.js";
 let allUsers = [];
 let pendingDeleteUid = null;
-let bulkMode = null;       // "reset" | "delete" while the bulk dialog is open
-let bulkRunning = false;   // true while a bulk action is in flight (dialog can't be dismissed)
+let bulkMode = null;
+let bulkRunning = false;
 const BULK = {
   reset: {
     title: "Reset ALL user data?",
@@ -34,7 +21,6 @@ const BULK = {
     note: "The admin account is not affected. This can't be undone.",
   },
 };
-// Not-allowed errors from the Worker (401/403) or from Firestore rules.
 const DENIED_CODES = ["worker/http-401", "worker/http-403", "permission-denied"];
 const els = {};
 function cacheEls() {
@@ -120,7 +106,6 @@ async function confirmDelete() {
   const uid = pendingDeleteUid;
   els.deleteConfirm.disabled = true;
   try {
-    // Login first (via the Worker), then the learner's data. Throws if either part fails.
     await deleteLearnerAccount(uid);
     closeDeleteConfirm();
     window.LinguaWave?.showToast?.("Learner deleted (login and data).", "success");
@@ -133,13 +118,11 @@ async function confirmDelete() {
         : (err?.message || "Couldn't delete this learner. Nothing was deleted."),
       "error"
     );
-    // The login may already be gone (admin/cleanup-failed): refresh so the list shows what is left.
     if (err?.code === "admin/cleanup-failed") await loadUsers();
   } finally {
     els.deleteConfirm.disabled = false;
   }
 }
-/* ── Bulk actions ─────────────────────────────────────────────── */
 function openBulk(mode) {
   if (!allUsers.length) {
     window.LinguaWave?.showToast?.("There are no learners to " + (mode === "reset" ? "reset." : "delete."), "info");
@@ -162,7 +145,7 @@ function openBulk(mode) {
   els.bulkInput.focus();
 }
 function closeBulk() {
-  if (bulkRunning) return;   // never abandon a half-finished run
+  if (bulkRunning) return;
   els.bulkBackdrop.hidden = true;
   bulkMode = null;
 }
@@ -198,7 +181,6 @@ async function confirmBulk() {
     } else {
       const r = await deleteAllLearners(onBulkProgress);
       if (r.failed.length && !r.deleted) {
-        // Nothing was deleted: show WHY (e.g. not allowed / server not set up) instead of a bare count.
         const why = r.failed[0].error;
         toast?.(
           DENIED_CODES.includes(why?.code)

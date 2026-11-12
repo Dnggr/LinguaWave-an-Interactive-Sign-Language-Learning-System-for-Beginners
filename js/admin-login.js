@@ -1,13 +1,6 @@
-/**
- * admin-login.js — Controller for pages/admin-login.html (NEW)
- * Signs in on the ADMIN-ONLY Firebase app (js/admin-firebase.js). Any
- * account that is not the admin email is signed straight back out, so
- * a learner can't hold an admin-app session.
- * Load as: <script type="module" src="../js/admin-login.js"></script>
- */
 import { auth, adminSignIn, adminGoogleSignIn, adminSignOut } from "./admin-firebase.js";
 
-const ADMIN_EMAIL = "linguawave.project@gmail.com"; // keep in sync (see admin-auth.js)
+const ADMIN_EMAIL = "linguawave.project@gmail.com";
 const DASHBOARD = "admin-dashboard.html";
 
 const els = {
@@ -46,7 +39,7 @@ function setBusy(busy) {
 async function finish(cred) {
   const user = cred && cred.user;
   if (!user || !isAdminEmail(user.email)) {
-    try { await adminSignOut(); } catch (e) { /* ignore */ }
+    try { await adminSignOut(); } catch (e) {  }
     showMsg("This account is not the administrator account.");
     return;
   }
@@ -73,7 +66,6 @@ els.password.addEventListener("keydown", (e) => {
 });
 els.googleBtn.addEventListener("click", () => run(() => adminGoogleSignIn()));
 
-// Already signed in as admin? Skip the form.
 (async () => {
   const params = new URLSearchParams(location.search);
   if (params.get("denied")) showMsg("That account is not the administrator account.");

@@ -1,22 +1,4 @@
-/*
-  css/lesson-camera.css — Camera Panel & Assessment UI Styles
-  ─────────────────────────────────────────────────────────────────
-  PURPOSE  : Styles for the live camera feed, skeleton canvas overlay,
-             detection readout, assessment prompt, and completion overlay
-             added to pages/camera-practice.html during the motion-detection migration.
-  CONNECTS : pages/camera-practice.html (loaded alongside css/lesson.css)
-  ─────────────────────────────────────────────────────────────────
 
-  FIX — Camera zoom:
-    Changed .camera-viewport video and canvas from `object-fit: cover` to
-    `object-fit: contain`. Cover cropped/zoomed the stream to fill the
-    fixed 4/3 aspect-ratio box. Contain lets the full camera frame be
-    visible at the camera's native aspect ratio without any cropping.
-    Also removed the forced `aspect-ratio: 4 / 3` so the viewport adapts
-    to the actual stream dimensions reported after the camera starts.
-*/
-
-/* ── 1. TWO-COLUMN LESSON LAYOUT ──────────────────────────────────── */
 .lesson-layout {
   display: grid;
   grid-template-columns: 1fr 420px;
@@ -30,7 +12,6 @@
   }
 }
 
-/* ── 2. MODE BAR ─────────────────────────────────────────────────── */
 .mode-bar {
   display: flex;
   align-items: center;
@@ -59,10 +40,9 @@
   50%       { background: var(--clr-success-soft); opacity: .6; }
 }
 
-/* ── 3. CAMERA PANEL CONTAINER ────────────────────────────────────── */
 .camera-panel {
   position: sticky;
-  top: calc(60px + var(--space-4));   /* stick below navbar */
+  top: calc(60px + var(--space-4));   
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -79,22 +59,12 @@
   font-size: var(--fs-lg);
 }
 
-/* ── 4. CAMERA VIEWPORT ───────────────────────────────────────────── */
-/*
-  FIX: Removed `aspect-ratio: 4 / 3` — the viewport now sizes itself
-  to the video's natural dimensions. This prevents the browser from
-  cropping a 16:9 (or any other ratio) stream into a mismatched box.
-
-  The `position: relative` + `overflow: hidden` are kept so the canvas
-  skeleton overlay still clips correctly inside the viewport boundary.
-*/
 .camera-viewport {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--clr-bg);
   border: 2px solid var(--clr-border);
-  /* aspect-ratio removed — let video dictate the height naturally */
   transition: border-color var(--dur-base) var(--ease);
 }
 
@@ -102,44 +72,26 @@
   border-color: var(--clr-accent);
 }
 
-/*
-  FIX: Changed `object-fit: cover` → `object-fit: contain`.
-  `cover` zoomed/cropped the video to fill the fixed box — users saw
-  a magnified, cropped version of their hand rather than the full frame.
-  `contain` shows the entire camera frame without cropping, letterboxing
-  with the background colour (var(--clr-bg)) if the aspect ratios differ.
-
-  Both video AND canvas must use the same object-fit value so the
-  skeleton overlay stays perfectly aligned on top of the video.
-*/
 .camera-viewport video,
 .camera-viewport canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;          /* was: cover — now shows full frame */
-  /* Mirror webcam so it feels like a mirror to the user */
+  object-fit: contain;          
   transform: scaleX(-1);
 }
 
-/*
-  Because video is now position:absolute inside a position:relative
-  parent, the parent has no intrinsic height when the video hasn't
-  loaded yet. We set a min-height so the viewport doesn't collapse
-  to 0px before the stream attaches.
-*/
 .camera-viewport video {
-  position: relative;          /* first child drives parent height */
+  position: relative;          
   min-height: 240px;
 }
 
 .camera-viewport canvas {
-  position: absolute;          /* overlay on top of video */
+  position: absolute;          
   background: transparent;
 }
 
-/* ── 5. STATUS OVERLAY ────────────────────────────────────────────── */
 .camera-status {
   position: absolute;
   inset: 0;
@@ -161,10 +113,9 @@
 
 .camera-status--error {
   background: var(--clr-red-soft);
-  color: var(--clr-red-text); /* CHANGED (light pass) was --clr-red: 4.11:1 in light */
+  color: var(--clr-red-text); 
 }
 
-/* ── 6. HAND STATUS PILL ─────────────────────────────────────────── */
 .hand-status-pill {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
@@ -184,7 +135,6 @@
   border: 1px solid var(--clr-success-soft);
 }
 
-/* ── 7. DETECTION PANEL ───────────────────────────────────────────── */
 .detection-panel {
   padding: var(--space-4);
 }
@@ -211,7 +161,6 @@
   transition: color var(--dur-fast) var(--ease);
 }
 
-/* Confidence bar */
 .confidence-wrap {
   display: flex;
   align-items: center;
@@ -226,10 +175,6 @@
   overflow: hidden;
 }
 
-/* CHANGED (Impeccable pass): this bar updates on detection frames while the
-   model is running, so it was the animated-`width` case that mattered most.
-   Now full width and slid with transform; JS sets --p (0 to 100) instead of
-   style.width. See .progress-bar__fill in css/style.css for the scheme. */
 .confidence-bar-fill {
   height: 100%;
   width: 100%;
@@ -243,10 +188,6 @@
   background: var(--clr-blue);
 }
 
-/* NEW: "actively listening" state — shown while classifyMotion() is
-   mid-window (no label yet, but definitely not frozen). A slow
-   opacity pulse across the full-width bar reads as "working" rather
-   than the flat static look a stalled "0%" bar would give. */
 .confidence-bar-fill--pulse {
   animation: confidencePulse 1.1s ease-in-out infinite;
 }
@@ -263,7 +204,6 @@
   text-align: right;
 }
 
-/* Motion buffer row (only visible for motion-type signs) */
 .motion-buffer-wrap {
   display: flex;
   flex-direction: column;
@@ -276,9 +216,6 @@
   gap: var(--space-3);
 }
 
-/* "Try it" practice trigger — small/secondary on purpose, since
-   Start Assessment (the primary CTA below) covers the scored path;
-   this is just the same action available for casual practice. */
 .motion-try-btn {
   flex-shrink: 0;
   background: var(--clr-accent-soft);
@@ -294,14 +231,12 @@
 .motion-try-btn:hover { background: var(--clr-accent); color: var(--clr-text-invert); }
 .motion-try-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ── 8. ASSESSMENT PANEL ──────────────────────────────────────────── */
 .assessment-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-/* Prompt box (shown during assessment) */
 .assessment-prompt-box {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -317,7 +252,6 @@
   color: var(--clr-text);
 }
 
-/* Feedback states */
 .assessment-feedback {
   margin-top: var(--space-3);
   padding: var(--space-2) var(--space-4);
@@ -339,7 +273,6 @@
   border: 1px solid var(--clr-red-soft);
 }
 
-/* Score line (e.g. "Score: 0 / 1") */
 .score-display {
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -347,7 +280,6 @@
   text-align: center;
 }
 
-/* ── 9. TIPS BOX ──────────────────────────────────────────────────── */
 .camera-tips {
   font-size: var(--fs-sm);
 }
@@ -368,7 +300,6 @@
   color: var(--clr-text-muted);
 }
 
-/* ── 10. COMPLETION OVERLAY ───────────────────────────────────────── */
 .completion-overlay {
   position: fixed;
   inset: 0;
@@ -381,7 +312,7 @@
 }
 
 .completion-card {
-  position: relative; /* anchors .completion-card__close */
+  position: relative; 
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
@@ -392,9 +323,6 @@
   box-shadow: var(--shadow-card);
 }
 
-/* NEW: small X in the card's top-right corner — same visual language as the
-   login modal's .auth-modal__close (css/auth.css, not loaded on this page),
-   tucked just inside the card edge so it never clips on narrow screens. */
 .completion-card__close {
   position: absolute; top: var(--space-3); right: var(--space-3);
   width: 32px; height: 32px; border-radius: 50%;
@@ -406,9 +334,6 @@
 .completion-card__close:hover { color: var(--clr-text); border-color: var(--clr-text-muted); }
 .completion-card__close:focus-visible { outline: 2px solid var(--clr-accent); outline-offset: 2px; }
 
-/* Note under the "Practice Check (optional)" button. Hidden whenever that
-   button is hidden (startAssessment()/name drill set inline display:none),
-   so it never floats on its own during a check. */
 .practice-check-note { margin: var(--space-2) 0 0; }
 #btn-start-assessment[style*="display: none"] + .practice-check-note { display: none; }
 
@@ -434,13 +359,6 @@
   gap: var(--space-3);
 }
 
-/* ── Motion recording status pulse ───────────────────────────────── */
-/* CHANGED: this used to highlight a dedicated "Start Recording"
-   button (#btn-start-motion), which no longer exists — Start
-   Recording is now triggered automatically from the Assessment flow
-   (see showNextPrompt() in lesson.js). The pulse now highlights the
-   whole #motion-buffer-wrap instead, so there's still a clear "this
-   is actively happening" cue even with no button to style. */
 #motion-buffer-wrap.is-recording {
   animation: motionRecordPulse 1.1s ease-in-out infinite;
 }
@@ -453,12 +371,6 @@
   50%      { opacity: 0.75; }
 }
 
-/* ── Detection log ────────────────────────────────────────────────
-   CHANGED: this used to be its own top-level .card; it now lives
-   nested inside .detection-panel (see lesson.html), sharing one card
-   with the live "Detected sign" readout instead of sitting in a
-   separate box right below it — same information, one less visual
-   seam. A top border + padding stand in for the old card boundary. */
 .detection-log-inline {
   padding-top: var(--space-4);
   border-top: 1px solid var(--clr-border);
@@ -489,7 +401,7 @@
   max-height: 180px;
   overflow-y: auto;
   display: flex;
-  flex-direction: column-reverse; /* newest entry (appended last) reads at the top */
+  flex-direction: column-reverse; 
   gap: 4px;
 }
 .detection-log__list li {
@@ -528,11 +440,6 @@
   justify-content: center;
 }
 
-/* ── LOCKED PRACTICE CHECK (sign has no trained data in labels.json) ────
-   Set by applyPracticeCheckLock() in js/camera-practice.js. The button stays
-   focusable + clickable (aria-disabled, NOT the disabled attribute) so the
-   click can open the "no trained data yet" modal and hover/focus can show
-   the tooltip — a truly disabled button swallows both. */
 #btn-start-assessment.is-locked {
   position: relative;
   opacity: .6;
@@ -563,7 +470,6 @@
 .practice-check-locked-note { margin: var(--space-2) 0 0; }
 .practice-check-locked-note[hidden] { display: none; }
 
-/* No-trained-data modal (reuses .completion-overlay / .completion-card) */
 .untrained-card { padding: var(--space-8); }
 .untrained-card__icon {
   display: inline-flex; align-items: center; justify-content: center;

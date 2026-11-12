@@ -1,11 +1,3 @@
-/**
- * js/xp.js — Spark client bridge for XP and progression.
- *
- * The browser writes only its signed-in learner's xpState and publicProfiles
- * documents, together in a Firestore transaction. Firestore rules enforce
- * ownership and conservative caps, but cannot prove that browser-reported
- * lesson/game activity really happened. See XP_SYSTEM.md for those limits.
- */
 import { auth, db, doc, getDoc, collection, getDocs, query, orderBy } from './auth.js';
 import { limit, where, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { SIGN_DICTIONARY } from './dictionary.js';
@@ -52,7 +44,6 @@ function badgeIconId(id) {
   if (/^streak_\d+$/.test(id)) return 'flame';
   return 'medal';
 }
-/** Inline <svg> markup for an icon id; '' if js/icons.js is not on the page. */
 const iconSvg = (id, options) => window.LWIcons?.markup(id, options) || '';
 function currentUid() { return auth.currentUser?.uid || ''; }
 function isAdmin() { return (auth.currentUser?.email || '').toLowerCase() === ADMIN_EMAIL; }
@@ -60,8 +51,6 @@ function queueKey(uid = currentUid()) { return `lw_xp_pending_v2:${uid}`; }
 function randomId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
-/* Streak shown for a stored xpState doc, as of right now in that doc's own timezone.
- * Uses E.effectiveStreak (the grace rule) and E.dayKey from xp-engine.mjs. */
 function liveStreakOf(state) {
   if (!state?.streak) return 0;
   try { return E.effectiveStreak(state.streak, E.dayKey(Date.now(), state.tz || 'UTC')); } catch { return 0; }
@@ -116,7 +105,7 @@ function readQueue(uid = currentUid()) {
 }
 function writeQueue(value, uid = currentUid()) {
   if (!uid) return;
-  try { localStorage.setItem(queueKey(uid), JSON.stringify(value.slice(-300))); } catch { /* storage may be disabled */ }
+  try { localStorage.setItem(queueKey(uid), JSON.stringify(value.slice(-300))); } catch {  }
 }
 function sameJob(a, b) {
   if (a.type !== b.type) return false;
@@ -155,7 +144,6 @@ function settleJob(job, result) {
 function runtimeMissions() {
   try { return window.LWMissions?.getAllMissions?.() || []; } catch { return []; }
 }
-/** Every sign id the app knows: the detector dictionary plus the lesson content (Construct a Sentence uses lesson signs). */
 function knownSignIds() {
   const known = new Set(Object.keys(SIGN_DICTIONARY));
   (window.LWMissions?.content?.SIGNS || []).forEach((sign) => { if (sign?.signId) known.add(sign.signId); });
@@ -197,7 +185,7 @@ function combinedLearnedSigns(state) {
 }
 async function getLearnedSigns() {
   await window.LWAuth?.whenAuthReady?.();
-  try { await window.LWMissions?.whenMissionsSyncReady?.(); } catch { /* local lesson progress still counts as best-effort */ }
+  try { await window.LWMissions?.whenMissionsSyncReady?.(); } catch {  }
   const state = await getMyState();
   return combinedLearnedSigns(state);
 }
@@ -229,13 +217,11 @@ async function applyJob(job, uid) {
   const missions = runtimeMissions().map((mission) => missionForId(mission.id)).filter(Boolean);
   const types = signTypes();
   const localLearned = localLearnedSigns();
-  // Read before the transaction (it may re-run): the Missions streak the 'streak' job heals toward.
   const missionStreak = job.type === 'streak' ? (window.LWMissions?.getStreakSummary?.() || null) : null;
   return runTransaction(db, async (transaction) => {
     if (auth.currentUser?.uid !== uid) return { ok: false, reason: 'unauthenticated' };
     const [stateSnap, userSnap] = await Promise.all([transaction.get(stateRef), transaction.get(userRef)]);
     const now = Date.now();
-    // Profile gone = account deleted by the admin: never re-create xpState / publicProfiles for it.
     if (!userSnap.exists()) return { ok: false, reason: 'account_missing' };
     const userData = userSnap.data();
     if (userData.deletionRequested && job.type !== 'profile') return { ok: false, reason: 'account_deletion_pending' };
@@ -258,9 +244,6 @@ async function applyJob(job, uid) {
     } else if (job.type === 'profile') {
       result = { ok: true, xpGained: 0 };
     } else if (job.type === 'streak') {
-      // Catch-up for streaks stored before the grace rule (see E.healStreakFromMissions).
-      // Nothing to heal -> skipStateWrite, which falls through to E.summary() below, so the result still carries
-      // the real xp / level / streak. (Returning a bare object here made the Level card redraw as Level 1, 0 XP.)
       const out = {};
       const healed = E.healStreakFromMissions(state, today, out, now, missionStreak);
       result = healed ? { ok: true, ...out, xpGained: 0, streakHealed: true } : { ok: true, skipStateWrite: true, xpGained: 0 };
@@ -278,8 +261,6 @@ async function applyJob(job, uid) {
     } else return { ok: false, reason: 'bad_input' };
     if (result?.skipStateWrite) return E.summary(state, now, result);
     if (!result?.ok) return result || { ok: false, reason: 'bad_input' };
-    // Rules require ~2 seconds between every XP-state write. The clock is
-    // client-side, so rules also verify the server timestamp on commit.
     const lastWriteAt = timestampMs(state.lastWriteAt);
     if (lastWriteAt && now - lastWriteAt < E.CONFIG.MIN_CLAIM_GAP_MS) {
       return { ok: false, reason: 'too_fast', retryAfterMs: E.CONFIG.MIN_CLAIM_GAP_MS - (now - lastWriteAt) };
@@ -308,7 +289,7 @@ async function flush() {
       try {
         const result = await applyJob(job, uid);
         if (currentUid() !== uid) return;
-        if (result?.reason === 'too_fast' && Number(result.retryAfterMs) > 0) {   // pacing gap only; a game-timing 'too_fast' has no retryAfterMs and must be dropped, not retried forever
+        if (result?.reason === 'too_fast' && Number(result.retryAfterMs) > 0) {
           clearTimeout(retryTimer);
           retryTimer = setTimeout(() => { retryTimer = null; void flush(); }, Math.max(1000, result.retryAfterMs || E.CONFIG.MIN_CLAIM_GAP_MS));
           return;
@@ -317,24 +298,21 @@ async function flush() {
         if (result?.ok) publish(result);
         settleJob(job, result);
         if (job.type === 'backfill' && (result?.ok || ['not_eligible', 'window_closed'].includes(result?.reason))) {
-          try { localStorage.setItem(`lw_xp_backfilled_v2:${uid}`, '1'); } catch { /* Firestore backfilled flag remains authoritative */ }
+          try { localStorage.setItem(`lw_xp_backfilled_v2:${uid}`, '1'); } catch {  }
         }
       } catch (error) {
         reportError(error);
-        if (isOfflineError(error)) return; // Retain the job for the online event/reload retry.
+        if (isOfflineError(error)) return;
         writeQueue(readQueue(uid).slice(1), uid);
         settleJob(job, { ok: false, reason: error?.code || 'write_failed' });
       }
     }
   })().finally(() => {
     flushing = null;
-    // A job queued while the loop above was finishing (e.g. the next step of syncStreak(), enqueued the moment the
-    // previous one settled) found `flushing` still set and never got a loop of its own: run once more for it.
     if (flushQueued) { flushQueued = false; void flush(); }
   });
   return flushing;
 }
-/** enqueue() uses this instead of flush(): same call, but remembers a request that arrives while a loop is winding down. */
 function requestFlush() {
   if (flushing) flushQueued = true;
   void flush();
@@ -372,17 +350,12 @@ function claimMission(mission) {
   void enqueue({ type: 'mission', missionId: mission.id });
 }
 async function startGame(signs, mode = 'wall', extra = {}) {
-  // Stamp the session clock now, before any await. The page records brick times from its own start; if this stamp
-  // were taken after the auth/Firestore waits below, the engine's elapsed time would be short by that delay and
-  // validateGameTiming() would reject honest runs (clock_mismatch / too_fast).
   const startedAt = Date.now();
   await window.LWAuth?.whenAuthReady?.();
   const user = auth.currentUser;
   if (!user || !user.emailVerified || isAdmin()) return null;
-  // Construct a Sentence: `extra` = { rounds: [[signId, ...], ...], difficulty }; `signs` is the unique ids across the rounds.
   const sentence = mode === 'sentence';
   const rounds = sentence && Array.isArray(extra?.rounds) ? extra.rounds.map((words) => (Array.isArray(words) ? words.slice() : words)) : null;
-  // Time Attack (fingerspelling): `extra` = { words: [wordId, ...] }; `signs` is the unique letters/numbers across those words.
   const fingerspell = mode === 'fingerspell';
   const fsWords = fingerspell && Array.isArray(extra?.words) ? extra.words.slice() : null;
   if (sentence) {
@@ -404,9 +377,8 @@ async function startGame(signs, mode = 'wall', extra = {}) {
     const session = { id, startedAt, signs: signs.slice(), mode, ...(sentence ? { rounds, difficulty: extra.difficulty } : {}),
       ...(fingerspell ? { words: fsWords } : {}) };
     gameSessions.set(id, session);
-    if (sentence) return { ok: true, sessionId: id, xpEligible: true };   // Construct a Sentence needs no learned signs
+    if (sentence) return { ok: true, sessionId: id, xpEligible: true };
     if (fingerspell) {
-      // A word pays XP only when every letter/number in it is learned; the run is playable either way.
       const payable = fsWords.filter((wordId) => E.fingerspellWordById(wordId).symbols.every((symbol) => learned.includes(symbol)));
       return { ok: true, sessionId: id, xpEligible: payable.length > 0, payableWords: payable, totalWords: fsWords.length };
     }
@@ -425,9 +397,6 @@ async function finishGame(sessionId, broken, wrong = 0) {
   if (!Array.isArray(broken) || !Number.isInteger(wrong) || wrong < 0 || wrong > 500) return { ok: false, reason: 'bad_input' };
   const result = await enqueue({ type: 'game', session: { ...session }, broken: broken.map((brick) => ({ ...brick })), wrong });
   gameSessions.delete(sessionId);
-  // DAY STREAK (js/missions.js): a game run that EARNED XP also counts as practice for the Missions streak, the same
-  // condition under which the XP engine extends its own streak. Without this the Profile chip said 3 days while
-  // Progress / the Learning Activity label said 2. Best-effort: a streak problem never affects the game result.
   if (result?.ok && result.counted) {
     try { window.LWMissions?.recordActivity?.('game'); } catch (error) { console.warn('[xp] could not record game streak activity:', error?.message || error); }
   }
@@ -445,9 +414,6 @@ async function getMyState() {
     return null;
   }
 }
-// Leaderboards, all read from `publicProfiles` with a single-field ordering (no composite index needed).
-//  level: ranked by level; level only ever rises with XP, so ordering by xp gives the same order, with ties split by XP.
-//  Game boards rank by XP earned in that game (wallXp / timeAttackXp / sentenceXp) and skip learners with none yet.
 const BOARD_MAX = 50;
 const BOARDS = {
   level:       { label: 'Level',             field: 'xp',           build: (ref, n) => query(ref, orderBy('xp', 'desc'), limit(n)) },
@@ -457,7 +423,6 @@ const BOARDS = {
   timeAttack:  { label: 'Time Attack',       field: 'timeAttackXp', build: (ref, n) => query(ref, where('timeAttackXp', '>', 0), orderBy('timeAttackXp', 'desc'), limit(n)) },
   sentence:    { label: 'Construct a Sentence', field: 'sentenceXp', build: (ref, n) => query(ref, where('sentenceXp', '>', 0), orderBy('sentenceXp', 'desc'), limit(n)) },
 };
-/** Top `max` learners (1..50) for a board. Only that many documents are read, so a short list is cheap. */
 async function loadBoard(kind, max = 10) {
   await window.LWAuth?.whenAuthReady?.();
   const board = BOARDS[kind] || BOARDS.level;
@@ -465,16 +430,14 @@ async function loadBoard(kind, max = 10) {
   const snapshot = await getDocs(board.build(collection(db, 'publicProfiles'), n));
   let rows = snapshot.docs.map((entry) => ({ uid: entry.id, ...entry.data() }));
   rows.forEach((row) => { if (row.streakExpiresAt && row.streakExpiresAt <= Date.now()) row.streak = 0; });
-  if (board === BOARDS.streak) rows = rows.filter((row) => (row.streak || 0) > 0);   // a lapsed streak is not a streak
+  if (board === BOARDS.streak) rows = rows.filter((row) => (row.streak || 0) > 0);
   rows.sort((a, b) => ((b[board.field] || 0) - (a[board.field] || 0)) || ((b.xp || 0) - (a.xp || 0)));
   return rows;
 }
-/** Call on the Profile page: brings a pre-grace-rule streak up to date. Resolves with the summary. */
 async function syncStreak() {
-  for (let i = 0; i < 30 && pageActive && !window.LWMissions?.getStreakSummary; i++) await delay(100); // missions.js is a deferred classic script
+  for (let i = 0; i < 30 && pageActive && !window.LWMissions?.getStreakSummary; i++) await delay(100);
   if (!window.LWMissions) return { ok: false, reason: 'no_missions' };
   let res = await enqueue({ type: 'streak' });
-  // A heal moves the streak one step (the rules allow +1 per write); repeat until nothing is left to heal.
   for (let i = 0; i < 12 && pageActive && res?.ok && res.streakHealed; i++) res = await enqueue({ type: 'streak' });
   return res;
 }
@@ -491,17 +454,17 @@ async function backfillOnce() {
   for (let attempt = 0; attempt < 80 && pageActive && !window.LWMissions; attempt++) await delay(100);
   if (!window.LWMissions) return null;
   const flag = `lw_xp_backfilled_v2:${user.uid}`;
-  try { if (localStorage.getItem(flag)) return null; } catch { /* Firestore remains the once-per-account authority */ }
-  try { await window.LWMissions.whenMissionsSyncReady?.(); } catch { /* local progress is still reportable */ }
+  try { if (localStorage.getItem(flag)) return null; } catch {  }
+  try { await window.LWMissions.whenMissionsSyncReady?.(); } catch {  }
   const created = Date.parse(user.metadata?.creationTime || '');
   const launch = Date.parse(E.CONFIG.LAUNCH_AT_ISO);
   const closedAt = launch + E.CONFIG.BACKFILL_WINDOW_DAYS * 86400000;
   if (!Number.isFinite(created) || created >= launch) {
-    try { localStorage.setItem(flag, '1'); } catch { /* no-op */ }
+    try { localStorage.setItem(flag, '1'); } catch {  }
     return { ok: true, reason: 'not_eligible', xpGained: 0 };
   }
   if (Date.now() > closedAt) {
-    try { localStorage.setItem(flag, '1'); } catch { /* no-op */ }
+    try { localStorage.setItem(flag, '1'); } catch {  }
     return { ok: true, reason: 'window_closed', xpGained: 0 };
   }
   const completedItemIds = [];
@@ -568,7 +531,7 @@ window.LWXP = {
   liveStreakOf, syncStreak, reasonText,
   levelFromXp, levelProgress, tierOf, badgeInfo, tierIconId, badgeIconId,
   config: CFG, timezone: TZ, getLatest: () => latest,
-  debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }), // run LWXP.debug() in the console
+  debug: () => ({ uid: currentUid(), pending: readQueue(), lastError, latest }),
 };
 document.dispatchEvent(new CustomEvent('lwxp-ready'));
 void window.LWAuth?.whenAuthReady?.().then(() => { void flush(); void backfillOnce(); }).catch((error) => {

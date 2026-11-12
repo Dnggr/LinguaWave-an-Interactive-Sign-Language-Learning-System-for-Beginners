@@ -2,8 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- NEW: sets data-theme before any CSS loads, so the page never
-       flashes the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -21,37 +19,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/intro-to-asl.html — Module 1: Introduction to ASL
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Standalone reading content (History of ASL, Deaf
-               Awareness, Deaf Culture, visual-communication basics,
-               learning tips). Deliberately NOT part of lesson.js's
-               camera-driven flow — there's nothing to detect here, no
-               webcam, no model. This is the "middle path" version of
-               the Module/Lesson-hierarchy request: real Module 1
-               content exists now, without a data-model migration for
-               the rest of the app's sign-practice categories.
-
-    CONNECTS : ← pages/learn.html  (basic level's "Module 1" banner
-                 card, above the alphabet grid)
-               → pages/learn.html  ("Continue to Alphabet" CTA)
-
-    CONTENT NOTE: written from established ASL linguistics (Stokoe's
-    five parameters, the well-documented history of the American
-    School for the Deaf) and widely-documented Deaf-culture etiquette
-    norms — not sourced from any single copyrighted text, all in
-    original wording.
-
-    UPDATE (this session): added a short paragraph under §4's "Facial
-    expressions" on the AFFECTIVE (emotional-tone) use of facial
-    expression — distinct from the grammatical yes/no-question and
-    wh-question use already described just above it — framed as an
-    analogy to tone of voice in spoken language, per the request to
-    give learners some "behind the hands" context, not just drill
-    content.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Introduction to ASL | LinguaWave</title>
@@ -61,10 +28,6 @@
   <link rel="stylesheet" href="../css/learn.css" />
 
   <script type="module" src="../js/auth.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script>
@@ -98,9 +61,7 @@
     .lesson-article .card { margin-bottom: var(--space-6); }
     .etiquette-list li::marker { color: var(--clr-accent); }
   </style>
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="../assets/icon/favicon.png" />
@@ -327,14 +288,6 @@
     </div>
   </section>
 
-  <!-- BUG FIX (this session): this page was the only authenticated
-       page in the app with no <script src="../js/main.js"> at all —
-       main.js is what wires up the "Log out" button's click handler
-       (data-logout) and fills data-user-name from the real session;
-       without it, "Log out" silently did nothing (just followed
-       href="#") and the navbar always showed the static "Learner"
-       placeholder. Every other page (dashboard/feedback/learn/lesson/
-       quiz/index) already loads it. -->
   <script src="../js/main.js"></script>
 </body>
 </html>

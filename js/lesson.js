@@ -1,56 +1,6 @@
-/**
- * js/lesson.js — Renderer/controller for pages/lesson.html (NEW)
- * ─────────────────────────────────────────────────────────────────
- * Walks a mission's existing items (js/missions.js's own LESSON/
- * BOOSTER/PRACTICE/QUIZ shape, unchanged) using the stage plan
- * js/lesson-loop.js computes for each one. This file only renders
- * + wires DOM events and calls the EXISTING progress functions
- * (window.LWMissions.markItemComplete / getDropOffIndex / getRecap /
- * getHeartsState/consumeHeartForMastery) — it has no progress logic
- * of its own.
- *
- * QUIZ HANDOFF (consistency fix, widened this session) : mirrors
- * mission-overview.js's own SAMPLE_MASTERY_QUIZ_CHAPTERS split —
- * ALL 12 chapters (asl_foundations/introduce_yourself/
- * express_feelings/daily_actions/describing_things/home_family/
- * school_life/food_nature/clothing_belongings/people_places_time/
- * having_a_conversation/putting_it_together) now hand off to the real
- * mastery-quiz.html (which spends a heart per wrong answer, not on
- * entry) instead of always going to V1's pages/quiz.html. With every
- * chapter now sampled, the V1 pages/quiz.html fallback path is
- * currently unreachable from a real mission link — it stays in place
- * as a defensive fallback only (e.g. a stale/typed URL for a
- * mission outside this list). Without this, the SAME mission's
- * Mastery Quiz button would launch a completely different quiz
- * experience depending on whether the learner clicked it from Mission
- * Overview or from here — see that file's own header for the full
- * scope note. WIDENED this revision (merged from three parallel
- * widenings — was Chapters 1-2, then +3-5, +6-8, and +9-12
- * separately) — keep this array in sync with
- * mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
- * mastery-quiz.js's SAMPLE_CATEGORY_GROUPS.
- *
- * REVIEW BEFORE THE MASTERY QUIZ : the ‹ › review nav (and Review
- * Mission's always-full bar) used to unlock only once the whole mission
- * was 100% done, which only a PASSED quiz can produce. A learner who
- * reached the last item and then ran out of hearts had no way to look
- * back at what they'd learned. It now unlocks as soon as the closing
- * Mastery Quiz is the only item left (window.LWMissions.
- * canReviewMission()), and stays unlocked after. It does NOT unlock for
- * a learner who skipped straight to the quiz without working through
- * the mission. `?review=1` (Mission Overview's "Review Mission" button)
- * opens such a mission at the start instead of at the quiz recap.
- *
- * Same data-source discipline as every other *.js file: reads only
- * window.LWMissions / window.LWMissionsLoop.
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 console.info('[LinguaWave] lesson.js loaded: question fix 2026-10-02');
 
-// Mirrors mission-overview.js's own const of the same name — kept
-// as a small local re-derivation, same as this file's own existing
-// pattern (see its file-header note above).
 const SAMPLE_MASTERY_QUIZ_CHAPTERS = [
   'asl_foundations', 'introduce_yourself',
   'express_feelings', 'daily_actions', 'describing_things',
@@ -63,11 +13,6 @@ function getMissionParam() {
   return params.get('mission');
 }
 
-/* Real random (Math.random, Fisher-Yates) shuffle for answer options,
- * applied at render time so the correct answer's position is
- * unpredictable on every render. Returns a new array; never mutates
- * the plan's own option list. Answers are matched by data-value, not
- * by position, so order has no effect on grading. */
 function shuffleOptions(arr) {
   const out = (arr || []).slice();
   for (let i = out.length - 1; i > 0; i--) {
@@ -83,22 +28,11 @@ function escapeHtml(str) {
   }[c]));
 }
 
-/* ── media (video/image) with graceful, honest fallback ───────────
- * Mirrors js/camera-practice.js's own defensive pattern for the same not-yet-
- * populated asset paths (see that file's "Add image to ..." hint) —
- * not a new convention invented for this page. */
-// NEW — a sign's videoUrl may be a YouTube embed instead of a local mp4 (the
-// convention documented above SIGNS_V2 in missions.js, already supported by
-// camera-practice.js). A YouTube embed is a web page, not a media file, so it
-// can't go in <video>/<source>; it needs an <iframe>. Same allow-list as
-// camera-practice.js — only YouTube embed URLs are ever framed, because
-// videoUrl can also come from admin-edited Firestore content.
 const YT_EMBED_RE = /^https:\/\/(www\.)?(youtube\.com|youtube-nocookie\.com)\/embed\/([\w-]{6,})(\?[^\s#]*)?$/i;
 function youTubeEmbedSrc(url) {
   const m = YT_EMBED_RE.exec(String(url || '').trim());
   if (!m) return null;
   const u = new URL(String(url).trim());
-  // Same clean, muted, looping treatment local clips get (see camera-practice.js).
   [['autoplay', '1'], ['mute', '1'], ['loop', '1'], ['playlist', m[3]], ['rel', '0'],
    ['playsinline', '1'], ['iv_load_policy', '3'], ['controls', '0']].forEach(([k, v]) => u.searchParams.set(k, v));
   return u.toString();
@@ -108,10 +42,6 @@ function mediaBlockHtml(sign) {
   if (!sign) {
     return `<div class="lesson-media lesson-media--missing">Sign data not found.</div>`;
   }
-  // NEW — fallback chain: this entry's own video first, then every other copy
-  // of the same sign in the curriculum (getSignVideoUrls, missions.js). The
-  // browser tries each <source> in order, so a sign whose own mp4 is missing
-  // still plays a video if any other lesson has one.
   const allUrls = (window.LWMissions && window.LWMissions.getSignVideoUrls)
     ? window.LWMissions.getSignVideoUrls(sign.signId, sign.videoUrl)
     : [sign.videoUrl].filter(Boolean);
@@ -124,19 +54,11 @@ function mediaBlockHtml(sign) {
               style="border:0; width:100%; aspect-ratio:16/9;"></iframe>
     </div>`;
   }
-  const urls = allUrls.filter((u) => !youTubeEmbedSrc(u));   // a YouTube URL can't be a <source>
+  const urls = allUrls.filter((u) => !youTubeEmbedSrc(u));
   const safeVideo = escapeHtml(urls[0] || '');
   const safeImage = escapeHtml(sign.imageUrl || '');
   const safeTitle = escapeHtml(sign.title || sign.signId);
 
-    // NOTE: the fallback trigger lives on each <source> tag's own onerror, not
-  // the <video> tag's — Chromium dispatches the media 'error' event to the
-  // failing <source> child, not the parent <video>, and it does NOT bubble.
-  // Only the LAST source showing the text/image fallback matters: while a
-  // later <source> exists the browser moves on to it by itself.
-  // The <video> ALSO gets a handler (without the "last source" check): a file
-  // that downloads but can't be decoded (e.g. HEVC) fires 'error' on the
-  // <video>, never on a <source>, and would otherwise leave a black box.
   const showFallback = `var m=this.closest('.lesson-media'); if (!m) return; var v=m.querySelector('.lesson-media__video'); var f=m.querySelector('.lesson-media__fallback'); if (v) v.style.display='none'; if (f) f.style.display='flex';`;
   const onErr = `if (this.nextElementSibling) return; ${showFallback}`;
   const sources = (urls.length ? urls : ['']).map((u) =>
@@ -158,14 +80,6 @@ function mediaBlockHtml(sign) {
   `;
 }
 
-/* NEW — video for the "already in your hands" (lighter) and register Quick
- * Check screens. These screens teach a sign that is physically IDENTICAL to
- * one the learner already saw (HI = HELLO, BYE = GOODBYE, NIGHT = EVENING —
- * see SAME_SIGN_AS in lesson-loop.js), but used to show no video at all, so
- * the learner got a text-only question about a sign they had no way to see.
- * Shows the twin's video (the one they already learned), falling back to
- * this sign's own media if the twin has no entry. mediaBlockHtml() already
- * falls back to image/text if the mp4 is missing. */
 function twinMediaHtml(mission, item, plan, sign, withCaption = true) {
   const twinId = plan && plan.duplicateOf;
   const twin = twinId ? window.LWMissions.getSign(mission.level, twinId, mission.category) : null;
@@ -188,23 +102,6 @@ function descriptionHtml(sign) {
 }
 
 function cameraPracticeLinkHtml(mission, signId) {
-  // lesson.html now lives at pages/camera-practice.html (moved from
-  // V1's pages/ this pass) — same directory as this page, so no more
-  // ../pages/ hop.
-  //
-  // FIX (this session) — was missing &sign=, so this always landed on
-  // camera-practice.html's FIRST sign in the category (signOrder[0])
-  // regardless of which sign the learner was actually looking at on
-  // this Watch stage — e.g. clicking this link from "Girl" (item 9 of
-  // 40) opened the category's first sign instead of Girl itself.
-  // camera-practice.html's own `sign` param already falls back to
-  // signOrder[0] when absent/invalid (see its computeSignOrder()/
-  // `sign` const), so this is purely additive — nothing regresses if
-  // signId is ever missing.
-  // SAME-TAB NAVIGATION — this link has no target attribute, so clicking it
-  // navigates the CURRENT tab to camera-practice.html instead of opening a
-  // second tab. (It previously used a named target, which still opened a
-  // separate tab and left the mission page behind.)
   const url = `camera-practice.html?level=${encodeURIComponent(mission.level)}&category=${encodeURIComponent(mission.category)}${signId ? `&sign=${encodeURIComponent(signId)}` : ''}`;
   return `
     <a class="lesson-camera-link" href="${url}">
@@ -213,26 +110,7 @@ function cameraPracticeLinkHtml(mission, signId) {
   `;
 }
 
-/* ── stage renderers — each fills #lesson-content and wires its
- * own "continue" action, which always ends by calling completeAndAdvance() */
 
-// REFLECTION-ON-WRONG-ANSWER FIX — every quick-check/practice answer
-// below used to setTimeout() straight into the next slide regardless
-// of whether the learner got it right or wrong (1.1–1.4s, just long
-// enough to read the feedback label, not long enough to actually
-// think about it). For a wrong answer that's a real problem: the
-// screen changes out from under the learner right as they're reading
-// why they were wrong. Shared by every answer handler in this file so
-// the "wait, no — let them read it" behavior is identical everywhere
-// (Watch's register check, Quick Check recognize, Practice's
-// discriminate-pair and recognize branches) rather than four separate
-// copies that could drift.
-//
-// Correct answers keep the old fast, low-friction auto-advance — the
-// learner already knows they're right, there's nothing there to
-// reflect on. Only an incorrect answer swaps the timer for an
-// explicit "Continue" button, appended right under the feedback
-// message, so the learner moves on when THEY are ready.
 function advanceAfterAnswer(container, correct, onDone, delay = 1100) {
   if (correct) {
     setTimeout(onDone, delay);
@@ -243,12 +121,6 @@ function advanceAfterAnswer(container, correct, onDone, delay = 1100) {
   wrap.innerHTML = `<button type="button" class="btn btn--primary btn--lg" id="lesson-answer-continue">Continue</button>`;
   container.appendChild(wrap);
   document.getElementById('lesson-answer-continue').addEventListener('click', () => {
-    // BUGFIX — onDone isn't always a full re-render (completeAndAdvance
-    // replaces the whole slide, but showContextStep only APPENDS a new
-    // block below whatever's already on screen, by design — see its
-    // own comment). Without removing this button first, it was left
-    // sitting on screen, already-clicked and now inert, with the new
-    // "Use it in context" section rendered in below it.
     wrap.remove();
     onDone();
   }, { once: true });
@@ -277,10 +149,6 @@ function renderLessonLighter(mission, index, item, plan, ctx) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
   const reg = plan.registerPrompt;
-  // REWORKED: this teach screen used to ask the same "which fits best?"
-  // question the Quick Check right after it asks (and its two options were
-  // the same sign). It now only explains the sign; the Quick Check that
-  // follows is the one place the learner is quizzed on it.
   el.innerHTML = `
     <div class="lesson-stage-label">Already in your hands</div>
     <h1>${escapeHtml((sign && sign.title) || item.signId)}</h1>
@@ -329,8 +197,6 @@ function renderRecognizeQuestion(container, mission, index, item, sign, opts, on
 function renderBoosterRecognize(mission, index, item, plan) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
-  // REWORKED: the heading used to be the sign's own title (e.g. "Bye") right above
-  // "Which word is this?" with "Bye" as an option, which gave the answer away.
   el.innerHTML = `<div class="lesson-stage-label">Quick Check</div><h1>What does this sign mean?</h1>`;
   renderRecognizeQuestion(el, mission, index, item, sign, plan.options, () => completeAndAdvance(mission, index, item), null);
 }
@@ -369,10 +235,6 @@ function renderPracticeScenario(mission, index, item, plan) {
   const sign = window.LWMissions.getSign(mission.level, item.signId, mission.category);
   const el = document.getElementById('lesson-content');
 
-  // The scenario title (e.g. "Ending a Video Call", or the generic
-  // `Using "Bye" ...`) can name the answer, which is fine for the pair
-  // question below (it already names the sign being asked for) but would
-  // give away the word-from-video question, so that branch hides it.
   const showScenarioTitle = !!plan.discriminatePair;
   el.innerHTML = `
     <div class="lesson-stage-label">Practice</div>
@@ -420,9 +282,6 @@ function renderPracticeScenario(mission, index, item, plan) {
 
 function showContextStep(mission, index, item, plan) {
   const el = document.getElementById('lesson-content');
-  // Append (rather than replace) so the learner still sees what they
-  // just answered above the Contextualize prompt, per §8E stage 4
-  // following directly after stage 3 in the same screen.
   const wrap = document.createElement('div');
   wrap.className = 'lesson-context';
   wrap.innerHTML = `
@@ -445,24 +304,8 @@ function renderQuizHandoff(mission) {
   const recap = window.LWMissions.getRecap(mission);
   const heartsState = window.LWMissions.getHeartsState();
   const outOfHearts = heartsState.hearts <= 0;
-  // Consistency fix (this revision) — same split as
-  // mission-overview.js's usesNativeQuiz: ALL 12 chapters go to the
-  // real-native Mastery Quiz now.
   const usesNativeQuiz = SAMPLE_MASTERY_QUIZ_CHAPTERS.indexOf(mission.categoryGroup) !== -1;
-  // CLEANUP (this revision) — pages/quiz.html is deleted, and both
-  // branches of this url built the exact same string (dead ternary,
-  // no behavior difference between them) since that deletion. quizUrl
-  // is now just the one real URL. usesNativeQuiz itself is kept below
-  // (unreachable with current data — every real categoryGroup is in
-  // SAMPLE_MASTERY_QUIZ_CHAPTERS — but a real, intentional fallback if
-  // a future chapter is ever added without also being sampled there).
-  // &from=lesson lets the quiz's Back link return HERE (this recap slide,
-  // where the review nav now lives) instead of dropping the learner all
-  // the way out to the missions list. See js/mastery-quiz.js.
   const quizUrl = `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}&from=lesson`;
-  // Only claim the review nav exists when it does. (This slide is only
-  // reachable once canReviewMission() is true, but the copy shouldn't
-  // depend on that staying so.)
   const reviewHint = window.LWMissions.canReviewMission(mission)
     ? ' Want a refresher first? Use the arrow buttons above (or your arrow keys) to look back through the mission.'
     : '';
@@ -488,16 +331,9 @@ function renderQuizHandoff(mission) {
   if (quizBtn) {
     quizBtn.addEventListener('click', () => {
       if (usesNativeQuiz) {
-        // Task 2 — entering mastery-quiz.html costs nothing; it
-        // spends a heart per wrong answer instead (see
-        // js/mastery-quiz.js), not once here.
         window.location.href = quizUrl;
         return;
       }
-      // UNCHANGED, non-sampled chapters only (still V1's pages/quiz.js,
-      // deliberately left untouched this revision — see
-      // js/missions.js's file header "HEART TIMING FIX,-NATIVE QUIZ
-      // ONLY"): this still spends the heart on attempt START.
       window.LWMissions.consumeHeartForMastery();
       window.location.href = quizUrl;
     });
@@ -515,47 +351,7 @@ function renderUnknown(mission, index, item) {
   document.getElementById('lesson-continue').addEventListener('click', () => completeAndAdvance(mission, index, item));
 }
 
-/* ── Task 1 — mission intro slide ─────────────────────────────────
- * Duolingo-style "here's what this mission teaches" screen, shown
- * ONCE before a mission's real first item. NOT a mission.items entry
- * — it never calls markItemComplete()/getDropOffIndex(), so it can't
- * affect progress, chapter unlocks, or the recap either way.
- *
- * Content is real, not invented for this screen: mission.goal (what
- * you'll learn) and mission.introMoment.pitch (where/why it's used)
- * are both already built by every buildMissionForCategory() call in
- * js/missions.js (§3.7) — they just had no renderer anywhere in the UI
- * until now. Only the curated Greetings pilot has a hand-written
- * pitch; every other mission falls back to missions.js's own generic
- * one-liner ("A focused set of N signs, one mission at a time."), so
- * this never shows blank text.
- *
- * mission.introMoment.illustration is a per-mission asset id (only
- * set for Greetings) but no illustration files exist anywhere in this
- * repo yet — rather than pointing an <img> at a path guaranteed to
- * 404, this always shows the same generic decorative icon, same
- * "honest, no invented assets" convention as mediaBlockHtml()'s own
- * fallback above.
- *
- * Called only from initPage() when the learner is about to land on
- * item 0 (see that function) — a genuinely fresh mission, or a review
- * that resets to the start. Resuming mid-mission (getDropOffIndex > 0)
- * skips straight to renderItem(), since "here's what this mission
- * teaches" doesn't make sense to repeat once already underway. */
 function renderMissionIntro(mission, startIndex) {
-  // Task 3 fix — this screen is a real, counted slide now ("Item 1 of
-  // N+1", see updateTrack()'s own header note), and Review Mission's
-  // "always looks fully progressed" rule (Task 2) applies here too —
-  // a learner reviewing should see the bar already full on the intro
-  // card, not just once they reach a real item.
-  // Review nav (per later follow-up) is no longer forced hidden here
-  // either — index -1 identifies this as the intro slide to
-  // updateReviewNav()/renderSlide(), so Review Mission's ‹/› buttons
-  // (and the arrow-key listener that delegates to them) can step onto
-  // and off of the intro slide the same way they already step between
-  // real items.
-  // "Reviewing" now means canReviewMission() (a finished mission OR one
-  // where only the Mastery Quiz is left), not just a finished one.
   const isReviewMode = window.LWMissions.canReviewMission(mission);
   updateTrack(mission, -1, isReviewMode);
   updateReviewNav(mission, -1, isReviewMode);
@@ -588,10 +384,6 @@ function renderMissionIntro(mission, startIndex) {
   });
 }
 
-/* ── small inline "Celebrate" confirmation — per the analysis docs'
- * own recommendation ("small in-lesson confirmation, not a full
- * mascot interstitial" — the bigger celebration is the mission-end
- * recap in renderQuizHandoff above). */
 function celebrateInline(message) {
   const el = document.getElementById('lesson-content');
   const toast = document.createElement('div');
@@ -600,38 +392,7 @@ function celebrateInline(message) {
   el.appendChild(toast);
 }
 
-/* ── sequencing ────────────────────────────────────────────────── */
 
-// Task 2 — dot marker + Review-Mission "always looks fully progressed"
-// behavior, applied to Start Mission too per explicit follow-up.
-//
-// Task 3 fix — the intro slide (Task 1) now counts as a real, numbered
-// slide instead of being invisible to the counter: "Item 1 of N+1" for
-// an N-item mission, not "Item 1 of N" (which silently reused item 0's
-// own slot/number). `index` is the underlying mission.items index
-// (0-based), with -1 meaning the intro slide. displayTotal adds 1 for
-// the intro; displayPos is `index + 2` uniformly for every index — it
-// happens to map -1 → 1 (intro, "Item 1"), 0 → 2 (first real item,
-// "Item 2"), ... last real item → displayTotal ("Item N+1 of N+1",
-// i.e. the last slide), with no separate intro-vs-item branch needed.
-//
-// dotPct is always (displayPos / displayTotal) — this is what moves,
-// on EVERY render (including the intro slide itself now), marking
-// where the learner currently is. fillPct is the two different
-// behaviors: for an in-progress mission (Start Mission) it's the SAME
-// value as dotPct, so the bar fills up incrementally — a small sliver
-// on the intro slide, growing item by item, reaching 100% (full)
-// exactly on the last item. For an already-complete mission (Review
-// Mission), fillPct is pinned to 100 regardless of index — including
-// the intro slide, per explicit follow-up ("that attached picture is
-// from Review Mission, the progress should be full at that intro
-// too") — only the dot moves to show the CURRENTLY-viewed slide.
-//
-// "Review Mission" here means isReviewMode (window.LWMissions.
-// canReviewMission()): a finished mission, OR one where every item but
-// the closing Mastery Quiz is done. In the second case every lesson item
-// really is complete, so pinning the fill at 100 is accurate and avoids
-// the bar visibly shrinking as the learner steps back to look things up.
 function updateTrack(mission, index, isReviewMode) {
   const total = mission.items.length;
   const displayTotal = total + 1;
@@ -646,22 +407,8 @@ function updateTrack(mission, index, isReviewMode) {
 
 function renderItem(mission, index) {
   if (index >= mission.items.length) {
-    // Defensive only — QUIZ is always the last item, and its own
-    // renderer doesn't call completeAndAdvance, so this should be
-    // unreachable in practice.
     index = mission.items.length - 1;
   }
-  // Priority 2, item 5/6 — recomputed fresh on every render (cheap;
-  // same "nothing cached" convention js/missions.js's own
-  // getMissionStatus() documents) rather than threaded through as a
-  // parameter, since renderItem() is the one place every navigation in
-  // this file already passes through (initial load, completeAndAdvance,
-  // the quiz handoff, and the prev/next buttons below), so the bar
-  // always reflects the CURRENT item, not just where the page started.
-  // Task 2's updateTrack() also needs this same flag now (Review
-  // Mission's always-full bar vs Start Mission's incremental one).
-  // Both now key off canReviewMission() rather than "100% complete", so
-  // the nav is already there on the last slide (see header note).
   const isReviewMode = window.LWMissions.canReviewMission(mission);
   updateTrack(mission, index, isReviewMode);
   updateReviewNav(mission, index, isReviewMode);
@@ -679,10 +426,6 @@ function renderItem(mission, index) {
   }
 }
 
-// DAY STREAK: which activity (if any) finishing this item counts as. Learning a sign
-// (LESSON), a recall/quick-check question (BOOSTER) and a practice question (PRACTICE)
-// qualify. Re-clicking through an already-finished LESSON slide (just paging through
-// review) does not; re-answering a finished BOOSTER/PRACTICE question counts as Review.
 function streakTypeForItem(item, wasComplete) {
   if (!item) return null;
   if (item.kind === 'LESSON') return wasComplete ? null : 'lesson';
@@ -696,24 +439,15 @@ function completeAndAdvance(mission, index, item) {
   window.LWMissions.markItemComplete(mission, index, item);
   const streakType = streakTypeForItem(item, wasComplete);
   if (streakType) window.LWMissions.recordActivity(streakType);
-  // XP (js/xp.js): REPORT the item; the server decides the reward (one-time per item). Optional
-  // chaining on purpose — if xp.js failed to load the lesson flow must behave exactly as before.
   if (window.LWXP) window.LWXP.claimItem(mission, index);
   const next = index + 1;
   if (next < mission.items.length) {
     renderItem(mission, next);
   } else {
-    renderItem(mission, index); // shouldn't happen — QUIZ is last
+    renderItem(mission, index);
   }
 }
 
-// Per explicit follow-up — "treat [the intro slide] the same as other
-// slides, where a user can use Right & Left button": Review Mission's
-// ‹/› nav (and the arrow-key listener that delegates to it, below)
-// needs one shared way to render "whichever slide is at this position"
-// that includes the intro slide, not just real mission.items entries.
-// index === -1 is the intro slide; anything >= 0 is a real item index
-// — same convention updateTrack()/renderMissionIntro() already use.
 function renderSlide(mission, index) {
   if (index < 0) {
     renderMissionIntro(mission, 0);
@@ -722,41 +456,6 @@ function renderSlide(mission, index) {
   }
 }
 
-// Priority 2, item 5 — "Navigation for Completed Missions," per
-// explicit follow-up: step one item at a time (‹ Previous / Next ›)
-// instead of jumping straight to the very first/last item, so a
-// learner reviewing a finished mission can move back and forth through
-// it freely. Only wired/unhidden when window.LWMissions.
-// canReviewMission(mission) is true: the mission is 100% complete, OR
-// the learner has worked through every item up to the closing Mastery
-// Quiz (so they can prepare for it, or look things up after running out
-// of hearts). Every other in-progress/locked mission never sees this
-// bar at all, so it can't be used to skip ahead of required progression
-// there. Called from
-// renderItem() itself (not just once from initPage()) so the buttons'
-// disabled state and destination index always track whatever item is
-// CURRENTLY on screen, not just wherever the learner started.
-//
-// Priority 2, item 6 — "Review Completed Missions Safely." Both
-// buttons call renderSlide() (a pure re-render of whatever position is
-// passed, intro included) rather than completeAndAdvance(), so
-// stepping through never itself calls markItemComplete(); nothing is
-// written to progress just by looking at a slide. If the learner
-// clicks a stage's own "Continue"/answer button while reviewing,
-// completeAndAdvance() does run markItemComplete() as normal — but
-// that function is already idempotent (it only pushes an id / sets a
-// completedAt timestamp the first time), so re-completing an
-// already-complete item is a safe no-op: it can't un-complete,
-// re-order, or change the timestamp of anything, so mission
-// completion / chapter unlocks / progress % are unaffected by review.
-//
-// Follow-up (intro slide included in the sequence) — index can now be
-// -1 (the intro slide, called from renderMissionIntro() itself, not
-// just from renderItem()). Previous disables at -1 (nothing before
-// the intro); Next still disables at the mission's last item. From
-// the intro, Next steps to item 0; from item 0, Previous steps back
-// to the intro — the same one-position-at-a-time stepping the rest of
-// this bar already does, just extended to cover the intro slide too.
 function updateReviewNav(mission, index, isReviewMode) {
   const bar = document.getElementById('lesson-review-nav');
   if (!bar) return;
@@ -765,8 +464,6 @@ function updateReviewNav(mission, index, isReviewMode) {
     return;
   }
   bar.hidden = false;
-  // "Completed" is only true once the quiz has been passed; before that
-  // the accurate label is what the bar is actually for.
   const label = bar.querySelector('.lesson-review-nav__label');
   if (label) {
     label.textContent = window.LWMissions.getMissionProgress(mission) >= 1
@@ -785,35 +482,10 @@ function updateReviewNav(mission, index, isReviewMode) {
   }
 }
 
-// ?review=1 — set by Mission Overview's "Review Mission" button (see
-// computeResumeIndex() below for what it does and doesn't allow).
 function wantsReviewFromStart() {
   return new URLSearchParams(window.location.search).get('review') === '1';
 }
 
-// Resume support — getDropOffIndex already exists in js/missions.js
-// specifically for "how far did the learner get", just unused by any
-// UI until now.
-//
-// Review-from-the-start (explicit follow-up) — a learner entering a
-// FINISHED mission (getMissionProgress(mission) >= 1, same 'done'
-// definition used everywhere else in this file) always starts back at
-// item 0, not wherever getDropOffIndex() last left off. Resume
-// (getDropOffIndex) still applies to an in-progress mission, since
-// that's a genuinely different use case ("pick up where I left off,"
-// not "review what I already finished").
-//
-// Split out to its own function (OPTIMISTIC-PAINT FIX, below) so
-// initPage() can compute it twice — once against whatever's in
-// localStorage right now, once again after cross-device sync — and
-// compare the two without duplicating this logic.
-//
-// Only-the-quiz-left missions (canReviewMission() true, not yet done)
-// resume at the recap slide by default, so the quiz's Back link lands
-// the learner where they were. Mission Overview's "Review Mission"
-// button adds ?review=1 to open at the start instead, same as a
-// finished mission. The param is ignored unless review is allowed, so
-// it can't be used to skip the lessons.
 function computeResumeIndex(mission) {
   const isMissionComplete = window.LWMissions.getMissionProgress(mission) >= 1;
   const startAtBeginning = isMissionComplete
@@ -823,19 +495,10 @@ function computeResumeIndex(mission) {
   return startIndex;
 }
 
-// What the optimistic paint / post-sync reconcile in initPage() compares.
-// The start index alone isn't enough now: the review nav's visibility
-// depends on canReviewMission() too, and after a cross-device sync that
-// can flip while the start index stays 0 (e.g. a fresh device that
-// synced a finished mission).
 function resumeViewKey(mission) {
   return `${computeResumeIndex(mission)}|${window.LWMissions.canReviewMission(mission)}`;
 }
 
-// Renders whichever slide computeResumeIndex() currently resolves to
-// — the mission intro (Task 1: only makes sense right before item 0,
-// a genuinely fresh mission or a start-of-mission review) or the real
-// item.
 function renderResumePoint(mission) {
   const startIndex = computeResumeIndex(mission);
   if (startIndex === 0) {
@@ -863,47 +526,15 @@ async function initPage() {
   document.getElementById('lesson-exit').href = `mission-overview.html?mission=${encodeURIComponent(mission.category)}`;
   document.title = `${mission.title} | LinguaWave (preview)`;
 
-  // OPTIMISTIC-PAINT FIX (replaces the old "Loading your lesson…"
-  // blocking-await placeholder) — mirrors js/mission-overview.js's own
-  // render-then-reconcile-then-re-render pattern, which this function
-  // previously couldn't use because computeResumeIndex() needs synced
-  // data to be TRUSTED. It can still be rendered from OPTIMISTICALLY
-  // though: renderResumePoint()/renderItem()/renderMissionIntro() are
-  // pure render functions with no progress-writing side effects, so
-  // painting from whatever's in localStorage right now and swapping to
-  // the synced position afterward — only if the two actually disagree
-  // — costs nothing when they match (the common case) and is no worse
-  // than the old blocking wait when they don't. This is safe here in a
-  // way it explicitly isn't in js/mastery-quiz.js: nothing on this page
-  // is destructive or hearts-spending, so there's no "mid-attempt"
-  // state a second render could clobber.
   const renderedKey = resumeViewKey(mission);
   renderResumePoint(mission);
 
-  // Reconcile cross-device Firestore progress in the background: if it
-  // turns out the learner's real resume position differs (e.g. more
-  // progress was made on another device since this device's local
-  // storage last synced), re-render into the correct one. If it
-  // matches — the common case — this is a no-op re-render is skipped
-  // entirely, so the optimistic paint above stands unchanged.
   await window.LWMissions.whenMissionsSyncReady();
   if (resumeViewKey(mission) !== renderedKey) {
     renderResumePoint(mission);
   }
 }
 
-// Review-nav keyboard support (explicit follow-up) — ArrowLeft/
-// ArrowRight step through a completed mission the same as clicking
-// the ‹ Previous / Next › buttons themselves. Delegates to the real
-// buttons' own .click() (not a duplicate renderItem() call) so a
-// disabled button (first/last item) is a no-op here too, same as a
-// mouse click on it would be, with zero extra boundary logic to keep
-// in sync. Bound once at load, not re-bound per render — updateReviewNav()
-// already keeps the buttons' onclick/disabled state current on every
-// renderItem() call, so this only needs to find whichever button
-// exists right now. Safe to leave listening even when the bar is
-// hidden (in-progress mission): bar.hidden short-circuits every key
-// press to a no-op.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   const bar = document.getElementById('lesson-review-nav');

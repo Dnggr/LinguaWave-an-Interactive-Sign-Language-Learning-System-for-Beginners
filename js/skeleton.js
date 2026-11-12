@@ -1,28 +1,3 @@
-/**
- * js/skeleton.js — helper for the loading skeletons (css/style.css §20, css/admin.css "ADMIN LOADING").
- * Classic script, no dependencies, safe to load on any page.
- *
- *  1. First swap only: when a [data-sk] container loses its .sk-group (the page
- *     script replaced it with real content) the new content fades in once.
- *     Later re-renders (e.g. the Firestore re-sync) are untouched, so nothing
- *     flashes a second time.
- *  2. Stall guard: a skeleton still on screen after STALL_MS means the load
- *     failed or hung (no LWXP, offline, signed out, slow network...). Rather than
- *     blink forever it becomes a quiet one-line note. If the data does arrive
- *     later, the page script's innerHTML still replaces the note as usual.
- *     Only skeletons that are actually visible are touched, so a hidden loading
- *     panel that is reused later (e.g. the admin Feedback "Refresh") keeps its
- *     skeleton instead of turning into a stale note.
- *     Skeleton table rows (tr.admin-table__sk) collapse into one note row.
- *  3. Inline skeletons: a number/label placeholder marked [data-sk-inline]
- *     (admin KPI tiles) is swapped for an em dash on stall. The page script's
- *     textContent = ... replaces the skeleton the normal way, so no cleanup is
- *     needed on success.
- *  4. window.LWSkeleton — small builders for pages that need to show a skeleton
- *     AGAIN after the first load (Refresh buttons), plus settle() so a page can
- *     end the loading look immediately when a request fails.
- *     Every builder returns the same markup the static HTML ships with.
- */
 (function () {
   'use strict';
   var STALL_MS = 12000;
@@ -30,7 +5,6 @@
   var NOTE_SLOW = 'Taking longer than usual\u2026 try refreshing the page.';
   var DASH = '\u2014';
 
-  /* ── 1. fade-in on first swap ─────────────────────────────────── */
   function watch(host) {
     if (!host.querySelector(':scope > .sk-group')) return;
     var mo = new MutationObserver(function () {
@@ -42,7 +16,6 @@
     mo.observe(host, { childList: true });
   }
 
-  /* ── 2 + 3. stall guard / settle ──────────────────────────────── */
   function isRendered(el) {
     return el.isConnected && el.getClientRects().length > 0;
   }
@@ -55,8 +28,6 @@
     return note;
   }
 
-  // onlyVisible: the timer only touches skeletons somebody can see right now.
-  // An explicit settle() after a failed request replaces them wherever they are.
   function settle(root, msg, onlyVisible) {
     root = root || document;
     var groups = root.querySelectorAll('.sk-group');
@@ -85,7 +56,6 @@
     }
   }
 
-  /* ── 4. builders (same markup as the static HTML) ─────────────── */
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function sr(label) { return '<span class="sr-only">' + esc(label) + '</span>'; }
   function bar(w, h, cls) {
@@ -98,7 +68,6 @@
   var NAME_W = ['50%', '38%', '58%', '44%', '52%', '40%'];
   var SUB_W  = ['72%', '64%', '80%', '58%', '70%', '66%'];
 
-  // Avatar + two lines + a small right-hand label (recent sign-ups, recent feedback).
   function list(label, n) {
     var rows = '';
     for (var i = 0; i < (n || 5); i++) {
@@ -109,7 +78,6 @@
     return group(label, rows, 'sk-group--list');
   }
 
-  // Label + horizontal bar (lessons by chapter, feedback snapshot).
   var BAR_W = ['78%', '54%', '66%', '40%', '72%', '48%', '60%'];
   function bars(label, n) {
     var rows = '';
@@ -119,7 +87,6 @@
     return group(label, rows, 'sk-group--list');
   }
 
-  // 14 vertical bars (sign-ups chart).
   var CHART_H = [35, 55, 42, 70, 48, 62, 30, 80, 52, 66, 40, 58, 74, 45];
   function chart(label) {
     var b = '';
@@ -127,9 +94,6 @@
     return group(label, '<div class="sk-bars">' + b + '</div>');
   }
 
-  // Table body rows. Real <tr>/<td> cells (one per column), so the placeholders line up with the
-  // table's own header columns. widths = percent width of the bar in each text column; a button-sized
-  // pill is added as the last cell. The label is read out once, from the first cell.
   var ROW_SCALE = [1, 0.85, 0.95, 0.75, 0.9, 0.8];
   function table(label, n, widths) {
     var w = widths || [70, 85, 55];
@@ -146,7 +110,6 @@
     return out;
   }
 
-  // Feedback cards.
   function cards(label, n) {
     var out = '';
     for (var i = 0; i < (n || 4); i++) {
@@ -157,7 +120,6 @@
     return group(label, out, 'sk-group--cards');
   }
 
-  // KPI number placeholder: goes inside an element marked [data-sk-inline].
   function kpi(w) { return bar(w || '3.2rem', '1.6rem', 'sk--title') + sr('Loading\u2026'); }
 
   window.LWSkeleton = {

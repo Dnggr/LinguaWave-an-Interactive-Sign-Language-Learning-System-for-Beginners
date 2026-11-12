@@ -1,66 +1,4 @@
-/*
- * style.css — Global Stylesheet
- * ─────────────────────────────────────────────────────────────────
- * Design tokens, resets, layout utilities, and shared component
- * styles used across every page of LinguaWave (imported by
- * index.html and every pages/*.html file).
- *
- * THEME SYSTEM: two themes, toggled by data-theme="light"|"dark" on
- * <html> — see js/theme.js for the toggle control + persistence.
- * :root carries the light palette as the pre-JS fallback (LIGHT is
- * the app's default identity, not just one of two equal options);
- * [data-theme="dark"] below is a true-dark variant of the same
- * palette (not a simple invert), kept fully working for anyone who
- * prefers it.
- *
- * DESIGN PASS (this session) — repaint to a calm "learning-app blue
- * + teal" identity, replacing the previous warm coral/cream/
- * terracotta theme from the prior session:
- *   - Backgrounds moved from warm cream/near-black-brown to cool
- *     slate neutrals (#F8FAFC light / #0F172A dark) — a clean
- *     educational-SaaS feel that keeps focus on the hands/signs
- *     rather than the chrome around them.
- *   - Brand identity is now two-tone instead of one accent color:
- *     --clr-accent (Ocean Blue) reads as "Learning" — primary
- *     buttons, links, focus states, the active/current signal — and
- *     the new --clr-secondary (Teal) reads as "Communication/
- *     Practice" — secondary buttons and practice-flavored touch
- *     points. --clr-blue is kept as its own token for back-compat
- *     with existing call sites but is intentionally the SAME value
- *     as --clr-accent now (one consistent blue, not two competing
- *     ones — see the "don't color every category differently"
- *     principle this pass follows throughout).
- *   - Two new semantic tokens: --clr-locked (neutral slate) and
- *     --clr-violet (mastery/achievement). Locked content previously
- *     borrowed --clr-red, which reads as "something is wrong" rather
- *     than "not available yet" — §6b/journey-card and §8/badge below
- *     now point locked states at the new neutral token instead.
- *     Violet is deliberately unused almost everywhere so it stays
- *     special — see .quiz-summary__score--pass in css/app.css for
- *     its one real use, the "Mission mastered!" moment.
- *   - Every semantic hue (success/red/yellow/orange/violet/secondary)
- *     was tuned a shade or two darker (light mode) / lighter (dark
- *     mode) than a "pure" swatch would be, specifically so each one
- *     stays readable at small text sizes AND as white-on-fill button/
- *     badge backgrounds — plain vivid swatches (e.g. a raw #10B981
- *     emerald) look nice as a color chip but fail contrast as actual
- *     UI text, the same reason the previous palette's yellow was a
- *     muted gold rather than a bright one.
- *   - Radius/spacing/type-scale tokens are unchanged — this pass is
- *     color-only.
- */
 
-/* ── 1. DESIGN TOKENS ──────────────────────────────────────────── */
-/* FONT PASS — body face changed from Inter (flagged as the default "template"
-   font on every page) to Atkinson Hyperlegible Next: built by the Braille
-   Institute for character distinction at small sizes, which suits beginners
-   reading instructions while watching hands. SELF-HOSTED (css/fonts/, OFL
-   licence alongside) rather than via Google Fonts so it renders identically
-   offline and the exact file is the one that was tested. One variable file
-   covers every weight the UI uses (400/500/600/700). The url() is relative to
-   this stylesheet, so it resolves from index.html and pages/*.html alike.
-   To revert: restore --font-body to 'Inter' and re-add
-   `&family=Inter:wght@400;500;600` to the Google Fonts <link> in each page. */
 @font-face {
   font-family: 'Atkinson Hyperlegible Next';
   font-style: normal;
@@ -72,9 +10,8 @@
 :root {
   color-scheme: light dark;
 
-  /* Type scale */
   --font-display:  'Space Grotesk', sans-serif;
-  --font-body:     'Atkinson Hyperlegible Next', system-ui, sans-serif; /* FONT PASS: was 'Inter' — see @font-face above */
+  --font-body:     'Atkinson Hyperlegible Next', system-ui, sans-serif; 
   --font-mono:     'JetBrains Mono', monospace;
 
   --fs-xs:   0.75rem;
@@ -86,18 +23,10 @@
   --fs-3xl:  2.25rem;
   --fs-hero: clamp(2.5rem, 5vw, 4rem);
 
-  /* Spacing */
   --space-1:  0.25rem;
   --space-2:  0.5rem;
   --space-3:  0.75rem;
   --space-4:  1rem;
-  /* BUGFIX (light-mode UX pass) — --space-5 was referenced by 16 rules
-     (app.css, dashboard.css, learn.css, pages/homepage.html) but never
-     defined. An undefined var() makes the WHOLE declaration invalid at
-     computed-value time, so every `padding: var(--space-5)` /
-     `gap: var(--space-5)` silently became 0 — that was the cramped
-     Learn rows, flush Dashboard path tiles, and the Continue Mission
-     button jammed under its description. */
   --space-5:  1.25rem;
   --space-6:  1.5rem;
   --space-8:  2rem;
@@ -105,150 +34,84 @@
   --space-16: 4rem;
   --space-24: 6rem;
 
-  /* Radius — raised across the board (this session) for a rounder,
-     friendlier "Lingvano-like" feel. Every shared component below
-     (.card, .btn, badges, form inputs, course/topic cards) reads
-     from these same 4 tokens, so most of the app got rounder simply
-     by this scale changing — see §6/§7 for the two components that
-     needed their OWN rule updated (not just the token). */
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;
   --radius-xl: 30px;
   --radius-pill: 9999px;
 
-  /* Transitions */
   --ease: cubic-bezier(.4,0,.2,1);
   --dur-fast: 150ms;
   --dur-base: 250ms;
   --dur-slow: 400ms;
 }
 
-/* ── 1a. COLOR TOKENS — theme-aware ──────────────────────────────
-   :root/no-attribute = light (the app's default now); [data-theme=
-   "dark"] is the alternate, still fully supported via the toggle.
-   Every hue below was checked against WCAG AA (4.5:1) for its real
-   use in this codebase — as small text/icons AND as a white-text
-   fill background (badges, filled buttons) — not just eyeballed;
-   --clr-locked is the one deliberate exception, since "locked"
-   content is meant to read as visually de-emphasized, the same way
-   a disabled button is exempt from normal text-contrast rules. */
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --clr-bg:          #F8FAFC;   /* cool white page background             */
-  --clr-surface:     #FFFFFF;   /* cards pop white against the cool bg    */
-  --clr-surface-2:   #EFF6FF;   /* soft blue tint — chips, hover, tiles   */
-  --clr-border:      #E2E8F0;   /* cool slate divider                     */
+  --clr-bg:          #F8FAFC;   
+  --clr-surface:     #FFFFFF;   
+  --clr-surface-2:   #EFF6FF;   
+  --clr-border:      #E2E8F0;   
 
-  --clr-accent:        #2563EB; /* primary — Ocean Blue, "Learning"       */
+  --clr-accent:        #2563EB; 
   --clr-accent-dim:    #1D4ED8;
   --clr-accent-soft:   rgba(37,99,235,.10);
 
-  /* PALETTE PASS — teal retired. The secondary hue was consumed by exactly
-     one component (.btn--secondary) and "blue + teal" reads as a generic
-     template palette; every warm hue is already spoken for by a semantic
-     state (red = error, yellow/orange = warning, violet = mastery), so a
-     second brand hue would collide with those. Secondary now ALIASES the
-     blue accent, which makes .btn--secondary the outlined form of the
-     primary button. To bring a second hue back, restore (light / dark):
-       --clr-secondary       #0F766E / #2DD4BF
-       --clr-secondary-dim   #115E59 / #14B8A6
-       --clr-secondary-soft  rgba(13,148,136,.10) / rgba(45,212,191,.16)
-       --clr-secondary-text  #115E59 / #2DD4BF
-       and the #0F9DA6 gradient ends + shadow in css/auth.css. */
   --clr-secondary:      var(--clr-accent);
   --clr-secondary-dim:  var(--clr-accent-dim);
   --clr-secondary-soft: var(--clr-accent-soft);
 
-  --clr-success:      #047857;  /* emerald, deepened from a pure swatch   */
+  --clr-success:      #047857;  
   --clr-success-soft: rgba(16,185,129,.10);
 
   --clr-red:         #DC2626;
   --clr-red-soft:    rgba(239,68,68,.09);
-  --clr-red-text:    #B91C1C; /* NEW (light pass): red as TEXT on --clr-red-soft. #DC2626 was 4.11:1; this is 5.5:1 */
+  --clr-red-text:    #B91C1C; 
 
-  --clr-yellow:      #B45309;   /* amber — "needs review", muted for text */
+  --clr-yellow:      #B45309;   
   --clr-yellow-soft: rgba(245,158,11,.12);
 
   --clr-orange:      #C2410C;
   --clr-orange-soft: rgba(249,115,22,.10);
 
-  --clr-blue:        #2563EB;   /* same value as --clr-accent, on purpose */
+  --clr-blue:        #2563EB;   
   --clr-blue-soft:   rgba(37,99,235,.10);
 
-  --clr-locked:      #94A3B8;   /* neutral slate — "not available yet",   */
-  --clr-locked-soft: rgba(148,163,184,.14); /* not an error (see §6b/§8)  */
+  --clr-locked:      #94A3B8;   
+  --clr-locked-soft: rgba(148,163,184,.14); 
 
-  --clr-violet:      #7C3AED;   /* mastery/achievement — used sparingly   */
+  --clr-violet:      #7C3AED;   
   --clr-violet-soft: rgba(139,92,246,.12);
 
   --clr-text:        #0F172A;
-  /* CHANGED (light-mode UX pass) — was #64748B (4.55:1 on the page bg,
-     but 4.37:1 on --clr-surface-2 hover rows/chips, which fails AA for
-     the small text used there). #586780 = 5.47:1 on the page, 5.26:1 on
-     surface-2, 5.11:1 on the locked pill — still clearly secondary to
-     --clr-text, just no longer borderline. */
   --clr-text-muted:  #586780;
   --clr-text-invert: #FFFFFF;
 
-  /* NEW (light-mode UX pass) — tokens for spots that were reusing a
-     fill/tint color as TEXT or as a "track" and missing contrast:
-       --clr-track        empty part of progress bars/rings. Was
-                          --clr-surface-2 (1.09:1 on a white card — a 0%
-                          bar looked like nothing at all).
-       --clr-accent-text  accent used as TEXT on --clr-blue-soft pills
-                          (e.g. the "Available" badge was 4.49:1).
-       --clr-locked-text  "Locked" label text. --clr-locked (#94A3B8) is
-                          2.29:1 on its own pill; it stays fine for
-                          icons/borders but is too faint for a label
-                          that carries state information.
-       --banner-from/to   Continue Mission banner gradient. Light values
-                          are the exact ones the banner already used. */
   --clr-track:       #E2E8F0;
   --clr-accent-text: #1D4ED8;
   --clr-locked-text: #586780;
-  /* NEW (dark-mode UX pass) — two more tokens with a light value that is
-     deliberately the SAME as what those spots already used, so light mode
-     renders identically; dark overrides them below.
-       --clr-secondary-text  secondary button label. Now an alias of
-                             --clr-accent-text (see PALETTE PASS below).
-       --clr-border-strong   border for CONTROLS (inputs, toggle tracks).
-                             CHANGED (light-mode pass) #E2E8F0 -> #7C8BA1:
-                             3.5:1 on white / 3.3:1 on the page background;
-                             WCAG 1.4.11 asks 3:1 of a control boundary and
-                             the old value was ~1.2:1. */
   --clr-secondary-text: var(--clr-accent-text);
   --clr-border-strong:  #7C8BA1;
   --banner-from:     #2563EB;
   --banner-to:       #1D4ED8;
 
-  /* CHANGED (light-mode UX pass) — was `0 1px 2px …, 0 10px 28px …`.
-     A 1px border PLUS a 28px-blur drop shadow is two competing depth
-     cues on every card (flagged as "hairline border with wide shadow").
-     The border already defines the card edge in light mode; the shadow
-     now only lifts it slightly. Dark's shadow is unchanged. */
   --shadow-card: 0 1px 2px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.04);
   --backdrop:    rgba(248,250,252,.85);
-  /* Same hue as --backdrop, alpha dropped way down — used by
-     .navbar--hero (index.html only) so that bar reads as almost
-     transparent over the hero instead of the glassy .85 every other
-     page's .navbar keeps. See css/auth.css's NAVBAR — HERO VARIANT. */
   --backdrop-hero: rgba(248,250,252,.10);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --clr-bg:          #0F172A;   /* slate near-black, not brown-tinted     */
+  --clr-bg:          #0F172A;   
   --clr-surface:     #1E293B;
   --clr-surface-2:   #334155;
   --clr-border:      #475569;
 
-  --clr-accent:        #60A5FA; /* lighter blue, tuned for dark contrast  */
+  --clr-accent:        #60A5FA; 
   --clr-accent-dim:    #3B82F6;
   --clr-accent-soft:   rgba(96,165,250,.16);
 
-  /* PALETTE PASS: was #2DD4BF / #14B8A6 / rgba(45,212,191,.16) — see the note in the light block. */
   --clr-secondary:      var(--clr-accent);
   --clr-secondary-dim:  var(--clr-accent-dim);
   --clr-secondary-soft: var(--clr-accent-soft);
@@ -258,7 +121,7 @@
 
   --clr-red:         #F87171;
   --clr-red-soft:    rgba(248,113,113,.16);
-  --clr-red-text:    #FCA5A5; /* NEW (light pass): red as TEXT on --clr-red-soft. #F87171 was 4.18:1 on the alert tint; this is 6.1:1 */
+  --clr-red-text:    #FCA5A5; 
 
   --clr-yellow:      #FBBF24;
   --clr-yellow-soft: rgba(251,191,36,.16);
@@ -266,7 +129,7 @@
   --clr-orange:      #FB923C;
   --clr-orange-soft: rgba(251,146,60,.16);
 
-  --clr-blue:        #60A5FA;   /* same value as --clr-accent, on purpose */
+  --clr-blue:        #60A5FA;   
   --clr-blue-soft:   rgba(96,165,250,.16);
 
   --clr-locked:      #64748B;
@@ -279,50 +142,20 @@
   --clr-text-muted:  #CBD5E1;
   --clr-text-invert: #0F172A;
 
-  /* NEW (light-mode UX pass) — dark counterparts of the light tokens
-     added above. --clr-track/--clr-accent-text keep dark's existing
-     look (surface-2 / accent); --clr-locked-text lifts the Locked label
-     off its dark pill; the banner gradient is deepened because white
-     text on the old light-blue (#60A5FA) start color was 2.54:1. */
   --clr-track:       #334155;
-  /* CHANGED (dark-mode UX pass) — was #60A5FA (same as --clr-accent). As
-     TEXT on the tinted accent fills (active sidebar link, "Available" pill,
-     current sign row, hero banner) that measured 4.05–4.34:1, just under
-     the 4.5 AA line, because the tint lifts the background toward the text.
-     #74B3FC clears it on every backdrop it sits on (4.7–6.7:1) while
-     staying visibly the same brand blue. --clr-accent itself is untouched,
-     so fills (buttons, bars, rings, toggle-on) look exactly as before. */
   --clr-accent-text: #74B3FC;
   --clr-locked-text: #94A3B8;
-  /* NEW (dark-mode UX pass). --clr-secondary-dim (#14B8A6) is DARKER than
-     --clr-secondary in this theme, so using it for text gave the secondary
-     button label only 4.19:1; plain --clr-secondary is 5.63:1.
-     --clr-border-strong: control edges (input borders, toggle tracks) were
-     --clr-border #475569 = 1.9:1 against a card; #748399 is 3.8:1. */
-  /* PALETTE PASS: was #2DD4BF (teal); now follows the blue accent-text. */
   --clr-secondary-text: var(--clr-accent-text);
   --clr-border-strong:  #748399;
   --banner-from:     #1D4ED8;
   --banner-to:       #1E3A8A;
 
-  /* CHANGED (dark-mode UX pass) — was `0 1px 2px …, 0 10px 28px …`. On a
-     #0F172A page a 28px black blur is essentially invisible, so it only
-     added a second depth cue next to the card's 1px border (the same
-     "hairline border + wide shadow" issue the light pass fixed). Dark
-     surfaces already separate by lightness (bg → surface → surface-2). */
   --shadow-card: 0 1px 2px rgba(0,0,0,.40), 0 2px 8px rgba(0,0,0,.25);
   --backdrop:    rgba(15,23,42,.85);
   --backdrop-hero: rgba(15,23,42,.10);
 }
 
-/* ── 2. RESET ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-/* Applies to every in-page hash link on every page that loads this
-   file (index.html's #about-asl included) — browsers that honor
-   prefers-reduced-motion fall back to an instant jump on their own,
-   no extra media query needed here. See §12 below for the
-   scroll-margin-top that keeps the landing spot from hiding under
-   the sticky navbar. */
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   background: var(--clr-bg);
@@ -333,12 +166,11 @@ body {
   min-height: 100vh;
 }
 img, video { display: block; max-width: 100%; }
-a { color: var(--clr-accent-text); text-decoration: none; } /* CHANGED (dark pass) was --clr-blue; light #2563EB→#1D4ED8 is a barely-visible darkening, dark now clears AA on surface-2 */
+a { color: var(--clr-accent-text); text-decoration: none; } 
 a:hover { text-decoration: underline; }
 button { cursor: pointer; font-family: inherit; }
 ul, ol { list-style: none; }
 
-/* ── 3. TYPOGRAPHY ──────────────────────────────────────────────── */
 h1, h2, h3, h4, h5 {
   font-family: var(--font-display);
   line-height: 1.2;
@@ -348,14 +180,9 @@ h1 { font-size: var(--fs-3xl); }
 h2 { font-size: var(--fs-2xl); }
 h3 { font-size: var(--fs-xl); }
 h4 { font-size: var(--fs-lg); }
-/* NEW (Impeccable pass): a semantic <h2> that keeps the old <h3> look. Used
-   where a card title sits straight under the page <h1> (camera page, homepage
-   feature cards), so the outline goes h1 > h2 instead of skipping a level.
-   A class beats the bare `h2` selector above, so no !important needed. */
 .heading-md { font-size: var(--fs-xl); }
 p  { color: var(--clr-text-muted); line-height: 1.7; }
 
-/* ── 4. LAYOUT ──────────────────────────────────────────────────── */
 .container {
   width: 100%;
   max-width: 1200px;
@@ -365,12 +192,6 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .container--narrow { max-width: 800px; }
 .container--wide   { max-width: 1400px; }
 
-/* ── 5. NAVBAR ──────────────────────────────────────────────────── */
-/*
- * .navbar — top navigation bar
- * Appears on all pages except the auth screen.
- * TODO: collapse into hamburger on mobile (<768px).
- */
 .navbar {
   position: sticky;
   top: 0;
@@ -380,13 +201,6 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   border-bottom: 1px solid var(--clr-border);
 }
 .navbar__inner {
-  /* Grid, not flex + space-between: with 3 flex children,
-     space-between only puts the middle one (.navbar__links) at the
-     visual center when the logo and the button group happen to be
-     the same width — they aren't (logo text vs. toggle+2 buttons),
-     so "Home / Learn / About" was drifting left. A 1fr/auto/1fr grid
-     centers the middle column relative to the whole bar regardless
-     of how wide either side is. */
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -426,26 +240,10 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   color: var(--clr-text-muted);
 }
 
-/* BUGFIX (wave/navbar restyle pass) — .navbar__links + .navbar__user
-   were already tight enough to overflow off-screen under ~640px with
-   nothing to show for it (no wrap, no hamburger — see the TODO at the
-   top of this section); index.html's nav going from one button to a
-   Log In/Get Started pair made that worse. Full hamburger collapse is
-   still the TODO; this is the minimal fix so nothing gets clipped in
-   the meantime — drop the secondary text links, keep logo + toggle +
-   buttons, which is what a visitor actually needs on a small screen. */
 @media (max-width: 640px) {
   .navbar__links { display: none; }
-  /* CHANGED (Impeccable pass): two columns once the links are gone. With the old
-     1fr auto 1fr the button group landed in the middle (auto) column and floated
-     mid-bar instead of sitting at the right edge. */
   .navbar__inner { gap: var(--space-3); grid-template-columns: auto 1fr; }
 }
-/* NEW (Impeccable pass): logo + theme switch + Log In + Get Started needs about
-   416px, so the logged-out landing navbar scrolled sideways on every phone under
-   414px wide (2px at 390, 17px at 375, 32px at 360, 72px at 320). Tighter padding,
-   gaps and logo size cover 360 and up; the theme switch drops out under 340px,
-   where nothing else can give. */
 @media (max-width: 480px) {
   .navbar__inner { padding-inline: var(--space-4); }
   .navbar__logo { font-size: var(--fs-lg); }
@@ -456,17 +254,6 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   .navbar__user .theme-switch { display: none; }
 }
 
-/* ── 5a. THEME SWITCH ───────────────────────────────────────────── */
-/* Sun/moon sliding switch — same interaction pattern as VitePress's
-   appearance toggle (a single circular thumb that slides end-to-end,
-   with the sun/moon icons living INSIDE the thumb and crossfading
-   into each other, rather than a static icon painted on the track).
-   Purely attribute-driven off aria-checked (checked = dark is active)
-   — no JS classList toggling needed for the visual state itself, just
-   for suppressing the transition during the initial load-time sync
-   (see js/theme.js's initThemeToggles()) so the thumb doesn't visibly
-   slide/crossfade on every page refresh when the resolved theme
-   differs from the checked="false" default baked into the markup. */
 .theme-switch {
   --switch-w: 44px;
   --switch-h: 24px;
@@ -511,22 +298,12 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
 .theme-switch[aria-checked="true"] .theme-switch__icon--sun { opacity: 0; transform: scale(.4) rotate(90deg); }
 .theme-switch[aria-checked="true"] .theme-switch__icon--moon { opacity: 1; transform: scale(1) rotate(0deg); }
 
-/* BUGFIX — js/theme.js applies this for one frame during its initial,
-   load-time sync so the thumb's already-correct position + icon
-   crossfade don't visibly animate in on every page refresh. Removed
-   again immediately after, so user-triggered clicks still animate. */
 .theme-switch--no-transition,
 .theme-switch--no-transition .theme-switch__check,
 .theme-switch--no-transition .theme-switch__icon {
   transition: none !important;
 }
 
-/* ── 5b. THEME SEGMENTED CONTROL (System / Light / Dark) ─────────
-   Same 3-way "Appearance" control pattern Claude's own Settings uses.
-   A pill-shaped track holding 3 equal-width options with a sliding
-   highlight behind whichever is active. Lives in Settings' Theme
-   preference row (see pages/settings.html); wired by js/theme.js's
-   syncSegmentedControls()/applyTheme(). */
 .theme-segmented {
   --seg-count: 3;
   position: relative;
@@ -561,30 +338,16 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   height: 15px;
   flex-shrink: 0;
 }
-/* BUGFIX — this used to be a plain `.theme-segmented__opt:hover` rule,
-   which (having higher specificity than `--active`'s single class)
-   ALSO overrode the active option's text color while hovering it —
-   and since the active pill's background is that same `--clr-text`
-   color, the label became invisible against its own background the
-   moment you hovered the currently-selected option. Scoped to
-   non-active options only now. */
 .theme-segmented__opt:hover:not(.theme-segmented__opt--active) { color: var(--clr-text); }
 .theme-segmented__opt--active {
   color: var(--clr-text-invert);
 }
-/* The sliding highlight: an absolutely-positioned pill painted behind
-   whichever option is active, drawn on that option's own ::before —
-   each option already owns 1/3 of the grid, so no JS-measured
-   translateX is needed, just a background swap on the active cell. */
 .theme-segmented__opt--active::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: var(--radius-pill);
-  /* CHANGED (light-mode UX pass) — was var(--clr-text) (near-black in
-     light mode), the only place the app used black as an "active" color;
-     every other active/selected state is the blue accent. */
   background: var(--clr-accent);
   transition: background var(--dur-fast) var(--ease);
 }
@@ -593,41 +356,8 @@ p  { color: var(--clr-text-muted); line-height: 1.7; }
   transition: none !important;
 }
 
-/* ── 5c. THEME TRANSITION (reveal that starts at the pressed control) ──
-   js/theme.js's runThemeTransition() puts three custom properties on
-   <html> — --theme-origin-x / --theme-origin-y (the CENTRE of the theme
-   control that was pressed, measured from its live getBoundingClientRect
-   each time, so it follows the button through every responsive layout)
-   and --theme-transition-radius (distance from that point to the
-   farthest viewport corner, so the reveal always ends fully covered) —
-   plus the .lw-theme-switching class for the duration. Nothing here
-   hardcodes a position or a size.
-
-   HOW IT WORKS. document.startViewTransition() snapshots the page in the
-   OLD theme, the callback swaps data-theme, and the browser exposes two
-   images: ::view-transition-old(root) and ::view-transition-new(root).
-   The old one just sits there; the new one is revealed through a
-   clip-path circle growing from the control. Only that snapshot layer
-   is clipped — no element of the real page is rotated, moved or
-   re-laid-out. With the control near an edge (the sidebar toggle, the
-   top navbar) the visible part of that circle IS the ~180° sweep.
-
-   The UA default is a crossfade whose old/new images use
-   mix-blend-mode: plus-lighter; both are switched off below (with an
-   opaque reveal that blend mode would ADD the two pages together and
-   flash white). Ordinary transitions are frozen while switching so the
-   live new snapshot doesn't visibly fade colours inside the revealed
-   area; the switch and the Settings segmented control are exempt so
-   their own thumb/pill animations still play. Reduced motion never gets
-   here (theme.js changes the theme immediately), and the media query
-   below is only a belt for a transition started some other way. */
 :root {
   --theme-transition-duration: 800ms;
-  /* Slow enough at the start that the disc is visibly BORN at the control,
-     a clear surge through the middle, then a soft landing (radius: ~5% at
-     10% of the time, ~28% at 25%, ~80% at 50%, ~96% at 75%). The earlier
-     (.25,.8,.25,1) covered 93% of the radius by the halfway mark and then
-     spent the rest of the time on an unnoticeable tail. */
   --theme-transition-ease: cubic-bezier(.4, .1, .2, 1);
 }
 
@@ -657,9 +387,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   transition: none !important;
 }
 
-/* Press feedback on the switch itself: a brief dip and a soft ring. Kept
-   small on purpose — the button is the SOURCE of the wave, not the show.
-   (Global reduced-motion rule in §15 already flattens it.) */
 .theme-switch.is-theme-pulse {
   animation: lw-theme-switch-pulse 560ms var(--ease) 1;
 }
@@ -669,8 +396,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   100% { transform: scale(1);    box-shadow: 0 0 0 14px color-mix(in srgb, var(--clr-accent) 0%,  transparent); }
 }
 
-/* Fallback overlay for browsers without the View Transitions API — see
-   runThemeVeil() in js/theme.js. Background/clip-path are set there. */
 .lw-theme-veil {
   position: fixed;
   inset: 0;
@@ -679,16 +404,12 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   will-change: clip-path, opacity;
 }
 
-/* ── 6. BUTTONS ─────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-6);
-  /* Pill-shaped, not just "rounded" — the biggest single cue that
-     reads as Lingvano/Duolingo-style rather than a generic app;
-     every other component still uses the --radius-lg/xl scale. */
   border-radius: var(--radius-pill);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -707,14 +428,9 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 }
 .btn--primary:hover:not(:disabled) { background: var(--clr-accent-dim); }
 
-/* Teal, not neutral gray (this session) — gives the app a genuine
-   two-tone brand (blue primary / teal secondary) instead of one
-   accent color plus an unstyled gray fallback everywhere else. Fills
-   solid on hover so it still reads as a clear, tappable action next
-   to a primary button, not a disabled-looking one. */
 .btn--secondary {
   background: var(--clr-secondary-soft);
-  color: var(--clr-secondary-text); /* CHANGED (dark pass) was --clr-secondary-dim; see token note */
+  color: var(--clr-secondary-text); 
   border: 1px solid var(--clr-secondary);
 }
 .btn--secondary:hover:not(:disabled) { background: var(--clr-secondary); color: var(--clr-text-invert); }
@@ -728,21 +444,14 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 
 .btn--danger {
   background: var(--clr-red);
-  color: var(--clr-text-invert); /* CHANGED (light pass) was #ffffff: white on dark mode's light-red fill is 2.77:1; invert is #fff in light (unchanged), #0F172A in dark (6.45:1) */
+  color: var(--clr-text-invert); 
 }
 
 .btn--lg { padding: var(--space-4) var(--space-8); font-size: var(--fs-base); }
 .btn--sm { padding: var(--space-2) var(--space-4); font-size: var(--fs-xs); }
 .btn--full { width: 100%; }
-/* CHANGED (Impeccable pass): dropped `pointer-events: none`. It made the
-   `cursor: not-allowed` beside it dead code (a click-through element never
-   shows its own cursor) and let hit-testing fall through to the parent, so a
-   disabled Previous button was "occluded" by .lesson-nav. A disabled <button>
-   already swallows clicks; hover/active are guarded with :not(:disabled)
-   on the variants above instead. */
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 
-/* ── 7. CARDS ───────────────────────────────────────────────────── */
 .card {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -757,11 +466,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   box-shadow: var(--shadow-card);
 }
 
-/* ── 8. LEVEL BADGES ────────────────────────────────────────────── */
-/*
- * Used on level cards and lesson headers to indicate difficulty tier.
- * Colors match the flowchart legend: blue/green/orange.
- */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -776,48 +480,26 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 .badge--basic        { background: var(--clr-blue-soft);   color: var(--clr-accent-text); }
 .badge--medium       { background: var(--clr-yellow-soft); color: var(--clr-yellow); }
 .badge--intermediate { background: var(--clr-orange-soft); color: var(--clr-orange); }
-/* Locked now reads as neutral/"not available yet" rather than red/
-   "something is wrong" (this session) — was --clr-red-soft/--clr-red. */
 .badge--locked       { background: var(--clr-locked-soft); color: var(--clr-locked-text); }
 .badge--done         { background: var(--clr-success-soft); color: var(--clr-success); }
 .badge--dev          { background: var(--clr-orange-soft); color: var(--clr-orange); }
 
-/* ── 8b. TEMPORARY — Missions sidebar entry point ─────────────────────
- * .app-sidebar__link--dev marks the "LinguaWave" nav item added
- * across pages/dashboard.html, learn.html, progress.html, settings.html,
- * and feedback.html while Missions is under active development (see
- * Missions_LinguaWave_Progress_Tracker.md §5 and the LinguaWave/
- * folder's own README.md). It's visually distinct (dashed outline +
- * .badge--dev "WIP" tag pinned to the right) precisely because it is
- * NOT meant to look like a finished nav item — pull this rule and the
- * matching <a> markup once Missions either ships for real or is dropped.
- */
 .app-sidebar__link--dev {
   border: 1px dashed var(--clr-border);
 }
 .app-sidebar__link--dev .badge { margin-left: auto; }
 @media (max-width: 900px) {
-  .app-sidebar__link--dev .badge { display: none; } /* keeps the row-layout mobile sidebar compact */
+  .app-sidebar__link--dev .badge { display: none; } 
 }
 
-/* ── 9. PROGRESS BAR ────────────────────────────────────────────── */
 .progress-bar {
   width: 100%;
   height: 6px;
-  background: var(--clr-track); /* CHANGED (light-mode UX pass) — was --clr-surface-2 (1.09:1): an empty bar was invisible */
+  background: var(--clr-track); 
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
 .progress-bar__fill {
-  /* CHANGED (Impeccable pass): the fill used to animate `width`, which
-     forces layout on every frame. It is now always full width and slid
-     sideways with `transform: translateX()`, which only needs compositing.
-     Producers set a unitless `--p` (0 to 100) instead of a `width`, e.g.
-     style="--p:42". The parent's `overflow: hidden` + pill radius clip
-     the hidden part, and the fill's own rounded end is what shows at p%,
-     so the cap is never squashed the way `scaleX()` would squash it.
-     Unset --p is 0, so a bar with no value yet reads "not started" (the
-     old `width: 0%` default, same reason: no full-bar flash on first paint). */
   width: 100%;
   height: 100%;
   background: var(--clr-accent);
@@ -826,7 +508,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   transition: transform var(--dur-slow) var(--ease);
 }
 
-/* ── 10. FORM ELEMENTS ──────────────────────────────────────────── */
 .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
 .form-group label {
   font-size: var(--fs-sm);
@@ -835,7 +516,7 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 }
 .form-input {
   background: var(--clr-surface);
-  border: 1px solid var(--clr-border-strong); /* CHANGED (dark pass) was --clr-border */
+  border: 1px solid var(--clr-border-strong); 
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-4);
   color: var(--clr-text);
@@ -850,51 +531,30 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 }
 .form-input::placeholder { color: var(--clr-text-muted); }
 
-/* ── 11. ALERTS / TOASTS ────────────────────────────────────────── */
 .alert {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
-  /* CHANGED (Impeccable pass) was `border-left: 4px solid`: a thick coloured
-     edge on one side of a rounded box is the "side-tab" pattern. The colour
-     already lives in the tinted background and the text, so a hairline on all
-     four sides is enough. Colour comes from the variants below. */
   border: 1px solid;
 }
 .alert--success { background: var(--clr-success-soft); border-color: var(--clr-success); color: var(--clr-success); }
-.alert--error   { background: var(--clr-red-soft);     border-color: var(--clr-red);     color: var(--clr-red-text); } /* CHANGED (light pass) text was --clr-red: 4.3:1 light / 4.2:1 dark on the tint */
-.alert--info    { background: var(--clr-blue-soft);    border-color: var(--clr-blue);    color: var(--clr-accent-text); } /* CHANGED (light pass) text was --clr-blue: 4.31:1 on the tint in light */
-/* The solid borders above are the fallback; where color-mix() exists the
-   hairline is softened to a tint of the same hue so it reads as an edge, not
-   a frame. */
+.alert--error   { background: var(--clr-red-soft);     border-color: var(--clr-red);     color: var(--clr-red-text); } 
+.alert--info    { background: var(--clr-blue-soft);    border-color: var(--clr-blue);    color: var(--clr-accent-text); } 
 @supports (color: color-mix(in srgb, red 50%, transparent)) {
   .alert--success { border-color: color-mix(in srgb, var(--clr-success) 45%, transparent); }
   .alert--error   { border-color: color-mix(in srgb, var(--clr-red) 45%, transparent); }
   .alert--info    { border-color: color-mix(in srgb, var(--clr-blue) 45%, transparent); }
 }
 
-/* ── 12. SECTION LAYOUT HELPERS ─────────────────────────────────── */
 .section { padding-block: var(--space-16); }
 .section--sm { padding-block: var(--space-8); }
-/* Anchor-scroll offset — any section with an id (currently just
-   #about-asl, targeted by the navbar's "About" link and the hero's
-   "Explore ASL" button) lands with its heading tucked under the
-   sticky .navbar (§5, 60px tall) otherwise: the browser scrolls the
-   section's top edge flush to the viewport top, which is exactly
-   where the translucent sticky bar sits. scroll-margin-top shifts
-   that landing point down by the bar's height plus a little
-   breathing room, so "About American Sign Language" is visible right
-   after the jump instead of hidden behind the bar. Not related to
-   .hero--wave's own negative margin above (auth.css) — that only
-   pulls up the section immediately after the hero, not this one. */
 .section[id] { scroll-margin-top: calc(60px + var(--space-6)); }
 .section__header { margin-bottom: var(--space-8); }
-/* EYEBROW PASS: sentence case, no tracking (was UPPERCASE + letter-spacing) */
 .section__eyebrow {
   font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0;
-  color: var(--clr-accent-text); /* EYEBROW PASS: was --clr-accent (3.87:1 on the light hero) */
+  color: var(--clr-accent-text); 
   margin-bottom: var(--space-2);
 }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); }
@@ -909,7 +569,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }
 
-/* ── 13. FOOTER ─────────────────────────────────────────────────── */
 .footer {
   border-top: 1px solid var(--clr-border);
   padding-block: var(--space-8);
@@ -918,7 +577,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
   color: var(--clr-text-muted);
 }
 
-/* ── 14. UTILITIES ──────────────────────────────────────────────── */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 .text-center { text-align: center; }
 .text-muted   { color: var(--clr-text-muted); }
@@ -929,11 +587,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 .gap-4 { gap: var(--space-4); }
 .gap-6 { gap: var(--space-6); }
 .mt-2 { margin-top: var(--space-2); }
-/* BUGFIX (light-mode UX pass) — .mt-3, .mt-6, .mb-2, .mb-3 were used in
-   settings.html, camera-practice.html, progress-page.js and
-   mission-overview.js but never defined (same failure mode as
-   --space-5: no error, just no spacing — e.g. Settings' Profile and
-   Preferences cards touching, "Needs Review" sitting on its subtitle). */
 .mt-3 { margin-top: var(--space-3); }
 .mt-4 { margin-top: var(--space-4); }
 .mt-6 { margin-top: var(--space-6); }
@@ -943,8 +596,6 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 .mb-4 { margin-bottom: var(--space-4); }
 .mb-8 { margin-bottom: var(--space-8); }
 
-/* Back-to-previous-page link — small, muted until hovered, with a
-   leading arrow that nudges left on hover for a bit of feedback. */
 .back-link {
   display: inline-flex; align-items: center; gap: var(--space-2);
   font-size: var(--fs-sm); color: var(--clr-text-muted);
@@ -952,18 +603,9 @@ html.lw-theme-switching :not(:is(.theme-switch, .theme-segmented, .theme-switch 
 }
 .back-link:hover { color: var(--clr-accent); text-decoration: none; }
 
-/* ── 15. REDUCED MOTION ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
-/* In-app override — settings.html's Reduced Motion toggle (see
-   js/settings-page.js) for a learner whose OS setting doesn't already
-   request it. The class is set on <html> on EVERY page, before first
-   paint, by the inline snippet in each page's <head> (reads
-   localStorage 'lw-preferences'.reducedMotion) and kept in sync across
-   tabs by js/theme.js. Same effect as the media query above, plus:
-   animations run once instead of looping (an infinite loop at .01ms
-   just flickers), and smooth scrolling is turned off. */
 html.lw-force-reduced-motion { scroll-behavior: auto !important; }
 html.lw-force-reduced-motion *,
 html.lw-force-reduced-motion *::before,
@@ -974,33 +616,6 @@ html.lw-force-reduced-motion *::after {
   scroll-behavior: auto !important;
 }
 
-/* ── 16. SKIP LINK + LOADING PULSE (shared, page-agnostic) ─────────
-   Design pass, 2026-08-23 (PIVOT_CHECKLIST.md "Design pass — learn.html
-   / lesson.html sidebar not yet matching dashboard"). css/dashboard.css
-   already had its own `.skip-link` and `.dash-loading-pulse` — both are
-   plain, page-agnostic patterns (nothing in either rule references
-   dashboard-specific markup), so PIVOT_CHECKLIST.md's own suggested
-   approach for this item was to make them available here instead of
-   re-typing the same rules into learn.css/lesson.css.
-
-   `.skip-link` below is IDENTICAL to dashboard.css's own copy — a name
-   collision on purpose, not a conflict: dashboard.css loads AFTER this
-   file on pages/dashboard.html, so its rule still wins there at equal
-   specificity and dashboard's already-shipped look is untouched. This
-   just makes the same class usable on learn.html/lesson.html (and any
-   future page) without duplicating the declaration a third/fourth time.
-
-   `.loading-pulse` is the same animation dashboard.css calls
-   `.dash-loading-pulse`, renamed generically here on purpose — kept
-   deliberately subtle (opacity only, no motion/scale), same reasoning
-   as dashboard.css's own comment on it: a bonus cue layered on text
-   that already says what's happening ("Loading…"), not the only signal.
-   Respects prefers-reduced-motion beyond the blanket rule in §15 above
-   (that rule speeds the animation up to near-zero but doesn't remove
-   it outright; explicit `animation: none` here does). dashboard.css's
-   `.dash-loading-pulse` name is left as-is for dashboard.html's own
-   markup — not deprecated, just not the name new pages should reach
-   for; see AI_MEMORY.md's 2026-08-23 session log. */
 .skip-link {
   position: absolute;
   top: -100px;
@@ -1031,42 +646,6 @@ html.lw-force-reduced-motion *::after {
   .loading-pulse { animation: none; }
 }
 
-/* ── 17. APP SIDEBAR (shared layout shell) ──────────────────────────
-   Design pass — reference-board layout pass. A left icon sidebar for
-   the app's "home base" screens (Dashboard, Learn, Progress, Feedback,
-   Settings) — everything a learner returns to between lessons — while
-   Lesson/Quiz stay on the existing top .navbar + back-link, since
-   those are focused single-task screens, not places to browse from.
-   This is purely a navigation shell: nothing about a page's existing
-   content, IDs, or scripts changes — pages just render inside
-   <div class="app-main"> instead of directly in <body>.
-
-   MARKUP PATTERN (wrap the existing page content, keep everything
-   else — search, sidebars, cards, scripts — exactly as-is):
-
-     <div class="app-shell">
-       <aside class="app-sidebar">
-         <a href="dashboard.html" class="app-sidebar__logo">Lingua<span>Wave</span></a>
-         <nav class="app-sidebar__nav">
-           <a href="dashboard.html" class="app-sidebar__link [active]">
-             <span class="app-sidebar__icon">…svg…</span> Dashboard
-           </a>
-           … Learn / Progress / Quiz / Feedback / Settings …
-         </nav>
-         <div class="app-sidebar__foot">
-           <button class="theme-switch" id="theme-toggle" …>…</button>
-           <a href="#" class="btn btn--ghost btn--sm" data-logout="../index.html">Log out</a>
-         </div>
-       </aside>
-       <div class="app-main">
-         … existing <body> content goes here, unchanged …
-       </div>
-     </div>
-
-   `data-user-name` / theme-toggle / data-logout keep their existing
-   ids/attributes and existing js/main.js + js/theme.js wiring — only
-   their container markup moved, matching js/theme.js's own
-   documented contract ("wires any .theme-switch button on the page"). */
 .app-shell { display: flex; min-height: 100vh; }
 .app-sidebar {
   width: 240px; flex-shrink: 0;
@@ -1091,17 +670,12 @@ html.lw-force-reduced-motion *::after {
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .app-sidebar__link:hover { background: var(--clr-surface-2); color: var(--clr-text); text-decoration: none; }
-.app-sidebar__link.active { background: var(--clr-accent-soft); color: var(--clr-accent-text); } /* CHANGED (dark pass) was --clr-accent */
+.app-sidebar__link.active { background: var(--clr-accent-soft); color: var(--clr-accent-text); } 
 .app-sidebar__link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 .app-sidebar__icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; }
-/* Game tab lock (js/game-gate.js): dimmed, not clickable, lock glyph at the right edge.
-   cursor:default (not not-allowed) — same reasoning as .sign-chip--locked. */
 .app-sidebar__link--locked { opacity: .55; cursor: default; }
 .app-sidebar__link--locked:hover { background: transparent; color: var(--clr-text-muted); }
 .app-sidebar__lock { margin-left: auto; display: flex; align-items: center; }
-/* Sidebar click feedback (js/main.js initSidebarNavGuard): shown instantly while the next
-   page loads. The spinner only animates `transform`, so it keeps spinning on the compositor
-   even when the main thread is busy parsing the next page. */
 .app-sidebar__link.is-loading { background: var(--clr-accent-soft); color: var(--clr-accent-text); }
 .app-sidebar__link.is-loading::after {
   content: ''; margin-left: auto; width: 14px; height: 14px; flex-shrink: 0;
@@ -1117,8 +691,6 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   padding-top: var(--space-4); margin-top: var(--space-4);
   border-top: 1px solid var(--clr-border);
 }
-/* Account block (js/main.js initSidebarAccountLinks): profile card on top, then a hairline, then
-   Log out (+ the theme switch on the right). Settings is a normal nav item under Feedback. */
 .app-sidebar__foot--account { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--space-1); }
 .app-sidebar__user { gap: var(--space-3); padding: var(--space-2) var(--space-3); min-width: 0; }
 .app-sidebar__avatar { display: flex; flex-shrink: 0; }
@@ -1128,7 +700,6 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .app-sidebar__user-role { color: var(--clr-text-muted); font-size: var(--fs-xs); font-weight: 400; }
-/* Same accent pair the other active links use, so contrast stays verified. */
 .app-sidebar__user.active .app-sidebar__user-name,
 .app-sidebar__user.active .app-sidebar__user-role { color: var(--clr-accent-text); }
 .app-sidebar__foot-row {
@@ -1144,7 +715,6 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 .app-sidebar__logout:hover { background: var(--clr-surface-2); color: var(--clr-text); text-decoration: none; }
 .app-sidebar__logout:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 
-/* Profile pictures (js/avatars.js). Round, fixed-size; no picture picked -> initial on the accent tint. */
 .lw-avatar {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: block;
   object-fit: cover; background: var(--clr-surface-2); border: 2px solid var(--clr-border);
@@ -1159,20 +729,13 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 .lw-avatar--xl.lw-avatar--initial { font-size: 2.25rem; }
 .app-main { flex: 1; min-width: 0; }
 
-/* ── 18. TOGGLE SWITCH (shared form control) ────────────────────────
-   Plain checkbox-driven on/off switch — Settings page preferences
-   (Reduced Motion, etc). Same visual language as
-   .theme-switch's sliding thumb, but generic (no light/dark icon
-   glyph) and state-driven by a real <input type="checkbox"> for
-   accessible keyboard/AT support, since unlike .theme-switch this isn't wired by
-   js/theme.js — plain onchange handlers are enough for a preference. */
 .toggle-switch { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; }
 .toggle-switch input {
   position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1;
 }
 .toggle-switch__track {
   position: absolute; inset: 0; border-radius: var(--radius-pill);
-  background: var(--clr-surface-2); border: 1px solid var(--clr-border-strong); /* CHANGED (dark pass) was --clr-border */
+  background: var(--clr-surface-2); border: 1px solid var(--clr-border-strong); 
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .toggle-switch__thumb {
@@ -1180,21 +743,10 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   border-radius: 50%; background: var(--clr-text-muted);
   transition: transform var(--dur-base) var(--ease), background var(--dur-fast) var(--ease);
 }
-/* CHANGED (light-mode UX pass) — "on" was --clr-success green, but green
-   means "completed" everywhere else (badge--done, done rows); a
-   preference being enabled isn't an achievement. Accent = active. */
 .toggle-switch input:checked ~ .toggle-switch__track { background: var(--clr-accent); border-color: var(--clr-accent); }
 .toggle-switch input:checked ~ .toggle-switch__thumb { transform: translateX(20px); background: #fff; }
 .toggle-switch input:focus-visible ~ .toggle-switch__track { outline: none; box-shadow: 0 0 0 2px var(--clr-accent); }
 
-/* BUGFIX — the Reduced Motion checkbox
-   ships with a hardcoded state in the HTML (see pages/settings.html), then
-   js/settings-page.js corrects each one to its real stored value on
-   load. When a stored value differs from the hardcoded default, that
-   correction used to visibly animate (the CSS transitions above are
-   what make user-triggered flips feel nice) on every single page
-   load. Suppressed for that one initial sync only — same pattern as
-   .theme-switch--no-transition above. */
 .toggle-switch--no-transition .toggle-switch__track,
 .toggle-switch--no-transition .toggle-switch__thumb {
   transition: none !important;
@@ -1212,25 +764,6 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   .app-sidebar__foot { border-top: none; margin-top: 0; padding-top: 0; margin-left: auto; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   ICON SYSTEM (see js/icons.js and LinguaWave_Icon_Audit.md)
-   ─────────────────────────────────────────────────────────────────────
-   Every icon in the app is now one inline <svg class="lw-icon">, drawn
-   with currentColor, so it inherits text colour and theme automatically
-   and needs no per-screen colour rules. The containers below were all
-   originally sized around an emoji GLYPH (font-size on a text node);
-   an <svg> ignores font-size, so each of those containers gets an
-   explicit icon size here instead. If you change a container's box
-   size, change its icon size in this block too.
-   ═══════════════════════════════════════════════════════════════════ */
-/* :where() gives these zero specificity ON PURPOSE. Several components
-   already size their own icon box (.app-sidebar__icon is 20px, the
-   theme toggle's .theme-switch__icon is 12px inside an 18px thumb,
-   .topic-card__icon svg is 52% of its badge). Those rules appear
-   EARLIER in this file, so a normal .lw-icon selector here would
-   silently win on cascade order and blow out their layout. Zero
-   specificity means the host container always keeps control and this is
-   only the default for icons nobody has sized. */
 :where(.lw-icon) {
   width: 24px; height: 24px;
   flex: 0 0 auto;
@@ -1242,17 +775,11 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 .lw-icon--status { width: 14px; height: 14px; }
 .lw-icon--nav    { width: 24px; height: 24px; }
 
-/* An id with no artwork assigned. Deliberately ugly: the old code fell
-   back to a bookmark emoji that looked plausible, so nobody ever noticed
-   a category had been missed. This is meant to be noticed in review. */
 .lw-icon--missing { color: var(--clr-red); opacity: .8; }
 
-/* Icon + text pairs built by LWIcons.setLabel(). The gap lives here so
-   no call site has to hand-space an icon against its own label. */
 .lw-icon-label { margin-left: var(--space-2); }
 .lw-icon + .lw-icon-label { vertical-align: middle; }
 
-/* Containers previously sized for an emoji glyph ─────────────────────*/
 .topic-chip__icon           { display: inline-flex; color: var(--clr-accent); }
 .topic-chip__icon .lw-icon  { width: 28px; height: 28px; }
 
@@ -1262,17 +789,12 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 .continue-card__icon        { color: var(--clr-accent); }
 .continue-card__icon .lw-icon { width: 28px; height: 28px; }
 
-/* Course-sidebar status column. Was '\u25b6' / '\u2714' / '\u25cb' / '\ud83d\udd12' as bare text,
-   which rendered at a different weight and baseline on every OS. The
-   colour rules in css/lesson.css still apply — currentColor picks them
-   up with no extra selectors. */
 .course-sidebar__sign-icon  { display: inline-flex; align-items: center; justify-content: center; }
 .course-sidebar__sign-icon .lw-icon { width: 14px; height: 14px; }
 .course-sidebar__cat-icon   { display: inline-flex; color: var(--clr-accent); }
 .course-sidebar__cat-icon .lw-icon { width: 18px; height: 18px; }
 .course-sidebar__cat-count .lw-icon { width: 14px; height: 14px; }
 
-/* Inline icons sitting inside a line of prose or a button label. */
 .btn .lw-icon,
 .motion-try-btn .lw-icon    { width: 18px; height: 18px; margin-right: var(--space-2); }
 .btn .lw-icon + .lw-icon-label,
@@ -1282,42 +804,13 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
 .camera-tips__title         { display: flex; align-items: center; gap: var(--space-2); }
 .camera-tips__title .lw-icon { width: 18px; height: 18px; color: var(--clr-accent); }
 
-/* Status colours for the shared feedback/toast icon set, so a caller
-   picks a MEANING ('success') and never a colour or a glyph. */
 .lw-icon--tone-success { color: var(--clr-success); }
 .lw-icon--tone-error   { color: var(--clr-red); }
 .lw-icon--tone-info    { color: var(--clr-accent); }
 .lw-icon--tone-muted   { color: var(--clr-text-muted); }
 
-/* The 80px .lesson-letter badge normally holds one big character; when the
-   sign isn't a single letter it holds an icon instead, which has to be
-   scaled up to match that character's optical weight. */
 .lesson-letter__icon { width: 44px; height: 44px; }
 
-/* ── 19. LOCKED / INVALID INTERACTION FEEDBACK (shared) ─────────────
-   "Interactive Locked-State Feedback" — a brief shake + rapid red-
-   border flash for something the learner CAN click but that can't
-   actually be acted on right now: a locked chapter row
-   (.path-row--locked, css/app.css), a locked/pending dictionary chip
-   (.sign-chip--locked/--pending, css/app.css), or any other locked/
-   unavailable-content surface added later. These elements keep a
-   normal `cursor: default` (not `cursor: not-allowed`) precisely so
-   this feedback reads as "not yet" rather than "actively blocked" —
-   see .path-row--locked's own comment in css/app.css.
-
-   Usage: JS toggles the .lw-shake-invalid class on click (see
-   triggerLockedFeedback() in js/main.js) and removes it again on
-   'animationend', so a repeat click replays the full animation
-   instead of doing nothing the second time. Only the transform is
-   defined here — the border-color flash rides each element's own
-   existing border-color transition (.card / .sign-chip in this file),
-   so the flash speed already matches that surface's normal motion
-   instead of a second, competing timing.
-
-   A selected WRONG answer (.lesson-option--incorrect in css/app.css)
-   plays the same @keyframes directly off its own class instead of
-   this one — that state is meant to stick until the next question,
-   not settle back, so it has no JS-driven add/remove step. */
 .lw-shake-invalid {
   animation: lw-shake-invalid 420ms var(--ease);
   border-color: var(--clr-red);
@@ -1332,25 +825,9 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   .lw-shake-invalid { animation: none; }
 }
 
-/* ── 19b. UNLOCK PULSE (shared) ──────────────────────────────────────
-   A clearly visible two-beat highlight (~1.8s) on content that has JUST gone
-   locked -> unlocked: the Game sidebar item (js/game-gate.js) and chapter rows
-   on Learn (js/learn.js). Both go through window.LWUnlockFx, which adds this
-   class only on a real locked -> unlocked change, only while the element is on
-   screen in a visible tab, and removes it again on 'animationend'.
-
-   Each beat = an accent ring + soft outer glow + a faint accent wash behind the
-   content + a small swell (scale). The wash and swell stay visible even where a
-   scrolling sidebar would clip the outer glow. Only the 40% keyframe is defined,
-   so the start and end are each element's own resting box-shadow / background /
-   transform and it settles back exactly: nothing to restore. The swell is a
-   transform, so it never changes layout (a chapter row swells less than a
-   sidebar item so it can't crowd its neighbours).
-   Reduced motion: no animation at all (OS setting, or the in-app toggle's
-   html.lw-force-reduced-motion — see section 15). */
 .lw-unlock-pulse {
   --lw-unlock-ring: var(--clr-accent);
-  --lw-unlock-glow: var(--clr-accent-soft);   /* fallbacks where color-mix() is unsupported */
+  --lw-unlock-glow: var(--clr-accent-soft);   
   --lw-unlock-wash: var(--clr-accent-soft);
   animation: lw-unlock-pulse 900ms var(--ease) 2;
 }
@@ -1372,33 +849,9 @@ html.lw-navigating, html.lw-navigating * { cursor: progress !important; }
   .lw-unlock-pulse { animation: none; }
 }
 html.lw-force-reduced-motion .lw-unlock-pulse { animation: none; }
-/* ── 20. LOADING SKELETONS (shared, page-agnostic) ──────────────────
-   Why: containers like #mission-banner, #path-list or #xp-card start
-   empty (or with a one-line "Loading…") and get filled by JS a moment
-   later, so the layout jumped and content popped in. Each of them now
-   ships with static skeleton markup of roughly the same size; the JS
-   that fills the container replaces it wholesale via innerHTML, so no
-   cleanup code is needed anywhere.
-
-   Pieces:
-   .sk-group   wrapper (role="status" + an .sr-only "Loading…" label for
-               screen readers). Lives INSIDE the container so it goes away
-               with the first real render.
-   .sk         one blinking bar. Size it with --w / --h (lines, buttons)
-               or --s (circles, squares); modifiers below set the shape.
-   [data-sk]   marks the container; js/skeleton.js fades the real content
-               in ONCE, on the first swap (later re-renders stay instant,
-               so the Firestore re-sync can't make anything flash).
-
-   The blink is opacity-only (same discipline as .loading-pulse): no
-   motion, so reduced-motion just freezes it at a mid value. Colour is
-   a mix of --clr-text, so it works in light and dark without a second
-   palette. js/skeleton.js adds a "taking longer than usual" fallback so
-   a failed load can't blink forever. */
 .sk-group { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
 .sk-group--row { flex-direction: row; align-items: center; }
 .sk-group--grid { display: contents; }
-/* Inside a grid parent (hero row, xp-card...) a skeleton spans the whole row. */
 .sk-group:not(.sk-group--grid) { grid-column: 1 / -1; }
 .sk-stack { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .sk-stack--grow { flex: 1 1 auto; }
@@ -1425,9 +878,6 @@ html.lw-force-reduced-motion .lw-unlock-pulse { animation: none; }
 .sk--square { width: var(--s, 40px); height: var(--s, 40px); border-radius: var(--radius-sm); }
 .sk--block { height: var(--h, 6rem); border-radius: var(--radius-md); }
 
-/* The profile name (<h2 data-user-name></h2>) is filled by the session script
-   and has no markup to swap, so :empty carries its placeholder instead. It
-   vanishes by itself the moment text lands in the element. */
 .profile-side__name:empty::before {
   content: ""; display: block; width: min(11rem, 70%); height: 1.6rem;
   border-radius: var(--radius-pill);
@@ -1435,10 +885,8 @@ html.lw-force-reduced-motion .lw-unlock-pulse { animation: none; }
   animation: lw-sk-blink 1.2s ease-in-out infinite;
 }
 
-/* Skeleton bars on the gradient hero banner use its own ink colour. */
 .mission-banner .sk { --sk-ink: var(--mb-title, #fff); background: color-mix(in srgb, var(--sk-ink) 26%, transparent); }
 
-/* Stagger so a grid of placeholders ripples instead of blinking in lockstep. */
 .sk-group > :nth-child(2n) .sk, .sk-group--grid > :nth-child(2n) .sk,
 .sk-group > .sk:nth-child(2n)  { animation-delay: .15s; }
 .sk-group > :nth-child(3n) .sk, .sk-group--grid > :nth-child(3n) .sk,
@@ -1449,11 +897,9 @@ html.lw-force-reduced-motion .lw-unlock-pulse { animation: none; }
   50%      { opacity: .4; }
 }
 
-/* Real content arriving after a skeleton eases in instead of snapping. */
 .sk-revealing > * { animation: lw-sk-reveal var(--dur-base) var(--ease) both; }
 @keyframes lw-sk-reveal { from { opacity: 0; } to { opacity: 1; } }
 
-/* Set by js/skeleton.js if a skeleton is still on screen after ~12s. */
 .sk-stalled { color: var(--clr-text-muted); font-size: var(--fs-sm); padding: var(--space-3); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1464,9 +910,6 @@ html.lw-force-reduced-motion .sk,
 html.lw-force-reduced-motion .profile-side__name:empty::before { animation: none; opacity: .7; }
 html.lw-force-reduced-motion .sk-revealing > * { animation: none; }
 
-/* ── TOAST NOTIFICATIONS (created by showToast() in js/main.js) ─────
-   Lives in style.css, not toast.css: toast.css was only linked on 7 pages, so on
-   every other page the toast rendered unstyled below the layout. */
 .toast {
   position: fixed;
   left: 50%;

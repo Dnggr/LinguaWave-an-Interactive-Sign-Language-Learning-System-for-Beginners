@@ -1,45 +1,16 @@
-/**
- * admin-media.js — Uploads / removes lesson videos in Cloudflare R2 (REPLACES
- * js/admin-video-store.js, which wrote into the local project folder)
- * ─────────────────────────────────────────────────────────────────
- * WHERE THE FILE GOES : R2 bucket, key  videos/admin/<signId>/<timestamp>.mp4
- *                       (the key is chosen by the Worker, never by this file)
- * WHAT FIRESTORE GETS : videoUrl (public https URL learners play) and videoKey
- *                       (the R2 object key, so the file can be replaced/deleted).
- *
- * HOW (read worker/src/index.js for the other half):
- *   1. auth.currentUser.getIdToken()            -> Firebase ID token
- *   2. POST  <worker>/v1/upload-url             -> Worker checks token + admin,
- *                                                  returns a 10-minute presigned PUT URL
- *   3. PUT   file straight to R2                -> big file never touches the Worker
- *   4. POST  <worker>/v1/finalize               -> Worker checks size + real MP4,
- *                                                  deletes the object if it fails
- *   5. caller saves videoUrl/videoKey on Firestore `signs/{signId}`.
- *
- * No R2 credential exists in this file. The checks below (type/size) are for
- * fast feedback only; the Worker repeats them where they can't be bypassed.
- *
- * CONFIG: the deployed Worker URL is WORKER_URL in js/admin-worker.js (R2_SETUP.md, step 5).
- * ─────────────────────────────────────────────────────────────────
- */
 import { auth } from "./admin-firebase.js";
-// The Worker URL now lives in js/admin-worker.js (shared with learner deletion). Re-exported under
-// the old name so nothing that imports MEDIA_API_URL has to change.
 import { WORKER_URL } from "./admin-worker.js";
 
 export const MEDIA_API_URL = WORKER_URL;
-export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // keep in sync with worker/src/index.js
-// MP4 only: the learner players hard-code type="video/mp4" (see worker/src/index.js).
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 export const VIDEO_TYPES = { mp4: "video/mp4" };
 
-/** "mp4" | "" — judged by the file name, falling back to its MIME type. */
 function videoExt(file) {
   const m = /\.(mp4)$/i.exec(file.name || "");
   if (m) return m[1].toLowerCase();
   return Object.keys(VIDEO_TYPES).find((e) => VIDEO_TYPES[e] === file.type) || "";
 }
 
-/** Basic checks before anything is sent. Returns an error string or "". */
 export function validateVideoFile(file) {
   if (!file) return "";
   if (!videoExt(file)) return "Only MP4 videos are allowed.";
@@ -64,7 +35,7 @@ async function callWorker(path, body) {
     err.code = "media/signed-out";
     throw err;
   }
-  const token = await user.getIdToken(); // refreshes automatically when it's about to expire
+  const token = await user.getIdToken();
   let res;
   try {
     res = await fetch(MEDIA_API_URL + path, {
@@ -87,12 +58,11 @@ async function callWorker(path, body) {
   return data;
 }
 
-// fetch() can't report upload progress, XHR can.
 function putFile(url, file, contentType, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", contentType); // must match what the URL was signed for
+    xhr.setRequestHeader("Content-Type", contentType);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
@@ -112,11 +82,6 @@ function putFile(url, file, contentType, onProgress) {
   });
 }
 
-/**
- * Uploads `file` for lesson `signId`.
- * @param {(percent:number)=>void} [onProgress]
- * @returns {Promise<{key:string, url:string}>}  save both on the lesson document
- */
 export async function uploadLessonVideo(signId, file, onProgress) {
   const err = validateVideoFile(file);
   if (err) throw new Error(err);
@@ -128,11 +93,6 @@ export async function uploadLessonVideo(signId, file, onProgress) {
   return { key: done.key, url: done.publicUrl };
 }
 
-/**
- * Removes a video from R2. Best-effort on purpose: a leftover file is
- * harmless, so a failure here must never undo a lesson save/delete that
- * already succeeded. Returns true when it was removed.
- */
 export async function deleteLessonVideo(key) {
   if (!key) return true;
   try {

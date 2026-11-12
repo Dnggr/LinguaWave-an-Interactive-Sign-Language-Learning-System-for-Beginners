@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Same theme-flash-prevention snippet every page in this repo uses.
-       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -17,39 +15,12 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/dashboard.html — Mission-Based Dashboard
-    ─────────────────────────────────────────────────────────────────
-    REBUILD (blue-teal mockup alignment pass) — this page used to be a
-    "Continue Your Mission" hero-row + a flat mission "journey rail"
-    (see git history for that version). Rebuilt to match the reference
-    mockup's Dashboard screen: greeting header, a big "Today's Mission"
-    banner, a "Your Progress" ring card, a "Learning Path" icon-tile
-    grid, and a "Recommended for You" quick-link grid. Same app shell
-    (sidebar/header/.card tokens) as pages/learn.html and
-    pages/progress.html, and the same underlying data source
-    (window.LWMissions) those two pages already use — nothing here is
-    a new/parallel progress store.
-
-    DATA    : Every number on this page (mission title/goal, ring %,
-              chapter, missions-complete count, streak, hearts,
-              per-tile fraction/status) comes from
-              window.LWMissions.getAllMissions() and its related
-              accessors — no hardcoded values. See js/dashboard.js's
-              file header for the one exception (Recommended for You's
-              static copy/icons, same treatment index.html's own
-              feature cards already get) and why every one of ITS
-              links is still a real, built destination.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Dashboard | LinguaWave</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <!-- PERF FIX (this revision) — was a plain render-blocking
-       <link rel="stylesheet">; see index.html's matching note for why. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -57,12 +28,9 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
-  <!-- Orientation gate styles (locked shortcut buttons, gate note). -->
   <link rel="stylesheet" href="../css/orientation-gate.css" />
   <link rel="stylesheet" href="../css/tour.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -122,37 +90,28 @@
 
     <div class="app-main" id="main">
 
-      <!-- ── Greeting ─────────────────────────────────────────────── -->
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="dash-greeting">
-            <h1><span id="dash-greeting-word">Good morning,</span><!-- BUGFIX (light-mode UX pass) — the h1 is a flex container with a gap, so a bare "!" text node became its own flex item and rendered as "rene !". Name + "!" now share one span. --><span><span data-user-name>Learner</span>!</span> <span class="dash-greeting__wave" aria-hidden="true">👋</span></h1>
+            <h1><span id="dash-greeting-word">Good morning,</span><span><span data-user-name>Learner</span>!</span> <span class="dash-greeting__wave" aria-hidden="true">👋</span></h1>
             <p class="mt-2 text-muted">Small steps make big progress. Keep going!</p>
           </div>
         </div>
       </section>
 
-      <!-- ── Today's Mission + Your Progress ─────────────────────── -->
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="dash-hero-grid">
             <div class="mission-banner" id="mission-banner" data-sk>
-              <!-- filled by js/dashboard.js; the skeleton below is replaced on first render -->
               <div class="sk-group sk-group--row" role="status" style="justify-content:space-between;gap:var(--space-6)"><span class="sr-only">Loading today’s mission…</span><div class="sk-stack sk-stack--grow" style="gap:var(--space-3)"><span class="sk sk--line" style="--w:7rem;--h:.8rem"></span><span class="sk sk--title" style="--w:min(22rem,80%);--h:2rem"></span><span class="sk sk--line" style="--w:min(30rem,90%)"></span><span class="sk sk--line" style="--w:min(24rem,70%)"></span><span class="sk sk--btn" style="--w:11rem;--h:3rem;margin-top:var(--space-2)"></span></div><span class="sk sk--circle" style="--s:min(180px,28vw)"></span></div>
             </div>
             <div class="card progress-card" id="progress-card" data-sk>
-              <!-- filled by js/dashboard.js -->
               <div class="sk-group" role="status"><span class="sr-only">Loading your progress…</span><div class="sk-row"><span class="sk sk--circle" style="--s:88px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:5rem;--h:.75rem"></span><span class="sk sk--title" style="--w:10rem;--h:1.2rem"></span></div></div><div class="sk-cols" style="margin-top:var(--space-2)"><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div><div class="sk-stack" style="gap:var(--space-2)"><span class="sk sk--title" style="--w:60%;--h:1.3rem"></span><span class="sk sk--line" style="--w:90%;--h:.7rem"></span></div></div></div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ── Orientation (new learners only) ──────────────────────────
-           New learners must finish Orientation before Chapter 1 unlocks
-           (js/missions.js isOrientationComplete()). js/dashboard.js
-           renderOrientationCard() un-hides this section while it is pending
-           and keeps it hidden for everyone else. -->
       <section class="section section--sm section--tight" id="orientation-section" hidden>
         <div class="container">
           <div class="section-heading-row">
@@ -162,7 +121,6 @@
         </div>
       </section>
 
-      <!-- ── Learning Path ────────────────────────────────────────── -->
       <section class="section section--sm section--tight">
         <div class="container">
           <div class="section-heading-row">
@@ -170,20 +128,17 @@
             <a href="learn.html" class="section-heading-row__link">View All</a>
           </div>
           <div class="learning-path-grid" id="learning-path-grid" data-sk>
-            <!-- filled by js/dashboard.js -->
             <div class="sk-group sk-group--grid" role="status"><span class="sr-only">Loading your learning path…</span><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div><div class="path-tile"><span class="sk sk--square" style="--s:44px"></span><span class="sk sk--line" style="--w:80%"></span><span class="sk sk--line" style="--w:45%;--h:.75rem"></span><span class="sk sk--pill" style="--w:5.5rem"></span></div></div>
           </div>
         </div>
       </section>
 
-      <!-- ── Recommended for You ──────────────────────────────────── -->
       <section class="section section--sm">
         <div class="container">
           <div class="section-heading-row">
             <h2>Recommended for You</h2>
           </div>
           <div class="recommended-grid" id="recommended-grid" data-sk>
-            <!-- filled by js/dashboard.js -->
             <div class="sk-group sk-group--grid" role="status"><span class="sr-only">Loading recommendations…</span><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div><div class="card rec-card"><span class="sk sk--square" style="--s:40px"></span><span class="sk sk--title" style="--w:60%;--h:1.1rem"></span><span class="sk sk--line" style="--w:95%;--h:.8rem"></span><span class="sk sk--line" style="--w:70%;--h:.8rem"></span><span class="sk sk--btn" style="--w:7.5rem;--h:2rem"></span></div></div>
           </div>
         </div>
@@ -196,26 +151,13 @@
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
   <script defer src="../js/missions.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
-  <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
-       and, critically, wires up every [data-logout] button (the sidebar's
-       Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
-  <!-- Fluid-pastel shader behind Today's Mission. Plain script, loaded BEFORE dashboard.js
-       so its MutationObserver is already watching when dashboard.js fills #mission-banner. -->
   <script src="../js/banner-shader.js"></script>
   <script src="../js/dashboard.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="dashboard">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
 </body>
 </html>

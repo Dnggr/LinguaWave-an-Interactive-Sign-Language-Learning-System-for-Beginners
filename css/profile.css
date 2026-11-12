@@ -1,9 +1,4 @@
-/* css/profile.css — pages/profile.html
- * GitHub-style profile: picture + name in a left column, a year-long
- * activity grid and the stat cards on the right. The base .lw-avatar look
- * lives in css/style.css (shared with the leaderboard). */
 
-/* ── Layout ─────────────────────────────────────────────────────── */
 .profile-layout {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -22,14 +17,6 @@
   .profile-pair { grid-template-columns: 1fr; }
 }
 
-/* ── Level / XP card (top of the right column) ───────────────────────
- * js/xp-ui.js draws the same stacked markup the Leaderboard side panel uses
- * (.xp-card__top, .xp-card__progress, .xp-stats, .xp-card__link). Here the
- * column is wide, so lay it out as one row instead of a tall narrow stack:
- *     [ level badge + name ] [ progress bar + "31 / 125 XP" ........ ]
- *     [ streak + badge chips .................. Leaderboard & badges → ]
- * Scoped to .profile-main so css/xp.css (the Leaderboard card) is untouched.
- * Specificity (2 classes) beats xp.css's single-class rules whatever the load order. */
 .profile-main .xp-card {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -52,16 +39,13 @@
   .profile-main .xp-card__link { justify-self: start; }
 }
 
-/* ── Left column: picture, name, picker ─────────────────────────── */
 .profile-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .profile-side__avatar-wrap { position: relative; width: 100%; max-width: 280px; }
 @media (max-width: 900px) { .profile-side__avatar-wrap { width: 168px; } }
 
-/* The big picture: fills the column as a circle. */
 .lw-avatar--hero { width: 100%; height: auto; aspect-ratio: 1; border-width: 1px; }
 .lw-avatar--hero.lw-avatar--initial { font-size: clamp(3.5rem, 10vw, 6.5rem); }
 
-/* Small round button over the picture's corner (same spot as GitHub's). */
 .profile-side__change {
   position: absolute; right: 6px; bottom: 6px;
   width: 38px; height: 38px; border-radius: 50%;
@@ -83,7 +67,6 @@
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: var(--space-3);
 }
-/* Real radio inputs (native keyboard + screen-reader behaviour), made invisible and stretched over the picture. */
 .avatar-option { position: relative; display: block; border-radius: 50%; cursor: pointer; }
 .avatar-option input {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -102,10 +85,6 @@
 
 .profile-hero__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 
-/* ── Picture picker as a floating modal ──────────────────────────────
- * Same pattern as .streak-dialog in app.css: zero padding on the <dialog>
- * so a click on the dialog element itself counts as a backdrop click, and
- * an explicit margin:auto because the global reset zeroes margins. */
 .avatar-dialog {
   margin: auto; padding: 0;
   width: min(92vw, 460px); max-height: 90vh; overflow-y: auto;
@@ -135,7 +114,6 @@ body:has(.avatar-dialog[open]) { overflow: hidden; }
 .avatar-dialog__close:hover { color: var(--clr-text); background: var(--clr-track); }
 .avatar-dialog__close:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 2px; }
 
-/* ── Achievements (under the picture) ─────────────────────────────── */
 .profile-achievements { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--clr-border); }
 .achv-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
 .achv-head h3 { margin: 0; font-size: var(--fs-base); }
@@ -149,22 +127,18 @@ body:has(.avatar-dialog[open]) { overflow: hidden; }
 .achv--earned.achv--yellow  { color: var(--clr-yellow);      background: var(--clr-yellow-soft);  border-color: var(--clr-yellow); }
 .achv--earned.achv--violet  { color: var(--clr-violet);      background: var(--clr-violet-soft);  border-color: var(--clr-violet); }
 .achv--locked { color: var(--clr-text-muted); background: var(--clr-track); opacity: .45; }
-/* Each achievement is a link (see renderAchievements in js/profile-page.js). The <li> only holds the grid cell. */
 .achv-item { display: block; }
 a.achv { text-decoration: none; cursor: pointer; transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease); }
 a.achv:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 3px; }
 @media (hover: hover) {
   a.achv:hover { transform: translateY(-2px) scale(1.06); box-shadow: 0 6px 16px color-mix(in srgb, currentColor 28%, transparent); }
-  a.achv.achv--locked:hover { opacity: .8; }   /* locked ones stay dimmer than earned, but clearly react */
+  a.achv.achv--locked:hover { opacity: .8; }   
 }
 @media (prefers-reduced-motion: reduce) { a.achv { transition: none; } a.achv:hover { transform: none; } }
 .lw-force-reduced-motion a.achv { transition: none; }
 .lw-force-reduced-motion a.achv:hover { transform: none; }
 .achv-next { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--clr-text-muted); }
 
-/* ── Learning Activity: one box per day, a full year (GitHub-style) ──
- * Separate from the .heatmap-cell styles in app.css, which the Progress
- * page's Day Streak week strip still uses. */
 .gh-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
 .gh-head h2 { margin: 0; }
 .gh-head__total { margin: 0; font-size: var(--fs-sm); color: var(--clr-text-muted); }
@@ -177,7 +151,7 @@ a.achv:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 3px
   column-gap: var(--gh-gap);
   row-gap: var(--gh-gap);
   min-width: 720px;
-  padding-right: 20px;   /* room for the last month name so it never adds a scroll area */
+  padding-right: 20px;   
 }
 .gh-month {
   grid-row: 1;
@@ -187,7 +161,7 @@ a.achv:focus-visible { outline: 3px solid var(--clr-accent); outline-offset: 3px
 }
 .gh-day {
   grid-column: 1; align-self: center;
-  position: sticky; left: 0; z-index: 1; background: var(--clr-surface);   /* stay visible if the grid scrolls */
+  position: sticky; left: 0; z-index: 1; background: var(--clr-surface);   
   padding-right: var(--space-2);
   font-size: var(--fs-xs); line-height: 1; white-space: nowrap;
   color: var(--clr-text-muted);

@@ -1,16 +1,3 @@
-/**
- * js/auth-action.js — controller for pages/auth-action.html
- * ─────────────────────────────────────────────────────────────────
- * Firebase appends ?mode=...&oobCode=... to the "action URL". One page
- * serves every email, so this file routes by mode:
- *   resetPassword          -> verify code, show the new-password form
- *   verifyEmail            -> apply code, "Email verified"
- *   verifyAndChangeEmail   -> apply code, "Email updated"
- *   recoverEmail           -> apply code, "Email restored"
- * Password rules + strength come from window.LWAuth (js/auth.js), the
- * same functions signup enforces, so the two can't disagree. Nothing
- * typed is logged, stored or placed in an error message.
- */
 import { auth } from './auth.js';
 import {
   verifyPasswordResetCode, confirmPasswordReset, applyActionCode,
@@ -53,7 +40,6 @@ function showBadLink() {
     'Back to Log In', '../index.html');
 }
 
-/* ── Password reset form ─────────────────────────────────────── */
 function setMsg(el, msg) {
   el.textContent = msg || '';
   el.hidden = !msg;
@@ -69,7 +55,7 @@ function addToggles() {
     btn.setAttribute('aria-pressed', 'false');
     btn.setAttribute('aria-controls', input.id);
     btn.innerHTML = EYE;
-    btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the field
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
       const on = btn.getAttribute('aria-pressed') !== 'true';
       input.type = on ? 'text' : 'password';
@@ -140,13 +126,11 @@ function initResetForm(email) {
   });
 
   $('aa-reset').addEventListener('click', (e) => {
-    // aria-disabled (not disabled) keeps the button focusable; block repeat taps here.
     if (e.target.closest('#aa-submit')?.getAttribute('aria-busy') === 'true') e.preventDefault();
   });
   show('aa-form');
 }
 
-/* ── Email links: apply on load ──────────────────────────────── */
 const APPLY = {
   verifyEmail: ['Email verified', 'Your email address is confirmed. You can continue to LinguaWave.', 'Continue', 'verify-email.html'],
   verifyAndChangeEmail: ['Email updated', 'Your new email address is confirmed. Use it the next time you log in.', 'Continue', 'verify-email.html'],

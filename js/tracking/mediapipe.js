@@ -1,152 +1,17 @@
-/*
-  js/tracking/mediapipe.js — MediaPipe Holistic Tracking Module
-  ─────────────────────────────────────────────────────────────────
-  PURPOSE  : Loads MediaPipe HolisticLandmarker and extracts left-hand,
-             right-hand, and face landmark data from each webcam frame.
-             Returns raw landmark data ONLY — no drawing, no classification.
-  CONNECTS : Imported by js/camera-practice.js.
-
-  UPDATE (holistic switch — matches capture.html): capturesystem now
-  uses ONE HolisticLandmarker instead of separate HandLandmarker +
-  FaceLandmarker, and keeps BOTH hands (not a single "dominant" hand)
-  so the exported training JSON and this live-inference pipeline stay
-  in lockstep. This file mirrors capture.html's buildFeatureVec()
-  exactly — same ghost-frame handling, same 138-value layout:
-
-    [63 left-hand xyz][63 right-hand xyz][leftPresent][rightPresent]
-    [handToChin][handToForehead][handToShoulder][handToHip]
-    [leftPalmOrientation x3][rightPalmOrientation x3]  = 138 values total.
-
-  UPDATE (2026-09-03 — body-relative + palm-orientation features):
-  layout grew from 130 -> 138. Added shoulder-center/hip-center
-  tracking (ghost-filled the same way as forehead/chin, fed by
-  Holistic's pose landmarks — indices 11/12 shoulders, 23/24 hips,
-  same BlazePose topology already used for the wrist indices below)
-  and a palmOrientation() helper (cross product of wrist->index-MCP
-  and wrist->pinky-MCP) for telling palm-in from palm-out. See
-  capture.html's FEATURE_LEN comment for the full rationale.
-
-  If you ever change this layout, change it in capture.html first,
-  then copy the change here AND into js/engine/classifier.js (which
-  independently rebuilds this same vector from raw landmarks for
-  live inference) — all three MUST match exactly or the model gets
-  inconsistent input between training and inference.
-  ─────────────────────────────────────────────────────────────────
-
-  ══════════════════════════════════════════════════════════════════
-  PERF/ROBUSTNESS PASS — laggy detection + background hands
-  ══════════════════════════════════════════════════════════════════
-
-  PROBLEM 1 — "so laggy, super not optimized"
-  ─────────────────────────────────────────────────────────────────
-  HolisticLandmarker runs pose + full 468-point face mesh + both hands
-  EVERY call. Two things were making that worse than it needed to be:
-
-    a) delegate was hard-locked to 'CPU'. HolisticLandmarker supports
-       a 'GPU' delegate that is dramatically faster on any machine with
-       a real GPU (basically everything except some old/low-end
-       laptops). FIX: try 'GPU' first, fall back to 'CPU' automatically
-       if GPU init throws (some browsers/drivers don't support it) —
-       see initMediaPipe() below.
-
-    b) detectForVideo() was called on every single rAF tick (up to
-       ~60x/sec) even though nothing useful changes that fast for a
-       hand sign. FIX: added a time-based throttle (DETECT_INTERVAL_MS)
-       — we now only run the actual model ~20x/sec and reuse the last
-       known landmarks in between. lesson.js's render loop can still
-       call processFrame() every rAF tick for smooth skeleton drawing;
-       the throttle lives in here so nothing upstream has to change.
-
-  Also see js/camera/cameraUtils.js for a matching resolution cap —
-  feeding Holistic a smaller frame is the other half of this fix.
-
-  PROBLEM 2 — "when there's many people in the background, their
-  hands get detected too"
-  ─────────────────────────────────────────────────────────────────
-  HolisticLandmarker only ever tracks ONE person's pose, and derives
-  its hand search regions from that one pose. The bug isn't that it's
-  multi-person-aware and confused — it's that pose-lock itself can
-  jump: if a background person is briefly more prominent/central than
-  the actual learner (leans into frame, moves, etc.), Holistic can
-  re-lock its single "tracked person" onto them for a frame or two,
-  and their hand landmarks land in the output instead of the user's.
-
-  Two independent filters now guard against this, both OFF by default
-  (no-op) whenever we don't have enough info to judge, so they never
-  make things worse, only better:
-
-    a) FACE-PROXIMITY GATE — a hand's wrist position is checked against
-       the CURRENTLY-visible face (this frame's raw face, not a
-       ghost-filled one) using the same faceHeight normalization the
-       feature vector already uses. A wrist implausibly far from the
-       tracked face (further than MAX_HAND_FACE_RADIUS face-heights)
-       is almost certainly a different person's hand and gets dropped
-       for that frame. The radius is generous on purpose — wide-arm
-       motion signs need room — this only catches genuinely distant
-       background hands.
-
-    b) TELEPORT GUARD — a hand's wrist position is compared frame-to-
-       frame against its own last known-good position. A hand that
-       "teleports" a large distance in a single frame (the signature
-       of Holistic's ROI re-locking onto a different hand/person) is
-       held back for JUMP_CONFIRM_FRAMES frames — we keep reporting
-       the last good position (like a ghost frame) until the new
-       position repeats and is confirmed as real movement, not a
-       one-frame mis-lock.
-  ══════════════════════════════════════════════════════════════════
-
-  LANDMARK INDICES (0–20) — hand:
-    0 = Wrist
-    1–4  = Thumb   (CMC → Tip)
-    5–8  = Index   (MCP → Tip)
-    9–12 = Middle  (MCP → Tip)
-    13–16= Ring    (MCP → Tip)
-    17–20= Pinky   (MCP → Tip)
-*/
 
 import {
   HolisticLandmarker,
   FilesetResolver,
 } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
-// Model + WASM now come from js/mediapipe-assets.js (cached in the browser, optionally self-hosted).
 import { prepareAssets } from '../mediapipe-assets.js';
 
-// ── Module state ──────────────────────────────────────────────────
 let holisticLandmarker = null;
 let modelError         = null;
 let lastVideoTime      = -1;
 
-// CHANGED (perf): throttle the actual model call independently of the
-// video's own frame rate / the caller's rAF rate. 20fps is plenty for
-// sign detection (signs unfold over hundreds of ms) and roughly halves
-// or quarters CPU/GPU load on a 30–60fps camera.
-//
-// CHANGED (assessment-mode lag fix): this is now a `let` with a setter
-// (setDetectionInterval() below) instead of a fixed const. lesson.js's
-// category assessment auto-chains every sign back-to-back — for each
-// MOTION sign specifically, that's a 2.5s "get ready" pause plus a
-// 1.8s countdown (4.3s total) where full-rate Holistic tracking keeps
-// running for no benefit (nothing is recorded until the countdown
-// ends). Practice mode only ever pays that cost once per click;
-// a full category assessment pays it on EVERY sign, non-stop, which is
-// what made the sustained load — and the lag — so much more noticeable
-// there specifically. lesson.js now drops to a slower rate during that
-// dead time and restores full rate the instant recording actually
-// starts (see startMotionRecording()/runMotionCountdown() in lesson.js).
-// CHANGED (clunky / disappearing skeleton): 50ms (~20/sec) -> 33ms (~30/sec), the SAME value capture.html uses
-// (its DETECT_INTERVAL_MS). The motion model was trained on frames captured at this cadence, and Holistic tracks
-// across consecutive frames, so a faster rate keeps a moving hand locked on.
-let DETECT_INTERVAL_MS = 33; // ~30 detections/sec (default/active rate)
+let DETECT_INTERVAL_MS = 33;
 let lastDetectAt = 0;
 
-// NEW — diagnostic for the "gets laggier on retry" symptom, the other
-// half of the pair added in classifier.js (see that file's
-// logTfMemoryIfDue comment). This measures HolisticLandmarker's own
-// detectForVideo() call time directly — a completely separate system
-// from TF.js — so a rising trend here vs. a flat one tells us whether
-// MediaPipe itself is the slowdown source, independent of whatever
-// TF.js's tensor count is doing. Rolling average over a small window,
-// logged periodically so it doesn't flood the console.
 const _detectTimings = [];
 let _detectTimingCounter = 0;
 function logDetectTimingIfDue(ms) {
@@ -157,13 +22,8 @@ function logDetectTimingIfDue(ms) {
   const avg = _detectTimings.reduce((a, b) => a + b, 0) / _detectTimings.length;
   console.debug(`[holistic timing] call #${_detectTimingCounter}: last=${ms.toFixed(1)}ms, rolling avg (last ${_detectTimings.length})=${avg.toFixed(1)}ms`);
 }
-let cachedResult = null; // last frame's { leftPts, rightPts, faceRaw, forehead, chin, anyHandPresent, featureVec }
+let cachedResult = null;
 
-// Ghost-frame persistence — same tolerance pattern as capture.html,
-// tracked independently per hand + face so one occluded hand doesn't
-// zero out the other or the face mid-sign.
-// Same value as the capture system (capture.html GHOST_FRAMES). Counted in detections, so at ~30/sec a lost hand
-// is held ~0.33s before it is dropped.
 const GHOST_FRAMES = 10;
 
 let lastGoodLeftPts   = null, leftGhostCounter   = 0;
@@ -174,13 +34,9 @@ let faceGhostCounter    = 0;
 let lastGoodForehead    = null;
 let lastGoodChin        = null;
 
-const FOREHEAD_IDX = 10;   // MediaPipe canonical face mesh: top of forehead
-const CHIN_IDX     = 152;  // MediaPipe canonical face mesh: bottom of chin
+const FOREHEAD_IDX = 10;
+const CHIN_IDX     = 152;
 
-// NEW (body-relative features) — shoulder-center/hip-center, same
-// ghost-fill pattern as the face anchors above, fed by pose landmarks
-// instead of the face mesh. Mirrors capture.html's TORSO_GHOST_FRAMES
-// block exactly.
 const TORSO_GHOST_FRAMES = 10;
 let torsoGhostCounter     = 0;
 let lastGoodShoulderCenter = null;
@@ -190,12 +46,6 @@ const HAND_ZERO = new Array(63).fill(0);
 
 let anyHandPresent = false;
 
-// ── Tracking diagnostics ──────────────────────────────────────────
-// Answers "why is this hand not detected?" without guessing. In the browser console run:
-//     LWTrack.stats()   // after ~10 seconds of signing with the hand in question
-//     LWTrack.reset()   // to start a fresh measurement
-// rawLeft/rawRight = frames where Holistic ITSELF returned that hand (before any of our filters).
-// *Gate counters = frames where one of our own filters threw a raw hand away.
 const trackStats = {
   frames: 0, faceFrames: 0, poseFrames: 0,
   rawLeft: 0, rawRight: 0,
@@ -205,7 +55,7 @@ const trackStats = {
   ghostLeft: 0, ghostRight: 0,
   freshLeft: 0, freshRight: 0,
   labelSwapSuspectLeft: 0, labelSwapSuspectRight: 0,
-  partialAnchorFrames: 0,   // frames where the face (forehead+chin) or the body (shoulders+hips) was not fully in frame
+  partialAnchorFrames: 0,
 };
 export function resetTrackingStats() { Object.keys(trackStats).forEach((key) => { trackStats[key] = 0; }); }
 export function getTrackingStats() {
@@ -240,10 +90,6 @@ if (typeof window !== 'undefined') {
   window.LWTrack = { stats: () => { const s = getTrackingStats(); console.table(s.summary); console.log(s.hint, s); return s; }, reset: resetTrackingStats };
 }
 
-/**
- * Forgets all per-session tracking memory (last-good hands, ghost counters, jump holds, bone baselines, cached frame).
- * Call when the camera is stopped so a new session never inherits hands from the previous one.
- */
 export function resetTracking() {
   cachedResult = null;
   lastVideoTime = -1;
@@ -258,89 +104,19 @@ export function resetTracking() {
   anyHandPresent = false;
 }
 
-// CHANGED (multi-person fix, part A): reject a hand whose wrist sits
-// further than this many face-heights from the currently-tracked face.
-// Generous on purpose — wide gestures still need to pass — this is
-// only meant to catch a hand that clearly belongs to someone else.
 const MAX_HAND_FACE_RADIUS = 6.5;
 
-// CHANGED (multi-person fix, part B): a wrist jump bigger than this
-// (in normalized 0–1 image coords) in a single frame is treated as a
-// probable ROI mis-lock, not real motion, and is held back until it
-// repeats for JUMP_CONFIRM_FRAMES frames in a row.
 const JUMP_DISTANCE_THRESHOLD = 0.30;
 const JUMP_CONFIRM_FRAMES     = 2;
 
 let leftPendingJumpPts = null, leftPendingJumpCount  = 0;
 
-// CHANGED (wrist-occlusion hallucination fix): MediaPipe's hand model
-// ALWAYS outputs 21 landmarks, even when the wrist is occluded (common
-// in ASL contact signs — WORK, TIME, HELP, STOP all briefly cover one
-// wrist with the other hand). When occluded, it doesn't fail — it
-// guesses, based on learned priors, producing landmarks that jitter or
-// "teleport" in ways real hand motion doesn't. Two independent,
-// complementary checks catch this, added alongside the existing
-// face-proximity/jump-debounce gates below (same trust-gate pipeline,
-// not a separate subsystem):
-//
-//   a) BONE-LENGTH CONSISTENCY — a real hand's wrist-to-middle-MCP
-//      distance stays roughly constant for a given person at a given
-//      distance from the camera. A hallucinated wrist frequently
-//      produces a hand shape that doesn't match this. Baseline is
-//      calibrated per-hand via a slow-moving average over genuinely
-//      good frames, so it adapts to the person's actual hand size /
-//      distance from camera without being thrown off by any single
-//      bad frame.
-//
-//   b) POSE CROSS-CHECK — this was sitting unused: HolisticLandmarker
-//      computes body pose internally as part of the SAME detection
-//      call we already make every frame (that's what makes it
-//      "Holistic" instead of just "Hands") — we just weren't reading
-//      result.poseLandmarks. The pose model estimates wrist position
-//      from arm/shoulder context, a completely different estimation
-//      path than the hand model's own 21-point regression. When the
-//      two disagree by a lot, that's a strong, independent hallucination
-//      signal — much stronger than either check alone.
-//
-// NOT implemented (see chat explanation): per-landmark visibility/
-// presence scores — that's the Python-flavored classic MediaPipe Hands
-// API; the JS Tasks Vision HolisticLandmarker this project uses doesn't
-// reliably expose per-landmark confidence for hand points the same way,
-// so a check against it would be checking a number that isn't
-// meaningfully populated. Temporal smoothing (OneEuroFilter) is a good
-// idea but deliberately NOT added as a separate filtering subsystem —
-// extending the existing hold-last-good-frame gate below with these two
-// new signals reuses infrastructure that's already tested rather than
-// bolting on a second, independently-tuned smoothing system.
-// CHANGED (align with js/tracking/mediapipe.js — WRIST-OCCLUSION FIX
-// v2): v1 of this fix (BONE_LENGTH_TOLERANCE=0.35, POSE_DISAGREEMENT_
-// MAX=0.12, either check alone could reject a hand) was too strict for
-// real signing. Ordinary partial wrist occlusion — which happens
-// constantly, any time hands cross or the wrist rotates slightly out of
-// clear view — easily produces MORE than 35% bone-length deviation or
-// MORE than 0.12 disagreement with the pose model's own (independently
-// noisy) wrist estimate, even when the rest of the hand is being
-// tracked perfectly fine. The result: the WHOLE hand (including
-// perfectly good finger data) was getting discarded far more often than
-// genuine hallucination actually happens, hands dropping to "not
-// present" mid-sign, corrupting motion detection.
-//
-// v2 fixes this two ways:
-//   1) Both tolerances are substantially looser — now only catching
-//      genuinely dramatic, unmistakable hallucination, not ordinary
-//      partial-occlusion imprecision.
-//   2) BOTH signals must now independently indicate a problem before a
-//      hand gets rejected (previously EITHER alone was enough). This
-//      requires corroborating evidence from two independent estimation
-//      systems before discarding real, useful hand data — a single
-//      noisy signal is no longer enough on its own to make a hand
-//      disappear.
-const BONE_LENGTH_TOLERANCE  = 0.65; // was 0.35 — only catch dramatic deviations now
-const BONE_LENGTH_EMA_ALPHA  = 0.05; // slow-moving average — calibrates over ~1-2s of good frames
-const POSE_DISAGREEMENT_MAX  = 0.22; // was 0.12 — pose wrist estimates are meaningfully coarser than the hand model's own; expecting sub-0.12 agreement between two independent models was unrealistic
-const POSE_LEFT_WRIST_IDX    = 15;   // BlazePose 33-point topology (anatomical left/right, same convention Holistic uses for leftHandLandmarks/rightHandLandmarks)
+const BONE_LENGTH_TOLERANCE  = 0.65;
+const BONE_LENGTH_EMA_ALPHA  = 0.05;
+const POSE_DISAGREEMENT_MAX  = 0.22;
+const POSE_LEFT_WRIST_IDX    = 15;
 const POSE_RIGHT_WRIST_IDX   = 16;
-const POSE_LEFT_SHOULDER_IDX = 11;   // NEW (body-relative features) — same BlazePose topology
+const POSE_LEFT_SHOULDER_IDX = 11;
 const POSE_RIGHT_SHOULDER_IDX= 12;
 const POSE_LEFT_HIP_IDX       = 23;
 const POSE_RIGHT_HIP_IDX      = 24;
@@ -350,20 +126,14 @@ let rightBoneLengthBaseline = null;
 
 let rightPendingJumpPts = null, rightPendingJumpCount = 0;
 
-// ── Public API ────────────────────────────────────────────────────
 
-// opts.onProgress(loadedBytes, totalBytes) reports the model download; opts.signal can abort it.
 export async function initMediaPipe(opts = {}) {
   console.log('[mediapipe] Loading HolisticLandmarker model…');
 
   const { wasmBase, modelBytes } = await prepareAssets(opts);
-  if (typeof opts.onPhase === 'function') opts.onPhase('starting');   // download done - engine is initialising
+  if (typeof opts.onPhase === 'function') opts.onPhase('starting');
   const vision = await FilesetResolver.forVisionTasks(wasmBase);
 
-  // CHANGED (perf): try GPU first — big win when it's supported. Some
-  // browser/driver combos throw on GPU init for holistic specifically,
-  // so we transparently retry on CPU rather than failing the whole
-  // page. Whichever succeeds is logged so it's obvious which path ran.
   const baseConfig = {
     runningMode: 'VIDEO',
     minFaceDetectionConfidence:  0.5,
@@ -371,7 +141,6 @@ export async function initMediaPipe(opts = {}) {
     minFaceSuppressionThreshold: 0.3,
     minPoseDetectionConfidence:  0.5,
     minPoseSuppressionThreshold: 0.3,
-    // Same as the capture system's holisticBaseConfig (all six thresholds are identical there).
     minHandLandmarksConfidence:  0.5,
   };
 
@@ -379,7 +148,7 @@ export async function initMediaPipe(opts = {}) {
     holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
       ...baseConfig,
       baseOptions: {
-        modelAssetBuffer: modelBytes.slice(),   // bytes from js/mediapipe-assets.js (a copy per attempt)
+        modelAssetBuffer: modelBytes.slice(),
         delegate: 'GPU',
       },
     });
@@ -393,7 +162,7 @@ export async function initMediaPipe(opts = {}) {
     holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
       ...baseConfig,
       baseOptions: {
-        modelAssetBuffer: modelBytes.slice(),   // bytes from js/mediapipe-assets.js (a copy per attempt)
+        modelAssetBuffer: modelBytes.slice(),
         delegate: 'CPU',
       },
     });
@@ -401,15 +170,10 @@ export async function initMediaPipe(opts = {}) {
   } catch (e) {
     console.error('[mediapipe] HolisticLandmarker failed to load:', e.message);
     modelError = e.message;
-    throw e; // hand tracking is required
+    throw e;
   }
 }
 
-// NEW (anchor-independent hand tracking): a landmark only counts as "seen" if it is really inside the image.
-// Holistic still returns all 468 face points / 33 pose points when the face or body is partly cut off by the
-// frame edge (sitting close to the camera); the off-screen ones are guesses. The two hand filters that lean on
-// those anchors (face-proximity gate, pose-wrist cross-check) used to trust the guesses and could throw away a
-// perfectly good hand. They now only run when the anchor they depend on is actually visible.
 function inFrame(p, margin = 0.02) {
   return !!p && p.x >= -margin && p.x <= 1 + margin && p.y >= -margin && p.y <= 1 + margin;
 }
@@ -424,21 +188,11 @@ function dist3(a, b) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// 2D distance is enough (and cheaper) for the plausibility filters
-// below — we only need "is this roughly where a real hand could be",
-// not a precise depth-aware measurement.
 function dist2(a, b) {
   const dx = a.x - b.x, dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-// UPDATED (body-relative features): now returns [handToChin, handToForehead,
-// handToShoulder, handToHip] — 4 values instead of 2. IDENTICAL math to
-// capture.html's faceRelativeFeatures(), including the fallback order:
-// torso distances use faceHeight as their unit when available, falling
-// back to shoulder-to-hip span if the face is briefly out of frame.
-// Capture and live inference MUST agree on this fallback, or the model
-// gets inconsistent input between training and use.
 function faceRelativeFeatures(handLandmarks, forehead, chin, shoulderCenter, hipCenter) {
   if (!handLandmarks || !handLandmarks.length) return [0, 0, 0, 0];
   const wrist = handLandmarks[0];
@@ -451,12 +205,6 @@ function faceRelativeFeatures(handLandmarks, forehead, chin, shoulderCenter, hip
   return [handToChin, handToForehead, handToShoulder, handToHip];
 }
 
-// NEW (palm-orientation feature) — unit normal of the plane formed by
-// wrist(0)->index-MCP(5) and wrist(0)->pinky-MCP(17), IDENTICAL to
-// capture.html's palmOrientation(). MediaPipe's per-hand z is a
-// relative-depth estimate, not true 3D, so this is an approximation —
-// still useful for telling palm-in from palm-out. Returns [0,0,0] when
-// the hand isn't present, matching HAND_ZERO's zero-fill convention.
 function palmOrientation(handPts) {
   if (!handPts) return [0, 0, 0];
   const wrist = handPts[0], indexMcp = handPts[5], pinkyMcp = handPts[17];
@@ -469,13 +217,6 @@ function palmOrientation(handPts) {
   return [nx / mag, ny / mag, nz / mag];
 }
 
-/**
- * CHANGED (multi-person fix, part A): drops a raw hand detection if
- * its wrist is implausibly far from the CURRENTLY visible face. Only
- * runs when we have a fresh (non-ghosted) face this frame — if the
- * face isn't visible right now we have no reliable anchor to judge
- * against, so we let the hand through rather than guess.
- */
 function isHandNearFace(handPts, forehead, chin) {
   if (!handPts || !forehead || !chin) return true;
   const faceHeight = dist3(forehead, chin) || 1e-6;
@@ -484,66 +225,26 @@ function isHandNearFace(handPts, forehead, chin) {
   return wristDist <= MAX_HAND_FACE_RADIUS;
 }
 
-/**
- * Wrist-to-middle-MCP distance (landmark 0 -> landmark 9) — a stable,
- * central anatomical reference less affected by individual finger
- * articulation than e.g. wrist-to-index-MCP.
- */
 function boneLength(handPts) {
   return dist3(handPts[0], handPts[9]);
 }
 
-/**
- * CHANGED (wrist-occlusion fix, part A): rejects a hand whose current
- * bone length deviates too far from its calibrated baseline. Returns
- * true (plausible) whenever there's no baseline yet to compare against
- * — the first several good frames for a hand are what CALIBRATE that
- * baseline (see updateBoneLengthBaseline), so this never blocks a hand
- * from ever being accepted in the first place.
- */
 function isBoneLengthPlausible(handPts, baseline) {
   if (baseline === null) return true;
   const current = boneLength(handPts);
   return Math.abs(current - baseline) / baseline <= BONE_LENGTH_TOLERANCE;
 }
 
-/**
- * Slow-moving average, updated ONLY on frames that already passed every
- * trust check (called after the fact, at the bottom of processFrame) —
- * updating it on a hallucinated frame would let the hallucination
- * corrupt the very baseline meant to catch it.
- */
 function updateBoneLengthBaseline(baseline, handPts) {
   const current = boneLength(handPts);
   return baseline === null ? current : baseline + BONE_LENGTH_EMA_ALPHA * (current - baseline);
 }
 
-/**
- * CHANGED (wrist-occlusion fix, part B): cross-checks the hand model's
- * own wrist (landmark 0) against the POSE model's independent wrist
- * estimate for the same side. Returns true (plausible) whenever pose
- * data isn't available for that point — this is an ADDITIONAL signal on
- * top of the bone-length check, not a replacement, so missing pose data
- * should never be the reason a hand gets rejected.
- */
 function isWristNearPoseWrist(handPts, poseWrist) {
   if (!poseWrist) return true;
   return dist2(handPts[0], poseWrist) <= POSE_DISAGREEMENT_MAX;
 }
 
-/**
- * CHANGED (multi-person fix, part B): guards against a hand
- * "teleporting" to a new position in a single frame (the signature of
- * Holistic's ROI re-locking onto a different person's hand).
- *
- * NOTE: JS has no pass-by-reference for the pending-jump state, so
- * this returns a plain { value, pendingPts, pendingCount } object —
- * the caller is responsible for writing pendingPts/pendingCount back
- * into its own module-level vars. `value` is the position to actually
- * use this frame: either the new point (a normal move, or a confirmed
- * repeat jump) or the last good point (a jump we're still waiting to
- * confirm, held like a ghost frame).
- */
 function debounceJump(newPts, lastGoodPts, pendingPts, pendingCount) {
   if (!newPts || !lastGoodPts) {
     return { value: newPts, pendingPts: null, pendingCount: 0 };
@@ -552,8 +253,6 @@ function debounceJump(newPts, lastGoodPts, pendingPts, pendingCount) {
   if (jump <= JUMP_DISTANCE_THRESHOLD) {
     return { value: newPts, pendingPts: null, pendingCount: 0 };
   }
-  // Big jump — is it the SAME big jump repeating (real fast motion),
-  // or a one-off (mis-lock)?
   let nextPendingPts, nextPendingCount;
   if (pendingPts && dist2(newPts[0], pendingPts[0]) <= JUMP_DISTANCE_THRESHOLD) {
     nextPendingPts   = pendingPts;
@@ -563,20 +262,11 @@ function debounceJump(newPts, lastGoodPts, pendingPts, pendingCount) {
     nextPendingCount = 1;
   }
   if (nextPendingCount >= JUMP_CONFIRM_FRAMES) {
-    // Confirmed — accept the new position and stop holding.
     return { value: newPts, pendingPts: null, pendingCount: 0 };
   }
-  // Not confirmed yet — hold the last good position instead.
   return { value: lastGoodPts, pendingPts: nextPendingPts, pendingCount: nextPendingCount };
 }
 
-/**
- * Builds the 138-value feature vector, IDENTICAL layout to
- * capture.html's buildFeatureVec():
- *   [63 left xyz][63 right xyz][leftPresent][rightPresent]
- *   [handToChin][handToForehead][handToShoulder][handToHip]
- *   [leftPalmOrientation x3][rightPalmOrientation x3]
- */
 export function buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter) {
   const leftPresent  = leftPts  ? 1 : 0;
   const rightPresent = rightPts ? 1 : 0;
@@ -591,10 +281,6 @@ export function buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCente
   return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceExtra, ...leftOrient, ...rightOrient];
 }
 
-/**
- * Processes a single video frame and returns hand + face landmark data.
- * Call this inside a requestAnimationFrame loop.
- */
 export function processFrame(videoElement) {
   if (!holisticLandmarker) {
     return {
@@ -606,9 +292,6 @@ export function processFrame(videoElement) {
 
   const now = performance.now();
 
-  // CHANGED (perf): two independent reasons to skip a real detect call
-  // and reuse cached landmarks instead — the video frame hasn't
-  // advanced, OR it has but we're still within the throttle window.
   const sameVideoFrame = videoElement.currentTime === lastVideoTime;
   const withinThrottle = now - lastDetectAt < DETECT_INTERVAL_MS;
 
@@ -625,22 +308,14 @@ export function processFrame(videoElement) {
   const leftRaw  = firstOf(result.leftHandLandmarks);
   const rightRaw = firstOf(result.rightHandLandmarks);
   const faceRaw  = firstOf(result.faceLandmarks);
-  // NEW (wrist-occlusion fix, part B): Holistic already computes this
-  // every frame as part of its own internal pipeline — we just weren't
-  // reading it before. See the block comment above debounceJump.
   const poseRaw       = firstOf(result.poseLandmarks);
   const poseLeftWrist  = poseRaw ? poseRaw[POSE_LEFT_WRIST_IDX]  : null;
   const poseRightWrist = poseRaw ? poseRaw[POSE_RIGHT_WRIST_IDX] : null;
 
-  // NEW: is each anchor group actually visible this frame?
-  //  - face anchors: forehead AND chin inside the image (otherwise the face height the gate divides by is a guess)
-  //  - body anchors: both shoulders AND both hips inside the image (Holistic's pose model is much less stable when
-  //    the hips are off-screen, and its wrist estimate drifts, which made the pose cross-check reject real hands)
   const faceTrusted = !!faceRaw && inFrame(faceRaw[FOREHEAD_IDX]) && inFrame(faceRaw[CHIN_IDX]);
   const poseTrusted = !!poseRaw
     && inFrame(poseRaw[POSE_LEFT_SHOULDER_IDX]) && inFrame(poseRaw[POSE_RIGHT_SHOULDER_IDX])
     && inFrame(poseRaw[POSE_LEFT_HIP_IDX])      && inFrame(poseRaw[POSE_RIGHT_HIP_IDX]);
-  // A null wrist makes isWristNearPoseWrist() return true ("can't judge, let the hand through").
   const crossWristL = (poseTrusted && inFrame(poseLeftWrist))  ? poseLeftWrist  : null;
   const crossWristR = (poseTrusted && inFrame(poseRightWrist)) ? poseRightWrist : null;
   if (!faceTrusted || !poseTrusted) trackStats.partialAnchorFrames++;
@@ -650,11 +325,9 @@ export function processFrame(videoElement) {
   if (poseRaw) trackStats.poseFrames++;
   if (leftRaw)  trackStats.rawLeft++;
   if (rightRaw) trackStats.rawRight++;
-  // Diagnostic only (never changes behaviour): is a labelled hand nearer the OPPOSITE pose wrist?
   if (leftRaw && poseLeftWrist && poseRightWrist && dist2(leftRaw[0], poseRightWrist) + 0.05 < dist2(leftRaw[0], poseLeftWrist)) trackStats.labelSwapSuspectLeft++;
   if (rightRaw && poseLeftWrist && poseRightWrist && dist2(rightRaw[0], poseLeftWrist) + 0.05 < dist2(rightRaw[0], poseRightWrist)) trackStats.labelSwapSuspectRight++;
 
-  // ── Face — same ghost-fill pattern as capture.html ────────────
   let forehead, chin;
   if (faceRaw) {
     faceGhostCounter = 0;
@@ -673,11 +346,6 @@ export function processFrame(videoElement) {
     }
   }
 
-  // ── Torso (shoulder/hip center) — same ghost-fill pattern as the face
-  // anchors above, fed by pose landmarks instead of the face mesh. Uses
-  // the pose model's OWN detection this frame (poseRaw), independent of
-  // whether the face happened to be picked up. Mirrors capture.html's
-  // buildFeatureVec() torso block exactly.
   let shoulderCenter, hipCenter;
   if (poseRaw && poseRaw[POSE_LEFT_SHOULDER_IDX] && poseRaw[POSE_RIGHT_SHOULDER_IDX]) {
     torsoGhostCounter = 0;
@@ -702,10 +370,6 @@ export function processFrame(videoElement) {
     }
   }
 
-  // ── Multi-person filtering (raw detections only, before ghosting) ──
-  // Face-proximity gate first (drops an obviously-wrong-person hand),
-  // then jump debounce (catches a one-frame ROI mis-lock even when the
-  // wrong hand happens to still be within the face radius).
   let leftFiltered  = leftRaw;
   let rightFiltered = rightRaw;
   if (faceTrusted) {
@@ -713,13 +377,6 @@ export function processFrame(videoElement) {
     if (rightFiltered && !isHandNearFace(rightFiltered, forehead, chin)) { rightFiltered = null; trackStats.faceGateRight++; }
   }
 
-  // CHANGED (v2 — was too aggressive): used to reject a hand if EITHER
-  // check alone failed. Now requires BOTH the bone-length check AND the
-  // pose cross-check to independently indicate a problem before
-  // rejecting — a single noisy signal (which ordinary partial wrist
-  // occlusion produces constantly) is no longer enough on its own to
-  // make a whole hand disappear. See the block comment near
-  // BONE_LENGTH_TOLERANCE above for the full explanation.
   if (leftFiltered && !isBoneLengthPlausible(leftFiltered, leftBoneLengthBaseline)
                    && !isWristNearPoseWrist(leftFiltered, crossWristL)) {
     leftFiltered = null; trackStats.boneAndPoseLeft++;
@@ -741,22 +398,16 @@ export function processFrame(videoElement) {
   rightPendingJumpCount = rightJump.pendingCount;
   if (rightJump.pendingCount > 0) trackStats.jumpHeldRight++;
 
-  // ── Left hand, ghost-filled ────────────────────────────────────
   let leftPts = leftFiltered;
   if (leftPts) {
     lastGoodLeftPts = leftPts;
     leftGhostCounter = 0;
-    // NEW: only calibrate off a genuinely fresh, already-trusted
-    // detection — never off a ghost-filled (held-over) frame.
     leftBoneLengthBaseline = updateBoneLengthBaseline(leftBoneLengthBaseline, leftPts);
     trackStats.freshLeft++;
   }
   else if (lastGoodLeftPts && leftGhostCounter < GHOST_FRAMES) { leftPts = lastGoodLeftPts; leftGhostCounter++; trackStats.ghostLeft++; }
-  // Hand really gone: also forget its bone-length baseline, so the next appearance (possibly at a different distance
-  // from the camera) calibrates fresh instead of being judged against a stale size.
   else { leftPts = null; lastGoodLeftPts = null; leftBoneLengthBaseline = null; }
 
-  // ── Right hand, ghost-filled ───────────────────────────────────
   let rightPts = rightFiltered;
   if (rightPts) {
     lastGoodRightPts = rightPts;
@@ -773,20 +424,12 @@ export function processFrame(videoElement) {
     leftHandLandmarks:  leftPts,
     rightHandLandmarks: rightPts,
     faceLandmarks:      faceRaw ?? null,
-    // NEW (body-relative features): raw (unghosted) pose landmarks for
-    // this frame, plus the ghost-filled torso anchors this module
-    // already computed above. classifier.js takes poseLandmarks and
-    // derives its own shoulder/hip centers from it (same pattern it
-    // already uses for faceLandmarks -> forehead/chin), so it's exposed
-    // here rather than only used internally.
     poseLandmarks: poseRaw ?? null,
     shoulderCenter,
     hipCenter,
     forehead,
     chin,
     anyHandPresent,
-    // Lazy: nothing in the live pipeline reads this (classifier.js rebuilds its own vector), so it is only built on demand
-    // instead of allocating a 138-value array on every detection.
     _fv: undefined,
     get featureVec() {
       if (this._fv === undefined) this._fv = buildFeatureVec(leftPts, rightPts, forehead, chin, shoulderCenter, hipCenter);
@@ -796,11 +439,6 @@ export function processFrame(videoElement) {
   return cachedResult;
 }
 
-// NEW (assessment-mode lag fix): lets lesson.js dial the detection
-// rate up/down based on whether frames are actually being consumed
-// right now. Ignores nonsense values defensively — a stray call with
-// 0 or a negative number would otherwise disable the throttle entirely
-// and defeat the whole point of this function.
 export function setDetectionInterval(ms) {
   if (typeof ms === 'number' && ms > 0) {
     DETECT_INTERVAL_MS = ms;

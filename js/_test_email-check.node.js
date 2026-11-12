@@ -1,21 +1,4 @@
 'use strict';
-/**
- * Regression test for the signup email pre-check (functions/email-check.js).
- * Run:  node js/_test_email-check.node.js
- *
- * No network, no Firebase, no Reacher server: fetch and dns are injected.
- *
- * What it pins down (see the REJECT RULES block at the top of email-check.js):
- *   - Reacher's CLEAR negatives are rejected (bad syntax, no MX, disposable,
- *     disabled / undeliverable mailbox, is_reachable "invalid").
- *   - Everything merely UNCERTAIN is accepted (risky, unknown, catch-all,
- *     role account, missing/errored sub-objects). Rejecting those would
- *     lock real learners out.
- *   - Reacher being down / slow / returning junk falls back to DNS, and DNS
- *     being inconclusive fails OPEN.
- *   - The Reacher secret is sent as x-reacher-secret and appears in NO result.
- *   - "test@gmail.co" is decided by the pipeline, not by a hard-coded rule.
- */
 
 const assert = require('assert');
 const {
@@ -29,7 +12,6 @@ async function test(name, fn) {
   catch (err) { failures++; console.error('  FAIL ' + name + '\n       ' + (err && err.message)); }
 }
 
-// A Reacher-shaped body with sane defaults; override per case.
 function reacher(over) {
   const base = {
     input: 'someone@example.com',
@@ -42,7 +24,6 @@ function reacher(over) {
   return Object.assign(base, over || {});
 }
 
-// dns.promises look-alike. `table` maps type -> domain -> array | error code.
 function fakeDns(table) {
   const answer = (type) => async (domain) => {
     const v = table[type] && table[type][domain];
@@ -110,7 +91,6 @@ function fakeFetch(body, { status = 200, capture } = {}) {
     assert.strictEqual(interpretReacher(reacher({ is_reachable: 'unknown', smtp: { error: { type: 'x', message: 'blocked' } } })).ok, true);
   });
   await test('could not connect over SMTP: is_deliverable false is NOT trusted', () => {
-    // A failed probe must not be mistaken for "mailbox does not exist".
     assert.strictEqual(interpretReacher(reacher({ is_reachable: 'unknown', smtp: { can_connect_smtp: false, is_deliverable: false } })).ok, true);
   });
   await test('role account and full inbox are fine', () => {
@@ -181,7 +161,7 @@ function fakeFetch(body, { status = 200, capture } = {}) {
   });
   await test('...and the same address passes if the pipeline says it can receive mail', async () => {
     const v = await checkEmailDeliverability('test@gmail.co', { url: 'https://r.example', fetchImpl: fakeFetch(reacher()) });
-    assert.strictEqual(v.ok, true); // proves nothing is hard-coded on the domain string
+    assert.strictEqual(v.ok, true);
   });
   await test('Reacher HTTP 500 -> falls back to DNS', async () => {
     const v = await checkEmailDeliverability('a@good.com', {

@@ -1,6 +1,3 @@
-// Sandboxed Node harness — no jsdom in this environment (standing
-// project limitation, see AI_MEMORY.md). Mirrors the localStorage
-// shim pattern already used to test missions.js's own Hearts module.
 global.window = global;
 global.localStorage = (function () {
   let store = {};
@@ -24,11 +21,9 @@ function check(label, cond) {
   else { fail++; console.error('FAIL:', label); }
 }
 
-// ── 1. Basic sanity: LWMissions and LWMissionsLoop both loaded ──────────
 check('LWMissions loaded', !!window.LWMissions);
 check('LWMissionsLoop loaded', !!window.LWMissionsLoop);
 
-// ── 2. Near-neighbor discrimination pairs resolve to REAL signs ─────
 const alphaMission = window.LWMissions.getMissionForCategory('alphabet');
 check('alphabet mission built', !!alphaMission && alphaMission.items.length > 0);
 
@@ -41,8 +36,6 @@ const numMission = window.LWMissions.getMissionForCategory('numbers');
 const sixNeighbors = window.LWMissionsLoop.getNearNeighbors('basic', '6');
 check('6 neighbors include W (cross-unit collision)', sixNeighbors.indexOf('W') !== -1);
 
-// ── 3. Recognize-option builder never throws, always includes the
-//      correct answer, respects requested count ────────────────────
 const catSigns = window.LWMissions.getCategorySigns('basic', 'alphabet');
 const opts4 = window.LWMissionsLoop.buildRecognizeOptions('basic', 'A', catSigns, 4);
 check('recognize options includes correct answer', opts4.options.indexOf('A') !== -1);
@@ -52,31 +45,25 @@ check('recognize options are unique', new Set(opts4.options).size === opts4.opti
 const opts2 = window.LWMissionsLoop.buildRecognizeOptions('basic', 'A', catSigns, 2);
 check('recognize options respects count=2', opts2.options.length === 2);
 
-// ── 4. Discriminate pair builder — curated + fallback path ──────────
 const pairA = window.LWMissionsLoop.buildDiscriminatePair('basic', 'A', catSigns);
 check('discriminate pair for A exists', !!pairA && !!pairA.neighborSignId);
 
-// Sign with NO curated neighbor list at all (e.g. a chapter-3+ sign,
-// simulated here via a category we know is uncurated: 'feelings')
 const feelSigns = window.LWMissions.getCategorySigns('medium', 'feelings');
 if (feelSigns.length > 1) {
   const pairFallback = window.LWMissionsLoop.buildDiscriminatePair('medium', feelSigns[0], feelSigns);
   check('discriminate pair falls back gracefully for uncurated sign', !!pairFallback);
 }
 
-// ── 5. Same-sign-as / lighter loop detection ─────────────────────────
 check('HI is flagged same-sign-as HELLO', window.LWMissionsLoop.sameSignAs('HI') === 'HELLO');
 check('BYE is flagged same-sign-as GOODBYE', window.LWMissionsLoop.sameSignAs('BYE') === 'GOODBYE');
 check('NIGHT is flagged same-sign-as EVENING', window.LWMissionsLoop.sameSignAs('NIGHT') === 'EVENING');
 check('HELLO itself is not flagged as a duplicate', window.LWMissionsLoop.sameSignAs('HELLO') === null);
 check('register prompt exists for HI', !!window.LWMissionsLoop.registerPromptFor('HI'));
 
-// ── 6. hasSignLearnedElsewhere — real localStorage round-trip ───────
 global.localStorage._reset();
 check('BOY not learned anywhere yet (empty storage)',
   window.LWMissionsLoop.hasSignLearnedElsewhere('BOY', 'm_personal_information') === false);
 
-// Simulate: the 'family' mission's BOY LESSON item was completed
 const familyMission = window.LWMissions.getMissionForCategory('family');
 check('family mission built', !!familyMission);
 const boyIndex = familyMission.items.findIndex((it) => it.kind === 'LESSON' && it.signId === 'BOY');
@@ -88,7 +75,6 @@ check('BOY now detected as learned elsewhere (from family mission)',
 check('BOY still not "learned elsewhere" when excluding family itself',
   window.LWMissionsLoop.hasSignLearnedElsewhere('BOY', 'm_family') === false);
 
-// ── 7. planForItem — full integration across a real mission ─────────
 global.localStorage._reset();
 const greetMission = window.LWMissions.getMissionForCategory('essentials_greetings');
 check('greetings mission built', !!greetMission);
@@ -106,8 +92,6 @@ check('HI LESSON cites HELLO as the reason', /HELLO/.test(planBySign['LESSON:HI'
 check('HI BOOSTER uses register discrimination, not handshape recognize',
   planBySign['BOOSTER:HI'].render === 'booster-register');
 check('HELLO BOOSTER uses normal recognize', planBySign['BOOSTER:HELLO'].render === 'booster-recognize');
-// Distractors are now a random on-topic sample from the chapter, and a
-// physical duplicate of the answer (HI for HELLO) is deliberately excluded.
 const helloOpts = planBySign['BOOSTER:HELLO'].options.options;
 const greetChapter = window.LWMissions.getCategorySigns(greetMission.level, greetMission.category);
 check('HELLO BOOSTER recognize options include HELLO', helloOpts.indexOf('HELLO') !== -1);
@@ -115,8 +99,6 @@ check('HELLO BOOSTER recognize options exclude the identical sign HI', helloOpts
 check('HELLO BOOSTER recognize options all come from the Greetings chapter',
   helloOpts.every((id) => greetChapter.indexOf(id) !== -1));
 
-// Randomization: over many draws the distractor set and the correct
-// answer's position must both vary.
 {
   const sets = new Set(), positions = new Set();
   for (let t = 0; t < 200; t++) {
@@ -141,31 +123,23 @@ const quizItem = greetMission.items.find((it) => it.kind === 'QUIZ');
 const quizPlan = window.LWMissionsLoop.planForItem(greetMission, greetMission.items.indexOf(quizItem), quizItem);
 check('QUIZ item plans as quiz-handoff', quizPlan.render === 'quiz-handoff');
 
-// ── 8. Personal Information — cross-mission duplicate detection in
-//      a realistic sequence (learn People first, then Personal Info) ─
 global.localStorage._reset();
 const peopleMission = window.LWMissions.getMissionForCategory('people');
 const piMission = window.LWMissions.getMissionForCategory('personal_information');
 check('people mission built', !!peopleMission);
 check('personal_information mission built', !!piMission);
 
-// Before People is learned: PERSON in Personal Info should be a full lesson
 const piPersonIdxBefore = piMission.items.findIndex((it) => it.kind === 'LESSON' && it.signId === 'PERSON');
 const planBefore = window.LWMissionsLoop.planForItem(piMission, piPersonIdxBefore, piMission.items[piPersonIdxBefore]);
 check('PERSON in Personal Info is a full lesson before People is learned', planBefore.render === 'lesson-watch');
 
-// Complete People's own PERSON lesson
 const peoplePersonIdx = peopleMission.items.findIndex((it) => it.kind === 'LESSON' && it.signId === 'PERSON');
 window.LWMissions.markItemComplete(peopleMission, peoplePersonIdx, peopleMission.items[peoplePersonIdx]);
 
-// Now Personal Info's PERSON should be lighter
 const planAfter = window.LWMissionsLoop.planForItem(piMission, piPersonIdxBefore, piMission.items[piPersonIdxBefore]);
 check('PERSON in Personal Info is lighter after People is learned', planAfter.render === 'lesson-lighter');
 check('PERSON lighter reason cites earlier mission', /earlier mission/i.test(planAfter.reason));
 
-// ── 9. Every one of the 65 live missions still plans without throwing
-//      (breadth check — nothing in this file should crash on chapters
-//      it has no curated content for) ───────────────────────────────
 global.localStorage._reset();
 let crashed = 0;
 window.LWMissions.getAllMissions().forEach((m) => {
@@ -176,15 +150,11 @@ window.LWMissions.getAllMissions().forEach((m) => {
 });
 check('planForItem never throws across all 65 live missions', crashed === 0);
 
-// ── 10. Full walkthrough simulation — mirrors exactly what
-//       js/lesson.js's completeAndAdvance() does, without a DOM,
-//       confirming getDropOffIndex/getRecap behave as lesson.js
-//       (resume support, mission-end recap) actually depends on ────
 global.localStorage._reset();
 const walkMission = window.LWMissions.getMissionForCategory('essentials_greetings');
 const quizIdx = walkMission.items.findIndex((it) => it.kind === 'QUIZ');
 walkMission.items.forEach((item, i) => {
-  if (item.kind === 'QUIZ') return; // never marked here — see KNOWN LIMITATION note
+  if (item.kind === 'QUIZ') return;
   window.LWMissions.markItemComplete(walkMission, i, item);
 });
 check('getDropOffIndex resumes exactly at the QUIZ item after all else is done',
@@ -192,22 +162,17 @@ check('getDropOffIndex resumes exactly at the QUIZ item after all else is done',
 const finalRecap = window.LWMissions.getRecap(walkMission);
 check('recap has one line per LESSON item', finalRecap.length === walkMission.items.filter((it) => it.kind === 'LESSON').length);
 
-// Resume mid-mission: mark only the first 3 items complete, confirm
-// lesson.js would pick up exactly at item index 3.
 global.localStorage._reset();
 for (let i = 0; i < 3; i++) window.LWMissions.markItemComplete(walkMission, i, walkMission.items[i]);
 check('getDropOffIndex resumes mid-mission at the right index',
   window.LWMissions.getDropOffIndex(walkMission) === 3);
 
-// ── 11. Question sanity (this revision) — every question must have
-//       exactly one right answer and must not hand it over ──────────
 global.localStorage._reset();
 {
   const L = window.LWMissionsLoop, M = window.LWMissions;
   const g = M.getMissionForCategory('essentials_greetings');
   const chap = M.getCategorySigns(g.level, g.category);
 
-  // register question: one right answer, answer is the twin, no own word, no shared-sign distractor
   [['HI', 'HELLO'], ['BYE', 'GOODBYE'], ['NIGHT', 'EVENING']].forEach(([id, twin]) => {
     const r = L.registerPromptFor(id, g.level, chap);
     const twinTitle = L.signTitle(g.level, twin), ownTitle = L.signTitle(g.level, id);
@@ -217,10 +182,8 @@ global.localStorage._reset();
     check(`${id} register options are unique and 3 long`, new Set(r.options).size === 3 && r.options.length === 3);
   });
 
-  // the old "which fits best?" wording is gone
   check('no register prompt asks "fits best"', ['HI', 'BYE', 'NIGHT'].every((id) => !/fits best|Which fits/i.test(L.registerPromptFor(id, g.level, chap).prompt)));
 
-  // across EVERY live mission: no recognize option / discriminate partner is the same sign as the answer
   let bad = 0, checked = 0;
   M.getAllMissions().forEach((m) => {
     const cs = M.getCategorySigns(m.level, m.category);
@@ -241,16 +204,12 @@ global.localStorage._reset();
   });
   check(`no unfair/duplicate answer options across all missions (${checked} options checked)`, bad === 0);
 
-  // BATHROOM/TOILET-style: two signs sharing one video are never offered against each other
   check('areSameSign catches identical-video signs', L.areSameSign('BATHROOM', 'TOILET', 'medium'));
   check('areSameSign does not flag different signs', !L.areSameSign('HELLO', 'MORNING', 'medium'));
 
-  // context prompts: no leftover blanks
   check('no CONTEXT_PROMPT contains a ___ blank', Object.values(L._internals.CONTEXT_PROMPTS).every((p) => p.indexOf('___') === -1));
 }
 
-// ── 12. Every sign in every mission gets a specific "Try it yourself"
-//       instruction (no generic fallback, no blanks) ───────────────
 {
   const L = window.LWMissionsLoop, M = window.LWMissions;
   let generic = 0, blanks = 0, total = 0;

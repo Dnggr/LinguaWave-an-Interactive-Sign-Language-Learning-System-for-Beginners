@@ -15,17 +15,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/admin-lessons.html — Lesson Management
-    ─────────────────────────────────────────────────────────────────
-    Built-in lessons (js/missions.js via js/admin-content.js) are shown
-    view-only. Lessons the admin ADDS here are saved to Firestore `signs`
-    and can be created, edited and deleted. Uploaded MP4 videos go to
-    Cloudflare R2 through the media Worker (js/admin-media.js,
-    worker/src/index.js); the public URL + R2 key are stored on the lesson.
-    No level, no image, and admin-added lessons have no motion detection.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -40,9 +29,7 @@
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/toast.css" />
   <link rel="stylesheet" href="../css/admin.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/skeleton.js" defer></script>
@@ -52,8 +39,6 @@
 </head>
 <body class="admin-gate">
 
-  <!-- Loading skeleton for the admin shell. Visible only while body.admin-gate is closed
-       (css/admin.css "ADMIN LOADING"); requireAdmin() adds .admin-ready and it disappears. -->
   <div class="admin-boot" role="status" aria-live="polite">
     <span class="sr-only">Checking admin access&hellip;</span>
     <div class="admin-boot__side" aria-hidden="true">
@@ -161,7 +146,6 @@
     </div>
   </div>
 
-  <!-- View modal (built-in lessons, read-only) -->
   <div class="admin-modal-backdrop" id="sign-modal-backdrop" hidden>
     <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="sign-modal-title">
       <div class="admin-modal__head">
@@ -175,7 +159,6 @@
     </div>
   </div>
 
-  <!-- Add / edit lesson -->
   <div class="admin-modal-backdrop" id="lesson-form-backdrop" hidden>
     <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="lesson-form-heading">
       <div class="admin-modal__head">
@@ -229,7 +212,6 @@
     </div>
   </div>
 
-  <!-- Delete confirmation -->
   <div class="admin-modal-backdrop" id="lesson-delete-backdrop" hidden>
     <div class="admin-modal admin-modal--sm" role="dialog" aria-modal="true" aria-labelledby="lesson-delete-title">
       <div class="admin-modal__head">

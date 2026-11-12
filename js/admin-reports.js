@@ -1,10 +1,3 @@
-/**
- * admin-reports.js — Controller for pages/admin-reports.html
- * Read-only. One getReportStats() call (js/admin-firebase.js) feeds everything: KPI tiles, sign-ups of the
- * last 14 days, a feedback snapshot (averages + difficulty split), lessons / quiz questions by chapter
- * (bars scale to the biggest chapter), and the recent sign-ups / feedback lists. No level breakdowns:
- * the app is one linear trail. No writes happen on this page.
- */
 import { getReportStats } from "./admin-firebase.js";
 import { formatDate } from "./survey-schema.js";
 
@@ -12,7 +5,6 @@ const $ = (id) => document.getElementById(id);
 const esc = (str) => String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const initial = (s) => (String(s || "?").trim()[0] || "?").toUpperCase();
 
-// entries: [{ label, count }] ; bars scale to the largest value so differences are visible.
 function renderBars(id, entries, total) {
   const el = $(id);
   if (!entries.length) { el.innerHTML = `<p class="text-muted">No data yet.</p>`; return; }
@@ -25,7 +17,6 @@ function renderBars(id, entries, total) {
     </li>`).join("")}</ul>`;
 }
 
-// 14 columns, one per day; the title gives the exact date and count.
 function renderSignups(days) {
   const el = $("report-signups");
   const total = days.reduce((n, d) => n + d.count, 0);
@@ -88,8 +79,6 @@ function renderFeedbackUnavailable() {
   $("report-recent-feedback").innerHTML = msg;
 }
 
-// Refresh: put every placeholder back to its skeleton so a reload looks like a load, not a freeze.
-// (The first load uses the skeletons already in the HTML.)
 let loadedOnce = false;
 function showLoading() {
   const S = window.LWSkeleton;

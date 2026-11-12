@@ -1,38 +1,3 @@
-/**
- * js/orientation.js — completes Orientation (pages/orientation.html)
- * ─────────────────────────────────────────────────────────────────
- * New learners must finish Orientation before Chapter 1 unlocks. The
- * gate itself lives in js/missions.js (isOrientationComplete() /
- * markOrientationComplete(), enforced by isChapterUnlocked()); this file
- * only decides WHEN the learner has finished. Either of these counts:
- *
- *   1. They scroll down to the bottom part of the page (a 1px sentinel
- *      placed just above the Continue button enters the viewport).
- *   2. They click "Continue to the Learning Path" (#orientation-cta).
- *
- * Returning learners who already finished (or who already had progress
- * before Orientation became required) are left alone: no observer, no
- * note, no toast.
- *
- * READING-PROGRESS BAR (right edge, .scroll-progress in css/app.css):
- *   - Fills top-to-bottom with scroll position, but is ONE-WAY: it keeps
- *     the furthest point reached, so scrolling back up never shrinks it.
- *     The furthest point is also remembered per account (localStorage) so
- *     a reload does not reset it.
- *   - Already full for learners whose Orientation is complete, including
- *     the grandfathered ones (isOrientationComplete()). It stays hidden
- *     until the account's progress is known, so there is no empty flash.
- *   - Jumps to full the moment Orientation completes (bottom reached or
- *     Continue clicked), and also if the cross-device sync later reveals
- *     that this account had already completed it.
- *
- * AUTH TIMING: progress is stored per account, so nothing is written until
- * Firebase has restored the session (LWAuth.whenAuthReady()). Writing
- * earlier would save the flag under "no user" and the real account would
- * never see it. If the learner clicks Continue before auth is ready, the
- * click waits for it and then navigates.
- * ─────────────────────────────────────────────────────────────────
- */
 (function () {
   'use strict';
 
@@ -67,10 +32,9 @@
     var note = null;
     var sentinel = null;
 
-    // ── Reading-progress bar (one-way) ────────────────────────────
     var bar = document.querySelector('.scroll-progress');
-    var barReady = false;      // .is-ready added (account progress known)
-    var maxProgress = 0;       // furthest point reached, 0..1. Only ever goes up.
+    var barReady = false;
+    var maxProgress = 0;
     var barFrame = 0;
     var storageKey = null;
 
@@ -100,7 +64,6 @@
       try { localStorage.removeItem(progressKey()); } catch (e) {}
     }
 
-    // Raise the bar to `v` (0..1). Lower values are ignored: this is what makes it one-way.
     function raiseProgress(v) {
       if (!(v > maxProgress)) return;
       maxProgress = Math.min(1, v);
@@ -111,7 +74,7 @@
     function scrollRatio() {
       var doc = document.documentElement;
       var scrollable = doc.scrollHeight - window.innerHeight;
-      if (scrollable <= 0) return 1;     // everything already fits on screen
+      if (scrollable <= 0) return 1;
       return Math.min(1, Math.max(0, window.scrollY / scrollable));
     }
 
@@ -129,7 +92,6 @@
       if (barFrame) { window.cancelAnimationFrame(barFrame); barFrame = 0; }
     }
 
-    // Show the bar. `isDone` = this account has already completed Orientation.
     function showBar(isDone) {
       if (!bar || barReady) return;
       barReady = true;
@@ -144,7 +106,6 @@
       bar.classList.add('is-ready');
     }
 
-    // Orientation turned out to be done already (e.g. the cross-device sync arrived late).
     function settleAsAlreadyDone() {
       if (finished) return;
       finished = true;
@@ -165,13 +126,12 @@
       window.removeEventListener('scroll', onScrollFallback);
       window.removeEventListener('resize', onScrollFallback);
       stopBarTracking();
-      raiseProgress(1);                  // completed = full bar, never partial
+      raiseProgress(1);
       if (barReady) clearSaved();
 
       var newlyDone = false;
       try { newlyDone = !!m.markOrientationComplete(); } catch (e) { console.warn('[orientation.js] could not save Orientation:', e); }
 
-      // Keep the sync going so the flag reaches Firestore (and the learner's other devices).
       try { Promise.resolve(m.whenMissionsSyncReady && m.whenMissionsSyncReady()).catch(function () {}); } catch (e) {}
 
       setNote(note, 'Orientation complete. Chapter 1 is unlocked.');
@@ -180,7 +140,6 @@
       }
     }
 
-    // ── Bottom-of-page detection ──────────────────────────────────
     function onScrollFallback() {
       var doc = document.documentElement;
       if (window.scrollY + window.innerHeight >= doc.scrollHeight - 80) complete();
@@ -208,7 +167,6 @@
       }
     }
 
-    // ── Hint above the button ─────────────────────────────────────
     function addNote() {
       note = document.createElement('p');
       note.id = NOTE_ID;
@@ -219,11 +177,10 @@
       cta.parentElement.insertBefore(note, cta);
     }
 
-    // ── Continue button ───────────────────────────────────────────
     cta.addEventListener('click', function (e) {
-      if (finished) return;                 // already saved: let the link navigate
-      if (authReady) { complete(); return; } // save synchronously, then the link navigates
-      e.preventDefault();                    // auth not ready yet: wait, save, then go
+      if (finished) return;
+      if (authReady) { complete(); return; }
+      e.preventDefault();
       var href = cta.getAttribute('href') || 'learn.html';
       whenAuthReady(function () {
         authReady = true;
@@ -234,7 +191,7 @@
 
     whenAuthReady(function () {
       authReady = true;
-      if (finished) { showBar(true); return; }   // completed (Continue) before auth was ready
+      if (finished) { showBar(true); return; }
       var already = false;
       try { already = !!(m.isOrientationComplete && m.isOrientationComplete()); } catch (e) {}
       if (already) { finished = true; showBar(true); return; }
@@ -242,8 +199,6 @@
       watchBottom();
       showBar(false);
 
-      // Progress may live only in Firestore (new device): once the sync has run, re-check, so
-      // a learner who had already finished sees a full bar and no "unlock Chapter 1" note.
       try {
         Promise.resolve(m.whenMissionsSyncReady && m.whenMissionsSyncReady()).then(function () {
           var doneNow = false;

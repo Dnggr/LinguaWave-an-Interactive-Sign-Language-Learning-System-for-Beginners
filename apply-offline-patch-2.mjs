@@ -1,12 +1,3 @@
-// Run from the repo root (Node 18+) AFTER apply-offline-patch.mjs:
-//
-//   node apply-offline-patch-2.mjs
-//
-// Adds to the already-patched files:
-//   * js/tracking/mediapipe.js  - reports a "starting engine" phase
-//   * js/camera-practice.js     - "Starting the hand-tracking engine…" state after 100%,
-//                                 and a clear message when the page is not on a secure address
-// Safe to re-run.
 import fs from 'node:fs';
 
 function edit(file, fn) {
@@ -34,14 +25,12 @@ edit('js/tracking/mediapipe.js', (s) => {
 edit('js/camera-practice.js', (s) => {
   if (s.includes('startingEngine')) return null;
 
-  // 1) styles for the indeterminate bar
   s = replaceOnce(s,
     "'@media (prefers-reduced-motion:reduce){.lw-model-loader__fill{transition:none}}';",
     "'.lw-model-loader.is-starting .lw-model-loader__fill{width:100%!important;animation:lwModelPulse 1.1s ease-in-out infinite}' +\n" +
     "      '@keyframes lwModelPulse{0%,100%{opacity:.35}50%{opacity:1}}' +\n" +
     "      '@media (prefers-reduced-motion:reduce){.lw-model-loader__fill{transition:none}.lw-model-loader.is-starting .lw-model-loader__fill{animation:none}}';", 'cp css');
 
-  // 2) the new phase
   s = replaceOnce(s,
     "    showErrorAndWaitForRetry(err) {\n",
     "    startingEngine() {\n" +
@@ -56,7 +45,6 @@ edit('js/camera-practice.js', (s) => {
     "      box.classList.remove('is-error');\n      retryBtn.hidden = true;\n",
     "      box.classList.remove('is-error', 'is-starting');\n      retryBtn.hidden = true;\n", 'cp showProgress reset');
 
-  // 3) wire it up
   s = replaceOnce(s,
     "await initMediaPipe({ onProgress: (loaded, total) => { if (loader) loader.update(loaded, total); } });",
     "await initMediaPipe({\n" +
@@ -64,7 +52,6 @@ edit('js/camera-practice.js', (s) => {
     "          onPhase: (phase) => { if (loader && phase === 'starting') loader.startingEngine(); },\n" +
     "        });", 'cp wire');
 
-  // 4) secure-address check, BEFORE spending 13 MB on a camera that cannot start
   s = replaceOnce(s,
     "  const loader = createModelLoaderUI();\n  modelDownloading = true;\n",
     "  // The webcam (and the service worker that caches the model) only exist on https:// or http://localhost.\n" +

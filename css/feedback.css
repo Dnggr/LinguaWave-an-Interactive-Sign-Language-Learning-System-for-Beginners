@@ -1,4 +1,3 @@
-/* feedback.css — Survey page styles | CONNECTS: pages/feedback.html */
 .survey__question { padding-block: var(--space-6); border-bottom: 1px solid var(--clr-border); }
 .survey__question:last-child { border-bottom: none; }
 .survey__q-text { font-size: var(--fs-base); font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-4); display: block; }
@@ -12,16 +11,6 @@
 .rating-option:hover { border-color: var(--clr-accent); color: var(--clr-text); }
 .rating-option input[type="radio"] { accent-color: var(--clr-accent); }
 
-/* Q5 comment box — the box itself stays put and only its HEIGHT follows the
- * text. Width is pinned to the column (100% + border-box, display:block so
- * the inline-block baseline gap under it is gone too), so its edges line up
- * with the divider lines and the Submit button above and below. The manual
- * resize grip is removed: it let the width be dragged out of line, and the
- * box now grows by itself instead.
- * field-sizing: content does the growing natively (Chromium); the tiny
- * script in feedback.js sets the same height by hand where it's unsupported.
- * min-height keeps the "empty box" look; max-height stops a very long
- * comment from pushing Submit off-screen — past it, the box scrolls. */
 .survey__question textarea.form-input {
   display: block;
   width: 100%;

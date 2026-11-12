@@ -1,7 +1,3 @@
-// tools/add-favicon.mjs
-// Adds the LinguaWave favicon <link> tags to every .html page in the project (safe to re-run).
-//   Run from the project root:   node tools/add-favicon.mjs
-//   Preview without changing:    node tools/add-favicon.mjs --dry
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, relative, dirname, sep, posix } from 'node:path';
 
@@ -18,7 +14,6 @@ function* htmlFiles(dir) {
   }
 }
 
-// Matches any existing icon / apple-touch-icon <link> (so old or wrong ones are replaced, not duplicated).
 const OLD_ICON_LINK = /[ \t]*<link\b[^>]*\brel=["'](?:shortcut icon|icon|apple-touch-icon)["'][^>]*>[ \t]*\r?\n?/gi;
 
 let changed = 0, same = 0, skipped = 0;
@@ -26,7 +21,6 @@ for (const file of htmlFiles(root)) {
   let html = readFileSync(file, 'utf8');
   if (!/<\/head>/i.test(html)) { console.log('skip (no </head>):', relative(root, file)); skipped++; continue; }
 
-  // Path to assets/icon from this page, e.g. "assets/icon" (root) or "../assets/icon" (pages/).
   const up = relative(dirname(file), root).split(sep).filter(Boolean).map(() => '..').join('/');
   const base = (up ? up + '/' : '') + posix.join('assets/icon');
   const nl = html.includes('\r\n') ? '\r\n' : '\n';
@@ -36,7 +30,6 @@ for (const file of htmlFiles(root)) {
     `  <link rel="apple-touch-icon" href="${base}/apple-touch-icon.png" />`,
   ].join(nl) + nl;
 
-  // Insert before the LAST </head> (a comment earlier in a page may mention "</head>" in text).
   const stripped = html.replace(OLD_ICON_LINK, '');
   const at = stripped.toLowerCase().lastIndexOf('</head>');
   const lineStart = stripped.lastIndexOf('\n', at) + 1;

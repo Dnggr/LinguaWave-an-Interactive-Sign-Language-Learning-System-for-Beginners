@@ -1,14 +1,8 @@
-/**
- * functions/xp-engine.js — pure XP rules (no Firebase, no I/O), so they can be unit-tested in
- * plain Node (functions/_test_xp-engine.node.js). xp.js wires these into Firestore.
- */
 'use strict';
 const { CONFIG, buildBadgeCatalog, STREAK_BADGE_DAYS, MISSION_COUNT_BADGES } = require('./xp-config');
 
 const BADGES = buildBadgeCatalog();
 
-/* ── levels ─────────────────────────────────────────────────── */
-/** Total XP needed to REACH `level` (Lv1 = 0). */
 function xpForLevel(level) {
   const n = Math.max(1, Math.min(CONFIG.MAX_LEVEL, level | 0)) - 1;
   return n * CONFIG.LEVEL_BASE + CONFIG.LEVEL_STEP * (n * (n - 1)) / 2;
@@ -25,12 +19,10 @@ function levelProgress(xp) {
   return { level, into: xp - lo, need: hi - lo, pct: Math.floor(((xp - lo) / (hi - lo)) * 100), maxed: false };
 }
 
-/* ── dates / timezone ───────────────────────────────────────── */
 function isValidTz(tz) {
   if (typeof tz !== 'string' || tz.length < 1 || tz.length > 64) return false;
   try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
 }
-/** 'YYYY-MM-DD' of `ms` in the given IANA zone. */
 function dayKey(ms, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 }
@@ -45,13 +37,11 @@ function tzOffsetMs(ms, tz) {
     .formatToParts(new Date(ms)).forEach((x) => { p[x.type] = x.value; });
   return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
 }
-/** The instant local midnight STARTS on day `key` in `tz`. */
 function startOfDayMs(key, tz) {
   const [y, m, d] = key.split('-').map(Number);
   const guess = Date.UTC(y, m - 1, d);
   return guess - tzOffsetMs(guess - tzOffsetMs(guess, tz), tz);
 }
-/** ISO week key in UTC, e.g. '2026-W40' (leaderboard "this week" resets Monday 00:00 UTC). */
 function weekKeyUtc(ms) {
   const d = new Date(ms); d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -60,21 +50,17 @@ function weekKeyUtc(ms) {
   return `${d.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
 }
 
-/* ── streak ─────────────────────────────────────────────────── */
-/** Streak after activity on local day `today`. */
 function applyStreak(s, today) {
   const cur = s || { current: 0, longest: 0, lastDay: null };
   if (cur.lastDay === today) return { ...cur };
   const next = cur.lastDay === shiftDayKey(today, -1) ? cur.current + 1 : 1;
   return { current: next, longest: Math.max(cur.longest || 0, next), lastDay: today };
 }
-/** What to DISPLAY: a streak is live through the end of the day after the last activity. */
 function effectiveStreak(s, today) {
   if (!s || !s.lastDay) return 0;
   return (s.lastDay === today || s.lastDay === shiftDayKey(today, -1)) ? s.current : 0;
 }
 
-/* ── lesson XP ──────────────────────────────────────────────── */
 function lessonItemXp(kind, bonusXP) {
   const base = CONFIG.LESSON_ITEM_XP[kind];
   if (!base) return 0;
@@ -84,22 +70,16 @@ function missionBonus(signCount) {
   const m = CONFIG.MISSION_BONUS;
   return Math.min(m.max, m.base + m.perSign * signCount);
 }
-/** Halve (never drop) lesson XP once today's soft cap is spent. */
 function applyLessonSoftCap(rawXp, lessonXpToday) {
   const room = Math.max(0, CONFIG.LESSON_DAILY_SOFT_CAP - lessonXpToday);
   if (rawXp <= room) return rawXp;
   return room + Math.floor((rawXp - room) * CONFIG.LESSON_OVER_CAP_FACTOR);
 }
 
-/* ── game XP ────────────────────────────────────────────────── */
 function wallDecayMult(wallsAlreadyToday) {
   for (const t of CONFIG.GAME.WALL_DECAY) if (wallsAlreadyToday < t.upTo) return t.mult;
   return 0;
 }
-/**
- * bricks: [{ learned:boolean, motion:boolean }] (all bricks of a fully cleared wall)
- * returns { eligible, xp, raw, mult, ... }. `xp` already respects decay and the daily cap.
- */
 function gameWallXp({ bricks, wrong, wallsToday, gameXpToday }) {
   const G = CONFIG.GAME;
   const learnedBricks = bricks.filter((b) => b.learned);
@@ -116,11 +96,6 @@ function gameWallXp({ bricks, wrong, wallsToday, gameXpToday }) {
   const xp = Math.min(Math.round(raw * decay), room);
   return { eligible: true, xp, raw: Math.round(raw), accuracy: acc, flawless, decay, capped: xp < Math.round(raw * decay) || (decay > 0 && room === 0), reason: xp === 0 ? (decay === 0 ? 'diminished' : 'daily_cap') : null };
 }
-/**
- * Plausibility check of a finished session. broken: [{ s, t, m }] (sign, ms since start, motion?).
- * Returns null if fine, else a reason string. Honest play always passes; a script that
- * fires the "wall cleared" call has to also fake believable timing.
- */
 function validateGameTiming({ sessionSigns, broken, serverElapsedMs }) {
   const G = CONFIG.GAME;
   if (!Array.isArray(broken) || broken.length !== sessionSigns.length) return 'incomplete_wall';
@@ -139,8 +114,6 @@ function validateGameTiming({ sessionSigns, broken, serverElapsedMs }) {
   return null;
 }
 
-/* ── badges ─────────────────────────────────────────────────── */
-/** Lowest unearned `${group}_L{n}` badge with n <= level, or null. */
 function nextLevelBadge(group, level, owned) {
   for (let n = 1; n <= Math.min(level, CONFIG.MAX_LEVEL); n++) {
     const id = `${group}_L${n}`;

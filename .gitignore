@@ -1,0 +1,14 @@
+
+# LinguaWave desktop packaging - generated files
+desktop-packaging/LinguaWave
+desktop-packaging/staging/
+desktop-packaging/release/
+desktop-packaging/installer/Output/
+desktop-packaging/installer/*.exe
+
+# Temporary backups
+desktop-packaging/*.backup
+desktop-packaging/*.before-exit
+desktop-packaging/installer/*.backup
+desktop-packaging/installer/*.before-exit
+desktop-packaging/installer/*.bak

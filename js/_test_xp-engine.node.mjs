@@ -8,7 +8,6 @@ function check(condition, label) {
   else { failed++; console.error(`FAIL: ${label}`); }
 }
 
-// Level thresholds are checked at and immediately below every boundary.
 for (let level = 1; level <= E.CONFIG.MAX_LEVEL; level++) {
   const threshold = E.xpForLevel(level);
   check(E.LEVEL_XP[level - 1] === threshold, `level table ${level}`);
@@ -162,7 +161,6 @@ check(E.profileData(state, 'Ana', baseTime).badgeCount === Object.keys(state.bad
 check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initializes daily game counter');
 
 
-// ---- Construct a Sentence ----
 {
   const known = () => true;
   const words = [['YOU', 'MY', 'FRIEND'], ['PLEASE', 'HELP', 'ME'], ['ME', 'EAT', 'FOOD'], ['ME', 'DRINK', 'WATER'], ['MOM', 'DRINK', 'MILK']];
@@ -208,7 +206,6 @@ check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initialize
   check(E.profileData(vet, 'Ana', baseTime).sentenceXp === 125 && E.profileData(vet, 'Ana', baseTime).wallXp === 0, 'public profile carries per-game XP');
 }
 
-// ---- Time Attack (fingerspelling) ----
 {
   const F = E.CONFIG.FINGERSPELL;
   const word = (id) => E.fingerspellWordById(id);
@@ -218,7 +215,7 @@ check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initialize
   const types = {};
   for (const w of F.WORDS) for (const sym of w.symbols) types[sym] = 'static';
   const ids = ['car', 'america', 'ak47', 'hamburger'];
-  const uniq = [...new Set(ids.flatMap((id) => word(id).symbols))];   // the letters of THIS run (the bank has 1,300+ words)
+  const uniq = [...new Set(ids.flatMap((id) => word(id).symbols))];
   check(E.validateFingerspellSession({ signs: uniq, words: ids }, types), 'full fingerspell session is valid');
   check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'car'] }, types), 'duplicate word rejected');
   check(!E.validateFingerspellSession({ signs: uniq, words: ['car', 'not-a-word'] }, types), 'unknown word rejected');
@@ -226,7 +223,6 @@ check(E.normalizeState(null, baseTime).daily.gameXp === 0, 'new state initialize
   check(!E.validateFingerspellSession({ signs: ['C', 'A', 'R'], words: ['car'] }, { ...types, R: 'motion' }), 'motion letters rejected');
   check(!E.validateFingerspellSession({ signs: [...uniq, 'Z'], words: ids }, { ...types, Z: 'static' }), 'extra sign rejected');
 
-  // Word bank + run picker
   const bank = F.WORDS, tiers = F.RUN_LENGTHS;
   check(bank.length >= 500, `word bank has 500+ words (${bank.length})`);
   check(new Set(bank.map((w) => w.id)).size === bank.length, 'word ids are unique');

@@ -1,57 +1,4 @@
-/**
- * css/app.css — LinguaWave (mission-based rebuild)
- * ─────────────────────────────────────────────────────────────────
- * Styling for the REAL product pages (dashboard.html,
- * learn.html) — NOT the dev-only preview/compare tools (those
- * keep using missions-preview.css/missions-compare.css, unchanged).
- *
- * Every rule here builds on the existing shared tokens from
- * css/style.css (--clr-*, --space-*, --radius-*, .card/.btn/.badge/
- * .progress-bar) per the implementation guide's §9 Component Library
- * instruction: "extend the shared components there first when
- * possible instead of duplicating styles per page." This file only
- * adds the layout/pieces style.css doesn't already have.
- * ─────────────────────────────────────────────────────────────────
- */
 
-/* ── Header top spacing + bottom-of-page centering (this session,
- * consolidated — supersedes all comment blocks from earlier passes at
- * this same problem; this is round 4, and it's a different bug than
- * rounds 1-3 solved) ──────────────────────────────────────────────
- *
- * `#main` and `.app-main` are the SAME element — `<div
- * class="app-main" id="main">` — not a nested child. `.app-shell`
- * is `display:flex` with `min-height: 100vh` (style.css), and
- * flexbox's default `align-items: stretch` already stretches
- * `.app-main` to the FULL height of the sidebar column. Its children
- * (the 3 `<section>`s) are plain blocks, which by default just
- * top-align inside that already-full-height box, dumping all the
- * leftover height as dead space at the very bottom. `display:flex;
- * flex-direction:column; justify-content:center` below centers that
- * 3-section content block vertically instead — confirmed working on
- * pages where content is shorter than the viewport.
- *
- * `#main`'s own `padding-bottom` (24px) + `:last-child
- * {padding-bottom:0}` are UNCHANGED from rounds 1-3 — confirmed good,
- * governs the true bottom-of-page gap, not touched by this round.
- *
- * ROUND 4 (this one) is a DIFFERENT bug from rounds 1-3: those were
- * about the gap between the page edge and the whole 3-section content
- * block. This one is about symmetry INSIDE the first section itself —
- * the box containing just "Welcome back, Learner! / Ready for your
- * next communication goal?". That section's own top padding had been
- * zeroed (round 2, to stop it stacking with `#main`'s separate
- * 32px top offset) while its bottom padding was left at its natural
- * `section--tight` value (16px) — 0px above the heading vs 16px below
- * the subtitle, a real internal asymmetry independent of whatever the
- * page-level top gap was doing. Fix: stop giving `#main` ITSELF
- * any top padding (`padding-top: 0` — was `var(--space-8)`/32px), and
- * instead give the FIRST SECTION its own explicit, symmetric
- * `padding-block: var(--space-8)` (32px top AND bottom) — the same
- * total page-top gap as before (32px, unchanged, still just this one
- * section owning all of it instead of splitting it across `#main`
- * + the section), but now genuinely centered around its own text,
- * since both its own top and bottom are the identical value. */
 #main {
   padding-bottom: var(--space-6);
   padding-top: 0;
@@ -62,7 +9,6 @@
 #main > .section:first-child { padding-block: var(--space-8); }
 #main > .section:last-child { padding-bottom: 0; }
 
-/* ── Dashboard: hero row (Continue Mission + Today's Summary) ───── */
 .hero-row {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
@@ -93,7 +39,6 @@
 .summary-row__label { display: flex; align-items: center; gap: var(--space-2); color: var(--clr-text-muted); font-size: var(--fs-sm); }
 .summary-row__value { font-weight: 700; font-size: var(--fs-lg); }
 
-/* ── Dashboard: Your Learning Journey mini-rail ──────────────────── */
 .journey-rail {
   display: flex;
   gap: var(--space-4);
@@ -119,33 +64,6 @@
   overflow: hidden;
 }
 
-/* ── Journey card status colors (this session) ───────────────────────
- * FIX: js/dashboard.js's renderJourneyRail() was building status
- * labels correctly ("In Progress" / "Available") but picking the
- * WRONG badge color class for each — 'current' got badge--basic
- * (blue) and 'available' got badge--intermediate (orange), backwards
- * from what those tokens mean everywhere else in this app (see
- * css/style.css §8's badge--* rules, and js/learn.js's own
- * statusMeta(), which already had this right). Fixed in the JS; these
- * card-level rules are NEW — previously .journey-card had no
- * status styling of its own at all, only the little badge pill did,
- * so the card itself gave no at-a-glance signal. A colored left
- * accent bar + a faint matching tint now mirrors the badge it sits
- * next to, using the SAME soft/solid token pairs the badges use:
- *   done (Completed)     -> --clr-success / --clr-success-soft (green)
- *   current (In Progress)-> --clr-orange  / --clr-orange-soft  (orange)
- *   available             -> --clr-blue    / --clr-blue-soft    (blue)
- *   locked                -> --clr-locked  / --clr-locked-soft  (slate) —
- *     matches badge--locked's color everywhere else this app shows a
- *     locked state (js/learn.js, js/learn.js's statusMeta()). Changed
- *     from --clr-red this session — red reads as "something is
- *     wrong," which locked/not-yet-unlocked content isn't; a neutral
- *     slate communicates "not available yet" instead, same idea as a
- *     disabled button rather than an error state.
- * Locked cards also render as a plain <div> (no href), same pattern
- * js/learn.js's renderRow() already uses for its own locked rows —
- * there's no real gating/hearts logic yet (guide §10–11), so nothing
- * to actually navigate a locked mission's overview page. */
 .journey-card--done    { border-left: 4px solid var(--clr-success); background: var(--clr-success-soft); }
 .journey-card--current { border-left: 4px solid var(--clr-orange);  background: var(--clr-orange-soft); }
 .journey-card--available { border-left: 4px solid var(--clr-blue); background: var(--clr-blue-soft); }
@@ -157,29 +75,11 @@
 }
 .journey-card--locked .journey-card__title { color: var(--clr-text-muted); }
 
-/* ── Hover color-mismatch fix (this session, corrected) ──────────────
- * BUG: style.css's shared `.card:hover { border-color: var(--clr-accent); }`
- * sets all four border-side colors, overriding the status color
- * regardless of source order (equal specificity to the rules below,
- * and style.css loads first). The FIRST attempt at fixing this only
- * reasserted `border-left-color` on hover — which fixed the 4px
- * accent bar but left the other three (thin, 1px) sides showing the
- * shared orange hover accent, i.e. exactly the "blue left, orange
- * everywhere else" mismatch from the screenshot. Corrected version:
- * override the full `border-color` shorthand (all four sides) to the
- * status color on hover, not just the left one — so every side reads
- * as one consistent color, matching the accent bar's own color,
- * instead of blending two different hover colors on one card. Left
- * stays visually thicker (4px vs 1px, from the non-hover rules above)
- * — only the color changes here, not the widths. This file loads
- * after style.css on dashboard.html, so at equal specificity
- * (one class + one pseudo-class each) these declarations win. */
 .journey-card--done:hover      { border-color: var(--clr-success); }
 .journey-card--current:hover   { border-color: var(--clr-orange); }
 .journey-card--available:hover { border-color: var(--clr-blue); }
 .journey-card--locked:hover    { border-color: var(--clr-locked); }
 
-/* ── Learning Path list (Learn page) ─────────────────────────────── */
 .path-search {
   display: flex;
   align-items: center;
@@ -200,15 +100,6 @@
 }
 .path-search svg { flex: none; color: var(--clr-text-muted); }
 
-/* Widen the search bar + mission list together — expand the
- * container "alongside the card under it" to 70% width, the same
- * treatment the Progress page's #progress-chapters card uses.
- * Scoped via :has(#path-list) so it only ever matches
- * learn.html's own .container--narrow (the only place #path-list
- * lives) — NOT the several other pages that reuse the shared
- * .container--narrow class, including two more pages this same
- * app.css loads on (mission-overview.html, orientation.html),
- * which must keep their existing narrower width untouched. */
 .container--narrow:has(#path-list) {
   max-width: none;
   width: 70%;
@@ -219,9 +110,6 @@
 }
 
 .path-list { display: flex; flex-direction: column; gap: var(--space-3); }
-/* Chapter grouping (this session) — rows inside a .trail-group
-   (see ../../css/learn.css) need their own flex/gap now that the
-   outer .path-list gap applies between CHAPTERS, not rows. */
 .path-list__group { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-5) var(--space-5); }
 
 .path-row {
@@ -234,10 +122,6 @@
   border-radius: var(--radius-md);
   transition: background var(--dur-fast) var(--ease);
 }
-/* ADDED (blue-teal mockup alignment pass) — every other interactive
-   row/card in this app (.course-card, .lesson-card, .trail-group__summary)
-   already has a hover state; .path-row was the one gap, so a tappable
-   chapter row on pages/learn.html gave no feedback at all until click. */
 .path-row:hover:not(.path-row--locked) { background: var(--clr-surface-2); }
 .path-row__num {
   flex: none;
@@ -269,27 +153,9 @@
 .path-row__meta { flex: none; display: flex; align-items: center; gap: var(--space-4); }
 .path-row__progress { width: 90px; }
 .path-row__chevron { color: var(--clr-text-muted); flex: none; }
-/* Same fix as .trail-group__lock-badge (css/learn.css) and for the
- * same reason: a locked row hides both the progress bar and the
- * chevron (see renderRow()'s hideBar/!locked checks), so the Locked
- * badge ends up the last/only child in .path-row__meta, sitting
- * flush against the row's edge — a little margin gives it the same
- * breathing room the chapter-level Locked badge already got. */
 .path-row__lock-badge { margin-right: var(--space-2); }
-/* Interactive Locked-State Feedback (css/style.css §19) — `cursor:
-   default`, not `not-allowed`: the row is deliberately still
-   clickable (js/learn.js wires a click handler for it), it just
-   triggers a shake + red-border flash instead of navigating. Matches
-   the same `cursor: default` call already made for `.sign-chip--locked`
-   below, for the same reason (see that rule's own comment). */
-/* CHANGED (light-mode UX pass) — was `opacity: .6` on the whole row, which
-   also faded the Locked badge below AA. Same approach as
-   .path-tile--locked: drop the card surface, mute the text, keep the badge. */
 .path-row--locked { background: var(--clr-bg); box-shadow: none; cursor: default; }
 .path-row--locked .path-row__title { color: var(--clr-text-muted); }
-/* Orientation row (this session) — sits above the chapter list,
-   never locked, so it gets its own accent instead of borrowing the
-   done/current colors those states already use. */
 .path-row--orientation {
   margin-bottom: var(--space-4);
   border: 1px solid var(--clr-accent, var(--clr-orange));
@@ -299,7 +165,6 @@
   color: var(--clr-accent, var(--clr-orange));
 }
 
-/* ── Mission Overview page ───────────────────────────────────────── */
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -339,29 +204,12 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   display: inline-block;
-  /* CHANGED — mission-overview.js's chips are real `<a href>` links
-   * now (not "a plain span, not a link yet" — that was true once,
-   * it isn't anymore), so the pointer cursor here matches that:
-   * anything actually clickable gets the hand. `.sign-chip--locked`
-   * below overrides this back to the plain arrow for the one case
-   * that ISN'T clickable — see its own comment. */
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease),
               background var(--dur-fast) var(--ease),
               transform var(--dur-fast) var(--ease),
               box-shadow var(--dur-fast) var(--ease);
 }
-/* Hover: V1's lift pattern (css/learn.css's `.lesson-card:hover` —
- * translateY + a lifted shadow) applied here, per explicit request.
- * The COLOR half is deliberately different from V1's own version
- * though: `.lesson-card:hover` switches border-color to a single
- * shared `--clr-accent` regardless of the card's own state — exactly
- * the mismatch bug already fixed once for the dashboard's journey
- * cards (this file's own comment on `.journey-card--*:hover`).
- * These chips do the opposite on purpose: hovering STAYS whichever
- * color the chip already is — plain chips deepen within the same
- * neutral family, `--learned` (green) chips stay green — while still
- * gaining the same lift/shadow motion V1 uses. */
 .sign-chip:hover {
   border-color: var(--clr-text-muted);
   transform: translateY(-2px);
@@ -379,11 +227,6 @@
   box-shadow: var(--shadow-card);
 }
 
-/* Practicing — LESSON done, but this sign's BOOSTER/PRACTICE items aren't.
- * Orange so a chip never reads as "done" (green) while the mission's own
- * progress bar is still behind it. Turns green (.sign-chip--learned) only
- * once every item for the sign is complete. Hover keeps its own color and
- * gains the same lift as the other chip states. */
 .sign-chip--practicing {
   border-color: var(--clr-orange);
   background: var(--clr-orange-soft);
@@ -396,17 +239,6 @@
   box-shadow: var(--shadow-card);
 }
 
-/* NEW — locked chips (mission-overview.js renders these as a plain
- * `<span>`, not an `<a>`, while the mission's chapter is still
- * locked — see render()'s `locked` branch there). Still hoverable —
- * the lift/shadow motion below matches `.sign-chip:hover` exactly —
- * so hovering still reads as "this is a real chip", just not one you
- * can click into right now. `cursor: default` (not `not-allowed`,
- * which would read as an active block on something normally
- * clickable) undoes the base `.sign-chip`'s pointer cursor, and the
- * reduced opacity gives a locked-at-a-glance signal even before
- * hovering. There's no href to navigate to regardless, so this is a
- * visual cue, not the actual enforcement. */
 .sign-chip--locked {
   cursor: default;
   opacity: .6;
@@ -417,14 +249,6 @@
   box-shadow: var(--shadow-card);
 }
 
-/* NEW — pending chips (this revision): the mission itself is
- * unlocked, but this particular sign hasn't been reached yet —
- * render()'s isSignAccessible() check, also a plain non-navigable
- * `<span>`. Same non-clickable/hoverable/default-cursor split as
- * `.sign-chip--locked` immediately above (deliberately identical
- * rules, just kept as its own selector so the two states can be
- * told apart at a glance via the dashed border below and each one's
- * own `title` tooltip, without duplicating the whole ruleset). */
 .sign-chip--pending {
   cursor: default;
   opacity: .6;
@@ -436,10 +260,6 @@
   box-shadow: var(--shadow-card);
 }
 
-/* Two cards (Estimated effort, Mastery Hearts). It was three while a
- * "Mastery requirement: Score 80%+" card existed; that card is gone,
- * because Mastery Hearts already do the filtering, so the third column
- * would just be an empty gap. */
 .mo-facts {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -470,17 +290,12 @@
 .mo-actions .btn[aria-disabled="true"]:hover { background: var(--clr-secondary-soft); color: var(--clr-secondary-text); }
 .mo-actions .btn .badge { margin-left: var(--space-2); vertical-align: middle; }
 
-/* ── TEMPORARY: Feedback/Settings sidebar links disabled on all real
- * pages (not yet built for the shell). Remove this rule and the
- * matching href/aria-disabled/tabindex/onclick attributes on those
- * two <a> tags once those pages exist for. */
 .app-sidebar__link--disabled {
   pointer-events: none;
   opacity: .45;
   cursor: not-allowed;
 }
 
-/* ── Small "in progress" note banner reused on both new pages ─── */
 .note-banner {
   border: 1px dashed var(--clr-border);
   border-radius: var(--radius-lg);
@@ -491,21 +306,6 @@
 }
 .note-banner strong { color: var(--clr-text); }
 
-/* ── Progress page ────────────────────────────────────────────────
- * Grid holds ONLY the hero row (ring + stats) beside Needs Review —
- * "Progress by Chapter" used to be a second block stacked inside
- * `.progress-grid__main`, which put its "70%, centered" sizing
- * below in the wrong frame of reference (70% of this narrow 1.7fr
- * column, not of the page) and made the review-card height cap
- * (js/progress-page.js's syncReviewCardHeight(), see `.needs-review`
- * below) line up against "hero row + chapter card" instead of the
- * hero row alone. Per explicit request, the chapter section now lives
- * in `progress.html` as its own full-width block AFTER this grid,
- * inside the same `.container` — so `.progress-grid__main` is just
- * a one-child wrapper around the hero row now, and the chapter card's
- * rules further down size against the full page width. Grid itself
- * still stacks to one column under 900px, same breakpoint
- * .hero-row already uses on the dashboard. */
 .progress-grid {
   display: grid;
   grid-template-columns: 1.7fr 1fr;
@@ -518,16 +318,6 @@
 .progress-grid__main { display: flex; flex-direction: column; min-width: 0; }
 .progress-grid__side { min-width: 0; }
 
-/* Center the "Progress by Chapter" card as a block, per explicit
- * request ("center the text and the card below"). 70% width (was a
- * fixed 640px) per explicit follow-up request to expand it — this now
- * resolves against the full-width `.container` in progress.html
- * (the card sits below `.progress-grid` there, not inside its
- * narrow `__main` column any more, see that grid's own comment
- * above). Scoped to this page's own id, NOT the shared
- * `.unit-progress-list` class itself (css/dashboard.css, used by V1's
- * dashboard too) — so V1 keeps that class's normal full-width
- * behavior untouched. */
 #progress-chapters {
   width: 70%;
   margin-inline: auto;
@@ -535,38 +325,13 @@
 @media (max-width: 640px) {
   #progress-chapters { width: 100%; }
 }
-/* Left-justify each chapter row's label (e.g. "Chapter 1 — ASL
- * Foundations"), per explicit request. dashboard.css's shared
- * `.unit-progress-group__label` already sets `flex: 1` (used as-is by
- * V1's dashboard/progress.html, unaffected since neither loads this
- * file) — this just adds `text-align: left` on top of that existing
- * flex-grow, scoped to this page's own #progress-chapters id so it
- * doesn't leak onto anything else that might reuse the shared class
- * later. */
 #progress-chapters .unit-progress-group__label {
   text-align: left;
 }
-/* "Progress by Chapter" heading, centered to sit above its own
- * centered 70%-width card below it (#progress-chapters) — the
- * class lives on the <h2> itself in the HTML since it's a one-off
- * heading, not the shared h2 default elsewhere on this page. */
 .progress-chapters-heading {
   text-align: center;
 }
 
-/* Hero ROW — CSS Grid, no wrapper div needed; the class lives
- * directly on #progress-hero in the HTML. Without a container div
- * to keep the ring stacked above its label while both sit beside the
- * stats tile, plain flexbox can't place 3 independent items (ring,
- * label, stats tile) into an "L-shaped" layout — a 2-column, 2-row
- * CSS Grid can, with explicit `grid-column`/`grid-row` on each of the
- * 3 direct children below instead of relying on source order or a
- * wrapper. Column 1 (ring+label) sizes to its own content (`auto`);
- * column 2 (stats tile) takes the rest. This grid itself is
- * deliberately NOT a `.card` — per the reference mockup, the ring
- * sits outside any card background/border; only the stats tile
- * beside it (`.progress-stats-card` below) carries the shared
- * `.card` class, added directly in js/progress-page.js's markup. */
 .progress-hero-row {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -575,28 +340,8 @@
   row-gap: var(--space-3);
   align-items: center;
 }
-/* Ring + label group: direct grid children, placed into column 1's
- * two rows explicitly. `justify-self: center` centers each within
- * that column since the column's own width is `auto` (sized to the
- * wider of the two, i.e. the ring). CHANGED (Phase 1 Progress Center
- * redesign) — the grid-item role that used to belong to
- * `.progress-ring-label` directly now belongs to its wrapper,
- * `.progress-ring-label-group` (added further below), since the label
- * text sits alongside a new always-visible sub-line and an expandable
- * sign breakdown (js/progress-page.js's renderHero()). Grid-row 2 is
- * unchanged, so no media-query updates were needed below — the
- * group occupies exactly the cell the bare label used to. */
 .progress-hero__ring { grid-column: 1; grid-row: 1; justify-self: center; }
 
-/* Stats tile: same 5 tiles as before (css/dashboard.css's
- * .stats-grid/.stat-tile, reused unmodified — see that file's own
- * auto-fit rule for why 5 tiles reflow cleanly instead of needing a
- * bespoke grid here). Carries the shared `.card` class (set in
- * js/progress-page.js's markup) so it's the one bordered/shadowed
- * surface in this row — the ring beside it has none. Spans both grid
- * rows in column 2 so its height is whatever it naturally needs — the
- * ring's OWN size is what reacts to that (via js/progress-page.js's
- * syncRingSizeToStatsCard()), not the other way around. */
 .progress-stats-card {
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -605,24 +350,9 @@
   min-width: 0;
 }
 .progress-stats-card .stats-grid { width: 100%; }
-/* NEW (light-mode UX pass) — 5 stat tiles in an auto-fit grid left one
-   tile alone in the last row with an empty cell beside it. Fixed 2-col
-   here (scoped to this card so the Dashboard's use of .stats-grid is
-   untouched) and an odd last tile spans the full row. */
 .progress-stats-card .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .progress-stats-card .stats-grid > .stat-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
-/* MOVED (Impeccable pass): this phone-width stack used to sit above the
-   base placement rules, so `.progress-stats-card { grid-column: 2 }`
-   (same specificity, later in the file) silently beat it. On a phone the
-   stats card therefore stayed in an implicit second column: five tiles
-   squeezed to ~34px wide at x=361 and the page scrolled sideways. It has
-   to come AFTER `.progress-hero__ring`, `.progress-ring-label-group` and
-   `.progress-stats-card` above to win. RENAMED (Phase 1 Progress Center
-   redesign) — `.progress-ring-label` here became
-   `.progress-ring-label-group`, the actual grid item now (see that
-   rule's own comment above); the row numbers themselves (1/2/3) are
-   unchanged. */
 @media (max-width: 640px) {
   .progress-hero-row {
     grid-template-columns: minmax(0, 1fr);
@@ -636,14 +366,6 @@
   .progress-stats-card        { grid-row: 3; width: 100%; }
 }
 
-/* Ring itself — this 240px is only the FALLBACK/initial size (shown
- * briefly before JS measures, and used as a floor/ceiling guard) —
- * js/progress-page.js's syncRingSizeToStatsCard() overrides width/
- * height directly via inline style once it can measure the real
- * stats card height beside it, so only the ring itself stays
- * proportionate to the card. Same conic-gradient technique as
- * css/learn.css's sidebar ring / pages/progress.html's page-scoped
- * one either way. */
 .progress-hero__ring {
   --pct: 0;
   position: relative;
@@ -654,7 +376,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: conic-gradient(var(--clr-accent, var(--clr-orange)) calc(var(--pct) * 1%), var(--clr-track) 0); /* CHANGED — track was --clr-accent-soft */
+  background: conic-gradient(var(--clr-accent, var(--clr-orange)) calc(var(--pct) * 1%), var(--clr-track) 0); 
 }
 .progress-hero__ring::before {
   content: '';
@@ -672,20 +394,6 @@
   color: var(--clr-accent, var(--clr-orange));
 }
 
-/* Needs Review card — richer than css/dashboard.css's .review-card
- * (chip-link row): a small vertical list of rows, each with an icon,
- * a sign title, and a real "X days ago" (see js/progress-page.js's
- * getItemCompletedAt()-based due rule), plus one primary CTA at the
- * bottom, matching the mockup's card shape. `overflow: hidden` on the
- * card + `overflow-y: auto`/`min-height: 0`/`flex: 1 1 auto` on the
- * list let a long due-list scroll internally instead of stretching
- * the whole card past the hero row beside it — the actual max-height
- * comes from js/progress-page.js's syncReviewCardHeight(), which caps
- * this card to `#progress-hero`'s own height (the ring + stats
- * tiles — the only thing left in `.progress-grid__main` now that
- * "Progress by Chapter" moved below the grid, see that comment
- * above), so a longer due-list scrolls instead of growing the card
- * past its neighbor. */
 .needs-review { display: flex; flex-direction: column; overflow: hidden; }
 .review-list {
   display: flex;
@@ -715,12 +423,6 @@
   align-items: center;
   justify-content: center;
 }
-/* Decorative color rotation, not an urgency signal — see
- * js/progress-page.js's REVIEW_ICON_TONES comment. */
-/* CHANGED (light-mode UX pass) — js/progress-page.js assigns --a/--b/--c BY
-   ROW POSITION (REVIEW_ICON_TONES), not by how overdue a sign is, so
-   red/orange/green were three arbitrary colors — and red/green read as
-   "wrong"/"fine" on rows that all say "6 days ago". One neutral tone. */
 .review-row__icon--a,
 .review-row__icon--b,
 .review-row__icon--c { background: var(--clr-accent-soft); color: var(--clr-accent-text); }
@@ -729,14 +431,6 @@
 .review-row__meta { font-size: var(--fs-xs); color: var(--clr-text-muted); }
 .review-cta { align-self: flex-start; }
 
-/* ── lesson.html (NEW) — Sign Learning Loop screens ─────────────
- * Renders js/lesson.js's Watch/Recognize/Discriminate/
- * Contextualize/Celebrate stages. Reuses existing tokens (--clr-*,
- * --space-*, --radius-*) and existing .btn/.badge/.progress-bar
- * classes rather than introducing a second design language — only
- * genuinely new shapes (media block, option buttons, discrimination
- * pair, inline toast) get new rules here.
- */
 .lesson-topbar {
   display: flex;
   align-items: center;
@@ -745,24 +439,12 @@
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
-/* Review nav (Priority 2, item 5) — only ever unhidden by
- * js/lesson.js for an already-completed mission (see that file's
- * initPage()). Reuses .btn/.btn--ghost/.btn--sm rather than inventing
- * new button styling, same convention as the rest of this page. */
 .lesson-review-nav {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-/* The bug the screenshot caught: a plain class selector setting its
- * own `display` always wins over the browser's built-in
- * `[hidden] { display: none }` rule (author CSS beats the UA
- * stylesheet regardless of specificity/order), so js/lesson.js
- * setting `bar.hidden = true` was doing nothing visually — the bar
- * stayed flex-displayed, and thus visible, even for an in-progress
- * mission. This higher-specificity override (class + attribute) is
- * what actually makes the `hidden` attribute hide it again. */
 .lesson-review-nav[hidden] { display: none; }
 .lesson-review-nav__label {
   font-size: var(--fs-xs);
@@ -772,11 +454,6 @@
   letter-spacing: .04em;
   margin-right: var(--space-1);
 }
-/* Priority 2, item 5, follow-up — ‹/› step buttons: square-ish and
- * centered rather than .btn--sm's default text padding, since a lone
- * chevron glyph reads oddly with wide horizontal padding. Disabled
- * state (boundary reached) is already handled by the shared
- * `.btn:disabled` rule in css/style.css — nothing new needed here. */
 .lesson-review-nav__btn {
   display: inline-flex;
   align-items: center;
@@ -799,21 +476,6 @@
   color: var(--clr-text-muted);
   text-align: right;
 }
-/* Task 2 — dot marker inside the lesson progress bar, on both Start
- * Mission (in-progress) and Review Mission (already-complete). Scoped
- * to .lesson-track__bar specifically, not the bare .progress-bar
- * rule in css/style.css, since that shared class is also used by
- * unrelated bars elsewhere (Mission Overview's mission-list rows,
- * .continue-card__progress, .quiz-progress-bar) that this
- * change should not touch. js/lesson.js's updateTrack() sets both
- * this dot's `--p` and the sibling .progress-bar__fill's `--p` on
- * every render — the dot always marks the CURRENT item, while the
- * fill is either the same value (Start Mission) or pinned to 100%
- * (Review Mission, since the whole mission is already done). */
-/* CHANGED (Impeccable pass): the dot used to animate `left`. It now sits at
- * left:0 and is moved with transform. The bar is an inline-size container so
- * `1cqw` is exactly 1% of the bar's width, which lets a unitless --p (0 to
- * 100, set by updateTrack()) place the dot without touching layout. */
 .lesson-track__bar { position: relative; container-type: inline-size; }
 .lesson-track__dot {
   position: absolute;
@@ -829,10 +491,6 @@
   pointer-events: none;
 }
 
-/* Task 1 — mission intro slide (js/lesson.js's renderMissionIntro()),
- * shown once before a mission's real first item. Reuses
- * .lesson-callout/.lesson-actions from the rest of this page —
- * only the icon/goal layout below is genuinely new. */
 .lesson-intro { max-width: 480px; margin: 0 auto; text-align: center; }
 .lesson-intro__icon {
   width: 88px;
@@ -940,11 +598,6 @@
 .lesson-option:hover:not(:disabled) { border-color: var(--clr-accent); transform: translateY(-1px); }
 .lesson-option:disabled { cursor: default; }
 .lesson-option--correct { border-color: var(--clr-success); background: var(--clr-success-soft); }
-/* Interactive Locked-State Feedback pattern (css/style.css §19) —
-   plays the same shake @keyframes as .lw-shake-invalid directly off
-   this class, since a chosen wrong answer is freshly applied each
-   time (a new question re-renders the buttons from scratch), so no
-   JS add/remove step is needed the way locked content needs one. */
 .lesson-option--incorrect { border-color: var(--clr-red); background: var(--clr-red-soft); opacity: .75; animation: lw-shake-invalid 420ms var(--ease); }
 
 .lesson-pair {
@@ -1004,11 +657,6 @@
 }
 @keyframes lesson-toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes lesson-toast-out { to { opacity: 0; transform: translate(-50%, -8px); } }
-/* ── Mastery Quiz (pages/mastery-quiz.html, chapters 1 & 2 sample) ──
- * Reuses .lesson-options/.lesson-option/.lesson-media/
- * .lesson-feedback/.heart from the Lesson screen above almost
- * entirely — only what's genuinely new to the quiz screen lives here.
- * ──────────────────────────────────────────────────────────────── */
 
 .quiz-progress {
   display: flex;
@@ -1024,13 +672,6 @@
 .quiz-hearts-row .heart--full { color: var(--clr-red); }
 .quiz-hearts-row .heart--empty { color: var(--clr-text-muted); opacity: .4; }
 
-/* ── Out-of-hearts popup (js/mastery-quiz.js's openOutOfHeartsDialog()) ──
- * Native <dialog>.showModal(): centered in the top layer with a focus
- * trap. It is the whole out-of-hearts screen. Same dimmed, see-through
- * backdrop as .streak-dialog, so the question the learner just lost their
- * last heart on stays visible behind it. It can't be dismissed (see the
- * JS). Explicit `margin: auto` because a global reset could otherwise pin
- * it to a corner. */
 .ooh-dialog {
   margin: auto;
   padding: 0;
@@ -1063,11 +704,6 @@ body:has(.ooh-dialog[open]) { overflow: hidden; }
   padding: var(--space-8) var(--space-6) var(--space-6);
 }
 
-/* Row of hearts: all grey ("empty") and popping in one after another.
- * .ooh-heart--breaking (mid-quiz stop only) starts RED, holds for half a
- * second so the learner sees what they had, then shakes and goes grey.
- * .ooh-heart--full is the "hearts are back" state. Colours are the
- * semantic tokens so both themes work. */
 .ooh-hearts { display: flex; justify-content: center; gap: var(--space-3); margin-bottom: var(--space-5); }
 .ooh-heart {
   width: 48px;
@@ -1147,33 +783,12 @@ body:has(.ooh-dialog[open]) { overflow: hidden; }
   line-height: 1;
   margin: var(--space-2) 0 var(--space-4);
 }
-/* Violet, not green, for a PASSED mastery quiz (this session) — this
-   is the app's one "you mastered this" moment (see js/mastery-quiz.js's
-   "Mission mastered!" heading), a bigger deal than an ordinary
-   --clr-success completion elsewhere, so it gets the one color this
-   palette deliberately reserves for that: --clr-violet. Everyday
-   "done"/correct-answer states stay green — see .lesson-option--correct
-   above and the rest of --clr-success's uses. */
 .quiz-summary__score--pass { color: var(--clr-violet); }
 .quiz-summary__score--fail { color: var(--clr-red); }
 .quiz-summary__recap { color: var(--clr-violet); font-weight: 600; margin: var(--space-3) 0; }
 .quiz-summary__actions { justify-content: center; }
 
-/* ── Progress page — Phase 1 "Learning Progress Center" redesign ────
- * Additive rules for pages/progress.html's redesigned js/progress-
- * page.js: the side stack (Next Milestone + Needs Review), the ring's
- * always-visible sub-line + expandable sign breakdown, clickable stat
- * tiles, and the chapter timeline that replaces the old isolated
- * per-chapter bar list. Everything below builds on the existing
- * tokens/.card/.badge/.progress-bar/.btn components — see this file's
- * own header note. The original .progress-grid/.progress-hero-row/
- * .needs-review/.review-row rules above are unchanged.
- */
 
-/* Side column: Next Milestone (small, fixed height) stacked above
- * Needs Review (flexes/scrolls — js/progress-page.js's
- * syncReviewCardHeight() caps it against the hero row's height minus
- * this card's own height). */
 .progress-side-stack {
   display: flex;
   flex-direction: column;
@@ -1189,12 +804,8 @@ body:has(.ooh-dialog[open]) { overflow: hidden; }
 }
 .next-milestone__sub { font-size: var(--fs-sm); margin: 0; }
 
-/* Ring label group: always-visible "42 / 64 signs learned · 22
- * remaining" line under "Overall Progress" (§02), plus a small
- * toggle that reveals the mastered/practicing/not-started split
- * without crowding the main view (progressive disclosure). */
 .progress-ring-label-group {
-  position: relative; /* anchors the floating .progress-ring-detail popover */
+  position: relative; 
   grid-column: 1;
   grid-row: 2;
   justify-self: center;
@@ -1223,7 +834,6 @@ body:has(.ooh-dialog[open]) { overflow: hidden; }
 .progress-ring-detail-toggle svg { transition: transform var(--dur-fast) var(--ease); }
 .progress-ring-detail-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .progress-ring-detail {
-  /* Popover: floats over the content below instead of pushing it down. */
   position: absolute;
   top: calc(100% + var(--space-2));
   left: 50%;
@@ -1250,21 +860,11 @@ body:has(.ooh-dialog[open]) { overflow: hidden; }
 .progress-ring-detail__row span:first-child { color: var(--clr-text-muted); }
 .progress-ring-detail__row span:last-child { font-weight: 700; color: var(--clr-text); }
 
-/* Plain text styling for the label itself — the grid placement now
- * lives on its wrapper, .progress-ring-label-group, defined earlier
- * in this file alongside .progress-hero__ring (both breakpoints). */
 .progress-ring-label { font-weight: 600; color: var(--clr-text-muted); }
 
-/* Clickable stat tiles (§03) — same tile look whether it's a <div> or
- * an <a>; only the interactive ones get a pointer + hover accent. */
 a.stat-tile { text-decoration: none; color: inherit; cursor: pointer; transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
 a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px); }
 
-/* ── Chapter timeline (§07 + §08 combined) ───────────────────────────
- * Vertical stepper: each chapter's status icon connects to the next
- * via a thin rail, replacing the old plain "label + bar" rows with a
- * genuine sense of progression while staying inside the same
- * #progress-chapters card (no separate parallel widget). */
 .chapter-timeline { display: flex; flex-direction: column; }
 .chapter-timeline__row {
   display: flex;
@@ -1293,11 +893,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
   color: var(--clr-locked);
 }
 .chapter-timeline__icon--done { background: var(--clr-success-soft); color: var(--clr-success); }
-/* CHANGED (Phase 3 "animated learning journey") — a slow pulse marks
-   the one chapter that's actually "the one you're working on," so the
-   eye finds it immediately instead of having to scan every row's %.
-   Purely decorative (nothing here is a live/urgent alert), so it's a
-   plain infinite loop rather than anything that demands attention. */
 .chapter-timeline__icon--current {
   background: var(--clr-orange-soft);
   color: var(--clr-orange);
@@ -1309,22 +904,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
   50%      { box-shadow: 0 0 0 6px transparent; }
 }
 
-/* CHANGED (Phase 3 "wave/path visualization between chapters") — the
- * old plain 2px div is now an inline SVG per row (js/progress-page.js's
- * renderChapters()), each carrying the identical wavy "d" path; only
- * the SVG's rendered height differs per row via preserveAspectRatio=
- * "none", so ONE stroke-dasharray/length works everywhere regardless
- * of how tall that row ends up. Colour still comes from the row's own
- * status (same done/current/locked classes the icon beside it uses) —
- * the connector reads as "how far the path's been walked," not a
- * second, independent signal. The draw-in (lw-wave-draw) is what
- * "animated learning journey" actually refers to: the path reveals
- * itself top-to-bottom on load, staggered per row via each SVG's own
- * --wave-delay custom property; @media (prefers-reduced-motion) in
- * §15 above already forces every animation-duration on the page to
- * .01ms, so a learner with that preference just sees the finished
- * path instantly rather than losing the animation and getting nothing
- * in its place. */
 .chapter-timeline__wave {
   flex: 1 1 auto;
   width: 24px;
@@ -1347,9 +926,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
 }
 .chapter-timeline__wave--done path { stroke: var(--clr-success-soft); }
 .chapter-timeline__wave--current path { stroke: var(--clr-orange-soft); }
-/* A locked chapter's own connector (leading OUT of it, toward an even
-   later chapter) reads as "not reached yet" — faint, and it doesn't
-   need a draw-in reveal since there's nothing being "walked" yet. */
 .chapter-timeline__wave--locked path {
   stroke: var(--clr-border);
   opacity: .5;
@@ -1358,10 +934,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
   animation: none;
 }
 
-/* Phase 3 — "Just completed" (§11-adjacent: a small, real-timestamp-
-   gated celebration, not the full banner). Sits between the chapter
-   title row and its progress bar/pct, only for a chapter finished in
-   the last 24h (js/progress-page.js's RECENTLY_DONE_MS). */
 .chapter-timeline__fresh {
   display: inline-flex;
   align-items: center;
@@ -1408,11 +980,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
 .chapter-timeline__row--done .chapter-timeline__pct { color: var(--clr-success); }
 .chapter-timeline__row--current .chapter-timeline__pct { color: var(--clr-orange); }
 
-/* ── Completed-state CTAs on the bottom banner (§11/§13) — same
- * translucent-white treatment as css/dashboard.css's own
- * .mission-banner__cta:hover state, applied to the two secondary
- * actions ("Practice Again" / "Explore Sign Collection") that sit
- * beside the primary white .mission-banner__cta button. */
 .progress-cta__btn--ghost-invert {
   background: rgba(255, 255, 255, .16);
   border: 1px solid rgba(255, 255, 255, .5);
@@ -1420,13 +987,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
 }
 .progress-cta__btn--ghost-invert:hover { background: rgba(255, 255, 255, .28); }
 
-/* ── Phase 3 — Completion celebration banner (§11) ───────────────────
- * pages/progress.html's #progress-celebration: a `.card` variant, full
- * width, hidden by js/progress-page.js's renderCelebration() until
- * every reachable mission is actually done. Deliberately its own
- * gradient rather than a plain .card background — this is the one
- * moment on the page meant to look like a reward, not another stats
- * panel. */
 .progress-celebration {
   text-align: center;
   padding: var(--space-8) var(--space-6);
@@ -1463,14 +1023,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
   flex-wrap: wrap;
 }
 
-/* ── Phase 3 — Sign Mastery grid ──────────────────────────────────────
- * pages/progress.html's #sign-mastery, below the chapter timeline.
- * One small square chip per sign in the selected chapter
- * (js/progress-page.js's renderSignMasteryGrid()) — colour is the
- * whole signal, so each chip is a plain filled square rather than an
- * icon; the legend below the grid is what makes the colours legible
- * rather than relying on colour alone (each chip also carries a
- * title="" + a visually-hidden name+state span for the same reason). */
 .sign-mastery { margin-top: var(--space-6); }
 .sign-mastery[hidden] { display: none; }
 .sign-mastery__head {
@@ -1530,8 +1082,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
 .sign-mastery__dot--remaining { background: var(--clr-track); }
 
 
-/* Phase 1 layout — hero full width, then Next Milestone | Needs Review
- * side by side (replaces the old 1.7fr/1fr .progress-grid + side stack). */
 .progress-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1544,7 +1094,6 @@ a.stat-tile:hover { border-color: var(--clr-accent); transform: translateY(-1px)
 }
 
 
-/* Mastery Hearts tile + explainer popover */
 .stat-tile-wrap { position: relative; display: flex; }
 .stat-tile-wrap > .stat-tile { flex: 1; }
 button.stat-tile { font: inherit; color: inherit; text-align: left; cursor: pointer; }
@@ -1567,7 +1116,6 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
 .hearts-explainer p { margin: var(--space-1) 0 0; color: var(--clr-text-muted); }
 .hearts-explainer .hearts-explainer__next { color: var(--clr-text); }
 
-/* Refill countdown line under the Mastery Hearts label. */
 .stat-tile__hint {
   display: block;
   margin-top: var(--space-1);
@@ -1575,12 +1123,6 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
   color: var(--clr-text-muted);
 }
 
-/* Mastery Hearts value: heart glyph + count ("❤ 3") instead of "3/3".
- * The SVG is sized in em so it tracks .stat-tile__value's font-size
- * (--fs-xl) and stays optically level with the digit. Colors come from
- * the semantic tokens, so dark mode gets --clr-red's lighter value for
- * free. At 0 hearts the glyph switches to an outline in muted grey —
- * an empty pool should look empty, not just show a red "0". */
 .stat-tile__value--icon { display: inline-flex; align-items: center; gap: var(--space-2); }
 .heart-icon {
   width: .9em;
@@ -1591,13 +1133,6 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
 }
 .heart-icon--empty { fill: none; stroke: var(--clr-text-muted); }
 
-/* Day Streak tile: the number/label on the left, this week's Mon–Sun
- * strip on the right (js/progress-page.js's buildStreakWeek()). Spans
- * both columns of the 2-col stats grid — a 7-cell strip doesn't fit
- * in a half-width tile — and wraps under the number on phone widths.
- * Cells reuse .heatmap-cell's active/inactive/future colors from the
- * Learning Activity card, just larger (20px vs 14px) since there are
- * only seven of them and they're a tap-sized tile's main visual. */
 .stat-tile--streak {
   grid-column: 1 / -1;
   flex-direction: row;
@@ -1611,17 +1146,8 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
 .streak-week__day { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .streak-week .heatmap-cell { width: 20px; height: 20px; border-radius: 5px; }
 .streak-week__letter { font-size: 10px; line-height: 1; color: var(--clr-text-muted); }
-/* Today's ring: a surface-colored gap then an accent ring, so it reads
- * on both the green (active) and grey (not-yet-active) cell states. */
 .streak-week__cell--today { box-shadow: 0 0 0 2px var(--clr-surface), 0 0 0 3.5px var(--clr-accent); }
 
-/* ── Day Streak dialog (js/progress-page.js's openStreakDialog()) ─────
- * Native <dialog>: focus trap, Esc and the top layer come from the
- * browser. Zero padding on the dialog itself so its body fills it —
- * that is what lets a click on the <dialog> element be treated as a
- * backdrop click. `margin: auto` is explicit because a global reset
- * that zeroes margins would otherwise pin a modal dialog to the corner.
- * Scrim colour matches the app's other modals (.modal-overlay). */
 .streak-dialog {
   margin: auto;
   padding: 0;
@@ -1641,7 +1167,6 @@ a.stat-tile:hover, button.stat-tile:hover { border-color: var(--clr-primary, cur
   to   { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .streak-dialog[open] { animation: none; } }
-/* Stop the page scrolling behind the open dialog. */
 body:has(.streak-dialog[open]) { overflow: hidden; }
 
 .streak-dialog__close {
@@ -1670,8 +1195,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   padding: var(--space-8) var(--space-6) var(--space-6);
 }
 
-/* Flame — orange while a streak is alive, muted at 0. Inner/glow are
- * white overlays so the same markup works on both themes. */
 .streak-flame { width: 96px; height: auto; margin-bottom: var(--space-4); }
 .streak-flame__outer { fill: var(--clr-orange); }
 .streak-flame__inner { fill: #fff; opacity: .38; }
@@ -1680,13 +1203,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 .streak-flame--idle .streak-flame__inner { fill: var(--clr-surface); opacity: .6; }
 .streak-flame--idle .streak-flame__glow  { fill: var(--clr-surface); opacity: .9; }
 
-/* Flame motion — only for a LIVE streak (idle = fire's out, so it stays
- * still). Layers move at different speeds so the loop never looks
- * mechanical: outer body sways, inner core flickers faster, glow breathes,
- * embers drift up. transform-box: fill-box makes each SVG shape pivot on
- * its own bottom-centre instead of the SVG's top-left corner. All
- * transform/opacity, so it's GPU-cheap; it only runs while the dialog is
- * open (a closed <dialog> isn't rendered). */
 .streak-flame { overflow: visible; }
 .streak-flame:not(.streak-flame--idle) { animation: lw-flame-ignite .7s cubic-bezier(.34, 1.56, .64, 1) both; }
 .streak-flame:not(.streak-flame--idle) .streak-flame__outer,
@@ -1740,8 +1256,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   50%  { transform: translate(-7px, -28px) scale(.9); }
   100% { transform: translate(8px, -56px)  scale(.2); opacity: 0; }
 }
-/* Vestibular safety: show the finished, still flame. Embers are pure
-   decoration, so they're hidden rather than frozen mid-air. */
 @media (prefers-reduced-motion: reduce) {
   .streak-flame,
   .streak-flame__outer,
@@ -1752,10 +1266,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 
 .streak-dialog__title { margin: 0 0 var(--space-5); font-size: var(--fs-2xl); line-height: 1.15; }
 
-/* Last-5-days row: letter above a check box. Done = solid green with a
- * check (check colour is --clr-text-invert so it stays legible on both
- * the deep light-mode green and the pale dark-mode green); today, if not
- * practiced yet, gets an accent outline; missed days are plain outlines. */
 .streak-days { list-style: none; margin: 0 0 var(--space-5); padding: 0; display: flex; gap: var(--space-3); }
 .streak-days__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
 .streak-days__letter { font-size: var(--fs-sm); font-weight: 700; color: var(--clr-text-muted); }
@@ -1778,17 +1288,7 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 .streak-dialog__best { margin: 0 0 var(--space-5); font-size: var(--fs-sm); color: var(--clr-text-muted); }
 .streak-dialog__cta { text-decoration: none; }
 
-/* ── Progress page — Phase 2 "Make progress feel personal" ───────────
- * Additive rules for js/progress-page.js's renderSnapshot() /
- * renderActivity() / renderConsistency() / renderHighlights(). Builds
- * on the same .card/.progress-bar/token vocabulary as Phase 1 above —
- * no new colors introduced beyond the existing semantic set
- * (--clr-success for "strength," --clr-orange for "needs focus," same
- * meaning --clr-orange already carries for the "current" chapter, not
- * an error/failure color).
- */
 
-/* §1 Strengths & Focus Areas */
 .snapshot-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1826,9 +1326,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 .snapshot-bar--strength .progress-bar__fill { background: var(--clr-success); }
 .snapshot-bar--focus .progress-bar__fill { background: var(--clr-orange); }
 
-/* §2/§3/§4 layout — Recent Activity (wider) beside a stack of the
- * consistency heatmap + highlights, same paired-card rhythm as
- * `.progress-pair` (Next Milestone | Needs Review) above. */
 .progress-activity-row {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
@@ -1845,7 +1342,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   gap: var(--space-6);
 }
 
-/* §2 Recent Activity */
 .activity-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .activity-day__label {
   font-size: var(--fs-sm);
@@ -1863,7 +1359,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   color: var(--clr-text-muted);
 }
 
-/* §3 Learning consistency heatmap */
 .heatmap { display: flex; flex-direction: column; gap: 4px; }
 .heatmap-row { display: flex; align-items: center; gap: 4px; }
 .heatmap-row__label {
@@ -1884,7 +1379,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
 .heatmap-cell--active { background: var(--clr-success); }
 .heatmap-cell--future { background: transparent; border: 1px dashed var(--clr-border); opacity: .6; }
 
-/* §4 Personal Bests */
 .highlights-list {
   list-style: none;
   margin: 0;
@@ -1894,9 +1388,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   gap: var(--space-4);
 }
 .highlights-row { display: flex; align-items: center; gap: var(--space-3); }
-/* CHANGED — emoji → Lucide SVG in a soft tinted chip (same 2rem circle as
-   .review-row__icon, so the two cards read as one family). Colours are
-   token pairs, so light and dark themes both work with no extra rules. */
 .highlights-row__icon {
   flex: 0 0 auto;
   width: 2rem;
@@ -1923,27 +1414,6 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   white-space: nowrap;
 }
 
-/* ── Reading-progress bar (pages/orientation.html) ───────────────
- * A thin vertical bar on the RIGHT edge that fills top-to-bottom as the
- * learner reads Orientation. js/orientation.js drives it by setting one
- * custom property on the bar, `--orientation-progress` (0 to 1); the fill
- * is a full-height element scaled on Y from that value (transform only,
- * so nothing re-lays-out while scrolling).
- *
- * ONE-WAY: the value only ever goes up. Scrolling back up does not shrink
- * the bar (the script keeps the furthest point reached), and once
- * Orientation is complete the bar is simply full. Learners who already had
- * progress before Orientation became required are treated as complete, so
- * they see it full from the start.
- *
- * Hidden until js/orientation.js adds `.is-ready` (after the account's
- * progress is known), so a returning learner never sees a flash of an
- * empty bar, and a page where the script does not run shows nothing.
- * Decorative (aria-hidden); the page itself is the content.
- *
- * Reduced motion: the bar only moves as far as the learner scrolls, and
- * §15 in style.css shortens every transition to .01ms, so it just steps
- * instead of easing. Nothing here needs an opt-out. */
 .scroll-progress { display: none; }
 
 .scroll-progress.is-ready {
@@ -1952,7 +1422,7 @@ body:has(.streak-dialog[open]) { overflow: hidden; }
   top: 0; bottom: 0;
   right: env(safe-area-inset-right, 0px);
   width: 4px;
-  z-index: 110;                   /* above sticky .navbar (100) and the mobile sidebar bar (90) */
+  z-index: 110;                   
   background: var(--clr-border);
   pointer-events: none;
 }

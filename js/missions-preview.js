@@ -1,29 +1,3 @@
-/**
- * js/missions-preview.js — Renderer for pages/missions-preview.html
- * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Dev-only preview of window.LWMissions's pilot mission
- *            (see js/missions.js). Demonstrates the patterns from
- *            "LinguaWave_SoloLearn_Learning_Psychology_Missions_
- *            Integration_Plan" §3 actually rendering against real
- *            content, so Phase 2's comparison (§7) has something to
- *            look at. This file is only ever loaded by
- *            missions-preview.html — no other page includes it.
- *
- * NOT REAL UI : clicking a LESSON/BOOSTER/PRACTICE/QUIZ row here just
- *            marks it "done" for demo purposes — it does not launch
- *            the camera, run the classifier, or grade anything. The
- *            actual lesson/quiz *engines* are untouched (js/camera-practice.js,
- *            js/quiz.js) — this page only visualizes sequencing,
- *            labels, and the two progress bars.
- *
- * PHASE 3  : added a mission picker (#dev-mission-select), populated
- *            from window.LWMissions.getLiveCategoryList() — every live
- *            category now has a buildable mission, not just the
- *            Phase 1 pilot. Defaults to 'essentials_greetings' so a
- *            dev opening this page with no selection sees the exact
- *            same thing Phase 1 always showed.
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 
 let currentCategoryId = 'essentials_greetings';
@@ -54,8 +28,6 @@ function populateMissionPicker() {
 }
 
 function currentSignInProgress(mission) {
-  // First sign with at least one incomplete item — "what the learner
-  // is on right now", for the lessonProgress bar (§3.4).
   for (const item of mission.items) {
     if (!item.signId) continue;
     if (window.LWMissions.getLessonProgress(mission, item.signId) < 1) return item.signId;
@@ -110,8 +82,6 @@ function renderItem(mission, item, index) {
   if (item.bonusXP) chips.push(`<span class="dev-chip dev-chip--bonus">+${item.bonusXP} XP</span>`);
   if (item.difficultyRamp) chips.push(`<span class="dev-chip">${item.difficultyRamp.join(' \u2192 ')}</span>`);
 
-  // §3.9 — widened hint availability; illustrative mapping onto this
-  // pilot's item kinds (PRACTICE/QUIZ stand in for Apply/Quick Check).
   const showHint = item.kind === 'PRACTICE' || item.kind === 'QUIZ';
 
   return `
@@ -216,10 +186,6 @@ function renderAll() {
       if (!wasDone) {
         window.LWMissions.markItemComplete(mission, index, item);
       } else {
-        // Preview-only "undo" so the demo is easy to replay — not
-        // part of the real schema (there's no un-complete concept in
-        // the plan; this only exists so a dev can reset one row
-        // without clearing all of localStorage).
         const state = JSON.parse(localStorage.getItem('lw_missions_progress_v1') || '{"completedItemIds":[]}');
         const id = `${mission.id}_${index}_${item.kind}_${item.signId || item.category || ''}`;
         state.completedItemIds = state.completedItemIds.filter((x) => x !== id);
@@ -231,7 +197,7 @@ function renderAll() {
 }
 
 function initPage() {
-  populateMissionPicker(); // Phase 3 — no-op-safe if LWMissions isn't ready yet
+  populateMissionPicker();
   renderAll();
 }
 

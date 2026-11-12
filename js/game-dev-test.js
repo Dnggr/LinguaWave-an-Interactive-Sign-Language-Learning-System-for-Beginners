@@ -1,48 +1,16 @@
-/*
-  js/game-dev-test.js — DEVELOPER TEST PANEL for Wall Breaker  (TEMPORARY)
-  ─────────────────────────────────────────────────────────────────────────
-  PURPOSE   Lets the team test the LETTER and NUMBER signs (A–Z, 0–10) on both
-            models without grinding through lessons first:
-              • static model  -> HOLD signs   (24 letters, numbers 0-5, 7, 8)
-              • motion model  -> MOVE signs   (J, Z, and numbers 6, 9, 10)
-            Features: pick any subset for the wall (bypasses lesson progress),
-            labels.json audit for both models, live detector readout, a
-            "verified" checklist that survives reloads, force-break helpers to
-            test the reward screen, and a copy-able QA report.
-
-  REMOVE BEFORE THE FINAL DEFENSE — 3 steps, nothing else references this file:
-    1. Delete this file (js/game-dev-test.js).
-    2. Delete the <script> tag marked DEV-TEST in pages/game.html.
-    3. Delete every line in js/game.js that contains "DEV-TEST"
-       (find them with:  grep -n "DEV-TEST" js/game.js).
-  Quick switch-off without deleting: set DEV_TEST_ENABLED = false below.
-
-  SAFETY    Inert for learners. The panel only appears when the existing
-            game-gate dev flag is set in the browser console:
-                localStorage.setItem('lw_game_dev', '1')     (remove key = off)
-            Without the flag this module returns immediately, injects nothing
-            and never defines window.LWGameDev, so the hooks in game.js
-            become no-ops.
-
-  HOOKS     game.js calls window.LWGameDev.{getPool, blockSave, onStatic,
-            onMotion, onSmash, onMiss, attach}. Every call is wrapped in
-            try/catch inside game.js, so a bug here can never break the game.
-  ─────────────────────────────────────────────────────────────────────────
-*/
 import { getSignsByCategory, getDetectionType } from './engine/dictionary.js';
 import { isClassifierReady, isMotionModelReady, getMotionModelError } from './engine/classifier.js';
 
-const DEV_TEST_ENABLED = true;              // false = switch the whole panel off
-const FLAG = 'lw_game_dev';                 // same flag js/game-gate.js uses
-const STORE = 'lw_game_devtest_v1';         // panel state + verified checklist
+const DEV_TEST_ENABLED = true;
+const FLAG = 'lw_game_dev';
+const STORE = 'lw_game_devtest_v1';
 const STATIC_LABELS = '../asl_static_model/labels.json';
 const MOTION_LABELS = '../asl_motion_model/labels.json';
 
 function start() {
   const $ = (id) => document.getElementById(id);
 
-  // ── the letter + number universe (same dictionary the game/classifier use) ──
-  const LETTERS = getSignsByCategory('alphabet').filter((s) => /^[A-Z]$/.test(s)).sort();   // drops the ILY phrase entry
+  const LETTERS = getSignsByCategory('alphabet').filter((s) => /^[A-Z]$/.test(s)).sort();
   const NUMBERS = getSignsByCategory('numbers').sort((a, b) => Number(a) - Number(b));
   const ALL = [...LETTERS, ...NUMBERS];
   const kind = (s) => (getDetectionType(s) === 'motion' ? 'motion' : 'static');
@@ -50,13 +18,12 @@ function start() {
   const MOVE = ALL.filter((s) => kind(s) === 'motion');
   const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-  // ── persisted state: { use, noSave, sel[], res{ sign:{pass,max} } } ──
   let st = { use: true, noSave: true, sel: ALL.slice(), res: {} };
   try {
     const j = JSON.parse(localStorage.getItem(STORE) || 'null');
     if (j) st = { ...st, ...j, sel: (j.sel || st.sel).filter((s) => ALL.includes(s)) };
-  } catch { /* corrupt entry -> defaults */ }
-  const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch { /* private mode */ } };
+  } catch {  }
+  const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch {  } };
   let persistT = null;
   const persistSoon = () => { clearTimeout(persistT); persistT = setTimeout(persist, 1500); };
 
@@ -69,7 +36,6 @@ function start() {
     if (Math.round(conf) > r.max) { r.max = Math.round(conf); persistSoon(); }
   };
 
-  // ── styles (tokens only, so light + dark follow the main theme) ──
   const css = document.createElement('style');
   css.id = 'gdt-style';
   css.textContent = `
@@ -107,7 +73,6 @@ function start() {
 @media (max-width:900px){.gdt-wrap{padding:var(--space-3) var(--space-4) 0}.gdt>summary{padding:var(--space-3) var(--space-4)}.gdt-body{padding:0 var(--space-4) var(--space-4)}}`;
   document.head.appendChild(css);
 
-  // ── panel markup ──
   const wrap = document.createElement('div');
   wrap.className = 'gdt-wrap';
   wrap.innerHTML = `
@@ -176,10 +141,9 @@ function start() {
   </div>
 </details>`;
   const gm = document.querySelector('.gm');
-  if (!gm) return;                                   // not the game page
+  if (!gm) return;
   gm.parentNode.insertBefore(wrap, gm);
 
-  // ── rendering ──
   function chip(s) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -249,7 +213,6 @@ function start() {
   }
   const paintAll = () => { paintChips(); paintSummary(); paintTracker(); paintCoverage(); paintMisses(); paintRunButtons(); };
 
-  // ── labels.json audit (AGENTS.md "Model Label Alignment") ──
   async function checkCoverage() {
     coverage = null; paintCoverage();
     const get = async (p) => {
@@ -269,7 +232,6 @@ function start() {
     paintChips(); paintCoverage();
   }
 
-  // ── force-break helpers (test the reward screen / skip a stubborn sign) ──
   function force(filter) {
     if (!api?.isRunning?.()) return;
     forcing = true;
@@ -282,7 +244,6 @@ function start() {
     if (sign) force((b) => b.sign === sign);
   });
 
-  // ── QA report ──
   function report() {
     const n = ALL.filter(passed).length;
     const lines = [`Wall Breaker dev test — ${new Date().toLocaleString()}`, `Verified ${n}/${ALL.length}`, ''];
@@ -299,12 +260,11 @@ function start() {
     catch {
       const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.select();
-      let ok = false; try { ok = document.execCommand('copy'); } catch { /* blocked */ }
+      let ok = false; try { ok = document.execCommand('copy'); } catch {  }
       ta.remove(); return ok;
     }
   }
 
-  // ── wiring ──
   wrap.querySelector('.gdt-body').addEventListener('click', (e) => {
     const c = e.target.closest('.gdt-chip');
     if (c) {
@@ -334,10 +294,9 @@ function start() {
     st.res = {}; persist(); paintChips(); paintTracker();
   });
 
-  // ── the hooks game.js calls ──
   window.LWGameDev = {
     attach(a) { api = a; paintRunButtons(); },
-    getPool() {                                      // replaces the learned-progress pool while "Use this test set" is on
+    getPool() {
       if (!st.use) return null;
       const signs = st.sel.filter((s) => ALL.includes(s));
       if (!signs.length) return null;
@@ -347,11 +306,11 @@ function start() {
       paintSummary();
       return { signs: shuffle(signs.slice()), learnedSet: new Set(signs), note: notes.join(' ') };
     },
-    blockSave() { return st.use && st.noSave; },     // keep test runs out of gems / badges / best times
+    blockSave() { return st.use && st.noSave; },
     onStatic(r) { if (!r) return; live.s = { label: r.label, confidence: r.confidence, matched: r.matched, at: performance.now() }; if (r.label) bump(r.label, r.confidence); },
     onMotion(r) { if (!r) return; live.m = { label: r.label, confidence: r.confidence, matched: r.matched, at: performance.now() }; if (r.label) bump(r.label, r.confidence); },
     onSmash(sign) {
-      if (forcing || !ALL.includes(sign)) return;    // forced breaks never count as verified
+      if (forcing || !ALL.includes(sign)) return;
       const r = (st.res[sign] ||= { pass: 0, max: 0 });
       r.pass++; persist(); paintChips(); paintTracker();
     },
@@ -366,6 +325,6 @@ function start() {
 
 if (DEV_TEST_ENABLED) {
   let flagOn = false;
-  try { flagOn = localStorage.getItem(FLAG) === '1'; } catch { /* storage blocked */ }
+  try { flagOn = localStorage.getItem(FLAG) === '1'; } catch {  }
   if (flagOn) start();
 }

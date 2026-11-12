@@ -1,10 +1,3 @@
-/**
- * admin-redirect.js — sends the admin account to the admin dashboard (NEW)
- * Loaded as a module AFTER js/auth.js on the pages an account lands on
- * right after logging in (pages/dashboard.html, pages/homepage.html).
- * Non-admin accounts are left alone.
- * Keep ADMIN_EMAIL in sync with js/admin-auth.js and firestore.rules.
- */
 const ADMIN_EMAIL = "linguawave.project@gmail.com";
 
 async function run() {

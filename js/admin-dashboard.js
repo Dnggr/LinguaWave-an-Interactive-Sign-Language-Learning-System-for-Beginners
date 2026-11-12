@@ -1,9 +1,3 @@
-/**
- * admin-dashboard.js — Controller for pages/admin-dashboard.html
- * Gates the page on the admin account, then fills the KPI tiles (learners, lessons, quizzes, feedback) and the
- * "latest sign-ups / latest feedback" lists from ONE getReportStats() call. Shortcuts are static markup.
- * Styles for tiles and lists (.rp-*) live in css/admin.css (shared with the Reports page).
- */
 import { getReportStats } from "./admin-firebase.js";
 import { formatDate } from "./survey-schema.js";
 
@@ -30,7 +24,6 @@ async function init() {
     $("stat-new-users").textContent = stats.newThisWeek ? `+${stats.newThisWeek} this week` : "";
     $("stat-signs").textContent = stats.totalLessons;
     $("stat-questions").textContent = stats.totalQuizzes;
-    // Feedback comes from the same load; null means the surveys read failed on its own.
     $("stat-feedback").textContent = stats.feedback ? stats.feedback.total : "\u2014";
     const q1 = (stats.answerSummary || []).find((d) => d.key === "q1");
     $("stat-rating").textContent = q1 && q1.average !== null ? `${q1.average.toFixed(1)} / 5 avg rating` : "";

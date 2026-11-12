@@ -1,105 +1,38 @@
-/* ────────────────────────────────────────────────────────────────────
- * js/banner-shader.js — interactive "fluid pastels" backdrop for the
- * Today's Mission banner (pages/dashboard.html).
- *
- * WHAT IT DOES
- *   A slow, soft, domain-warped violet/periwinkle flow (palette sampled
- *   from shaders.com's Fluid Pastels 1 preview) that behaves like water
- *   under your cursor:
- *     - hovering rests a "fingertip" on the surface: the liquid bulges
- *       around the pointer and a faint ring pulses out of it
- *     - moving leaves a wake: expanding ripple rings that fade out, and
- *       the colour field is dragged along the direction of travel
- *     - clicking / tapping drops a bigger splash
- *   Plain WebGL1, no npm package, no bundler, no network request.
- *   All ripple maths lives in the fragment shader: the last few pointer
- *   "drops" (position, birth time, strength, velocity) are uniforms, so
- *   no float textures or extensions are needed.
- *
- * HOW IT HOOKS IN
- *   Self-mounting. js/dashboard.js rebuilds #mission-banner with
- *   `innerHTML = ...` (first paint AND after the Firestore reconcile),
- *   which would wipe a canvas placed inside it. So this file keeps ONE
- *   canvas + WebGL context alive in memory and a MutationObserver
- *   re-inserts the same canvas whenever the banner is re-rendered.
- *   Pointer listeners sit on the banner element itself (it is never
- *   replaced, only its children are), and the canvas is pointer-events:
- *   none, so the Start Mission button and text stay fully clickable.
- *   dashboard.js needs no change.
- *
- * ACCESSIBILITY / SAFETY
- *   - TWO THEMES, TWO LOOKS (css/dashboard.css owns the matching text
- *     colours through the --mb-* tokens):
- *       dark  : deep indigo/violet liquid, WHITE text. Output luminance
- *               is CAPPED (<= .175 behind text => >= 4.5:1 vs white,
- *               <= .28 behind the hand art => >= 3:1).
- *       light : airy lavender / sky / rose / baby-blue pastels, DARK
- *               indigo text. Output luminance is FLOORED (>= .46 behind
- *               text => >= 5:1 vs #312E81, >= .30 behind the art).
- *     The guard runs AFTER the ripples, so no ripple can ever push the
- *     background past the limit and hurt the text.
- *   - prefers-reduced-motion (or the app's own .lw-force-reduced-motion
- *     class, set from lw-preferences) renders ONE still frame: no loop
- *     and no pointer interaction.
- *   - Loop pauses while the tab is hidden or the banner is off-screen.
- *     ~30fps while idle, ~60fps only while ripples are alive.
- *   - Touch = hover. A finger resting on the banner is the "fingertip" a
- *     mouse cursor would be. Page scrolling is never blocked by default:
- *       * a quick swipe past the banner scrolls the page as normal;
- *       * a sideways drag (touch-action: pan-y in CSS) drags the ripples;
- *       * press-and-hold ~180ms without moving "grabs" the water: from then
- *         on touchmove is preventDefault-ed so the finger can wander in
- *         any direction without the page scrolling away from under it.
- *     A drag that started a grab does not trigger the Start Mission link
- *     when the finger lifts over it, and the long-press callout / context
- *     menu is suppressed on touch only (desktop right-click is untouched).
- *   - No WebGL / context failure => canvas is never shown and the
- *     existing CSS gradient on .mission-banner is what the user sees.
- *   - Base colours follow --mb-from / --mb-to (falls back to
- *     --banner-from / --banner-to), so CSS and shader never disagree.
- * ──────────────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
 
   var BANNER_ID = 'mission-banner';
-  var FRAME_IDLE_MS = 33;     // ~30fps is plenty for the slow flow
-  var FRAME_ACTIVE_MS = 14;   // ~60fps while ripples are alive
-  var RENDER_SCALE = 0.5;     // soft gradients: half-res looks identical
-  var STILL_TIME = 14.0;      // which moment of the flow the still frame shows
-  var NARROW_PX = 640;        // matches the banner's mobile breakpoint in dashboard.css
+  var FRAME_IDLE_MS = 33;
+  var FRAME_ACTIVE_MS = 14;
+  var RENDER_SCALE = 0.5;
+  var STILL_TIME = 14.0;
+  var NARROW_PX = 640;
 
-  // Interaction tuning
-  var DROP_LIFE_S = 3.0;      // seconds a ripple lives (must match LIFE in the shader)
-  var DROP_EVERY_PX = 12;     // new ripple after the pointer moved this far...
-  var DROP_EVERY_MS = 26;     // ...and at least this long since the last one
-  var MAX_DROPS = 12;         // ring buffer size (lowered automatically on weak GPUs)
+  var DROP_LIFE_S = 3.0;
+  var DROP_EVERY_PX = 12;
+  var DROP_EVERY_MS = 26;
+  var MAX_DROPS = 12;
 
-  // Touch tuning
-  var HOLD_MS = 180;          // press this long without moving => grab the water (page stops scrolling)
-  var SLOP_PX = 10;           // finger travel that counts as "a drag", not a tap / jitter
-  var CLICK_GUARD_MS = 450;   // swallow the synthetic click right after a grab-drag
+  var HOLD_MS = 180;
+  var SLOP_PX = 10;
+  var CLICK_GUARD_MS = 450;
 
-  // DARK: Fluid Pastels 1 palette (sampled from the preview) — indigo-violet
-  // base with lavender and blue-grey patches. sRGB 0..1.
   var PALETTE_DARK = [
-    [0.376, 0.345, 0.718],   // #6058B7  deep violet (dominant)
-    [0.486, 0.463, 0.745],   // #7C76BE  soft lavender
-    [0.498, 0.529, 0.773],   // #7F87C5  periwinkle blue-grey
-    [0.431, 0.400, 0.741],   // #6E66BD  mid violet
-    [0.560, 0.500, 0.820]    // #8F80D1  light orchid
+    [0.376, 0.345, 0.718],
+    [0.486, 0.463, 0.745],
+    [0.498, 0.529, 0.773],
+    [0.431, 0.400, 0.741],
+    [0.560, 0.500, 0.820]
   ];
 
-  // LIGHT: the same family lifted into true pastels — milky lavender, sky,
-  // orchid, baby blue and a touch of rose.
   var PALETTE_LIGHT = [
-    [0.812, 0.765, 0.980],   // #CFC3FA  lavender
-    [0.737, 0.816, 0.984],   // #BCD0FB  periwinkle sky
-    [0.890, 0.788, 0.961],   // #E3C9F5  orchid
-    [0.761, 0.890, 0.980],   // #C2E3FA  baby blue
-    [0.961, 0.804, 0.902]    // #F5CDE6  rose
+    [0.812, 0.765, 0.980],
+    [0.737, 0.816, 0.984],
+    [0.890, 0.788, 0.961],
+    [0.761, 0.890, 0.980],
+    [0.961, 0.804, 0.902]
   ];
 
-  // Per-theme look. cap/floor = relative-luminance guard (see header).
   var LOOK = {
     dark:  { strength: 0.78, gain: 0.78, sheen: 0.07, textCap: 0.175, textFloor: 0.0,  artCap: 0.28, artFloor: 0.0,  palette: PALETTE_DARK },
     light: { strength: 0.86, gain: 1.00, sheen: 0.11, textCap: 0.92,  textFloor: 0.46, artCap: 0.92, artFloor: 0.30, palette: PALETTE_LIGHT }
@@ -109,7 +42,6 @@
     'attribute vec2 aPos;\n' +
     'void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }\n';
 
-  // MAXPTS / LIFE are #defined in front of this at build time.
   var FRAG =
     '#ifdef GL_FRAGMENT_PRECISION_HIGH\n' +
     'precision highp float;\n' +
@@ -245,40 +177,37 @@
     reduced: false,
     maxDrops: MAX_DROPS,
     interactive: false,
-    lastActive: -1e9,        // performance.now() of the last pointer activity
+    lastActive: -1e9,
     colors: { b1: [0.145, 0.388, 0.922], b2: [0.114, 0.306, 0.847] },
     look: LOOK.dark,
     cssW: 0,
     cssH: 0
   };
 
-  // pointer / ripple state
   var P = {
-    pts: null,               // Float32Array(maxDrops*4): x, y, birth(s), strength
-    vel: null,               // Float32Array(maxDrops*4): vx, vy, 0, 0
+    pts: null,
+    vel: null,
     head: 0,
     hovering: false,
-    tx: 0.5, ty: 0.5,        // target (latest pointer position, 0..1, y up)
-    x: 0.5, y: 0.5,          // smoothed position used by the shader
-    pres: 0,                 // smoothed presence 0..1
-    lastCX: 0, lastCY: 0,    // last drop position in client px
+    tx: 0.5, ty: 0.5,
+    x: 0.5, y: 0.5,
+    pres: 0,
+    lastCX: 0, lastCY: 0,
     lastDropMs: 0,
     lastDrawMs: 0
   };
 
-  // touch gesture state (one finger; extra fingers are ignored)
   var T = {
-    id: null,                // pointerId of the finger we are following
+    id: null,
     down: false,
-    engaged: false,          // true once the finger has "grabbed" the water
+    engaged: false,
     timer: 0,
-    sx: 0, sy: 0,            // where the finger landed (client px)
-    dragged: false,          // travelled further than SLOP_PX
-    clickBlockUntil: 0,      // performance.now() until which clicks are swallowed
+    sx: 0, sy: 0,
+    dragged: false,
+    clickBlockUntil: 0,
     lastWasTouch: false
   };
 
-  /* ── helpers ──────────────────────────────────────────────────── */
   function prefersReduced() {
     try {
       return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
@@ -286,7 +215,6 @@
     } catch (e) { return false; }
   }
 
-  // '#RGB' | '#RRGGBB' | 'rgb(r, g, b)' -> [r,g,b] in 0..1, or fallback
   function parseColor(str, fallback) {
     str = (str || '').trim();
     var m;
@@ -304,12 +232,8 @@
 
   function readTheme() {
     var cs = getComputedStyle(S.banner || document.documentElement);
-    // --mb-from/--mb-to are the banner's own tokens (css/dashboard.css); they
-    // resolve to --banner-from/--banner-to in dark and to pastels in light.
     S.colors.b1 = parseColor(cs.getPropertyValue('--mb-from') || cs.getPropertyValue('--banner-from'), S.colors.b1);
     S.colors.b2 = parseColor(cs.getPropertyValue('--mb-to') || cs.getPropertyValue('--banner-to'), S.colors.b2);
-    // Only an explicit data-theme="light" gets the light look — it must stay in
-    // lock-step with the CSS selectors that switch the text to dark ink.
     var light = document.documentElement.getAttribute('data-theme') === 'light';
     S.look = light ? LOOK.light : LOOK.dark;
   }
@@ -348,7 +272,7 @@
 
     var buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); // one big triangle
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     var loc = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
@@ -383,7 +307,6 @@
     if (!S.ok || S.lost || !S.gl || !S.prog) return;
     var gl = S.gl;
 
-    // ease the resting fingertip toward the pointer (frame-rate independent)
     var dt = Math.min(0.1, Math.max(0, (now - P.lastDrawMs) / 1000));
     P.lastDrawMs = now;
     var target = P.hovering && S.interactive && !S.reduced ? 1 : 0;
@@ -417,7 +340,6 @@
     S.canvas.classList.add('is-ready');
   }
 
-  /* ── animation control ────────────────────────────────────────── */
   function shouldRun() {
     return S.ok && !S.lost && !S.reduced && S.inView && document.visibilityState !== 'hidden' &&
       S.canvas && S.canvas.parentNode === S.banner;
@@ -434,7 +356,6 @@
   }
 
   function sync() {
-    // (re)start or stop the loop to match the current conditions
     S.reduced = prefersReduced();
     if (shouldRun()) {
       if (!S.raf) S.raf = requestAnimationFrame(frame);
@@ -442,12 +363,11 @@
       if (S.raf) { cancelAnimationFrame(S.raf); S.raf = 0; }
       if (S.ok && S.reduced && S.canvas && S.canvas.parentNode === S.banner) {
         resize();
-        draw(performance.now());   // single still frame
+        draw(performance.now());
       }
     }
   }
 
-  /* ── pointer -> water ─────────────────────────────────────────── */
   function addDrop(x, y, vx, vy, strength, now) {
     var i = P.head * 4;
     P.pts[i] = x;
@@ -476,7 +396,7 @@
     var q = pointerUV(e);
     if (!q) return;
     P.hovering = true;
-    P.tx = P.x = q.x;          // appear under the cursor instead of sliding in from old coords
+    P.tx = P.x = q.x;
     P.ty = P.y = q.y;
     P.lastCX = e.clientX;
     P.lastCY = e.clientY;
@@ -501,10 +421,9 @@
     var dist = Math.sqrt(dx * dx + dy * dy);
     var since = now - P.lastDropMs;
     if (dist >= DROP_EVERY_PX && since >= DROP_EVERY_MS) {
-      var speed = dist / Math.max(since, 1);                  // px per ms
-      var strength = Math.min(1, 0.35 + speed * 0.40);        // faster hand = bigger wake
+      var speed = dist / Math.max(since, 1);
+      var strength = Math.min(1, 0.35 + speed * 0.40);
       var mag = Math.min(1, Math.max(0.2, speed * 0.55));
-      // shader units: x, y(up) in banner-height units, so a unit direction is enough
       addDrop(q.x, q.y, (dx / dist) * mag, (-dy / dist) * mag, strength, now);
       P.lastCX = e.clientX;
       P.lastCY = e.clientY;
@@ -524,7 +443,7 @@
     P.lastCX = e.clientX;
     P.lastCY = e.clientY;
     P.lastDropMs = now;
-    addDrop(q.x, q.y, 0, 0, 1.5, now);                        // splash
+    addDrop(q.x, q.y, 0, 0, 1.5, now);
     if (e.pointerType === 'touch') touchStart(e);
     if (!S.raf) sync();
   }
@@ -534,7 +453,6 @@
     touchReset();
   }
 
-  /* ── touch: finger = hover ────────────────────────────────────── */
   function touchReset() {
     if (T.timer) { clearTimeout(T.timer); T.timer = 0; }
     T.id = null;
@@ -543,7 +461,7 @@
   }
 
   function touchStart(e) {
-    if (T.down) return;                       // already following a finger
+    if (T.down) return;
     T.lastWasTouch = true;
     T.id = e.pointerId;
     T.down = true;
@@ -554,7 +472,6 @@
     if (T.timer) clearTimeout(T.timer);
     T.timer = setTimeout(function () {
       T.timer = 0;
-      // still down and not scrolling/dragging => grab the water
       if (T.down && !T.dragged) T.engaged = true;
     }, HOLD_MS);
   }
@@ -567,10 +484,7 @@
       T.dragged = true;
       if (!T.engaged) {
         if (T.timer) { clearTimeout(T.timer); T.timer = 0; }
-        // a mostly-sideways drag is "playing with the water" — lock it in
-        // so a little vertical wobble can't hand the gesture to the scroller
         if (Math.abs(dx) > Math.abs(dy)) T.engaged = true;
-        // mostly-vertical = the user wants to scroll: leave it to the browser
       }
     }
   }
@@ -581,8 +495,6 @@
     touchReset();
   }
 
-  // NON-passive on purpose: this is the one place we may stop a scroll, and
-  // only while the finger has grabbed the water.
   function onTouchMove(e) {
     if (T.engaged && e.cancelable) e.preventDefault();
   }
@@ -595,18 +507,15 @@
   }
 
   function onContextMenu(e) {
-    // long-press on touch would pop a context menu / link preview over the ripples
     if (T.lastWasTouch && (T.down || performance.now() < T.clickBlockUntil + 800)) e.preventDefault();
   }
 
-  /* ── mounting ─────────────────────────────────────────────────── */
   function ensureAttached() {
     var b = S.banner;
     if (!b) return;
-    // Don't paint behind the "no live missions" / "loading failed" messages.
     if (!b.querySelector('.mission-banner__text')) return;
     if (S.canvas.parentNode !== b || b.firstChild !== S.canvas) {
-      b.insertBefore(S.canvas, b.firstChild);   // same canvas element => same GL context
+      b.insertBefore(S.canvas, b.firstChild);
       resize();
       readTheme();
       draw(performance.now());
@@ -629,18 +538,15 @@
       gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' }) ||
            canvas.getContext('experimental-webgl');
     } catch (e) { gl = null; }
-    if (!gl) return;   // CSS gradient fallback — nothing else to do
+    if (!gl) return;
 
     S.canvas = canvas;
     S.gl = gl;
     S.reduced = prefersReduced();
     S.t0 = performance.now();
 
-    // The spec only guarantees 16 fragment uniform vectors. We need ~14 for
-    // the flow + 2 per ripple; shrink the ripple buffer on weak GPUs, and
-    // turn interaction off (flow only) if there is no room for at least 3.
     var vecs = 16;
-    try { vecs = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 16; } catch (e) { /* keep 16 */ }
+    try { vecs = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 16; } catch (e) {  }
     S.maxDrops = Math.max(1, Math.min(MAX_DROPS, Math.floor((vecs - 14) / 2)));
     S.interactive = S.maxDrops >= 3;
     P.pts = new Float32Array(S.maxDrops * 4);
@@ -663,12 +569,8 @@
       draw(performance.now());
     }, false);
 
-    // dashboard.js replaces the banner's children with innerHTML — put the canvas back
     new MutationObserver(ensureAttached).observe(banner, { childList: true });
 
-    // Pointer events on the banner itself (it survives re-renders). The pointer
-    // listeners are passive; the only preventDefault is in onTouchMove, and only
-    // after a press-and-hold / sideways drag has grabbed the water.
     if (S.interactive && 'PointerEvent' in window) {
       banner.addEventListener('pointerenter', onEnter, { passive: true });
       banner.addEventListener('pointermove', onMove, { passive: true });
@@ -676,7 +578,6 @@
       banner.addEventListener('pointerup', onUp, { passive: true });
       banner.addEventListener('pointerleave', onLeave, { passive: true });
       banner.addEventListener('pointercancel', onLeave, { passive: true });
-      // touch only: scroll-lock while grabbing, no stray taps after a drag, no long-press menu
       banner.addEventListener('touchmove', onTouchMove, { passive: false });
       banner.addEventListener('click', onClickCapture, true);
       banner.addEventListener('contextmenu', onContextMenu);
@@ -699,7 +600,6 @@
 
     document.addEventListener('visibilitychange', sync);
 
-    // light <-> dark: data-theme on <html> swaps --banner-from/to
     new MutationObserver(function () {
       readTheme();
       if (S.reduced) sync(); else draw(performance.now());
@@ -708,9 +608,9 @@
     try {
       var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
       if (mq.addEventListener) mq.addEventListener('change', sync);
-    } catch (e) { /* older browsers: the initial check still applies */ }
+    } catch (e) {  }
 
-    ensureAttached();   // banner may already be rendered
+    ensureAttached();
   }
 
   if (document.readyState === 'loading') {
