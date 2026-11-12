@@ -3697,7 +3697,7 @@ const SIGNS_V2 = [
       'Only the index and middle fingers extend — the rest of the hand stays closed',
       'Many signers instead use the general sign BUG, or just fingerspell A-N-T',
     ],
-    imageUrl: '../assets/images/medium/insects/ant.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/42 insects/ANTS.mp4', detectionType: 'motion',
+    imageUrl: '../assets/images/medium/insects/ant.png', videoUrl: '../assets/videos/basic/asl_vid_diy_raw/42 insects/ants.mp4', detectionType: 'motion',
   },
   {
     id: 'medium_insects_BUTTERFLY', level: 'medium', category: 'insects', signId: 'BUTTERFLY', title: 'Butterfly', order: 2,
