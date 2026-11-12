@@ -51,8 +51,6 @@ The administrator tools and media-upload workflow depend on the project's config
 | Gesture models | TensorFlow.js and project model assets | Browser-side processing/classification for supported sign-practice activities |
 | Authentication | Firebase Authentication | User registration and sign-in |
 | Database | Cloud Firestore | User information, learning records, progress, and application data |
-| Desktop launcher | Go | Serves the bundled web app on the local machine and opens it in the browser |
-| Windows installer | Inno Setup | Packages the Windows launcher and application files into an installer |
 | Version control | Git and GitHub | Source-code collaboration and release distribution |
 
 The web frontend does not require a JavaScript framework or frontend build step. The Go component is used for the optional desktop package; it is not a replacement for Firebase as the application's cloud backend.
@@ -178,11 +176,6 @@ LinguaWave/
 ├── firebase.json              # Firebase project/deployment configuration
 ├── firestore.rules            # Firestore security rules
 ├── firestore.indexes.json     # Firestore index configuration
-└── desktop-packaging/         # Go launcher and Inno Setup configuration
-    ├── main.go
-    ├── go.mod
-    └── installer/
-        └── LinguaWave.iss
 ```
 
 Generated desktop build outputs (for example, staging, release, installer output, and compiled executables) are not part of the source-code tree committed to Git. Download the packaged Windows installer from GitHub Releases.
@@ -196,17 +189,4 @@ Generated desktop build outputs (for example, staging, release, installer output
 - Assessments consist of multiple-choice quizzes, basic motion-practice checks, and surveys. The system does not provide certified or interpreter-grade performance assessment.
 - The service worker does not make the entire application fully offline. Firebase authentication, cloud synchronization, Google sign-in, and configured cloud services require internet access.
 
-## Project evaluation
 
-The capstone documentation reports an evaluation involving 20 respondents using ISO 9126 software quality metrics. The reported overall weighted mean was **4.5 (Agree)**. The reported metric means were Functionality **4.68**, Reliability **4.30**, Usability **4.49**, and Efficiency **4.53**. These are the study's reported respondent-evaluation results, not a guarantee of performance on every device or network.
-
-## Evaluation account information
-
-For the school's offline capstone handover copy, complete the following with the actual demonstration accounts approved for evaluators:
-
-| Account | Username / email | Password |
-|---|---|---|
-| Learner demonstration account | `[Add approved learner account]` | `[Provide in the restricted handover copy]` |
-| Administrator demonstration account | `[Add approved administrator account]` | `[Provide in the restricted handover copy]` |
-
-**Security:** Do not replace these placeholders with live passwords in the public GitHub README. Put evaluator credentials only in the authorized, offline handover copy or provide them to evaluators through the institution-approved secure method.
