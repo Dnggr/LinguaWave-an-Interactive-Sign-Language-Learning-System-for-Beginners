@@ -1,10 +1,3 @@
-// Self-hosting helper. Run from the repo root (Node 18+):
-//
-//   node scripts/fetch-mediapipe-assets.mjs           -> downloads the model only (recommended)
-//   node scripts/fetch-mediapipe-assets.mjs --wasm    -> also downloads the WASM files
-//
-// Files land in assets/mediapipe/ . Commit them and upload with the site.
-// js/mediapipe-assets.js automatically prefers them over the Google URL.
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';

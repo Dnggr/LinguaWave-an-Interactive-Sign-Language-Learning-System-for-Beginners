@@ -1,24 +1,3 @@
-/**
- * admin-lessons.js — Controller for pages/admin-lessons.html
- * ─────────────────────────────────────────────────────────────────
- * Two kinds of rows in one table:
- *   • Built-in lessons  — the hardcoded curriculum in js/missions.js (via
- *     js/admin-content.js). View only: they live in source, not in Firestore.
- *   • Admin-added lessons — Firestore `signs` (source === "admin").
- *     The admin can CREATE, UPDATE and DELETE these.
- *
- * VIDEO : when the admin picks an .mp4 it is uploaded to Cloudflare R2
- *   (js/admin-media.js -> worker/src/index.js, which checks the Firebase
- *   ID token + admin email and hands back a short-lived upload URL). The
- *   public URL is saved as `videoUrl` and the R2 object key as `videoKey` on
- *   the lesson's Firestore document. The upload happens FIRST, so Firestore
- *   never points at a file that wasn't stored; if the Firestore save then
- *   fails, the just-uploaded object is removed again. Replacing a video or
- *   deleting a lesson removes the old R2 object (best effort).
- *
- * No level, no image. Admin-added lessons have no motion detection.
- * ─────────────────────────────────────────────────────────────────
- */
 import { getLessons, getQuizzes } from "./admin-content.js";
 import { listAdminLessons, createLesson, updateLesson, deleteLesson } from "./admin-firebase.js";
 import { MAX_VIDEO_BYTES, validateVideoFile, uploadLessonVideo, deleteLessonVideo } from "./admin-media.js";
@@ -32,8 +11,8 @@ let missions = [];
 let missionById = new Map();
 let allRows = [];
 
-let editing = null;          // the admin-added row being edited, or null when creating
-let pendingDelete = null;    // the admin-added row awaiting delete confirmation
+let editing = null;
+let pendingDelete = null;
 let signIdTouched = false;
 let orderTouched = false;
 let previewUrl = "";
@@ -69,7 +48,6 @@ function escapeHtml(str) {
 }
 const toast = (msg, type) => window.LinguaWave?.showToast?.(msg, type);
 
-/* ── data ───────────────────────────────────────────────────────── */
 function customToRow(d) {
   const m = missionById.get(d.missionId);
   return {
@@ -81,7 +59,7 @@ function customToRow(d) {
     description: d.description || "",
     tips: Array.isArray(d.tips) ? d.tips : [],
     videoUrl: d.videoUrl || "",
-    videoKey: d.videoKey || "",      // R2 object key; empty for videos not uploaded through R2
+    videoKey: d.videoKey || "",
     detectionType: d.detectionType || "none",
     order: typeof d.order === "number" ? d.order : null,
     missionId: d.missionId || "",
@@ -97,7 +75,6 @@ function rebuildRows() {
     ...builtIn.map((l) => ({ ...l, isCustom: false })),
     ...custom.map(customToRow),
   ];
-  // Trail order: mission, then order; built-in before admin-added on a tie.
   rows.sort((a, b) =>
     (a.missionNumber - b.missionNumber) ||
     ((a.order ?? 0) - (b.order ?? 0)) ||
@@ -108,13 +85,10 @@ function rebuildRows() {
 
 async function reloadCustom() {
   const docs = await listAdminLessons();
-  // Only lessons made by this screen. Older `signs` docs from the previous
-  // Firestore-based admin (no `source`) are ignored, not shown or editable.
   custom = docs.filter((d) => d.source === "admin");
   rebuildRows();
 }
 
-/* ── table ──────────────────────────────────────────────────────── */
 function render() {
   const term = els.search.value.trim().toLowerCase();
   const chapter = els.chapterFilter.value;
@@ -174,7 +148,6 @@ function fillMissionSelect() {
   els.fMission.innerHTML = `<option value="">Select a mission&hellip;</option>${html}`;
 }
 
-/* ── view modal (built-in lessons) ──────────────────────────────── */
 function openView(lesson) {
   if (!lesson) return;
   els.modalTitle.textContent = lesson.title;
@@ -196,7 +169,6 @@ function openView(lesson) {
 }
 function closeView() { els.modalBackdrop.hidden = true; }
 
-/* ── add / edit form ────────────────────────────────────────────── */
 function slugify(title) {
   return title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -226,7 +198,6 @@ function setPreview(url) {
 }
 
 function setProgress(percent, label) {
-  // percent: number 0-100, or null to hide the bar.
   const show = percent !== null && percent !== undefined;
   els.fProgress.hidden = !show;
   if (!show) return;
@@ -243,7 +214,7 @@ function openForm(row) {
   els.formHeading.textContent = row ? "Edit Lesson" : "Add Lesson";
   els.fTitle.value = row ? row.title : "";
   els.fSignId.value = row ? row.signId : "";
-  els.fSignId.disabled = !!row;               // Sign ID is the document id: fixed after creation
+  els.fSignId.disabled = !!row;
   els.fMission.value = row ? row.missionId : "";
   els.fOrder.value = row && row.order != null ? row.order : "";
   els.fDesc.value = row ? row.description : "";
@@ -298,8 +269,6 @@ function readForm() {
     data: {
       signId, title, description, tips, order, missionId,
       chapterId: missionById.get(missionId).chapterId,
-      // Derived from the mission (not asked in the form): the learner side
-      // ignores any admin lesson without a valid level + category.
       level: missionById.get(missionId).level,
       category: missionById.get(missionId).category,
     },
@@ -318,14 +287,14 @@ async function saveForm() {
   els.formSave.disabled = true;
   els.formSave.textContent = "Saving…";
 
-  let uploaded = null;           // { key, url } of a video uploaded during THIS save
+  let uploaded = null;
   try {
     let videoUrl = editing ? editing.videoUrl : "";
     let videoKey = editing ? editing.videoKey : "";
 
     if (file) {
       setProgress(0, "Uploading… 0%");
-      uploaded = await uploadLessonVideo(data.signId, file, (p) =>   // 1) video first
+      uploaded = await uploadLessonVideo(data.signId, file, (p) =>
         setProgress(p, p < 100 ? `Uploading… ${p}%` : "Checking video…"));
       videoUrl = uploaded.url;
       videoKey = uploaded.key;
@@ -333,15 +302,13 @@ async function saveForm() {
 
     const payload = { ...data, videoUrl, videoKey };
     try {
-      if (editing) await updateLesson(editing.signId, payload);   // 2) then Firestore
+      if (editing) await updateLesson(editing.signId, payload);
       else await createLesson(payload);
     } catch (dbErr) {
-      // Firestore refused: don't leave an orphan upload behind in R2.
       if (uploaded) await deleteLessonVideo(uploaded.key);
       throw dbErr;
     }
 
-    // The old file is only removed once the lesson points at the new one.
     if (uploaded && editing && editing.videoKey && editing.videoKey !== uploaded.key) {
       await deleteLessonVideo(editing.videoKey);
     }
@@ -381,7 +348,6 @@ function onVideoPicked() {
   setPreview(URL.createObjectURL(file));
 }
 
-/* ── delete ─────────────────────────────────────────────────────── */
 function openDelete(row) {
   if (!row) return;
   pendingDelete = row;
@@ -397,7 +363,6 @@ async function confirmDelete() {
   els.delConfirm.disabled = true;
   try {
     await deleteLesson(pendingDelete.signId);
-    // Firestore first: if this fails the lesson is gone but a stray file is harmless.
     const fileGone = await deleteLessonVideo(pendingDelete.videoKey);
     toast(fileGone ? "Lesson deleted." : "Lesson deleted, but its video file couldn't be removed from storage.", fileGone ? "success" : "info");
     closeDelete();
@@ -411,7 +376,6 @@ async function confirmDelete() {
   }
 }
 
-/* ── wiring ─────────────────────────────────────────────────────── */
 function wireEvents() {
   els.search.addEventListener("input", render);
   els.chapterFilter.addEventListener("change", render);
@@ -474,19 +438,15 @@ async function init() {
     els.tbody.innerHTML = `<tr><td colspan="7" class="admin-table__empty">Couldn't load the lesson content (js/missions.js).</td></tr>`;
     return;
   }
-  // Admin-added lessons come from Firestore: show placeholder rows under the built-in ones until they arrive.
-  // (render() below rewrites the whole tbody, so these disappear by themselves.)
   if (window.LWSkeleton) {
     els.tbody.insertAdjacentHTML("beforeend", window.LWSkeleton.table("Loading the lessons you added\u2026", 2, [80,60,75,65,40,55]));
   }
-  // Admin-added lessons load after the built-in list is already on screen;
-  // a failure here doesn't block it.
   try {
     await reloadCustom();
     render();
   } catch (err) {
     console.error("Failed to load admin-added lessons:", err);
-    render(); // drop the placeholder rows
+    render();
     toast("Couldn't load the lessons you added (Firestore).", "error");
   }
 }

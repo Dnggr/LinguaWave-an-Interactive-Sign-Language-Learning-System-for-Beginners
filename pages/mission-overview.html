@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Same theme-flash-prevention snippet every page in this repo uses.
-       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -17,41 +15,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/mission-overview.html — Mission Overview
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE : Per the implementation guide's §6 (Mission Overview) /
-              §5.1: mission number + title, goal, the signs you'll
-              practice, an explicitly-labeled EFFORT ESTIMATE (never
-              shown as if it were exact), the mastery requirement, and
-              a live Mastery Hearts display — all sourced from
-              window.LWMissions, no hardcoded copy.
-
-    ENTRY   : ?mission=<categoryId> — matches the query param
-              dashboard.html's Continue card / journey rail and
-              learn.html's path rows already link with.
-
-    HEARTS  : reads window.LWMissions.getHeartsState() live. Guide §10's
-              rule — "keep all learning activities available, gate
-              only the next Mastery Quiz attempt" — is respected here:
-              hitting 0 hearts disables ONLY the Start Mastery Quiz
-              button. Start Mission (lesson/practice) always stays
-              enabled regardless of heart count.
-
-    HEARTS TIMING (fixed — Task 2, this revision) : the guide specifies
-              consuming a heart on WRONG ANSWERS, not on Mastery Quiz
-              entry. That's now correct: entering the quiz is free, and
-              one heart is spent per incorrect graded answer inside
-              js/quiz.js itself, gated behind the `&v2=1` this page adds
-              to the quiz URL — see js/missions.js's file header
-              ("HEART TIMING FIX") and js/quiz.js's `isMissionMastery` for
-              the full note.
-
-    NOT BUILT HERE : the guide §6 "Know some already?" diagnostic
-              challenge is shown as a disabled "Coming soon" button
-              rather than faked with placeholder behavior.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -64,9 +27,7 @@
   <link rel="stylesheet" href="../css/learn.css" />
   <link rel="stylesheet" href="../css/app.css" />
   <link rel="stylesheet" href="../css/tour.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -133,7 +94,6 @@
             All missions
           </a>
           <div id="mo-content" data-sk>
-            <!-- filled by js/mission-overview.js -->
             <div class="sk-group" role="status"><span class="sr-only">Loading mission…</span><span class="sk sk--line" style="--w:8rem;--h:.8rem"></span><span class="sk sk--title" style="--w:min(26rem,80%);--h:2rem"></span><span class="sk sk--line" style="--w:min(34rem,95%)"></span><span class="sk sk--btn" style="--w:10rem;--h:2.75rem"></span><div class="card" style="margin-top:var(--space-3)"><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--square" style="--s:40px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:45%"></span><span class="sk sk--line" style="--w:25%;--h:.7rem"></span></div><span class="sk sk--pill" style="--w:4.5rem"></span></div></div></div>
           </div>
         </div>
@@ -145,30 +105,13 @@
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
-  <!--
-    js/data.js dropped (migration-analysis pass) — this page's only
-    use of window.LWData was a sign-title fallback in
-    mission-overview.js's signTitle(), which now reads
-    window.LWMissions directly (SIGNS_V2 already carries its own title).
-  -->
   <script defer src="../js/missions.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
-  <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
-       and, critically, wires up every [data-logout] button (the sidebar's
-       Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/mission-overview.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="mission-overview">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
 </body>
 </html>

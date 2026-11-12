@@ -1,72 +1,19 @@
-/**
- * LinguaWave media Worker — trusted server-side layer in front of Cloudflare R2
- * ─────────────────────────────────────────────────────────────────
- * WHY : the site is static, so the browser is untrusted. Hiding the admin UI
- *       or checking "isAdmin" in front-end JS is NOT a security boundary. This
- *       Worker is where "who is calling, and are they the admin?" is decided,
- *       and it is the only place that ever holds R2 credentials.
- *
- * FLOW (see LinguaWave_Object_Storage_Integration_Plan.md §5–7, §13):
- *   1. Admin browser gets a Firebase ID token (auth.currentUser.getIdToken()).
- *   2. POST /v1/upload-url  -> Worker verifies the token + admin email, picks the
- *                              object key itself, returns a SHORT-LIVED presigned
- *                              PUT URL. The video bytes never pass through here.
- *   3. Browser PUTs the file straight to R2 with that URL.
- *   4. POST /v1/finalize    -> Worker re-checks the object it finds in R2 (exists,
- *                              size, really an MP4). Bad objects are deleted.
- *   5. Browser saves { videoUrl, videoKey } on the Firestore `signs` document.
- *   6. Learners play the video from GET /media/<key> on THIS Worker (public, Range-aware).
- *   6. POST /v1/delete      -> removes an admin-uploaded object (replace / delete lesson).
- *   7. POST /v1/delete-user -> deletes ANOTHER user's Firebase Auth login (admin only). A browser
- *                              can't do this, so the Worker calls Google's Identity Toolkit Admin
- *                              API with a service-account credential (src/firebase-auth-admin.js).
- *                              It replaces the retired `deleteLearnerAccount` Cloud Function.
- *                              Firestore cleanup stays in the admin browser (js/admin-firebase.js),
- *                              which runs it only AFTER this call succeeds.
- *
- * LEARNERS never call this Worker: they read the lesson from Firestore and play
- * videoUrl straight from the public R2 media domain.
- *
- * BINDINGS / CONFIG (worker/wrangler.toml + `wrangler secret put`):
- *   MEDIA                  R2 bucket binding (used for finalize/delete — no keys)
- *   R2_ACCOUNT_ID          var     \
- *   R2_BUCKET_NAME         var      } only needed to build presigned URLs
- *   R2_ACCESS_KEY_ID       secret   } (the S3-compatible API token for THIS bucket,
- *   R2_SECRET_ACCESS_KEY   secret  /  Object Read & Write, never put in front-end code)
- *   FIREBASE_PROJECT_ID    var     e.g. linguawave-63911
- *   FIREBASE_SERVICE_ACCOUNT_EMAIL        secret  } only for /v1/delete-user: a service account
- *   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY  secret  } allowed to delete Firebase Auth users
- *   ADMIN_EMAIL            var     KEEP IN SYNC with firestore.rules, js/admin-auth.js,
- *                                  js/role-guard.js, index.html
- *   ALLOWED_ORIGINS        var     comma list of site origins allowed to call this API
- *   PUBLIC_MEDIA_BASE      var     public base URL of the bucket, no trailing slash
- *
- * NOT CHECKED: ID-token revocation (a token stays valid up to 1 hour after the
- * admin account is disabled). Fine for one admin; use Firebase Admin SDK
- * checkRevoked / custom claims if that ever matters.
- * ─────────────────────────────────────────────────────────────────
- */
 
 import { deleteFirebaseAuthUser } from "./firebase-auth-admin.js";
 
-export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // keep in sync with js/admin-media.js
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 export const UPLOAD_URL_TTL_SECONDS = 600;
 export const KEY_PREFIX = "videos/admin/";
 
-// Firebase Auth UIDs are short alphanumeric strings; refuse anything else before it reaches Google.
 const UID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const SIGN_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const KEY_RE = /^videos\/admin\/[a-z0-9][a-z0-9_-]{0,39}\/\d{10,16}\.(mp4)$/;
-// MP4 only for now: the learner players hard-code <source type="video/mp4"> (js/lesson.js,
-// js/mastery-quiz.js). To allow WebM, add it to the two maps + KEY_RE below, to VIDEO_TYPES in
-// js/admin-media.js and the key pattern in firestore.rules, AND make those players set type per URL.
 const TYPE_BY_EXT = { mp4: "video/mp4" };
 const EXT_BY_TYPE = { "video/mp4": "mp4" };
 
 const JWKS_URL =
   "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 
-/* ── small helpers ──────────────────────────────────────────────── */
 const enc = new TextEncoder();
 
 function b64urlToBytes(s) {
@@ -87,7 +34,6 @@ async function hmac(keyBytes, msg) {
   const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(msg)));
 }
-// RFC 3986 encoding as AWS SigV4 wants it.
 function awsEncode(s) {
   return encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }
@@ -99,19 +45,12 @@ class HttpError extends Error {
   }
 }
 
-/* ── Firebase ID-token verification ─────────────────────────────── */
 async function fetchJwks() {
-  // Google rotates these keys; Cloudflare caches the response for an hour.
   const res = await fetch(JWKS_URL, { cf: { cacheTtl: 3600, cacheEverything: true } });
   if (!res.ok) throw new HttpError(503, "Couldn't load Firebase signing keys.");
   return res.json();
 }
 
-/**
- * Verifies a Firebase Auth ID token (RS256) the way Google documents it.
- * @returns {Promise<object>} the token's claims
- * @throws  {HttpError} 401 for anything wrong with the token
- */
 export async function verifyFirebaseToken(token, projectId, { getJwks = fetchJwks, now = Date.now() } = {}) {
   const parts = String(token || "").split(".");
   if (parts.length !== 3) throw new HttpError(401, "Malformed token.");
@@ -153,7 +92,6 @@ export async function verifyFirebaseToken(token, projectId, { getJwks = fetchJwk
   return claims;
 }
 
-/** Valid Firebase token + the one admin account (same rule as firestore.rules isAdmin()). */
 async function requireAdmin(request, env, deps) {
   const m = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m) throw new HttpError(401, "Sign in required.");
@@ -165,15 +103,10 @@ async function requireAdmin(request, env, deps) {
   return claims;
 }
 
-/* ── SigV4 presigned PUT (R2 S3-compatible API) ─────────────────── */
-/**
- * Builds a presigned URL. Generic on purpose so it can be checked against AWS's
- * published test vector (see worker/test/sigv4.test.mjs).
- */
 export async function presignUrl({
   method, host, path, region, service = "s3",
   accessKeyId, secretAccessKey, expires, amzDate,
-  signedHeaders = {}, // lowercase header name -> exact value the client must send (host is added)
+  signedHeaders = {},
 }) {
   const date = amzDate.slice(0, 8);
   const scope = `${date}/${region}/${service}/aws4_request`;
@@ -205,19 +138,17 @@ export async function presignUrl({
 }
 
 function amzNow(now = new Date()) {
-  return now.toISOString().replace(/[:-]|\.\d{3}/g, ""); // 20260101T120000Z
+  return now.toISOString().replace(/[:-]|\.\d{3}/g, "");
 }
 
-/* ── video sniffing (don't trust the file name or Content-Type) ─── */
 export function sniffVideo(bytes) {
   if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(4, 8)) === "ftyp") return "video/mp4";
   if (bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
-    return "video/webm"; // EBML header (WebM / Matroska)
+    return "video/webm";
   }
   return "";
 }
 
-/* ── HTTP plumbing ──────────────────────────────────────────────── */
 function allowedOrigins(env) {
   return String(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
 }
@@ -242,11 +173,10 @@ async function readJson(request) {
   try {
     const body = await request.json();
     if (body && typeof body === "object") return body;
-  } catch { /* fall through */ }
+  } catch {  }
   throw new HttpError(400, "Send a JSON body.");
 }
 
-/* ── routes ─────────────────────────────────────────────────────── */
 async function uploadUrl(request, env, now) {
   const { signId, contentType, size } = await readJson(request);
   if (typeof signId !== "string" || !SIGN_ID_RE.test(signId)) throw new HttpError(400, "Invalid Sign ID.");
@@ -255,9 +185,6 @@ async function uploadUrl(request, env, now) {
   if (!Number.isInteger(size) || size <= 0) throw new HttpError(400, "Missing file size.");
   if (size > MAX_VIDEO_BYTES) throw new HttpError(413, `Video is larger than ${MAX_VIDEO_BYTES / 1048576} MB.`);
 
-  // The Worker — not the browser — chooses the object key, so nothing outside
-  // videos/admin/<signId>/ can be written, and a replacement never overwrites
-  // the previous file (a unique timestamp is part of the key).
   const key = `${KEY_PREFIX}${signId}/${now.getTime()}.${ext}`;
   const host = `${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const path = `/${env.R2_BUCKET_NAME}/${key.split("/").map(awsEncode).join("/")}`;
@@ -286,7 +213,7 @@ async function finalize(request, env) {
   if (!head) throw new HttpError(404, "Upload not found. It may have expired or failed.");
 
   const reject = async (status, msg) => {
-    await env.MEDIA.delete(key); // never leave a rejected file in the bucket
+    await env.MEDIA.delete(key);
     throw new HttpError(status, msg);
   };
   if (head.size <= 0) await reject(400, "The uploaded file is empty.");
@@ -307,16 +234,10 @@ async function finalize(request, env) {
 
 async function remove(request, env) {
   const key = checkKey((await readJson(request)).key);
-  await env.MEDIA.delete(key); // R2 delete is a no-op for a missing key
+  await env.MEDIA.delete(key);
   return { deleted: key };
 }
 
-/**
- * POST /v1/delete-user  { uid }  — admin only (enforced by requireAdmin before this runs).
- * Deletes the target's Firebase Auth login. Success is only ever reported when Google confirms it,
- * or confirms the user is already gone (so an interrupted bulk delete can simply be re-run).
- * deps.deleteAuthUser is a test seam; production uses deleteFirebaseAuthUser.
- */
 async function deleteUser(request, env, now, { claims, deps = {} }) {
   const { uid } = await readJson(request);
   if (typeof uid !== "string" || !UID_RE.test(uid)) throw new HttpError(400, "Invalid user id.");
@@ -338,14 +259,6 @@ async function deleteUser(request, env, now, { claims, deps = {} }) {
   return { uid, authDeleted: true, alreadyMissing: false };
 }
 
-/* ── public media (GET /media/<key>) ───────────────────────────────
- * Serves the admin videos to learners from this Worker's own hostname,
- * instead of the bucket's *.r2.dev URL (development-only per Cloudflare,
- * and unreachable on some networks' DNS). Public on purpose: no token,
- * no cookies, so Access-Control-Allow-Origin "*" is safe. Only keys that
- * match KEY_RE are served, so nothing else in the bucket is reachable.
- * Supports Range (browsers need it to start/seek <video> quickly). The
- * key contains a timestamp and is never overwritten, so it is immutable. */
 const MEDIA_PREFIX = "/media/";
 
 function mediaHeaders(extra = {}) {
@@ -359,16 +272,13 @@ function mediaHeaders(extra = {}) {
   };
 }
 
-// Parses a single "bytes=a-b" / "bytes=a-" / "bytes=-n" range against `size`.
-// Returns {offset, length}, null when there is no usable Range header (serve
-// everything), or "invalid" when it cannot be satisfied (416).
 export function parseRange(header, size) {
   if (!header) return null;
   const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
-  if (!m || (m[1] === "" && m[2] === "")) return null; // malformed or multi-range: ignore, send whole file
+  if (!m || (m[1] === "" && m[2] === "")) return null;
   let start;
   let end;
-  if (m[1] === "") {                       // suffix: last n bytes
+  if (m[1] === "") {
     const n = Number(m[2]);
     if (n === 0) return "invalid";
     start = Math.max(0, size - n);
@@ -415,7 +325,6 @@ async function serveMedia(request, env) {
   return new Response(obj.body, { status: 200, headers: mediaHeaders({ "Content-Length": String(size), ...etag }) });
 }
 
-/* ── entry ──────────────────────────────────────────────────────── */
 export default {
   async fetch(request, env, _ctx, deps = {}) {
     const url = new URL(request.url);
@@ -437,7 +346,7 @@ export default {
       };
       const handler = routes[url.pathname];
       if (!handler) throw new HttpError(404, "Not found.");
-      const claims = await requireAdmin(request, env, deps); // every route is admin-only
+      const claims = await requireAdmin(request, env, deps);
       const data = await handler(request, env, deps.now ? new Date(deps.now) : new Date(), { claims, deps });
       console.log(JSON.stringify({ route: url.pathname, uid: claims.sub, key: data.key || data.deleted, target: data.uid }));
       return json(data, 200, request, env);

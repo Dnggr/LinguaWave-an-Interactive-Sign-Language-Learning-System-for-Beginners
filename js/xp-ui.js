@@ -1,7 +1,3 @@
-/**
- * js/xp-ui.js — the "Your level" card on the Profile page (#xp-card; it used to be on the dashboard). Display only: every number
- * comes from the xpState doc via window.LWXP. Classic script, safe if LWXP is absent.
- */
 (function () {
   'use strict';
   const card = document.getElementById('xp-card');
@@ -39,21 +35,16 @@
     const X = window.LWXP;
     if (!X) return;
     const st = await X.getMyState();
-    // effective streak = the grace rule lives in js/xp.js (one missed day is forgiven, two in a row reset it)
     if (st) st.__liveStreak = X.liveStreakOf ? X.liveStreakOf(st) : 0;
     draw(st || { xp: 0, badges: {} });
-    // What the card shows right now. Updates MERGE into it, so a partial result can never blank the card
-    // (an update without xp used to redraw it as Level 1 / 0 XP / 0-day streak).
     const view = { xp: (st && st.xp) || 0, streak: (st && st.__liveStreak) || 0, badgeCount: st && st.badges ? Object.keys(st.badges).length : 0 };
     X.onUpdate((res) => {
-      if (!res || typeof res.xp !== 'number') return;   // not a full XP summary: keep what is on screen
+      if (!res || typeof res.xp !== 'number') return;
       view.xp = res.xp;
       if (typeof res.streak === 'number') view.streak = res.streak;
       view.badgeCount += (res.newBadges || []).length;
       draw({ xp: view.xp, streak: view.streak, badgeCount: view.badgeCount, __liveStreak: view.streak });
     });
-    // Streaks saved before the grace rule are one short: catch them up. Each step is published through
-    // onUpdate above (which redraws), so nothing more to do with the result here.
     if (st && X.syncStreak) X.syncStreak().catch(() => {});
   }
   if (window.LWXP) init(); else document.addEventListener('lwxp-ready', init, { once: true });

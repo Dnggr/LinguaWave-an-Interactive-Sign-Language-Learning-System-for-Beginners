@@ -1,47 +1,12 @@
-/* css/game.css — Wall Breaker. Standalone; reads ONLY the shared theme tokens from css/style.css (light + dark).
-
-   DESIGN ALIGNMENT PASS — what changed and why (class names/ids are unchanged, so js/game.js needed no edits):
-   - Every hard-coded hex/rgba (the old #2563EB / #EA580C bricks, #facc15 focus ring, near-black overlays,
-     #000 camera box) now uses the app's tokens, so the page follows the theme toggle like every other page.
-   - Bricks were glossy 3D gradients with inset shadows. They are now flat soft-tint tiles with a thick bottom
-     edge — the same "pill + soft tint + solid edge" language as .btn / .badge / the path cards. The bottom
-     edge keeps the brick feel without leaving the design system.
-   - Static vs motion: static = accent blue (--clr-accent), motion = the app's orange (--clr-orange, the same
-     token .badge--intermediate uses; it reads as "different action", not as an error — red stays error-only).
-     COLOR IS NEVER THE ONLY CUE: motion bricks also get a DASHED outline and the HOLD/MOVE text tag.
-   - Cards (camera, log, timers, wall, overlays) use --radius-xl/--radius-md, --clr-border and --shadow-card,
-     the same values as .card. Overlays use --backdrop (theme-aware) instead of a fixed dark scrim.
-   - Progress fill slides with transform (same technique as .progress-bar__fill) and turns --clr-success on a clear.
-   - Violet stays reserved for achievements (gems, chest, earned badges), as in style.css.
-
-   ONE-SCREEN LAYOUT PASS — why and what:
-   - Problem: camera -> timers -> wall was a vertical stack, so the wall (the thing you must read to know what to sign)
-     sat below the fold. A player mid-sign has their hands up and cannot scroll. The 16:9 camera box was also wasting
-     width: webcams here are 4:3 (cameraUtils asks for 640x480), so it letterboxed with side bars.
-   - Fix: on desktop .gm is exactly one viewport tall (no page scroll at all) and .gm-stage splits it:
-       left  = camera (takes all spare height) + timers      right = Setup before Start, the wall after Start, log below
-     The wall *replaces* Setup in the same slot instead of being pushed down the page.
-   - The camera no longer has a fixed aspect ratio; it fills its column and the video letterboxes via object-fit:contain
-     (the canvas overlay has the same object-fit, so the skeleton stays aligned).
-   - <= 900px (top-bar layout): stacked, but the camera + timers are sticky so feedback stays visible while the wall scrolls.
-   - Result overlay: absolute over the viewport-tall .gm on desktop, fixed on small screens (before, it was centred in a
-     page-tall box and could open below the fold).
-   - Wall rows share the available height (flex), so a 9/15/21 wall always fits instead of using fixed 68px bricks.
-   - Idle/play state is read from the [hidden] attribute game.js already toggles on #gm-start (via :has), so no JS changed.
-*/
 .gm{
   --gm-static:var(--clr-accent);       --gm-static-soft:var(--clr-blue-soft);   --gm-static-text:var(--clr-accent-text);
   --gm-motion:var(--clr-orange);       --gm-motion-soft:var(--clr-orange-soft); --gm-motion-text:var(--clr-orange);
-  --gm-pg:36px;                        /* progress-track circle size */
-  position:relative;width:100%;max-width:1320px;margin:0 auto;   /* width:100% — #main is a column flexbox, so auto margins alone would shrink-wrap .gm */
+  --gm-pg:36px;                        
+  position:relative;width:100%;max-width:1320px;margin:0 auto;   
   padding:var(--space-4) var(--space-6);
   display:flex;flex-direction:column;gap:var(--space-3);
 }
 
-/* Game mode picker (pages/game.html): three equal cards that wrap 3 -> 2 -> 1 columns, so the whole picker fits one
-   screen on a laptop. Each card: icon tile, then eyebrow / title / description / a small "what you need" line, with the
-   Play pill pinned to the bottom so every card lines up. Mode colors match the games: blue = Wall Breaker,
-   orange = Time Attack, violet = Construct a Sentence. Tokens only, so it follows the theme toggle. */
 .game-picker{--gm-static:var(--clr-accent);--gm-static-soft:var(--clr-blue-soft);--gm-motion:var(--clr-orange);--gm-motion-soft:var(--clr-orange-soft);--gm-build:var(--clr-violet);--gm-build-soft:var(--clr-violet-soft);width:100%;max-width:1320px;margin:0 auto;padding:clamp(var(--space-5),4vw,var(--space-12)) clamp(var(--space-4),4vw,var(--space-8))}
 .game-picker__intro{margin-bottom:clamp(var(--space-5),3vw,var(--space-8))}
 .game-picker__intro>div{max-width:680px}
@@ -66,7 +31,6 @@
 .game-mode:hover .game-mode__action,.game-mode:focus-visible .game-mode__action{gap:var(--space-3)}
 @media(prefers-reduced-motion:reduce){.game-mode,.game-mode::before,.game-mode__action{transition:none}}
 
-/* Time Attack displays the curriculum demo as the primary panel and keeps the live camera beside it. */
 .ta{--gm-static:var(--clr-accent);--gm-static-soft:var(--clr-blue-soft);--gm-static-text:var(--clr-accent-text);--gm-motion:var(--clr-orange);--gm-motion-soft:var(--clr-orange-soft);--gm-motion-text:var(--clr-orange);position:relative;width:100%;max-width:1320px;height:auto;min-height:100vh;min-height:100dvh;margin:0 auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
 .ta-head .gm-head__text{display:contents}
 .ta-head .gm-head__text h1{grid-column:1;grid-row:1}
@@ -119,9 +83,8 @@
 @media(max-width:900px){.ta{padding:var(--space-3) var(--space-4) var(--space-6)}.ta-head{grid-template-columns:minmax(0,1fr) auto}.ta-head .gm-head__text h1{grid-column:1;grid-row:1}.ta-head .gm-stats{grid-column:1/-1;grid-row:2}.ta-head .gm-head__text p{display:none}.ta-head .ta-back{grid-column:2;grid-row:1;align-self:center}.ta-progress{margin-inline:var(--space-2)}.ta-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:none}.ta-demo{flex:none;min-height:clamp(260px,48dvh,480px)}.ta-demo__video,.ta-demo__frame{min-height:clamp(260px,48dvh,480px)}.ta-cam{flex:none;height:clamp(170px,30dvh,300px);min-height:0;border-radius:var(--radius-lg)}.ta-overlay{position:fixed;border-radius:0}}
 @media(prefers-reduced-motion:reduce){.ta *,.ta *::before{transition:none!important;animation:none!important}}
 
-/* header + HUD chips */
 .gm-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:var(--space-1) var(--space-4)}
-.gm-head__text{display:contents}   /* title + subtitle become grid items: title | chips on row 1, subtitle full-width on row 2 */
+.gm-head__text{display:contents}   
 .gm-title{grid-column:1;grid-row:1}
 .gm-head p{grid-column:1 / -1;grid-row:2}
 .gm:not(.ta) .gm-head p{grid-column:1}
@@ -135,7 +98,6 @@
 .gm-chip--miss b{color:var(--clr-red-text)}
 .gm-chip--gem b{color:var(--clr-violet)}
 
-/* progress track: the hero walks toward the chest as bricks break (circle size = --gm-pg) */
 .gm-progress{--p:0;position:relative;height:var(--gm-pg)}
 .gm-progress__track{position:absolute;left:calc(var(--gm-pg)/2);right:calc(var(--gm-pg)/2);top:50%;height:10px;margin-top:-5px;border-radius:var(--radius-pill);background:var(--clr-track);overflow:hidden}
 .gm-progress__fill{display:block;width:100%;height:100%;border-radius:inherit;background:var(--clr-accent);transform:translateX(calc((var(--p) - 1) * 100%));transition:transform var(--dur-slow) var(--ease),background var(--dur-base) var(--ease)}
@@ -146,11 +108,9 @@
 .gm-progress__reward{right:0;color:var(--clr-text-muted)}
 .gm-progress.is-done .gm-progress__reward{transform:scale(1.15) rotate(-6deg);border-color:var(--clr-violet);background:var(--clr-violet-soft);color:var(--clr-violet)}
 
-/* stage: camera column | action column. min-width:0 everywhere so long labels can't blow a column open. */
 .gm-stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--space-4);align-items:stretch;flex:1 1 auto;min-height:0}
 .gm-left,.gm-right{display:flex;flex-direction:column;gap:var(--space-3);min-width:0;min-height:0}
 
-/* camera: fills the column's spare height; no fixed aspect ratio (see header note) */
 .gm-cam{position:relative;flex:1 1 0;min-height:200px;background:var(--clr-bg);border-radius:var(--radius-xl);overflow:hidden;border:2px solid var(--clr-border);transition:border-color var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
 .gm-cam[data-mode="static"]{border-color:var(--gm-static);box-shadow:0 0 0 4px var(--clr-accent-soft)}
 .gm-cam[data-mode="motion"]{border-color:var(--gm-motion);box-shadow:0 0 0 4px var(--clr-orange-soft)}
@@ -171,7 +131,7 @@
 .gm-quit{flex:0 0 auto}
 .gm-quit[hidden]{display:none}
 .gm-log{display:flex;flex-direction:column;flex:0 0 auto;height:7.5rem;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-card)}
-.gm-log:has(#gm-log:empty){display:none}   /* nothing to show before the first brick / miss */
+.gm-log:has(#gm-log:empty){display:none}   
 .gm-log h2{margin:0 0 var(--space-2);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--clr-text-muted)}
 .gm-log ul{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;font-size:var(--fs-sm);font-family:var(--font-mono)}
 .gm-log li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed var(--clr-border)}
@@ -180,12 +140,10 @@
 .gm-legend{display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--clr-text-muted)}
 .gm-legend span{display:inline-flex;align-items:center;gap:6px}
 
-/* the two timers (blue = static hold, orange = motion recording) */
-.gm-timers{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-2);flex:0 0 auto}   /* stacked full-width rows: side by side crushed the Record button on laptops */
+.gm-timers{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-2);flex:0 0 auto}   
 .gm-timer{--c:var(--gm-static);padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);background:var(--clr-surface);border:1px solid var(--clr-border);opacity:.72;transition:opacity var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
-.gm-timer--motion{--c:var(--gm-motion);display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);align-items:center}   /* label + bar | Record button */
+.gm-timer--motion{--c:var(--gm-motion);display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);align-items:center}   
 .gm-timer--motion .gm-timer__row,.gm-timer--motion .gm-timer__bar{grid-column:1}
-/* static timer = one slim line: label | bar | value */
 .gm-timer--static{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:var(--space-3);align-items:center}
 .gm-timer--static .gm-timer__row{display:contents}
 .gm-timer--static .gm-timer__name{grid-column:1;grid-row:1}
@@ -208,12 +166,11 @@
 .gm-timer--motion .gm-dot,.gm-dot--motion{background:var(--gm-motion)}
 .gm-tag-static{color:var(--gm-static-text)} .gm-tag-motion{color:var(--gm-motion-text)}
 
-/* the wall: fills the right column; rows share the height so 9 / 15 / 21 bricks always fit */
 .gm-field{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:var(--space-4);border-radius:var(--radius-xl);border:1px solid var(--clr-border);background:var(--clr-surface);box-shadow:var(--shadow-card)}
-.gm:has(#gm-start:not([hidden])) .gm-field{display:none}   /* Setup is showing (idle / after a run): the wall isn't in play */
+.gm:has(#gm-start:not([hidden])) .gm-field{display:none}   
 .gm-wall{display:flex;flex-direction:column;gap:var(--space-2);flex:1 1 0;min-height:0}
 .gm-wall.is-miss{animation:gmShake .4s}
-.gm-row{display:flex;gap:var(--space-2);flex:1 1 0;min-height:0;container-type:size}   /* size container: lets short bricks switch to a one-line layout below */
+.gm-row{display:flex;gap:var(--space-2);flex:1 1 0;min-height:0;container-type:size}   
 .gm-row.is-odd{padding-left:4.5%}
 .gm-row:not(.is-odd){padding-right:4.5%}
 .gm-field__foot{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--clr-border)}
@@ -222,18 +179,15 @@
   --c:var(--gm-static);--c-soft:var(--gm-static-soft);--c-text:var(--gm-static-text);
   position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   padding:var(--space-2);min-height:44px;cursor:pointer;
-  border-radius:var(--radius-sm);border:2px solid var(--c);border-bottom-width:5px;   /* thick bottom edge = the "brick" cue */
+  border-radius:var(--radius-sm);border:2px solid var(--c);border-bottom-width:5px;   
   background:var(--c-soft);color:var(--c-text);
   font-family:var(--font-display);font-weight:700;font-size:clamp(var(--fs-base),1.9vw,1.6rem);
   transition:transform var(--dur-base) var(--ease),opacity .35s,box-shadow var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
-.gm-brick--motion{--c:var(--gm-motion);--c-soft:var(--gm-motion-soft);--c-text:var(--gm-motion-text);border-style:dashed;border-bottom-style:solid}   /* dashed = MOVE, so color is never the only cue */
+.gm-brick--motion{--c:var(--gm-motion);--c-soft:var(--gm-motion-soft);--c-text:var(--gm-motion-text);border-style:dashed;border-bottom-style:solid}   
 .gm-brick__sign{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* word signs (THANK YOU, UNDERSTAND…): the brick is a size container so the label scales with its own width,
-   wraps at spaces, and as a last resort breaks mid-word instead of being cut off. Letters/numbers keep the big size. */
 .gm-brick{container-type:inline-size}
 .gm-brick--word{padding-inline:var(--space-1)}
 .gm-brick__sign{line-height:1.1}
-/* short bricks (dense walls / short windows): one line, 'HOLD  P', so the letter is never clipped */
 @container (max-height:66px){
   .gm-brick:not(.gm-brick--word){flex-direction:row;gap:var(--space-2);padding-block:2px}
   .gm-brick:not(.gm-brick--word) .gm-brick__sign{font-size:1.25rem}
@@ -248,10 +202,9 @@
 @keyframes gmPulse{50%{filter:brightness(1.12)}}
 @keyframes gmShake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 @keyframes gmMissFlash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 6px color-mix(in srgb,var(--clr-red) 55%,transparent)}}
-.gm-hint{margin:0;min-height:2.9em;font-size:var(--fs-sm);line-height:1.45;text-align:left}   /* 2 lines reserved so the wall doesn't jump when a hint appears */
+.gm-hint{margin:0;min-height:2.9em;font-size:var(--fs-sm);line-height:1.45;text-align:left}   
 
-/* overlays */
-.gm-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--backdrop);border-radius:var(--radius-xl)}   /* PERF FIX: backdrop-filter removed — re-blurring the live webcam every frame made the modal hang */
+.gm-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--backdrop);border-radius:var(--radius-xl)}   
 .gm-overlay[hidden]{display:none}
 .gm-card{background:var(--clr-surface);color:var(--clr-text);border:1px solid var(--clr-border);border-radius:var(--radius-xl);padding:var(--space-8);max-width:440px;width:90%;text-align:center;display:flex;flex-direction:column;gap:var(--space-3);align-items:center;box-shadow:var(--shadow-card)}
 .gm-card h2{margin:0;font-family:var(--font-display)}
@@ -263,7 +216,6 @@
 .gm-chest .lw-icon{width:48px;height:48px}
 .gm-chest.is-open{animation:gmPop .6s}
 @keyframes gmPop{50%{transform:scale(1.25) rotate(8deg)}}
-/* stars: outline = not earned, filled yellow = earned (shape differs, not just colour) */
 .gm-stars,.gm-best__stars{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
 .gm-star{display:inline-grid;color:var(--clr-border-strong)}
 .gm-star .lw-icon{width:32px;height:32px}
@@ -274,45 +226,41 @@
 .gm-badges>span{display:inline-flex;align-items:center;gap:6px;padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);background:var(--clr-violet-soft);color:var(--clr-violet);font-size:var(--fs-sm);font-weight:700}
 .gm-badges .lw-icon{width:16px;height:16px}
 
-/* short desktop windows: keep the one-screen promise by tightening, not scrolling */
 @media (min-width:901px) and (max-height:700px){
   .gm{padding-block:var(--space-3);gap:var(--space-2)}
-  .gm-head p{display:none}                 /* the Setup card and the brick tags already carry the rules */
+  .gm-head p{display:none}                 
   .gm-log{height:6rem}
   .gm-hint{min-height:2.6em}
 }
 
-/* desktop: the page IS the viewport — nothing to scroll while signing */
 @media (min-width:901px){
   .gm{height:100vh;height:100dvh;min-height:540px}
-  #main:has(>.gm){padding-bottom:0}   /* app.css gives #main 24px bottom padding, which alone would make the page scroll */
+  #main:has(>.gm){padding-bottom:0}   
 }
 
-/* top-bar layout (<=900px): stacked, but camera + timers stay pinned so feedback is visible while the wall scrolls */
 @media (max-width:900px){
   .gm{padding:var(--space-3) var(--space-4) var(--space-6)}
   .gm-head{grid-template-columns:minmax(0,1fr)}
   .gm-title,.gm-head p,.gm-stats{grid-column:1;grid-row:auto}
   .gm:not(.ta) .gm-head>.btn{grid-column:1;grid-row:auto;justify-self:start}
-  .gm-head p{display:none}   /* the Setup card already states the rules; saves ~70px above the pinned camera */
+  .gm-head p{display:none}   
   .gm-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
-  .gm-left{position:sticky;top:64px;z-index:5;padding-bottom:var(--space-2);background:var(--clr-bg)}   /* 64px = the sticky top bar from responsive.css */
+  .gm-left{position:sticky;top:64px;z-index:5;padding-bottom:var(--space-2);background:var(--clr-bg)}   
   .gm-cam{flex:none;height:clamp(170px,30dvh,300px);min-height:0;border-radius:var(--radius-lg,var(--radius-md))}
   .gm-timers{grid-auto-flow:row}
   .gm-timer{padding:var(--space-2) var(--space-3)}
   .gm-field{padding:var(--space-3)}
   .gm-wall{flex:none}
-  .gm-row{flex:none;container-type:normal}   /* no size containment: rows must grow with their bricks here */
+  .gm-row{flex:none;container-type:normal}   
   .gm-brick{min-height:56px;font-size:var(--fs-base)}
   .gm-brick__tag{font-size:10px;letter-spacing:.06em}
-  .gm-overlay{position:fixed;border-radius:0}   /* centred in the viewport, not in a page-tall box */
+  .gm-overlay{position:fixed;border-radius:0}   
   .gm-card{padding:var(--space-6)}
 }
 @media (prefers-reduced-motion:reduce){
   .gm *,.gm *::before{animation:none!important;transition:none!important}
 }
 
-/* Time Attack — fingerspelling word display */
 .ta-wordbox{display:grid;gap:10px;padding:12px 14px;border:1px solid var(--border,rgba(148,163,184,.3));border-radius:14px;background:var(--surface,rgba(148,163,184,.08));margin-bottom:12px}
 .ta-wordbox__head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
 .ta-wordbox__name{margin:0;font-size:1.6rem;text-transform:uppercase;letter-spacing:.06em}
@@ -328,9 +276,6 @@
 .ta-wordchip[data-state="done"]{background:rgba(34,197,94,.22);text-decoration:line-through}
 .ta-breakdown{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:2px;font-size:.9rem}
 @media (prefers-reduced-motion:reduce){.ta-letter[data-state="current"]{transform:none}}
-/* ── Time Attack: letter rows, hold bar, skeletons ───────────────────────────────
-   #ta-letters and #ta-signed share one fixed-size grid, so both rows wrap at the same letter
-   (wide glyphs like W/M no longer push the rows out of step). */
 .ta-letters,.ta-signed{display:grid;grid-template-columns:repeat(auto-fill,2.6rem);gap:6px;justify-content:start}
 .ta-letter,.ta-slot{box-sizing:border-box;display:grid;place-items:center;width:2.6rem;height:2.6rem;min-width:0;padding:0;border-radius:10px;font-weight:700;font-size:1.15rem;line-height:1}
 .ta-slot{border:2px dashed rgba(148,163,184,.4);background:transparent}
@@ -345,12 +290,6 @@
 @keyframes ta-shimmer{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.ta-slot[data-fresh="1"],.ta-letter[data-state="skeleton"],.ta-slot[data-state="skeleton"]{animation:none}}
 
-/* ── Time Attack: layout fixes ───────────────────────────────────────────────────
-   1) The page used to be exactly one viewport tall on desktop, so once the word box grew (letter rows +
-      word chips) the left card's content (sign name, description) spilled out below it. The page is now
-      "at least one screen" and grows with its content instead.
-   2) The sidebar takes ~240px, so a viewport of 901-1180px leaves only ~660px for the game: two columns
-      were ~290px each and cramped. Stack them there, like the <=900px layout does. */
 @media (min-width:901px){
   .ta{height:auto;min-height:max(100dvh,540px)}
   .ta-stage{flex:1 0 auto}
@@ -363,13 +302,6 @@
   .ta-cam{flex:none;height:clamp(200px,32dvh,320px);min-height:0;border-radius:var(--radius-lg)}
 }
 
-/* Game picker lock (js/game-gate.js). The Game tab is never locked; instead pages/game.html shows the #game-lock banner
-   and every .game-mode card gets .game-mode--locked until Chapter 1 is finished. Locked cards stay fully readable: they
-   only swap the mode color for the muted neutral (so eyebrow, icon, bottom edge and Play pill all go quiet at once),
-   lose the hover lift, and show a "Locked" pill. Keyboard focus keeps its ring because a locked card opens the modal.
-   NO FLASH: js/game-gate.js sets <html data-game-gate="checking|locked|unlocked"> while the page is still loading, from the
-   state it remembered for this account. "locked" gives the same look as .game-mode--locked and shows the banner before JS runs;
-   "checking" (nothing remembered yet) dims the cards and makes them inert so they never look playable by mistake. */
 .game-lock{display:flex;align-items:center;gap:var(--space-5);margin-bottom:clamp(var(--space-5),3vw,var(--space-8));padding:var(--space-5);border:1px solid var(--clr-border);border-left:5px solid var(--clr-accent);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
 .game-lock[hidden]{display:none}
 .game-lock:focus{outline:none}

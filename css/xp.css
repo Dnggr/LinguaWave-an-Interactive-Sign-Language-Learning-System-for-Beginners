@@ -1,6 +1,4 @@
-/* css/xp.css — XP / level / badge / leaderboard UI. Uses the shared tokens in css/style.css so both themes work. */
 
-/* ── level-up / badge pop-up (js/xp.js notify()) ── */
 .xp-pop { position: fixed; left: 50%; bottom: 28px; z-index: 9999; transform: translate(-50%, 24px); opacity: 0;
   min-width: 240px; max-width: min(92vw, 380px); padding: 16px 20px; border-radius: var(--radius-lg, 22px);
   background: var(--clr-surface, #fff); color: var(--clr-text, #0f172a); border: 1px solid var(--clr-border, #e2e8f0);
@@ -18,29 +16,24 @@
 @media (prefers-reduced-motion: reduce) { .xp-pop, .xp-bar > i { transition: none; } }
 .lw-force-reduced-motion .xp-pop, .lw-force-reduced-motion .xp-bar > i { transition: none; }
 
-/* ── Wall Breaker result line ── */
 .gm-result__xp { margin: 8px 0 0; font-weight: 700; min-height: 1.4em; color: var(--clr-text-muted, #586780); }
 .gm-result__xp.is-gain { color: var(--clr-success, #047857); font-size: 1.15rem; }
 
-/* ── level bar (dashboard card + leaderboard header) ── */
 .xp-card { display: grid; gap: var(--space-3, .75rem); padding: var(--space-5, 1.25rem); }
 .xp-card__top { display: flex; align-items: center; gap: var(--space-4, 1rem); flex-wrap: wrap; }
 .xp-level { width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: #0b1220; /* dark on every tier colour; #fff on #38bdf8 was ~2:1 */
+  font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.5rem; color: #0b1220; 
   background: var(--tier, var(--clr-accent)); box-shadow: 0 0 0 4px var(--clr-surface-2, #eff6ff); }
 .xp-card__name { font-family: var(--font-display, inherit); font-weight: 700; font-size: var(--fs-lg, 1.125rem); margin: 0; }
 .xp-tier { display: inline-flex; align-items: center; gap: 6px; vertical-align: bottom; color: var(--clr-text); }
-.xp-tier .lw-icon { color: var(--tier, var(--clr-accent-text)); }   /* neon tier colour only on the small icon, not the label text */
+.xp-tier .lw-icon { color: var(--tier, var(--clr-accent-text)); }   
 .xp-tier .lw-icon { width: 16px; height: 16px; }
 .xp-card__sub { margin: 2px 0 0; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
 .xp-bar { height: 10px; border-radius: 9999px; background: var(--clr-track, #e2e8f0); overflow: hidden; }
-/* Fill is always full width and scaled by --p (0 to 1), so the animation runs on transform (compositor) instead of width (layout).
-   No border-radius here: scaleX would squash it. .xp-bar has overflow:hidden + a pill radius, so the left cap is still round. */
 .xp-bar > i { display: block; height: 100%; width: 100%; background: var(--tier, var(--clr-accent)); transform: scaleX(var(--p, 0)); transform-origin: left center; transition: transform .6s var(--ease, ease); }
 .xp-bar__label { display: flex; justify-content: space-between; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); margin-top: var(--space-2, .5rem); }
 .xp-stats { display: flex; gap: var(--space-2, .5rem); flex-wrap: wrap; }
 .xp-chip { padding: var(--space-2, .5rem) var(--space-4, 1rem); border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); font-size: var(--fs-sm, .875rem); font-weight: 600; white-space: nowrap; }
-/* Chips on the Profile card are links into Leaderboard -> My badges (js/xp-ui.js). */
 a.xp-chip { color: inherit; text-decoration: none; box-shadow: inset 0 0 0 1px transparent; transition: background var(--dur-fast, .15s) var(--ease, ease), color var(--dur-fast, .15s) var(--ease, ease), box-shadow var(--dur-fast, .15s) var(--ease, ease); }
 a.xp-chip:hover { background: var(--clr-accent-soft, rgba(37, 99, 235, .12)); color: var(--clr-accent-text, #1d4ed8); box-shadow: inset 0 0 0 1px var(--clr-accent, #2563eb); }
 a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
@@ -48,7 +41,6 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
 .lw-force-reduced-motion a.xp-chip { transition: none; }
 .xp-card__link { justify-self: start; font-size: var(--fs-sm, .875rem); font-weight: 600; color: var(--clr-accent-text, #1d4ed8); }
 
-/* ── leaderboard page ── */
 .lb-tabs { display: flex; gap: var(--space-2, .5rem); flex-wrap: wrap; margin: var(--space-4, 1rem) 0; }
 .lb-tab { border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); color: var(--clr-text, #0f172a);
   padding: 8px 16px; border-radius: 9999px; font: inherit; font-weight: 600; cursor: pointer; }
@@ -59,40 +51,33 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
   padding: 10px 14px; border-radius: var(--radius-md, 16px); background: var(--clr-surface, #fff); border: 1px solid var(--clr-border, #e2e8f0); }
 .lb-row.is-me { border-color: var(--clr-accent, #2563eb); background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); }
 .lb-rank { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; text-align: center; color: var(--clr-text-muted, #586780); }
-.lb-row.is-top .lb-rank { color: var(--clr-yellow, #b45309); }   /* real top 3 (a class, not :nth-child, so "Lowest first" does not paint the bottom three gold) */
+.lb-row.is-top .lb-rank { color: var(--clr-yellow, #b45309); }   
 .lb-lv { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #0b1220; font-weight: 700; background: var(--tier, var(--clr-accent)); }
 .lb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--clr-text-muted, #586780); font-size: var(--fs-sm, .875rem); }
 .lb-stat { display: inline-flex; align-items: center; gap: 4px; }
 .lb-stat--streak .lw-icon { color: var(--clr-orange, #f97316); }
 .lb-badges { display: inline-flex; align-items: center; gap: 4px; }
-/* A recent-badge icon: small tinted disc in the badge's own colour, dark glyph so it reads on every tier colour. */
 .lb-badge { width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--bd, var(--clr-accent)); color: #0b1220; }
 .lb-badge .lw-icon { width: 14px; height: 14px; }
 .lb-meta [title] { cursor: help; }
 .lb-score { text-align: right; font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.1rem; }
 .lb-score small { display: block; font-family: var(--font-body, inherit); font-weight: 400; font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
 .lb-empty, .lb-note { color: var(--clr-text-muted, #586780); padding: var(--space-4, 1rem) 0; }
-.lb-head__text p, .lb-note { max-width: 65ch; }   /* line length: ~65 characters reads comfortably */
+.lb-head__text p, .lb-note { max-width: 65ch; }   
 .lb-me-pin { margin-top: var(--space-3, .75rem); }
 .lb-privacy { display: flex; gap: var(--space-3, .75rem); align-items: center; flex-wrap: wrap; font-size: var(--fs-sm, .875rem); color: var(--clr-text-muted, #586780); margin-top: var(--space-3, .75rem); }
-/* Top-align this page. css/app.css gives #main `justify-content: center` (built for short
-   dashboard-style pages), which floated this shorter layout into the middle of the screen.
-   #main.lb-page out-ranks the plain #main rule, and this file's rule only touches this page. */
 #main.lb-page { justify-content: flex-start; }
 
-/* Header row: title + intro on the left, "How XP works" button on the right. */
 .lb-head { display: flex; gap: var(--space-4, 1rem); align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
 .lb-head__text { flex: 1 1 320px; min-width: 0; }
 .lb-how-btn { flex: none; }
 
-/* Two columns: title + boards (left, fluid) + the learner's own level card (right, sticky side panel that starts
-   level with the title). Under 960px it stacks: title, level card, boards. */
 .lb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4, 1rem) var(--space-6, 1.5rem); align-items: start; }
 .lb-head { grid-column: 1; grid-row: 1; }
 .lb-main { grid-column: 1; grid-row: 2; min-width: 0; }
 .lb-main .lb-tabs { margin-top: 0; }
-.lb-side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: var(--space-6, 1.5rem); }   /* spans the title row too, so the card starts level with the title */
+.lb-side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: var(--space-6, 1.5rem); }   
 .lb-me { text-align: center; justify-items: center; }
 .lb-me .xp-card__top { flex-direction: column; text-align: center; gap: var(--space-3, .75rem); }
 .lb-me .xp-level { width: 72px; height: 72px; font-size: 1.75rem; }
@@ -102,7 +87,7 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
 @media (max-width: 960px) {
   .lb-layout { grid-template-columns: minmax(0, 1fr); }
   .lb-head, .lb-main, .lb-side { grid-column: 1; grid-row: auto; }
-  .lb-head { order: -2; }                       /* title, then your level card, then the boards */
+  .lb-head { order: -2; }                       
   .lb-side { position: static; order: -1; }
   .lb-me { text-align: left; justify-items: stretch; }
   .lb-me .xp-card__top { flex-direction: row; text-align: left; }
@@ -110,7 +95,6 @@ a.xp-chip:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline
   .lb-me .xp-bar__label { justify-content: flex-start; }
 }
 
-/* ── "How XP works" modal (native <dialog>, same pattern as the Day Streak dialog) ── */
 .lb-how-dialog { margin: auto; padding: 0; width: min(92vw, 520px); max-height: 90vh; overflow-y: auto;
   color: var(--clr-text, #0f172a); background: var(--clr-surface, #fff); border: 1px solid var(--clr-border, #e2e8f0);
   border-radius: var(--radius-xl, 28px); box-shadow: 0 20px 60px rgba(15, 23, 42, .35); }
@@ -131,12 +115,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .lb-how-dialog__ok { width: 100%; justify-content: center; }
 @media (max-width: 560px) { .lb-row { grid-template-columns: 32px 36px 36px minmax(0, 1fr) auto; padding: 8px 10px; gap: 8px; } .lb-lv, .lb-row .lw-avatar { width: 34px; height: 34px; } }
 
-/* ── badge grid ──
-   States (set by js/leaderboard.js badgeCell): is-earned · is-next · is-ready · is-locked · is-todo.
-   Layout notes: tiles stretch to the tallest tile in their row and push the state label to the bottom, so a row never
-   looks ragged; the level lives in its own chip so a long tier name cannot wrap it onto a second line; and only the ICON
-   is dimmed for locked tiles (the old whole-tile opacity:.55 made the text hard to read). The icon disc is a solid tier
-   colour with a dark glyph, which keeps contrast on all six tier colours in both themes. */
 .bd-group { margin-top: var(--space-6, 1.5rem); }
 .bd-group > summary { display: flex; align-items: center; gap: var(--space-3, .75rem); cursor: pointer; list-style: none; padding: var(--space-2, .5rem) 0; border-radius: var(--radius-sm, 8px); }
 .bd-group > summary::-webkit-details-marker { display: none; }
@@ -145,7 +123,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .bd-group > summary:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
 .bd-group > summary h2 { display: flex; align-items: baseline; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0; font-family: var(--font-display, inherit); }
 .bd-group > .bd-grid { margin-top: var(--space-3, .75rem); }
-/* "Owned" filter on My badges: hide every tile that is not earned, and any group with none earned. */
 .is-owned-only .bd:not(.is-earned) { display: none; }
 .is-owned-only .bd-group[data-earned="0"] { display: none; }
 .bd-none[hidden] { display: none; }
@@ -165,19 +142,14 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .bd.is-earned .bd__state { color: var(--clr-success, #047857); }
 .bd.is-next { border: 2px dashed var(--clr-accent, #2563eb); padding: 13px 9px 11px; }
 .bd.is-next .bd__state { color: var(--clr-accent-text, #1d4ed8); }
-/* Available: the level allows it and it is queued behind "Up next" - tier colour kept, just softened. */
 .bd.is-ready .bd__icon { background: color-mix(in srgb, var(--bd, var(--clr-accent)) 28%, var(--clr-surface, #fff)); color: var(--clr-text, #0f172a); }
 .bd.is-ready .bd__state { color: var(--clr-accent-text, #1d4ed8); }
-/* Locked / not yet: grey disc + muted glyph; the text keeps full contrast. */
 .bd.is-locked .bd__icon, .bd.is-todo .bd__icon { background: var(--clr-locked-soft, rgba(148, 163, 184, .18)); color: var(--clr-text-muted, #586780); }
 .bd.is-locked .bd__lv { color: var(--clr-text-muted, #586780); background: transparent; border: 1px solid var(--clr-border, #e2e8f0); }
 
-/* Deep link target (leaderboard.html#mine/badge-<id> or #mine/bd-group-<group>): ring the tile or group for a few seconds.
-   An outline, not an animation, so reduced-motion users get the same cue. */
 .bd.is-linked, .bd-group.is-linked { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 4px; border-radius: var(--radius-md, 16px); }
 .bd, .bd-group { scroll-margin-top: var(--space-6, 1.5rem); }
 
-/* ── sort order (Highest first / Lowest first) ── */
 .lb-toolbar { display: flex; align-items: center; gap: var(--space-3, .75rem); flex-wrap: wrap; margin: 0 0 var(--space-3, .75rem); }
 .lb-toolbar[hidden] { display: none; }
 .lb-toolbar__label { font-size: var(--fs-xs, .75rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--clr-text-muted, #586780); }
@@ -187,25 +159,21 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .lb-sort__btn[aria-pressed="true"] { background: var(--clr-accent-soft, rgba(37, 99, 235, .12)); color: var(--clr-accent-text, #1d4ed8); box-shadow: inset 0 0 0 1px var(--clr-accent, #2563eb); }
 .lb-sort__btn:focus-visible { outline: 3px solid var(--clr-accent, #2563eb); outline-offset: 2px; }
 
-/* ── "My badges" button (under the level card) ── */
 .lb-mine-btn { width: 100%; justify-content: center; gap: 8px; margin-top: var(--space-1, .25rem); }
 .lb-mine-btn .lw-icon { width: 16px; height: 16px; }
 .lb-mine-btn__n { min-width: 22px; padding: 0 7px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text, #0f172a); font-size: var(--fs-xs, .75rem); font-weight: 700; line-height: 20px; }
 .lb-mine-btn[aria-pressed="true"] { background: var(--clr-accent, #2563eb); border-color: var(--clr-accent, #2563eb); color: var(--clr-text-invert, #fff); }
 .lb-mine-btn[aria-pressed="true"] .lb-mine-btn__n { background: var(--clr-text-invert, #fff); color: var(--clr-accent-text, #1d4ed8); }
 
-/* ── Badges board: bigger badge discs + a "+N" chip for the ones past the 5 shown ── */
 .lb-row--badges .lb-badges { gap: 5px; margin-left: 2px; }
 .lb-row--badges .lb-badge { width: 28px; height: 28px; }
 .lb-row--badges .lb-badge .lw-icon { width: 16px; height: 16px; }
 .lb-more { padding: 2px 8px; border-radius: 9999px; background: var(--clr-surface-2, #eff6ff); color: var(--clr-text-muted, #586780); font-size: var(--fs-xs, .75rem); font-weight: 700; cursor: help; }
 
-/* ── My badges: an earned tile is tinted with its own badge colour so it stands out from Available / Locked ── */
 .bd.is-earned { border-color: color-mix(in srgb, var(--bd, var(--clr-accent)) 60%, var(--clr-border, #e2e8f0));
   background: color-mix(in srgb, var(--bd, var(--clr-accent)) 9%, var(--clr-surface, #fff));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--bd, var(--clr-accent)) 22%, transparent); }
 
-/* ── Leaderboard refresh: grouped tabs, board heading, medal colours for the top 3 ───────────────────────────── */
 .lb-tabs { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3, .75rem) var(--space-6, 1.5rem); }
 .lb-tabgroup { display: grid; gap: 6px; min-width: 0; }
 .lb-tabgroup__label { font-size: var(--fs-xs, .75rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--clr-text-muted, #586780); }
@@ -232,10 +200,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
   .lb-board-head__count { display: none; }
 }
 
-/* ======================= Game Leaderboards (leaderboard.html "Game Leaderboards" tab) =======================
-   Built from the same tokens and pieces as the overall boards: .lb-board-head, .lb-sort pills, .lb-row cards, .sk skeletons.
-   Layout: game cards (3 across, stacked on phones) -> difficulty pills -> top-3 podium -> Rank | Player | Time | Misses list.
-   Construct ranks on time only, so its rows carry the --nomiss modifier (no Misses column). */
 .gl-games { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3, .75rem); margin: 0 0 var(--space-4, 1rem); }
 .gl-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; text-align: left; font: inherit; cursor: pointer;
   padding: var(--space-3, .75rem) var(--space-4, 1rem); border-radius: var(--radius-md, 16px);
@@ -259,7 +223,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .gl-you__rank b { font-family: var(--font-display, inherit); font-size: 1.15rem; }
 .gl-you--none { border-color: var(--clr-border, #e2e8f0); background: var(--clr-surface-2, #eff6ff); color: var(--clr-text-muted, #586780); }
 
-/* Podium: DOM order is 1, 2, 3; desktop paints 2-1-3 with the winner raised. Phones fall back to a 1-2-3 list. */
 .gl-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3, .75rem); align-items: end; margin: var(--space-4, 1rem) 0; }
 .gl-pod { display: grid; justify-items: center; gap: 4px; min-width: 0; text-align: center; padding: var(--space-3, .75rem);
   border-radius: var(--radius-md, 16px); border: 1px solid var(--clr-border, #e2e8f0); background: var(--clr-surface, #fff); }
@@ -276,7 +239,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .gl-pod__time { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .gl-pod__miss { font-size: var(--fs-xs, .75rem); color: var(--clr-text-muted, #586780); }
 
-/* Ranking list: header row + .lb-row cards on one shared column template. */
 .gl-table { display: grid; gap: var(--space-2, .5rem); }
 .gl-head, .lb-row.gl-row, .gl-row--sk { display: grid; grid-template-columns: 44px minmax(0, 1fr) 96px 72px; gap: var(--space-3, .75rem); align-items: center; }
 .gl-head.gl-row--nomiss, .lb-row.gl-row.gl-row--nomiss, .gl-row--sk.gl-row--nomiss { grid-template-columns: 44px minmax(0, 1fr) 96px; }
@@ -290,7 +252,6 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .gl-podium--sk .gl-pod--sk { height: 8rem; align-content: center; }
 .gl-podium--sk .gl-pod--sk .sk { margin-inline: auto; }
 
-/* Empty + error cards. */
 .gl-state { display: grid; justify-items: center; gap: var(--space-2, .5rem); text-align: center; padding: var(--space-8, 2rem) var(--space-4, 1rem);
   border: 1px dashed var(--clr-border, #e2e8f0); border-radius: var(--radius-md, 16px); }
 .gl-state__icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--clr-accent-soft, rgba(37, 99, 235, .1)); color: var(--clr-accent-text, #1d4ed8); }
@@ -300,11 +261,11 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
 .gl-hint { text-align: center; margin-inline: auto; }
 
 @media (max-width: 720px) {
-  .gl-games { grid-template-columns: 1fr; }                       /* spec: games stacked on mobile */
+  .gl-games { grid-template-columns: 1fr; }                       
 }
 @media (max-width: 560px) {
   .gl-sub { display: none; }
-  .gl-rank-full { display: none; }  .gl-rank-short { display: inline; }   /* "Rank" -> "#" so the narrow rank column never collides with "Player" */                                      /* "Small · 9 bricks" -> "Small" so the pills never overflow */
+  .gl-rank-full { display: none; }  .gl-rank-short { display: inline; }                                         
   .gl-podium { grid-template-columns: 1fr; gap: var(--space-2, .5rem); align-items: stretch; }
   .gl-pod, .gl-pod--1 { order: 0; padding: var(--space-2, .5rem) var(--space-3, .75rem); border-radius: var(--radius-md, 16px);
     grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "rank av name" "rank av stats";
@@ -315,7 +276,7 @@ body:has(.lb-how-dialog[open]) { overflow: hidden; }
   .gl-pod__name { grid-area: name; }
   .gl-pod__stats { grid-area: stats; display: flex; align-items: baseline; gap: 6px; justify-items: initial; }
   .gl-pod__time { font-size: 1rem; }
-  .gl-pod__miss::before { content: "\00b7\00a0"; }                  /* "00:42.3 · 0 misses" */
+  .gl-pod__miss::before { content: "\00b7\00a0"; }                  
   .gl-head, .lb-row.gl-row, .gl-row--sk { grid-template-columns: 24px minmax(0, 1fr) 64px 38px; gap: 8px; }
   .gl-head.gl-row--nomiss, .lb-row.gl-row.gl-row--nomiss, .gl-row--sk.gl-row--nomiss { grid-template-columns: 24px minmax(0, 1fr) 64px; }
   .gl-time, .gl-miss { font-size: .9rem; }

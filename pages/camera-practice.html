@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- NEW: sets data-theme before any CSS loads, so the page never
-       flashes the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -20,47 +18,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/camera-practice.html — Sign Lesson Viewer + Live Camera Assessment
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE  : Shows the learning content for one ASL sign AND provides
-               a live camera panel for real-time gesture practice.
-               After reviewing the sign, the user must click "Practice
-               Check" and pass it (see PASS_THRESHOLD in
-               js/camera-practice.js) to unlock "Continue to Next
-               Sign" — see the completion overlay near the bottom of
-               this file, and endAssessment()/continueToNext() in
-               js/camera-practice.js for the gate itself.
-
-    CAMERA TIPS: the Camera Tips card below the Practice Check is a step of
-               the first-visit guided tour and is also shown as a "Got it"
-               reminder after repeated missed attempts on the same sign
-               (see the script tags at the end of <body>). The card itself
-               is the only copy and stays where it is.
-
-    CONNECTS : ← pages/learn.html  (lesson card click)
-               ← pages/dashboard.html  (Continue button)
-               → next lesson.html (on completion)
-
-    URL PARAMS: ?level=basic&sign=A
-    SCRIPTS   : js/camera-practice.js (type="module") orchestrates all detection modules.
-
-    ══════════════════════════════════════════════════════════════════
-    BUG FIXES IN THIS FILE (matches lesson.js bug log):
-    ══════════════════════════════════════════════════════════════════
-
-    BUG 1 FIX — Added <div id="classifier-warn"> below the detection
-    panel. This is the non-blocking warning badge that lesson.js writes
-    to when the TF.js model fails to load. Previously the error was
-    written into the full-screen camera-status overlay, which covered
-    the camera feed. Now it appears BELOW the camera, not on top of it.
-
-    BUG 4 FIX — assessment-prompt-box and score-display start hidden
-    (style="display:none") and are shown/hidden by lesson.js when
-    assessment starts/ends. No change needed here — they were already
-    hidden in HTML; the bug was that lesson.js never showed them.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Lesson | LinguaWave</title>
@@ -75,10 +32,6 @@
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script>
@@ -86,9 +39,7 @@
     LWAuth.requireAuth('../index.html');
   });
   </script>
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <link rel="stylesheet" href="../css/xp.css" />
   <link rel="icon" href="../assets/icon/favicon.ico" sizes="any" />
@@ -97,38 +48,12 @@
 </head>
 <body data-tour="camera-practice">
 
-  <!-- ── SKIP LINK (Design pass, 2026-08-23; retargeted 2026-08-26) ───
-       PIVOT_CHECKLIST.md "Design pass — learn.html/lesson.html sidebar
-       not yet matching dashboard": this page's own tab-order problem is
-       arguably bigger than dashboard's navbar — #course-sidebar (below)
-       is a full unit/category/sign outline, potentially dozens of
-       links/buttons, and it sits BEFORE the actual lesson content in
-       DOM order (see the "course player" comment on .course-layout
-       below), so every keyboard user currently tabs through the whole
-       outline before reaching the sign they're actually here for.
-       Uses css/style.css's shared `.skip-link` (§16), not a page-local
-       copy. Must stay the very first element in <body>.
-
-       `id="lesson-content"`/`tabindex="-1"` lives on `.lesson-header`
-       (the sign title block) below, so the skip link lands directly on
-       the teaching content itself, past the sidebar. `#lesson-content`
-       id isn't referenced anywhere else (checked: no CSS, no JS
-       `getElementById`/`querySelector` call) so it's safe to leave in
-       place. -->
   <a href="#lesson-content" class="skip-link">Skip to lesson content</a>
 
-  <!-- ── NAVBAR ───────────────────────────────────────────────── -->
   <nav class="navbar">
     <div class="container navbar__inner">
       <a href="dashboard.html" class="navbar__logo">Lingua<span>Wave</span></a>
       <ul class="navbar__links">
-        <!-- href set dynamically by js/camera-practice.js's updateLessonMeta()
-             (id="btn-back-to-lessons") once it knows this sign's
-             mission/category — points to this sign's own Mission
-             Overview page (mission-overview.html?mission=…), the
-             equivalent of what this link used to send back to on
-             V1's learn.html. Falls back to learn.html below if JS
-             hasn't run yet. -->
         <li><a href="learn.html" id="btn-back-to-lessons">← Back to lessons</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
         <li><a href="learn.html" class="active">Learn</a></li>
@@ -147,47 +72,16 @@
     </div>
   </nav>
 
-  <!-- ── MAIN LESSON + CAMERA LAYOUT ──────────────────────────── -->
-  <!-- NEW — "course player" merge: lesson.html is the single merged
-       page a learner stays on for the whole teach->practice loop
-       instead of bouncing back to learn.html between signs.
-       #course-sidebar is populated by js/camera-practice.js's
-       renderCourseSidebar() — see css/lesson.css's matching comment
-       block for the full reasoning. The old lesson-progress strip
-       (back-to-lessons link / sign counter / progress bar / level
-       badge) and the mode-bar banner above were removed from this
-      -owned copy per explicit request — js/camera-practice.js's
-       getElementById() calls for those ids (#btn-back-to-lessons,
-       #lesson-counter, #lesson-progress-fill, #lesson-strip-badge,
-       #mode-bar) are all already null-guarded, so this needed no JS
-       changes. Navigating out (Dashboard/Learn in the navbar above,
-       or a different sign in #course-sidebar) is still how a learner
-       leaves this sign. -->
   <section class="section section--sm">
     <div class="container container--wide">
       <div class="course-layout">
-        <!-- Design pass, 2026-08-23: static loading placeholder (same
-             gap #3 as learn.html's #lesson-grid) — js/camera-practice.js's
-             renderCourseSidebar() replaces this aside's innerHTML
-             wholesale on its first call, so this is naturally
-             overwritten and needs no cleanup code. Uses
-             css/style.css's shared `.loading-pulse` (§16). -->
         <aside class="course-sidebar" id="course-sidebar" aria-label="Course outline" data-sk>
           <div class="sk-group" role="status" style="padding:var(--space-3)"><span class="sr-only">Loading course outline…</span><span class="sk sk--line" style="--w:70%;--h:1rem"></span><span class="sk sk--line" style="--w:90%;--h:1rem"></span><span class="sk sk--line" style="--w:55%;--h:1rem"></span><span class="sk sk--line" style="--w:80%;--h:1rem"></span><span class="sk sk--line" style="--w:65%;--h:1rem"></span><span class="sk sk--line" style="--w:85%;--h:1rem"></span></div>
         </aside>
-      <!-- `id="lesson-content"`/`tabindex="-1"` moved down onto
-           .lesson-header below (2026-08-26) — see the skip-link comment
-           at the top of <body> for why. -->
       <div class="lesson-layout">
 
-        <!-- ══════════════════════════════════════════════════════
-             LEFT PANEL — Reference lesson content
-             ══════════════════════════════════════════════════════ -->
         <div class="lesson-content-panel">
 
-          <!-- Sign header. `id="lesson-content"`/`tabindex="-1"` = skip-
-               link target (see the skip-link comment at the top of
-               <body>). -->
           <div class="lesson-header" id="lesson-content" tabindex="-1">
             <div class="lesson-letter" id="lesson-letter">A</div>
             <div>
@@ -196,27 +90,9 @@
             </div>
           </div>
 
-          <!-- Video demonstration -->
           <div class="lesson-video-wrap mt-8">
             <h2 class="heading-md">Watch the Sign in Motion</h2>
             <div class="lesson-video mt-4">
-              <!--
-                Demo video — TWO players live here, and js/camera-practice.js
-                shows exactly one of them per sign, based on that sign's
-                `videoUrl` in js/missions.js (applyLessonVideo()):
-
-                  • videoUrl is a YouTube embed URL
-                      (https://www.youtube.com/embed/<id>?si=...)
-                      → the <iframe id="lesson-video-embed"> below is shown
-                        and its src is built from videoUrl, plus autoplay / muted /
-                        loop / no controls / no related-video suggestions
-                        (buildYouTubeSrc()). Clicking the video reveals controls.
-                  • videoUrl is anything else (e.g. ../assets/videos/basic/B.mp4)
-                      → the <video id="lesson-video"> is shown instead.
-
-                Do NOT hardcode a YouTube URL in this file — change the
-                sign's `videoUrl` in missions.js and this page follows it.
-              -->
               <video
                 id="lesson-video"
                 autoplay
@@ -228,7 +104,6 @@
                 <source src="../assets/videos/placeholder.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-              <!-- src stays about:blank until camera-practice.js fills it from missions.js `videoUrl`. -->
               <iframe
                 id="lesson-video-embed"
                 width="560" height="315"
@@ -240,13 +115,6 @@
                 allowfullscreen
                 hidden
               ></iframe>
-              <!--
-                Transparent click-catcher over the YouTube iframe (shown only for YouTube signs).
-                The embed starts clean — muted, looping, NO controls / title / "More videos"
-                (see buildYouTubeSrc() in camera-practice.js). A click anywhere on the video hits
-                this button instead, which reloads the embed WITH YouTube's controls (seek, speed
-                via the gear, fullscreen) and then removes itself so later clicks reach the player.
-              -->
               <button
                 type="button"
                 id="lesson-video-shield"
@@ -260,7 +128,6 @@
             </p>
           </div>
 
-          <!-- Text explanation -->
           <div class="lesson-desc card mt-8" id="lesson-desc">
             <h2 class="heading-md">How to perform the sign</h2>
             <p class="mt-4" id="lesson-description">
@@ -273,51 +140,29 @@
               <li>Rest your thumb against the side of your index finger</li>
               <li>Keep your wrist straight and hand relaxed</li>
             </ol>
-            <!-- NEW: populated by lesson.js from signData.referenceUrl -->
             <p class="mt-4 text-muted" id="lesson-reference-link" style="display:none;"></p>
           </div>
 
-          <!-- PREV / NEXT navigation -->
           <div class="lesson-nav mt-8">
             <button class="btn btn--ghost" id="btn-prev">← Previous</button>
             <button class="btn btn--primary btn--lg" id="btn-next">Next Sign →</button>
           </div>
 
-        </div><!-- /lesson-content-panel -->
+        </div>
 
 
-        <!-- ══════════════════════════════════════════════════════
-             RIGHT PANEL — Live camera + detection
-             ══════════════════════════════════════════════════════ -->
         <div class="camera-panel">
 
-          <!-- Camera header -->
           <div class="camera-panel__header">
             <h2>Live Camera</h2>
             <div class="hand-status-pill hand-status-pill--none" id="hand-status-pill">No hand detected</div>
           </div>
 
-          <!-- Camera viewport -->
           <div class="camera-viewport">
-            <!--
-              BUG 1+2 NOTE: #camera-status is the FULL-SCREEN overlay used
-              only during boot (loading / hard camera error states).
-              lesson.js hides it (display:none) as soon as the camera is live
-              by calling setStatus('', 'ready').
-              DO NOT use this element for post-boot notifications — they will
-              cover the camera feed. Use #classifier-warn below instead.
-            -->
             <div class="camera-status camera-status--loading" id="camera-status">
               ⏳ Starting camera…
             </div>
             
-            <!--
-            BUG 7 FIX: Non-blocking face-tracking warning zone.
-            lesson.js writes here (via setFaceWarn()) whenever the whole head
-            isn't visible in frame — detection now needs face-relative landmarks
-            (chin/forehead) for every sign, not just face-location signs like
-            MOM/DAD, so this can show up during any lesson.
-            -->
             <div
               id="face-warn"
               style="display:none; margin-top: 8px; padding: 10px 14px;
@@ -326,7 +171,6 @@
                     line-height: 1.4;"
             ></div>
 
-            <!-- Live webcam feed -->
             <video
               id="lw-webcam"
               autoplay
@@ -334,14 +178,9 @@
               muted
               aria-label="Live webcam feed for sign detection"
             ></video>
-            <!-- Skeleton overlay -->
             <canvas id="lw-canvas" aria-hidden="true"></canvas>
-          </div><!-- /camera-viewport -->
+          </div>
 
-          <!-- Detection readout + log — merged into one card. These
-               used to be two separate cards; the log now lives inside
-               the same panel as the live readout since they're really
-               one feature (see current + history of the same thing). -->
           <div class="detection-panel card mt-4">
             <div class="detection-row">
               <span class="detection-label">Detected sign</span>
@@ -354,20 +193,6 @@
               <span class="confidence-text" id="confidence-text">0%</span>
             </div>
 
-            <!--
-              Motion buffer (shown for motion signs only). CHANGED:
-              the standalone "Start Recording" button is gone, folded
-              into "Start Assessment" — but detection also needs to
-              work in plain practice mode (browsing a sign before
-              taking the assessment), not only during a scored
-              attempt. So this compact "Try it" trigger is back for
-              PRACTICE mode specifically (lesson.js hides it once
-              assessment mode starts, since that auto-triggers its own
-              countdown per prompt — see showNextPrompt()). Two
-              triggers that both call the same startMotionRecording()
-              function isn't duplication, it's the same action exposed
-              in two contexts: casual practice vs. a scored attempt.
-            -->
             <div class="motion-buffer-wrap mt-3" id="motion-buffer-wrap">
               <div class="motion-buffer-wrap__head">
                 <span class="detection-label" id="motion-status-label">Collecting frames</span>
@@ -378,11 +203,6 @@
               </div>
             </div>
 
-            <!-- Detection log — persistent, scrollable history of every
-                 classification result, newest first. The live readout
-                 above updates every frame and can change/vanish in well
-                 under a second, especially for motion signs mid-
-                 confirmation, so this keeps a running record. -->
             <div class="detection-log-inline mt-4">
               <div class="detection-log__header">
                 <span class="detection-label">Detection log</span>
@@ -392,16 +212,8 @@
                 <li class="detection-log__empty">No detections yet</li>
               </ul>
             </div>
-          </div><!-- /detection-panel -->
+          </div>
 
-          <!--
-            BUG 1 FIX: Non-blocking classifier warning zone.
-            lesson.js writes here (via setClassifierWarn()) when the TF.js
-            model fails to load (Keras 3 / DTypePolicy export incompatibility).
-            This sits BELOW the camera, not on top of it, so the camera feed
-            is always visible regardless of model load state.
-            Hidden by default; shown only when there is a warning to display.
-          -->
           <div
             id="classifier-warn"
             style="display:none; margin-top: 8px; padding: 10px 14px;
@@ -410,30 +222,12 @@
                    line-height: 1.4;"
           ></div>
 
-          <!-- Assessment section — the Camera Practice check. GATE
-               (this session): passing it is required to unlock
-               "Continue to Next Sign" on the completion overlay below
-               — see endAssessment()/continueToNext() in
-               js/camera-practice.js. CHANGED: this button used to be
-               "Practice Check", separate from a "Start Recording"
-               button in the detection panel above. They did the same
-               job (both meant "attempt this sign for real"), so
-               they're merged — clicking this now also runs the 3-2-1
-               countdown + recording automatically for motion signs
-               once the get-ready pause ends (see showNextPrompt() in
-               lesson.js). -->
           <div class="assessment-panel mt-4">
 
-            <!-- Start button — triggers get-ready, then (for motion
-                 signs) the 3-2-1 countdown and recording automatically. -->
             <button class="btn btn--secondary btn--full btn--lg" id="btn-start-assessment">
               <span aria-hidden="true" data-lw-icon="camera" data-lw-icon-size="sm"></span> Practice Check
             </button>
 
-            <!-- MOVED (was above the button): this note now sits directly
-                 under "Practice Check". It auto-hides whenever the button
-                 itself is hidden (during a check, or on the name drill) —
-                 see the sibling rule in css/lesson-camera.css. -->
             <p class="text-muted practice-check-note" style="font-size: var(--fs-xs);">
               You need at least 80% to move on. Webcam sign detection has real
               accuracy limits, so if it's not registering, check the Camera Tips
@@ -441,29 +235,21 @@
               for another attempt.
             </p>
 
-            <!-- NEW: shown INSTEAD of the 80% note when this sign has no trained data
-                 (labels.json has no class for it). Toggled by applyPracticeCheckLock()
-                 in js/camera-practice.js. -->
             <p class="text-muted practice-check-locked-note" id="practice-check-locked-note" style="font-size: var(--fs-xs);" hidden>
               Practice Check is locked for this sign — we haven't trained the detection data for it yet.
             </p>
 
-            <!-- Assessment prompt (shown during assessment only) -->
-            <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
             <div class="assessment-prompt-box" id="assessment-prompt-box" style="display:none;">
               <p class="assessment-prompt" id="assessment-prompt">Sign: "A"</p>
               <div class="assessment-feedback" id="assessment-feedback" style="display:none;"></div>
             </div>
 
-            <!-- Score display (shown during assessment only) -->
-            <!-- BUG 4 NOTE: starts hidden; lesson.js sets display:'' in startAssessment() -->
             <div class="score-display mt-3" id="score-display" style="display:none;">
               Score: <strong>0 / 1</strong>
             </div>
 
-          </div><!-- /assessment-panel -->
+          </div>
 
-          <!-- Tips box -->
           <div class="camera-tips card mt-4">
             <p class="camera-tips__title"><span aria-hidden="true" data-lw-icon="camera_tips" data-lw-icon-size="sm"></span> Camera Tips</p>
             <ul class="camera-tips__list">
@@ -474,21 +260,13 @@
             </ul>
           </div>
 
-        </div><!-- /camera-panel -->
+        </div>
 
-      </div><!-- /lesson-layout -->
-      </div><!-- /course-layout -->
+      </div>
+      </div>
     </div>
   </section>
 
-  <!-- ══════════════════════════════════════════════════════════
-       COMPLETION OVERLAY (shown after assessment ends)
-       ══════════════════════════════════════════════════════════ -->
-  <!-- ══════════════════════════════════════════════════════════
-       NO-TRAINED-DATA MODAL (opened by the locked Practice Check button)
-       Reuses the completion-overlay look. Wired in js/camera-practice.js
-       (openUntrainedModal / closeUntrainedModal).
-       ══════════════════════════════════════════════════════════ -->
   <div class="completion-overlay untrained-overlay" id="untrained-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="untrained-title">
     <div class="completion-card untrained-card">
       <button type="button" class="completion-card__close" id="untrained-close" aria-label="Close">&times;</button>
@@ -508,20 +286,11 @@
 
   <div class="completion-overlay" id="completion-overlay" style="display:none;" role="dialog" aria-modal="true">
     <div class="completion-card">
-      <!-- NEW: small close (X), same look as the login modal's close button.
-           Dismisses the overlay only — progress was already saved in
-           endAssessment() — and leaves the Practice Check button ready. -->
       <button type="button" class="completion-card__close" id="completion-close" aria-label="Close" onclick="closeOverlay()">&times;</button>
       <div class="completion-score" id="final-score">80%</div>
       <p class="completion-attempts" id="final-attempts">Attempt 1</p>
       <h2 id="overlay-result-title"><span aria-hidden="true" data-lw-icon="celebration" data-lw-icon-size="sm"></span> Lesson Passed!</h2>
 
-      <!--
-      BUG 8 FIX: Missed-signs review list. lesson.js fills this in on a
-      failed category assessment (matches flowchart's "Review missed
-      signs" step). Hidden by default; also hidden automatically on pass
-      or for single-sign alphabet assessments.
-    -->
     <div
       id="missed-signs-review"
       style="display:none; text-align:left; margin-top: 16px; padding: 12px 16px;
@@ -544,42 +313,12 @@
   </div>
 
   <script src="../js/main.js"></script>
-  <!-- Progress engine: tracks practiced signs / category & level assessments. -->
   <script defer src="../js/engine/progress.js"></script>
-  <!--
-    BRIDGE (migration-analysis pass) — this page still records
-    practice through V1's window.LWProgress above, but it's reached
-    from's Mission Overview dictionary chips, so it also needs
-    window.LWMissions loaded to mark the matching mission item
-    complete (see markSignPracticedBridge() in missions.js and its call
-    sites in lesson.js). Also the source of per-sign lesson content
-    (title, description, tips, image) via window.LWMissions.getSign().
-    Must load before camera-practice.js.
-  -->
   <script defer src="../js/missions.js"></script>
-  <!--
-    lesson.js is loaded as type="module" so it can use ES6 imports
-    (cameraUtils, mediapipe, classifier, renderer, dictionary).
-    All other page scripts are plain <script> tags — no conflict.
-  -->
   <script type="module" src="../js/camera-practice.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="camera-practice">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Camera Tips as contextual coaching (NEW). The Camera Tips card
-       (.camera-tips, in the right-hand column above) is BOTH a step of the
-       guide above on a learner's first visit AND what this pops up when a
-       learner keeps missing the same sign: LWTour.remind() spotlights that
-       one real card with a "Got it" button, it is never duplicated and the
-       tutorial is never restarted. js/camera-practice.js reports each
-       finished attempt as passed / missed; this file counts them per sign
-       and decides when to remind (2nd, 5th, 10th, 20th miss, then every
-       10). Loaded after tour.js, and js/camera-practice.js calls it only
-       through optional chaining, so this page still works without it. -->
   <script src="../js/camera-tips-reminder.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
 </body>
 </html>

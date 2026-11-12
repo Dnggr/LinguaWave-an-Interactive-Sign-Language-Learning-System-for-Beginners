@@ -1,19 +1,6 @@
-/**
- * Pure LinguaWave XP engine for Spark/browser and Node.
- *
- * There is no Firebase, DOM, local storage, or window access in this module.
- * These limits make the engine easy to import in Node and keep game/lesson
- * calculations in one place. Since a browser owns the writes on Spark, the
- * client rules are best-effort guardrails: a determined learner can forge
- * claims inside the Firestore caps.
- */
 
-// ── Time Attack word bank ─────────────────────────────────────────────────────────────────────────────────────
-// Only handshapes the static model can classify: no J or Z (motion letters) and no 6 or 9 (motion digits). 'ak 47' etc. use '_'
-// for a space in the label. The first four words are the original run and keep their ids.
 const FINGERSPELL_WORD_LIST =
   'car america ak_47 hamburger ' +
-  // 3-letter words (338)
   'ace add age ago aid aim air all and ant any ape arc are arm art ash ask ate awe axe bad bag ban bar bat bay bed ' +
   'bee beg bet bib bid big bin bit bow box boy bud bug bun bus but buy cab cam can cap cat cob cod cog cot cow cry ' +
   'cub cup cut dad dam day den dew did die dig dim dip doe dog dot dry due dug duo dye ear eat eel egg elf elk elm ' +
@@ -27,7 +14,6 @@ const FINGERSPELL_WORD_LIST =
   'tug two urn use van vat vet vow wag war was wax way web wed wet who why wig win wit woe won wow yak yam yes yet ' +
   'you yum mp3 b12 4wd h2o co2 abc dvd gps usa atm cpu diy faq fyi 123 321 505 247 380 150 720 840 100 200 300 400 ' +
   '500 700 ' +
-  // 4-letter words (559)
   'able arch area army aunt baby back ball band bank barn base bath bean bear beat bell belt bend bike bird blue ' +
   'boat body bone book boom boot born bowl bulb bush busy cake call calm camp card care cart case cash cave chin ' +
   'chip city clam clap clay clip club coat code coin cold cook cool corn cost crab crew crop cube cure dark dart ' +
@@ -54,7 +40,6 @@ const FINGERSPELL_WORD_LIST =
   'wind wine wing wink wise wish with wolf wood wool word wore work worm wrap yard yarn yawn year yell yoga your ' +
   '1234 4321 2024 2025 2020 2010 2000 1812 8421 1357 1010 3030 4040 5050 7070 8080 1111 2222 3333 4444 5555 7777 ' +
   '8888 1212 1313 2323 2345 3245 4528 5421 7245 ' +
-  // 7-letter words (181)
   'animals balance balloon bananas bedroom blanket brother cabbage cabinet captain carpets carrots chicken chimney ' +
   'clothes college compass concert cookies cottage country courage cousins cricket curtain dentist diamond dolphin ' +
   'dragons drawing dresser explore fabrics factory farmers feather fiction fishing flowers freedom friends general ' +
@@ -68,7 +53,6 @@ const FINGERSPELL_WORD_LIST =
   'stories streets student sunrise sunsets teacher tickets trouble trumpet tunnels turkeys turtles uniform vehicle ' +
   'village violins visitor walnuts weather weekend whistle windows wonders workers writers younger grandpa harmony ' +
   'oatmeal quietly thirsty victory whisper 1234578 8754321 1357024 catch_22 2345781 3457812 8123457 7531248 ' +
-  // 9-letter words (250)
   'bookshelf butterfly dragonfly evergreen footsteps furniture gymnasium hairbrush happiness important pineapple ' +
   'raspberry snowflake spaghetti starlight stopwatch tangerine valentine vegetable volcanoes waterfall wonderful ' +
   'adventure afternoon alligator ambulance beautiful blueberry bookstore breakfast chocolate classroom community ' +
@@ -131,7 +115,6 @@ export const CONFIG = Object.freeze({
     SPEED_BADGE_MS_PER_BRICK: 6000,
     VETERAN_WALLS: 5,
   }),
-  // Construct a Sentence. Open to every verified learner (no learned signs needed). XP is 1 per word; it shares GAME.DAILY_XP_CAP.
   SENTENCE: Object.freeze({
     WORD_XP: 1,
     DIFFICULTY_MULT: Object.freeze({ easy: 1, medium: 1.25, hard: 1.5 }),
@@ -141,16 +124,11 @@ export const CONFIG = Object.freeze({
     MIN_MS_PER_WORD: 500,
     VETERAN_RUNS: 5,
   }),
-  // Time Attack (fingerspelling). The learner spells each word letter by letter; the longer the word, the more XP.
-  // Balanced like Construct a Sentence: small per-letter XP plus the shared CLEAR/FLAWLESS bonuses, and it counts
-  // against the same GAME.DAILY_XP_CAP (90/day). car 3, ak 47 4, america 7, hamburger 9 (+3 clear, +3 flawless = 29 per run).
   FINGERSPELL: Object.freeze({
-    // 1332 words, listed in FINGERSPELL_WORD_LIST below. Every run spells ONE random word per length in RUN_LENGTHS, so every
-    // run is 23 letters and worth the same XP/leaderboard weight as any other run, whichever words were drawn.
     RUN_LENGTHS: Object.freeze([3, 4, 7, 9]),
     WORDS: FINGERSPELL_WORDS,
-    LETTER_XP: 1,               // XP per letter/number, so a word is worth its length
-    MIN_MS_PER_LETTER: 450,     // a letter needs a 500 ms steady hold, so nobody can honestly beat this
+    LETTER_XP: 1,
+    MIN_MS_PER_LETTER: 450,
   }),
 });
 
@@ -262,12 +240,8 @@ export function weekKeyUtc(ms) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-/* ── Day Streak (same GRACE rule as js/missions.js) ───────────────────
- * ONE missed day in a row is forgiven (the streak counts ACTIVE days, so Tue, Thu, Fri = 3),
- * TWO missed days in a row reset it. Keep this in step with STREAK_MAX_MISSED_DAYS in missions.js. */
 export const STREAK_MAX_MISSED_DAYS = 1;
 
-/** Whole calendar days from day key `from` to day key `to` (negative when `to` is earlier). */
 export function dayGap(from, to) {
   const [fy, fm, fd] = from.split('-').map(Number);
   const [ty, tm, td] = to.split('-').map(Number);
@@ -278,7 +252,7 @@ export function applyStreak(streak, today) {
   const current = streak || { current: 0, longest: 0, lastDay: null };
   if (current.lastDay) {
     const gap = dayGap(current.lastDay, today);
-    if (gap <= 0) return { ...current };            // same day, or the device clock went backwards: nothing changes
+    if (gap <= 0) return { ...current };
     if (gap - 1 <= STREAK_MAX_MISSED_DAYS) {
       const next = (current.current || 0) + 1;
       return { current: next, longest: Math.max(current.longest || 0, next), lastDay: today };
@@ -287,7 +261,6 @@ export function applyStreak(streak, today) {
   return { current: 1, longest: Math.max(current.longest || 0, 1), lastDay: today };
 }
 
-/** What to DISPLAY on local day `today`: live until a SECOND missed day in a row has passed. */
 export function effectiveStreak(streak, today) {
   if (!streak?.lastDay) return 0;
   const gap = dayGap(streak.lastDay, today);
@@ -391,7 +364,6 @@ export function resolveTimezone(state, hint, now) {
     state.tz = isValidTz(hint) ? hint : 'UTC';
     state.tzChangedAt = now;
   } else if (isValidTz(hint) && hint !== state.tz && now - (state.tzChangedAt || 0) >= CONFIG.TZ_CHANGE_COOLDOWN_DAYS * 86400000) {
-    // This cooldown limits accidental timezone flips; changing the device clock can still cheat day boundaries.
     state.tz = hint;
     state.tzChangedAt = now;
   }
@@ -428,14 +400,6 @@ export function applyActivityStreak(state, today, out, now) {
   streakBadgesFor(state.streak.current).forEach((id) => grantBadge(state, id, out, now));
 }
 
-/**
- * Catch-up for a streak that was stored under the old strict rule (Tue, Thu, Fri saved as 2, should be 3).
- * `missions` is the summary js/missions.js keeps from the real activity days: { currentStreak, lastActivityDate }.
- * Raises state.streak.current toward it and grants the streak badges that unlocks. Returns true when it changed.
- * It only ever RAISES a streak that is still live and ends on the same day as the missions one, and it moves
- * ONE step per call because firestore.rules cap a single write at streak.current <= previous + 1
- * (js/xp.js syncStreak() simply calls it again until it reports nothing left to heal).
- */
 export function healStreakFromMissions(state, today, out, now, missions) {
   const last = state.streak?.lastDay;
   if (!last || !missions || missions.lastActivityDate !== last) return false;
@@ -541,18 +505,11 @@ export function validateGameSigns(signs, mode, signTypes) {
   return true;
 }
 
-/** XP for one fingerspelling word at 100% accuracy (before the run bonuses): longer words are worth more. */
 export const fingerspellWordXp = (symbolCount) => CONFIG.FINGERSPELL.LETTER_XP * symbolCount;
 const FINGERSPELL_BY_ID = new Map(CONFIG.FINGERSPELL.WORDS.map((word) => [word.id, word]));
 export const fingerspellWordById = (id) => FINGERSPELL_BY_ID.get(id) || null;
-/** Most letters a run may contain: one word per RUN_LENGTHS entry. */
 export const FINGERSPELL_RUN_LETTERS = CONFIG.FINGERSPELL.RUN_LENGTHS.reduce((sum, n) => sum + n, 0);
 
-/**
- * Draw a Time Attack run: one random word for each length in RUN_LENGTHS (short -> long), so every run has the same
- * number of letters. `usable(word)` filters words the classifier cannot check; `avoid` is a list of word ids to skip
- * (the previous run) unless that would leave a length with nothing to draw. A length with no usable word is left out.
- */
 export function pickFingerspellRun(usable = () => true, { rng = Math.random, avoid = [] } = {}) {
   const skip = new Set(avoid);
   const run = [];
@@ -565,11 +522,6 @@ export function pickFingerspellRun(usable = () => true, { rng = Math.random, avo
   return run;
 }
 
-/**
- * Time Attack (fingerspelling) session check. `session` = { signs, words: [wordId, ...] }.
- * `signs` is the de-duplicated letters/numbers across the chosen words (letters repeat inside a word, so the
- * one-of-each rule of Wall Breaker cannot apply). `signTypes` maps signId -> 'static' | 'motion'.
- */
 export function validateFingerspellSession(session, signTypes) {
   if (!session || !Array.isArray(session.words) || !Array.isArray(session.signs)) return false;
   const { words, signs } = session;
@@ -581,16 +533,15 @@ export function validateFingerspellSession(session, signTypes) {
     if (!word) return false;
     letters += word.symbols.length;
     for (const symbol of word.symbols) {
-      if (signTypes[symbol] !== 'static') return false;   // fingerspelling is checked with the static model only
+      if (signTypes[symbol] !== 'static') return false;
       used.add(symbol);
     }
   }
-  if (letters > FINGERSPELL_RUN_LETTERS) return false;   // a run can never be longer than one word per length tier
+  if (letters > FINGERSPELL_RUN_LETTERS) return false;
   if (signs.some((sign) => typeof sign !== 'string') || new Set(signs).size !== signs.length) return false;
   return signs.length === used.size && signs.every((sign) => used.has(sign));
 }
 
-/** Timing/order check for a fingerspelling run. `log` = [{ w, t }]: word index and ms from the session start. */
 export function validateFingerspellTiming({ words, log, elapsedMs }) {
   const cfg = CONFIG.FINGERSPELL;
   if (!Array.isArray(log) || log.length !== words.length) return 'incomplete_run';
@@ -623,7 +574,6 @@ export function applyFingerspellFinish(state, session, log, wrong, learnedSigns,
   const letters = words.reduce((sum, word) => sum + word.symbols.length, 0);
   const accuracy = letters / Math.max(1, letters + wrong);
   const accMult = (game.ACC_TIERS.find((tier) => accuracy >= tier.min) || game.ACC_TIERS.at(-1)).mult;
-  // A word pays out only when every letter/number in it has been learned (same gate the old Time Attack used).
   const perWord = words.map((word) => {
     const eligible = word.symbols.every((symbol) => learned.has(symbol));
     return { id: word.id, label: word.label, letters: word.symbols.length, eligible,
@@ -632,7 +582,6 @@ export function applyFingerspellFinish(state, session, log, wrong, learnedSigns,
   if (!perWord.some((word) => word.eligible)) {
     return { ok: true, reason: 'not_enough_learned', xpGained: 0, counted: false, skipStateWrite: true, words: perWord };
   }
-  // Same shape as Construct a Sentence and Wall Breaker: base XP x accuracy, plus one clear bonus and a flawless bonus.
   const flawless = wrong === 0;
   const raw = perWord.reduce((sum, word) => sum + word.xp, 0) + game.CLEAR_BONUS + (flawless ? game.FLAWLESS_BONUS : 0);
   const room = Math.max(0, game.DAILY_XP_CAP - state.daily.gameXp);
@@ -650,10 +599,6 @@ export function applyFingerspellFinish(state, session, log, wrong, learnedSigns,
   return out;
 }
 
-/**
- * Construct a Sentence session check. `session` = { signs, rounds: [[signId, ...], ...], difficulty }.
- * `isKnown(signId)` says whether a sign exists in the app. Pure: no DOM, no Firebase.
- */
 export function validateSentenceSession(session, isKnown) {
   const cfg = CONFIG.SENTENCE;
   if (!session || !Array.isArray(session.rounds) || !Array.isArray(session.signs)) return false;
@@ -670,7 +615,6 @@ export function validateSentenceSession(session, isKnown) {
   return signs.length === used.size && signs.every((w) => used.has(w));
 }
 
-/** Timing/order check for a sentence run. `log` = [{ i, t }] with t = ms from the session start. Returns an error reason or null. */
 export function validateSentenceTiming({ rounds, log, elapsedMs }) {
   const cfg = CONFIG.SENTENCE;
   if (!Array.isArray(log) || log.length !== rounds.length) return 'incomplete_run';
@@ -698,7 +642,6 @@ export function applySentenceFinish(state, session, log, wrong, _learnedSigns, {
   const timingIssue = validateSentenceTiming({ rounds: session.rounds, log, elapsedMs: elapsed });
   if (timingIssue) return { ok: false, reason: timingIssue };
 
-  // Every sentence in the run counts: this game does not need any lesson progress.
   const words = session.rounds.reduce((sum, list) => sum + list.length, 0);
   const accuracy = session.rounds.length / Math.max(1, session.rounds.length + wrong);
   const accMult = (game.ACC_TIERS.find((tier) => accuracy >= tier.min) || game.ACC_TIERS.at(-1)).mult;
@@ -803,7 +746,6 @@ export function profileData(state, name, now, avatar) {
     streakExpiresAt: streak ? startOfDayMs(shiftDayKey(state.streak.lastDay, STREAK_MAX_MISSED_DAYS + 2), tz) : null,
     badgeCount: Object.keys(state.badges).length,
     recentBadges,
-    // XP earned per game, for the per-game leaderboards (each is part of the shared daily game cap).
     wallXp: state.totals.wallXp || 0,
     timeAttackXp: state.totals.timeAttackXp || 0,
     sentenceXp: state.totals.sentenceXp || 0,

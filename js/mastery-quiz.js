@@ -1,97 +1,3 @@
-/**
- * js/mastery-quiz.js — Renderer/controller for pages/mastery-quiz.html (NEW)
- * ─────────────────────────────────────────────────────────────────
- * A real-native Mastery Quiz: multiple-choice, one question per
- * sign in the mission, immediate per-question feedback, then a single
- * end-of-quiz summary — resolving the mockup-audit gap
- * where V1's quiz.js conflated "per-question Correct! card" (mockup
- * screen 9) with "end-of-quiz summary" into one results-title string.
- *
- * PASS RULE (no score threshold) : there is no percentage to reach any
- * more (it used to be 80%). Mastery Hearts are the only gate: a wrong
- * answer spends a heart, and the one that empties the pool stops the
- * quiz on the spot (renderOutOfHearts()), so getting to the end of the
- * quiz with a heart left IS passing, and finishQuiz() completes the
- * mission. This was a product call ("the heart attempts are already
- * enough to filter beginners from advanced learners"). Known
- * consequence, deliberately accepted: the hearts allow up to 2 misses
- * (3-heart pool), so on a mission with only a few signs that can be a
- * low score. A 1-sign mission passes even on a wrong answer, because
- * one miss can't empty a 3-heart pool. To bring a floor back, gate
- * `finishQuiz()` on numCorrect again.
- *
- * BACK LINK : the link above the quiz used to always read "All
- * missions" (learn.html), dropping the learner three screens back.
- * configureBackLink() below now returns them to where they came from:
- * the lesson's recap slide when they arrived with `&from=lesson` (see
- * js/lesson.js's renderQuizHandoff()), otherwise the mission's own
- * Mission Overview. The static "All missions" link in the HTML stays
- * only for the not-found screen, where there is no mission to go back
- * to.
- *
- * ENDING SCREEN (Priority 3 task 7, "option 2" follow-up) : the old
- * per-sign "You can now sign..." <ul> (one <li> per getRecap() line)
- * read as clutter and was flagged for removal. Rather than deleting
- * the accomplishment info outright, it's now one summary sentence —
- * "You've mastered all N signs in <Mission>." — using
- * result.recap.length for the count. getRecap() itself is unchanged
- * and still used as-is by lesson.js's own recap step.
- *
- * HEARTS (Task 2, prior revision) : entering this quiz costs nothing.
- * A heart is spent per WRONG graded answer instead (1 incorrect
- * answer = 1 heart), via window.LWMissions.consumeHeartForIncorrectAnswer()
- * in handleAnswer() below — not once at the end in finishQuiz() like
- * the previous revision did. That's a NEW, ADDITIVE function in
- * js/missions.js; it does not touch or replace consumeHeartForMastery(),
- * which mission-overview.js/lesson.js still use for every
- * chapter that falls back to V1's pages/quiz.html.
- *
- * ANSWER FLOW + OUT OF HEARTS (Priority 1, Tasks 3 & 4, this revision):
- *   - Correct answer: feedback shown, Continue button NOT rendered,
- *     auto-advances to the next question after AUTO_ADVANCE_DELAY_MS.
- *   - Incorrect answer: feedback shown WITH a manual Continue button;
- *     no auto-advance/cooldown is started for it.
- *   - If the heart spent for that incorrect answer empties the pool
- *     (hearts <= 0), the quiz stops immediately instead of showing the
- *     normal incorrect-feedback card — renderOutOfHearts() (already
- *     used as the pre-quiz gate in initPage()) takes over the whole
- *     content area, so no quiz option/button remains interactive.
- * See handleAnswer() below for all three.
- *
- * SAMPLE SCOPE (widened this revision — merged from three parallel
- * widenings) : ALL 11 chapters are now served here — 'asl_foundations'
- * (Ch.1), 'introduce_yourself' (Ch.2), 'express_feelings' (Ch.3),
- * 'daily_actions' (Ch.4), 'describing_things' (Ch.5), 'home_family'
- * (Ch.6), 'school_life' (Ch.7), 'food_nature' (Ch.8),
- * 'clothing_belongings' (Ch.9), 'people_places_time' (Ch.10),
- * and 'having_a_conversation' (Ch.11)
- * — see SAMPLE_CATEGORY_GROUPS below, originally just Chapters 1-2.
- * Chapters 3-12 have no hand-curated NEAR_NEIGHBORS/SAME_SIGN_AS
- * entries in js/lesson-loop.js (same as every other uncurated
- * chapter) — they run on that file's existing generic (non-curated)
- * distractor fallback, the same "degrade, don't throw" path the
- * lesson flow already uses for those chapters. Verified via a Node
- * harness against every real mission in the newly sampled chapters:
- * buildQuizQuestions() produces a valid option set (2+ options,
- * correct answer included) with zero throws for every one of them.
- * With every chapter now in SAMPLE_CATEGORY_GROUPS, the V1
- * pages/quiz.html fallback below (mission-overview.js /
- * lesson.js) is currently unreachable for any real mission — it
- * stays in place only as a defensive fallback for an unsampled
- * mission (typed URL, stale link, or a future new chapter not yet
- * added here), in which case this page still says so and offers the
- * V1 quiz rather than silently failing. To widen the sample further
- * (e.g. a future 12th chapter), add the new chapter's id to
- * SAMPLE_CATEGORY_GROUPS — nothing else here is chapter-specific.
- * SAMPLE_CATEGORY_GROUPS must stay in sync with
- * mission-overview.js's SAMPLE_MASTERY_QUIZ_CHAPTERS and
- * lesson.js's own copy of that same const.
- *
- * Same data-source discipline as every other *.js file: reads only
- * window.LWMissions / window.LWMissionsLoop. Does not
- * touch js/engine/progress.js or pages/quiz.js.
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 
 const SAMPLE_CATEGORY_GROUPS = [
@@ -101,16 +7,8 @@ const SAMPLE_CATEGORY_GROUPS = [
   'clothing_belongings', 'people_places_time', 'having_a_conversation',
 ];
 const MAX_QUESTIONS = 12;
-// Priority 1, Task 3 — "wait about 1-2 seconds" for the auto-continue
-// after a correct answer. Sits inside that stated range.
 const AUTO_ADVANCE_DELAY_MS = 1500;
 
-// OPTIMISTIC-PAINT FIX — set true the moment the learner submits their
-// first real answer (see handleAnswer()). initPage() reads this after
-// the background Firestore sync resolves to decide whether it's still
-// safe to reconcile a possibly-different hearts count into a
-// re-render — see that function's own comment for why "mid-attempt"
-// specifically has to be guarded against here, unlike js/lesson.js.
 let quizAnswerStarted = false;
 
 function getMissionParam() {
@@ -124,15 +22,6 @@ function escapeHtml(str) {
   }[c]));
 }
 
-/* ── media (video/image) with graceful, honest fallback ───────────
- * Identical to js/lesson.js's own mediaBlockHtml() — copied, not
- * imported, per this repo's established convention of small page-
- * scoped helpers re-derived per file (see mission-overview.js's
- * own file-header note on the same choice for statusFor()). The
- * fallback trigger lives on the <source> tag's own onerror, not the
- * <video> tag's — see lesson.js's comment for why (Chromium
- * dispatches a failed nested <source>'s error event to the <source>
- * itself, confirmed with a real browser during that build). */
 function mediaBlockHtml(sign) {
   if (!sign) {
     return `<div class="lesson-media lesson-media--missing">Sign data not found.</div>`;
@@ -158,10 +47,6 @@ function mediaBlockHtml(sign) {
   `;
 }
 
-/* Deterministic (seeded, not Math.random) shuffle — identical
- * algorithm to js/lesson-loop.js's own shuffleDeterministic(), so
- * a mission's quiz question set/order stays stable across re-renders
- * within a session rather than reshuffling on every reload. */
 function shuffleDeterministic(arr, seedStr) {
   let seed = 0;
   for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
@@ -175,7 +60,7 @@ function shuffleDeterministic(arr, seedStr) {
 }
 
 function letterFor(i) {
-  return String.fromCharCode(65 + i); // A, B, C, D...
+  return String.fromCharCode(65 + i);
 }
 
 function formatCountdown(targetIso) {
@@ -192,9 +77,6 @@ function heartsRowHtml(heartsState) {
   const hearts = Array.from({ length: heartsState.maxHearts }, (_, i) =>
     `<span class="heart ${i < heartsState.hearts ? 'heart--full' : 'heart--empty'}" aria-hidden="true">&#10084;</span>`
   ).join('');
-  // Wording (Task 2) — "remaining", not "attempts available": a heart
-  // is now spent per wrong answer, not once per whole attempt, so the
-  // pool can outlast several attempts if the learner answers cleanly.
   return `<span class="quiz-hearts-row" id="mq-hearts-row" title="${heartsState.hearts} of ${heartsState.maxHearts} Mastery Hearts remaining">${hearts}</span>`;
 }
 
@@ -210,36 +92,11 @@ function uniqueSignIds(mission) {
   return out;
 }
 
-/* §3.6 difficultyRamp, wired into real rendered output for the first
- * time (previously schema-only everywhere — see
- * Missions_LinguaWave_Progress_Tracker.md row 3.6). A sign that got a
- * real Practice-stage escalation (its own PRACTICE item's
- * difficultyRamp: ['2-option','3-option+distractor']) is quizzed at
- * that harder tier here — 3 options, buildRecognizeOptions()
- * preferring a curated near-neighbor distractor when one exists. A
- * sign that never got a PRACTICE item (every other sign in the
- * mission, per missions.js's own "every other sign" rule) defaults to
- * the mockup's flat 4-option A/B/C/D grid instead. */
 function questionOptionCount(mission, signId) {
   const hasRamp = mission.items.some((it) => it.kind === 'PRACTICE' && it.signId === signId && !!it.difficultyRamp);
   return hasRamp ? 3 : 4;
 }
 
-// PER-ATTEMPT RESHUFFLE (this session) — buildQuizQuestions() used to
-// seed shuffleDeterministic() off `mission.id` alone, so a retake
-// after a fail showed the exact same question set in the exact same
-// order every time (memorizable after 2-3 attempts, not a real
-// re-test of the content). getQuizAttemptSeed() adds one random
-// component, generated once and memoized for the lifetime of this
-// page load — so it still varies ACROSS attempts (each fresh load of
-// mastery-quiz.html, i.e. each real retake) but stays IDENTICAL
-// across the optimistic-paint double-render WITHIN one attempt
-// (initPage() can call renderQuizEntry() → buildQuizQuestions() twice
-// — once immediately, once again after the Firestore sync reconciles
-// — and those two calls must agree, or the question order would
-// visibly jump mid-load). Not persisted anywhere on purpose: a page
-// reload before answering is a fresh attempt and is allowed to
-// reshuffle again.
 let quizAttemptSeed = null;
 function getQuizAttemptSeed() {
   if (quizAttemptSeed === null) {
@@ -248,15 +105,6 @@ function getQuizAttemptSeed() {
   return quizAttemptSeed;
 }
 
-// RANDOM CHOICES — each question's answer choices are a random,
-// on-topic sample of the mission's own chapter (via
-// buildRecognizeOptions(..., randomize=true)), and the correct
-// answer's position is random too. The built option set is memoized
-// per mission+sign for this page load for the same reason
-// getQuizAttemptSeed() is: initPage() can call buildQuizQuestions()
-// twice (optimistic paint, then again after sync) and both calls must
-// agree, or the choices would visibly change mid-load. A fresh page
-// load (a real retake) draws a new random set.
 const quizOptionsCache = new Map();
 
 function buildQuizQuestions(mission) {
@@ -279,15 +127,7 @@ function buildQuizQuestions(mission) {
   });
 }
 
-/* ── Back link ─────────────────────────────────────────────────── */
 
-// Repoints the page's Back link (#mq-back, static "All missions" in the
-// HTML) at the screen the learner actually came from. `from` is an
-// allow-list, not a URL: only "lesson" is recognised, anything else
-// (Mission Overview's button, the camera-practice redirect, a typed or
-// stale link) falls back to the mission's own overview, which is one
-// step back for all of them. Called from initPage() once the mission is
-// known, so it also applies to the not-sampled and out-of-hearts screens.
 function configureBackLink(mission) {
   const link = document.getElementById('mq-back');
   const label = document.getElementById('mq-back-label');
@@ -303,7 +143,6 @@ function configureBackLink(mission) {
   }
 }
 
-/* ── Gate screens ──────────────────────────────────────────────── */
 
 function renderNotFound() {
   document.getElementById('mq-content').innerHTML =
@@ -311,10 +150,6 @@ function renderNotFound() {
 }
 
 function renderNotSampledYet(mission) {
-  // V1-removal pass: pages/quiz.html (the "classic" fallback this screen
-  // used to offer) is deleted — every real categoryGroup is now in
-  // SAMPLE_CATEGORY_GROUPS, so this branch is defensive-only in practice.
-  // No V1 link to fall back to anymore; just send them back to the mission.
   document.getElementById('mq-content').innerHTML = `
     <div class="note-banner">
       This sample build of the Mastery Quiz now covers all 12 chapters. "${escapeHtml(mission.title)}"
@@ -327,45 +162,15 @@ function renderNotSampledYet(mission) {
   `;
 }
 
-// Priority 1, Task 4 — reused both as the pre-quiz gate (initPage())
-// AND as the mid-quiz "stop" screen (handleAnswer() below, when a
-// wrong answer drops the pool to 0). Either way this fully replaces
-// #mq-content, so no quiz button/option from before it can still
-// be interacted with — that's what "prevent further quiz interaction"
-// means here, not a separate disabled state layered on top.
-//
-// The primary button is the way to spend the wait usefully. It replaces
-// the old fail summary's "Review the mission" button, which went away with
-// the score threshold (this screen is now the only "didn't pass" state).
-// A learner who worked through the mission to the quiz can review it
-// (canReviewMission(), opened at the start via ?review=1); anyone else is
-// sent to the lessons.
-//
-// POPUP: the popup (openOutOfHeartsDialog() below) IS this screen. It sits
-// over the last thing the learner saw (the question they just lost their
-// last heart on, dimmed but visible, like the streak popup) and can't be
-// dismissed (no X, no Esc, no backdrop click). The old flat screen
-// (banner, buttons, Back link) is gone, so there's no old UI to fall back to. Its
-// own two actions are the way out, and "Try again" appears when a heart
-// refills. `opts.justFailed` is true only from handleAnswer() (a wrong
-// answer just emptied the pool) and only changes the wording + plays the
-// "last heart breaks" animation; the pre-quiz gate says plainly that
-// they're out.
 function renderOutOfHearts(mission, heartsState, opts) {
   const category = encodeURIComponent(mission.category);
   const canReview = window.LWMissions.canReviewMission(mission);
   const lessonHref = `lesson.html?mission=${category}${canReview ? '&review=1' : ''}`;
   if (opts && opts.justFailed) {
-    // Lost the last heart mid-quiz: leave the question the learner was on
-    // showing behind the popup (dimmed, like the streak popup), just frozen
-    // with the hearts row emptied. The modal already blocks clicks; the
-    // disabled options keep it inert even for keyboard/assistive tech.
     document.querySelectorAll('#mq-options .lesson-option').forEach((btn) => { btn.disabled = true; });
     const heartsRow = document.getElementById('mq-hearts-row');
     if (heartsRow) heartsRow.outerHTML = heartsRowHtml(heartsState);
   } else {
-    // Pre-quiz gate: there is no question to show, so nothing sits behind
-    // the popup but the empty page. No banner, buttons or Back link.
     document.getElementById('mq-content').innerHTML = '';
     const backLink = document.getElementById('mq-back');
     if (backLink) backLink.hidden = true;
@@ -379,11 +184,7 @@ function renderOutOfHearts(mission, heartsState, opts) {
   });
 }
 
-/* ── Out-of-hearts popup ───────────────────────────────────────── */
 
-// One interval at most (AGENTS.md timer rule): every open clears the
-// previous one first, and it's also cleared when the dialog closes and on
-// pagehide, so nothing keeps ticking against a detached dialog.
 let outOfHeartsTimerId = null;
 
 function clearOutOfHeartsTimer() {
@@ -398,9 +199,6 @@ function oohHeartSvg() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.2c-.3 0-.6-.1-.8-.3C7.3 17.9 2 13.6 2 8.9 2 6.2 4.1 4 6.8 4c1.9 0 3.7 1 5.2 2.9C13.5 5 15.3 4 17.2 4 19.9 4 22 6.2 22 8.9c0 4.7-5.3 9-9.2 12-.2.2-.5.3-.8.3z"/></svg>';
 }
 
-// Hearts are drawn empty (that's the point of the screen). When a wrong
-// answer just emptied the pool, heart 0 — the last one to go, since the
-// in-quiz row drains from the right — starts red and "breaks" to grey.
 function oohHeartsHtml(maxHearts, justFailed) {
   return Array.from({ length: maxHearts }, (_, i) =>
     `<span class="ooh-heart${justFailed && i === 0 ? ' ooh-heart--breaking' : ''}" style="--i:${i}">${oohHeartSvg()}</span>`
@@ -408,8 +206,6 @@ function oohHeartsHtml(maxHearts, justFailed) {
 }
 
 function openOutOfHeartsDialog(cfg) {
-  // renderQuizEntry() can paint twice (optimistic + after sync); never
-  // stack two dialogs.
   const stale = document.getElementById('ooh-dialog');
   if (stale) stale.remove();
   clearOutOfHeartsTimer();
@@ -438,9 +234,6 @@ function openOutOfHeartsDialog(cfg) {
     </div>
   `;
 
-  // Not dismissable: Esc is swallowed, and if a browser closes it anyway
-  // (Chrome lets a repeated Esc through) it is reopened while still out of
-  // hearts. Only a refilled heart or leaving via an action ends it.
   dialog.addEventListener('cancel', (e) => e.preventDefault());
   dialog.addEventListener('close', () => {
     if (dialog.isConnected && window.LWMissions.getHeartsState().hearts <= 0
@@ -456,9 +249,6 @@ function openOutOfHeartsDialog(cfg) {
   if (typeof dialog.showModal === 'function') dialog.showModal();
   else dialog.setAttribute('open', '');
 
-  // Live countdown. Hearts refill on a timer server-of-record (see
-  // getHeartsState()), so if one comes back while the popup is open,
-  // swap it for a "Try again" instead of leaving a stale 0m countdown.
   outOfHeartsTimerId = setInterval(() => {
     if (!dialog.isConnected) { clearOutOfHeartsTimer(); return; }
     const now = window.LWMissions.getHeartsState();
@@ -489,7 +279,6 @@ function showHeartsBack(dialog, overviewHref) {
   retry.focus();
 }
 
-/* ── Question flow ────────────────────────────────────────────── */
 
 function renderQuestion(state) {
   const el = document.getElementById('mq-content');
@@ -525,32 +314,7 @@ function renderQuestion(state) {
   });
 }
 
-// Immediate per-question feedback — a real "Correct!"/"Not quite" card
-// shown right after each answer, distinct from the end-of-quiz pass/
-// fail summary in renderSummary(). Resolves the gap
-// LinguaWave_Mockup_Visual_Audit.md §9 flagged: V1's quiz.js only had
-// an end-of-quiz "You passed!" string, not this per-question card the
-// mockup's screens 7 & 9 both show.
-//
-// ANSWER FLOW (Priority 1, Task 3) : correct answers auto-continue —
-// feedback shown, no Continue button, then move on by itself after
-// AUTO_ADVANCE_DELAY_MS. Incorrect answers do NOT auto-continue at
-// all — feedback shown with a manual Continue button, no cooldown
-// timer started for them.
-//
-// OUT OF HEARTS (Priority 1, Task 4) : if the heart spent for a wrong
-// answer drops the pool to 0, the quiz stops immediately right here —
-// no incorrect-feedback card, no Continue, no next question — and
-// the same out-of-hearts screen used by the pre-quiz gate takes over.
 function handleAnswer(state, chosenSignId) {
-  // OPTIMISTIC-PAINT FIX — flips true on the FIRST real answer of this
-  // attempt. initPage() below checks this before reconciling a delayed
-  // Firestore sync into a re-render: once an answer's in and a heart
-  // may already be spent for real, re-rendering the entry screen out
-  // from under the learner would be actively destructive (wrong
-  // question index, a hearts count that forgets what was just spent),
-  // not just a cosmetic flicker. Never reset back to false — one
-  // sync-triggered reconcile check per page load is all that's needed.
   quizAnswerStarted = true;
 
   const q = state.questions[state.currentIndex];
@@ -559,16 +323,8 @@ function handleAnswer(state, chosenSignId) {
   if (correct) {
     state.numCorrect += 1;
   } else {
-    // Task 2 (prior revision) — 1 incorrect answer = 1 heart. Floors at 0
-    // (see missions.js), so the quiz itself is never blocked mid-attempt by
-    // running out — the "Start Mastery Quiz" button on Mission
-    // Overview/Lesson is what disables at zero hearts before an attempt
-    // even starts, not this.
     const heartsAfterMiss = window.LWMissions.consumeHeartForIncorrectAnswer();
 
-    // Task 4 — a wrong answer that empties the pool ends the quiz right
-    // now, before any of the normal per-question UI (highlighted
-    // options, feedback card, Continue button) gets rendered at all.
     if (heartsAfterMiss.hearts <= 0) {
       renderOutOfHearts(state.mission, heartsAfterMiss, { justFailed: true });
       return;
@@ -597,13 +353,11 @@ function handleAnswer(state, chosenSignId) {
   }
 
   if (correct) {
-    // Task 3 — correct: feedback only, no Continue button, auto-move on.
     document.getElementById('mq-feedback').innerHTML = `
       <div class="lesson-feedback lesson-feedback--correct">${window.LWIcons.markup('complete', { size: 'sm', className: 'lw-icon--tone-success' })}<span class="lw-icon-label">Correct!</span></div>
     `;
     window.setTimeout(advance, AUTO_ADVANCE_DELAY_MS);
   } else {
-    // Task 3 — incorrect: feedback + manual Continue, no auto-advance.
     document.getElementById('mq-feedback').innerHTML = `
       <div class="lesson-feedback lesson-feedback--incorrect">
         Not quite. This sign means "${escapeHtml((correctSign && correctSign.title) || q.correct)}".
@@ -619,33 +373,8 @@ function handleAnswer(state, chosenSignId) {
 function finishQuiz(state) {
   const scoreFraction = state.numCorrect / state.questions.length;
 
-  // Reaching this function IS passing — see PASS RULE in the file
-  // header. handleAnswer() ends the quiz early (renderOutOfHearts())
-  // the moment a wrong answer empties the heart pool, so the only way
-  // to get here is to have finished every question with a heart left.
-  // Hearts were already spent per wrong answer as they happened;
-  // nothing is spent here.
-  //
-  // Priority 1, Task 1 ("Mastery Quiz Completes the Mission") — a
-  // pass marks the ENTIRE mission complete (every LESSON/BOOSTER/
-  // PRACTICE item, not just this QUIZ item), via the new, additive
-  // window.LWMissions.markMissionComplete() (missions.js). Previously
-  // this only marked the mission's own QUIZ item, which closed the
-  // "recap/Missions Completed stat never reaches 100%" gap logged
-  // when the QUIZ-only marking was first added, but left the actual
-  // product requirement unmet: the Mastery Quiz is supposed to be a
-  // full skip path for advanced users ("should not need to complete
-  // every lesson after passing it"), so the mission itself — not
-  // just its quiz — needs to read as 100% done, unlocking the next
-  // chapter (isChapterUnlocked()) and every page's progress reflects
-  // it (dashboard/learn/mission-overview/progress, all of which read
-  // getMissionProgress()/getMissionStatus(), not this file).
   window.LWMissions.markMissionComplete(state.mission);
-  // DAY STREAK: reaching here means the quiz was PASSED (see the note above), which
-  // is a qualifying activity. A failed / out-of-hearts attempt never gets here.
   window.LWMissions.recordActivity('mastery_quiz');
-  // XP (js/xp.js): report the pass. The shared engine selects the full mission bonus when lesson
-  // items are complete; otherwise it uses the reduced skip-path rate.
   if (window.LWXP) window.LWXP.claimMission(state.mission);
   const recap = window.LWMissions.getRecap(state.mission);
 
@@ -657,20 +386,10 @@ function renderSummary(state, result) {
   const mission = state.mission;
   const pct = Math.round(result.scoreFraction * 100);
 
-  // Option 2 (from the "better approach" discussion on Priority 3 task
-  // 7) — collapse the old per-sign "You can now sign..." <ul> into one
-  // sentence instead of deleting it outright. Keeps the sense of
-  // accomplishment (and the real count, via result.recap — which
-  // reflects the WHOLE mission now that a pass calls
-  // markMissionComplete(), not just this attempt's quiz questions)
-  // without the wall-of-checkmarks the original list produced.
   const recapLine = result.recap.length
     ? `<p class="quiz-summary__recap">You've mastered all ${result.recap.length} sign${result.recap.length === 1 ? '' : 's'} in ${escapeHtml(mission.title)}.</p>`
     : '';
 
-  // Only ever a pass screen now — the "Not quite there yet" branch went
-  // away with the score threshold. Running out of hearts is handled by
-  // renderOutOfHearts() before the quiz gets this far.
   el.innerHTML = `
     <div class="quiz-summary">
       <div class="quiz-summary__score quiz-summary__score--pass">${pct}%</div>
@@ -685,19 +404,7 @@ function renderSummary(state, result) {
   `;
 }
 
-/* ── Entry ─────────────────────────────────────────────────────── */
 
-// Renders whichever pre-quiz-or-quiz screen the CURRENT (possibly not
-// yet synced) hearts count calls for: out-of-hearts, "no signs to
-// quiz," or question 1. Split out of initPage() so it can be called
-// twice — once optimistically, once again after sync if that turns
-// out to disagree — without duplicating the hearts-gate logic.
-// buildQuizQuestions() shuffles off mission/sign data plus one random
-// per-attempt seed that's memoized for this page load (see
-// getQuizAttemptSeed() above) — neither input is sync-sensitive, so
-// calling it again after sync still produces the identical question
-// set/order as the first call, not a different one. The seed only
-// changes on the NEXT full page load (i.e. the next real retake).
 function renderQuizEntry(mission) {
   const heartsState = window.LWMissions.getHeartsState();
   if (heartsState.hearts <= 0) {
@@ -731,27 +438,11 @@ async function initPage() {
   document.title = `Mastery Quiz: ${mission.title} | LinguaWave (preview)`;
   configureBackLink(mission);
 
-  // Not sync-sensitive — categoryGroup is static mission data, not
-  // progress — so this gate is checked once, before the optimistic
-  // paint below, same as before this fix.
   if (SAMPLE_CATEGORY_GROUPS.indexOf(mission.categoryGroup) === -1) {
     renderNotSampledYet(mission);
     return;
   }
 
-  // OPTIMISTIC-PAINT FIX (replaces the old "Loading your Mastery
-  // Quiz…" blocking-await placeholder) — paints immediately from
-  // whatever hearts count is in localStorage right now, then
-  // reconciles the cross-device Firestore sync in the background.
-  // Narrower than js/lesson.js's equivalent fix on purpose: this page
-  // has one real destructive edge this file's own prior comment
-  // already called out — once the learner submits an answer, a heart
-  // may already be spent for real, and re-rendering the entry screen
-  // out from under that would be actively wrong (not just a flicker).
-  // quizAnswerStarted (flipped in handleAnswer()) guards exactly that
-  // case: reconcile only fires if the learner hasn't answered anything
-  // yet on this attempt. If the optimistic and synced hearts counts
-  // agree — the common case — the second render is skipped entirely.
   renderQuizEntry(mission);
 
   await window.LWMissions.whenMissionsSyncReady();

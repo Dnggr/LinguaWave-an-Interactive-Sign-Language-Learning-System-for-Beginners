@@ -1,52 +1,11 @@
-/* =====================================================================
- * js/icons.js — LinguaWave shared icon system
- * ---------------------------------------------------------------------
- * WHY THIS FILE EXISTS
- * Before this, the SAME category was drawn three different ways
- * depending on which screen you were on: an emoji chip on index.html,
- * a hand-copied inline <svg> on pages/homepage.html, and an emoji
- * lookup table (UNIT_ICONS / CATEGORY_ICONS in js/camera-practice.js)
- * once you were deeper in the app. Status glyphs were worse still —
- * raw Unicode ("\u25b6", "\u2714", "\u25cb") and per-caller emoji picked by
- * hand at each call site. See LinguaWave_Icon_Audit.md.
- *
- * This is now the single source of truth for every icon in the app.
- * It restates the rationale that was already written on homepage.html
- * and then only honoured there: inline SVG painted with currentColor
- * renders identically on every OS/browser and depends on no font's
- * emoji fallback.
- *
- * ARCHITECTURE NOTES (non-obvious, please preserve)
- *  - Plain <script>, NOT an ES module, and it assigns window.LWIcons.
- *    The app mixes `type="module"` scripts (auth.js, camera-practice.js)
- *    with plain ones (main.js, data.js, missions.js); a global is the
- *    only shape both can read. Load it in <head> BEFORE any consumer.
- *  - The SVG bodies are inlined as strings rather than fetched from
- *    ./icons/*.svg on purpose: there is no build step and no dev server
- *    guarantee here, and fetch() of a relative path fails outright
- *    under the file:// protocol. Inlining also means an icon is never
- *    a frame late, so no icon-shaped layout pop on first paint.
- *  - Every icon shares one wrapper (24x24 viewBox, 1.8px round-cap
- *    currentColor stroke), so only the path body differs per id. Do not
- *    hand-edit a wrapper into BODIES — keep bodies path-only.
- *  - There is deliberately NO silent fallback. The old code did
- *    `CATEGORY_ICONS[cat.id] ?? '\ud83d\udd16'`, so an unmapped category
- *    rendered a generic bookmark emoji that nobody had chosen and
- *    nobody could see was wrong. An unknown id now renders a dashed
- *    placeholder, warns once in the console, and is recorded in
- *    LWIcons.missing() so it is catchable in review. If a generic icon
- *    IS the intent, ask for 'category' or 'unit' explicitly.
- * ===================================================================== */
 (function (root) {
   'use strict';
 
-  /* Shared wrapper attributes — identical for all 126 icons. */
   var OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
             + ' fill="none" stroke="currentColor" stroke-width="1.8"'
             + ' stroke-linecap="round" stroke-linejoin="round" focusable="false"';
   var CLOSE = '</svg>';
 
-  /* Path bodies, keyed by icon id. */
   var BODIES = {
     actions: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
     affection_feelings: '<path d="M20.8 8.8c0 5-8.8 10.2-8.8 10.2S3.2 13.8 3.2 8.8A4.7 4.7 0 0 1 12 6.3a4.7 4.7 0 0 1 8.8 2.5Z"/>',
@@ -176,35 +135,6 @@
     wild_animals: '<circle cx="12" cy="12" r="7"/><path d="M8 8 6 5m10 3 2-3M8 16l-2 3m10-3 2 3"/><circle cx="9.5" cy="11" r=".7"/><circle cx="14.5" cy="11" r=".7"/><path d="M10 14c1.3 1 2.7 1 4 0"/>',
   };
 
-  /* ── LOCAL OVERRIDES ────────────────────────────────────────────────
-   * The supplied 24x24 pack ships 126 files but only 81 distinct path
-   * bodies — 27 groups of ids share identical artwork. Some of that is
-   * fine and intentional (a unit and its category are the same subject:
-   * animals/animals_unit, colors/colors_unit, time/time_unit). Some of
-   * it is not, and would have re-created the exact defect the icon audit
-   * was written about — two unrelated concepts drawn the same way on one
-   * screen. The bodies below replace the pack's for ids where that
-   * mattered on a screen a user actually sees:
-   *
-   *   feelings, family, family_unit, family_phrases, appearance,
-   *   emergency_situations, vegetables  — the pack drew all seven as the
-   *       hero sparkle. "Feelings" is a landing-page chip, a homepage
-   *       topic card AND a sidebar row, so a sparkle there reads as a bug.
-   *   communicate  — the pack drew it as the plain speech bubble, which
-   *       is the Feedback nav icon. That is audit section 1 verbatim:
-   *       nav item and benefit card sharing one glyph.
-   *   daytime  — the pack drew it as theme_sun, i.e. the theme toggle.
-   *   fingerspell_name, needs, social, sequence  — each was identical to
-   *       an unrelated sibling (requests / drinks / people / numbers).
-   *
-   * 'user' and 'warning' are additions, not overrides: the pack has no
-   * avatar glyph (the header user chip needed one) and no warning glyph
-   * distinct from 'error' (the tracking/model failures are warnings, not
-   * errors, and were "\\u26a0\\ufe0f" in a textContent string).
-   *
-   * Everything NOT listed here still uses the pack's own artwork. The
-   * remaining shared-shape groups are recorded in the migration notes;
-   * they are lower-visibility and want a designer, not a stopgap. */
   var OVERRIDES = {
     feelings: '<circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.2 14.2a4.8 4.8 0 0 0 7.6 0"/>',
     family: '<circle cx="7" cy="7.5" r="2.6"/><circle cx="17" cy="7.5" r="2.6"/><circle cx="12" cy="14" r="2.1"/><path d="M2.5 16.5c.6-3 2.3-4.4 4.5-4.4M21.5 16.5c-.6-3-2.3-4.4-4.5-4.4M8.5 21c.4-2.4 1.5-3.4 3.5-3.4s3.1 1 3.5 3.4"/>',
@@ -226,10 +156,6 @@
     if (Object.prototype.hasOwnProperty.call(OVERRIDES, ovr)) BODIES[ovr] = OVERRIDES[ovr];
   }
 
-  /* Lucide icons (https://lucide.dev, ISC licence) used by the Leaderboard, badges and Wall Breaker.
-   * Path bodies copied unchanged from lucide-static; they draw on this file's shared 24x24 / currentColor
-   * wrapper (stroke 1.8, so they sit with the rest of the pack). Ids are the Lucide names with '-' -> '_'.
-   * Badge/tier -> icon mapping lives in js/xp.js (badgeIconId / tierIconId), not here. */
   var LUCIDE = {
     flame: '<path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/>',
     medal: '<path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/> <path d="M11 12 5.12 2.2"/> <path d="m13 12 5.88-9.8"/> <path d="M8 7h8"/> <circle cx="12" cy="17" r="5"/> <path d="M12 18v-2h-.5"/>',
@@ -260,8 +186,6 @@
     if (Object.prototype.hasOwnProperty.call(LUCIDE, lc)) BODIES[lc] = LUCIDE[lc];
   }
 
-  /* Human-readable names, used for aria-label when an icon is NOT
-   * decorative (i.e. when it is the only thing conveying meaning). */
   var LABELS = {
     user: 'Your account',
     warning: 'Warning',
@@ -423,10 +347,6 @@
     if (Object.prototype.hasOwnProperty.call(LUCIDE_LABELS, ll)) LABELS[ll] = LUCIDE_LABELS[ll];
   }
 
-  /* Learn-page chapter rail (css/learn.css .chapter-rail, js/learn.js). Lucide (https://lucide.dev, ISC
-   * licence) path bodies copied unchanged from lucide-static. Ids carry a 'chapter_' prefix on purpose:
-   * plain Lucide names such as 'school' already exist in BODIES for other screens, and the LUCIDE loop
-   * above would silently overwrite them. */
   var LUCIDE_CHAPTERS = {
     chapter_compass: '<circle cx="12" cy="12" r="10"/> <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
     chapter_blocks: '<path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/> <rect x="14" y="2" width="8" height="8" rx="1"/>',
@@ -466,13 +386,9 @@
     if (Object.prototype.hasOwnProperty.call(LUCIDE_CHAPTER_LABELS, lcl)) LABELS[lcl] = LUCIDE_CHAPTER_LABELS[lcl];
   }
 
-  /* Mission Overview "Next" button (js/mission-overview.js). Lucide arrow-right, path body unchanged. */
   BODIES.arrow_right = '<path d="M5 12h14"/> <path d="m12 5 7 7-7 7"/>';
   LABELS.arrow_right = 'Next';
 
-  /* Lucide icons (https://lucide.dev, ISC licence) for the Construct a Sentence game. Path bodies copied unchanged
-   * from lucide-static 1.51.0. Ids carry an 'lc_' prefix on purpose: plain Lucide names such as 'info' already
-   * exist in BODIES for other screens, and a loop over bare names would silently overwrite them. */
   var LUCIDE_GAME = {
     lc_play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
     lc_timer: '<line x1="10" x2="14" y1="2" y2="2"/> <line x1="12" x2="15" y1="14" y2="11"/> <circle cx="12" cy="14" r="8"/>',
@@ -488,7 +404,6 @@
     lc_skip_forward: '<path d="M21 4v16"/> <path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/>',
     lc_sprout: '<path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/> <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/> <path d="M5 21h14"/>',
     lc_hourglass: '<path d="M5 22h14"/> <path d="M5 2h14"/> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
-    /* Construct a Sentence XP badges (js/xp.js badgeIconId). Lucide message-square-text, sparkles, brain, scroll-text, puzzle. */
     lc_message_square_text: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/> <path d="M7 11h10"/> <path d="M7 15h6"/> <path d="M7 7h8"/>',
     lc_sparkles: '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/> <path d="M20 2v4"/> <path d="M22 4h-4"/> <circle cx="4" cy="20" r="2"/>',
     lc_brain: '<path d="M12 18V5"/> <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/> <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/> <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/> <path d="M18 18a4 4 0 0 0 2-7.464"/> <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/> <path d="M6 18a4 4 0 0 1-2-7.464"/> <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/>',
@@ -523,12 +438,6 @@
     if (Object.prototype.hasOwnProperty.call(LUCIDE_GAME_LABELS, lgl)) LABELS[lgl] = LUCIDE_GAME_LABELS[lgl];
   }
 
-  /* Semantic aliases -> pack ids. These exist so call sites can name the
-   * MEANING they want ('done', 'lock') without caring what the artwork
-   * file happens to be called. Resolving three concepts that used to
-   * share one glyph (audit section 1) is handled here too: 'learn',
-   * 'progress' and 'communicate' are now distinct from the topic icons
-   * 'phrasebook', 'sequence' and 'people' they used to be confused with. */
   var ALIASES = {
     done: 'complete',
     completed: 'complete',
@@ -543,28 +452,14 @@
     sparkle: 'hero_sparkle',
     sun: 'theme_sun',
     moon: 'theme_moon',
-    /* FOUND DURING MIGRATION — js/data.js renamed three CATEGORIES ids to
-     * an 'essentials_' prefix at some point, but the icon maps were never
-     * updated. Because the old lookup ended in a bookmark-emoji default,
-     * these three categories have been silently rendering a generic
-     * bookmark that nobody picked — exactly the failure the audit
-     * predicted. Same subjects, just renamed, so they alias to the
-     * artwork that was always meant for them. */
     essentials_greetings: 'greetings_intro',
     essentials_polite_expressions: 'polite_expressions',
     essentials_basic_responses: 'basic_responses',
-    /* 'welcome' is the one id the homepage pivot removed from UNITS but
-     * that older links/bookmarks can still carry — point it somewhere
-     * sensible rather than at the placeholder. */
     welcome: 'greetings_intro'
   };
 
-  /* NOTE: every id used by UNIT_ICONS and CATEGORY_ICONS (103 of them)
-   * has real artwork in BODIES, so none of them needs an alias. Aliases
-   * above are semantic conveniences only. resolve() checks BODIES first,
-   * so an alias can never shadow a real icon. */
 
-  var MISSING = {};   /* id -> times requested, for LWIcons.missing() */
+  var MISSING = {};   
 
   var PLACEHOLDER =
     '<rect x="3.5" y="3.5" width="17" height="17" rx="3" stroke-dasharray="3 3"/>'
@@ -593,12 +488,6 @@
     MISSING[key]++;
   }
 
-  /* opts:
-   *   size   'md' (24, default) | 'sm' (16) | 'status' (14) | 'nav' (24)
-   *   className  extra classes appended after the size class
-   *   label  accessible name. Pass a string when the icon carries meaning
-   *          on its own; omit it for decorative icons sitting next to
-   *          visible text (the common case), which get aria-hidden. */
   function markup(id, opts) {
     opts = opts || {};
     var key = resolve(id);
@@ -615,20 +504,12 @@
     return OPEN + ' class="' + cls + '"' + a11y + '>' + body + CLOSE;
   }
 
-  /* DOM-node form. Use this instead of markup() whenever the text beside
-   * the icon is DYNAMIC (a model's detected label, a user's name, a sign
-   * id): building a node and setting .textContent separately means
-   * nothing user- or model-supplied is ever parsed as HTML. */
   function node(id, opts) {
     var wrap = document.createElement('div');
     wrap.innerHTML = markup(id, opts);
     return wrap.firstChild;
   }
 
-  /* Replace an element's contents with "[icon] text".
-   * This is the safe replacement for the ~40 call sites that used to do
-   * el.textContent = '\u2705 Nice! Detected: ' + label; an emoji could ride
-   * along inside textContent, an <svg> cannot. */
   function setLabel(el, id, text, opts) {
     if (!el) return el;
     el.textContent = '';
@@ -642,8 +523,6 @@
     return el;
   }
 
-  /* Swap the icon inside an element that setLabel() already populated,
-   * leaving the text alone. Used by the theme toggle. */
   function replaceIcon(el, id, opts) {
     if (!el) return el;
     var old = el.querySelector('svg.lw-icon');
@@ -663,10 +542,6 @@
     label: function (id) { var k = resolve(id); return k ? LABELS[k] : null; },
     ids: function () { return Object.keys(BODIES).sort(); },
     missing: function () { return JSON.parse(JSON.stringify(MISSING)); },
-    /* Hydrate any element carrying data-lw-icon="<id>" in static markup.
-     * Lets HTML pages declare icons without inlining 126 path strings
-     * into every page, and keeps index.html's chips in sync with the
-     * same map the in-app screens use. */
     hydrate: function (scope) {
       var nodes = (scope || document).querySelectorAll('[data-lw-icon]');
       for (var i = 0; i < nodes.length; i++) {
@@ -675,15 +550,8 @@
         var opts = { size: el.getAttribute('data-lw-icon-size') || 'md' };
         var lbl = el.getAttribute('data-lw-icon-label');
         if (lbl) opts.label = lbl;
-        /* data-lw-icon-class puts extra classes on the <svg> itself, not
-         * on a wrapper. The theme toggle needs this: css/style.css
-         * animates .theme-switch__icon--sun / --moon on the svg element,
-         * so the class has to land there or the sun/moon crossfade dies. */
         var extra = el.getAttribute('data-lw-icon-class');
         if (extra) opts.className = extra;
-        /* data-lw-icon-self="1" means "become the icon", i.e. replace this
-         * placeholder element rather than nest an svg inside it. Used
-         * where CSS already targets the svg as a direct child. */
         if (el.getAttribute('data-lw-icon-self') === '1' && el.parentNode) {
           var svg = node(el.getAttribute('data-lw-icon'), opts);
           svg.setAttribute('data-lw-icon-done', '1');

@@ -1,59 +1,4 @@
-/*
-  js/engine/classifier.js — TensorFlow.js Sign Classifier
-  ─────────────────────────────────────────────────────────────────
-  PURPOSE  : Loads the trained asl_static_model / asl_motion_model and
-             classifies hand landmarks (+ face-relative features) into
-             a sign label with a confidence %.
-  CONNECTS : Imported by js/camera-practice.js.
 
-  MODEL PATHS (relative to the project root served by your HTTP server):
-    Static model:   /asl_static_model/model.json
-    Motion model:   /asl_motion_model/model.json
-
-  ─────────────────────────────────────────────────────────────────
-  FEATURE VECTOR (matches capture.html's buildFeatureVec() exactly)
-  ─────────────────────────────────────────────────────────────────
-  UPDATE (2026-09-03 — body-relative + palm-orientation features):
-  feature vector per frame is now 138 values instead of 130:
-    - 63 : left-hand landmarks (x, y, z), zero-filled if left hand absent
-    - 63 : right-hand landmarks (x, y, z), zero-filled if right hand absent
-    -  1 : leftPresent  (0/1)
-    -  1 : rightPresent (0/1)
-    -  4 : normalized body-relative distances, computed from whichever
-           hand is present (right hand preferred if both are present):
-             dist(wrist, chin)          / faceScale
-             dist(wrist, forehead)      / faceScale
-             dist(wrist, shoulderCenter)/ torsoScale
-             dist(wrist, hipCenter)     / torsoScale
-    -  6 : palm-orientation unit vectors, 3 per hand (left then right),
-           zero-filled if that hand is absent — see palmOrientation().
-  faceScale = dist(forehead, chin) — cancels out camera distance.
-  torsoScale = faceScale, falling back to dist(shoulderCenter, hipCenter)
-  if the face is briefly out of frame — same fallback order as
-  capture.html, since capture and live inference MUST agree on it.
-
-  Both asl_static_model and asl_motion_model MUST be retrained with
-  138-wide input for this to work. Training-time (capture.html) and
-  inference-time (this file) feature order MUST match exactly —
-  that's handled by computeBodyRelativeFeatures()/palmOrientation()/
-  buildFeatureVector() below mirroring capture.html's
-  faceRelativeFeatures()/palmOrientation()/buildFeatureVec(). See
-  js/tracking/mediapipe.js's matching header comment for the shared
-  rationale — all three files MUST stay in lockstep.
-
-  MediaPipe FaceLandmarker point indices used as anchors:
-    FOREHEAD_IDX = 10   (top-center of forehead)
-    CHIN_IDX     = 152  (bottom-center of chin)
-  These are the standard MediaPipe Face Mesh (468-point) indices.
-  BlazePose pose landmark indices used as torso anchors:
-    POSE_LEFT_SHOULDER_IDX  = 11,  POSE_RIGHT_SHOULDER_IDX = 12
-    POSE_LEFT_HIP_IDX       = 23,  POSE_RIGHT_HIP_IDX      = 24
-  ─────────────────────────────────────────────────────────────────
-  KERAS 3 COMPAT FIX (unchanged, preserved from previous version)
-  ─────────────────────────────────────────────────────────────────
-*/
-
-// ── Load TF.js from CDN (UMD bundle → sets window.tf) ────────────
 await new Promise((resolve, reject) => {
   const s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
@@ -65,18 +10,6 @@ await new Promise((resolve, reject) => {
 const tf = window.tf;
 if (!tf) throw new Error('[classifier] window.tf is undefined after script load.');
 
-// NEW — diagnostic for the "gets laggier on retry, camera itself stays
-// smooth" symptom. Open the browser console and watch these lines: if
-// numTensors climbs steadily across predictions instead of returning to
-// roughly the same baseline after each one, TF.js is leaking tensors or
-// WebGL textures somewhere — a real, documented category of issue with
-// converted/custom Keras models (see this project's earlier Keras-3
-// DTypePolicy fix). If numTensors stays flat/bounded while the lag still
-// happens, that RULES OUT a tensor leak and points elsewhere (MediaPipe's
-// own internal state, or something else) — either way, this turns "not
-// sure why" into an actual measurement instead of another guess.
-// Throttled to ~once every 60 predictions so continuous static detection
-// (which predicts every single frame) doesn't flood the console.
 let _memCheckCounter = 0;
 function logTfMemoryIfDue(label) {
   _memCheckCounter++;
@@ -85,128 +18,48 @@ function logTfMemoryIfDue(label) {
   console.debug(`[tf.memory] after ${label} (call #${_memCheckCounter}): numTensors=${mem.numTensors}, numBytes=${(mem.numBytes / 1024 / 1024).toFixed(2)}MB`);
 }
 
-// BUGFIX — logNearMiss() was called from classifyGesture() and
-// runMotionInference() but its definition was lost (most likely removed
-// with a diagnostics cleanup). Every call threw
-// "ReferenceError: logNearMiss is not defined", which aborted BOTH static
-// and motion classification before a result could be returned (the motion
-// window was consumed, then the throw killed the result — so motion never
-// resolved). It is diagnostics-only, so it is defined here as a throttled
-// console.debug that never throws and never affects the returned result.
 let _lastNearMissAt = 0;
 function logNearMiss(kind, label, result, topRaw) {
   try {
     if (!result || result.matched || !(result.confidence >= 40)) return;
     const now = performance.now();
-    if (now - _lastNearMissAt < 1000) return;   // max ~1 line/second
+    if (now - _lastNearMissAt < 1000) return;
     _lastNearMissAt = now;
     console.debug(`[near-miss:${kind}] ${label} @ ${result.confidence}% (below match rules)${topRaw ? ' top: ' + topRaw : ''}`);
-  } catch { /* diagnostics must never break detection */ }
+  } catch {  }
 }
 
 import { SIGN_DICTIONARY, getDetectionType } from './dictionary.js';
 
-// ── Config ────────────────────────────────────────────────────────
 const STATIC_MODEL_PATH  = '../asl_static_model/model.json';
 const STATIC_LABELS_PATH = '../asl_static_model/labels.json';
 const MOTION_MODEL_PATH  = '../asl_motion_model/model.json';
 const MOTION_LABELS_PATH = '../asl_motion_model/labels.json';
 
-// CHANGED — "random hand positions get confidently detected as real
-// signs" (e.g. an open hand near the ear reads as AUNT even when the
-// actual AUNT motion — shaking an A-handshape — was never performed).
-// Root cause: the model was only ever trained on POSITIVE examples of
-// real signs. It has no "this isn't a sign at all" output to send
-// probability mass toward, so softmax is FORCED to distribute 100% of
-// its confidence across the known sign classes no matter what it's
-// shown — even pure noise gets assigned to whichever known sign is
-// "closest" in the model's learned space, sometimes with deceptively
-// high confidence. Two mitigations below (raised threshold + margin
-// check) reduce false positives from the SOFTWARE side, but neither is
-// a full fix — the real fix is training-side: add a "background/not a
-// sign" class using genuine negative examples (random hand positions,
-// resting poses, transitions between signs) the same way the Colab
-// notebook's augmentation cell (Cell 6.5) already expands real
-// examples. Ask if you want that added — it's a bigger change (new
-// capture category + retrain) so it's not bundled into this pass.
-const MATCH_THRESHOLD         = 75;   // REVERTED from 85 back to the original 75 — minimum % confidence to count as "matched"
-const MOTION_THRESHOLD        = 70;   // REVERTED from 80 back to the original 70 — slightly lower than static
-// A confident, CORRECT classification usually has a clear winner over
-// the runner-up class. Noise/out-of-distribution input often produces
-// a muddled distribution instead — several classes within a few points
-// of each other — even when the top one happens to clear the absolute
-// threshold above. Requiring a minimum gap between 1st and 2nd place
-// catches that "the model wasn't actually sure" case specifically,
-// which a pure confidence floor can't distinguish from genuine
-// confidence.
-const RUNNERUP_MARGIN_MIN     = 20;   // NOTE: this whole requirement is NEW (there was no runner-up
-                                       // check in the original 75/70 version) — left in place since it
-                                       // wasn't part of what you asked to revert, but it's still an
-                                       // extra strictness layer beyond the old behavior. Say the word
-                                       // if you want this removed/set to 0 too, to fully match the old
-                                       // matching logic.
-// CHANGED (today): 20 -> 40. capture.html used to assign a DIFFERENT frame
-// length per sign (15 for short taps like IN/OUT/WITH, up to 60 for full
-// sentences) — that's what made the Colab notebook reject exports the
-// moment a batch mixed more than one sign type ("mixed sequence lengths").
-// Every motion sign now records/imports to ONE universal 40-frame window
-// (see signFrameLengths / DEFAULT_FRAME_LENGTH / MOTION_MODEL_SEQ_LEN in
-// capture.html, and MOTION_FRAMES in the Colab notebook). All three MUST
-// stay equal — this is the number that actually shapes the LSTM's input.
-const MOTION_FRAMES_REQUIRED = 40;   // MUST match capture.html's frame window AND the notebook's MOTION_FRAMES
+const MATCH_THRESHOLD         = 75;
+const MOTION_THRESHOLD        = 70;
+const RUNNERUP_MARGIN_MIN     = 20;
+const MOTION_FRAMES_REQUIRED = 40;
 
-// ── Feature vector config — MUST mirror capture.html's buildFeatureVec()
-// Layout: [63 left xyz][63 right xyz][leftPresent][rightPresent]
-//         [handToChin][handToForehead][handToShoulder][handToHip]
-//         [leftPalmOrientation x3][rightPalmOrientation x3] = 138
 const FOREHEAD_IDX = 10;
 const CHIN_IDX      = 152;
-const POSE_LEFT_SHOULDER_IDX = 11;   // BlazePose 33-point topology
+const POSE_LEFT_SHOULDER_IDX = 11;
 const POSE_RIGHT_SHOULDER_IDX= 12;
 const POSE_LEFT_HIP_IDX       = 23;
 const POSE_RIGHT_HIP_IDX      = 24;
-export const HAND_FEATURE_COUNT     = 126; // 63 left + 63 right
-export const PRESENCE_FEATURE_COUNT = 2;   // leftPresent, rightPresent
-export const FACE_FEATURE_COUNT     = 4;   // handToChin, handToForehead, handToShoulder, handToHip
-export const ORIENTATION_FEATURE_COUNT = 6; // leftPalmOrientation x3, rightPalmOrientation x3
-export const TOTAL_FEATURE_COUNT    = HAND_FEATURE_COUNT + PRESENCE_FEATURE_COUNT + FACE_FEATURE_COUNT + ORIENTATION_FEATURE_COUNT; // 138
+export const HAND_FEATURE_COUNT     = 126;
+export const PRESENCE_FEATURE_COUNT = 2;
+export const FACE_FEATURE_COUNT     = 4;
+export const ORIENTATION_FEATURE_COUNT = 6;
+export const TOTAL_FEATURE_COUNT    = HAND_FEATURE_COUNT + PRESENCE_FEATURE_COUNT + FACE_FEATURE_COUNT + ORIENTATION_FEATURE_COUNT;
 
 const HAND_ZERO = new Array(63).fill(0);
 
-// ── Equivalent-sign groups (same motion OR same meaning) ──────────
-// NEW — some signs can NEVER be told apart by a landmark classifier:
-//   • literally identical gestures (0/O, PLANT/SPRING, COLD/WINTER)
-//   • one gesture with several English names (BRING/CARRY, HELLO/HI)
-// For these the model either splits its probability between the twins
-// (e.g. O=52%, 0=46%) or only ever learned ONE of them (BRING, no
-// CARRY class). Either way a correct attempt used to score ~50% or
-// return the "wrong" twin, failing MATCH_THRESHOLD / the runner-up
-// margin / the `result.label === sign` check in camera-practice.js.
-//
-// FIX — for each group:
-//   1. POOL: a candidate's confidence = its own probability + every
-//      other group member's probability (only members the model has).
-//   2. ADOPT THE TARGET: if the winner belongs to the same group as the
-//      sign the learner was asked for (targetSign), the result is
-//      reported AS targetSign — so BRING's model output counts for
-//      CARRY, and a 0/O split counts for whichever one is being taught.
-//   3. The winner's own group-mates are never treated as its "runner-up",
-//      so twins can't fail the RUNNER-UP margin against each other.
-//
-// Members do NOT all need a model class — untrained ones (CARRY, HI,
-// BYE, ...) simply stay dormant until a lesson uses them. Sources:
-// 0/O, BRING/CARRY (requested) and the "classifier conflict audit" notes
-// in data.js (signs that were removed from lessons for being identical
-// to a trained sign, listed here so they can be brought back).
-// DELIBERATELY EXCLUDED: MOM/DAD, GRANDMA/GRANDPA etc. — different
-// location on the body, the model already separates those.
-// To add a pair: add one array below. No retraining. A label may only
-// appear in ONE group (last one wins if repeated).
 const SIGN_GROUPS = [
-  ['0', 'O'],                          // same handshape (static model)
-  ['BRING', 'CARRY'],                  // same meaning (requested)
-  ['PLANT', 'SPRING'],                 // kept-alongside per data.js audit
-  ['COLD', 'WINTER'],                  // kept-alongside per data.js audit
+  ['0', 'O'],
+  ['BRING', 'CARRY'],
+  ['PLANT', 'SPRING'],
+  ['COLD', 'WINTER'],
   ['HELLO', 'HI'],
   ['GOODBYE', 'BYE'],
   ['NIGHT', 'EVENING'],
@@ -231,9 +84,6 @@ const SIGN_GROUPS = [
   ['WIND', 'WINDY', 'STORMY'],
   ['RAIN', 'RAINY'],
   ['BITTER', 'SOUR'],
-  // 2026-10-01: curriculum spelling vs trained-label spelling of the SAME sign
-  // (asl_motion_model has FINISHED / THANKS; the lessons teach FINISH / THANK YOU).
-  // Merged in from the retired js/classifier.js (the engine copy is now the only one).
   ['FINISH', 'FINISHED'],
   ['THANK YOU', 'THANKS'],
 ];
@@ -243,35 +93,15 @@ const GROUP_OF = (() => {
   return m;
 })();
 
-/**
- * NEW — returns every sign equivalent to `label` (see SIGN_GROUPS),
- * including `label` itself. Lets callers with several possible targets
- * at once (game.js free-order wall) treat twins like BRING/CARRY as a match.
- */
 export function getSignGroup(label) {
   return GROUP_OF.get(label) ? [...GROUP_OF.get(label)] : [label];
 }
 
-/**
- * Picks the winning label from a softmax output, pooling equivalent
- * signs (see SIGN_GROUPS). Shared by static + motion inference so the
- * "what counts as a winner" logic lives in exactly one place.
- *
- * @param {number[]} probs - raw softmax output
- * @param {Object} labels  - index -> label map (labels.json)
- * @param {Set<string>|null} allowedLabels - candidate filter, or null
- * @param {string|null} targetSign - the sign the learner was asked to
- *        perform; if the winner is equivalent to it, it is reported as it
- * @returns {{label: string|null, confidence: number, runnerUpConfidence: number}}
- */
 function pickWinnerPoolingTwins(probs, labels, allowedLabels, targetSign = null) {
   const idxByLabel = new Map();
   probs.forEach((_, i) => idxByLabel.set(labels[String(i)], i));
   const targetGroup = targetSign ? (GROUP_OF.get(targetSign) || null) : null;
 
-  // Pooled score = own probability + probability of every equivalent
-  // sign the model has, even one that allowedLabels excludes (that's
-  // the whole point — e.g. 'O' while the numbers lesson wants '0').
   const pooled = (i) => {
     let p = probs[i];
     for (const twin of (GROUP_OF.get(labels[String(i)]) || [])) {
@@ -283,12 +113,9 @@ function pickWinnerPoolingTwins(probs, labels, allowedLabels, targetSign = null)
 
   const candidates = probs
     .map((_, i) => i)
-    // a member of the target's own group is always eligible, even if
-    // it lives in another category (0 vs O, or BRING under CARRY)
     .filter(i => !allowedLabels
       || allowedLabels.has(labels[String(i)])
       || (targetGroup && targetGroup.includes(labels[String(i)])))
-    // pooled score first; raw probability breaks a tie between twins
     .sort((a, b) => (pooled(b) - pooled(a)) || (probs[b] - probs[a]));
 
   if (!candidates.length) return { label: null, confidence: 0, runnerUpConfidence: 0 };
@@ -296,12 +123,8 @@ function pickWinnerPoolingTwins(probs, labels, allowedLabels, targetSign = null)
   const win = candidates[0];
   const winLabel = labels[String(win)];
   const winGroup = GROUP_OF.get(winLabel) || null;
-  // Runner-up = best candidate OUTSIDE the winner's group — otherwise
-  // equivalent signs would always look like a dead heat.
   const runner = candidates.slice(1).find(i => !(winGroup && winGroup.includes(labels[String(i)])));
 
-  // The winner is equivalent to what the learner was asked to sign:
-  // report the requested sign so `result.label === sign` succeeds.
   const outLabel = (targetGroup && winGroup === targetGroup) ? targetSign : winLabel;
 
   return {
@@ -311,61 +134,22 @@ function pickWinnerPoolingTwins(probs, labels, allowedLabels, targetSign = null)
   };
 }
 
-// ── State ─────────────────────────────────────────────────────────
 let staticModel  = null;
 let staticLabels = null;
 let motionModel  = null;
 let motionLabels = null;
-let motionModelError = null;   // set if motion model fails to load
+let motionModelError = null;
 
 export function getMotionModelError() { return motionModelError; }
 
-// Frame buffer for motion detection (MOTION_FRAMES_REQUIRED × 138 values)
 let motionBuffer = [];
-// REMOVED: lastFrameFlat used to track the previous frame for the
-// frozen-frame movement filter in classifyMotion() (see that function's
-// comment for why the filter itself was removed). Nothing reads it
-// anymore, so it's gone rather than left as dead state.
 
-// REMOVED (see classifyMotion): this used to hold a label across two
-// consecutive windows before accepting a match, guarding against a
-// single window landing mid-gesture (e.g. the tail end of BOY's
-// closing grasp briefly resembling DAD's open-hand tap). That's a
-// real risk in principle, but now that recording is explicitly
-// triggered (3-2-1 countdown synced to the actual attempt, not a
-// passive always-on cycle), the window is synced to the real
-// performance rather than landing on an arbitrary slice of whatever
-// the hand was doing — and the two-window requirement was causing a
-// worse, more visible bug: the second confirmation window routinely
-// got filled with the user relaxing their hand right after finishing,
-// which predictably failed and overwrote a correct first read with
-// "no sign, 0%". If specific sign pairs turn out to still get
-// confused on a single window, the fix is to widen their fingerState/
-// tiebreaker distinction in dictionary.js, not to reintroduce a
-// second required window.
-
-// ── Feature vector helpers ────────────────────────────────────────
 
 function dist3(a, b) {
   const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// FIX (distance-from-camera sensitivity — "A reads as Y when I move my
-// hand back") — the 63 raw per-hand values used to be MediaPipe's raw
-// normalized image coordinates, fed straight into the model. Those
-// encode how BIG the hand looks in frame and WHERE it sits on screen —
-// not just its shape — so the same handshape performed closer to vs.
-// further from the camera produced meaningfully different numbers the
-// model was never trained to treat as equivalent. FIX: re-center each
-// hand on its own wrist (landmark 0) and scale by the wrist→middle-MCP
-// (landmark 9) bone length — a reference distance that stays roughly
-// constant regardless of camera distance AND barely changes whether
-// fingers are curled or extended (unlike e.g. "max distance from
-// wrist", which would partly cancel out the very finger-curl
-// differences that distinguish signs). This must be applied IDENTICALLY
-// in capture.html's buildFeatureVec() and here — matching normalization
-// is as load-bearing as matching frame count/feature count.
 function normalizeHandLandmarks(pts) {
   if (!pts) return null;
   const wrist = pts[0];
@@ -377,15 +161,6 @@ function normalizeHandLandmarks(pts) {
   }));
 }
 
-/**
- * NEW (body-relative features) — derives shoulder-center/hip-center from
- * RAW pose landmarks, the same way computeFaceRelativeFeatures() below
- * derives chin/forehead from raw face landmarks (no ghost-fill on this
- * side — poseLandmarks is whatever mediapipe.js saw this exact frame).
- *
- * @param {Array<{x,y,z}>|null} poseLm - full pose landmark set, or null
- * @returns {{shoulderCenter: {x,y,z}|null, hipCenter: {x,y,z}|null}}
- */
 export function computeTorsoCenters(poseLm) {
   if (!poseLm) return { shoulderCenter: null, hipCenter: null };
   const ls = poseLm[POSE_LEFT_SHOULDER_IDX], rs = poseLm[POSE_RIGHT_SHOULDER_IDX];
@@ -398,21 +173,6 @@ export function computeTorsoCenters(poseLm) {
   return { shoulderCenter, hipCenter };
 }
 
-/**
- * UPDATED (body-relative features) — same face-relative distance math as
- * capture.html's faceRelativeFeatures(), now returning 4 values instead
- * of 2: [handToChin, handToForehead, handToShoulder, handToHip]. Uses the
- * dominant present hand's wrist (right hand preferred, matching
- * capture.html's `rightPts || leftPts`). Same fallback order as
- * capture.html: torso distances use faceHeight as their unit when
- * available, falling back to shoulder-to-hip span otherwise — capture and
- * live inference MUST agree on this fallback.
- *
- * @param {Array<{x,y,z}>|null} dominantHandLm - wrist-bearing hand to measure from
- * @param {Array<{x,y,z}>|null} faceLm - full face landmark set, or null
- * @param {Array<{x,y,z}>|null} poseLm - full pose landmark set, or null
- * @returns {number[]} 4 values, 0-filled per-anchor if that anchor isn't available
- */
 export function computeFaceRelativeFeatures(dominantHandLm, faceLm, poseLm) {
   if (!dominantHandLm || !dominantHandLm.length) return [0, 0, 0, 0];
   const wrist = dominantHandLm[0];
@@ -431,15 +191,6 @@ export function computeFaceRelativeFeatures(dominantHandLm, faceLm, poseLm) {
   return [handToChin, handToForehead, handToShoulder, handToHip];
 }
 
-/**
- * NEW (palm-orientation feature) — IDENTICAL to capture.html's
- * palmOrientation(): unit normal of the plane formed by
- * wrist(0)->index-MCP(5) and wrist(0)->pinky-MCP(17). Returns [0,0,0]
- * when the hand isn't present, matching HAND_ZERO's zero-fill convention.
- *
- * @param {Array<{x,y,z}>|null} handPts - 21 hand landmarks, or null
- * @returns {number[]} 3 values
- */
 export function palmOrientation(handPts) {
   if (!handPts) return [0, 0, 0];
   const wrist = handPts[0], indexMcp = handPts[5], pinkyMcp = handPts[17];
@@ -452,53 +203,22 @@ export function palmOrientation(handPts) {
   return [nx / mag, ny / mag, nz / mag];
 }
 
-/**
- * Builds the 138-value feature vector, IDENTICAL layout to
- * capture.html's buildFeatureVec():
- *   [63 left xyz][63 right xyz][leftPresent][rightPresent]
- *   [handToChin][handToForehead][handToShoulder][handToHip]
- *   [leftPalmOrientation x3][rightPalmOrientation x3]
- *
- * FIX: the 63+63 hand values are now wrist-centered + bone-length-scaled
- * (see normalizeHandLandmarks() above), NOT raw MediaPipe image
- * coordinates as before — this makes the hand-shape portion of the
- * vector invariant to how close the hand is to the camera. capture.html
- * MUST apply the exact same wrist-center + wrist→middle-MCP scaling
- * before this fix is real end-to-end (currently only patched here and
- * in mediapipe.js — see those files' comments).
- *
- * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks, or null
- * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks, or null
- * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set, or null
- * @param {Array<{x,y,z}>|null} poseLandmarks - full pose landmark set, or null
- * @returns {number[]|null} 138 values, or null if neither hand is present
- */
 function buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks) {
   const leftPresent  = leftLm  ? 1 : 0;
   const rightPresent = rightLm ? 1 : 0;
   if (!leftLm && !rightLm) return null;
 
-  // NOTE: face-relative distances still use the RAW (un-normalized)
-  // wrist position on purpose — that calculation already does its own
-  // camera-distance-cancelling normalization (dividing by faceScale/
-  // torsoScale), and it needs the wrist's real position relative to the
-  // face/body, not a wrist-centered version of itself (which would
-  // always be zero relative to its own origin).
   const faceFeat = computeFaceRelativeFeatures(rightLm || leftLm, faceLandmarks, poseLandmarks);
   const leftNorm  = normalizeHandLandmarks(leftLm);
   const rightNorm = normalizeHandLandmarks(rightLm);
   const leftVec  = leftNorm  ? leftNorm.flatMap(p => [p.x, p.y, p.z])  : HAND_ZERO;
   const rightVec = rightNorm ? rightNorm.flatMap(p => [p.x, p.y, p.z]) : HAND_ZERO;
-  // palmOrientation is already a unit vector (direction only), so it's
-  // scale-invariant by construction either way — no change needed here,
-  // raw points are fine.
   const leftOrient  = palmOrientation(leftLm);
   const rightOrient = palmOrientation(rightLm);
 
   return [...leftVec, ...rightVec, leftPresent, rightPresent, ...faceFeat, ...leftOrient, ...rightOrient];
 }
 
-// ── Keras 3 compat loader (unchanged) ────────────────────────────
 
 function fixKeras3DtypePolicy(node) {
   if (Array.isArray(node)) {
@@ -599,29 +319,18 @@ async function loadKeras3CompatModel(modelJsonPath) {
   return tf.loadLayersModel(ioHandler);
 }
 
-// ── Load ──────────────────────────────────────────────────────────
 
-// ── labels.json = the authoritative list of trained signs ─────────
-// Both labels.json files are fetched through ONE cached helper, so the label
-// map the models use to decode their output and the "which signs are trained"
-// answer the game reads (getClassifiableSigns below) can never disagree.
 const _labelFetches = {};
 function fetchLabelsOnce(kind) {
   if (!_labelFetches[kind]) {
     const path = kind === 'motion' ? MOTION_LABELS_PATH : STATIC_LABELS_PATH;
     _labelFetches[kind] = fetch(path, { cache: 'no-cache' })
       .then((res) => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-      .catch((e) => { delete _labelFetches[kind]; throw e; });   // a failed fetch can be retried
+      .catch((e) => { delete _labelFetches[kind]; throw e; });
   }
   return _labelFetches[kind];
 }
 
-/**
- * Loads ONLY the two labels.json files (no model weights), so the game can work
- * out its playable pool before the camera/models have finished booting.
- * Never throws: a file that fails to load simply leaves that model with no
- * trained signs (fail CLOSED — an unknown model must not make signs playable).
- */
 export async function loadModelLabels() {
   const [s, m] = await Promise.allSettled([fetchLabelsOnce('static'), fetchLabelsOnce('motion')]);
   if (s.status === 'fulfilled') staticLabels = s.value; else console.warn('[classifier] static labels.json not loaded:', s.reason?.message);
@@ -637,7 +346,7 @@ export async function loadModels() {
   } catch (e) {
     console.error('[classifier] Failed to load static model:', e.message);
     console.error('[classifier] → Verify: /asl_static_model/model.json exists in project root.');
-    throw e;   // static model is required — re-throw so lesson.js catches it
+    throw e;
   }
 
   console.log('[classifier] Loading motion model…');
@@ -647,32 +356,20 @@ export async function loadModels() {
     console.log('[classifier] Motion model ready. Labels:', motionLabels);
   } catch (e) {
     console.warn('[classifier] Motion model not loaded:', e.message);
-    motionModelError = e.message;   // expose for lesson.js warning
+    motionModelError = e.message;
   }
 }
 
-// ── Which signs can each model actually classify? ─────────────────
-// labels.json is the ONLY source. dictionary.js `disabled` flags are NOT consulted.
-export const NONE_LABEL = 'NONE';   // background class — never a sign
+export const NONE_LABEL = 'NONE';
 
-// Set to false to make a sign playable ONLY if its own label is in labels.json
-// (no twin/alias signs such as CARRY riding on BRING's class).
 const ALLOW_TWIN_ALIASES = true;
 
-/** The sign labels the given model was trained on ('static' | 'motion'), NONE removed. null = labels not loaded. */
 export function getTrainedLabelSet(kind) {
   const labels = kind === 'motion' ? motionLabels : staticLabels;
   if (!labels) return null;
   return new Set(Object.values(labels).filter((l) => l !== NONE_LABEL));
 }
 
-/**
- * Can the model assigned to this sign (dictionary detectionType) classify it?
- * True when its own label is in that model's labels.json, or — only if the
- * classifier's twin pooling supports it (SIGN_GROUPS) — when an equivalent
- * sign is in that same model's labels.json. The sign must also have a
- * dictionary entry (the game needs its type/category). NONE is never true.
- */
 export function isSignClassifiable(signId) {
   const id = String(signId ?? '');
   if (!id || id === NONE_LABEL || !SIGN_DICTIONARY[id]) return false;
@@ -682,18 +379,12 @@ export function isSignClassifiable(signId) {
   return members.some((m) => m !== NONE_LABEL && trained.has(m));
 }
 
-/** True when the sign's OWN label is in its model's labels.json (not just a twin of one). */
 export function isTrainedLabel(signId) {
   const id = String(signId ?? '');
   if (!id || id === NONE_LABEL || !SIGN_DICTIONARY[id]) return false;
   return !!getTrainedLabelSet(getDetectionType(id) === 'motion' ? 'motion' : 'static')?.has(id);
 }
 
-/**
- * Every sign the game may use, derived from the two labels.json files:
- * each trained label, plus its twin-group mates, filtered by isSignClassifiable().
- * Needs loadModelLabels() (or loadModels()) to have run; returns [] otherwise.
- */
 export function getClassifiableSigns() {
   const candidates = new Set();
   for (const kind of ['static', 'motion']) {
@@ -710,37 +401,25 @@ export function isMotionModelReady() {
   return motionModel !== null && motionLabels !== null;
 }
 
-// ══════════════════════════════════════════════════════════════════
-// AMBIDEXTROUS FALLBACK — "my left hand works but my right hand doesn't" (or the reverse)
-// ══════════════════════════════════════════════════════════════════
-// The feature vector has separate left-hand and right-hand slots. If the training clips for a one-handed sign were
-// mostly recorded with ONE hand, the model has simply never seen that sign in the other hand's slots, so the
-// skeleton draws but the sign never matches. Mirroring a one-handed vector (swap the slots, flip x, reflect the palm
-// normal) turns a left-hand performance into the right-hand one the model knows, and vice versa. The mirrored
-// attempt is only tried AFTER the normal one fails, only when exactly one hand is present, and when the learner was
-// asked for a specific sign it is only accepted if it confirms THAT sign, so it can make correct signing succeed
-// but can never invent a wrong-sign miss. Set to false to restore the old behaviour exactly.
 const AMBIDEXTROUS_FALLBACK = true;
 
 function mirrorHandBlock(flat, start) {
   const out = new Array(63);
   for (let i = 0; i < 63; i++) {
     const v = flat[start + i];
-    out[i] = (i % 3 === 0 && v !== 0) ? -v : v;   // hand points are wrist-centred, so a mirror is x -> -x
+    out[i] = (i % 3 === 0 && v !== 0) ? -v : v;
   }
   return out;
 }
-// Mirroring flips the handedness of the cross product: n -> (nx, -ny, -nz).
 function reflectOrientation(flat, start) {
   const ny = flat[start + 1], nz = flat[start + 2];
   return [flat[start], ny === 0 ? 0 : -ny, nz === 0 ? 0 : -nz];
 }
-// Layout: [0..62 left][63..125 right][126 leftPresent][127 rightPresent][128..131 face/body][132..134 leftOrient][135..137 rightOrient]
 export function mirrorFeatureVector(flat) {
   return [
     ...mirrorHandBlock(flat, 63), ...mirrorHandBlock(flat, 0),
     flat[127], flat[126],
-    flat[128], flat[129], flat[130], flat[131],   // distances to chin/forehead/shoulders/hips are symmetric about the body midline
+    flat[128], flat[129], flat[130], flat[131],
     ...reflectOrientation(flat, 135), ...reflectOrientation(flat, 132),
   ];
 }
@@ -752,28 +431,7 @@ function labelConfirmsTarget(label, targetSign) {
   return !!group && group.includes(label);
 }
 
-// ── Static Classify ───────────────────────────────────────────────
 
-/**
- * Classifies a single-frame two-hand pose using the static model.
- *
- * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks from mediapipe.js
- * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks from mediapipe.js
- * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set from mediapipe.js
- * @returns {{ label: string|null, confidence: number (0–100), matched: boolean }}
- */
-// NEW: optional 4th arg, allowedLabels (Set<string>|null). When
-// provided, only these labels are eligible to win — everything else
-// is excluded BEFORE argmax, not filtered after. This is what makes
-// numbers-mode vs letters-mode collision-safe: 6/W, 9/F, and 0/O are
-// near-identical static handshapes, so the model's raw global argmax
-// will sometimes land on the wrong side of the pair even when the
-// user signed it correctly. There's no amount of training data that
-// fixes two genuinely identical handshapes — restricting the
-// candidate pool to the active lesson's category (via
-// SIGN_DICTIONARY[label].category) removes the cross-category
-// collision the same way context disambiguates it in real ASL. Pass
-// null (or omit) to keep the old unrestricted behavior.
 export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null, targetSign = null) {
   if (!staticModel || !staticLabels) return { label: null, confidence: 0, matched: false };
   if (!leftLm && !rightLm) return { label: null, confidence: 0, matched: false };
@@ -781,16 +439,13 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   const flat = buildFeatureVector(leftLm, rightLm, faceLandmarks, poseLandmarks);
   if (!flat) return { label: null, confidence: 0, matched: false };
 
-  // One forward pass. `input` lives outside tf.tidy() (tidy only disposes tensors created inside its own callback), so
-  // it is disposed in a finally block: that covers both the normal path and a throw from predict()/dataSync().
   const infer = (vector) => {
-    const input = tf.tensor2d([vector]);   // shape [1, 138]
+    const input = tf.tensor2d([vector]);
     let picked = null;
     try {
       tf.tidy(() => {
         const output = staticModel.predict(input);
         const probs  = Array.from(output.dataSync());
-        // Restrict to labels valid in the current context BEFORE picking a winner, and pool look-alike twins (see TWIN_GROUPS).
         picked = pickWinnerPoolingTwins(probs, staticLabels, allowedLabels, targetSign);
       });
     } finally {
@@ -815,11 +470,8 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
 
   if (!rawLabel) return { label: null, confidence: 0, matched: false };
 
-  // labels.json decides what is trained, so the dictionary `disabled` flag is not consulted here.
-  // NONE is the background class and is never reported as a sign.
   if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) return { label: null, confidence: 0, matched: false };
 
-  // Both the absolute threshold AND the margin over the runner-up must pass.
   const matched = confidence >= MATCH_THRESHOLD && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
   logNearMiss('static', rawLabel, { matched, label: rawLabel, confidence }, topRaw);
 
@@ -830,76 +482,24 @@ export function classifyGesture(leftLm, rightLm, faceLandmarks, allowedLabels = 
   };
 }
 
-// NEW: shared helper for callers (lesson.js, quiz.js) — builds the
-// allowedLabels Set for classifyGesture()/classifyMotion() from
-// whatever sign is currently active, using the category it's already
-// tagged with in SIGN_DICTIONARY ('alphabet' / 'numbers' / etc).
-// No new "mode" concept needed — this just reuses category metadata
-// that already exists on every dictionary entry.
 export function getAllowedLabelsForSign(signId) {
   const cat = SIGN_DICTIONARY[signId]?.category;
   if (!cat) return null;
   return new Set(Object.keys(SIGN_DICTIONARY).filter(l => SIGN_DICTIONARY[l].category === cat));
 }
 
-// ── Motion Classify ───────────────────────────────────────────────
 
-// ══════════════════════════════════════════════════════════════════
-// CHANGED — "user puts their hand down while it's still capturing"
-// ══════════════════════════════════════════════════════════════════
-// Two related problems were happening together:
-//
-//   1) The UI's progress bar was a fake, time-based estimate (see the
-//      OLD comment that used to be in lesson.js's updateMotionBuffer)
-//      instead of reflecting the REAL motionBuffer.length — so it could
-//      read as "basically done" while the model was still nowhere near
-//      MOTION_FRAMES_REQUIRED, especially once frame-skipping (frozen-
-//      hand frames, below) is factored in. Users trusted the bar and
-//      dropped their hand early. FIX: getMotionBufferStatus() below
-//      exposes the TRUE count/required/progress, and lesson.js now
-//      reads directly from it instead of guessing.
-//
-//   2) Even with an accurate bar, a user who drops their hand mid-sign
-//      used to just... hang. classifyMotion() already tolerates the
-//      hand vanishing (it simply stops adding frames — see the
-//      `!leftLm && !rightLm` guard), but nothing ever finished the
-//      window early, so the attempt would silently sit there until the
-//      15s PROMPT_TIMEOUT in lesson.js finally gave up. FIX:
-//      finalizeMotionWindow() (new) lets lesson.js force-finish a
-//      short window after a brief "hand's really gone" grace period,
-//      padding the buffer by repeating its last real frame out to
-//      MOTION_FRAMES_REQUIRED so the LSTM still gets the input shape
-//      it expects. The sign's real motion is still intact at the
-//      front of the window — we're stretching the tail, not fabricating
-//      the gesture. If too FEW real frames were captured to make that
-//      a fair guess (MOTION_MIN_FRAMES_TO_FINALIZE), it bails out
-//      cleanly instead of guessing on mostly-padding.
-// ══════════════════════════════════════════════════════════════════
-
-// Require at least 40% of a real window before we'll even attempt a
-// padded guess — below that there's not enough real motion to judge.
 const MOTION_MIN_FRAMES_TO_FINALIZE = Math.round(MOTION_FRAMES_REQUIRED * 0.4);
 
-/**
- * Shared inference path used by both a normal full window (classifyMotion)
- * and a forced/padded window (finalizeMotionWindow), so the "what counts
- * as a match" logic only lives in one place.
- */
-// NEW: same restrict-before-argmax pattern as classifyGesture() — see
-// its comment for why. Not load-bearing today (6/9/10 don't currently
-// have any static-model letter counterparts to collide with, since
-// they only exist as motion classes), but here so a future motion-side
-// collision doesn't require re-deriving this fix from scratch.
 function runMotionInference(frameWindow, allowedLabels = null, targetSign = null) {
-  // Same input-tensor handling as classifyGesture(): `input` is disposed in a finally block.
   const infer = (window40) => {
-    const input = tf.tensor3d([window40]);   // shape [1, MOTION_FRAMES_REQUIRED, 138]
+    const input = tf.tensor3d([window40]);
     let picked = null;
     try {
       tf.tidy(() => {
         const output = motionModel.predict(input);
         const probs  = Array.from(output.dataSync());
-        picked = pickWinnerPoolingTwins(probs, motionLabels, allowedLabels, targetSign);   // look-alike twins (0/O) are pooled, see TWIN_GROUPS
+        picked = pickWinnerPoolingTwins(probs, motionLabels, allowedLabels, targetSign);
       });
     } finally {
       input.dispose();
@@ -910,8 +510,6 @@ function runMotionInference(frameWindow, allowedLabels = null, targetSign = null
     && r.confidence >= MOTION_THRESHOLD && (r.confidence - r.runnerUpConfidence) >= RUNNERUP_MARGIN_MIN);
 
   let r = infer(frameWindow);
-  // Ambidextrous fallback (see the block comment above classifyGesture): only when the whole window is a one-handed
-  // performance, only after the normal read failed, and only accepted when it confirms the requested sign.
   if (AMBIDEXTROUS_FALLBACK && !passes(r) && frameWindow.filter(isSingleHandVector).length >= frameWindow.length * 0.8) {
     const mirrored = infer(frameWindow.map(mirrorFeatureVector));
     if (passes(mirrored) && labelConfirmsTarget(mirrored.label, targetSign)) r = mirrored;
@@ -927,63 +525,19 @@ function runMotionInference(frameWindow, allowedLabels = null, targetSign = null
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  // Same guard as classifyGesture(): labels.json decides what is trained; NONE is never a sign, and a label with no
-  // SIGN_DICTIONARY entry is not reported.
   if (rawLabel === NONE_LABEL || !SIGN_DICTIONARY[rawLabel]) {
     return { label: null, confidence: 0, matched: false, buffering: false };
   }
 
-  // Margin-over-runner-up check, same as the static path. One clean window is the deliberate attempt: accept it immediately.
   const passesThreshold = confidence >= MOTION_THRESHOLD
     && (confidence - runnerUpConfidence) >= RUNNERUP_MARGIN_MIN;
   logNearMiss('motion', rawLabel, { matched: passesThreshold, label: rawLabel, confidence }, topRaw);
   return { label: rawLabel, confidence, matched: passesThreshold, buffering: false };
 }
 
-// ══════════════════════════════════════════════════════════════════
-// CHANGED — "recording is way too fast now, I can't perform the sign"
-// ══════════════════════════════════════════════════════════════════
-// The frozen-frame filter removed above was, it turns out, doing double
-// duty: besides being wrong (see the comment in classifyMotion()), it
-// was ACCIDENTALLY acting as the pacing mechanism. Because a frame only
-// "counted" while the hand was actively moving, reaching MOTION_FRAMES_
-// REQUIRED (40) counted frames took as long as the sign itself took —
-// pauses, hesitation, and a natural pace all just... didn't count
-// against the total, so the window stretched to fit however long a
-// real performance took.
-//
-// Removing that filter (correctly — the model still needs to see it)
-// meant EVERY frame counts now, so 40 frames complete in exactly
-// 40 × DETECT_RATE_ACTIVE_MS (see lesson.js) — a hard, rigid ~2 second
-// ceiling with zero room to actually perform a sign naturally. That's
-// its own real bug, and worth calling out: it's also a strong candidate
-// for why misclassification persisted after the last fix — a sign
-// rushed/cut off by a too-short window doesn't resemble the complete,
-// natural gesture the model was trained on either.
-//
-// FIX: stop tying "recording complete" to a raw frame COUNT at all.
-// Record for a fixed, comfortable real-TIME window instead
-// (MOTION_RECORD_DURATION_MS below), capturing however many raw frames
-// come in during that time — could be more or fewer than 40 depending
-// on the device's actual detection rate — then RESAMPLE the captured
-// sequence to exactly MOTION_FRAMES_REQUIRED frames via linear
-// interpolation before running inference. This is not a new technique —
-// it's the exact same resampleSequence()/resample_sequence() algorithm
-// already used in capture.html and merge_linguawave_data.py for
-// normalizing variable-length clips; it's just being applied live here
-// instead of offline. This permanently decouples "how long you get to
-// sign" from "how many frames the model wants," so it also won't need
-// re-tuning again if the detection rate ever changes.
-const MOTION_RECORD_DURATION_MS = 2500; // comfortable real-world signing time
+const MOTION_RECORD_DURATION_MS = 2500;
 let motionRecordStartAt = null;
 
-/**
- * Port of capture.html's resampleSequence() — linear interpolation
- * between the two nearest source frames to stretch/compress a
- * variable-length clip to a fixed target frame count. MUST stay
- * identical to capture.html's version and merge_linguawave_data.py's
- * resample_sequence() — all three need to treat a clip the same way.
- */
 function resampleSequence(frames, targetLength) {
   const clean = frames.filter(Boolean);
   if (!clean.length) return null;
@@ -1000,20 +554,6 @@ function resampleSequence(frames, targetLength) {
   return out;
 }
 
-/**
- * Adds a frame to the motion buffer. Once MOTION_RECORD_DURATION_MS has
- * elapsed since the first frame of this recording, resamples whatever
- * was captured to MOTION_FRAMES_REQUIRED frames and runs the LSTM
- * motion model.
- *
- * @param {Array<{x,y,z}>|null} leftLm  - 21 left-hand landmarks
- * @param {Array<{x,y,z}>|null} rightLm - 21 right-hand landmarks
- * @param {Array<{x,y,z}>|null} faceLandmarks - full face landmark set
- * @param {Set<string>|null} [allowedLabels]
- * @param {Array<{x,y,z}>|null} [poseLandmarks] - full pose landmark set
- * @param {string|null} [targetSign] - sign the learner was asked for (see SIGN_GROUPS)
- * @returns {{ label: string|null, confidence: number, matched: boolean, buffering: boolean }}
- */
 export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = null, poseLandmarks = null, targetSign = null) {
   if (!motionModel || !motionLabels) {
     return { label: null, confidence: 0, matched: false, buffering: false };
@@ -1027,9 +567,6 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = n
     return { label: null, confidence: 0, matched: false, buffering: motionBuffer.length > 0 };
   }
 
-  // First frame of a fresh recording — start the clock. Every frame
-  // from here on is pushed unconditionally (see the block comment
-  // above classifyMotion — no movement filter, matches capture.html).
   if (motionBuffer.length === 0) {
     motionRecordStartAt = performance.now();
   }
@@ -1049,21 +586,6 @@ export function classifyMotion(leftLm, rightLm, faceLandmarks, allowedLabels = n
   return runMotionInference(resampled, allowedLabels, targetSign);
 }
 
-/**
- * NEW — force-finishes a short (in-progress) motion window instead of
- * waiting for it to naturally reach MOTION_RECORD_DURATION_MS. Call
- * this when the hand has been missing for a "they clearly dropped
- * their hand" grace period while a recording is armed (see lesson.js).
- *
- * Resamples whatever was captured so far up to MOTION_FRAMES_REQUIRED
- * frames (same technique as a normal completed window — see
- * resampleSequence() above) and runs inference on that. If too few
- * real frames were captured to make that a fair attempt, returns null
- * and clears the buffer — the caller should treat that as "no sign,
- * try again" rather than a real (if low-confidence) guess.
- *
- * @returns {{label,confidence,matched,buffering}|null}
- */
 export function finalizeMotionWindow(allowedLabels = null, targetSign = null) {
   if (!motionModel || !motionLabels) return null;
   if (motionBuffer.length < MOTION_MIN_FRAMES_TO_FINALIZE) {
@@ -1079,13 +601,6 @@ export function finalizeMotionWindow(allowedLabels = null, targetSign = null) {
   return runMotionInference(resampled, allowedLabels, targetSign);
 }
 
-/**
- * NEW — real (not estimated) buffering progress, for the UI. Now
- * TIME-based rather than frame-count-based (see the block comment near
- * MOTION_RECORD_DURATION_MS for why) — reports elapsed/total recording
- * time plus a 0–1 fraction. lesson.js's progress bar reads from this
- * directly.
- */
 export function getMotionBufferStatus() {
   const elapsedMs = motionRecordStartAt ? performance.now() - motionRecordStartAt : 0;
   return {
@@ -1096,16 +611,11 @@ export function getMotionBufferStatus() {
   };
 }
 
-/**
- * Resets the motion frame buffer. Call this when switching signs
- * or exiting assessment mode.
- */
 export function resetMotionBuffer() {
   motionBuffer = [];
   motionRecordStartAt = null;
 }
 
-// ── Utility ───────────────────────────────────────────────────────
 
 export function landmarkDistance(a, b) {
   const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;

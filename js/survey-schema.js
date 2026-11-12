@@ -1,32 +1,3 @@
-/**
- * survey-schema.js — Shared survey definitions + pure helpers (NEW)
- * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : One place that knows what a `surveys/{id}` document looks
- *            like and how to turn it into something an admin can read.
- *            Used by js/admin-firebase.js (normalise + stats),
- *            js/admin-feedback.js, js/admin-dashboard.js and
- *            js/admin-reports.js. No Firebase, no DOM — pure functions,
- *            so it can be unit-tested in Node.
- *
- * KEEP IN SYNC : SURVEY_QUESTIONS below mirrors the question text and
- *            radio values in pages/feedback.html. Stored keys stay
- *            q1..q5 (existing documents depend on them); this file only
- *            translates them into readable labels for the admin.
- *              q1  1-5   "How satisfied are you with this level overall?"
- *              q2  1-5   "How clear were the sign images and video ...?"
- *              q3  too_easy | just_right | too_hard
- *              q4  yes | maybe | no
- *              q5  free text (optional; stored as null when left empty)
- *            js/feedback.js writes; firestore.rules validates the same
- *            shape. Change one, change all three.
- *
- * LEGACY DOCUMENTS : Surveys saved before this feature stored only
- *            { userId, level, answers, submittedAt } (no userName /
- *            userEmail, and level could be "unknown"). normalizeSurvey()
- *            tolerates that; enrichWithUsers() fills the identity from
- *            the already-loaded `users` list when it can.
- * ─────────────────────────────────────────────────────────────────
- */
 
 export const SURVEY_LEVELS = ["basic", "medium", "intermediate"];
 
@@ -46,7 +17,6 @@ const RATING_1_TO_5_CLARITY = {
 const DIFFICULTY = { too_easy: "Too Easy", just_right: "Just Right", too_hard: "Too Hard" };
 const RECOMMEND = { yes: "Yes", maybe: "Maybe", no: "No" };
 
-/** label = "Question N" heading; text = the exact wording learners saw. */
 export const SURVEY_QUESTIONS = [
   { key: "q1", label: "Question 1", text: "How satisfied are you with this level overall?",
     map: RATING_1_TO_5_SATISFACTION, numbered: true },
@@ -66,24 +36,17 @@ export const COMMENT_QUESTION = {
 export const NO_COMMENT_TEXT = "No additional comments";
 export const NO_ANSWER_TEXT = "Not answered";
 
-/* ── formatting ──────────────────────────────────────────────────── */
 
-/**
- * Human-readable answer for q1..q4, or NO_ANSWER_TEXT. Never returns
- * "null", "undefined" or "[object Object]": anything that isn't a plain
- * string/number is treated as unanswered.
- */
 export function formatAnswer(question, raw) {
   if (raw === null || raw === undefined) return NO_ANSWER_TEXT;
   if (typeof raw !== "string" && typeof raw !== "number") return NO_ANSWER_TEXT;
   const value = String(raw).trim();
   if (!value) return NO_ANSWER_TEXT;
   const label = question.map[value];
-  if (!label) return value; // unknown/legacy value: show it as stored, as text
+  if (!label) return value;
   return question.numbered ? `${value}: ${label}` : label;
 }
 
-/** Comment text or null when empty / not a string. */
 export function getComment(answers) {
   const raw = answers && answers.q5;
   if (typeof raw !== "string") return null;
@@ -100,7 +63,6 @@ export function levelLabel(level) {
   return LEVEL_LABEL[levelKey(level)];
 }
 
-/** "September 29, 2026" or "Unknown date". */
 export function formatDate(ms) {
   if (!Number.isFinite(ms)) return "Unknown date";
   return new Date(ms).toLocaleDateString("en-US", {
@@ -108,17 +70,14 @@ export function formatDate(ms) {
   });
 }
 
-/** "3:42 PM" or "". */
 export function formatTime(ms) {
   if (!Number.isFinite(ms)) return "";
   return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-/* ── normalising Firestore documents ─────────────────────────────── */
 
 function toMillis(value) {
   if (value === null || value === undefined) return null;
-  // Firestore Timestamp (if a future writer switches to serverTimestamp()).
   if (typeof value === "object" && typeof value.toMillis === "function") {
     const ms = value.toMillis();
     return Number.isFinite(ms) ? ms : null;
@@ -135,10 +94,6 @@ function cleanString(value, max) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
-/**
- * Raw Firestore data -> a flat, safe object. Every field has a defined
- * type so renderers never have to guard against undefined.
- */
 export function normalizeSurvey(id, data) {
   const d = data && typeof data === "object" ? data : {};
   const answers = d.answers && typeof d.answers === "object" ? d.answers : {};
@@ -153,12 +108,6 @@ export function normalizeSurvey(id, data) {
   };
 }
 
-/**
- * Fills a missing name/email on legacy surveys from a `users` list
- * (the caller already has one; no per-row Firestore reads). Returns a
- * new array. Rows that can't be matched keep empty strings and are
- * displayed as "Unknown learner" by the renderer.
- */
 export function enrichWithUsers(surveys, users) {
   const byUid = new Map();
   (users || []).forEach((u) => { if (u && u.id) byUid.set(u.id, u); });
@@ -178,12 +127,7 @@ export function displayName(s) {
   return s.userName || (s.userEmail ? s.userEmail.split("@")[0] : "") || "Unknown learner";
 }
 
-/* ── sorting / filtering / stats ─────────────────────────────────── */
 
-/**
- * Newest first. Documents with a missing/invalid timestamp sort last
- * (ties broken by id so the order is stable between renders).
- */
 export function sortNewestFirst(surveys) {
   return [...surveys].sort((a, b) => {
     const am = a.submittedMs, bm = b.submittedMs;
@@ -194,10 +138,6 @@ export function sortNewestFirst(surveys) {
   });
 }
 
-/**
- * filters: { level: "" | "basic" | "medium" | "intermediate", term: string }
- * term matches learner name, email and the written comment.
- */
 export function filterSurveys(surveys, { level = "", term = "" } = {}) {
   const t = term.trim().toLowerCase();
   return surveys.filter((s) => {
@@ -212,15 +152,6 @@ export function filterSurveys(surveys, { level = "", term = "" } = {}) {
   });
 }
 
-/**
- * Per-question answer distribution for the charts on the Feedback page.
- * Returns one entry per SURVEY_QUESTIONS item:
- *   { key, label, text, numbered, answered, skipped, average, buckets:[{value,label,count,pct}] }
- * - buckets follow the question's own answer set (ratings run 5 -> 1, best first), so a value nobody
- *   chose still shows as a zero-length bar.
- * - answered = rows whose answer is one of the known values; skipped = everything else (missing, legacy,
- *   unknown). pct is of `answered`. average is only set for the numbered 1-5 questions (null if none).
- */
 export function computeAnswerDistributions(surveys) {
   return SURVEY_QUESTIONS.map((q) => {
     const values = Object.keys(q.map);
@@ -257,7 +188,6 @@ export function computeAnswerDistributions(surveys) {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Everything is derived from the array passed in; nothing is invented. */
 export function computeSurveyStats(surveys, now = Date.now()) {
   const byLevel = { basic: 0, medium: 0, intermediate: 0, other: 0 };
   let thisWeek = 0;

@@ -1,23 +1,4 @@
 'use strict';
-/**
- * Harness for js/missions.js's new cross-device Firestore
- * sync. No real browser/Firestore is available in this environment,
- * so this mocks:
- *   - localStorage (plain in-memory object store)
- *   - window.LWAuth (db/doc/getDoc/setDoc/getCurrentUser/whenAuthReady)
- *   - a fake Firestore "backend" (a Map keyed by `${collection}/${uid}`)
- *
- * It loads the real, unmodified missions.js source into a fresh vm
- * context per scenario (so hydration's one-shot IIFE call re-runs
- * cleanly each time) and exercises:
- *   1. No user logged in -> Firestore never touched, local-only.
- *   2. Logged-in user, no remote doc yet, real local data exists ->
- *      migration pushes local data UP to Firestore.
- *   3. Logged-in user, remote doc exists with additional completions
- *      from another device -> union-merge reconciliation.
- *   4. Streak: later lastActivityDate wins `current`, longest = max; hearts lostAt -> remote wins.
- *   5. save*State() write-through -> Firestore doc field updated.
- */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -32,7 +13,6 @@ function makeLocalStorage(initial = {}) {
     removeItem(k) { delete store[k]; },
   };
 }
-// Fake Firestore backend: Map<"collection/uid", docData>
 function makeFakeFirestoreBackend() {
   const docs = new Map();
   return {
@@ -58,8 +38,6 @@ function makeFakeFirestoreBackend() {
 function loadMissionsInFreshContext({ localStorageInitial = {}, loggedInUid = null, backend = null }) {
   const localStorage = makeLocalStorage(localStorageInitial);
   const fs2 = backend || makeFakeFirestoreBackend();
-  // Mirrors js/auth.js: only readProgressDoc/writeProgressDoc (own doc, whitelisted collection) are exposed.
-  // The raw doc/getDoc/setDoc/db are NOT on window.LWAuth in production, so the harness must not offer them.
   const uid = loggedInUid;
   const LWAuth = {
     getCurrentUser: () => (uid ? { uid } : null),
@@ -79,10 +57,10 @@ function loadMissionsInFreshContext({ localStorageInitial = {}, loggedInUid = nu
     localStorage,
     LWAuth,
   };
-  windowMock.window = windowMock; // some code paths might reference window.window; harmless
+  windowMock.window = windowMock;
   const sandbox = {
     window: windowMock,
-    localStorage, // missions.js calls bare localStorage.getItem/setItem, not window.localStorage
+    localStorage,
     console,
     Promise,
     Date,
@@ -114,7 +92,6 @@ async function scenario1_noUser_localOnly() {
   const LWMissions = sandbox.window.LWMissions;
   await LWMissions.whenMissionsSyncReady();
   assert(backend.docs.size === 0, 'no Firestore doc created when nobody is logged in');
-  // Exercise a save while logged out -> still local-only, no throw.
   LWMissions.recordActivity('lesson');
   assert(backend.docs.size === 0, 'saving while logged out never touches Firestore');
 }
@@ -159,11 +136,11 @@ async function scenario3_reconcile_mergesProgressAndStreak() {
   const localInitial = {
     lw_missions_progress_v1: JSON.stringify({
       uid,
-      completedItemIds: ['m1_0_LESSON_HELLO', 'm1_2_LESSON_MORNING'], // one overlapping, one local-only
+      completedItemIds: ['m1_0_LESSON_HELLO', 'm1_2_LESSON_MORNING'],
       completedAt: { m1_0_LESSON_HELLO: '2026-09-01T12:00:00.000Z', m1_2_LESSON_MORNING: '2026-09-04T12:00:00.000Z' },
     }),
     lw_missions_streak_v1: JSON.stringify({ uid, v: 3, current: 2, longest: 2, lastActivityDate: '2026-09-02', recentDays: ['2026-09-01', '2026-09-02'] }),
-    lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: ['2026-09-06T00:00:00.000Z'] }), // stale local-only loss
+    lw_missions_hearts_v1: JSON.stringify({ uid, lostAt: ['2026-09-06T00:00:00.000Z'] }),
   };
   const { sandbox } = loadMissionsInFreshContext({ localStorageInitial: localInitial, loggedInUid: uid, backend });
   const LWMissions = sandbox.window.LWMissions;
@@ -204,17 +181,13 @@ async function scenario4_saveWriteThrough() {
   const { sandbox, backend } = loadMissionsInFreshContext({ loggedInUid: uid });
   const LWMissions = sandbox.window.LWMissions;
   await LWMissions.whenMissionsSyncReady();
-  // getPilotMission's items include LESSON items for essentials_greetings.
   const mission = LWMissions.getPilotMission();
   assert(mission && mission.items && mission.items.length > 0, 'pilot mission has items to complete (sanity check)');
   LWMissions.markItemComplete(mission, 0, mission.items[0]);
-  // markItemComplete -> saveProgressState -> pushFieldToFirestoreV2 is
-  // fire-and-forget (a Promise not awaited internally); give the
-  // microtask queue a tick to flush it before asserting.
   await sleep(10);
   const remote = backend.docs.get(`userProgressV2/${uid}`);
   assert(!!remote && !!remote.progress, 'saving progress locally also wrote through to the Firestore doc');
-  assert(!!remote && !!remote.hearts === false || true, 'sanity no-op'); // placeholder to keep structure consistent
+  assert(!!remote && !!remote.hearts === false || true, 'sanity no-op');
   LWMissions.recordActivity('lesson');
   await sleep(10);
   const remote2 = backend.docs.get(`userProgressV2/${uid}`);
@@ -228,7 +201,7 @@ async function scenario4_saveWriteThrough() {
 async function scenario5_devPreview_noLWAuthAtAll() {
   console.log('\n--- Scenario 5: js/auth.js not loaded at all (dev preview page) ---');
   const localStorage = makeLocalStorage({});
-  const windowMock = { localStorage }; // no LWAuth property whatsoever
+  const windowMock = { localStorage };
   const sandbox = {
     window: windowMock,
     localStorage,
@@ -238,7 +211,6 @@ async function scenario5_devPreview_noLWAuthAtAll() {
   vm.runInContext(SOURCE, sandbox, { filename: 'missions.js' });
   const LWMissions = sandbox.window.LWMissions;
   await LWMissions.whenMissionsSyncReady();
-  // Should not throw, and local save should still work fine.
   LWMissions.recordActivity('lesson');
   const raw = localStorage.getItem('lw_missions_streak_v1');
   assert(!!raw, 'local save still works with no window.LWAuth at all (dev preview pages)');

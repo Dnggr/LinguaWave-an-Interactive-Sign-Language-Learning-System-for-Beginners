@@ -1,135 +1,41 @@
-/**
- * js/lesson-loop.js — Sign Learning Loop engine (NEW)
- * ─────────────────────────────────────────────────────────────────
- * PURPOSE : This is the first real code integration of
- *           "LinguaWaveV2_Learning_Psychology_Analysis.docx" (the
- *           16-screenshot reference analysis) and its chapter-level
- *           follow-up ("...Analysis_Chapters_1-2.docx") into the
- *           actual app. It turns the six-stage loop those documents
- *           recommend — Watch → Recognize → Discriminate →
- *           Contextualize → Produce → Celebrate — into working logic
- *           that runs against REAL LinguaWave mission data.
- *
- * SCOPE (this pass) : the discrimination pairs, "same sign as"
- *           duplicates, and Contextualize phrases below are hand-
- *           curated ONLY for Chapter 1 (ASL Foundations: Alphabet,
- *           Numbers) and Chapter 2 (Introduce Yourself: Greetings,
- *           People, Personal Information) — the two chapters the
- *           Chapters_1-2 analysis covers. Every function still works
- *           for all 65 live missions app-wide: uncurated signs fall
- *           back to generic-but-real logic (same-category near-
- *           neighbor guess, generic sentence template) rather than
- *           returning nothing — same "degrade, don't throw" rule
- *           js/missions.js itself follows throughout. Curating the
- *           remaining 10 chapters is tracked as the next step in the
- *           analysis doc's own §5 (Next Steps) and is NOT done here.
- *
- * ISOLATION : reads window.LWMissions only, exactly the
- *           same discipline mission-overview.js etc. already
- *           follow. Does not touch js/engine/progress.js,
- *           js/camera-practice.js, or js/quiz.js. No new localStorage key is
- *           introduced for progress — see hasSignLearnedElsewhere()
- *           below, which reads the EXISTING lw_missions_progress_v1
- *           completedItemIds list js/missions.js already writes,
- *           rather than inventing a second store.
- *
- * NODE-TESTABLE : same IIFE(global) pattern as js/missions.js, so this
- *           file can be sanity-checked in a plain Node harness
- *           (`global.window = global; require('./lesson-loop.js')`)
- *           without a browser — there is no jsdom in this project's
- *           dev environment (see every prior AI_MEMORY.md session
- *           note), so that harness-level check is the same standing
- *           verification ceiling the rest of Missions already accepts.
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
 
 (function (global) {
 
-  /* ── NEAR_NEIGHBORS — curated discrimination pairs ────────────────
-   * signId -> array of signIds that are genuinely easy to confuse it
-   * with, per the real SIGNS_V2 descriptions (see the Chapters_1-2
-   * analysis doc §1.2/§1.4/§2.2/§2.3 discrimination maps for the
-   * source reasoning behind every entry below — not reproduced here,
-   * only the resulting pairs). Deliberately NOT exhaustive outside
-   * Chapters 1–2 (see file header). Order matters slightly: the
-   * first entry is used as the primary Discriminate-step distractor.
-   */
   const NEAR_NEIGHBORS = {
-    // Alphabet — closed-fist family
     A: ['S', 'T', 'E', 'M', 'N'], S: ['A', 'T', 'E', 'M', 'N'],
     T: ['A', 'S', 'E', 'M', 'N'], E: ['A', 'S', 'T', 'M', 'N'],
     M: ['N', 'A', 'S', 'T', 'E'], N: ['M', 'A', 'S', 'T', 'E'],
-    // Alphabet — two-finger-up family
     U: ['V', 'H', '2'], V: ['U', '2'], H: ['U', 'V'],
     K: ['P'], P: ['K'], R: ['U'],
-    // Alphabet — spread-finger family
     W: ['3', '6', '4'], B: ['4'], 
-    // Alphabet — circle-shape family
     C: ['O'], O: ['C', '0'], F: ['9'],
-    // Alphabet — hooked-index pair
     D: ['X', '1'], X: ['D'],
-    // Alphabet — sideways-pointing pair
     G: ['Q'], Q: ['G'],
-    // Alphabet — motion outliers (traced-shape neighbor only, not handshape)
     J: ['I'], I: ['J'],
-    // Numbers — thumb-tap family + alphabet collisions
     '0': ['O'], '1': ['D'], '2': ['U', 'V'], '3': ['W'],
     '4': ['B'], '6': ['W', '7', '8', '9'], '7': ['6', '8', '9'],
     '8': ['6', '7', '9'], '9': ['F', '6', '7', '8'],
-    // Greetings — identical-sign pairs (see SAME_SIGN_AS; also listed
-    // here so a Recognize step can still deliberately offer the
-    // "wrong register" word as a distractor even before that step is
-    // downgraded to a register question by SAME_SIGN_AS below).
     HELLO: ['HI'], HI: ['HELLO'], GOODBYE: ['BYE'], BYE: ['GOODBYE'],
     EVENING: ['NIGHT'], NIGHT: ['EVENING'],
-    // People — location/orientation-only pairs
     ME: ['YOU', 'MY'], YOU: ['ME', 'YOUR'], MY: ['YOUR', 'ME'], YOUR: ['MY', 'YOU'],
     MAN: ['WOMAN'], WOMAN: ['MAN'], TEACHER: ['STUDENT'], STUDENT: ['TEACHER'],
-    // Personal Information — tap-count pair
     NAME: [], AGE: [],
   };
 
-  /* ── SAME_SIGN_AS — true identical-sign pairs ──────────────────────
-   * signId -> the canonical signId it is physically identical to.
-   * These are NOT discrimination pairs (there is nothing to tell
-   * apart visually) — per the Chapters_1-2 analysis §2.2, they need a
-   * lighter loop: skip Watch/Recognize/Discriminate, go straight to a
-   * register/timing Contextualize question. Restricted to pairs the
-   * sign data itself states are identical, not just similar.
-   */
   const SAME_SIGN_AS = {
     HI: 'HELLO',
     BYE: 'GOODBYE',
     NIGHT: 'EVENING',
   };
 
-  /* ── REGISTER_NOTES — the short explanation shown after a SAME_SIGN_AS
-   * question (and on the "already in your hands" teach screen).
-   *
-   * REWORKED: this used to be a "which fits best?" question whose two
-   * options (e.g. BYE / GOODBYE) were the SAME sign, so neither answer
-   * was wrong and "best" was a matter of opinion. The question is now
-   * built by registerPromptFor() below as a real one-right-answer
-   * question: "This sign means BYE. Which other word uses the exact
-   * same sign?" -> GOODBYE (distractors are other words from the
-   * chapter). These notes carry the casual-vs-formal nuance. */
   const REGISTER_NOTES = {
     HI: 'Same sign as HELLO. HI is just quicker and more casual.',
     BYE: 'Same sign as GOODBYE. BYE is just quicker and more casual.',
     NIGHT: 'Physically the same sign as EVENING. In ASL, context or a following word tells them apart, not the handshape.',
   };
 
-  /* ── CONTEXT_PROMPTS — "Try it" instructions ──────────────────────
-   * signId -> one plain-language instruction. REWORKED: these used to
-   * be fill-in-the-blank fragments ("Sign: ___", "MY ___ [fingerspell
-   * your name]") with only a Continue button, so it was unclear what
-   * the learner was supposed to do. They are now complete instructions
-   * for a self-check (nothing here is graded, and lesson.js labels the
-   * step "Try it yourself" accordingly). Uncurated signs use the
-   * generic sentence in contextPromptFor().
-   */
   const CONTEXT_PROMPTS = {
     HELLO: 'Imagine you meet someone for the first time today. Sign HELLO to them.',
     HI: 'Imagine a friend walks past you. Sign HI to them.',
@@ -153,14 +59,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     BIRTHDAY: 'Sign the month of your birthday: MY BIRTHDAY, then the month.',
   };
 
-  /* ── SCENARIOS — one short situation for EVERY other sign ──────────
-   * signId -> a "you are ..." situation that contextPromptFor() turns
-   * into "Imagine <situation>. Sign <WORD>." so the Try-it-yourself step
-   * is a clear, doable instruction for all missions (alphabet and
-   * numbers are built from a template, see contextPromptFor()).
-   * CONTEXT_PROMPTS above takes priority where a sign needs a multi-sign
-   * phrase (e.g. GOOD MORNING).
-   */
   const SCENARIOS = {
     'PLEASE': 'you are asking a friend to pass the salt',
     'EXCUSE': 'you need to squeeze past someone in a crowded hallway',
@@ -652,7 +550,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     'DON\'T': 'you are saying you do not know where it is',
   };
 
-  /* ── helpers ───────────────────────────────────────────────────── */
 
   function uniq(arr) { return Array.from(new Set(arr)); }
 
@@ -667,28 +564,11 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return (s && s.title) || signId;
   }
 
-  /**
-   * Returns the neighbor signIds for a sign, filtered down to ones
-   * that actually resolve to a real SIGNS_V2 entry at this level (a
-   * curated pair can reference a signId from a different category —
-   * e.g. numbers referencing an alphabet letter — this just confirms
-   * the referenced sign genuinely exists before it's offered as a
-   * distractor). Never throws; returns [] if none resolve.
-   */
   function getNearNeighbors(level, signId) {
     const curated = NEAR_NEIGHBORS[signId] || [];
     return curated.filter((id) => !!liveSign(level, id));
   }
 
-  /**
-   * Picks up to `count` Recognize-step distractor signIds for
-   * `signId`. Prefers curated near-neighbors first (the hardest, most
-   * diagnostic distractors — Ref. Analysis §7), then fills any
-   * remaining slots from the sign's own category (excluding itself
-   * and anything already picked), then — only if still short —
-   * from any other live sign in the same level. Always returns
-   * whatever it can find rather than throwing on a small category.
-   */
   function buildRecognizeOptions(level, signId, categorySignIds, count, randomize) {
     count = count || 4;
     const correct = signId;
@@ -706,13 +586,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return { correct, options };
   }
 
-  /** True when two signIds are the same physical sign: either a
-   * documented pair (HELLO/HI, GOODBYE/BYE, EVENING/NIGHT — see
-   * SAME_SIGN_AS) or, when `level` is given, any two signs that point
-   * at the SAME video file or share the same title (e.g. BATHROOM/
-   * TOILET). Such a pair must never appear together as "correct
-   * answer" vs "distractor": both are right, so picking the "wrong"
-   * one would be graded unfairly. */
   function areSameSign(a, b, level) {
     if (a === b) return true;
     if (SAME_SIGN_AS[a] === b || SAME_SIGN_AS[b] === a) return true;
@@ -723,10 +596,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return !!sa.title && String(sa.title).toLowerCase() === String(sb.title || '').toLowerCase();
   }
 
-  /** Real random (Math.random, Fisher-Yates) shuffle — returns a new
-   * array. Used only where a learner-facing question must vary every
-   * time; the seeded shuffleDeterministic() below stays for callers
-   * that need a stable order (admin preview, tests). */
   function shuffleRandom(arr) {
     const out = arr.slice();
     for (let i = out.length - 1; i > 0; i--) {
@@ -736,15 +605,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return out;
   }
 
-  /**
-   * Randomized Recognize options. The distractors are a random sample
-   * of the OTHER signs in the mission's own chapter/topic (so they stay
-   * on-topic), never a physical duplicate of the correct sign, and the
-   * final order (including the correct answer's position) is random.
-   * Only if the chapter is too small to supply enough distractors does
-   * it top up — curated near-neighbors first, then any other sign at
-   * the same level — so a tiny chapter still gets a full option set.
-   */
   function buildRandomRecognizeOptions(level, signId, categorySignIds, count) {
     const correct = signId;
     const wanted = Math.max(0, count - 1);
@@ -770,18 +630,8 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return { correct, options: shuffleRandom([correct].concat(distractors)) };
   }
 
-  /**
-   * Builds a Discriminate-step pair: { targetSignId, neighborSignId }
-   * or null if no usable neighbor exists at all (a small, real
-   * category can legitimately have none — the caller should skip the
-   * Discriminate stage for that item rather than fake one, same
-   * "don't fabricate" rule the rest of this codebase follows).
-   */
   function buildDiscriminatePair(level, signId, categorySignIds, randomize) {
     if (randomize) {
-      // Random on-topic partner from the mission's own chapter, never a
-      // physical duplicate of the target. Falls through to the curated/
-      // generic logic below only if the chapter has nothing else.
       const pool = (categorySignIds || []).filter((id) => id !== signId && !areSameSign(id, signId, level));
       if (pool.length) {
         return { targetSignId: signId, neighborSignId: pool[Math.floor(Math.random() * pool.length)] };
@@ -790,20 +640,12 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     const neighbors = getNearNeighbors(level, signId).filter((id) => !areSameSign(id, signId, level));
     let neighborSignId = neighbors[0] || null;
     if (!neighborSignId) {
-      // Generic fallback: another sign from the same category, so an
-      // uncurated chapter still gets a real (if less diagnostic)
-      // discrimination question instead of none at all.
       const alt = (categorySignIds || []).find((id) => !areSameSign(id, signId, level));
       neighborSignId = alt || null;
     }
     return neighborSignId ? { targetSignId: signId, neighborSignId } : null;
   }
 
-  /** Deterministic (not Math.random) shuffle, seeded by a string —
-   * keeps option order stable across re-renders of the same item
-   * within a session, same "reproducible, not real-random" rule
-   * js/missions.js's own genericBonusEligible()/bonusSignIds already
-   * follow for the same reason (see that file's §3.3 comment). */
   function shuffleDeterministic(arr, seedStr) {
     let seed = 0;
     for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
@@ -816,22 +658,10 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return out;
   }
 
-  /** True if `signId` is a documented physical duplicate of another
-   * signId (HI/HELLO, BYE/GOODBYE, NIGHT/EVENING). */
   function sameSignAs(signId) {
     return SAME_SIGN_AS[signId] || null;
   }
 
-  /**
-   * Builds the "same sign" question for a SAME_SIGN_AS sign, e.g. for
-   * BYE: "This sign means Bye. Which other word uses the exact same
-   * sign?" -> answer "Goodbye", with 2 distractors from the chapter
-   * (never a word that shares the sign). Exactly ONE option is right.
-   * Returns { prompt, options, answer, note } (options/answer are
-   * display titles) or null when signId has no documented twin. Safe
-   * to call with just a signId (no level/chapter): then the options
-   * are just [answer] and the caller should treat it as a teach note.
-   */
   function registerPromptFor(signId, level, categorySignIds) {
     const twinId = SAME_SIGN_AS[signId];
     if (!twinId) return null;
@@ -849,20 +679,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     };
   }
 
-  /**
-   * Reads the EXISTING lw_missions_progress_v1 store (via the same
-   * localStorage key js/missions.js already owns — no new key) and
-   * checks whether `signId`'s LESSON step has already been completed
-   * in ANY mission other than `excludeMissionId`. This is what lets
-   * e.g. Personal Information's 9 duplicate signs (BOY, GIRL, CHILD,
-   * PERSON, FRIEND, STUDENT, TEACHER, HOME, SCHOOL — all literally
-   * the same SIGNS_V2 entries as Family/People/Places, per that
-   * category's own file-header comment) skip a redundant re-teach if
-   * the learner already has them from an earlier mission. General-
-   * purpose: works for any future chapter's duplicate signs too, not
-   * just Chapter 2 — nothing here is hardcoded to a specific mission.
-   * Degrades to false (never throws) if localStorage is unavailable.
-   */
   function hasSignLearnedElsewhere(signId, excludeMissionId) {
     try {
       const raw = global.localStorage.getItem('lw_missions_progress_v1');
@@ -876,9 +692,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     }
   }
 
-  /** "Try it yourself" instruction for any sign — never leaves the
-   * stage empty. Order: hand-written multi-sign phrase -> per-sign
-   * SCENARIOS situation -> alphabet/numbers template -> generic. */
   function contextPromptFor(level, signId) {
     if (CONTEXT_PROMPTS[signId]) return CONTEXT_PROMPTS[signId];
     const title = signTitle(level, signId);
@@ -888,16 +701,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     return `Now sign "${title}" yourself, the way you would in a real conversation, then continue.`;
   }
 
-  /**
-   * The main integration point: given a mission (from
-   * window.LWMissions.getMissionForCategory()) and one of its existing
-   * items (unchanged shape — LESSON/BOOSTER/PRACTICE/QUIZ), returns a
-   * plan describing exactly how lesson.js should render that item
-   * per the six-stage loop, without mutating mission.items itself or
-   * inventing a parallel progress model. This is the piece that
-   * actually connects the psychology-analysis documents' recommended
-   * loop to this mission's real, already-existing item schema.
-   */
   function planForItem(mission, index, item) {
     const level = mission.level;
     const categorySignIds = (global.LWMissions && item.signId)
@@ -918,7 +721,7 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
           loopStage: 'Contextualize (lighter: sign already known)',
           render: 'lesson-lighter',
           reason: duplicateOf ? `Same sign as ${duplicateOf}` : 'Already taught in an earlier mission',
-          duplicateOf,   // NEW: lesson.js shows THIS sign's video on the "already in your hands" screen
+          duplicateOf,
           registerPrompt: duplicateOf ? registerPromptFor(item.signId, level, categorySignIds) : null,
           contextPrompt: contextPromptFor(level, item.signId),
         };
@@ -965,7 +768,6 @@ console.info('[LinguaWave] lesson-loop.js loaded: question fix 2026-10-02');
     contextPromptFor,
     planForItem,
     signTitle,
-    // exposed for the Node test harness only
     areSameSign,
     _internals: { NEAR_NEIGHBORS, SAME_SIGN_AS, REGISTER_NOTES, CONTEXT_PROMPTS, SCENARIOS },
   };

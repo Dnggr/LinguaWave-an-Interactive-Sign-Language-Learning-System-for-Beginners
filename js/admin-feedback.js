@@ -1,22 +1,3 @@
-/**
- * admin-feedback.js — Controller for pages/admin-feedback.html (NEW)
- * ─────────────────────────────────────────────────────────────────
- * Read-only. Gates on the admin account, loads `surveys` (and `users`,
- * once, to fill in identity on legacy rows) from Firestore, then renders
- * stats, a "Survey results" chart per question, and a searchable list.
- *
- * - ONE surveys read + ONE users read per load. Filtering and search run
- *   in memory; nothing is queried per row.
- * - Rendering is chunked (PAGE_SIZE at a time + "Show more"), so a large
- *   collection doesn't build thousands of DOM nodes up front. When the
- *   data layer moves to server-side paging (see listSurveys() in
- *   js/admin-firebase.js) only loadFeedback() needs to change.
- * - Every string from Firestore goes through escapeHtml(). Answers are
- *   translated to readable labels by js/survey-schema.js; missing values
- *   render as "Not answered" / "No additional comments", never as
- *   null / undefined / [object Object].
- * - Raw Firebase errors go to the console only.
- */
 import { listSurveys, listUsers } from "./admin-firebase.js";
 import {
   SURVEY_QUESTIONS,
@@ -59,7 +40,6 @@ function escapeHtml(str) {
   }[c]));
 }
 
-/* ── view state: exactly one of loading / error / empty / list ───── */
 function showState(state, message) {
   els["fb-loading"].hidden = state !== "loading";
   els["fb-error"].hidden = state !== "error";
@@ -70,7 +50,6 @@ function showState(state, message) {
   if (state !== "list") els["fb-count"].textContent = "";
 }
 
-/* ── stats (always computed from ALL loaded rows, not the filter) ── */
 function renderStats() {
   const s = computeSurveyStats(allSurveys);
   els["fb-stat-total"].textContent = s.total;
@@ -88,11 +67,7 @@ function resetStats() {
   els["fb-charts"].innerHTML = "";
 }
 
-/* ── survey charts: one horizontal-bar chart per question ───────────
- * Plain HTML/CSS bars (no chart library, so nothing extra to load and it follows the light/dark theme).
- * Color is a hint only: every bar also has its label, count and percent as text. Drawn from ALL loaded
- * submissions, like the stat tiles (the search box doesn't change them). */
-const TONE = {   // answer value -> bar color class, per question key
+const TONE = {
   q1: { 5: "good", 4: "good", 3: "mid", 2: "warn", 1: "bad" },
   q2: { 5: "good", 4: "good", 3: "mid", 2: "warn", 1: "bad" },
   q3: { too_easy: "mid", just_right: "good", too_hard: "warn" },
@@ -139,7 +114,6 @@ function renderCharts() {
   els["fb-charts-wrap"].hidden = false;
 }
 
-/* ── one submission ──────────────────────────────────────────────── */
 function field(label, valueHtml, extraClass = "") {
   return `
     <div class="fb-field ${extraClass}">
@@ -179,7 +153,6 @@ function renderCard(s) {
     </article>`;
 }
 
-/* ── list ────────────────────────────────────────────────────────── */
 function applyFilters({ resetPaging = true } = {}) {
   filtered = filterSurveys(allSurveys, {
     term: els["fb-search"].value,
@@ -208,20 +181,16 @@ function renderList() {
   showState("list");
 }
 
-/* ── loading ─────────────────────────────────────────────────────── */
 async function loadFeedback() {
-  if (loading) return; // ignore repeated Refresh / Retry clicks
+  if (loading) return;
   loading = true;
   els["fb-refresh"].disabled = true;
   resetStats();
-  // Rebuild the skeleton on every load (Refresh / Try again), in case the 12s stall note replaced it earlier.
   if (window.LWSkeleton) els["fb-loading"].innerHTML = window.LWSkeleton.cards("Loading feedback\u2026", 4);
   showState("loading");
   try {
     const [surveys, users] = await Promise.all([
       listSurveys(),
-      // Users are only used to fill in identity on legacy surveys; the
-      // page still works (with "Unknown learner") if this read fails.
       listUsers().catch((err) => {
         console.warn("[admin-feedback] Could not load users for name lookup:", err);
         return [];
@@ -235,7 +204,6 @@ async function loadFeedback() {
     console.error("[admin-feedback] Failed to load surveys:", err);
     allSurveys = [];
     filtered = [];
-    // The stat tiles are still showing skeletons: end the loading look now that we know it failed.
     ["total", "week", "latest"].forEach((k) => { els[`fb-stat-${k}`].innerHTML = "&mdash;"; });
     showState("error");
   } finally {

@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Same theme-flash-prevention snippet every page in this repo uses.
-       Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -17,99 +15,6 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/progress.html — Progress page
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE : Mission-based counterpart to pages/progress.html (the
-              reference mockup's panel 10 — "Your Progress" ring +
-              stat tiles, "Needs Review", "Progress by Level"). Same
-              app shell as every other real page (dashboard.html
-              / learn.html / mission-overview.html).
-
-    DATA    : Sourced entirely from window.LWMissions (js/missions.js) —
-              getAllMissions(), getMissionProgress(), getItemCompletedAt(),
-              getStreakSummary(), getHeartsState(), getCategoryGroups() —
-              plus window.LWMissions for sign titles. No hardcoded numbers.
-
-    PHASE 3 (this revision, on top of the Phase 1 "Learning Progress
-    Center" redesign) — "make it feel distinctly LinguaWave," per
-    progressUI_guidelines.docx's 3-phase plan. Nothing structural
-    from Phase 1 moved; this only adds two new pieces (both real-data-
-    gated, hidden until there's something true to put in them — see
-    their own markup comments below) and reworks the chapter timeline's
-    connecting line into an animated wavy path:
-      - Completion celebration banner (§11 of the guidelines doc)
-      - Sign Mastery grid, scoped to one chapter at a time (§ Phase 3
-        "sign-level mastery visualization")
-      - The chapter timeline's straight connector line -> a wavy SVG
-        path that draws itself in on load, plus a "Just completed"
-        pulse on a chapter finished in the last 24h (real
-        getItemCompletedAt() timestamps, not a fabricated instant) —
-        together, "animated learning journey" + "wave/path
-        visualization between chapters."
-      - Next Milestone -> "contextual recommendation": still the same
-        card/heading by default, but js/progress-page.js's
-        pickRecommendation() now checks review urgency and drop-off
-        position first and swaps in a different heading/CTA when one
-        of those is the more useful thing to surface right now.
-    "Contextual recommendations" (the guideline doc's 5th Phase 3 item)
-    was deliberately folded into the existing Next Milestone card
-    rather than added as a new one — the doc's own closing note warns
-    against making this page "feel like a game overloaded with
-    badges," and a second box making basically the same kind of
-    suggestion would do exactly that.
-
-    DIFFERENCES FROM THE MOCKUP, ON PURPOSE (same "don't fabricate
-    data that doesn't exist" discipline js/progress-page.js documents
-    for the v1 page):
-      - "Progress by Level" -> "Progress by Chapter". Missions has no
-        basic/medium/intermediate level grouping of its own (that's a
-        js/data.js/js/engine/progress.js concept) — it organizes
-        missions into the 12 named chapters from getCategoryGroups().
-        Chapters with zero live missions built yet are left out rather
-        than shown as a fake "0%".
-      - "Needs Review": UNLIKE pages/progress.html (which has no
-        timestamps and has to fall back to "most recently practiced"),
-        Missions DOES record a real completedAt per item
-        (getItemCompletedAt(), added Phase 2) — so this section shows
-        signs whose LESSON item was actually completed 2+ days ago, a
-        genuine (if simple) due rule, not a fabricated one. If nothing
-        is old enough yet, the panel says so instead of padding the
-        list with a made-up "3 days ago".
-      - Two extra stat tiles beyond the mockup's three (Streak, Hearts)
-        — both are real Missions-only concepts (js/missions.js's streak
-        and Hearts modules) already surfaced elsewhere in
-        (dashboard.html, mission-overview.html); showing them
-        here too keeps this page consistent with the rest of rather
-        than omitting data that already exists. The Hearts tile shows a
-        heart glyph + count ("♥ 3") and the Streak tile shows the day
-        count beside this week's Mon–Sun strip (same cell styles as the
-        Learning Activity heatmap, now on profile.html) — see renderHero() /
-        buildStreakWeek() in js/progress-page.js. Clicking the Streak
-        tile opens a dialog (flame, "N Day Streak", last 5 days as check
-        boxes) built by openStreakDialog() in the same file; it is
-        appended to <body> on demand, so nothing is needed in this markup.
-
-    PHASE 2 : "Make progress feel personal" — sections added below
-              the Learning Journey, all derived from the same real data
-              (per-item completedAt timestamps + the streak module), same
-              "no fabricated data" discipline as Phase 1:
-                #progress-snapshot     Strengths & Focus Areas (per mission)
-              (Recent Activity, Learning Activity heatmap and Your Highlights moved to pages/profile.html.)
-              Each card handles its own "nothing yet" copy inline, the
-              same convention #next-milestone/#needs-review/
-              #progress-chapters already use — no separate brand-new-
-              learner overlay. Quiz scores are never persisted anywhere
-              in this app (see js/mastery-quiz.js — pass/fail only), so
-              the guidelines' mockup "Best assessment" highlight is
-              intentionally left out rather than faked.
-
-    CONNECTS : ← app sidebar (every real page)
-               → mission-overview.html (chapter mission links)
-               → pages/camera-practice.html (per-sign review links, same
-                 pattern pages/progress.html's own review links use)
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -121,12 +26,9 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
   <link rel="stylesheet" href="../css/app.css" />
-  <!-- Compact layout for this page; overrides a few app.css rules, so it must come after it. -->
   <link rel="stylesheet" href="../css/progress.css" />
   <link rel="stylesheet" href="../css/tour.css" />
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -195,17 +97,6 @@
 
       <section class="section section--sm">
         <div class="container">
-          <!-- Phase 1 structure: hero (ring + stats) full width, then
-               Next Milestone | Needs Review side by side, then the
-               Learning Journey (chapter timeline). Phase 3 adds two
-               more pieces around that same structure, both hidden
-               until js/progress-page.js has real data to put in them
-               (same "don't show meaningless empty stats" discipline
-               as everything else on this page): a full-width
-               celebration banner (§11 — only ever shown once every
-               mission is actually done) directly above the hero, and
-               a Sign Mastery grid (§Phase 3 "sign-level mastery
-               visualization") below the chapter timeline. -->
           <div class="card progress-celebration" id="progress-celebration" hidden></div>
 
           <div class="progress-hero-row" id="progress-hero" data-sk>
@@ -226,27 +117,13 @@
             <div class="sk-group" role="status" style="padding:var(--space-4)"><span class="sr-only">Loading your learning journey…</span><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div><div class="sk-row" style="padding:var(--space-2) 0"><span class="sk sk--circle" style="--s:36px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--title" style="--w:35%;--h:1.05rem"></span><span class="sk sk--line" style="--w:18%;--h:.7rem"></span></div><span class="sk sk--line" style="--w:4rem;--h:.8rem"></span></div></div>
           </div>
 
-          <!-- Phase 3 — Sign Mastery: a per-chapter grid of every sign
-               the learner has reached in that chapter, colour-coded
-               mastered/practicing/not-started (js/progress-page.js's
-               renderSignMastery()/renderSignMasteryGrid()). Defaults to
-               the learner's current chapter; the <select> lets them
-               browse any OTHER unlocked chapter too. Locked chapters are
-               left out of the picker entirely — nothing to show mastery
-               of yet. Hidden (not just empty) until there's at least one
-               live, unlocked chapter to show. -->
-          <!-- Sign Mastery and the Learning Snapshot share one row (css/progress.css .progress-lower). -->
           <div class="progress-lower">
           <div class="card sign-mastery" id="sign-mastery" hidden></div>
 
-          <!-- PHASE 2 — "make progress feel personal" sections. Each card
-               below handles its own empty state inline (same convention
-               as #next-milestone / #needs-review / #progress-chapters
-               above) rather than one big all-or-nothing empty overlay. -->
           <div class="card snapshot-card" id="progress-snapshot" data-sk>
             <div class="sk-group" role="status"><span class="sr-only">Loading your strengths…</span><span class="sk sk--title" style="--w:10rem;--h:1.2rem"></span><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div><div class="sk-row"><span class="sk sk--square" style="--s:32px"></span><div class="sk-stack sk-stack--grow"><span class="sk sk--line" style="--w:50%"></span><span class="sk sk--line" style="--w:30%;--h:.7rem"></span></div></div></div>
           </div>
-          </div><!-- /.progress-lower -->
+          </div>
         </div>
       </section>
 
@@ -256,30 +133,13 @@
   <script src="../js/xp-config.js"></script>
   <script type="module" src="../js/auth.js"></script>
   <script type="module" src="../js/xp.js"></script>
-  <!--
-    js/data.js dropped (migration-analysis pass) — this page's only
-    use of window.LWData was a sign-title fallback in
-    progress-page.js's signTitleFor(), which now reads window.LWMissions
-    directly (SIGNS_V2 already carries its own title).
-  -->
   <script defer src="../js/missions.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
-  <!-- ADDED (migration-analysis pass) — provides window.LinguaWave.showToast
-       and, critically, wires up every [data-logout] button (the sidebar's
-       Log out link had no handler at all before this, on ANY page). -->
   <script src="../js/main.js"></script>
   <script src="../js/progress-page.js"></script>
-  <!-- Guided tour (NEW): what it says lives in js/tour-guides.js, how it runs in
-       js/tour.js, how it looks in css/tour.css. This page opts in via
-       <body data-tour="progress">. -->
   <script src="../js/tour-guides.js"></script>
   <script src="../js/tour.js"></script>
-  <!-- Loading skeletons: one-time fade-in + stall guard. See css/style.css §20. -->
   <script src="../js/skeleton.js"></script>
 </body>
 </html>

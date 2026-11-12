@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Sets data-theme before any CSS loads, so the page never flashes
-       the wrong theme on load. Must stay first in <head>. -->
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -13,181 +11,9 @@
       root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', pref);
       root.style.colorScheme = resolved;
-      // Paints the correct background INSTANTLY, without waiting on
-      // css/style.css to finish loading/parsing — this is the part
-      // that actually stops the white flash on reload/navigation.
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    index.html — Landing Page + Log In / Sign Up
-    ─────────────────────────────────────────────────────────────────
-    PURPOSE  : The ONLY entry point to the app — one page, not a
-               separate marketing site plus a separate login page.
-               Hero + topic preview + About ASL live here; the auth
-               card sits inline in the hero. Logged-in users are
-               bounced straight to the dashboard before this page
-               renders (see the lwauth-ready listener below).
-
-    CONNECTS : → pages/dashboard.html (after login/register)
-
-    AUTH MODE: js/auth.js's login()/register()/logout() call real
-               Firebase Auth + a Firestore profile read/write — not
-               a bypass. auth.js itself is out of scope for this pass
-               and was not modified.
-
-    2026-08-28: Merged in the former pages/intro-to-asl.html content
-               (now deleted) as the "About American Sign Language"
-               section below, and added the hero + topic-preview
-               sections. See WHAT CHANGED in this session's writeup
-               for the full list — not duplicated here to avoid the
-               same comment-bloat this cleanup pass removed elsewhere.
-
-    2026-08-31 (mockup alignment pass): reshaped the hero to match the
-               reference "LINGUAWAVE Full UI/UX" mockup's Homepage
-               screen — nav gained Dashboard/Learn/About links plus a
-               dedicated "Sign In" pill (was a bare "Log In" text
-               link), the hero is now copy+illustration only (no
-               inline form — matches the mockup exactly), and the
-               login/register forms moved out of the hero into a
-               `#signin-modal` opened by Sign In / Start Learning /
-               the Dashboard+Learn nav links (all four funnel into the
-               same modal, tab pre-set by which one was clicked). Added
-               a "Why Learn ASL?" 3-card row directly under the hero
-               (Communicate / Easy to Learn / Track Progress) per the
-               mockup — the pre-existing "Why learn with LinguaWave"
-               section further down is a different, longer-form 3-card
-               section and was LEFT AS-IS (not merged/removed), so the
-               page now has both a short mockup-matching row up top and
-               the fuller explainer lower down. Auth logic itself
-               (LWAuth.login/register, error handling) is UNCHANGED —
-               only where the form lives in the DOM and how it's
-               opened changed. See css/auth.css for the new
-               `.hero-illustration`/`.why-row`/`#signin-modal` rules.
-
-    2026-09-16: three small requested tweaks. (1) The hero sky's cloud
-               SVG is commented out (not deleted) below — "for now",
-               so it's a one-line uncomment to bring back; the sun and
-               night stars are untouched. (2) `.navbar--hero`'s
-               background now uses the new `--backdrop-hero` token
-               (see css/style.css §1 and css/auth.css's NAVBAR — HERO
-               VARIANT block) instead of the shared `--backdrop` —
-               same hue per theme, alpha dropped way down so the bar
-               reads as almost transparent over the hero. (3) The
-               "Dashboard" nav link is now "Home" and dropped its
-               `data-hero-login` (it used to require an account and
-               open the sign-in modal); it's `#navbar-home` and shares
-               the logo's click handler, so both just smooth-scroll to
-               the top of this page. See the nav markup and the script
-               block near the bottom for both.
-
-    2026-09-29 (EMAIL VERIFICATION — auth flow changed, UI unchanged
-               apart from one removed link): signing up no longer
-               logs anyone in and logging in no longer signs an
-               unverified user back out. Both now hand off to
-               pages/verify-email.html while the person is signed in
-               but UNVERIFIED (see js/auth.js's header comment for the
-               full three-state model). What changed here:
-                 - handleRegister(): LWAuth.register() now RETURNS
-                   { verificationSent } instead of always throwing
-                   'lw/verify-email-sent'; we redirect to
-                   verify-email.html (?status=sent | send-failed).
-                 - handleLogin(): LWAuth.login() now returns
-                   { verified, user }; unverified -> verify-email.html.
-                 - handleGoogleSignIn(): same gate, via getAuthState().
-                 - The login form's "Resend it" link and
-                   handleResendVerification() are REMOVED — that flow
-                   briefly signed in with a typed password; the verify
-                   page's Resend button replaces it.
-                 - Every error goes through LWAuth.describeAuthError()
-                   so learners never see raw "Firebase: Error (...)".
-                 - Submit buttons disable while a request runs (a
-                   double-click used to be able to fire two signups).
-                 - lwauth-ready now also routes a signed-in UNVERIFIED
-                   visitor to verify-email.html (LW_VERIFY_PAGE).
-
-    2026-09-30 (mobile hero + refresh position): (1) On phones the hero
-               now fills exactly one screen and its heading no longer
-               sits under the navbar — CSS only, in css/responsive.css
-               §8b (see the comment there for the cause). (2) A refresh
-               (or Back) now always starts at the top: the small inline
-               script just before </head> turns off the browser's scroll
-               restoration and drops a leftover #about-asl hash on
-               reload. Deliberate hash links still work.
-
-    2026-10-01 (SIGNUP VALIDATION): the Sign Up form now validates the
-               email (format, then supported provider), password and a
-               NEW "Confirm password" field before anything is sent.
-               The rules live in js/auth.js (validateEmail /
-               validatePassword / validateConfirmPassword, exposed on
-               window.LWAuth) and register() enforces them again, so
-               this file only DISPLAYS the result — it has no rules of
-               its own. Inline feedback appears on blur or after the
-               learner pauses typing, never while they are mid-word;
-               submit is blocked (and the first bad field focused) when
-               anything fails. The "did you mean...?" typo hint now reads
-               LWAuth.SUPPORTED_EMAIL_DOMAINS instead of its own list.
-
-    2026-10-01 (PASSWORD STRENGTH + SHOW/HIDE): the Sign Up password
-               field now has a live strength bar (Weak / Medium / Strong),
-               a 5-item requirement checklist, an eye / eye-off toggle
-               (Lucide icons, inline — also on Confirm password and the
-               Log In password), and live "Passwords match" feedback.
-               Like the rest of signup, this file only DISPLAYS: every
-               rule, label and level comes from js/auth.js
-               (LWAuth.getPasswordStrength / validatePassword /
-               PASSWORD_CHECKLIST*), which register() enforces again.
-               (*the checklist was later replaced, see the entries below.)
-               See "PASSWORD PANEL" in the script below. The sign-in
-               modal now scrolls (css/auth.css) because the Sign Up card
-               is taller.
-
-    2026-10-01 (PASSWORD PANEL ON DEMAND): the strength bar + checklist
-               stay collapsed until the password field has input and
-               collapse again when it is emptied. The bar's fill follows
-               LWAuth.getPasswordStrength().progress (0..1, moves on every
-               keystroke) instead of 3 fixed steps; the level only picks
-               the colour.
-
-    2026-10-01 (ERROR LINES): the Sign Up field-status error lines use the
-               Octicons alert-fill icon instead of a "✕" and only appear
-               for fields that have input.
-
-    2026-10-01 (NO NAME FIELD + ADAPTIVE PASSWORD MESSAGE): Sign Up no
-               longer asks for a name; the display name is the part of the
-               email before the @ (register() in js/auth.js does this and
-               caps it at MAX_NAME_LENGTH). The 5-item requirement checklist
-               is replaced by one line that says only what is still missing
-               ("Password is too short" / "Password needs a number and
-               lowercase letter" ...), written by LWAuth.validatePassword().
-
-    2026-10-03 (FORGOT PASSWORD + LOG IN EMAIL CHECK): (1) Log In now runs
-               the SAME email check as Sign Up (LWAuth.validateEmail:
-               format, then supported provider) before anything is sent,
-               with the same inline message and "Did you mean...?" typo
-               hint. (2) When Firebase rejects a login with a wrong-
-               password / invalid-credential error, the "Don't have an
-               account? Sign up free" line under the form is swapped for
-               "Forgot your password? Reset it"; it swaps back as soon as
-               the login email is edited. (3) That link opens a third
-               panel (#forgot-form, shown through showAuthTab('forgot'))
-               that asks for the account email and calls
-               LWAuth.sendPasswordReset() — Firebase emails a reset LINK
-               (no OTP). The confirmation is always the same generic
-               sentence, so it never reveals whether an account exists,
-               and Resend has a cooldown (LWAuth.RESEND_COOLDOWN_SECONDS).
-
-    2026-10-03 (REVERTED: NO ACCOUNT-EXISTS CHECK): a short-lived version
-               gated the reset link on a `checkAccountExists` Cloud Function.
-               The project is on the Spark plan (no Cloud Functions, see
-               AGENTS.md), so that check was removed. Now: after a wrong-
-               password / invalid-credential login the "Reset it" link shows
-               for any well-formed email, and the Forgot Password panel sends
-               through LWAuth.sendPasswordReset() with ONE generic confirmation
-               either way. Firebase itself only emails real accounts, and the
-               page never reveals whether an address is registered.
-    ─────────────────────────────────────────────────────────────────
-  -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>LinguaWave | Learn ASL Sign Language</title>
@@ -197,26 +23,15 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
 
-  <!-- Auth must load before anything renders so a logged-in user gets
-       redirected immediately instead of seeing the landing page. -->
   <script type="module" src="js/auth.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
   <script src="js/icons.js"></script>
   <script src="js/theme.js" defer></script>
   <script src="js/hero-decor.js" defer></script>
-  <!-- Generates the homepage TOPIC PREVIEW marquee's chips at runtime
-       (all 70 units) — depends on window.LWIcons for hydration, so it
-       must load after js/icons.js. See js/topic-marquee.js. -->
   <script src="js/topic-marquee.js" defer></script>
   <script>
-    // Keep in sync with ADMIN_EMAIL in js/admin-auth.js
+
     const LW_ADMIN_EMAIL = 'linguawave.project@gmail.com';
 
-    // Where a signed-in but UNVERIFIED account goes (js/auth.js decides
-    // who is unverified from Firebase's emailVerified flag, not from here).
     const LW_VERIFY_PAGE = 'pages/verify-email.html';
 
     function lwPostAuthPath() {
@@ -226,29 +41,10 @@
     }
 
     window.addEventListener('lwauth-ready', () => {
-      // verified -> dashboard/admin; signed-in but unverified -> verify page;
-      // logged out -> nothing (stay on the login form).
       LWAuth.redirectIfLoggedIn(lwPostAuthPath(), LW_VERIFY_PAGE);
     });
   </script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
   <link rel="stylesheet" href="css/responsive.css" />
-  <!-- REFRESH ALWAYS STARTS AT THE TOP (2026-09-30) ──────────────────────
-       Two things made a refresh land part-way down the page:
-       (1) The browser restores the previous scroll position on reload.
-       (2) "About" and "Explore ASL" link to #about-asl, which leaves that
-           #hash in the URL; a refresh then jumps straight back to the About
-           section.
-       Fix: switch scroll restoration to manual, and on a RELOAD or
-       back/forward visit drop a leftover #hash and jump to y=0 (before first
-       paint, again on DOMContentLoaded/load in case late layout moved
-       things, and when the page returns from the back/forward cache).
-       Deliberate hash links (someone opens index.html#about-asl from a
-       shared link) are NOT touched: only reloads and back/forward.
-       If the visitor scrolls/taps before the page finishes loading, we stop
-       resetting so we never yank the page out from under them.
-       scroll-behavior is forced to 'auto' for the jump because css/style.css
-       sets `smooth`, which would animate the reset down from the old spot. -->
   <script>
     (function () {
       try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
@@ -292,24 +88,9 @@
 </head>
 <body>
 
-  <!-- navbar--hero: permanent dark-glass bar (not just "while over the
-       hero") — see css/auth.css's NAVBAR — HERO VARIANT comment for why
-       it doesn't flip styles on scroll. Logo gained a small gradient
-       wave mark; the single "Log In" button split into a ghost "Log In"
-       + filled "Get Started" pair, matching the reference mockup. -->
   <nav class="navbar navbar--hero">
     <div class="container navbar__inner">
       <a href="#" class="navbar__logo" id="navbar-logo">
-        <!-- 2026-09-16: icon mark commented out (see matching CSS
-             comment in auth.css) — no permanent logo yet, so this
-             placeholder badge is pulled for now. Text-only until then.
-        <span class="navbar__mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 15c2-3 4-3 6 0s4 3 6 0 4-3 6 0" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
-            <path d="M2 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
-          </svg>
-        </span>
-        -->
         Lingua<span>Wave</span>
       </a>
       <ul class="navbar__links">
@@ -331,38 +112,13 @@
     </div>
   </nav>
 
-  <!-- ── HERO ─────────────────────────────────────────────────────── -->
-  <!-- hero--wave: dark navy→teal gradient identity + the animated wave
-       divider (.hero-waves below) — see css/auth.css's HERO — WAVE
-       BACKGROUND comment for how the two SVG layers loop seamlessly. -->
   <section class="section hero hero--wave">
-    <!-- hero-background: houses the ONLY thing the theme-toggle spin
-         transition ever transforms — .hero-rotor a couple levels down.
-         .hero__grid (copy + illustration) and .hero-waves below are
-         siblings, deliberately OUTSIDE this div, so they never move.
-         See js/hero-decor.js's "HERO SKY SPIN" block for the click
-         handler and this file's matching "HERO — BACKGROUND SPIN
-         LAYER" section in auth.css for the full explanation of the
-         off-center pivot, the rotation + reduced-motion handling. -->
     <div class="hero-background" aria-hidden="true">
-      <!-- hero-rotor-frame: fixed placement only, no rotation of its
-           own — just anchors an oversized square well above the hero
-           so .hero-rotor's actual rotation pivots around THAT point,
-           not the hero's own center. -->
       <div class="hero-rotor-frame">
         <div class="hero-rotor">
-          <!-- Two halves of one rigid disc, permanently 180° apart.
-               Rotating .hero-rotor clockwise is the ENTIRE transition:
-               it swings whichever theme is currently facing the hero
-               away and carries the other one in from off-screen —
-               nothing here ever crossfades. -->
           <div class="hero-rotor__half hero-rotor__half--dark">
             <div class="hero-rotor__anchor hero-rotor__anchor--dark">
               <div class="hero-decor hero-decor--night" aria-hidden="true">
-                <!-- Populated at runtime by js/hero-decor.js — see that file
-                     for why the stars aren't hard-coded here anymore (a real
-                     scattered/randomized field needs actual math, not more
-                     hand-placed percentages). -->
               </div>
             </div>
           </div>
@@ -391,9 +147,6 @@
 
     <div class="container hero__grid">
       <div class="hero__copy">
-        <!-- REMOVED (Impeccable pass): a "Capstone project 2026" eyebrow sat above the h1
-             (flagged as a hero eyebrow / pill chip). The footer already says "Capstone
-             Project 2026"; put the line back here if you want it in the hero too. -->
         <h1>Learn to Sign.<br />Connect. Communicate.</h1>
         <p class="hero__lead">
           Learn American Sign Language (ASL) step-by-step with interactive lessons,
@@ -405,9 +158,6 @@
         </div>
       </div>
 
-      <!-- Hero illustration — foreground content, stays in .hero__grid
-           (NOT inside .hero-background above) so it never moves during
-           the theme-toggle spin. -->
       <div class="hero-illustration" aria-hidden="true">
         <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="160" cy="160" r="150" fill="var(--clr-accent-soft)" />
@@ -420,21 +170,6 @@
       </div>
     </div>
 
-    <!-- Animated wave divider — three looping SVG layers (deepest→
-         frontmost), see css/auth.css's .hero-waves rules for how the
-         loop is built and how each layer's speed/direction/opacity
-         is set. Each path is a proper sine curve, not an eyeballed
-         bezier hump: every half-period (600 units, for a 1200-unit
-         full period) is one cubic-Bezier "C" command with BOTH
-         control points held at the peak/trough height and placed at
-         the 1/4 and 3/4 marks of that half-period — the standard SVG
-         trick for a smooth, symmetric crest or trough, matching the
-         reference sine-wave diagram (low frequency / long
-         wavelength) rather than a single stretched S-curve per full
-         period. The front (topmost, most opaque) layer is the "main"
-         wave and animates right-to-left; see the comment on
-         .hero-waves__layer in auth.css for why that's the direction
-         translateX(0 → -50%) produces. -->
     <div class="hero-waves" aria-hidden="true">
       <svg class="hero-waves__layer hero-waves__layer--deep" viewBox="0 0 2400 300" preserveAspectRatio="none">
         <path d="M0,40 C150,15 450,15 600,40 C750,65 1050,65 1200,40 C1350,15 1650,15 1800,40 C1950,65 2250,65 2400,40 L2400,300 L0,300 Z"/>
@@ -448,7 +183,6 @@
     </div>
   </section>
 
-  <!-- ── WHY LEARN ASL? (mockup's 3-card row directly under the hero) -->
   <section class="section section--sm">
     <div class="container">
       <div class="why-row">
@@ -471,29 +205,18 @@
     </div>
   </section>
 
-  <!-- ── SIGN IN / SIGN UP MODAL ──────────────────────────────────────
-       Replaces the old inline hero auth-card — same forms, same
-       LWAuth.login()/register() calls, just opened on demand from the
-       nav's "Sign In", the hero's "Start Learning", and the nav's
-       "Learn" link (all via openAuthModal()). The nav's "Home" link
-       (formerly "Dashboard") no longer opens this — see scrollToTop()
-       near the bottom. -->
   <div id="signin-modal" class="auth-modal hidden">
     <div class="auth-modal__box auth-modal__box--form">
       <button type="button" class="auth-modal__close" id="signin-modal-close" aria-label="Close">&times;</button>
       <div class="auth-card" id="auth-card">
         <p class="auth-card__eyebrow" id="auth-eyebrow">Get started</p>
 
-        <!-- ── TAB TOGGLE ───────────────────────────────────────── -->
         <div class="auth-tabs" id="auth-tabs">
           <span class="auth-tabs__indicator" id="auth-tabs-indicator" aria-hidden="true"></span>
           <button class="auth-tab auth-tab--active" id="tab-login" onclick="showAuthTab('login')">Log In</button>
           <button class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Sign Up</button>
         </div>
 
-        <!-- Works from either tab — signInWithPopup() logs in an existing
-            account or silently creates one, so there's no separate
-            "register with Google" button. -->
         <button type="button" class="btn btn--google btn--full mt-4" id="google-signin-btn" onclick="handleGoogleSignIn()">
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
             <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
@@ -505,8 +228,6 @@
         </button>
         <div class="auth-divider" id="auth-divider"><span>or</span></div>
 
-        <!-- ── LOG IN FORM ──────────────────────────────────────── -->
-        <!-- novalidate: same reason as the register form — LWAuth.validateEmail is the one source of truth. -->
         <form class="auth-form" id="login-form" novalidate onsubmit="event.preventDefault(); handleLogin();">
           <div class="form-group">
             <input type="email" id="login-email" class="form-input" placeholder=" " autocomplete="email" aria-describedby="login-email-status" oninput="onLoginEmailInput()" onblur="onLoginEmailBlur()" />
@@ -523,25 +244,17 @@
             </button>
           </div>
           <button type="submit" class="btn btn--primary btn--full btn--lg mt-8">Log In</button>
-          <!-- Shows the sign-up line until a login fails with a wrong-password
-               error; handleLogin() then swaps in the forgot-password line. -->
           <p class="auth-switch text-muted" id="login-switch">
             <span id="login-switch-signup">Don't have an account? <a href="#" onclick="showAuthTab('register'); return false;">Sign up free →</a></span>
             <span id="login-switch-forgot" hidden>Forgot your password? <a href="#" onclick="showAuthTab('forgot'); return false;">Reset it →</a></span>
           </p>
         </form>
 
-        <!-- ── REGISTER FORM ────────────────────────────────────── -->
-        <!-- novalidate: the browser's own type="email" bubble would pre-empt
-             our inline messages; LWAuth's validators are the single source. -->
         <form class="auth-form" id="register-form" style="display:none;" novalidate onsubmit="event.preventDefault(); handleRegister();">
           <div class="form-group">
             <input type="email" id="reg-email" class="form-input" placeholder=" " autocomplete="email" aria-describedby="reg-email-status" oninput="onRegFieldInput('email')" onblur="onRegFieldBlur('email')" />
             <label for="reg-email">Email</label>
           </div>
-          <!-- Status/hint sit OUTSIDE .form-group on purpose: the floating
-               label is centred on the group's height, so extra lines inside
-               it would push the label off the input. -->
           <small id="reg-email-status" class="field-status" role="status" aria-live="polite" hidden></small>
           <small id="reg-email-hint" class="field-status text-muted" style="display:none;"></small>
           <div class="form-group mt-4">
@@ -552,16 +265,6 @@
               <svg class="pw-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
             </button>
           </div>
-          <!-- PASSWORD PANEL: strength bar + one line saying what the password
-               still needs. Hidden until the password field has input
-               (renderRegPasswordPanel() sets data-open), then slides open; it
-               closes again if the field is emptied. The message is the
-               text from LWAuth.validatePassword(), so it can never disagree
-               with what register() enforces: "Password is too short", then
-               "Password needs a number and lowercase letter" shrinking as each
-               gap is fixed, and it disappears once nothing is missing. The bar
-               is decorative (aria-hidden); the text label carries the same
-               information. -->
           <div class="pw-panel" id="reg-password-panel" data-open="false">
             <div class="pw-panel__inner">
               <div class="pw-meter" id="reg-password-meter" data-level="empty">
@@ -590,10 +293,6 @@
           </p>
         </form>
 
-        <!-- ── FORGOT PASSWORD FORM ─────────────────────────────── -->
-        <!-- Opened from the login form's "Reset it" link (shown after a wrong-password
-             login). Firebase emails a reset LINK (LWAuth.sendPasswordReset); the page
-             never says whether the address has an account. -->
         <form class="auth-form" id="forgot-form" style="display:none;" novalidate onsubmit="event.preventDefault(); handleForgotPassword();">
           <h3 class="auth-forgot__title">Reset your password</h3>
           <p class="auth-forgot__intro text-muted">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
@@ -613,34 +312,11 @@
     </div>
   </div>
 
-  <!-- ── TOPIC PREVIEW ────────────────────────────────────────────── -->
   <section class="section section--sm">
     <div class="container">
       <h2>A preview of what you'll learn</h2>
       <p class="text-muted">Sign up free to jump in.</p>
 
-      <!--
-        Plain <div> chips, not links or buttons — these are intentionally
-        non-interactive now (2026-09-17: previously opened the Sign Up
-        tab via data-hero-cta; removed at the user's request so the row
-        is preview-only — hover for the lift/border feedback, no click
-        action, nothing to navigate to). They were never links into
-        pages/learn.html either way: that page requires auth
-        (LWAuth.requireAuth), so a logged-out visitor clicking straight
-        into "?unit=alphabet" etc. would've been bounced by the auth
-        guard right back to this page.
-
-        Two-row marquee, scrolling opposite directions (see auth.css's
-        TOPIC MARQUEE comment for the seamless-loop mechanics, including
-        why it no longer pauses on hover). The chips themselves are NOT
-        hard-coded here — js/topic-marquee.js fills these two empty
-        tracks at runtime with all 70 curriculum units, each row
-        repeating the full list twice for the loop. Only row 1's first
-        copy ends up in the accessibility tree (role="list", no
-        aria-hidden) — the other three copies are aria-hidden since
-        they're the same 70 topics repeated purely for the scroll
-        illusion.
-      -->
       <div class="topic-marquee">
         <div class="topic-marquee__row topic-marquee__row--rtl">
           <ul class="topic-marquee__track" role="list"></ul>
@@ -656,7 +332,6 @@
     </div>
   </section>
 
-  <!-- ── WHY LINGUAWAVE ───────────────────────────────────────────── -->
   <section class="section section--sm">
     <div class="container">
       <h2>Why learn with LinguaWave</h2>
@@ -677,10 +352,6 @@
     </div>
   </section>
 
-  <!-- ── ABOUT ASL (merged from the former pages/intro-to-asl.html) ─── -->
-  <!-- CHANGED (light-mode UX pass) — dropped container--narrow (800px): it made this block
-         narrower than every section around it and pushed its left edge off the shared
-         grid. At full container width the two-column cards still hold ~65 characters a line. -->
   <section class="section section--sm" id="about-asl">
     <div class="container">
       <h2>About American Sign Language</h2>
@@ -714,7 +385,6 @@
     </div>
   </section>
 
-  <!-- ── CLOSING CTA ──────────────────────────────────────────────── -->
   <section class="section section--sm">
     <div class="container text-center">
       <h2>Ready to start signing?</h2>
@@ -740,35 +410,23 @@
   <script>
     'use strict';
 
-    // Slides the blue pill behind the active tab instead of each
-    // button's background fading in/out on its own (which, both
-    // firing at once, read as a flash rather than a single motion).
-    // animate=false is used right after the modal opens, so the pill
-    // snaps straight to the right tab instead of sliding in from 0.
     const authTabsIndicator = document.getElementById('auth-tabs-indicator');
     function positionAuthTabsIndicator(animate) {
       const loginTab    = document.getElementById('tab-login');
       const registerTab = document.getElementById('tab-register');
       const activeTab   = loginTab.classList.contains('auth-tab--active') ? loginTab : registerTab;
-      if (!activeTab.offsetWidth) return; // modal not visible yet — nothing to measure
+      if (!activeTab.offsetWidth) return; 
 
       if (!animate) authTabsIndicator.style.transition = 'none';
       authTabsIndicator.style.width = activeTab.offsetWidth + 'px';
       authTabsIndicator.style.transform = `translateX(${activeTab.offsetLeft - loginTab.offsetLeft}px)`;
       if (!animate) {
-        void authTabsIndicator.offsetWidth; // force reflow before re-enabling the transition
+        void authTabsIndicator.offsetWidth; 
         authTabsIndicator.style.transition = '';
       }
     }
     window.addEventListener('resize', () => positionAuthTabsIndicator(false));
 
-    // Crossfades the auth panels (login / register / forgot) instead of
-    // snapping their display on/off, so switching reads as one smooth
-    // motion rather than an instant cut. See .auth-form--fade-out /
-    // .auth-form--fade-in-start in css/auth.css for the timing.
-    // 'forgot' is not a tab: while it is showing, the tab bar, the Google
-    // button and the "or" divider are hidden (setAuthChrome) so the panel
-    // stands alone, and the "← Back to Log In" link returns to 'login'.
     const AUTH_PANELS = { login: 'login-form', register: 'register-form', forgot: 'forgot-form' };
     const AUTH_EYEBROW = { login: 'Get started', register: 'Get started', forgot: 'Account recovery' };
 
@@ -782,9 +440,6 @@
 
     function showAuthTab(tab) {
       if (!AUTH_PANELS[tab]) tab = 'login';
-      // The reset panel is reached through the "Reset it" link, which handleLogin()
-      // reveals after a wrong-password login. Anything else that asks for it
-      // (a stale click, the console) lands on Log In.
       if (tab === 'forgot' && document.getElementById('login-switch-forgot').hidden &&
           document.getElementById('forgot-form').style.display !== 'flex') {
         tab = 'login';
@@ -792,7 +447,6 @@
       const isForgot = tab === 'forgot';
       const showEl = document.getElementById(AUTH_PANELS[tab]);
       const allPanels = Object.values(AUTH_PANELS).map((id) => document.getElementById(id));
-      // Tab bar hidden = we are leaving the forgot panel; it can't be measured until it is back.
       const cameFromForgot = document.getElementById('auth-tabs').style.display === 'none';
 
       if (!isForgot) {
@@ -801,13 +455,10 @@
         positionAuthTabsIndicator(true);
       }
 
-      // Already on this panel (or mid-transition into it) — nothing to animate.
       if (showEl.style.display === 'flex' && !showEl.classList.contains('auth-form--fade-in-start')) return;
 
-      hideAllPasswords(); // a revealed password never follows you to the other tab
+      hideAllPasswords(); 
 
-      // Cancel any in-flight transition on any panel so rapid clicks
-      // can't leave things in a half-faded state.
       allPanels.forEach((el) => el.classList.remove('auth-form--fade-out', 'auth-form--fade-in-start'));
       allPanels
         .filter((el) => el !== showEl && getComputedStyle(el).display !== 'none')
@@ -825,44 +476,30 @@
 
         showEl.style.display = 'flex';
         showEl.classList.add('auth-form--fade-in-start');
-        void showEl.offsetWidth; // force reflow so the fade-in actually transitions
+        void showEl.offsetWidth; 
         showEl.classList.remove('auth-form--fade-in-start');
 
-        if (cameFromForgot && !isForgot) positionAuthTabsIndicator(false); // tab bar just reappeared: snap, don't slide
+        if (cameFromForgot && !isForgot) positionAuthTabsIndicator(false); 
         if (isForgot && !signinModal.classList.contains('hidden')) {
           document.getElementById('forgot-email').focus({ preventScroll: true });
         }
       }, 160);
     }
 
-    // ── SIGN IN MODAL open/close ────────────────────────────────────
-    // Matches the mockup: the hero has no inline form, so "Start
-    // Learning" (hero), "Sign In" (nav), and "Learn" (nav link, which
-    // needs an account to actually open) all funnel into this one
-    // modal, pre-set to the tab that makes sense for which one was
-    // clicked. "Home" (formerly "Dashboard") no longer funnels here —
-    // see the scrollToTop() binding below.
     const signinModal = document.getElementById('signin-modal');
 
     function openAuthModal(tab) {
       showAuthTab(tab);
-      renderRegPasswordPanel(); // first open builds the checklist (no-op if auth.js isn't ready yet)
+      renderRegPasswordPanel(); 
       signinModal.classList.remove('hidden');
-      positionAuthTabsIndicator(false); // modal was hidden during showAuthTab(), so snap now that it's visible
+      positionAuthTabsIndicator(false); 
       document.getElementById(tab === 'login' ? 'login-email' : 'reg-email').focus();
     }
     function closeAuthModal() {
       signinModal.classList.add('hidden');
-      hideAllPasswords(); // don't leave a typed password visible behind a closed modal
+      hideAllPasswords(); 
     }
 
-    // Logo + "Home" nav link click — this is the landing page itself,
-    // so clicking either should just take the visitor back to the top
-    // of THIS page (like every other marketing site), not force a
-    // full navigation/reload to "index.html" (which is where they
-    // already are). "Home" replaces the old "Dashboard" link, which
-    // required an account and opened the sign-in modal via
-    // data-hero-login; it now just mirrors the logo instead.
     function scrollToTop(event) {
       event.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -872,15 +509,12 @@
 
     document.getElementById('signin-modal-close').addEventListener('click', closeAuthModal);
     signinModal.addEventListener('click', (event) => {
-      if (event.target === signinModal) closeAuthModal(); // click on the backdrop
+      if (event.target === signinModal) closeAuthModal(); 
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !signinModal.classList.contains('hidden')) closeAuthModal();
     });
 
-    // "Start Learning" / topic-preview chips open the modal on Sign Up;
-    // "Sign In" / Learn nav link open it on Log In. ("Home" is bound
-    // separately, above, to scrollToTop instead.)
     document.querySelectorAll('[data-hero-cta]').forEach((el) => {
       el.addEventListener('click', () => openAuthModal('register'));
     });
@@ -891,13 +525,6 @@
       });
     });
 
-    // ── SUBMIT-BUTTON BUSY STATE (2026-09-29) ───────────────────────
-    // Signup now makes a network round-trip to the Reacher pre-check
-    // before it even reaches Firebase, so it can take a few seconds. One
-    // shared flag + a disabled button stops a double-click from firing
-    // two checks / two createUser calls (the second would just fail with
-    // "email already in use" and confuse the learner). Reset ONLY on
-    // failure: on success we're navigating away anyway.
     let authRequestInFlight = false;
     function setSubmitBusy(formId, busy, busyLabel) {
       const btn = document.querySelector('#' + formId + ' button[type="submit"]');
@@ -912,13 +539,8 @@
       }
     }
 
-    // Firebase codes meaning "this email + password pair is wrong". With
-    // email-enumeration protection on, a wrong password and an unknown email
-    // both arrive as auth/invalid-credential (they can't be told apart).
     const WRONG_PASSWORD_CODES = ['auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/wrong-password'];
 
-    // Under the Log In button: the "Sign up free" line, or (after a wrong
-    // password) the "Forgot your password?" line. One visible at a time.
     function setLoginSwitch(showForgot) {
       document.getElementById('login-switch-signup').hidden = showForgot;
       document.getElementById('login-switch-forgot').hidden = !showForgot;
@@ -926,52 +548,27 @@
 
     async function handleLogin() {
       if (authRequestInFlight) return;
-      // Same email check as Sign Up (format, then supported provider); on
-      // failure nothing is sent to Firebase and the field is focused.
       if (!validateAuxEmail('loginEmail')) return;
-      // Raw values on purpose: LWAuth.login() normalizes (trims) the email
-      // itself, so login and signup share ONE normalization (js/auth.js).
       const email    = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
       authRequestInFlight = true;
       setSubmitBusy('login-form', true, 'Logging in...');
       try {
         const result = await LWAuth.login(email, password);
-        await LWAuth.linkPendingGoogleCredential(); // no-op unless a Google sign-in just flagged a conflict
-        // Verified -> normal destination. Unverified -> still signed in,
-        // but sent to the verification page instead of the app. (If the
-        // Google link above just made the email verified, verify-email.html
-        // re-checks Firebase on load and forwards them straight on.)
+        await LWAuth.linkPendingGoogleCredential(); 
         window.location.href = result.verified ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
         authRequestInFlight = false;
         setSubmitBusy('login-form', false);
-        // Right email format but Firebase said no (Firebase can't say which half
-        // was wrong): offer the reset link. Other errors leave the sign-up line.
         if (error && WRONG_PASSWORD_CODES.includes(error.code)) setLoginSwitch(true);
         showAuthModal(LWAuth.describeAuthError(error));
       }
     }
 
-    // REV 4 PHASE 5: no more reg-level field to read — everyone starts
-    // at the same place (Unit 0), so LWAuth.register() no longer takes
-    // a level argument. See js/auth.js's register() for the matching change.
-    // ── EMAIL TYPO HINT (self-contained, no external library) ───────
-    // Instant, client-side, zero network calls. Catches the common
-    // "close but wrong" domain typo (gmail.co, gmial.com, yaho.com...)
-    // the moment the learner leaves the field. This is a courtesy nudge,
-    // not a hard block — the real gate is the Reacher pre-check (the
-    // `checkEmailDeliverability` Cloud Function, called inside
-    // LWAuth.register() before any Firebase account is created), and after
-    // that Firebase's verification email.
-    // The provider list is NOT repeated here — it comes from js/auth.js
-    // (LWAuth.SUPPORTED_EMAIL_DOMAINS). Read lazily: auth.js is a module and
-    // loads after this classic script has already run.
     function commonEmailDomains() {
       return (window.LWAuth && LWAuth.SUPPORTED_EMAIL_DOMAINS) || [];
     }
 
-    // Plain Levenshtein edit distance — small, dependency-free.
     function editDistance(a, b) {
       const dp = Array.from({ length: a.length + 1 }, (_, i) =>
         Array(b.length + 1).fill(0).map((_, j) => (i === 0 ? j : 0))
@@ -993,7 +590,7 @@
       if (at < 1 || at === email.length - 1) return null;
       const domain = email.slice(at + 1).toLowerCase();
       const candidates = commonEmailDomains();
-      if (candidates.includes(domain)) return null; // already correct
+      if (candidates.includes(domain)) return null; 
 
       let best = null;
       let bestDist = Infinity;
@@ -1001,13 +598,9 @@
         const dist = editDistance(domain, candidate);
         if (dist < bestDist) { bestDist = dist; best = candidate; }
       }
-      // Only suggest for a SMALL typo (1-2 characters off), so we don't
-      // nag someone using a real, uncommon domain (school email, etc.).
       return bestDist > 0 && bestDist <= 2 ? best : null;
     }
 
-    // Defaults = the Sign Up email field; Log In and Forgot Password pass
-    // their own input/hint ids and REG_FIELDS key.
     function checkEmailTypo(inputId, hintId, key) {
       inputId = inputId || 'reg-email';
       hintId = hintId || 'reg-email-hint';
@@ -1017,14 +610,9 @@
       const suggestion = suggestEmailDomain(input.value.trim());
       if (suggestion) {
         const [local] = input.value.trim().split('@');
-        // Built with DOM nodes (not innerHTML) so whatever was typed before
-        // the "@" is shown as plain text and can never be parsed as markup.
         const link = document.createElement('a');
         link.href = '#';
         link.textContent = local + '@' + suggestion;
-        // mousedown cancelled (same trick as the eye toggle): otherwise clicking the
-        // hint blurs the email field first, the blur handler rebuilds this very link,
-        // and the click lands on a link that no longer exists.
         link.addEventListener('mousedown', (event) => event.preventDefault());
         link.addEventListener('click', (event) => { event.preventDefault(); fixEmailDomain(suggestion, inputId, hintId, key); });
         hint.textContent = 'Did you mean ';
@@ -1048,24 +636,6 @@
       showRegStatus(key, REG_FIELDS[key].check());
     }
 
-    // ── SIGNUP FIELD VALIDATION UI (2026-10-01) ─────────────────────
-    // Display only. Every rule comes from LWAuth (js/auth.js), the same
-    // functions register() enforces, so this can't disagree with the real
-    // check. Each check() returns { ok, message }; an ok result with an empty
-    // message shows nothing.
-    //
-    // WHEN feedback shows (so nobody is scolded mid-word):
-    //   - blur: validate and show, once the field has had content;
-    //   - typing: stale feedback is cleared at once, then after a 700ms
-    //     pause a VALID value shows its ✓, and an invalid one shows the alert
-    //     icon + message only if the field was already blurred once;
-    //   - an EMPTY field never shows a status line (nothing was entered to
-    //     judge); on submit it just gets the red border and focus;
-    //   - submit: every field is validated and the first bad one focused.
-    // One email check for Sign Up, Log In and Forgot Password (2026-10-03).
-    // Log In / Forgot Password pass showOk=false: a green "✓ Valid" line would
-    // push the submit button down on blur, so a quick click on it (autofill, then
-    // click) would land on the moved layout and not register. Errors still show.
     function emailFieldCheck(inputId, showOk) {
       const r = LWAuth.validateEmail(document.getElementById(inputId).value);
       return r.valid
@@ -1086,9 +656,8 @@
         check() { return emailFieldCheck('forgot-email', false); },
       },
       password: {
-        input: 'reg-password', status: null, // its message is the live summary in the password panel
+        input: 'reg-password', status: null, 
         check() {
-          // Same call register() makes, with the same { email, name } context.
           const r = LWAuth.validatePassword(document.getElementById('reg-password').value, regPasswordContext());
           return r.valid ? { ok: true, message: '✓ ' + r.message } : { ok: false, message: r.message };
         },
@@ -1108,10 +677,8 @@
     const regTimers = {};
     const REG_TYPING_PAUSE_MS = 700;
 
-    // GitHub Octicons "alert-fill", shown before every error message.
     const REG_ALERT_ICON = '<svg aria-hidden="true" data-component="Octicon" height="12" viewBox="0 0 12 12" version="1.1" width="12" data-view-component="true" class="octicon octicon-alert-fill"><path d="M4.855.708c.5-.896 1.79-.896 2.29 0l4.675 8.351a1.312 1.312 0 0 1-1.146 1.954H1.33A1.313 1.313 0 0 1 .183 9.058ZM7 7V3H5v4Zm-1 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg>';
 
-    // Error line = alert icon + message (text set via textContent, never as HTML).
     function setRegErrorContent(el, message) {
       el.textContent = '';
       el.insertAdjacentHTML('afterbegin', REG_ALERT_ICON);
@@ -1124,8 +691,6 @@
       const f = REG_FIELDS[key];
       const input = document.getElementById(f.input);
       const status = f.status ? document.getElementById(f.status) : null;
-      // No input, no status line: only fields that actually have something in
-      // them get a message (empty ones are handled by the red border on submit).
       if (!result.message || input.value === '') { clearRegStatus(key); return; }
       if (status) {
         if (result.ok) status.textContent = result.message;
@@ -1149,29 +714,20 @@
     }
 
     function onRegFieldInput(key) {
-      if (!window.LWAuth || !LWAuth.validateEmail) return; // auth.js not loaded yet
+      if (!window.LWAuth || !LWAuth.validateEmail) return; 
       clearTimeout(regTimers[key]);
       clearRegStatus(key);
       if (key === 'email') document.getElementById('reg-email-hint').style.display = 'none';
-      // The strength bar + checklist are a live readout, not a scolding, so
-      // they update on every keystroke; only the message line below waits
-      // for a pause (see WHEN feedback shows, above).
       if (key === 'password' || key === 'email') renderRegPasswordPanel();
       regTimers[key] = setTimeout(() => {
         const r = REG_FIELDS[key].check();
-        // Confirm password is "real-time" once something is typed in it:
-        // after the pause it says Passwords match / do not match without
-        // waiting for a blur.
         const liveConfirm = key === 'confirm' && document.getElementById(REG_FIELDS.confirm.input).value !== '';
         if (r.ok || regTouched[key] || liveConfirm) showRegStatus(key, r);
       }, REG_TYPING_PAUSE_MS);
-      // Changing the password changes whether "confirm" matches.
       if (key === 'password' &&
           (regTouched.confirm || document.getElementById(REG_FIELDS.confirm.input).value !== '')) {
         onRegFieldInput('confirm');
       }
-      // A password built from the email/name is rejected, so editing the
-      // email re-checks an already-typed password.
       if (key === 'email' && document.getElementById('reg-password').value !== '') onRegFieldInput('password');
     }
 
@@ -1179,19 +735,14 @@
       if (!window.LWAuth || !LWAuth.validateEmail) return;
       clearTimeout(regTimers[key]);
       const hasValue = document.getElementById(REG_FIELDS[key].input).value !== '';
-      // Tabbing through an untouched empty field isn't an error; submit flags it.
       if (!hasValue && !regTouched[key]) return;
       regTouched[key] = true;
       showRegStatus(key, REG_FIELDS[key].check());
       if (key === 'email') checkEmailTypo();
     }
 
-    // ── LOG IN + FORGOT PASSWORD EMAIL FIELDS (2026-10-03) ──────────
-    // Same timing as the Sign Up email: no scolding mid-word, feedback on
-    // blur or after a 700ms pause, typo hint on blur, and a full re-check
-    // (validateAuxEmail) on submit.
     function onAuxEmailInput(key) {
-      if (!window.LWAuth || !LWAuth.validateEmail) return; // auth.js not loaded yet
+      if (!window.LWAuth || !LWAuth.validateEmail) return; 
       clearTimeout(regTimers[key]);
       clearRegStatus(key);
       document.getElementById(REG_FIELDS[key].hint).style.display = 'none';
@@ -1206,13 +757,12 @@
       clearTimeout(regTimers[key]);
       const f = REG_FIELDS[key];
       const hasValue = document.getElementById(f.input).value !== '';
-      if (!hasValue && !regTouched[key]) return; // tabbing through an untouched empty field isn't an error
+      if (!hasValue && !regTouched[key]) return; 
       regTouched[key] = true;
       showRegStatus(key, f.check());
       checkEmailTypo(f.input, f.hint, key);
     }
 
-    // true when the email passes; otherwise shows why, focuses the field and returns false.
     function validateAuxEmail(key) {
       const f = REG_FIELDS[key];
       const input = document.getElementById(f.input);
@@ -1221,24 +771,18 @@
       const r = f.check();
       showRegStatus(key, r);
       if (r.ok) return true;
-      if (input.value === '') input.setAttribute('aria-invalid', 'true'); // empty fields get the red border only
+      if (input.value === '') input.setAttribute('aria-invalid', 'true'); 
       checkEmailTypo(f.input, f.hint, key);
       input.focus();
       return false;
     }
 
     function onLoginEmailInput() {
-      // A different email means the failed attempt no longer applies.
       setLoginSwitch(false);
       onAuxEmailInput('loginEmail');
     }
     function onLoginEmailBlur() { onAuxEmailBlur('loginEmail'); }
 
-    // ── FORGOT PASSWORD PANEL (2026-10-03) ──────────────────────────
-    // Firebase emails a reset LINK (LWAuth.sendPasswordReset). The page says the
-    // same thing whether or not the address has an account. After a send,
-    // the button counts down before it can be used again; editing the email to
-    // a different address clears the countdown (a typo fix shouldn't wait).
     let forgotCooldownTimer = null;
     let forgotSentTo = '';
     const FORGOT_BTN_LABEL = 'Send reset link';
@@ -1283,8 +827,6 @@
       forgotCooldownTimer = setInterval(tick, 1000);
     }
 
-    // Runs each time the panel is opened (see showAuthTab): carries over the
-    // email typed on Log In, and clears old feedback unless a send is cooling down.
     function prepareForgotPanel() {
       const input = document.getElementById('forgot-email');
       const typed = document.getElementById('login-email').value.trim();
@@ -1322,7 +864,6 @@
         authRequestInFlight = false;
         forgotSentTo = email;
         const sent = document.getElementById('forgot-sent');
-        // textContent, never innerHTML: the address is whatever was typed.
         sent.textContent = '✓ If an account exists for ' + email + ', a password reset link is on its way. Check your inbox and your spam folder.';
         sent.hidden = false;
         startForgotCooldown();
@@ -1334,35 +875,21 @@
       }
     }
 
-    // ── PASSWORD PANEL (2026-10-01) ─────────────────────────────────
-    // Strength bar + requirement checklist under the Sign Up password.
-    // DISPLAY ONLY: getPasswordStrength() / validatePassword() come from
-    // js/auth.js, the same module register() enforces, so a requirement
-    // that shows ✓ here is the same one the real check counts. Nothing
-    // typed is logged, stored or sent anywhere from this code.
     const PW_LEVEL_TEXT = { empty: 'Strength', weak: 'Weak', medium: 'Medium', strong: 'Strong', 'very-strong': 'Very strong' };
-    // What the "can't be based on your email" rule compares against. Signup
-    // has no name field: the display name is taken from the email.
     function regPasswordContext() {
       return { email: document.getElementById('reg-email').value };
     }
 
     function renderRegPasswordPanel() {
-      if (!window.LWAuth || !LWAuth.getPasswordStrength) return; // auth.js not loaded yet
+      if (!window.LWAuth || !LWAuth.getPasswordStrength) return; 
       const pw = document.getElementById('reg-password').value;
       const s = LWAuth.getPasswordStrength(pw, regPasswordContext());
       const level = pw ? s.level : 'empty';
-      // Panel only exists on screen while there is something to report on.
       document.getElementById('reg-password-panel').dataset.open = pw ? 'true' : 'false';
       const meter = document.getElementById('reg-password-meter');
       meter.dataset.level = level;
-      // Continuous 0..1 from LWAuth (moves on every keystroke); CSS slides the fill to it.
       meter.style.setProperty('--pw-fill', pw ? s.progress.toFixed(3) : '0');
       document.getElementById('reg-password-strength-text').textContent = PW_LEVEL_TEXT[level];
-      // One line saying what is still missing (or nothing, once the password
-      // is acceptable). The text is only rewritten when it changes, so screen
-      // readers aren't re-announced on every keystroke, and it is left in
-      // place while the line collapses so it doesn't blank out mid-animation.
       const v = LWAuth.validatePassword(pw, regPasswordContext());
       const summary = document.getElementById('reg-password-summary');
       const needsMessage = pw !== '' && !v.valid;
@@ -1373,9 +900,6 @@
       document.getElementById('reg-password-summary-wrap').dataset.open = needsMessage ? 'true' : 'false';
     }
 
-    // Eye / eye-off toggle (Lucide icons are inline in the markup; CSS swaps
-    // them on aria-pressed). mousedown is cancelled so clicking the button
-    // doesn't pull focus out of the field (which would fire its blur check).
     function setPasswordVisible(btn, visible) {
       const input = document.getElementById(btn.dataset.pwToggle);
       if (!input) return;
@@ -1392,9 +916,6 @@
       });
     });
 
-    // true only when every field passes; otherwise shows every problem and
-    // focuses the first one. handleRegister() stops here, so nothing at all
-    // (no Reacher call, no Firebase account, no email) happens on failure.
     function validateRegisterForm() {
       let firstBad = null;
       for (const key of ['email', 'password', 'confirm']) {
@@ -1402,8 +923,6 @@
         regTouched[key] = true;
         const r = REG_FIELDS[key].check();
         showRegStatus(key, r);
-        // An empty field shows no message (see showRegStatus); flag it with the
-        // red border instead so it's still obvious why submit did nothing.
         if (!r.ok && document.getElementById(REG_FIELDS[key].input).value === '') {
           document.getElementById(REG_FIELDS[key].input).setAttribute('aria-invalid', 'true');
         }
@@ -1418,24 +937,15 @@
 
     async function handleRegister() {
       if (authRequestInFlight) return;
-      // Frontend gate: email format -> provider -> password -> confirm.
-      // On failure nothing is sent anywhere. register() re-checks all of it.
       if (!validateRegisterForm()) return;
-      const name            = ''; // no name field: register() uses the part of the email before the @ as the display name
-      const email           = document.getElementById('reg-email').value; // raw: register() trims + validates + sends the SAME normalized value
+      const name            = ''; 
+      const email           = document.getElementById('reg-email').value; 
       const password        = document.getElementById('reg-password').value;
       const confirmPassword = document.getElementById('reg-confirm-password').value;
       authRequestInFlight = true;
       setSubmitBusy('register-form', true, 'Checking email...');
       try {
-        // Order inside register(): validate (format, provider, password,
-        // confirm) -> Reacher pre-check -> create Firebase account (fails
-        // here if the email is already registered) -> send verification
-        // email. A rejected signup throws BEFORE any account or email exists.
         const result = await LWAuth.register(name, email, password, confirmPassword);
-        // The account now exists but is UNVERIFIED: signed in, no learner
-        // access. verify-email.html shows the "Check your email" screen
-        // (or, for send-failed, says the email didn't go out and offers Resend).
         window.location.href = LW_VERIFY_PAGE + (result.verificationSent ? '?status=sent' : '?status=send-failed');
       } catch (error) {
         authRequestInFlight = false;
@@ -1447,8 +957,6 @@
     async function handleGoogleSignIn() {
       try {
         await LWAuth.loginWithGoogle();
-        // Google accounts are normally already verified; if one ever
-        // isn't, it goes to the verification page like any other account.
         window.location.href = LWAuth.getAuthState() === 'verified' ? lwPostAuthPath() : LW_VERIFY_PAGE;
       } catch (error) {
         if (error && (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request')) return;

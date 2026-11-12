@@ -1,19 +1,16 @@
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
-// Run from <repo>/tests/ (finds ../js), or point LW_JS_DIR at the folder holding game-gate.js and learn.js.
 const JS_DIR = process.env.LW_JS_DIR || path.join(__dirname, '..', 'js');
 const GATE = fs.readFileSync(path.join(JS_DIR, 'game-gate.js'), 'utf8');
 const LEARN = fs.readFileSync(path.join(JS_DIR, 'learn.js'), 'utf8');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The glow waits ~0.4s on screen before playing (FX_SETTLE_MS in game-gate.js) and lasts ~1.8s (CSS: 2 x 900ms).
-const SETTLE_WAIT = 700;    // long enough for a glow to have started
-const CLEANUP_WAIT = 2300;  // long enough for it to be over (cleanup safety net is 2.1s)
+const SETTLE_WAIT = 700;
+const CLEANUP_WAIT = 2300;
 
 let pass = 0, fail = 0;
 function check(name, cond) { (cond ? pass++ : fail++); console.log((cond ? 'PASS ' : 'FAIL ') + name); }
 
-// One simulated page load. `store` is a plain object that persists across loads (the "localStorage").
 function makeWindow(html, store, o) {
   const dom = new JSDOM(html, { url: 'https://app.test/pages/' + (o.page || 'dashboard.html'), runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
@@ -30,7 +27,6 @@ function saveStore(w, store) {
   for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); store[k] = w.localStorage.getItem(k); }
 }
 
-/* ── Game sidebar ─────────────────────────────────────────────── */
 const SIDEBAR = '<nav class="app-sidebar"><a href="dashboard.html" class="app-sidebar__link">D</a><a href="game.html" class="app-sidebar__link" id="g">Game</a></nav>';
 const gameMissions = (ch1Done) => ({
   isChapterComplete: () => ch1Done, getAllMissions: () => [], getMissionProgress: () => 0,
@@ -55,8 +51,7 @@ async function gameLoad(store, o) {
   check('game: reload while still locked -> no pulse', !r.locked && !r.pulsing);
   saveStore(r.w, store);
 
-  // fail-closed load (LWMissions missing) must not corrupt the "seen" record
-  r = await gameLoad(store, { missions: {} });   // LWMissions present but unusable -> LOCKED_CH1 fallback (no `definitive`)
+  r = await gameLoad(store, { missions: {} });
   check('game: fail-closed fallback -> no pulse, sidebar link untouched', !r.locked && !r.pulsing);
   saveStore(r.w, store);
 
@@ -73,7 +68,6 @@ async function gameLoad(store, o) {
   r = await gameLoad({}, { missions: gameMissions(true) });
   check('game: brand-new account/device already unlocked -> no pulse', !r.locked && !r.pulsing);
 
-  // reduced motion: no class, but the transition is consumed
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   r = await gameLoad(store, { missions: gameMissions(true), reduced: true }); saveStore(r.w, store);
@@ -81,43 +75,36 @@ async function gameLoad(store, o) {
   r = await gameLoad(store, { missions: gameMissions(true) });
   check('game: ...and it does not replay later', !r.pulsing);
 
-  // in-app reduced-motion toggle
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<html class="lw-force-reduced-motion"><body>' + SIDEBAR + '</body></html>', store, { missions: gameMissions(true) });
     w.document.documentElement.classList.add('lw-force-reduced-motion'); w.eval(GATE); await sleep(SETTLE_WAIT);
     check('game: html.lw-force-reduced-motion -> no pulse class', !w.document.getElementById('g').classList.contains('lw-unlock-pulse')); }
 
-  // no signed-in uid
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false), uid: null }); saveStore(r.w, store);
   r = await gameLoad(store, { missions: gameMissions(true), uid: null });
   check('game: no uid -> no pulse, nothing stored', !r.pulsing && !Object.keys(store).some((k) => k.startsWith('lw_unlock_seen')));
 
-  // per-account isolation
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false), uid: 'alice' }); saveStore(r.w, store);
   r = await gameLoad(store, { missions: gameMissions(true), uid: 'bob' });
   check('game: another account on same device does not inherit "locked" -> no pulse', !r.pulsing);
 
-  // dev override
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   r = await gameLoad(store, { missions: gameMissions(false), dev: true });
   check('game: dev override does not pulse', !r.pulsing);
 
-  // page without a sidebar link must not consume the transition
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<body><p>no sidebar</p></body>', store, { missions: gameMissions(true) }); w.eval(GATE); await sleep(80); saveStore(w, store); }
   r = await gameLoad(store, { missions: gameMissions(true) });
   check('game: a page with no Game link leaves the transition for one that has it', r.pulsing);
 
-  /* ── Only where the learner can see it ────────────────────────── */
   const seenGameFlag = () => JSON.parse(store['lw_unlock_seen_v1:u1']).game.game;
   const glows = (w) => w.document.getElementById('g').classList.contains('lw-unlock-pulse');
 
-  // hidden tab: no glow, the unlock is not used up; shown -> glows, then recorded
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<body>' + SIDEBAR + '</body>', store, { missions: gameMissions(true) });
@@ -132,7 +119,6 @@ async function gameLoad(store, o) {
     saveStore(w, store);
     check('visible: ...and is then recorded as seen', seenGameFlag() === true); }
 
-  // learner leaves before ever seeing it -> offered again next time
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<body>' + SIDEBAR + '</body>', store, { missions: gameMissions(true) });
@@ -141,7 +127,6 @@ async function gameLoad(store, o) {
   r = await gameLoad(store, { missions: gameMissions(true) });
   check('visible: left before seeing it -> next visit still offers the glow', r.pulsing);
 
-  // element off screen (closed mobile menu, scrolled away) -> waits for the observer to say it is in view
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<body>' + SIDEBAR + '</body>', store, { missions: gameMissions(true) });
@@ -157,7 +142,6 @@ async function gameLoad(store, o) {
     saveStore(w, store);
     check('visible: ...and is then recorded as seen', seenGameFlag() === true); }
 
-  // reduced motion in a hidden tab: nothing to show, so the change is recorded at once
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   { const w = makeWindow('<body>' + SIDEBAR + '</body>', store, { missions: gameMissions(true), reduced: true });
@@ -165,7 +149,6 @@ async function gameLoad(store, o) {
     w.eval(GATE); await sleep(SETTLE_WAIT); saveStore(w, store);
     check('visible: reduced motion -> no glow, and the unlock is recorded straight away', !glows(w) && seenGameFlag() === true); }
 
-  /* ── Game picker (the lock now lives in game.html, not the sidebar) ───────── */
   const PICKER_HTML = '<body>' + SIDEBAR + '<main class="game-picker">' +
     '<aside class="game-lock" id="game-lock" hidden><h2 id="game-lock-title"></h2><p id="game-lock-text"></p>' +
     '<div id="game-lock-progress" hidden><span id="game-lock-count"></span><div id="game-lock-fill"></div></div>' +
@@ -174,7 +157,7 @@ async function gameLoad(store, o) {
     '</main></body>';
   const slowMissions = (ch1Done, ms) => Object.assign(gameMissions(ch1Done), { whenMissionsSyncReady: () => new Promise((res) => setTimeout(res, ms)) });
   async function pickerLoad(store, o, waitMs) {
-    if (!('lw_session' in store)) store.lw_session = JSON.stringify({ uid: 'u1' });   // js/auth.js keeps this; the gate reads the uid from it
+    if (!('lw_session' in store)) store.lw_session = JSON.stringify({ uid: 'u1' });
     const w = makeWindow(PICKER_HTML, store, Object.assign({ page: 'game.html' }, o));
     w.eval(GATE);
     const attrRightAway = w.document.documentElement.getAttribute('data-game-gate');
@@ -197,36 +180,31 @@ async function gameLoad(store, o) {
   check('picker: first visit with nothing remembered starts in "checking" (never "unlocked")', P.attrRightAway === 'checking');
   check('picker: the locked result is remembered for this account', JSON.parse(store['lw_game_gate:u1']).unlocked === false);
 
-  // remembered "locked" must be painted BEFORE the slow real check answers (the unlocked -> locked flash)
   { const w = makeWindow(PICKER_HTML, store, { page: 'game.html', missions: slowMissions(false, 400) });
     w.eval(GATE);
     const right = w.document.documentElement.getAttribute('data-game-gate');
-    await sleep(60);   // real check still pending
+    await sleep(60);
     const cards = Array.from(w.document.querySelectorAll('.game-mode'));
     check('picker: remembered locked is painted before the real check finishes (no flash)',
       right === 'locked' && cards.every((c) => c.classList.contains('game-mode--locked')) && !w.document.getElementById('game-lock').hidden);
     await sleep(500); saveStore(w, store); }
 
-  // stale "locked": Chapter 1 was finished since -> unlocks cleanly, and the sidebar item glows once
   P = await pickerLoad(store, { missions: gameMissions(true) }); saveStore(P.w, store);
   check('picker: remembered locked -> really unlocked: cards open again, banner hidden', P.noneLocked && !P.bannerShown && P.attr === 'unlocked');
   check('picker: ...and the sidebar Game item pulses (real locked -> unlocked)', P.sidebar.classList.contains('lw-unlock-pulse'));
   P = await pickerLoad(store, { missions: gameMissions(true) });
   check('picker: next load, unlocked from the start (no lock flicker, no pulse)', P.attrRightAway === 'unlocked' && P.noneLocked && !P.sidebar.classList.contains('lw-unlock-pulse'));
 
-  // another account on the same browser never inherits this account's remembered state
   store = {};
   P = await pickerLoad(store, { missions: gameMissions(true), uid: 'alice' }); saveStore(P.w, store);
   store.lw_session = JSON.stringify({ uid: 'bob' });
   P = await pickerLoad(store, { missions: gameMissions(false), uid: 'bob' });
   check('picker: a different account starts in "checking", not alice\'s unlocked', P.attrRightAway === 'checking' && P.allLocked);
 
-  // any sidebar page keeps the remembered state fresh, so the picker opens already correct
   store = { lw_session: JSON.stringify({ uid: 'u1' }) };
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   check('dashboard: check result is remembered for the picker', store['lw_game_gate:u1'] && JSON.parse(store['lw_game_gate:u1']).unlocked === false);
 
-  // storage throwing must never break locking
   store = {};
   { const w = makeWindow(PICKER_HTML, store, { page: 'game.html', missions: gameMissions(false) });
     Object.defineProperty(w, 'localStorage', { get() { throw new Error('denied'); } });
@@ -236,7 +214,6 @@ async function gameLoad(store, o) {
     check('picker: storage blocked -> still locks the cards, no throw',
       !threw && Array.from(w.document.querySelectorAll('.game-mode')).every((c) => c.classList.contains('game-mode--locked'))); }
 
-  /* ── Learn chapters ─────────────────────────────────────────── */
   const LEARN_HTML = '<body><div id="orientation-slot"></div><input id="path-search-input"><div id="path-list"></div></body>';
   const mk = (unlocked) => {
     const chapters = [1, 2, 3].map((n) => ({ id: 'c' + n, order: n, title: 'T' + n, blurb: 'b' }));
@@ -252,7 +229,7 @@ async function gameLoad(store, o) {
   };
   async function learnLoad(store, unlocked, extra) {
     const w = makeWindow(LEARN_HTML, store, Object.assign({ page: 'learn.html', missions: mk(unlocked) }, extra || {}));
-    w.eval(GATE);   // registers LWUnlockFx (no sidebar here, so it just exits)
+    w.eval(GATE);
     w.eval(LEARN);
     await sleep(SETTLE_WAIT);
     const pulsing = Array.from(w.document.querySelectorAll('.trail-group')).filter((e) => e.classList.contains('lw-unlock-pulse')).map((e) => e.dataset.chapter);
@@ -273,13 +250,11 @@ async function gameLoad(store, o) {
   L = await learnLoad(store, ['c1', 'c2', 'c3']); saveStore(L.w, store);
   check('learn: Chapter 3+ unlock -> c3 pulses, c1/c2 do not', JSON.stringify(L.pulsing) === '["c3"]');
 
-  // several chapters flip at once (Ch2 complete opens everything)
   store = {};
   L = await learnLoad(store, ['c1']); saveStore(L.w, store);
   L = await learnLoad(store, ['c1', 'c2', 'c3']);
   check('learn: several chapters unlock together -> all newly unlocked pulse', JSON.stringify(L.pulsing.sort()) === '["c2","c3"]');
 
-  // search hiding a chapter must not consume its transition
   store = {};
   L = await learnLoad(store, ['c1']); saveStore(L.w, store);
   { const w = makeWindow(LEARN_HTML, store, { page: 'learn.html', missions: mk(['c1', 'c2']) });
@@ -288,13 +263,11 @@ async function gameLoad(store, o) {
   L = await learnLoad(store, ['c1', 'c2']);
   check('learn: chapter not rendered (e.g. filtered) is not recorded, so its unlock still shows later', L.pulsing.includes('c2'));
 
-  // reduced motion
   store = {};
   L = await learnLoad(store, ['c1']); saveStore(L.w, store);
   L = await learnLoad(store, ['c1', 'c2'], { reduced: true });
   check('learn: reduced motion -> no pulse class', L.pulsing.length === 0);
 
-  // Learn is not the only place Game state is kept: the two groups are independent
   store = {};
   r = await gameLoad(store, { missions: gameMissions(false) }); saveStore(r.w, store);
   L = await learnLoad(store, ['c1']); saveStore(L.w, store);

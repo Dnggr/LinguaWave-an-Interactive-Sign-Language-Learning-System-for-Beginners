@@ -1,26 +1,4 @@
 'use strict';
-/**
- * Regression test for the learner-feedback -> Firestore -> admin flow.
- * Run:  node js/_test_feedback-survey.node.js
- *
- * No network, no Firebase. Three things are checked:
- *
- *  1. js/feedback.js's REAL submitSurvey() (loaded from source, with the
- *     `./auth.js` import swapped for a stub and a tiny fake DOM):
- *       - writes exactly one surveys/{uid}_{level}_{ts} doc with the
- *         Firebase user's uid/name/email (not anything typed in the page)
- *       - shows success + redirects ONLY after the write resolves
- *       - on failure: no redirect, button re-enabled with the original label
- *       - double click / repeated events => ONE write
- *       - retry after a failure reuses the same doc id
- *       - no signed-in user => error, nothing written
- *       - blocked while required questions are unanswered
- *  2. js/survey-schema.js pure helpers (labels, sort with missing fields,
- *     filter/search, stats, never "null"/"undefined"/"[object Object]").
- *  3. Consistency: radio values in pages/feedback.html === answer maps in
- *     survey-schema.js === value lists in firestore.rules, and every admin
- *     page has the Feedback nav link in the right place.
- */
 
 const fs = require('fs');
 const os = require('os');
@@ -38,7 +16,6 @@ function check(name, cond, extra) {
 }
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
-/* ── 1. feedback.js behaviour ─────────────────────────────────────── */
 
 function makeHarness({ user, setDocImpl, search = '?level=basic', checked, comment = '' }) {
   const writes = [];
@@ -51,7 +28,7 @@ function makeHarness({ user, setDocImpl, search = '?level=basic', checked, comme
     querySelector(sel) {
       const m = /input\[name="(q\d)"\]:checked/.exec(sel);
       if (m) return answersChecked[m[1]] !== undefined ? { value: answersChecked[m[1]] } : null;
-      return { closest: () => ({ scrollIntoView() {} }) }; // scrollToQuestion
+      return { closest: () => ({ scrollIntoView() {} }) };
     },
     getElementById(id) {
       if (id === 'btn-submit-survey') return btn;
@@ -67,7 +44,6 @@ function makeHarness({ user, setDocImpl, search = '?level=basic', checked, comme
   Object.defineProperty(window, 'location', {
     value: { search, set href(v) { redirects.push(v); } }, writable: true,
   });
-  // feedback.js does `window.location = 'dashboard.html'`
   const winProxy = new Proxy(window, {
     set(t, k, v) { if (k === 'location') { redirects.push(v); return true; } t[k] = v; return true; },
   });
@@ -104,7 +80,6 @@ async function testFeedbackJs() {
   console.log('\nfeedback.js submitSurvey()');
   const goodUser = { uid: 'uid123', email: 'jane@example.com', displayName: 'Jane D' };
 
-  // success
   {
     const h = makeHarness({ user: goodUser, comment: '  Loved it  ' });
     await h.submit();
@@ -130,14 +105,12 @@ async function testFeedbackJs() {
     check('redirects to dashboard.html', h.redirects[0] === 'dashboard.html', h.redirects);
   }
 
-  // empty comment -> null
   {
     const h = makeHarness({ user: goodUser, comment: '   ' });
     await h.submit();
     check('empty comment stored as null', h.writes[0].data.answers.q5 === null);
   }
 
-  // level fallbacks
   {
     const h = makeHarness({ user: goodUser, search: '?level=<script>' });
     await h.submit();
@@ -148,7 +121,6 @@ async function testFeedbackJs() {
     check('different level => different doc id', h2.writes[0].ref.id.startsWith('uid123_intermediate_'));
   }
 
-  // failure: no redirect, button restored
   {
     const h = makeHarness({ user: goodUser, setDocImpl: async () => { throw new Error('boom'); } });
     await h.submit();
@@ -160,7 +132,6 @@ async function testFeedbackJs() {
     check('failed write: original label restored', h.btn.textContent === 'Submit Feedback & Continue', h.btn.textContent);
   }
 
-  // retry reuses the same id
   {
     let calls = 0;
     const ids = [];
@@ -174,7 +145,6 @@ async function testFeedbackJs() {
     check('retry reuses the SAME doc id', ids.length === 2 && ids[0] === ids[1], ids);
   }
 
-  // double click -> one write
   {
     let release;
     const gate = new Promise((r) => { release = r; });
@@ -191,7 +161,6 @@ async function testFeedbackJs() {
     check('click after success (during redirect delay) => still ONE write', h.writes.length === 1, h.writes.length);
   }
 
-  // not signed in
   {
     const h = makeHarness({ user: null });
     await h.submit();
@@ -200,7 +169,6 @@ async function testFeedbackJs() {
     check('no user: button usable again', h.btn.disabled === false);
   }
 
-  // missing required
   {
     const h = makeHarness({ user: goodUser, checked: { q1: '3', q2: '3', q3: 'too_easy' } });
     await h.submit();
@@ -210,7 +178,6 @@ async function testFeedbackJs() {
   }
 }
 
-/* ── 2. survey-schema.js ──────────────────────────────────────────── */
 
 async function testSchema() {
   console.log('\nsurvey-schema.js');
@@ -234,7 +201,6 @@ async function testSchema() {
     S.getComment({ q5: null }) === null && S.getComment({}) === null && S.getComment({ q5: {} }) === null && S.getComment(undefined) === null);
   check('no question label contains raw keys', S.SURVEY_QUESTIONS.every((x) => /^Question \d$/.test(x.label)));
 
-  // normalisation of legacy / malformed docs
   const legacy = S.normalizeSurvey('a1', { userId: 'u1', level: 'unknown', answers: { q1: '3' }, submittedAt: '2026-09-01T00:00:00.000Z' });
   check('legacy doc normalises without throwing', legacy.userName === '' && legacy.userEmail === '' && legacy.submittedMs === Date.parse('2026-09-01T00:00:00.000Z'));
   const junk = S.normalizeSurvey('z', { answers: 'nope', submittedAt: { weird: true }, userName: 5 });
@@ -242,12 +208,10 @@ async function testSchema() {
   check('Firestore Timestamp-like supported', S.normalizeSurvey('t', { submittedAt: { toMillis: () => 12345 } }).submittedMs === 12345);
   check('level "unknown" => other bucket', S.levelKey('unknown') === 'other' && S.levelLabel(undefined) === 'Other / unknown');
 
-  // enrich
   const enriched = S.enrichWithUsers([legacy, S.normalizeSurvey('b', { userId: 'nope' })], [{ id: 'u1', name: 'Ann', email: 'ann@x.com' }]);
   check('legacy row filled from users list', enriched[0].userName === 'Ann' && enriched[0].userEmail === 'ann@x.com');
   check('unmatched row stays "Unknown learner"', S.displayName(enriched[1]) === 'Unknown learner');
 
-  // sorting
   const rows = [
     S.normalizeSurvey('old', { submittedAt: '2026-01-01T00:00:00Z' }),
     S.normalizeSurvey('nodate', {}),
@@ -259,7 +223,6 @@ async function testSchema() {
   check('newest first, undated last', sorted.slice(0, 3).join() === 'new,mid,old' && sorted.slice(3).sort().join() === 'bad,nodate', sorted);
   check('sorting does not mutate input', rows[0].id === 'old');
 
-  // filter / search
   const data = [
     S.normalizeSurvey('1', { userName: 'John Doe', userEmail: 'john@example.com', level: 'basic', answers: { q5: 'The lessons were easy to follow.' }, submittedAt: '2026-09-29T00:00:00Z' }),
     S.normalizeSurvey('2', { userName: 'Mary', userEmail: 'mary@school.edu', level: 'medium', answers: { q5: null }, submittedAt: '2026-09-28T00:00:00Z' }),
@@ -273,7 +236,6 @@ async function testSchema() {
   check('empty filters => all', S.filterSurveys(data, {}).length === 3);
   check('unknown-level rows never match a real level filter', !S.filterSurveys(data, { level: 'basic' }).some((r) => r.id === '3'));
 
-  // stats
   const now = Date.parse('2026-09-30T00:00:00Z');
   const st = S.computeSurveyStats(data, now);
   check('stats: total', st.total === 3);
@@ -286,7 +248,6 @@ async function testSchema() {
   check('formatDate(bad) is readable', S.formatDate(NaN) === 'Unknown date' && S.formatDate(null) === 'Unknown date');
 }
 
-/* ── 3. consistency: form <-> schema <-> rules <-> nav ───────────── */
 
 async function testConsistency() {
   console.log('\nform / schema / rules / nav consistency');
@@ -328,12 +289,10 @@ async function testConsistency() {
   const surveyBlock = rules.slice(rules.indexOf('match /surveys/{id}'), rules.indexOf('// ── everything else'));
   check('rules: no blanket "allow read" on surveys', !/allow (read|write)[^;]*:\s*if signedIn\(\);/.test(surveyBlock));
 
-  // admin email single source across files
   const emails = ['js/admin-auth.js', 'js/role-guard.js', 'js/admin-firebase.js', 'firestore.rules']
     .map((f) => (read(f).match(/linguawave\.project@gmail\.com/g) || []).length);
   check('admin email present in auth guard, role guard, firebase layer and rules', emails.every((n) => n >= 1), emails);
 
-  // writer payload keys match the rules' allowed keys
   const fb = read('js/feedback.js');
   const surveyRules = rules.split('match /surveys/{id}')[1] || '';
   const allowedSurveyKeys = /d\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/.exec(surveyRules);
@@ -346,7 +305,6 @@ async function testConsistency() {
     /export \{[^}]*\bsetDoc\b[^}]*\};/.test(read('js/auth.js')) &&
     !/window\.LWAuth = \{[^}]*setDoc/.test(read('js/auth.js')));
 
-  // nav
   const order = ['admin-dashboard', 'admin-lessons', 'admin-users', 'admin-feedback', 'admin-reports'];
   for (const p of order) {
     const page = read('pages/' + p + '.html');

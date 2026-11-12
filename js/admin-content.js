@@ -1,39 +1,4 @@
-/**
- * admin-content.js — Read-only view of the HARDCODED curriculum (NEW)
- * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : Lesson Management and Quiz Management used to read/write
- *            Firestore `signs` / `questions`. Those collections were
- *            never what learners see, so the admin screens showed
- *            data that had nothing to do with the real app. They now
- *            read the SAME hardcoded content the learner pages use:
- *            js/missions.js (window.LWMissions) for lessons, and the
- *            mastery-quiz rules from js/mastery-quiz.js for quizzes.
- *
- * NO LEVEL : the app is one linear trail (AGENTS.md — no level tiers),
- *            so nothing here exposes `level` to the admin UI. The
- *            internal `level` field on each sign is still used below,
- *            but only to call missions.js/lesson-loop.js the way they
- *            expect; it is never returned to a page.
- *
- * WHAT COUNTS AS A "LESSON" / "QUIZ" :
- *   lesson = one SIGNS entry (a sign taught in a mission).
- *   quiz   = one Mastery Quiz per mission. Its questions are built at
- *            attempt time from the mission's signs (no static question
- *            list exists — see the NOTE above SIGNS_V2's helpers in
- *            missions.js), so a "quiz" row here is the mission plus the
- *            sample question set the quiz would draw from.
- *
- * READ-ONLY ON PURPOSE : the built-in content lives in source (missions.js),
- *            so there is nothing to save to. Lessons the admin ADDS are
- *            stored in Firestore `signs` (see js/admin-firebase.js and
- *            js/admin-lessons.js).
- *
- * REQUIRES : js/missions.js and js/lesson-loop.js loaded (plain
- *            <script defer>) before the page controller runs.
- * ─────────────────────────────────────────────────────────────────
- */
 
-// Mirrors MAX_QUESTIONS in js/mastery-quiz.js — keep in sync.
 const MAX_QUIZ_QUESTIONS = 12;
 
 function missionsApi() {
@@ -50,7 +15,6 @@ function chapterMap(api) {
   return map;
 }
 
-// Same rule as uniqueSignIds() in js/mastery-quiz.js.
 function uniqueSignIds(mission) {
   const seen = new Set();
   const out = [];
@@ -63,7 +27,6 @@ function uniqueSignIds(mission) {
   return out;
 }
 
-// Same rule as questionOptionCount() in js/mastery-quiz.js.
 function questionOptionCount(mission, signId) {
   const hasRamp = (mission.items || []).some(
     (it) => it.kind === "PRACTICE" && it.signId === signId && !!it.difficultyRamp
@@ -71,17 +34,10 @@ function questionOptionCount(mission, signId) {
   return hasRamp ? 3 : 4;
 }
 
-/** Chapters (curriculum groups) in trail order: [{id, title, order}] */
 export function getChapters() {
   return missionsApi().getCategoryGroups().map((g) => ({ id: g.id, title: g.title, order: g.order }));
 }
 
-/**
- * Every lesson (sign) in trail order.
- * [{ key, signId, title, description, tips[], videoUrl,
- *    detectionType, order, missionId, missionTitle, missionNumber,
- *    chapterId, chapterTitle }]
- */
 export function getLessons() {
   const api = missionsApi();
   const chapters = chapterMap(api);
@@ -113,12 +69,6 @@ export function getLessons() {
   return lessons;
 }
 
-/**
- * One Mastery Quiz per mission.
- * [{ missionId, title, missionNumber, chapterId, chapterTitle,
- *    level, category, signCount, questionCount }]
- * questionCount = how many questions one attempt asks (capped at 12).
- */
 export function getQuizzes() {
   const api = missionsApi();
   const chapters = chapterMap(api);
@@ -131,9 +81,6 @@ export function getQuizzes() {
       missionNumber: idx + 1,
       chapterId: chapter ? chapter.id : "",
       chapterTitle: chapter ? chapter.title : "Ungrouped",
-      // Internal only (never shown): a mission IS one (level, category) pair.
-      // Lesson Management saves these on admin-added lessons so the learner
-      // side (missions.js normalizeCustomSign) can place them in the mission.
       level: mission.level,
       category: mission.category,
       signCount,
@@ -142,12 +89,6 @@ export function getQuizzes() {
   });
 }
 
-/**
- * The full question pool for one mission's quiz, one question per sign:
- * [{ answerTitle, options: [{ title, correct }] }]
- * Uses the real distractor builder (LWMissionsLoop.buildRecognizeOptions),
- * so what the admin sees is what a learner can be asked.
- */
 export function getQuizPool(missionId) {
   const api = missionsApi();
   const loop = window.LWMissionsLoop;
@@ -170,7 +111,6 @@ export function getQuizPool(missionId) {
   });
 }
 
-/** Totals for the admin dashboard / reports. */
 export function getContentStats() {
   const lessons = getLessons();
   const quizzes = getQuizzes();

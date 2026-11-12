@@ -1,14 +1,9 @@
-/**
- * functions/_test_xp.node.js — plain-Node tests for xp-engine.js and xp.js (fake Firestore, no emulator).
- *   node functions/_test_xp.node.js
- */
 'use strict';
 const Module = require('module');
 const path = require('path');
 let fails = 0, passes = 0;
 const assert = (c, m) => { if (c) passes++; else { fails++; console.error('FAIL:', m); } };
 
-/* ── fake firebase ─────────────────────────────────────────── */
 const store = new Map();
 let clock = Date.UTC(2026, 9, 5, 4, 0, 0);
 const snap = (p) => ({ exists: store.has(p), data: () => (store.has(p) ? JSON.parse(JSON.stringify(store.get(p))) : undefined), ref: { path: p } });
@@ -45,7 +40,6 @@ const { CONFIG } = require('./xp-config');
 const X = require('./xp');
 const M = require('./curriculum-manifest.json');
 
-/* ── engine ────────────────────────────────────────────────── */
 assert(E.xpForLevel(1) === 0 && E.xpForLevel(2) === 100 && E.xpForLevel(3) === 225, 'level curve');
 assert(E.levelFromXp(99) === 1 && E.levelFromXp(100) === 2 && E.levelFromXp(1e9) === 30, 'levelFromXp + cap');
 for (let l = 2; l <= 30; l++) assert(E.xpForLevel(l) - E.xpForLevel(l - 1) === 100 + 25 * (l - 2), `step ${l}`);
@@ -64,11 +58,9 @@ assert(E.gameWallXp({ bricks: Array(21).fill({ learned: true, motion: true }), w
 assert(E.gameWallXp({ bricks: Array(15).fill({ learned: false, motion: false }), wrong: 0, wallsToday: 0, gameXpToday: 0 }).xp === 0, 'unlearned wall = 0');
 assert(E.gameWallXp({ bricks: Array(15).fill({ learned: true }), wrong: 0, wallsToday: 7, gameXpToday: 0 }).xp === 0, 'wall 8+ pays 0');
 assert(E.gameWallXp({ bricks: Array(15).fill({ learned: true }), wrong: 0, wallsToday: 0, gameXpToday: 85 }).xp === 5, 'daily cap clamps');
-// theoretical daily max stays ≤ cap
 let d = 0, w = 0; while (true) { const r = E.gameWallXp({ bricks: Array(21).fill({ learned: true, motion: true }), wrong: 0, wallsToday: w, gameXpToday: d }); if (!r.xp) break; d += r.xp; w++; }
 assert(d <= CONFIG.GAME.DAILY_XP_CAP, `daily game xp ${d} ≤ cap`);
 console.log(`  max game XP/day even with perfect 21-motion walls: ${d}`);
-// timing validation
 const signs = ['A', 'B', 'C']; const ok = [{ s: 'A', t: 1000 }, { s: 'B', t: 2000 }, { s: 'C', t: 3000 }];
 assert(E.validateGameTiming({ sessionSigns: signs, broken: ok, serverElapsedMs: 3500 }) === null, 'honest timing ok');
 assert(E.validateGameTiming({ sessionSigns: signs, broken: ok.map((b) => ({ ...b, t: 10 })), serverElapsedMs: 3500 }) === 'too_fast', 'instant breaks rejected');
@@ -79,7 +71,6 @@ assert(E.validateGameTiming({ sessionSigns: signs, broken: [{ s: 'Z', t: 1000 },
 assert(E.validateGameTiming({ sessionSigns: signs, broken: ok.map((b) => ({ ...b, t: b.t + 60000 })), serverElapsedMs: 3500 }) === 'clock_mismatch', 'client claims more time than server saw');
 assert(E.validateGameTiming({ sessionSigns: ['A'], broken: [{ s: 'A', t: 1000, m: true }], serverElapsedMs: 1500 }) === 'too_fast', 'motion brick needs 3s');
 
-/* ── callables ─────────────────────────────────────────────── */
 const auth = (uid, email = `${uid}@x.com`) => ({ uid, token: { email, email_verified: true } });
 const call = (fn, uid, data) => fn({ auth: uid ? auth(uid) : null, data });
 const tick = (ms) => { clock += ms; };
@@ -88,7 +79,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
 
 (async () => {
   store.set('users/u1', { name: 'Ana' });
-  // auth required
   let threw = null; try { await call(X.claimLessonItem, null, { missionId: mid, itemIndex: 0 }); } catch (e) { threw = e.code; }
   assert(threw === 'unauthenticated', 'claim requires auth');
   threw = null; try { await X.claimLessonItem({ auth: { uid: 'u1', token: { email: 'a@b.c', email_verified: false } }, data: { missionId: mid, itemIndex: 0 } }); } catch (e) { threw = e.code; }
@@ -101,7 +91,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   threw = null; try { await call(X.claimLessonItem, 'u1', { missionId: mid, itemIndex: quizIdx }); } catch (e) { threw = e.code; }
   assert(threw === 'invalid-argument', 'QUIZ item pays nothing via item claim');
 
-  // lesson item: pays once
   let r = await call(X.claimLessonItem, 'u1', { missionId: mid, itemIndex: 0, tz: 'Asia/Manila' });
   assert(r.ok && r.xpGained === 6 && r.xp === 6, 'LESSON item = 6 xp');
   assert(state('u1').streak.current === 1 && state('u1').learnedSigns.includes('A'), 'streak started, sign learned');
@@ -113,7 +102,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   tick(2500); r = await call(X.claimLessonItem, 'u1', { missionId: mid, itemIndex: 1 });
   assert(r.xpGained === 3, 'BOOSTER = 3');
 
-  // walk the whole mission
   for (let i = 2; i < mis.items.length; i++) {
     if (mis.items[i][0] === 'QUIZ') continue;
     tick(2100); await call(X.claimLessonItem, 'u1', { missionId: mid, itemIndex: i });
@@ -128,7 +116,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   const lessonOnly = mis.items.reduce((s, [k, , b]) => s + (k === 'QUIZ' ? 0 : E.lessonItemXp(k, b)), 0) + E.missionBonus(mis.signCount);
   assert(total === lessonOnly || total <= lessonOnly, `mission total ${total} ≤ ${lessonOnly}`);
 
-  // skip path: someone who never claimed items
   store.set('users/u2', { name: 'Ben' });
   const mid2 = 'm_greetings'; const mis2 = M.missions[mid2];
   r = await call(X.claimMissionComplete, 'u2', { missionId: mid2, tz: 'UTC' });
@@ -142,18 +129,15 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   const skipTotal = Object.keys(M.missions).length;
   console.log(`  skip path: ${skipTotal} missions * 90s gap => at least ${(skipTotal * 90 / 3600).toFixed(1)}h to skip-claim everything`);
 
-  // wall breaker
   const learnedFor = (uid, n) => { const s = state(uid) || {}; return s; };
   const pool = M.signs.slice(0, 40);
   store.set('users/u3', { name: 'Cy' });
-  // teach u3 via full backfill-like direct state so we can test the game (write state directly = test setup only)
   await call(X.claimLessonItem, 'u3', { missionId: mid, itemIndex: 0, tz: 'UTC' });
   const st = state('u3'); st.learnedSigns = pool.slice(0, 15); store.set('xpState/u3', st);
 
   r = await call(X.startGameSession, 'u3', { signs: pool.slice(0, 15) });
   assert(r.ok && r.xpEligible && r.learnedBricks === 15, 'session eligible when 15 learned');
   const sid = r.sessionId;
-  // cheater: finishes instantly
   let rr = await call(X.finishGameSession, 'u3', { sessionId: sid, wrong: 0, broken: pool.slice(0, 15).map((s, i) => ({ s, t: i * 500 })) });
   assert(rr.reason === 'too_fast', 'instant finish rejected (server elapsed ~0)');
   rr = await call(X.finishGameSession, 'u3', { sessionId: sid, wrong: 0, broken: [] });
@@ -170,23 +154,18 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   assert(rr.ok && rr.counted && rr.xpGained === 26, `honest mixed wall pays 26 (got ${rr.xpGained})`);
   assert(rr.newBadges.includes('game_first') && rr.newBadges.includes('game_flawless') && rr.newBadges.includes('game_L1'), 'game badges');
   assert(rr.newBadges.includes('game_speed'), '2s/brick beats the 6s speed threshold');
-  // same session id can't be reused
   const oldSid = state('u3') && store.get('xpSessions/u3').id;
   rr = await call(X.finishGameSession, 'u3', { sessionId: oldSid, wrong: 0, broken: [] });
   assert(rr.reason === 'no_session', 'finished session cannot pay twice');
-  // farm: keep clearing walls
   let gained = 0; const before = state('u3').xp;
   for (let i = 0; i < 12; i++) { tick(4000); const x = await play('u3', pool.slice(0, 15)); gained += x.xpGained || 0; }
   assert(state('u3').daily.gameXp <= CONFIG.GAME.DAILY_XP_CAP, `farm 13 walls -> ${state('u3').daily.gameXp} ≤ cap`);
   console.log(`  13 back-to-back walls in one day paid ${state('u3').daily.gameXp} XP (cap ${CONFIG.GAME.DAILY_XP_CAP})`);
-  // next local day resets
   tick(24 * 3600 * 1000);
   rr = await play('u3', pool.slice(0, 15));
   assert(rr.xpGained === 26, 'new day, full pay again');
   assert(state('u3').streak.current >= 2, 'streak grew across days');
 
-  // Time Attack has its own eligibility/reward path, shares the game XP cap,
-  // and must never grant Wall Breaker badges or increment wall totals.
   store.set('users/u12', { name: 'Tia' });
   await call(X.claimLessonItem, 'u12', { missionId: mid, itemIndex: 0, tz: 'UTC' });
   const ta = await call(X.startGameSession, 'u12', { signs: ['A'], mode: 'timeAttack' });
@@ -201,20 +180,17 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   rr = await call(X.finishGameSession, 'u12', { sessionId: mismatch.sessionId, wrong: 0, broken: [{ s: 'A', t: 3100, m: true }] });
   assert(rr.reason === 'sign_type_mismatch', 'server rejects a forged motion/static target type');
 
-  // not enough learned bricks
   store.set('users/u4', { name: 'Di' });
   await call(X.claimLessonItem, 'u4', { missionId: mid, itemIndex: 0, tz: 'UTC' });
   tick(5000);
   const s4 = state('u4'); s4.learnedSigns = pool.slice(0, 3); store.set('xpState/u4', s4);
   rr = await play('u4', pool.slice(0, 15));
   assert(rr.ok && rr.counted === false && rr.xpGained === 0 && !state('u4').badges.game_first, 'few learned signs -> no xp, no badge');
-  // foreign sign in start
   threw = null; try { await call(X.startGameSession, 'u4', { signs: ['NOT_A_SIGN'] }); } catch (e) { threw = e.code; }
   assert(threw === 'invalid-argument', 'unknown sign refused');
   threw = null; try { await call(X.startGameSession, 'u4', { signs: ['A', 'A'] }); } catch (e) { threw = e.code; }
   assert(threw === 'invalid-argument', 'duplicate bricks refused');
 
-  // backfill
   const savedClock = clock; clock = Date.parse(CONFIG.LAUNCH_AT_ISO) + 3 * 86400000;
   store.set('users/u5', { name: 'Ed' });
   const ids = mis.items.map(([k, ref], i) => `${mid}_${i}_${k}_${ref}`);
@@ -228,7 +204,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   assert(r.reason === 'not_eligible', 'post-launch account cannot backfill');
   fakeAdmin._created = '2025-01-01T00:00:00Z';
 
-  // forged "completed everything" list is capped
   store.set('users/u8', { name: 'Gus' });
   const all = []; for (const [m, x] of Object.entries(M.missions)) x.items.forEach(([k, ref], i) => all.push(`${m}_${i}_${k}_${ref}`));
   r = await call(X.backfillLegacyProgress, 'u8', { completedItemIds: all });
@@ -238,7 +213,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   assert(r.reason === 'window_closed', 'backfill closed after the window');
   clock = Date.UTC(2026, 9, 5, 4, 0, 0) + 40 * 24 * 3600 * 1000;
 
-  // admin excluded, hidden
   r = await X.claimLessonItem({ auth: auth('adm', 'LinguaWave.Project@gmail.com'), data: { missionId: mid, itemIndex: 0 } });
   assert(r.reason === 'admin_account' && !store.has('xpState/adm'), 'admin account never earns XP');
   await call(X.setLeaderboardVisibility, 'u1', { visible: false });
@@ -248,14 +222,12 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   await call(X.setLeaderboardVisibility, 'u1', { visible: true });
   assert(store.has('publicProfiles/u1'), 'unhiding restores');
 
-  // timezone can't be flipped to farm a second "day"
   store.set('users/u7', { name: 'Flo' });
   await call(X.claimLessonItem, 'u7', { missionId: mid, itemIndex: 0, tz: 'Asia/Manila' });
   tick(3000); await call(X.claimLessonItem, 'u7', { missionId: mid, itemIndex: 1, tz: 'Pacific/Kiritimati' });
   assert(state('u7').tz === 'Asia/Manila', 'tz change refused inside cooldown');
   await call(X.claimLessonItem, 'u9', {}).catch(() => {});
 
-  // users/{uid} trigger: pending deletion removes the leaderboard row; rename syncs; XP can't resurrect it
   store.set('users/u11', { name: 'Ivy' });
   await call(X.claimLessonItem, 'u11', { missionId: mid, itemIndex: 0, tz: 'UTC' });
   assert(store.has('publicProfiles/u11'), 'u11 is on the board');
@@ -271,7 +243,6 @@ const mid = 'm_alphabet'; const mis = M.missions[mid];
   tick(3000); await call(X.claimLessonItem, 'u11', { missionId: mid, itemIndex: 1, tz: 'UTC' });
   assert(!store.has('publicProfiles/u11'), 'more XP does not bring a pending-deletion learner back');
 
-  // level cap sanity via full curriculum
   console.log(`\n${passes} passed, ${fails} failed`);
   Date.now = realNow;
   process.exit(fails ? 1 : 0);

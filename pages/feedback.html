@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Sets data-theme before any CSS loads, so the page never
-       flashes the wrong theme on load. Must stay first in <head>. -->
+  
   <script>
     (function () {
       var pref = localStorage.getItem('lw-theme') || 'system';
@@ -17,26 +16,7 @@
       root.style.background = resolved === 'light' ? '#F8FAFC' : '#0F172A';
     })();
   </script>
-  <!--
-    pages/feedback.html — Survey-Based Feedback
-    ─────────────────────────────────────────────────────────────────
-    MOVED (V1-removal pass) from pages/feedback.html so is a
-    complete, standalone app shell. Content/logic UNCHANGED — still
-    js/feedback.js (V1 controller, reused as-is per the plan's
-    "reuse existing V1 feedback & settings" decision). Only the
-    surrounding chrome changed: sidebar (Dashboard/Learn/Progress/
-    Feedback/Settings, no more Quiz/dev-link items), paths adjusted
-    one level deeper (../ instead of ../), and the post-submit /
-    skip redirects now point at dashboard.html instead of
-    pages/dashboard.html. js/quiz.js's post-level-complete link was
-    updated to point here (see CHANGELOG for this pass).
-
-    CONNECTS : ← pages/quiz.html (redirected here after level complete)
-               → dashboard.html (on survey submit / skip)
-
-    URL PARAMS: ?level=basic | medium | intermediate
-    ─────────────────────────────────────────────────────────────────
-  -->
+  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Feedback | LinguaWave</title>
@@ -45,14 +25,11 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/feedback.css" />
   <link rel="stylesheet" href="../css/app.css" />
-  <!-- Toast styles: main.js's showToast() (success/error on submit) is unstyled without this. -->
+  
   <link rel="stylesheet" href="../css/toast.css" />
 
   <script type="module" src="../js/auth.js"></script>
-  <!-- Shared icon system. Plain <script> (not a module) and NOT deferred:
-       window.LWIcons must exist before any page script, inline script or
-       module body runs, and before DOMContentLoaded hydrates any
-       data-lw-icon="" markup below. See js/icons.js. -->
+  
   <script src="../js/icons.js"></script>
   <script src="../js/theme.js" defer></script>
   <script>
@@ -60,9 +37,9 @@
     LWAuth.requireAuth('../index.html');
   });
   </script>
-  <!-- Role guard: admin -> admin pages only, learners -> out of admin pages. Keep synchronous, in <head>. -->
+  
   <script src="../js/role-guard.js"></script>
-  <!-- Mobile/tablet layer — must stay after every other stylesheet. See css/responsive.css. -->
+  
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/mobile-nav.js" defer></script>
   <script src="../js/game-gate.js" defer></script>
@@ -121,7 +98,7 @@
   <section class="section">
     <div class="container container--narrow">
 
-      <!-- Header -->
+      
       <div class="text-center mb-8">
         <h1>How was your experience?</h1>
         <p class="text-muted mt-4">
@@ -130,10 +107,10 @@
         </p>
       </div>
 
-      <!-- Survey form -->
+      
       <div class="survey card">
 
-        <!-- Q1: Overall satisfaction -->
+        
         <div class="survey__question">
           <p class="survey__q-text">1. How satisfied are you with this level overall?</p>
           <div class="rating-group" role="radiogroup" aria-label="Satisfaction rating">
@@ -155,7 +132,7 @@
           </div>
         </div>
 
-        <!-- Q2: Content clarity -->
+        
         <div class="survey__question">
           <p class="survey__q-text">2. How clear were the sign images and video demonstrations?</p>
           <div class="rating-group" role="radiogroup" aria-label="Content clarity rating">
@@ -167,7 +144,7 @@
           </div>
         </div>
 
-        <!-- Q3: Difficulty -->
+        
         <div class="survey__question">
           <p class="survey__q-text">3. How would you rate the difficulty of this level?</p>
           <div class="rating-group" role="radiogroup" aria-label="Difficulty rating">
@@ -177,7 +154,7 @@
           </div>
         </div>
 
-        <!-- Q4: Would recommend -->
+        
         <div class="survey__question">
           <p class="survey__q-text">4. Would you recommend LinguaWave to someone learning ASL?</p>
           <div class="rating-group" role="radiogroup" aria-label="Recommend rating">
@@ -187,7 +164,7 @@
           </div>
         </div>
 
-        <!-- Q5: Open text -->
+        
         <div class="survey__question">
           <label class="survey__q-text" for="q5-text">
             5. Any additional comments or suggestions? (optional)
@@ -201,7 +178,7 @@
           ></textarea>
         </div>
 
-        <!-- Submit -->
+        
         <div class="mt-8">
           <button
             class="btn btn--primary btn--full btn--lg"
@@ -212,22 +189,22 @@
           </button>
         </div>
 
-        <!-- Skip option -->
+        
         <div class="text-center mt-4">
           <a href="dashboard.html" class="text-muted" style="font-size: var(--fs-sm);">
             Skip for now →
           </a>
         </div>
 
-      </div><!-- /survey card -->
+      </div>
     </div>
   </section>
 
   <script src="../js/main.js"></script>
-  <!-- type="module": feedback.js imports the shared Firebase instance from auth.js (one init). -->
+  
   <script type="module" src="../js/feedback.js"></script>
-  </div><!-- /.app-main -->
-</div><!-- /.app-shell -->
+  </div>
+</div>
 
 </body>
 </html>

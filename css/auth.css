@@ -1,15 +1,4 @@
-/*
- * auth.css — Landing Page + Log In / Register Styles
- * ─────────────────────────────────────────────────────────────────
- * CONNECTS : index.html (hero, topic preview, About ASL section, and
- *            the inline login/register card)
- * 2026-10-01 : added the PASSWORD STRENGTH + SHOW/HIDE section at the very
- *            bottom (strength bar, requirement checklist, eye toggle) and
- *            made #signin-modal scrollable (the Sign Up card grew taller).
- * ─────────────────────────────────────────────────────────────────
- */
 
-/* ── HERO ─────────────────────────────────────────────────────── */
 .hero { padding-top: var(--space-8); }
 .hero__grid {
   display: grid; grid-template-columns: 1.1fr 1fr;
@@ -23,70 +12,18 @@
   .hero__grid { grid-template-columns: 1fr; }
 }
 
-/* ── HERO — WAVE BACKGROUND (waves + navbar restyle pass, rev 4) ──
-   REV 4: proper sine-wave shape + a 3rd parallax layer, per a
-   reference "low frequency / long wavelength" sine diagram — REV 3's
-   path used ONE cubic-Bezier "C" command to span an entire 1200-unit
-   period (control points at the 1/4 and 3/4 marks, pulling up then
-   down within a single curve), which is a workable long-wavelength
-   swell but not a true sine curve — a single Bezier segment doesn't
-   hold a symmetric peak/trough the way a real sine wave does. Each
-   path below instead uses the standard SVG sine-wave construction:
-   ONE "C" command per HALF-period (600 units), with BOTH of that
-   command's control points held at the peak/trough height and placed
-   at the half-period's 1/4 and 3/4 marks — that's what gives a flat-
-   topped, symmetric crest (or trough) instead of a lopsided hump.
-   Two such half-period commands (crest then trough) = one full
-   1200-unit period, repeated twice across the 2400 viewBox — still
-   tiles seamlessly via translateX(0 → -50%), since that's exactly
-   one period.
-
-   A `--deep` layer was added behind `--back`/`--front` (very low
-   opacity, slowest, drifting the OPPOSITE direction) purely for
-   parallax depth, the way a layered-wave background typically has
-   3-4 bands moving at different speeds — but the FRONT layer (most
-   opaque, topmost, "the main wave") keeps the same direction as
-   before: translateX(0 → -50%) shifts a 200%-wide element LEFT by
-   half its own width; since that's a container-relative measure, it
-   equals exactly one period of a periodic pattern, so the visible
-   window doesn't jump — points that were off-screen to the right
-   scroll into view as the element slides left, i.e. the pattern
-   visibly travels right-to-left. Only `--deep` reverses that (an
-   `animation-direction: reverse` on the same keyframe) for contrast.
-
-   Sizing (band height, baseline height, section padding) is
-   unchanged from rev 3 — this pass is shape-only.
-
-   2026-09-16: .hero--wave now reaches up behind the navbar instead of
-   stopping below it — margin-top pulls the box up by the navbar's own
-   box height (60px .navbar__inner + 1px border-bottom = 61px), and
-   padding-top grows by that same 61px so the actual copy/illustration
-   still lands where it did before; only the background paints further
-   up. Paired with .navbar--hero's near-transparent background (see
-   that comment in the NAVBAR — HERO VARIANT block above), the wave
-   gradient now shows through the bar, so navbar and hero read as one
-   continuous surface that moves/themes together rather than two
-   separately-colored strips stacked on each other. */
 .hero--wave {
   position: relative;
   overflow: hidden;
   margin-top: -61px;
   padding-top: calc(var(--space-8) + 61px);
   padding-bottom: 130px;
-  /* The two gradients themselves now live ONCE, here, as custom
-     properties — .hero-backdrop (static) and .hero-background__sky
-     (the rotating copy, further below) both paint from these same two
-     values instead of each hard-coding their own copy. --hero-crossfade
-     is shared the same way, so both fade at identical speed and start
-     at the identical instant (data-theme changing) and can never drift
-     out of sync with each other — see the "HERO — BACKGROUND SPIN
-     LAYER" comment below for why two copies of the sky exist at all. */
   --hero-sky-light:
     radial-gradient(120% 140% at 82% 6%, rgba(37,99,235,.14), transparent 55%),
-    linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #E3EEFC 75%, #DAE8FB 100%); /* PALETTE PASS: was #D2ECEA 75%, #C4E6DE 100% (mint/teal end) — blue-only now; also fixes hero text at 4.29:1 */
+    linear-gradient(165deg, #F3F8FF 0%, #E3F0FB 40%, #E3EEFC 75%, #DAE8FB 100%); 
   --hero-sky-dark:
     radial-gradient(120% 140% at 82% 6%, rgba(59,130,246,.32), transparent 55%),
-    linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E2A5C 78%, #123A7A 100%); /* PALETTE PASS: was #0E3159 78%, #0F4C66 100% and rgba(45,150,190,.35) glow (teal end) — navy→blue now */
+    linear-gradient(165deg, #060B1C 0%, #0B1B3C 45%, #0E2A5C 78%, #123A7A 100%); 
 }
 .hero--wave .container { position: relative; z-index: 2; }
 
@@ -95,121 +32,41 @@
 [data-theme="dark"] .hero--wave .btn--ghost { color: #EAF2FF; border-color: rgba(234,242,255,.35); }
 [data-theme="dark"] .hero--wave .btn--ghost:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,.08); }
 
-/* Lets the three color overrides just above crossfade instead of hard-
-   cutting the instant data-theme flips (mid-spin, that's the 50% mark
-   of .hero-background's rotation — see the spin-layer comment below).
-   Without this, the sky gradient fades gradually while the text/button
-   colors on top of it still snapped instantly, which for a moment left
-   already-white text sitting on a still-mid-fade (and occasionally
-   low-contrast) patch of sky. --dur-slow/--ease are the existing
-   tokens (css/style.css §1) already used for every other transition in
-   this file — not a new value invented just for this. */
 .hero--wave .hero__copy h1,
 .hero--wave .hero__lead,
 .hero--wave .btn--ghost {
   transition: color var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease);
 }
 
-/* ── HERO — BACKGROUND SPIN LAYER (theme-toggle transition) ───────
-   NOTE (09-29): active again on index.html (js/hero-decor.js's
-   HERO_SPIN_ENABLED is true); every other page uses the reveal in
-   css/style.css §5c.
-
-   A real spatial "turning sky", not a crossfade: light and dark are
-   two halves of one rigid disc (.hero-rotor), each permanently
-   occupying its own fixed 180° — light the top half, dark the bottom
-   half (flipped from the old above-hero pivot, see below), split
-   straight down the middle by .hero-rotor__half's clip-
-   paths — and clicking the toggle physically rotates that WHOLE disc
-   clockwise, swinging the current half away and carrying the other
-   one in from off-screen, the same direction every time. Nothing ever
-   crossfades: at any instant, every pixel of the hero is showing one
-   theme's actual gradient at 100% opacity, just possibly a rotated
-   one. .hero__grid (copy + illustration) and .hero-waves are siblings
-   of .hero-background, never children of it, so nothing foreground
-   ever rotates.
-
-   THE PIVOT IS OFF-CENTER ON PURPOSE. .hero-rotor-frame doesn't sit
-   centered on the hero — it's shifted so the disc's center (and so
-   its rotation pivot) is a good distance BELOW the hero, roughly at
-   the wave band (.hero-waves), with the hero sitting at the disc's
-   "12 o'clock". That's what makes half the disc arrive DIAGONALLY
-   from the lower corner — from the waves' epicenter — instead of
-   sweeping down from above the page or just spinning in place under
-   the content: at rest the whole hero sits inside a single 180° arc,
-   comfortably far from the dividing line, and only during the
-   rotation does that line swing up close enough to sweep across the
-   viewport. (Centering the pivot ON the hero instead would put that
-   dividing line through the hero at every single angle, showing both
-   halves split down the middle all the time — never a clean single-
-   theme rest state.) --hero-rotor-size/--hero-rotor-pivot below are
-   in cqw — % of .hero-background's OWN width — specifically so both
-   axes scale off one consistent reference (hero width) instead of
-   width% and height% quietly meaning different things, which is also
-   why .hero-background turns on container-query units at all.
-
-   Rotation is a clean 180° per click, always in the same clockwise
-   sense (0°→180° lands on dark, 180°→360° — visually identical to
-   0° — lands back on light), never reset or reversed: the sun sits at
-   a fixed design position (top 8% right 9%) and the star field is
-   generated once per page load at fixed coordinates, nested in
-   .hero-rotor__anchor at that same fixed offset from the pivot, so
-   landing on a clean multiple of 180° is what keeps them re-arriving
-   exactly where they started rather than drifting a little further
-   off with every toggle. */
 .hero-background {
   position: absolute;
   inset: 0;
   z-index: 0;
-  overflow: hidden; /* clips .hero-rotor-frame's deliberate oversize — belt-and-suspenders alongside .hero--wave's own overflow:hidden */
-  container-type: size; /* enables cqw/cqh below; safe here since inset:0 already gives this box a fully determinate size independent of content */
-  pointer-events: none; /* purely decorative, same convention .hero-decor already uses below — belt-and-suspenders alongside z-index already keeping it under .container's clickable content */
+  overflow: hidden; 
+  container-type: size; 
+  pointer-events: none; 
 }
 .hero-rotor-frame {
-  /* 2026-09-30 (mobile bg gap + shrinking bg on theme switch): both values used to be
-     pure cqw (hero WIDTH). That is fine on a wide desktop hero, but on a phone the hero
-     is ~2x taller than it is wide (min-height:100svh, responsive.css §8b), so the top of
-     the hero sat ~246cqw from the pivot while the disc only reached 210cqw: the top strip
-     of the hero had NO sky under it (the gap under the navbar), and while spinning the
-     hero's far corners left the disc, so the bg looked smaller than the screen.
-     Now the disc always spans the pivot + half the hero's height + half its width (an
-     upper bound on the distance from the pivot to the farthest hero corner), so every
-     hero pixel stays inside the disc at every angle. The pivot itself is unchanged, so
-     the sweep looks the same; max() keeps the old 420cqw on desktop, so desktop is
-     unchanged. */
-  --hero-rotor-pivot: 150cqw;  /* distance from the disc's center to the hero's center (and to each anchor below) — pushed DOWN, toward .hero-waves, not up */
-  --hero-rotor-size: max(420cqw, calc(2 * (var(--hero-rotor-pivot) + 50cqh + 50cqw) + 20cqw));   /* oversized square disc; see the comment above for why this has to clear both axes at once */
+  --hero-rotor-pivot: 150cqw;  
+  --hero-rotor-size: max(420cqw, calc(2 * (var(--hero-rotor-pivot) + 50cqh + 50cqw) + 20cqw));   
   position: absolute;
   left: 50cqw;
   top: 50cqh;
   width: var(--hero-rotor-size);
   aspect-ratio: 1 / 1;
-  /* Positive translateY (was negative) drops the disc's center below
-     the hero instead of above it, so the pivot sits down near the
-     wave band — the whole spin now radiates up from the waves'
-     epicenter instead of sweeping down from the top of the page. */
   transform: translate(-50%, -50%) translateY(var(--hero-rotor-pivot));
 }
 .hero-rotor {
   position: absolute;
   inset: 0;
   transform-origin: 50% 50%;
-  /* Rotation lives on the standalone `rotate` property, NOT inside a
-     `transform: rotate()` shorthand — see the "SMOOTHING PASS" comment
-     below for why that split is the actual fix, not a stylistic one. */
   rotate: 0deg;
   scale: 1;
 }
 [data-theme="dark"] .hero-rotor { rotate: 180deg; }
 .hero-rotor.is-spinning-to-dark {
-  /* --spin-duration/--spin-ease are scoped here, not global tokens —
-     nothing else uses them, same as .theme-switch's own local
-     --switch-w/--thumb custom properties further down. js/hero-
-     decor.js's SPIN_MS/THEME_FLIP_MS constants are kept in sync with
-     --spin-duration by hand — same "kept in sync" convention as js/
-     theme.js's THEME_BG comment for --clr-bg. */
   --spin-duration: 900ms;
-  --spin-ease: cubic-bezier(.37, 0, .63, 1); /* easeInOutSine */
+  --spin-ease: cubic-bezier(.37, 0, .63, 1); 
   animation:
     lw-hero-rotor-to-dark var(--spin-duration) var(--spin-ease) 1 forwards,
     lw-hero-rotor-pulse   var(--spin-duration) var(--spin-ease) 1 forwards;
@@ -223,34 +80,6 @@
     lw-hero-rotor-pulse    var(--spin-duration) var(--spin-ease) 1 forwards;
   will-change: rotate, scale;
 }
-/* SMOOTHING PASS: the previous version packed rotate() AND scale()
-   into ONE `transform` animation with 5 stops (0/18/50/82/100%), on
-   the theory that small steps at the ends plus one big jump through
-   the middle would read as a single continuous slow→fast→slow sweep.
-   It doesn't: a shared animation-timing-function is only ever applied
-   BETWEEN each adjacent pair of keyframes, not across the animation as
-   a whole, so a symmetric ease-in-out curve like this one decelerates
-   to a near-standstill at EVERY stop — 0%, 18%, 50%, 82%, AND 100% —
-   then re-accelerates from a standing start each time. That's 4
-   separate hitches per spin, confirmed by sampling the rotor's actual
-   computed angle on every animation frame during a real click: angular
-   velocity repeatedly collapsed toward zero and lurched forward again,
-   instead of the single sweep the old comment intended.
-   The fix is two independent single-purpose animations instead of one
-   multi-stop one. `rotate` now has just 0%/100% — a PLAIN two-stop
-   curve using this same cubic-bezier already IS the whole continuous
-   slow→fast→slow sweep, no intermediate stops needed, so there's
-   nothing left to hitch on. Bonus: because this curve is symmetric
-   about its own midpoint, 50% of the 900ms duration lands on EXACTLY
-   90°/270° — the dividing line crossing the viewport — which is also
-   exactly when js/hero-decor.js's THEME_FLIP_MS timer fires, a sync
-   the old hand-placed "95deg at 50%" keyframe could only approximate.
-   `scale` keeps its own 3-stop pulse (still needs a middle stop to
-   bulge and settle back) but now on its own timeline: a brief pause at
-   the very peak of a 5%, size pulse just reads as a little "breath",
-   not a stutter — it's only jarring when it's the ROTATION that pauses
-   mid-sweep. -to-light is just -to-dark's degrees shifted +180°,
-   continuing the same clockwise direction rather than winding back. */
 @keyframes lw-hero-rotor-to-dark {
   0%   { rotate: 0deg;   }
   100% { rotate: 180deg; }
@@ -267,53 +96,16 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-rotor.is-spinning-to-dark,
   .hero-rotor.is-spinning-to-light { animation: none; }
-  /* Simple short transition instead, per the reduced-motion spec —
-     covers the plain data-theme-driven rotate:0deg/180deg rule above
-     for the rare path that reaches it without a spin class (see js/
-     hero-decor.js), so it still animates a little instead of hard-
-     cutting. Targets `rotate` now, not `transform` — see above. */
   .hero-rotor { transition: rotate 200ms var(--ease); }
 }
 
-/* One rigid disc, two 180° halves — clip-path is what makes each
-   half only ever show its OWN semicircle rather than the whole square
-   .hero-rotor__anchor sky beneath it stretching edge to edge. Both
-   halves rotate together as .hero-rotor's direct children, so they
-   never drift out of their fixed 180°-apart relationship. */
 .hero-rotor__half {
   position: absolute;
   inset: 0;
 }
-/* Zones swapped from the disc's naive top/bottom split — with the
-   pivot now BELOW the hero (see the spin-layer comment above), the
-   hero sits in the square's top-facing local zone at rest, so LIGHT
-   (the at-rest theme) has to own that top zone, and DARK the bottom
-   one, or the rest state would show the wrong gradient under the
-   right-colored anchor content (exactly the "light background, white
-   dark-theme text" desync this pass fixed). */
-/* 49.9%, not a clean 50% — gives the two halves a hairline (~0.2%)
-   overlap at the seam instead of meeting edge-to-edge. Two independently
-   clipped boxes that only just touch can show a 1px gap of whatever's
-   behind them if either edge rounds to a different sub-pixel under the
-   .hero-rotor `scale` pulse; a small overlap costs nothing visible (light
-   is later in DOM order, so it simply paints over dark's edge in that
-   sliver) and removes the seam as a failure mode entirely. */
 .hero-rotor__half--dark  { clip-path: inset(49.9% 0 0 0); background: var(--hero-sky-dark); }
 .hero-rotor__half--light { clip-path: inset(0 0 49.9% 0); background: var(--hero-sky-light); }
 
-/* .hero-rotor__anchor is sized to exactly the hero's own box (cqw/
-   cqh, not the oversized disc), positioned --hero-rotor-pivot away
-   from the disc's center — the light anchor straight "above" it
-   (where the hero actually sits at rest) and the dark anchor straight
-   "below" (180° around the disc, i.e. exactly where a 180° clockwise
-   turn carries it to that same "above" spot). Anything of the disc
-   outside these two boxes is just .hero-rotor__half's own flat
-   background showing — plausible color, but not worth detailing since
-   a viewer only glimpses it while the sweep is mid-motion. Sun/stars
-   sit inside here completely unchanged from before (top:8%/right:9%
-   etc. still resolve against this exact hero-sized box), which is the
-   whole reason this anchor exists instead of repainting them straight
-   onto the oversized halves. */
 .hero-rotor__anchor {
   position: absolute;
   left: 50%;
@@ -321,17 +113,10 @@
   height: 100cqh;
 }
 .hero-rotor__anchor--light {
-  /* Disc center is now BELOW the hero (see .hero-rotor-frame), so the
-     at-rest (light, 0deg) anchor has to sit ABOVE the disc's local
-     center by one pivot to land back on the hero's actual box —
-     signs flipped from the old above-hero pivot. */
   top: calc(50% - var(--hero-rotor-pivot, 150cqw));
   transform: translate(-50%, -50%);
 }
 .hero-rotor__anchor--dark {
-  /* Diametrically opposite the light anchor (below the disc's local
-     center by one pivot) so that after the 180° rotation it swings
-     around to land exactly where light was resting. */
   top: calc(50% + var(--hero-rotor-pivot, 150cqw));
   transform: translate(-50%, -50%);
 }
@@ -350,7 +135,6 @@
   width: 200%; height: 100%;
   animation: lw-wave-drift linear infinite;
 }
-/* PALETTE PASS: the wave layers were teal-blue rgba(45,155,175,·); now blue-500 rgba(59,130,246,·) at the same alphas (4 values below). */
 .hero-waves__layer--deep {
   fill: rgba(59,130,246,.22);
   opacity: .6;
@@ -376,15 +160,6 @@
   .hero-waves__layer { animation: none; }
 }
 
-/* Floating card row — pulls the section right after the hero up into
-   the wave's light-colored front layer (same var(--clr-bg) fill), so
-   the "Why Learn ASL?" row reads as cards resting on the wave crest
-   rather than a new section starting below it, matching the mockup.
-   The hero shrank (190px→130px band) in this revision, so the whole
-   page is shorter overall — combined with a slightly bigger overlap
-   here (-85px→-95px) that's enough for each card's paragraph, not
-   just its icon+title, to clear the fold on a typical viewport
-   without scrolling. */
 .hero--wave + .section {
   position: relative;
   z-index: 3;
@@ -394,69 +169,17 @@
   .hero--wave + .section { margin-top: -55px; }
 }
 
-/* ── NAVBAR — HERO VARIANT ─────────────────────────────────────────
-   REV 2: now that the hero itself follows the theme toggle, the
-   navbar sitting on top of it can too — rev 1 pinned this to a
-   permanent dark-glass bar for the same reason it pinned the hero to
-   navy (a bar that flips to a light backdrop over a now-ALSO-light
-   hero is no longer a mismatch, it's the point). So this block no
-   longer overrides background/text color at all: `.navbar` in
-   style.css §5 already reads `var(--backdrop)` for its background and
-   `var(--clr-text-muted)`/`var(--clr-accent)` for link/logo color,
-   both theme tokens, so a plain `.navbar--hero` (no extra rules)
-   would already look correct in both themes with zero duplication.
-   What's left here is purely additive, not color-correcting: the
-   gradient logo mark and the gradient "Get Started" CTA are a
-   deliberate brand accent that stays the same gradient regardless of
-   theme (same reasoning as the illustration's circle wash below —
-   it's its own self-contained color, not something that needs to
-   invert with the page).
-
-   2026-09-16: the one exception to "purely additive" — background is
-   now overridden after all, to --backdrop-hero instead of the shared
-   --backdrop (defined next to --backdrop in css/style.css §1, same
-   per-theme hue, alpha dropped from .85 to .10) so this bar reads as
-   almost transparent over the hero. Link/logo/button colors are
-   untouched and still just inherit the theme tokens as before. That
-   transparency is also why .hero--wave (below) now reaches up behind
-   this bar instead of stopping at it — see the comment there — so the
-   wave gradient shows through the bar and the two read as one
-   continuous surface instead of a solid strip sitting on top of one. */
 .navbar--hero {
   background: var(--backdrop-hero);
 }
 .navbar--hero .btn--primary {
   background: linear-gradient(120deg, #2563EB, #1D4ED8);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(37,99,235,.35); /* PALETTE PASS: gradient ends + this shadow were teal (#0F9DA6); teal retired, see style.css */
+  box-shadow: 0 6px 18px rgba(37,99,235,.35); 
 }
 .navbar--hero .btn--primary:hover { background: linear-gradient(120deg, #2563EB, #1D4ED8); filter: brightness(1.1); }
 
-/* Logo mark — small gradient badge + two stacked wave strokes,
-   flanking "LinguaWave" the way the reference mockup's icon does.
-   2026-09-16: commented out (markup + rules) rather than deleted —
-   there's no permanent logo yet, so this placeholder badge is pulled
-   for now; "LinguaWave" stays as plain text. Uncomment both this
-   block and the matching HTML span to bring it back later.
-.navbar__logo { display: inline-flex; align-items: center; }
-.navbar__mark {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #2563EB, #1D4ED8);
-  margin-right: var(--space-2);
-  flex-shrink: 0;
-}
-.navbar__mark svg { width: 16px; height: 16px; }
-*/
 
-/* ── HERO ILLUSTRATION (mockup alignment pass, 2026-08-31) ────────
-   Replaces the auth-card that used to occupy the hero's right
-   column — a soft line-art pair of signing hands inside a circle
-   wash, matching the mockup's Homepage screen. Pure inline SVG
-   (currentColor-free, uses design-token colors directly — var(--clr-
-   accent)/var(--clr-accent-soft)/var(--clr-accent-dim)) so it re-
-   themes automatically with the palette (blue as of this session's
-   color pass) in both light/dark without a second asset. */
 .hero-illustration {
   display: flex; align-items: center; justify-content: center;
   padding: var(--space-8);
@@ -467,16 +190,6 @@
   .hero-illustration svg { max-width: 260px; }
 }
 
-/* Hero-only overrides for the same illustration, applied regardless
-   of theme (not just dark) — the circle wash is the hand's actual
-   backdrop, not the outer hero gradient, so it needs to read as a
-   vivid disc either way for the white hand silhouette to pop; light-
-   theme's --clr-accent-soft is a barely-there 10% tint built for a
-   white card background, too faint on its own here in either theme.
-   The attribute selector below targets the wash circle by its literal
-   (unresolved) `fill="var(--clr-accent-soft)"` markup string —
-   presentation attributes carry zero specificity, so any of these
-   rules already wins over it without editing the SVG markup itself. */
 .hero--wave .hero-illustration { position: relative; }
 .hero--wave .hero-illustration::before {
   content: '';
@@ -491,19 +204,6 @@
 .hero--wave .hero-illustration svg path[stroke="var(--clr-accent-dim)"] { stroke: rgba(220,238,255,.6); }
 .hero--wave .hero-illustration svg path[fill="var(--clr-surface)"] { fill: rgba(255,255,255,.94); }
 
-/* ── HERO SKY DECOR — day (sun) vs night (stars) ──────────────────
-   Two full-bleed layers, one per .hero-rotor__anchor (see the HERO —
-   BACKGROUND SPIN LAYER comment above). Which one is actually VISIBLE
-   is no longer a display:none/block toggle keyed off [data-theme] —
-   .hero-decor--day only ever lives inside the light anchor and
-   --night only inside the dark one, so the rotor's own clip-path
-   halves are what show/hide them, simply by which 180° arc currently
-   faces the viewport. Forcing display:block here (overriding what
-   would otherwise be each element's own default) keeps both always
-   "on" and lets the clip-path be the only thing deciding visibility —
-   swapping it back to a display toggle would fight the rotation and
-   make a whole half go blank exactly when it's supposed to be sweeping
-   into view. */
 .hero-decor {
   position: absolute;
   inset: 0;
@@ -513,10 +213,6 @@
   display: block;
 }
 
-/* Day: just a sun (soft glow, gently pulsing). Used to also carry a
-   big cloud drifting behind the headline, cut at the user's request —
-   see the removed .hero-decor__cloud rules in git history if it ever
-   needs to come back. */
 .hero-decor__sun {
   position: absolute; top: 8%; right: 9%;
   width: 46px; height: 46px;
@@ -532,25 +228,6 @@
   .hero-decor__sun { animation: none; }
 }
 
-/* Night: stars are generated at runtime by js/hero-decor.js (a real
-   scattered "blue noise" distribution across the whole hero, not
-   hand-placed percentages — see that file's header comment for why).
-   This block only owns the shared visual rules every generated star
-   uses; per-star position/size/timing come in as inline styles. */
-/* CHANGED (Impeccable pass): only the four sparkles twinkle now. Forty-odd 2px
-   dots on an infinite opacity/scale loop were flagged as "pulsing status dots",
-   so the small stars hold a fixed brightness from --o (0 to 1, set per star by
-   js/hero-decor.js). The four-point sparkles keep a slower, shallower twinkle
-   (opacity .55 to 1, scale .9 to 1.1, per-star delay and duration set by the same
-   script), which keeps some life in the sky with a fraction of the motion.
-   prefers-reduced-motion switches it off and they hold --o like the dots.
-   The sparkles were also cyan (#8FD9EE, hue 193), flagged as an "AI color
-   palette" tell on navy; they are now the same pale blue-white as the hand
-   stroke above. Old rules, for a full revert (every star twinkling):
-     .hero-star { animation: lw-star-twinkle 3s ease-in-out infinite; }
-     .hero-star--big { color: #8FD9EE; }
-     @keyframes lw-star-twinkle { 0%,100% { opacity:.25; transform:scale(.8) } 50% { opacity:1; transform:scale(1.15) } }
-     (plus the per-star animation-delay/duration lines for every star in js/hero-decor.js) */
 .hero-star {
   position: absolute;
   width: 2px; height: 2px;
@@ -560,7 +237,7 @@
 }
 .hero-star--big {
   background: none; color: #DCEBFF; border-radius: 0;
-  animation: lw-sparkle-twinkle 4s ease-in-out infinite; /* delay + duration overridden per star inline */
+  animation: lw-sparkle-twinkle 4s ease-in-out infinite; 
 }
 .hero-star--big svg { width: 100%; height: 100%; display: block; }
 @keyframes lw-sparkle-twinkle {
@@ -571,15 +248,9 @@
   .hero-star--big { animation: none; }
 }
 
-/* ── WHY LEARN ASL? row (mockup's 3-card row directly under hero) ─ */
 .why-row {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
 }
-/* CHANGED (Impeccable pass): was a centred column with the icon tile stacked above
-   the title (flagged as "icon tile stacked above heading"). The tile now sits in
-   its own left column spanning the title and the line under it, and the text is
-   left-aligned. Old rules: `.why-row__item { text-align: center; padding:
-   var(--space-6) var(--space-4) }` and `margin-bottom: var(--space-3)` on the badge. */
 .why-row__item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -595,14 +266,8 @@
 }
 .why-row__item .icon-badge svg { width: 55%; height: 55%; }
 .why-row__item h3 { margin-bottom: var(--space-1); }
-/* NEW (light-mode UX pass) — index.html's three feature cards are now <h2>
-   (they were <h3> straight after the <h1>, skipping a level for screen-
-   reader heading navigation). Same look as the old h3. */
 .why-row__title { font-size: var(--fs-xl); margin-bottom: var(--space-1); }
 
-/* NEW (light-mode UX pass) — text rhythm inside the landing page's card
-   grids. The global reset zeroes every margin, so <h3> sat directly on its
-   first <p>, and stacked <p>/<ul> in the About cards ran together. */
 .grid-2 > .card > h3,
 .grid-3 > .card > h3 { margin-bottom: var(--space-2); }
 .grid-2 > .card > p + p,
@@ -613,39 +278,11 @@
   .why-row { grid-template-columns: 1fr; }
 }
 
-/* ── TOPIC MARQUEE — two-row infinite scroll of topic chips ────────
-   Replaces the old `.topic-preview` static grid with two rows that
-   scroll in opposite directions ("first layer" right-to-left,
-   "second layer" left-to-right) — not connected by any literal line
-   or arrow between them, just two contrasting directions reading as
-   one continuous, circulating cloud of all 70 topics in the
-   curriculum. The chip markup itself is generated at runtime by
-   js/topic-marquee.js, not hard-coded here — index.html just holds
-   two empty track <ul>s for it to fill.
-
-   Each row's track holds the full 70-chip list TWICE, back-to-back —
-   that's what makes translateX(0 → -50%) loop seamlessly (shifting a
-   track by half of its own width moves it exactly one full copy of
-   the list, so the seam where copy 1 ends and copy 2 begins is
-   invisible), the same trick the hero wave uses. `width: max-content`
-   lets the track size itself to its natural (2×) content width rather
-   than needing a fixed pixel value.
-
-   Accessibility: chips are plain, non-interactive <div>s (2026-09-17:
-   used to be buttons that opened the Sign Up tab — see the TOPIC
-   PREVIEW comment in index.html for why that was removed). Only ONE
-   of the four total chip-sets on the page (row 1's first copy) sits
-   in the accessibility tree — role="list" there, no aria-hidden. The
-   other three (row 1's duplicate, both of row 2's copies) are
-   `aria-hidden="true"` so screen readers don't hear the same 70 topic
-   names four times over; nothing here needs `tabindex` anymore since
-   there's no action to focus toward. */
 .topic-marquee {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-6);
-  /* Fade chips out at the edges instead of a hard clip line */
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
@@ -656,16 +293,7 @@
   gap: var(--space-3);
   width: max-content;
   list-style: none;
-  /* Top headroom so a hovered chip's translateY(-2px) lift has room
-     to clear before it hits this row's overflow:hidden clip line —
-     without it, the lift pushes the chip's top border straight into
-     the clip and cuts it off. The row auto-grows by the same 6px
-     since its height just follows the track's, so nothing else here
-     needs to shift to compensate. */
   padding-top: 6px;
-  /* 70 unique chips is ~8.75× the length of the old 8-chip content,
-     so these durations are scaled up proportionally from the
-     original 34s/30s to keep the same visual scroll speed. */
   animation: lw-marquee 300s linear infinite;
 }
 .topic-marquee__row--ltr .topic-marquee__track {
@@ -676,10 +304,6 @@
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
-/* No pause-on-hover: chips aren't clickable anymore (see the
-   accessibility note above), so there's no "chasing a moving target"
-   problem to solve — hovering a row keeps scrolling right through it,
-   same as the rest of the marquee. */
 @media (prefers-reduced-motion: reduce) {
   .topic-marquee__track { animation: none; }
 }
@@ -693,16 +317,12 @@
   color: var(--clr-text);
   transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-/* Hover is purely decorative now (no cursor:pointer — there's nothing
-   to click), but it still lifts on hover so the marquee reads as
-   "alive" as you skim across it. */
 .topic-chip:hover { border-color: var(--clr-accent); transform: translateY(-2px); }
 .topic-chip__icon { font-size: 1.5rem; }
 .topic-chip__title { font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .topic-preview__lock { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
 
-/* ── ABOUT ASL ────────────────────────────────────────────────── */
-.etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); list-style: disc; /* BUGFIX (light-mode UX pass) — style.css's `ul{list-style:none}` reset was removing the bullets, so the `li::marker` accent rule below never had a marker to color */ }
+.etiquette-list { padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); list-style: disc;  }
 .etiquette-list li::marker { color: var(--clr-accent); }
 
 .auth-card {
@@ -713,21 +333,15 @@
 
 .auth-card__eyebrow { text-align: center; font-size: var(--fs-sm); color: var(--clr-text-muted); font-weight: 600; }
 
-/* ── TAB TOGGLE (Log In / Sign Up) ─────────────────────────────── */
 .auth-tabs {
   position: relative;
   display: flex; gap: var(--space-2);
   background: var(--clr-surface-2); border-radius: var(--radius-md);
   padding: var(--space-1); margin-top: var(--space-8);
 }
-/* The blue highlight is this one pill sliding between tabs (position
-   set in px by JS, see positionAuthTabsIndicator() in index.html) —
-   rather than each button's background independently fading in/out,
-   which read as an instant flash/flicker at --dur-fast (150ms). The
-   slide uses --dur-base (250ms) so it reads as one smooth motion. */
 .auth-tabs__indicator {
   position: absolute; top: var(--space-1); bottom: var(--space-1); left: var(--space-1);
-  width: 0; /* set by JS once real tab widths are known */
+  width: 0; 
   background: var(--clr-accent); border-radius: var(--radius-sm);
   transition: transform var(--dur-base) var(--ease);
   will-change: transform;
@@ -747,28 +361,11 @@
   opacity: 1; transform: translateY(0);
   transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
 }
-/* ── LOG IN / SIGN UP crossfade (see showAuthTab in index.html) ──
-   Outgoing form fades+lifts out quickly, then swaps display:none,
-   then incoming form fades+settles in — avoids the old instant
-   display:none/flex snap, which read as an abrupt "fast phase" cut. */
 .auth-form--fade-out { opacity: 0; transform: translateY(-6px); transition: opacity 160ms var(--ease), transform 160ms var(--ease); }
 .auth-form--fade-in-start { opacity: 0; transform: translateY(6px); transition: none; }
 
-/* ── FLOATING LABEL (Log In / Sign Up) ─────────────────────────────
-   Same material-style floating-label technique as BarangayDocs'
-   login.html (.fl-group/.fl-input/.fl-label), reusing the EXISTING
-   .form-group / .form-input / label markup instead of new class
-   names — scoped under .auth-form so pages/feedback.html's separate
-   .form-input textarea (no .form-group wrapper there) is untouched.
-   Colors read from the theme tokens above instead of BarangayDocs'
-   hardcoded dark-navy values, so this follows the light/dark toggle;
-   --dur-fast/--ease match the timing .form-input:focus already uses.
-   Requires the <input> to come BEFORE its <label> in the markup (see
-   index.html) so the `+` adjacent-sibling selectors below can reach
-   it, and placeholder=" " so :not(:placeholder-shown) can detect
-   "has a value" the same way BarangayDocs' does. */
 .auth-form .form-group { position: relative; display: block; }
-.auth-form .form-input { width: 100%; } /* .form-group used to stretch this via flex; restore it now that .form-group is position:relative/block for the label overlay */
+.auth-form .form-input { width: 100%; } 
 .auth-form .form-input::placeholder { color: transparent; }
 .auth-form .form-group label {
   position: absolute;
@@ -792,16 +389,13 @@
   font-size: var(--fs-xs);
   font-weight: 600;
   padding: 0 var(--space-1);
-  background: var(--clr-surface); /* matches .auth-card's own background, so the label "cuts" the border like BarangayDocs' notch */
+  background: var(--clr-surface); 
 }
 .auth-form .form-input:focus + label { color: var(--clr-accent); }
 .auth-form .form-input:not(:focus):not(:placeholder-shown) + label { color: var(--clr-text-muted); }
 
 .auth-switch { text-align: center; font-size: var(--fs-sm); margin-top: var(--space-4); }
 
-/* 
-Eto yung style para dun sa modal na mag aapear kapag may error sa login or register
-*/
 
 .auth-modal {
   position: fixed;
@@ -834,13 +428,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   line-height: 1.4;
 }
 
-/* ── SIGN IN MODAL (mockup alignment pass, 2026-08-31) ─────────────
-   `#signin-modal` reuses the same `.auth-modal` backdrop/box pattern
-   as the pre-existing error modal above, just with a wider box that
-   fits the full login/register `.auth-card` instead of a one-line
-   message. `.auth-modal__box--form` overrides the error box's fixed
-   max-width; `.auth-card` itself is unstyled here — it's the exact
-   same component that used to sit in the hero, just relocated. */
 .auth-modal__box--form {
   max-width: 460px;
   padding: 0;
@@ -887,13 +474,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 }
 .auth-divider span { padding: 0 0.75rem; font-size: 0.85rem; }
 
-/* ── SIGNUP INLINE VALIDATION (2026-10-01) ─────────────────────────
-   Feedback lines under the Sign Up fields (see index.html,
-   "SIGNUP FIELD VALIDATION UI"). They sit OUTSIDE .form-group so they
-   don't shift the floating label, which is centred on the group's height.
-   --clr-success / --clr-error aren't defined in the theme yet, so the
-   fallbacks below are what actually render; define the tokens in
-   css/style.css later to retheme them. */
 .field-status {
   display: block;
   margin: var(--space-1) var(--space-1) 0;
@@ -904,8 +484,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 .field-status[hidden] { display: none; }
 .field-status--ok    { color: var(--clr-success, #16a34a); }
 .field-status--error { color: var(--clr-error, #dc2626); }
-/* Error line = Octicons alert-fill + message, icon pinned to the first line
-   so a wrapped message hangs neatly beside it. */
 .field-status--error:not([hidden]) { display: flex; align-items: flex-start; gap: var(--space-2); }
 .field-status .octicon {
   flex: none; margin-top: 4px;
@@ -913,13 +491,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 }
 .auth-form .form-input[aria-invalid="true"] { border-color: var(--clr-error, #dc2626); }
 
-/* ── SIGN IN MODAL: scroll when the card is taller than the screen ─
-   The Sign Up tab now carries a strength bar + 5-item checklist, so on a
-   short laptop screen or a phone the card can exceed the viewport. The
-   backdrop used to be a plain flex-centred box with no overflow, which
-   would have clipped the top and bottom with no way to scroll. `margin:
-   auto` on the box (instead of align-items:center) keeps it centred when
-   it fits and lets it start at the top, scrollable, when it doesn't. */
 #signin-modal {
   align-items: flex-start;
   overflow-y: auto;
@@ -928,22 +499,10 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 }
 #signin-modal .auth-modal__box--form { margin: auto; }
 
-/* ── PASSWORD STRENGTH + SHOW/HIDE (2026-10-01) ────────────────────
-   Used by the Sign Up password field (index.html, "PASSWORD PANEL"). The
-   rules, labels and levels all come from js/auth.js; this is styling only.
 
-   Colour is never the only signal: every level also has a text label
-   (Weak / Medium / Strong / Very strong), a different bar LENGTH, and each requirement
-   swaps a hollow circle for a check mark.
-
-   --clr-success / --clr-error / --clr-warning aren't defined in the theme
-   yet (same note as .field-status above), so the fallbacks render; define
-   the tokens in css/style.css later to retheme. */
-
-/* Eye / eye-off button inside the field (Lucide `eye` / `eye-off`). */
 .auth-form .form-input--has-toggle { padding-right: 52px; }
 .form-input::-ms-reveal,
-.form-input::-ms-clear { display: none; } /* Edge draws its own reveal icon; we have ours */
+.form-input::-ms-clear { display: none; } 
 .pw-toggle {
   position: absolute; top: 50%; right: var(--space-2); transform: translateY(-50%);
   width: 40px; height: 40px;
@@ -959,10 +518,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 .pw-toggle[aria-pressed="true"] .pw-toggle__icon--show { display: none; }
 .pw-toggle[aria-pressed="true"] .pw-toggle__icon--hide { display: block; }
 
-/* Password panel (bar + checklist) is collapsed until the field has input.
-   grid-template-rows 0fr -> 1fr animates to the content's natural height
-   without hard-coding it. While closed it is visibility:hidden (the delay
-   waits for the collapse to finish) so screen readers and tabbing skip it. */
 .pw-panel {
   display: grid; grid-template-rows: 0fr;
   opacity: 0; visibility: hidden;
@@ -974,9 +529,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
 }
 .pw-panel__inner { min-height: 0; overflow: hidden; }
 
-/* Strength bar. The fill is a full-width bar slid sideways with `transform`
-   (not animated `width`, which re-lays-out the page every frame and which
-   the Impeccable scan flags), so changing strength never shifts anything below the panel. */
 .pw-meter {
   display: flex; align-items: center; gap: var(--space-3);
   margin: var(--space-3) var(--space-1) 0;
@@ -992,27 +544,19 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   transition: transform 450ms cubic-bezier(.22, 1, .36, 1), background-color 300ms var(--ease);
   will-change: transform;
 }
-/* Level only picks the COLOUR. How full the bar is comes from --pw-fill (0..1),
-   set inline by renderRegPasswordPanel() from LWAuth.getPasswordStrength().progress,
-   so the fill moves a little on every keystroke instead of jumping in 3 steps. */
 .pw-meter { --pw-fill: 0; }
 .pw-meter[data-level="weak"]   { --pw-color: var(--clr-error, #dc2626); }
 .pw-meter[data-level="medium"] { --pw-color: var(--clr-warning, #f59e0b); }
 .pw-meter[data-level="strong"] { --pw-color: var(--clr-success, #16a34a); }
 .pw-meter[data-level="very-strong"] { --pw-color: var(--clr-success-strong, #0d9488); }
-/* Fixed width (sized for the longest label, "Very strong") so changing level never nudges the bar. */
 .pw-meter__label {
   min-width: 6rem; text-align: right;
   font-size: var(--fs-sm); font-weight: 600; color: var(--clr-text);
 }
 .pw-meter[data-level="empty"] .pw-meter__label { color: var(--clr-text-muted); font-weight: 500; }
 
-/* "Password needs …" line under the strength bar. Reuses the .field-status
-   error look (red text + Octicons alert-fill, see above); this only adds the
-   gap under the bar. */
 .pw-summary { margin-top: var(--space-2); }
 
-/* Text for screen readers only ("Password strength:", "(met)"). */
 .pw-sr {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -1022,11 +566,6 @@ Eto yung style para dun sa modal na mag aapear kapag may error sa login or regis
   .pw-meter__fill, .pw-toggle, .pw-panel { transition: none; }
 }
 
-/* ── FORGOT PASSWORD PANEL (2026-10-03) ────────────────────────────
-   Third panel in #signin-modal, opened from the Log In form's "Reset it"
-   link (see showAuthTab('forgot') in index.html). It reuses .auth-form
-   (so it gets the same fade), the floating-label inputs and .field-status
-   lines; only the heading, intro and "link sent" line are new. */
 .auth-forgot__title { margin: 0; text-align: center; font-size: var(--fs-lg); }
 .auth-forgot__intro { margin: var(--space-2) 0 0; text-align: center; font-size: var(--fs-sm); line-height: 1.5; }
 .auth-forgot__sent { margin-top: var(--space-3); }

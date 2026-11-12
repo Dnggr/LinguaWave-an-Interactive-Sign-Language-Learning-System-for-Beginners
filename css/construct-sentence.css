@@ -1,11 +1,8 @@
-/* Construct a Sentence. Reuses .gm-title / .gm-stats / .gm-chip / .gm-overlay / .gm-card / .ta-progress from game.css.
-   .cs-tile rules are NOT scoped under .cs: a tile is re-parented to <body> while it is being dragged. */
-:root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.5625)}   /* fallback only; the real size is set on .cs-slots/.cs-pool below */
+:root{--cs-tile-w:clamp(120px,22vw,176px);--cs-tile-h:calc(var(--cs-tile-w)*.5625)}   
 
 .cs{--cs-cols:3;--gm-static:var(--clr-violet);--gm-static-soft:var(--clr-violet-soft);position:relative;width:100%;max-width:1320px;min-height:0;margin:0 auto;padding:var(--space-4) var(--space-6) var(--space-8);display:flex;flex-direction:column;gap:var(--space-3)}
-#main:has(>.cs){justify-content:flex-start}   /* app.css centres #main vertically; top-align so the title never jumps between Ready / Playing */
+#main:has(>.cs){justify-content:flex-start}   
 
-/* ---------- header: [Back] [title + hint] [stat chips] ---------- */
 .cs-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4)}
 .cs-head__text{min-width:0}
 .cs-head .gm-title{margin:0}
@@ -26,9 +23,8 @@
   .cs-head .gm-chip{padding-inline:var(--space-3)}
 }
 
-.cs-progress{--p:0;flex:0 0 8px;margin:0}   /* flush with the board edges instead of floating inset */
+.cs-progress{--p:0;flex:0 0 8px;margin:0}   
 
-/* ---------- board ---------- */
 .cs-board{--cs-lane-pad:var(--space-4);container-type:inline-size;display:flex;flex-direction:column;gap:var(--space-5);padding:clamp(var(--space-4),2.5vw,var(--space-6));border:1px solid var(--clr-border);border-radius:var(--radius-xl);background:var(--clr-surface);box-shadow:var(--shadow-card)}
 
 .cs-prompt{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--space-3) var(--space-4);min-height:5.25rem}
@@ -38,7 +34,6 @@
 .cs-label .lw-icon{width:16px;height:16px}
 .cs-sentence{margin:0;font-family:var(--font-display);font-size:clamp(1.75rem,4vw,2.75rem);letter-spacing:-.03em;overflow-wrap:anywhere}
 
-/* preview timer: visible while the sign names are on screen, then flashes GO! */
 .cs-preview{position:relative;display:none;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);overflow:hidden;border:1px solid var(--clr-violet);border-radius:var(--radius-pill);background:var(--clr-violet-soft);color:var(--clr-text)}
 .cs[data-phase="preview"] .cs-preview,.cs-preview.is-go{display:inline-flex}
 .cs-preview__icon{display:inline-flex;color:var(--clr-violet)}
@@ -52,10 +47,6 @@
 .cs-preview.is-go .cs-preview__icon,.cs-preview.is-go .cs-preview__bar{display:none}
 @keyframes cs-pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
 
-/* ---------- slots (answer lane) and pool (tray) ----------
-   Tile size comes from the board's own width, so every sign of the sentence fits on ONE row (max 260px wide, 16:9 like the videos),
-   and from the window height, so slots + pool + buttons still fit on a short laptop screen without scrolling mid-drag.
-   On phones the rule below caps a row at 3. */
 .cs-slots,.cs-pool{--cs-per-row:var(--cs-n,3);--cs-tile-w:clamp(72px,min(calc((100cqw - 2*var(--cs-lane-pad) - 4px - (var(--cs-per-row) - 1)*var(--space-3))/var(--cs-per-row)),calc((100dvh - 520px)*.889)),260px);--cs-tile-h:calc(var(--cs-tile-w)*.5625);box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--space-3);min-height:calc(var(--cs-tile-h) + 2*var(--cs-lane-pad) + 4px);padding:var(--cs-lane-pad);border-radius:var(--radius-lg)}
 .cs-slots{border:2px solid var(--clr-border);background:var(--clr-surface)}
 .cs-pool{border:2px dashed var(--clr-border);background:var(--clr-bg)}
@@ -73,7 +64,6 @@
 .cs-slot[inert]{opacity:.55}
 @keyframes cs-shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
-/* ---------- tiles: the video fills the tile; the name is an overlay, so hiding it leaves no empty strip ---------- */
 .cs-tile{position:relative;display:block;box-sizing:border-box;width:var(--cs-tile-w);height:var(--cs-tile-h);overflow:hidden;border:2px solid var(--clr-border);border-radius:var(--radius-lg);background:var(--clr-bg);box-shadow:var(--shadow-card);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
 .cs-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--clr-bg);pointer-events:none}
 .cs-tile__name{position:absolute;inset:auto 0 0 0;padding:var(--space-5) var(--space-2) var(--space-2);text-align:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);background:linear-gradient(to top,rgba(15,23,42,.9),rgba(15,23,42,0));pointer-events:none;transition:opacity var(--dur-base) var(--ease)}
@@ -83,9 +73,8 @@
 .cs-tile:focus-visible{outline:3px solid var(--clr-violet);outline-offset:2px}
 .cs-ph{box-sizing:border-box;border:2px dashed var(--clr-border);border-radius:var(--radius-lg)}
 .cs:not([data-phase="playing"]) .cs-tile{cursor:default}
-.cs[data-phase="preview"] .cs-pool .cs-tile{border-color:var(--clr-violet)}   /* "look, don't touch yet" */
+.cs[data-phase="preview"] .cs-pool .cs-tile{border-color:var(--clr-violet)}   
 
-/* ---------- difficulty picker (idle / between runs only) ---------- */
 .cs-difficulty{min-width:0;margin:0;padding:0;border:0}
 .cs-difficulty legend{padding:0}
 .cs:not([data-phase="idle"]):not([data-phase="done"]) .cs-difficulty{display:none}
@@ -102,18 +91,15 @@
 .cs-seg__opt input:checked+.cs-seg__body>[data-lw-icon]{color:var(--clr-violet)}
 .cs-seg__opt input:focus-visible+.cs-seg__body{outline:3px solid var(--clr-violet);outline-offset:2px}
 
-/* ---------- status line + controls ---------- */
 .cs-status{display:flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:1.5rem;margin:0;color:var(--clr-text-muted);font-size:var(--fs-sm);font-weight:600;line-height:1.45;text-align:center}
 .cs-status .lw-icon{width:16px;height:16px;color:var(--clr-accent-text)}
 .cs-controls,.cs-result-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--space-3)}
-.cs-controls [hidden]{display:none}   /* .btn sets display:inline-flex, which beats the [hidden] attribute */
-.cs .btn .lw-icon{margin-right:0}      /* .btn already has a gap; the global .btn .lw-icon margin doubled it */
+.cs-controls [hidden]{display:none}   
+.cs .btn .lw-icon{margin-right:0}      
 .cs-quit:hover:not(:disabled){color:var(--clr-red-text);border-color:var(--clr-red)}
 .cs-result-icon{display:inline-flex;color:var(--clr-violet)}
 .cs-result-icon .lw-icon{width:48px;height:48px}
-/* The overlay is positioned by .gm-overlay in game.css: absolute over the board on desktop, fixed to the viewport at <=900px. */
 
-/* phones: a row holds at most 3 tiles, so slots + pool still fit on screen together (no scrolling mid-drag) */
 @media(max-width:640px){
   .cs{padding-inline:var(--space-3)}
   .cs-board{--cs-lane-pad:var(--space-2);padding:var(--space-4);gap:var(--space-4)}
@@ -125,7 +111,6 @@
 
 @media(prefers-reduced-motion:reduce){.cs-preview.is-go,.cs-slot,.cs-slot.is-wrong,.cs-tile,.cs-tile__name,.cs-preview__fill{animation:none;transition:none}}
 
-/* XP: header chip (hidden until a run starts) and the result card's XP line / badge chips (base styles live in css/xp.css and css/game.css) */
 .cs-chip--xp[hidden]{display:none}
 .cs-chip--xp.is-on .lw-icon{color:var(--clr-yellow)}
 .cs-chip--xp.is-on b{color:var(--clr-success)}

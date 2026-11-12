@@ -1,7 +1,3 @@
-/* ===== Sidebar search — append to css/lesson.css =====
-   Uses your existing tokens (--clr-*, --space-*, --fs-*). If your sidebar's
-   background isn't --clr-surface-2, change --sb-search-bg below to match it,
-   otherwise rows will show through the pinned search box while scrolling. */
 
 .course-sidebar { --sb-search-bg: var(--clr-surface-2); }
 
@@ -13,8 +9,6 @@
   padding: var(--space-3) var(--space-3) var(--space-2);
   background: var(--sb-search-bg);
 }
-/* Pinned only when the sidebar is its own scroll box (>=1200px). Below that
-   it's stacked above the lesson and should scroll away with the page. */
 @media (min-width: 1200px) {
   .course-sidebar__search { position: sticky; top: 0; z-index: 2; }
 }
@@ -27,7 +21,7 @@
 .course-sidebar__search-input {
   width: 100%; box-sizing: border-box;
   padding: 10px 34px 10px 36px;
-  font: inherit; font-size: 16px;           /* 16px stops iOS zoom-on-focus */
+  font: inherit; font-size: 16px;           
   color: inherit; background: transparent;
   border: 1px solid var(--clr-border); border-radius: 10px;
   -webkit-appearance: none; appearance: none;

@@ -1,13 +1,10 @@
 import { SENTENCES } from './construct-sentences.js';
-// Game Leaderboards: loaded on demand, so a problem in that module can never stop this game from loading.
 const reportScore = (game, difficulty, result) => import('./game-scores.js').then((m) => m.submitScore(game, difficulty, result)).catch((error) => console.warn('[game-scores] unavailable:', error));
 
 const $ = (id) => document.getElementById(id);
 const root = $('cs');
 
-const ROUND_COUNT = 5;                       // sentences per run
-// How long the sign NAMES stay visible at the start of every sentence before they disappear and the learner has to
-// rely on memory. Change a number here to retune a level; the labels and icons feed the chip in the header.
+const ROUND_COUNT = 5;
 const DIFFICULTY = {
   easy:   { label: 'Easy',   seconds: 10, icon: 'lc_sprout' },
   medium: { label: 'Medium', seconds: 5,  icon: 'flame' },
@@ -17,21 +14,17 @@ const DEFAULT_DIFFICULTY = 'medium';
 const DIFFICULTY_KEY = 'lw-cs-difficulty';
 const PREVIEW_TICK_MS = 100;
 const GO_FLASH_MS = 700;
-const DRAG_THRESHOLD = 6;                    // px before a press becomes a drag (below it, it is a tap)
+const DRAG_THRESHOLD = 6;
 const NEXT_ROUND_MS = 1100;
-const SHOW_ALL = new URLSearchParams(location.search).has('all');   // testing: skip the learned-sign filter
-// Construct a Sentence is open to everyone: no lesson progress is needed to play, earn XP, levels or badges.
-// PREFER_LEARNED would put sentences made only of finished signs first in the pick. It is off, so the pick is fully random
-// (and the page does not need to read the learner's progress).
+const SHOW_ALL = new URLSearchParams(location.search).has('all');
 const PREFER_LEARNED = false;
 
-let phase = 'idle';                          // idle | preview | playing | checking | done
+let phase = 'idle';
 let rounds = [], roundIndex = 0, misses = 0, playMs = 0, roundStartedAt = 0;
 let tickId = null, timers = new Set(), selected = null, drag = null, justDragged = false, wasFull = false;
-let lastEligible = 0, lastLearnedOnly = true;   // how many sentences matched the learner's signs on the last Start
-let difficulty = DEFAULT_DIFFICULTY, runDifficulty = DEFAULT_DIFFICULTY;   // picked on the idle screen / locked in for the current run
+let lastEligible = 0, lastLearnedOnly = true;
+let difficulty = DEFAULT_DIFFICULTY, runDifficulty = DEFAULT_DIFFICULTY;
 let previewId = null, previewEndsAt = 0;
-// XP (js/xp.js): the page records when each sentence is solved; LWXP checks the run, pays XP and awards badges in one Firestore transaction.
 let brokenLog = [], runStartedAt = 0, xpSessionP = Promise.resolve(null);
 
 const norm = (v) => String(v || '').trim().toLowerCase();
@@ -56,13 +49,12 @@ function shuffle(list) {
   return a;
 }
 
-/* ---------- difficulty ---------- */
 
 function loadDifficulty() {
   try {
     const saved = localStorage.getItem(DIFFICULTY_KEY);
     if (saved && DIFFICULTY[saved]) return saved;
-  } catch (_) { /* storage blocked: fall through to the default */ }
+  } catch (_) {  }
   return DEFAULT_DIFFICULTY;
 }
 const previewSeconds = (key = difficulty) => DIFFICULTY[key].seconds;
@@ -73,38 +65,22 @@ function setDifficulty(key, save = true) {
   difficulty = key; root.dataset.difficulty = key;
   const d = DIFFICULTY[key];
   $('cs-level').textContent = d.label;
-  const icon = $('cs-level-icon');                       // re-hydrate the chip icon (works before or after icons.js's own DOMContentLoaded pass)
+  const icon = $('cs-level-icon');
   icon.setAttribute('data-lw-icon', d.icon); icon.removeAttribute('data-lw-icon-done');
   window.LWIcons?.hydrate?.(icon.parentElement);
   const radio = document.querySelector(`input[name="cs-diff"][value="${key}"]`);
   if (radio) radio.checked = true;
   const hint = poolEl().querySelector('.cs-empty');
   if (hint) hint.textContent = idleHint();
-  if (save) { try { localStorage.setItem(DIFFICULTY_KEY, key); } catch (_) { /* private mode: not persisted, still works */ } }
+  if (save) { try { localStorage.setItem(DIFFICULTY_KEY, key); } catch (_) {  } }
 }
 
-/* ---------- content ---------- */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEARNED-SIGNS FILTER: TEMPORARILY DISABLED.
-// For now the game uses EVERY sentence in js/construct-sentences.js, whether or not the learner has finished the lessons.
-// TO RE-ENABLE (once every word is learnable): delete the `return null;` line in getLearned() below, and
-// uncomment the block under "ORIGINAL" (it waits for the XP service, then returns the set of learned signs).
-// Nothing else needs to change: buildRounds() and the "Practice with all signs" button already handle a learned set.
-// ─────────────────────────────────────────────────────────────────────────────
 async function getLearned(useAll) {
-  return null;   // <- delete this line to turn the learned-signs filter back on
+  return null;
 
-  /* ORIGINAL (uncomment when re-enabling):
-  if (useAll || SHOW_ALL) return null;
-  await whenXpReady();
-  if (typeof window.LWXP?.getLearnedSigns !== 'function') throw new Error('The learned-sign service is unavailable. Reload the page and try again.');
-  const ids = await withTimeout(window.LWXP.getLearnedSigns(), 12000, 'Loading learned signs');
-  return new Set([...ids].map(norm));
-  */
 }
 
-// Signs the learner has finished, used only to order the pick (never throws: no set just means a random pick).
 async function getPreferred() {
   if (!PREFER_LEARNED || SHOW_ALL) return null;
   try {
@@ -117,8 +93,6 @@ async function getPreferred() {
   }
 }
 
-// LWXP is set by js/xp.js (a module). If it has not finished loading yet, wait for its ready event instead of failing.
-// (Only used by the learned-signs filter above, so it is idle while that filter is disabled.)
 function whenXpReady(ms = 5000) {
   if (typeof window.LWXP?.getLearnedSigns === 'function') return Promise.resolve();
   return new Promise((resolve) => {
@@ -128,8 +102,6 @@ function whenXpReady(ms = 5000) {
   });
 }
 
-// Every plain .mp4 demo on file for a sign, best first (YouTube embeds can't be dragged around, so they don't count).
-// A tile tries them in order, so one missing file no longer leaves a blank tile.
 function mp4Candidates(signId) {
   const M = window.LWMissions, signs = M?.content?.SIGNS || [];
   const entry = signs.find((s) => norm(s.signId) === norm(signId) && s.videoUrl) || signs.find((s) => norm(s.signId) === norm(signId));
@@ -149,7 +121,7 @@ function buildRounds(learned, preferred = null) {
   if (unplayable.size) console.warn('[construct-sentence] no .mp4 found for:', [...unplayable].join(', '));
   const eligible = learned ? playable.filter((s) => s.words.every((w) => learned.has(norm(w)))) : playable;
   let pool = shuffle(eligible);
-  if (preferred) {   // fully-learned sentences first, then fill the run with the rest
+  if (preferred) {
     const known = (s) => s.words.every((w) => preferred.has(norm(w)));
     pool = [...pool.filter(known), ...pool.filter((s) => !known(s))];
   }
@@ -157,7 +129,6 @@ function buildRounds(learned, preferred = null) {
   return { rounds: picked, eligible: eligible.length };
 }
 
-/* ---------- board ---------- */
 
 function makeTile(sign, urls) {
   const tile = document.createElement('div');
@@ -169,7 +140,7 @@ function makeTile(sign, urls) {
   video.addEventListener('error', () => {
     tried++;
     if (tried < urls.length) { video.src = urls[tried]; video.load(); playTile(tile); return; }
-    tile.dataset.novideo = '1'; refreshNames();      // no file loaded at all: keep the name visible so the round is still solvable
+    tile.dataset.novideo = '1'; refreshNames();
   });
   const name = document.createElement('span'); name.className = 'cs-tile__name'; name.textContent = sign;
   tile.append(video, name);
@@ -209,7 +180,6 @@ function showIdle() {
   $('cs-sentence').textContent = 'Ready?';
   $('cs-count').textContent = '';
   root.style.removeProperty('--cs-n'); root.style.removeProperty('--cs-cols');
-  // Three greyed-out slots keep the board the same height before and after Start, so nothing jumps.
   slotsEl().replaceChildren(...[0, 1, 2].map((n) => {
     const ghost = makeSlot(n); ghost.inert = true;
     ['tabindex', 'role', 'aria-label'].forEach((a) => ghost.removeAttribute(a));
@@ -225,8 +195,8 @@ function showIdle() {
 function loadRound(index) {
   const round = rounds[index];
   selected = null; wasFull = false;
-  root.style.setProperty('--cs-n', round.words.length);                    // desktop: tiles are sized so ONE row holds every sign
-  root.style.setProperty('--cs-cols', Math.min(round.words.length, 3));   // phones: tiles are sized so one row holds up to 3
+  root.style.setProperty('--cs-n', round.words.length);
+  root.style.setProperty('--cs-cols', Math.min(round.words.length, 3));
   $('cs-sentence').textContent = round.text;
   $('cs-count-label').textContent = `${index + 1}/${rounds.length}`;
   document.querySelector('.cs-progress')?.style.setProperty('--p', index / rounds.length);
@@ -240,8 +210,6 @@ function startRound() {
   beginPreview();
 }
 
-// PREVIEW: every sentence opens with a timed window (Easy 10s / Medium 5s / Hard 3s) where the sign names are visible.
-// When it runs out the names fade away and the clock starts. "I'm ready" ends the window early.
 function beginPreview() {
   const total = previewSeconds(runDifficulty) * 1000;
   previewEndsAt = performance.now() + total;
@@ -277,7 +245,6 @@ function endPreview() {
   later(() => $('cs-preview').classList.remove('is-go'), GO_FLASH_MS);
 }
 
-/* ---------- moving tiles ---------- */
 
 function swap(a, b) { const mark = document.createElement('span'); a.replaceWith(mark); b.replaceWith(a); mark.replaceWith(b); }
 function setSelected(tile) {
@@ -292,7 +259,7 @@ function tapTile(tile) {
   const inSlot = tile.parentElement.classList.contains('cs-slot');
   if (selected && inSlot) { swap(selected, tile); setSelected(null); return afterChange(); }
   if (selected) return setSelected(tile);
-  if (inSlot) { poolEl().append(tile); playTile(tile); return afterChange(); }   // tap a placed sign to take it back
+  if (inSlot) { poolEl().append(tile); playTile(tile); return afterChange(); }
   setSelected(tile);
 }
 function tapSlot(slot) {
@@ -318,7 +285,7 @@ function beginDrag() {
   tile.replaceWith(ph); drag.ph = ph; drag.active = true;
   if (selected) setSelected(null);
   tile.classList.add('is-drag'); tile.style.width = `${drag.w}px`; tile.style.height = `${drag.h}px`;
-  document.body.append(tile);               // out of any transformed ancestor so position:fixed is reliable
+  document.body.append(tile);
   playTile(tile);
 }
 const targetAt = (x, y) => document.elementFromPoint(x, y)?.closest('.cs-slot, .cs-pool') || null;
@@ -346,27 +313,26 @@ function onPointerUp(event) {
   tile.classList.remove('is-drag'); tile.removeAttribute('style');
   if (target?.classList.contains('cs-slot') && target !== ph.parentElement) {
     const occupant = tileIn(target);
-    if (occupant) ph.replaceWith(occupant); else ph.remove();   // the displaced sign takes the dragged sign's old spot
+    if (occupant) ph.replaceWith(occupant); else ph.remove();
     target.append(tile); playTile(occupant);
   } else if (target?.classList.contains('cs-pool') && ph.parentElement.classList.contains('cs-slot')) {
     ph.remove(); poolEl().append(tile);
   } else {
-    ph.replaceWith(tile);                                        // dropped nowhere useful: snap back
+    ph.replaceWith(tile);
   }
   playTile(tile); afterChange();
 }
 
-/* ---------- checking ---------- */
 
 function clearMarks() { slotsEl().querySelectorAll('.cs-slot').forEach((s) => s.classList.remove('is-wrong', 'is-right')); }
 
-function playAll() { document.querySelectorAll('.cs-tile video').forEach((v) => v.play?.().catch(() => {})); }   // moving a <video> in the DOM pauses it
+function playAll() { document.querySelectorAll('.cs-tile video').forEach((v) => v.play?.().catch(() => {})); }
 
 function afterChange() {
   clearMarks(); playAll();
   const slots = [...slotsEl().children], full = slots.length > 0 && slots.every((s) => tileIn(s));
   $('cs-check').disabled = !full || phase !== 'playing';
-  if (full && !wasFull) check();          // auto-check when the last slot is filled; swaps after that use the Check button
+  if (full && !wasFull) check();
   wasFull = full;
 }
 
@@ -383,18 +349,15 @@ function check() {
 }
 
 function roundComplete() {
-  brokenLog.push({ i: roundIndex, t: Date.now() - runStartedAt });   // XP: when this sentence was solved
+  brokenLog.push({ i: roundIndex, t: Date.now() - runStartedAt });
   playMs += performance.now() - roundStartedAt;
-  setPhase('checking');                   // names come back so they can see the finished sentence
+  setPhase('checking');
   slotsEl().querySelectorAll('.cs-slot').forEach((s) => s.classList.add('is-right'));
   setStatus('Correct!');
   later(() => { if (roundIndex + 1 >= rounds.length) finish(); else { roundIndex++; startRound(); } }, NEXT_ROUND_MS);
 }
 
-/* ---------- XP ---------- */
 
-// Called when a run starts. The session clock is stamped inside LWXP.startGame before it awaits anything, so take the page's
-// own clock right before the call: the solve times in brokenLog are measured from runStartedAt.
 function startXpSession() {
   const words = rounds.map((round) => round.words.slice());
   const signs = [...new Set(words.flat())];
@@ -406,8 +369,6 @@ function startXpSession() {
   mine.then((session) => { if (xpSessionP === mine) showXpChip(session); });
 }
 
-// Header chip: "XP on" when this run's sentences are learned enough to count, otherwise "No XP" with the reason as a tooltip.
-// Pass undefined to hide it.
 function showXpChip(session) {
   const chip = $('cs-xp-chip');
   if (session === undefined) { chip.hidden = true; return; }
@@ -448,7 +409,6 @@ async function reportXp() {
   } finally { again.disabled = false; }
 }
 
-/* ---------- run lifecycle ---------- */
 
 function tick() {
   $('cs-time').textContent = formatTime(playMs + (phase === 'playing' ? performance.now() - roundStartedAt : 0));
@@ -457,7 +417,7 @@ function tick() {
 async function start(useAll = false) {
   if (!(phase === 'idle' || phase === 'done') || $('cs-start').disabled) return;
   $('cs-start').disabled = true; $('cs-all').disabled = true;
-  setStatus('Preparing sentences…');   // when the learned-signs filter is re-enabled, use: useAll ? 'Preparing sentences…' : 'Preparing your learned signs…'
+  setStatus('Preparing sentences…');
   let built;
   try {
     const learned = await getLearned(useAll);
@@ -470,7 +430,6 @@ async function start(useAll = false) {
   }
   runDifficulty = difficulty;
   rounds = built.rounds; lastEligible = built.eligible; lastLearnedOnly = !(useAll || SHOW_ALL);
-  // Fewer than a full run of sentences match what the learner knows: offer every sentence instead of a dead end.
   $('cs-all').hidden = useAll || SHOW_ALL || built.eligible >= ROUND_COUNT;
   $('cs-all').disabled = false;
   if (!rounds.length) {
@@ -495,7 +454,6 @@ function finish() {
   $('cs-all').hidden = !lastLearnedOnly || lastEligible >= ROUND_COUNT;
   setStatus('Run complete.');
   void reportXp();
-  // Leaderboard: a finished run only (finish() is not reached by Quit/abandon). Time + difficulty are the ranking keys.
   void reportScore('construct', runDifficulty, { timeMs: playMs, misses });
 }
 
@@ -512,7 +470,6 @@ function toIdle(message) {
 }
 const quit = () => toIdle('Run abandoned. Pick a difficulty and press Start when you are ready.');
 
-/* ---------- wiring ---------- */
 
 root.addEventListener('pointerdown', onPointerDown);
 root.addEventListener('click', (event) => {

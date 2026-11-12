@@ -46,10 +46,10 @@ def convert(src: Path, dst: Path) -> bool:
         "-c:v", "libx264",
         "-preset", "medium",
         "-crf", "23",
-        "-pix_fmt", "yuv420p",       # max browser compatibility
+        "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "128k",
-        "-movflags", "+faststart",   # start playing before fully loaded
+        "-movflags", "+faststart",
         str(tmp),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -106,7 +106,7 @@ def main() -> int:
                 continue
             if not convert(src, dst):
                 failed += 1
-                continue  # never delete the original if conversion failed
+                continue
             converted += 1
 
         if delete_originals:
@@ -123,7 +123,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-# how to use, just paste it to the terminal/git bash/ etc..
-#  python convert_mov_to_mp4.py --dry-run   # preview first
-#    python convert_mov_to_mp4.py             # convert + delete .MOV

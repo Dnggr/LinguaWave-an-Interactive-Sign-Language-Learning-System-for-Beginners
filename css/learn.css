@@ -1,6 +1,4 @@
-/* learn.css — Trail & Lesson Selector styles | CONNECTS: pages/learn.html */
 
-/* ── Lesson grid: alphabet tiles ───────────────────────────────────── */
 .lesson-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: var(--space-4);
@@ -28,9 +26,6 @@
 .lesson-card:hover:not(.lesson-card--locked) .lesson-card__letter { transform: scale(1.08); }
 .lesson-card__title { font-size: var(--fs-xs); color: var(--clr-text-muted); }
 
-/* ── Category cards (Medium/Words + Intermediate/Phrases grids) ──────
-   Name-only tiles: icon, title, status badge. No word-list preview —
-   tap through to see what's actually inside a category. */
 .lesson-grid--categories { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 .category-card { padding: var(--space-6) var(--space-4); }
 .category-card__icon {
@@ -45,15 +40,10 @@
   color: var(--clr-text); line-height: 1.3;
 }
 
-/* Category cards are rendered as <button> elements (they open the
-   word/phrase picker instead of navigating directly) — reset button
-   chrome so they still look like the rest of the grid. */
 button.category-card {
   font: inherit; width: 100%; cursor: pointer;
 }
 
-/* ── Word/phrase picker ────────────────────────────────────────────
-   Shown after tapping a category: one card per word/phrase inside it. */
 .word-picker-card { align-items: flex-start; text-align: left; gap: var(--space-1); }
 .word-picker-card .lesson-card__title { font-size: var(--fs-base); color: var(--clr-text); font-weight: 600; }
 .word-picker-card__subtitle {
@@ -61,7 +51,6 @@ button.category-card {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
 }
 
-/* ── Course grid + sidebar ("My Learning"-style) ──────────────────── */
 .learn-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -78,13 +67,6 @@ button.category-card {
   .learn-sidebar { position: static; }
 }
 
-/* ── Search box ─────────────────────────────────────────────────────
-   Filters whatever's currently rendered in #lesson-grid (see
-   js/learn.js's applySearchFilter()) — previously wired to nothing at
-   all (js/learn.js had no wireSearch()/input listener despite this
-   file and pages/learn.html's own comments claiming it did), so typing
-   here did nothing. Icon + clear button now give it the same affordance
-   as any other search field instead of a bare unlabeled placeholder. */
 .learn-search { position: relative; margin-bottom: var(--space-4); }
 .learn-search__icon {
   position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%);
@@ -102,9 +84,6 @@ button.category-card {
   outline: none; border-color: var(--clr-accent);
   box-shadow: 0 0 0 3px var(--clr-accent-soft);
 }
-/* Chrome/Safari draw their own built-in "clear" control on
-   type="search" inputs — suppress it so it doesn't double up with
-   .learn-search__clear below. */
 .learn-search input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 .learn-search__clear {
   position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
@@ -117,23 +96,7 @@ button.category-card {
 .learn-search-empty { padding: var(--space-2) 0 var(--space-4); }
 .is-search-hidden { display: none !important; }
 
-/* CLEANUP (this revision) — removed the entire dead .course-grid/
-   .course-card* rule family that used to live here. Confirmed via a
-   full pages/+js/ search: no markup anywhere in the app emits
-   .course-grid or any .course-card* class — learn.js's renderTrail()
-   was reverted back to the .trail-group/.path-row shape further down
-   this file (see AI_MEMORY.md's 09-06 "CATEGORY_GROUPS gap" entry),
-   and this block was never cleaned up afterward. A matching dead
-   .course-card:focus-visible rule further down this file was removed
-   too — see that section's own note. */
 
-/* ── Sidebar panels ─────────────────────────────────────────────────
-   .sidebar-panel--continue (new) gives the "Continue Learning" panel
-   the same accent-border + gradient-wash treatment css/dashboard.css's
-   .continue-card already uses for the equivalent "what do you do
-   next" card — this sidebar previously rendered both panels with
-   identical, equally-neutral styling, so nothing on the page signaled
-   which one was the primary action. */
 .sidebar-panel {
   background: var(--clr-surface); border: 1px solid var(--clr-border);
   border-radius: var(--radius-xl); padding: var(--space-5);
@@ -147,11 +110,6 @@ button.category-card {
   letter-spacing: .06em; color: var(--clr-text-muted); margin-bottom: var(--space-3);
 }
 
-/* Progress ring — `--pct` (0–100) is set inline by js/learn.js's
-   renderSidebar() and drives a conic-gradient arc, so the ring's fill
-   is now the actual percentage; before this it was a flat, fixed-width
-   circle that looked identical at 5% and 95% complete. The ::before
-   punches the donut hole so only the arc + number/label show. */
 .sidebar-progress__ring {
   --pct: 0;
   position: relative;
@@ -180,19 +138,13 @@ button.category-card {
 .sidebar-continue__detail { font-size: var(--fs-xs); color: var(--clr-text-muted); overflow-wrap: anywhere; }
 .sidebar-continue__empty { font-size: var(--fs-sm); color: var(--clr-text-muted); }
 
-/* ── Trail groups (collapsible sections by curriculum chapter) ─────── */
 .trail { display: flex; flex-direction: column; gap: var(--space-4); }
 .trail-group {
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
   background: var(--clr-surface);
   overflow: hidden;
-  /* ADDED (blue-teal mockup alignment pass) — matches the shadow every
-     other card-like surface in the app already carries (.card,
-     .lesson-card, .rec-card); chapter sections were flat by comparison. */
   box-shadow: var(--shadow-card);
-  /* ADDED — js/learn.js's scrollToOpenChapter() scrolls the open chapter to the
-     top of the viewport on load; this leaves a little air above its header. */
   scroll-margin-top: var(--space-6);
 }
 .trail-group__summary {
@@ -222,47 +174,25 @@ button.category-card {
   background: var(--clr-surface-2); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
   white-space: nowrap;
 }
-/* Chapter 100% done (js/learn.js adds .trail-group--complete once
-   doneCount === missionsInChapter.length) — border and the "x/x
-   complete" pill switch to the same success color .badge--done and
-   .path-row--done already use elsewhere in this app. */
 .trail-group--complete { border-color: var(--clr-success); }
 .trail-group--complete > .trail-group__summary > .trail-group__meta {
   background: var(--clr-success-soft); color: var(--clr-success);
 }
-/* Chapter-level "Locked" badge (js/learn.js) sat flush against the
-   summary's right edge — .badge has no margin of its own, unlike
-   .trail-group__meta's pill which reads the same padding but this is
-   a plain .badge reused from elsewhere in the app. A little margin
-   gives it the same breathing room the meta pill has. */
 .trail-group__lock-badge { margin-right: var(--space-2); }
 .trail-group__grid { padding: 0 var(--space-5) var(--space-5); }
-/* A search that matches nothing left in this group (see
-   js/learn.js's applySearchFilter()) — dimmed rather than removed, so
-   the layout doesn't jump as the learner keeps typing. */
 .trail-group.is-search-hidden { opacity: .35; }
 
-/* ── :focus-visible ring ─────────────────────────────────────────────
-   `.lesson-card` covers alphabet/number tiles, category cards, and the
-   word/phrase picker. `:focus-visible` (not `:focus`) so a mouse click
-   doesn't show a ring meant for keyboard use.
-   CLEANUP (this revision) — dropped the paired `.course-card:focus-visible`
-   selector; `.course-card` itself is dead (see this file's earlier note). */
 .lesson-card:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--clr-accent);
 }
 
-/* ── Loading / error fallback ─────────────────────────────────────── */
 .learn-fallback-alert {
   grid-column: 1 / -1;
   margin: 0;
   border-radius: var(--radius-md);
 }
 
-/* ── Unit 0 info screen ────────────────────────────────────────────
-   Prose content (window.LWData.UNIT0_CONTENT), not lesson cards — a
-   plain-text block dropped full-width into #lesson-grid. */
 .unit-info { grid-column: 1 / -1; max-width: 640px; }
 .unit-info__section { margin-bottom: var(--space-6); }
 .unit-info__section h3 { font-family: var(--font-display); margin-bottom: var(--space-2); }
@@ -270,12 +200,6 @@ button.category-card {
 .unit-info .lesson-card--intro,
 .unit-info .btn { margin-bottom: var(--space-6); }
 
-/* ── Congrats modal (NEW) ─────────────────────────────────────────────
-   Fires from js/learn.js's checkCompletion(), driven by a real
-   state-change (a category/unit that just flipped to done) rather
-   than a decorative animation — see that file's CONGRATS section.
-   Pure CSS transform/opacity animation (no canvas/particle library),
-   kept cheap on purpose given this session's performance focus. */
 .congrats-modal {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
@@ -352,12 +276,6 @@ button.category-card {
   .congrats-modal__confetti { display: none; }
 }
 
-/* ── Chapter rail ────────────────────────────────────────────────────
-   Fixed icon dock on the right edge of the Learn page (markup: learn.html #chapter-rail,
-   built by js/learn.js renderChapterRail()). One round Lucide icon per chapter, a shared
-   tooltip (#chapter-rail-tip) with the chapter name, and an .is-active state that follows
-   the scroll position. Hidden on the stacked mobile layout (<= 900px), where the sidebar
-   collapses to a top bar and there is no free gutter beside the list. */
 .chapter-rail {
   position: fixed;
   top: 50%;
@@ -371,8 +289,6 @@ button.category-card {
 .chapter-rail::-webkit-scrollbar { display: none; }
 .chapter-rail[hidden] { display: none; }
 
-/* Icon-only buttons: no borders, no container. Hover tints the icon; the active chapter gets the
-   accent colour plus a soft circle behind it. */
 .chapter-rail__btn {
   position: relative; flex: none;
   width: 40px; height: 40px;
@@ -392,7 +308,6 @@ button.category-card {
 .chapter-rail__btn.is-locked:not(.is-active) { opacity: .65; }
 .chapter-rail__btn.is-locked:not(.is-active):hover { opacity: 1; }
 
-/* Lock glyph pinned to the icon's bottom-right corner (locked chapters only). */
 .chapter-rail__badge {
   position: absolute; right: 2px; bottom: 2px;
   width: 14px; height: 14px; border-radius: 50%;
@@ -401,7 +316,6 @@ button.category-card {
 }
 .chapter-rail__badge .lw-icon { width: 10px; height: 10px; }
 
-/* Shared tooltip — positioned by JS (fixed top/right), so it never gets clipped by the rail. */
 .chapter-rail__tip {
   position: fixed; z-index: 41;
   transform: translateY(-50%) translateX(4px);

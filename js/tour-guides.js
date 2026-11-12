@@ -1,84 +1,8 @@
-/**
- * js/tour-guides.js: the copy for every page guide
- * ─────────────────────────────────────────────────────────────────
- * PURPOSE  : One plain data file that holds what each guided tour says
- *            and what it points at. Edit wording or add a step here;
- *            js/tour.js (the engine) never needs to change for that.
- *            Same idea as js/data.js: content lives in a data file a
- *            non-engineer can edit.
- *
- * WIRING   : A page opts in with `<body data-tour="GUIDE_ID">` and
- *            loads css/tour.css, this file, then js/tour.js. GUIDE_ID
- *            is one of the keys below.
- *
- * STEP SHAPE
- *   {
- *     target:    CSS selector for the element to spotlight. Leave it
- *                out for a centred card with no spotlight (a welcome).
- *     title:     short, in the learner's words (aim for 5 words).
- *     body:      one or two sentences of plain text (no HTML).
- *     placement: 'bottom' | 'top' | 'right' | 'left'. Where the card
- *                prefers to sit; falls back to whichever side has
- *                room. Phones always dock the card at the bottom.
- *     fit:       'children' spotlights the union of the target's
- *                children rather than its own (possibly taller) box.
- *     optional:  true when the target is legitimately absent in some
- *                states (a locked mission has no Start button). The
- *                step is dropped silently. Every guide should still
- *                have at least one NON-optional target, because the
- *                engine waits for those before it starts, which is
- *                how it copes with content a page renders after load.
- *     when:      (NEW) function returning true/false, evaluated once
- *                when the guide starts. A step whose `when` returns
- *                false is dropped, exactly like a missing target. This
- *                is how one guide shows different copy depending on
- *                state (e.g. Orientation done or not). Keep it cheap
- *                and side-effect free; if it throws, the step is kept.
- *   }
- *
- * GUIDE-LEVEL OPTIONS (NEW, all optional)
- *   requires:  function. The guide only auto-starts when it returns
- *              true. (It does not block start(id) / ?tour=1.)
- *   followUps: array of guide ids. After this page's own guide, the
- *              engine auto-starts these in order, each only if its own
- *              `requires` passes and it has not been seen. A follow-up
- *              runs right after the primary guide FINISHES (Done), or
- *              on its own when the primary was already seen. It never
- *              chains after a Skip.
- *
- * ORIENTATION: new learners must finish Orientation before Chapter 1
- *            unlocks (js/missions.js isOrientationComplete()). The
- *            helpers just below read that single source of truth, so
- *            the tour never keeps a second copy of the state:
- *              - dashboard / learn guides tell a new user to start
- *                with Orientation;
- *              - the `orientation` guide explains how to finish it;
- *              - the `chapter1-unlocked` follow-up points at Chapter 1
- *                once Orientation is done and Chapter 1 is untouched.
- *
- * REMINDERS : window.LWTourReminders (bottom of this file) holds the copy
- *            for one-step "Got it" popups that are NOT guides: they are
- *            not tracked as seen or skipped and never replay a guide.
- *
- * COPY RULES (so the guides read like one voice)
- *   - Say what the learner can DO here, not how the page is built.
- *   - Only state things the app really does. Every claim below was
- *     checked against the page's own code or on-screen text.
- *   - Sentence case, active voice, no exclamation marks.
- *
- * Steps whose target isn't on the page when the guide starts are
- * dropped, and the progress segments count only what's left.
- * ─────────────────────────────────────────────────────────────────
- */
 (function () {
   'use strict';
 
-  /* ── State helpers (read-only; the source of truth is LWMissions) ── */
   function missionsApi() { return window.LWMissions || null; }
 
-  // True when Orientation is done. If the missions layer isn't on the page
-  // we answer "done" on purpose, so a missing script can never make the tour
-  // nag a returning learner to redo Orientation.
   function orientationDone() {
     try {
       var m = missionsApi();
@@ -88,7 +12,6 @@
   }
   function orientationPending() { return !orientationDone(); }
 
-  // Chapter 1 exists and nothing in it has been started yet.
   function chapter1Untouched() {
     try {
       var m = missionsApi();
@@ -105,7 +28,6 @@
 
   window.LWTourGuides = {
 
-    /* ── Dashboard ─────────────────────────────────────────────── */
     dashboard: {
       followUps: ['chapter1-unlocked'],
       steps: [
@@ -121,15 +43,13 @@
         },
         {
           target: '.app-sidebar__nav',
-          optional: true, // collapsed behind the menu button on phones (css/responsive.css)
+          optional: true,
           fit: 'children',
           placement: 'right',
           title: 'Move around from the menu',
           body: 'Learn holds every mission, Progress tracks how far you have come, Game and Leaderboard are for practice and ranking, and Settings keeps your preferences.',
         },
         {
-          // The account card js/main.js adds to the foot of the sidebar
-          // (initSidebarAccountLinks). Hidden with the sidebar on phones.
           target: '.app-sidebar__user',
           optional: true,
           placement: 'right',
@@ -156,7 +76,6 @@
           body: 'See your overall progress, day streak and Mastery Hearts. Hearts are spent on wrong answers in a Mastery Quiz.',
         },
         {
-          // The Orientation card added to the dashboard (#orientation-card).
           when: orientationPending,
           target: '#orientation-card .path-row',
           optional: true,
@@ -181,7 +100,6 @@
       ],
     },
 
-    /* ── Learn ─────────────────────────────────────────────────── */
     learn: {
       followUps: ['chapter1-unlocked'],
       steps: [
@@ -224,10 +142,6 @@
       ],
     },
 
-    /* ── Orientation (new learners only) ───────────────────────── */
-    // One centred card, deliberately with no target: spotlighting the
-    // Continue button would scroll the page to the end, and scrolling to
-    // the end is what completes Orientation (js/orientation.js).
     orientation: {
       requires: orientationPending,
       steps: [
@@ -238,10 +152,6 @@
       ],
     },
 
-    /* ── Chapter 1 unlocked (follow-up on dashboard + learn) ───── */
-    // Auto-starts only after Orientation is done AND Chapter 1 has not been
-    // touched, so it appears once, right when it is useful. Each step is
-    // tied to the page it belongs to through `when`.
     'chapter1-unlocked': {
       requires: function () { return orientationDone() && chapter1Untouched(); },
       steps: [
@@ -262,7 +172,6 @@
       ],
     },
 
-    /* ── Mission overview ──────────────────────────────────────── */
     'mission-overview': {
       steps: [
         {
@@ -293,7 +202,6 @@
       ],
     },
 
-    /* ── Lesson (mission flow) ─────────────────────────────────── */
     lesson: {
       steps: [
         {
@@ -317,7 +225,6 @@
       ],
     },
 
-    /* ── Camera practice ───────────────────────────────────────── */
     'camera-practice': {
       steps: [
         {
@@ -345,9 +252,6 @@
           body: 'Practice Check runs a short camera round. Score at least 80% to move on to the next sign. If you miss, you can try again.',
         },
         {
-          // The existing Camera Tips card, in place (never a copy). Kept
-          // last on the right-hand column, in the page's own top-to-bottom
-          // order. Also the target of the repeated-miss reminder below.
           target: '.camera-tips',
           placement: 'left',
           title: 'Tips for better detection',
@@ -362,7 +266,6 @@
       ],
     },
 
-    /* ── Mastery quiz ──────────────────────────────────────────── */
     'mastery-quiz': {
       steps: [
         {
@@ -386,7 +289,6 @@
       ],
     },
 
-    /* ── Progress ──────────────────────────────────────────────── */
     progress: {
       steps: [
         {
@@ -410,7 +312,6 @@
       ],
     },
 
-    /* ── Leaderboard ───────────────────────────────────────────── */
     leaderboard: {
       steps: [
         {
@@ -444,10 +345,6 @@
       ],
     },
 
-    /* ── Game picker ───────────────────────────────────────────── */
-    // Only the picker (pages/game.html). The three game pages are
-    // played full screen and have no guide. A learner who has not
-    // unlocked the Game never reaches this page (js/game-gate.js).
     game: {
       steps: [
         {
@@ -474,7 +371,6 @@
       ],
     },
 
-    /* ── Profile ───────────────────────────────────────────────── */
     profile: {
       steps: [
         {
@@ -506,16 +402,6 @@
 
   };
 
-  /* ── Reminders (NEW) ─────────────────────────────────────────────
-     One-step popups that point at something already on a page when a
-     learner needs it, instead of replaying a whole guide. Run by
-     window.LWTour.remind() (js/tour.js); WHEN one fires is decided by
-     the page's own trigger (camera-practice: js/camera-tips-reminder.js).
-       target       the element to spotlight (the real card, never a copy)
-       tiers[]      copy from gentle to more helpful; the trigger picks
-                    the tier from how many times the learner has missed
-       buttonLabel  the only button
-     Same copy rules as the guides above. */
   window.LWTourReminders = {
     'camera-tips': {
       target: '.camera-tips',
@@ -523,11 +409,8 @@
       icon: 'camera_tips',
       buttonLabel: 'Got it',
       tiers: [
-        // 2nd miss
         { title: 'Quick Camera Tip', body: 'Try keeping your hand centered and fully visible.' },
-        // 5th miss
         { title: 'Let\u2019s adjust your setup', body: 'Make sure your hand is well-lit and there is enough space around it.' },
-        // 10th miss and every later reminder
         { title: 'Need a little help?', body: 'Review these camera tips before trying again.' },
       ],
     },

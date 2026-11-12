@@ -1,28 +1,7 @@
-/**
- * admin.css — Admin panel styles (NEW)
- * ─────────────────────────────────────────────────────────────────
- * Deliberately does NOT redefine tokens, .btn, .card, .badge, .alert,
- * .form-group/.form-input, .app-shell/.app-sidebar/.app-main, or
- * .stats-grid/.stat-tile — those already exist in css/style.css and
- * css/dashboard.css and are reused as-is so the admin panel matches
- * the learner app instead of introducing a second visual language.
- * This file only adds what didn't already exist: a data table, a
- * generic modal, a list-page toolbar, and a couple of admin-only
- * accents (the "Admin" sidebar badge, the pre-auth-check gate).
- * Load order: style.css, dashboard.css (for .stats-grid/.stat-tile),
- * then this file.
- * ─────────────────────────────────────────────────────────────────
- */
 
-/* ── ADMIN GATE — avoid flashing admin content before the email
-   check in js/admin-auth.js resolves. requireAdmin() adds
-   .admin-ready once it's confirmed the signed-in account is the
-   admin; until then the page is invisible rather than half-rendered. */
 body.admin-gate { visibility: hidden; }
 body.admin-gate.admin-ready { visibility: visible; }
 
-/* ── SIDEBAR — "Admin" badge under the logo + a link back to the
-   learner app, so it's never ambiguous which shell you're in. */
 .admin-sidebar__tag {
   display: inline-flex;
   align-items: center;
@@ -44,7 +23,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 }
 .admin-exit-link:hover { color: var(--clr-text); text-decoration: underline; }
 
-/* ── PAGE HEADER ───────────────────────────────────────────────── */
 .admin-header {
   display: flex;
   align-items: flex-start;
@@ -56,7 +34,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-header h1 { margin-bottom: var(--space-1); }
 .admin-header p { color: var(--clr-text-muted); }
 
-/* ── TOOLBAR — search + filter + primary action, above a table ──── */
 .admin-toolbar {
   display: flex;
   align-items: center;
@@ -68,7 +45,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-toolbar__filter { flex: 0 0 auto; width: auto; min-width: 160px; }
 .admin-toolbar__spacer { flex: 1; }
 
-/* ── DATA TABLE ────────────────────────────────────────────────── */
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--clr-border);
@@ -116,8 +92,6 @@ body.admin-gate.admin-ready { visibility: visible; }
   color: var(--clr-text-muted);
 }
 
-/* ── MODAL — generic overlay + centered card, used for every
-   create/edit form and every delete confirmation in the panel. */
 .admin-modal-backdrop {
   position: fixed; inset: 0;
   background: var(--backdrop);
@@ -127,9 +101,6 @@ body.admin-gate.admin-ready { visibility: visible; }
   z-index: 100;
 }
 .admin-modal-backdrop[hidden] { display: none; }
-/* ^ FIX: the class above sets display:flex, which beats the browser's
-   default [hidden]{display:none}. Without this line every modal stays
-   open on page load and the JS hidden=true/false toggles do nothing. */
 .admin-modal {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -158,7 +129,6 @@ body.admin-gate.admin-ready { visibility: visible; }
   margin-top: var(--space-6);
 }
 
-/* ── FORM GRID — two columns on wide modals, one on narrow/mobile. */
 .admin-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -169,7 +139,6 @@ body.admin-gate.admin-ready { visibility: visible; }
   .admin-form-grid { grid-template-columns: 1fr; }
 }
 
-/* ── OPTIONS LIST — quiz-question answer choices (admin-quiz.html) */
 .admin-option-row {
   display: flex; align-items: center; gap: var(--space-3);
 }
@@ -182,8 +151,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 }
 .admin-option-row__remove:hover { color: var(--clr-red); }
 
-/* ── REPORTS — level-by-level bars, built from the same track/fill
-   language as .progress-bar so it doesn't look like a new component. */
 .admin-bar-row {
   display: grid;
   grid-template-columns: 110px 1fr 48px;
@@ -205,7 +172,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 }
 .admin-bar-row__count { text-align: right; color: var(--clr-text-muted); font-variant-numeric: tabular-nums; }
 
-/* ── MISC ──────────────────────────────────────────────────────── */
 .admin-danger-note {
   font-size: var(--fs-xs);
   color: var(--clr-red-text);
@@ -248,11 +214,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-quick-link__desc { color: var(--clr-text-muted); font-size: var(--fs-sm); }
 
 
-/* ── FEEDBACK & SURVEYS (admin-feedback.html) ─────────────────────
-   Uses only existing tokens (--clr-*, --space-*, --radius-*), so light
-   and dark themes come for free. min-width:0 on every grid child +
-   overflow-wrap:anywhere on user text is what keeps long emails and
-   comments from ever causing sideways page scroll. */
 .stats-grid > [hidden],
 .fb-state[hidden],
 .fb-list[hidden],
@@ -342,7 +303,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 }
 .fb-comment__text--none { color: var(--clr-text-muted); font-style: italic; white-space: normal; }
 
-/* Recent-feedback rows on Reports */
 .fb-recent { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .fb-recent li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-width: 0; }
 .fb-recent__who { min-width: 0; overflow-wrap: anywhere; }
@@ -358,7 +318,6 @@ body.admin-gate.admin-ready { visibility: visible; }
   .fb-recent li { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 }
 
-/* ── LESSON FORM — video field (admin-lessons.html) */
 .admin-form-hint { font-size: var(--fs-xs); margin: var(--space-2) 0 0; }
 .admin-video-preview {
   display: block;
@@ -377,7 +336,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-upload-progress progress { flex: 1 1 auto; height: 8px; accent-color: var(--primary, #4f46e5); }
 .admin-upload-progress .admin-form-hint { margin: 0; min-width: 8.5em; text-align: right; }
 
-/* ── USER MANAGEMENT — bulk actions (Reset all user data / Delete all users) ──── */
 .admin-header__actions { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; }
 .admin-btn--warn { color: var(--clr-red-text); border-color: currentColor; }
 .admin-bulk-list { margin: var(--space-3) 0 0; padding-left: var(--space-5); font-size: var(--fs-sm); color: var(--clr-text-muted); }
@@ -387,7 +345,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 .admin-bulk-confirm[hidden] { display: none; }
 @media (max-width: 560px) { .admin-header__actions { width: 100%; } .admin-header__actions .btn { flex: 1 1 auto; } }
 
-/* ── FEEDBACK — survey result charts (pages/admin-feedback.html) ──── */
 .fb-charts-wrap { margin-top: var(--space-8); }
 .fb-charts-wrap[hidden] { display: none; }
 .fb-charts-title { font-size: var(--fs-lg); margin: 0 0 var(--space-4); }
@@ -420,7 +377,6 @@ body.admin-gate.admin-ready { visibility: visible; }
 }
 @media (prefers-reduced-motion: reduce) { .fb-bar__fill { transition: none; } }
 
-/* ── REPORTS & ANALYTICS (pages/admin-reports.html) ───────────────── */
 .rp-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
 .rp-kpi { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5); background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); min-width: 0; }
 .rp-kpi__icon { flex: 0 0 auto; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--clr-accent-soft); color: var(--clr-accent); }
@@ -477,23 +433,10 @@ body.admin-gate.admin-ready { visibility: visible; }
   .rp-mini { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ── ADMIN LOADING (skeletons) ───────────────────────────────────────
-   Why: admin pages are invisible (body.admin-gate) until Firebase confirms
-   the admin session. On a slow connection that was a blank screen for
-   several seconds, which looks exactly like a frozen page. Now:
-     1. .admin-boot  - a full-screen skeleton of the admin shell, shown ONLY
-                       while the gate is closed. requireAdmin() adds
-                       .admin-ready and it disappears. Pure CSS, so it paints
-                       with the stylesheet, before any script has run.
-     2. Per-section skeletons (KPI tiles, lists, charts, tables) built from
-        the shared .sk pieces in css/style.css section 20. js/skeleton.js
-        turns any that are still on screen after ~12s into a quiet note.
-   Nothing here shows admin data, so it is safe to display to anyone while
-   the email check is still running. */
 .admin-boot { display: none; }
 body.admin-gate:not(.admin-ready) .admin-boot {
   display: flex;
-  visibility: visible;               /* body.admin-gate is visibility:hidden; this opts back in */
+  visibility: visible;               
   position: fixed; inset: 0; z-index: 2000;
   background: var(--clr-bg);
 }
@@ -522,8 +465,7 @@ body.admin-gate:not(.admin-ready) .admin-boot {
   .admin-boot .sk-cols { --cols: 2 !important; }
 }
 
-/* Skeleton pieces used inside admin cards, tables and the feedback list. */
-.sk-row > .sk { flex: 0 1 auto; }                       /* let bars shrink on narrow screens instead of overflowing */
+.sk-row > .sk { flex: 0 1 auto; }                       
 .sk-group--list { gap: var(--space-4); }
 .sk-group--cards { gap: var(--space-3); }
 .sk-bars { display: flex; align-items: flex-end; gap: var(--space-2); height: 8rem; width: 100%; }
@@ -538,5 +480,4 @@ body.admin-gate:not(.admin-ready) .admin-boot {
 .admin-table__sk:hover td { background: transparent; }
 .fb-state.fb-state--sk { padding: 0; border: 0; text-align: left; }
 
-/* admin sidebar footer (scripts/update-admin-sidebar.mjs) */
 .app-sidebar__foot--admin .app-sidebar__foot-row { margin-top: 0; padding-top: 0; border-top: 0; }

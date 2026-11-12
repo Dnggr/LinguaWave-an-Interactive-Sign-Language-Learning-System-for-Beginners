@@ -1,40 +1,3 @@
-/**
- * js/dashboard.js — Renderer for pages/dashboard.html
- * ─────────────────────────────────────────────────────────────────
- * REBUILD (blue-teal mockup alignment pass) — replaces the old
- * "Continue Your Mission" hero-row / journey-rail layout with the
- * mockup's four-block Dashboard: greeting header, a "Today's
- * Mission" banner, a "Your Progress" ring card, a "Learning Path"
- * icon-tile grid, and a "Recommended for You" quick-link grid.
- *
- * Same data-source discipline as before: reads only
- * window.LWMissions (js/missions.js). No hardcoded names/
- * percentages — every number here is computed from the real
- * Missions progress store (`lw_missions_progress_v1`), same one
- * pages/learn.html and pages/progress.html already read. The old
- * markup this file used to fill (#continue-card / #summary-card /
- * #journey-rail) is gone from pages/dashboard.html — see that
- * file's header comment for the new element ids this now targets.
- *
- * ORIENTATION GATE (this revision) : new learners must finish Orientation
- * before Chapter 1 unlocks (rule: js/missions.js isOrientationComplete()).
- * While it is pending this page:
- *   - turns the Today's Mission banner into "Start Orientation" (the
- *     first real mission is locked, so it must not be offered);
- *   - shows an Orientation card (#orientation-card) above the Learning Path;
- *   - locks the Practice / Quiz / Daily Challenge shortcuts, which all
- *     point at a mission;
- *   - tells the learner why when they tap a locked tile.
- * Once Orientation is done everything below reverts to normal and the
- * Orientation card disappears.
- *
- * "Recommended for You" is the one section with copy that isn't a
- * live number (icons/labels/blurbs are static, like the homepage's
- * feature cards) — but every link it produces is a real, working
- * destination built from the learner's actual current mission, not
- * a placeholder href.
- * ─────────────────────────────────────────────────────────────────
- */
 'use strict';
 
 function escapeHtml(str) {
@@ -43,8 +6,6 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// True while the learner still has to finish Orientation. A missing/old missions
-// layer answers false, so this can never lock anyone out by itself.
 function orientationPending() {
   const m = window.LWMissions;
   return !!(m && typeof m.isOrientationComplete === 'function' && !m.isOrientationComplete());
@@ -55,10 +16,6 @@ function toastLocked() {
 }
 
 function pickCurrentMission(missions) {
-  // "Today's Mission" / "Continue Your Mission" = first not-yet-complete,
-  // UNLOCKED mission (chapter gating means the first incomplete mission
-  // in list order could theoretically sit in a not-yet-unlocked chapter;
-  // never point at a mission the learner can't open yet).
   const reachable = missions.filter((m) => window.LWMissions.getMissionStatus(m, missions) !== 'locked');
   return reachable.find((m) => window.LWMissions.getMissionProgress(m) < 1)
     || reachable[reachable.length - 1]
@@ -75,9 +32,6 @@ function currentSignInProgress(mission) {
   return null;
 }
 
-// Item-level roll-up (same shape as js/progress-page.js's tallyItems())
-// so "Overall Progress" here and on pages/progress.html always agree —
-// both are counting the exact same underlying items.
 function tallyItems(missions) {
   let total = 0, done = 0;
   missions.forEach((m) => {
@@ -89,10 +43,6 @@ function tallyItems(missions) {
   return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
 }
 
-// Same done/current/locked/available -> label/badge mapping used on
-// pages/learn.html and pages/mission-overview.html — kept as its own
-// small copy per this repo's established "re-derive small pieces of
-// logic per file" convention (see js/mission-overview.js's own note).
 function statusMeta(status) {
   switch (status) {
     case 'done': return { label: 'Completed', badge: 'badge--done' };
@@ -102,10 +52,6 @@ function statusMeta(status) {
   }
 }
 
-/* ── Greeting ──────────────────────────────────────────────────────
- * Real local time, not a fabricated "Good morning" shown at 9pm —
- * js/main.js already hydrates [data-user-name] from the real
- * session, this just fills the time-of-day word beside it. */
 function greetingWord() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning,';
@@ -118,7 +64,6 @@ function renderGreeting() {
   if (el) el.textContent = greetingWord();
 }
 
-/* ── Today's Mission banner ──────────────────────────────────────── */
 const BANNER_ART = `
 <div class="mission-banner__art" aria-hidden="true">
       <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -132,7 +77,6 @@ const BANNER_ART = `
     </div>
 `;
 
-// Orientation pending: the banner's one job is to send the learner to Orientation.
 function renderOrientationBanner(el) {
   const o = window.LWMissions.getOrientation();
   el.innerHTML = `
@@ -174,18 +118,11 @@ function renderMissionBanner(missions) {
   `;
 }
 
-/* ── Your Progress card (ring + level + 3 real stats) ─────────────
- * Ring % is the SAME "overall items done / items total" formula
- * pages/progress.html's ring uses — the two numbers agree by
- * construction, not by coincidence. The "Chapter N" line beside it
- * is whichever chapter getCurrentChapterId() says the learner is
- * actively working through right now. */
 function renderProgressCard(missions) {
   const el = document.getElementById('progress-card');
   const items = tallyItems(missions);
   const chapters = window.LWMissions.getCategoryGroups();
   const currentChId = window.LWMissions.getCurrentChapterId(missions);
-  // Orientation pending: the learner isn't in Chapter 1 yet, so don't say they are.
   const chapter = orientationPending() ? null : (chapters.find((c) => c.id === currentChId) || null);
   const missionsCompleted = missions.filter((m) => window.LWMissions.getMissionProgress(m) >= 1).length;
   const streak = window.LWMissions.getStreakSummary();
@@ -220,9 +157,6 @@ function renderProgressCard(missions) {
   if (ring) ring.style.setProperty('--pct', items.pct);
 }
 
-/* ── Orientation card ───────────────────────────────────────────────
- * Only while Orientation is pending. #orientation-section stays hidden
- * (and empty) for everyone else, including returning learners. */
 function renderOrientationCard() {
   const section = document.getElementById('orientation-section');
   const el = document.getElementById('orientation-card');
@@ -251,13 +185,6 @@ function renderOrientationCard() {
   `;
 }
 
-/* ── Learning Path tile grid ────────────────────────────────────────
- * Starts at the learner's CURRENT chapter (getCurrentChapterId) and
- * walks forward through the 12 chapters in order, collecting real
- * missions until it has enough tiles for a grid — never a fixed
- * "first N missions overall" slice, so the grid always centers on
- * wherever the learner actually is. "View All" links to the full
- * pages/learn.html trail for everything this grid doesn't show. */
 const LEARNING_PATH_TILE_COUNT = 6;
 
 function collectLearningPathMissions(missions) {
@@ -304,14 +231,8 @@ function renderLearningPath(missions) {
   }).join('');
 }
 
-/* ── Recommended for You ────────────────────────────────────────────
- * Four quick-link cards. Copy/icons are static (same "feature card"
- * treatment index.html's own why-row already uses) but every href
- * is built from the learner's real current mission — never a bare
- * placeholder "#" link. */
 function renderRecommended(missions) {
   const el = document.getElementById('recommended-grid');
-  // Orientation pending: every mission is locked, so there is no mission to point at.
   const gated = orientationPending();
   const mission = gated ? null : pickCurrentMission(missions);
   const signId = currentSignInProgress(mission);
@@ -322,10 +243,6 @@ function renderRecommended(missions) {
   const quizHref = mission ? `mastery-quiz.html?mission=${encodeURIComponent(mission.category)}` : 'mastery-quiz.html';
   const missionHref = mission ? `mission-overview.html?mission=${encodeURIComponent(mission.category)}` : 'learn.html';
 
-  // CHANGED (light-mode UX pass) — all four CTAs are btn--secondary now. They
-  // were two teal-outline + two solid-blue with no rule behind the split, and
-  // the solid blue competed with the Continue Mission banner, which is the one
-  // thing this page wants the learner to click first.
   const cards = [
     {
       icon: 'camera', tone: 'teal',
@@ -385,16 +302,9 @@ function initPage() {
     return;
   }
 
-  // Render immediately from local state — getAllMissions() reads
-  // straight off localStorage, so first paint never waits on a
-  // network round-trip. Reconcile with Firestore in the background
-  // and re-render only if that reconcile changes anything (e.g. a
-  // completed item merged in from another device).
   renderDashboard();
   window.LWMissions.whenMissionsSyncReady().then(renderDashboard);
 
-  // Locked tiles / shortcuts: say WHY while Orientation is pending (these elements are
-  // re-rendered wholesale, so the listeners sit on their stable containers).
   function explainLock(e, selector) {
     const hit = e.target.closest(selector);
     if (!hit || !orientationPending()) return;
@@ -408,7 +318,6 @@ function initPage() {
     if (e.key === 'Enter' || e.key === ' ') explainLock(e, '.rec-card__cta[aria-disabled="true"]');
   });
 
-  // Back/forward cache restore (Orientation -> Continue -> Back) would show the old lock state.
   window.addEventListener('pageshow', (e) => { if (e.persisted) renderDashboard(); });
 }
 

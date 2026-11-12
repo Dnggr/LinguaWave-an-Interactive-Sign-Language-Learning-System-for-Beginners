@@ -1,6 +1,3 @@
-// Run from the repo root (Node 18+):   node apply-offline-patch.mjs
-// Edits 5 existing files in place. Safe to re-run (already-patched files are skipped).
-// Commit first so you can `git diff` / revert.
 import fs from 'node:fs';
 
 function edit(file, fn) {
@@ -18,7 +15,6 @@ function replaceOnce(src, oldStr, newStr, label) {
   return src.replace(oldStr, () => newStr);
 }
 
-// ── 1. js/tracking/mediapipe.js : use the cached / self-hosted assets ─────────
 edit('js/tracking/mediapipe.js', (s) => {
   if (s.includes('prepareAssets')) return null;
   s = replaceOnce(s,
@@ -40,7 +36,6 @@ edit('js/tracking/mediapipe.js', (s) => {
   return s;
 });
 
-// ── 2. js/camera-practice.js : progress bar + skip + retry ────────────────────
 const LOADER_UI = String.raw`// ── Tracking-model download UI: progress bar, "skip for now", retry ───────────
 // The model (~14 MB) is the slow part of opening the camera. This shows real
 // progress, lets the learner keep studying meanwhile (Skip), and offers Retry
@@ -173,7 +168,6 @@ async function bootDetectionEngine() {
 
 edit('js/camera-practice.js', (s) => {
   if (s.includes('createModelLoaderUI')) return null;
-  // module-level flag: declared up top because boot() runs during module evaluation (see FEEDBACK_ICONS note)
   s = s.replace(/^(let faceWarnEl\s*= null;)$/m, (m) => m + "\n// True while the tracking model is still downloading (Skip keeps the lesson usable meanwhile).\nlet modelDownloading = false;");
   if (!s.includes('let modelDownloading')) throw new Error('[cp flag] could not find "let faceWarnEl = null;"');
 
@@ -198,7 +192,6 @@ edit('js/camera-practice.js', (s) => {
   return s;
 });
 
-// ── 3. Start the download early on pages learners open before the camera ─────
 for (const f of ['pages/lesson.html', 'pages/learn.html']) {
   edit(f, (s) => {
     if (s.includes('model-prefetch.js')) return null;

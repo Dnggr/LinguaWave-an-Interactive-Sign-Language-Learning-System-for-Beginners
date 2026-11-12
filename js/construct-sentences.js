@@ -1,25 +1,4 @@
-// Sentence bank for Construct a Sentence.
-//   text  : the English sentence shown to the player
-//   words : the signs in the order they must be placed (ASL sign order, not always English order)
-// Rules (every sentence below was checked against js/missions.js and the files in assets/videos):
-//   - Each word must be a signId in the curriculum whose lesson video is a plain single-sign .mp4 that exists on disk
-//     (assets/videos/basic/asl_vid_diy_raw/...). Sentences with an unknown/unplayable word are skipped at runtime
-//     (console warns which word). The game reads each sign's video from js/missions.js (SIGNS_V2 videoUrl), so a
-//     new or renamed .mp4 only needs wiring there, never here.
-//   - Do NOT use signs whose only video is a two-sign pair clip (assets/videos/.../21. common opposites/): NEAR, FAR,
-//     UP, DOWN, INSIDE, OUT. A tile would show two signs at once. Also avoid CHICKEN until chicken.mp4 is recorded.
-//   - "I" is NOT used: the signId 'I' is the fingerspelled letter I. The pronoun is the ME sign
-//     (same sign in ASL), so "I ..." sentences use 'ME'.
-//   - WANT, NEED, HAVE, CAN, WHO/WHAT/WHERE, PIZZA, CAT, FISH, RABBIT, SOCKS, DRESS and SKIRT are NOT usable yet: either
-//     there is no lesson for them in js/missions.js or their video is not recorded. Add sentences with them only after
-//     the lesson AND its .mp4 exist.
-//   - No sentence may repeat a word. Keep every sentence between 3 and 5 signs (the XP check allows 3-8, but a
-//     desktop board fits one row of about 5 tiles).
-// A learner only gets sentences whose signs they have ALL learned (when the learned-signs filter in
-// js/construct-sentence.js is on), so keep adding sentences built from the early chapters (feelings, needs, actions,
-// people) so new learners always have something to play.
 export const SENTENCES = [
-  // ── original sentences ──
   { text: 'You are my friend.', words: ['YOU', 'MY', 'FRIEND'] },
   { text: 'Please help me.', words: ['PLEASE', 'HELP', 'ME'] },
   { text: 'I eat food.', words: ['ME', 'EAT', 'FOOD'] },
@@ -50,7 +29,6 @@ export const SENTENCES = [
   { text: 'My mom reads a book.', words: ['MY', 'MOM', 'READ', 'BOOK'] },
   { text: 'My friend drinks juice.', words: ['MY', 'FRIEND', 'DRINK', 'JUICE'] },
 
-  // ── greetings & manners ──
   { text: 'Hello, my friend.', words: ['HELLO', 'MY', 'FRIEND'] },
   { text: 'Good morning, teacher.', words: ['GOOD', 'MORNING', 'TEACHER'] },
   { text: 'Good afternoon, mom.', words: ['GOOD', 'AFTERNOON', 'MOM'] },
@@ -76,7 +54,6 @@ export const SENTENCES = [
   { text: 'Please tell me your name.', words: ['PLEASE', 'TELL', 'ME', 'YOUR', 'NAME'] },
   { text: 'Please help me, teacher.', words: ['PLEASE', 'HELP', 'ME', 'TEACHER'] },
 
-  // ── feelings ──
   { text: 'Today I am happy.', words: ['TODAY', 'ME', 'HAPPY'] },
   { text: 'Today I am tired.', words: ['TODAY', 'ME', 'TIRED'] },
   { text: 'Now I am sleepy.', words: ['NOW', 'ME', 'SLEEPY'] },
@@ -109,7 +86,6 @@ export const SENTENCES = [
   { text: 'You like my dog.', words: ['YOU', 'LIKE', 'MY', 'DOG'] },
   { text: 'My friend likes me.', words: ['MY', 'FRIEND', 'LIKE', 'ME'] },
 
-  // ── people & actions ──
   { text: 'Mom cooks food.', words: ['MOM', 'COOK', 'FOOD'] },
   { text: 'Dad cooks potato.', words: ['DAD', 'COOK', 'POTATO'] },
   { text: 'Mom cooks carrots.', words: ['MOM', 'COOK', 'CARROT'] },
@@ -178,7 +154,6 @@ export const SENTENCES = [
   { text: 'You write my name.', words: ['YOU', 'WRITE', 'MY', 'NAME'] },
   { text: 'You read my book.', words: ['YOU', 'READ', 'MY', 'BOOK'] },
 
-  // ── food & drink ──
   { text: 'I eat cake.', words: ['ME', 'EAT', 'CAKE'] },
   { text: 'I eat a cookie.', words: ['ME', 'EAT', 'COOKIE'] },
   { text: 'I eat candy.', words: ['ME', 'EAT', 'CANDY'] },
@@ -233,7 +208,6 @@ export const SENTENCES = [
   { text: 'My bowl is full.', words: ['MY', 'BOWL', 'FULL'] },
   { text: 'My cup is empty.', words: ['MY', 'CUP', 'EMPTY'] },
 
-  // ── animals ──
   { text: 'I see a dog.', words: ['ME', 'SEE', 'DOG'] },
   { text: 'I see a horse.', words: ['ME', 'SEE', 'HORSE'] },
   { text: 'I see a cow.', words: ['ME', 'SEE', 'COW'] },
@@ -269,7 +243,6 @@ export const SENTENCES = [
   { text: 'The bear eats an apple.', words: ['BEAR', 'EAT', 'APPLE'] },
   { text: 'The bird flies fast.', words: ['BIRD', 'FLY', 'FAST'] },
 
-  // ── colors, shapes, size, appearance, sound ──
   { text: 'My shirt is blue.', words: ['MY', 'SHIRT', 'BLUE'] },
   { text: 'My hat is red.', words: ['MY', 'HAT', 'RED'] },
   { text: 'My banana is yellow.', words: ['MY', 'BANANA', 'YELLOW'] },
@@ -311,7 +284,6 @@ export const SENTENCES = [
   { text: 'My car is new and fast.', words: ['MY', 'CAR', 'NEW', 'FAST'] },
   { text: 'My cup is full of water.', words: ['MY', 'CUP', 'FULL', 'WATER'] },
 
-  // ── weather, seasons, time ──
   { text: 'Today is sunny and hot.', words: ['TODAY', 'SUNNY', 'HOT'] },
   { text: 'Today is rainy and cold.', words: ['TODAY', 'RAINY', 'COLD'] },
   { text: 'Today is windy and cool.', words: ['TODAY', 'WINDY', 'COOL'] },
@@ -346,7 +318,6 @@ export const SENTENCES = [
   { text: 'My brother never cries.', words: ['MY', 'BROTHER', 'NEVER', 'CRY'] },
   { text: 'My teacher always helps.', words: ['MY', 'TEACHER', 'ALWAYS', 'HELP'] },
 
-  // ── vehicles & places ──
   { text: 'I ride the bus.', words: ['ME', 'RIDE', 'BUS'] },
   { text: 'I ride a bike.', words: ['ME', 'RIDE', 'BIKE'] },
   { text: 'I ride the train.', words: ['ME', 'RIDE', 'TRAIN'] },
@@ -383,7 +354,6 @@ export const SENTENCES = [
   { text: 'My friend is a waiter.', words: ['MY', 'FRIEND', 'WAITER'] },
   { text: 'My mom is a cook.', words: ['MY', 'MOM', 'COOK'] },
 
-  // ── nature ──
   { text: 'The sun is bright and hot.', words: ['SUN', 'BRIGHT', 'HOT'] },
   { text: 'The moon is bright at night.', words: ['MOON', 'BRIGHT', 'NIGHT'] },
   { text: 'The star is bright at night.', words: ['STAR', 'BRIGHT', 'NIGHT'] },
@@ -399,7 +369,6 @@ export const SENTENCES = [
   { text: 'The rock is big and heavy.', words: ['ROCK', 'BIG', 'HEAVY'] },
   { text: 'The rain is cold today.', words: ['RAIN', 'COLD', 'TODAY'] },
 
-  // ── body & hygiene ──
   { text: 'I clean my teeth.', words: ['ME', 'CLEAN', 'MY', 'TEETH'] },
   { text: 'I clean my teeth with a toothbrush.', words: ['ME', 'CLEAN', 'MY', 'TEETH', 'TOOTHBRUSH'] },
   { text: 'I take a shower.', words: ['ME', 'TAKE', 'SHOWER'] },
@@ -412,7 +381,6 @@ export const SENTENCES = [
   { text: 'My hand is clean.', words: ['MY', 'HAND', 'CLEAN'] },
   { text: 'My body is tired.', words: ['MY', 'BODY', 'TIRED'] },
 
-  // ── home & school things ──
   { text: 'I open the cabinet.', words: ['ME', 'OPEN', 'CABINET'] },
   { text: 'I open the closet.', words: ['ME', 'OPEN', 'CLOSET'] },
   { text: 'I open the window.', words: ['ME', 'OPEN', 'WINDOW'] },
@@ -448,7 +416,6 @@ export const SENTENCES = [
   { text: 'My family is big.', words: ['MY', 'FAMILY', 'BIG', 'HAPPY'] },
   { text: 'My family likes the beach.', words: ['MY', 'FAMILY', 'LIKE', 'BEACH'] },
 
-  // ── numbers ──
   { text: 'I eat two apples.', words: ['ME', 'EAT', '2', 'APPLE'] },
   { text: 'I eat two cookies.', words: ['ME', 'EAT', '2', 'COOKIE'] },
   { text: 'I see three birds.', words: ['ME', 'SEE', '3', 'BIRD'] },

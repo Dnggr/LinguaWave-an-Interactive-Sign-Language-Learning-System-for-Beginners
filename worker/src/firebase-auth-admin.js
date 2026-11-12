@@ -1,36 +1,11 @@
-/**
- * firebase-auth-admin.js — privileged Firebase Authentication calls for the Worker
- * ─────────────────────────────────────────────────────────────────
- * WHY : a browser can only delete ITS OWN Firebase Auth account. Deleting another
- *       user's login needs Google's Identity Toolkit Admin API, which needs a
- *       service-account credential. That credential lives ONLY here, as Worker
- *       secrets, and is never sent to the browser.
- *
- * HOW (no firebase-admin, just Web Crypto + fetch, which Workers have natively):
- *   1. Build a JWT { iss: <service account email>, scope, aud: Google's token URL, iat, exp }
- *      and sign it RS256 with the service account's private key.
- *   2. POST it to https://oauth2.googleapis.com/token  -> short-lived OAuth access token.
- *   3. POST { localId: uid } to Identity Toolkit  accounts:delete  with that token.
- *
- * SECRETS (set with `npx wrangler secret put`, NEVER in wrangler.toml [vars]):
- *   FIREBASE_SERVICE_ACCOUNT_EMAIL        e.g. firebase-adminsdk-xxxxx@linguawave-63911.iam.gserviceaccount.com
- *   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY  the "private_key" value of the service-account JSON
- *                                         (-----BEGIN PRIVATE KEY----- ... ). Literal "\n" sequences are accepted.
- * PUBLIC VAR: FIREBASE_PROJECT_ID (already in wrangler.toml).
- * ─────────────────────────────────────────────────────────────────
- */
 
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const IDENTITY_TOOLKIT_SCOPE = "https://www.googleapis.com/auth/identitytoolkit";
-const TOKEN_LIFETIME_SECONDS = 3600;       // Google's maximum for a service-account JWT
-const TOKEN_REFRESH_MARGIN_SECONDS = 120;  // re-use a cached token until 2 min before it expires
+const TOKEN_LIFETIME_SECONDS = 3600;
+const TOKEN_REFRESH_MARGIN_SECONDS = 120;
 
 const enc = new TextEncoder();
 
-/**
- * code: "not-configured" | "token-exchange-failed" | "user-not-found" | "api-error"
- * Never carries the private key; `detail` is Google's own error text, for server logs only.
- */
 export class FirebaseAuthAdminError extends Error {
   constructor(code, message, detail) {
     super(message);
@@ -40,7 +15,6 @@ export class FirebaseAuthAdminError extends Error {
   }
 }
 
-/* ── helpers ────────────────────────────────────────────────────── */
 function bytesToB64url(bytes) {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -48,7 +22,6 @@ function bytesToB64url(bytes) {
 }
 const strToB64url = (s) => bytesToB64url(enc.encode(s));
 
-/** PEM (PKCS#8) text -> DER bytes. Accepts real newlines or the literal "\n" a pasted JSON value contains. */
 function pemToDer(pem) {
   const body = String(pem)
     .replace(/\\n/g, "\n")
@@ -96,18 +69,11 @@ function requireConfig(env) {
   return { email, privateKey, projectId: env.FIREBASE_PROJECT_ID };
 }
 
-/* ── OAuth access token (cached per isolate) ────────────────────── */
-const tokenCache = new Map(); // service-account email -> { token, expiresAtSec }
+const tokenCache = new Map();
 export function clearTokenCache() {
   tokenCache.clear();
 }
 
-/**
- * Returns a Google OAuth access token for the service account.
- * @param {object} env     Worker env (needs the two secrets above)
- * @param {number} [now]   ms since epoch (injectable for tests)
- * @param {{fetchFn?: typeof fetch}} [opts]
- */
 export async function getGoogleAccessToken(env, now = Date.now(), { fetchFn = fetch } = {}) {
   const { email, privateKey } = requireConfig(env);
   const nowSec = Math.floor(now / 1000);
@@ -152,13 +118,6 @@ export async function getGoogleAccessToken(env, now = Date.now(), { fetchFn = fe
   return data.access_token;
 }
 
-/* ── delete a Firebase Auth user ────────────────────────────────── */
-/**
- * Deletes the Firebase Authentication account `uid`.
- * @returns {Promise<{uid:string}>} on success
- * @throws  {FirebaseAuthAdminError} code "user-not-found" when the account no longer exists
- *          (callers may treat that as "already deleted"), otherwise a failure code.
- */
 export async function deleteFirebaseAuthUser(env, uid, now = Date.now(), { fetchFn = fetch } = {}) {
   const { projectId } = requireConfig(env);
   const accessToken = await getGoogleAccessToken(env, now, { fetchFn });

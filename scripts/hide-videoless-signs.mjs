@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-/**
- * scripts/hide-videoless-signs.mjs
- * Finds SIGNS_V2 entries in js/missions.js whose videoUrl file is missing
- * on disk, lists them, and (with --apply) comments them out.
- *
- *   node scripts/hide-videoless-signs.mjs            # dry run: list only
- *   node scripts/hide-videoless-signs.mjs --apply    # comment them out (+ .bak)
- *
- * Run from the project root. Only local (../assets/...) videoUrls are checked;
- * http(s) URLs are skipped. Filename case is compared EXACTLY, because the
- * live host is case-sensitive even if your Windows disk is not.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 

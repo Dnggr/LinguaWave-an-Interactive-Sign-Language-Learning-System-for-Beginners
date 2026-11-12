@@ -31,7 +31,7 @@ const mission = {
   ],
 };
 const completed = new Set();
-let missionStreak = { currentStreak: 0, longestStreak: 0, lastActivityDate: null };   // what window.LWMissions.getStreakSummary() returns
+let missionStreak = { currentStreak: 0, longestStreak: 0, lastActivityDate: null };
 store.set(`users/${uid}`, { name: 'Ana' });
 
 function clone(value) { return value === undefined ? undefined : structuredClone(value); }
@@ -130,7 +130,7 @@ const context = {
   where: sdk.where,
   runTransaction: sdk.runTransaction,
   serverTimestamp: sdk.serverTimestamp,
-  SIGN_DICTIONARY: { A: {}, B: {}, C: {}, E: {}, G: {}, H: {}, I: {}, K: {}, M: {}, R: {}, U: {}, '4': {}, '7': {} },   // letters/numbers used by the Time Attack words
+  SIGN_DICTIONARY: { A: {}, B: {}, C: {}, E: {}, G: {}, H: {}, I: {}, K: {}, M: {}, R: {}, U: {}, '4': {}, '7': {} },
   E,
   window,
   document,
@@ -152,14 +152,12 @@ await new Promise((resolve) => setImmediate(resolve));
 const X = window.LWXP;
 assert.ok(X, 'LWXP bridge initialized');
 
-// A lesson claim updates both documents atomically, with server timestamps.
 X.claimItem(mission, 0);
 await X.flush();
 assert.equal(store.get(`xpState/${uid}`).xp, 6);
 assert.equal(store.get(`publicProfiles/${uid}`).xp, 6);
 assert.ok(store.get(`xpState/${uid}`).lastWriteAt instanceof Date);
 
-// A replay is idempotent, and queued updates are serialized.
 const beforeReplay = transactionCount;
 X.claimItem(mission, 0);
 await X.flush();
@@ -171,7 +169,6 @@ await X.flush();
 assert.equal(maxActiveTransactions, 1, 'writes are serialized by one page queue');
 assert.equal(store.get(`publicProfiles/${uid}`).xp, store.get(`xpState/${uid}`).xp);
 
-// Visibility hides and restores the public row with the private state update.
 let result = await X.setVisibility(false);
 assert.ok(result.ok && store.get(`xpState/${uid}`).hidden);
 assert.equal(store.has(`publicProfiles/${uid}`), false);
@@ -179,7 +176,6 @@ result = await X.setVisibility(true);
 assert.ok(result.ok && !store.get(`xpState/${uid}`).hidden);
 assert.equal(store.get(`publicProfiles/${uid}`).xp, store.get(`xpState/${uid}`).xp);
 
-// A game session is held by the page and its result uses the same transaction.
 completed.add(0);
 const session = await X.startGame(['A'], 'timeAttack');
 assert.ok(session.ok && session.xpEligible && session.sessionId);
@@ -189,7 +185,6 @@ assert.ok(result.ok && result.xpGained === 7);
 assert.equal(store.get(`xpState/${uid}`).daily.gameXp, 7);
 assert.equal(store.get(`publicProfiles/${uid}`).xp, store.get(`xpState/${uid}`).xp);
 
-// Time Attack (fingerspelling): letters repeat inside a word, so the session carries word ids plus the unique letters.
 {
   const letters = ['C', 'A', 'R', 'M', 'E', 'I', 'K', '4', '7', 'H', 'B', 'U', 'G'];
   const fsWords = ['car', 'america', 'ak47', 'hamburger'];
@@ -210,7 +205,6 @@ assert.equal(store.get(`publicProfiles/${uid}`).xp, store.get(`xpState/${uid}`).
   assert.equal(store.get(`publicProfiles/${uid}`).timeAttackXp, after.totals.timeAttackXp);
 }
 
-// Offline jobs stay queued and retry after the connection comes back.
 failWith = 'unavailable';
 X.claimItem(mission, 3);
 await X.flush();
@@ -221,7 +215,6 @@ await X.flush();
 assert.equal(X.debug().pending.length, 0, 'queued item flushes after reconnect');
 assert.ok(store.get(`xpState/${uid}`).lessonItems.sample.includes(3));
 
-// Permission errors are specific and throttled by code for 30 seconds.
 failWith = 'permission-denied';
 await X.syncPublicProfile();
 await X.syncPublicProfile();
@@ -230,8 +223,6 @@ assert.equal(permissionToasts.length, 1, 'same error toast is throttled for 30 s
 assert.equal(X.debug().lastError.code, 'permission-denied');
 failWith = null;
 
-// Streak catch-up (syncStreak). REGRESSION: with nothing to heal it used to publish a bare { ok: true } with no xp / level /
-// streak, and the Profile "Level" card redrew itself as Level 1, 0 XP, 0-day streak. Every published result must now be a full summary.
 {
   const published = [];
   const stop = X.onUpdate((res) => published.push(res));
@@ -245,7 +236,6 @@ failWith = null;
   assert.equal(store.get(`xpState/${uid}`).xp, before.xp, 'nothing to heal: no state write');
   assert.deepEqual(store.get(`xpState/${uid}`).streak, before.streak, 'nothing to heal: streak untouched');
 
-  // A streak saved under the old strict rule (1) while Missions, which keeps the real days, says 3: healed one step per write.
   store.set(`xpState/${uid}`, { ...before, streak: { current: 1, longest: 1, lastDay: before.streak.lastDay }, badges: {} });
   missionStreak = { currentStreak: 3, longestStreak: 3, lastActivityDate: before.streak.lastDay };
   published.length = 0;
@@ -262,6 +252,5 @@ failWith = null;
   missionStreak = { currentStreak: 0, longestStreak: 0, lastActivityDate: null };
 }
 
-// Every successful XP write was asserted above to have a consistent profile row.
 assert.ok(transactionCount >= 8, 'transaction path exercised repeatedly');
 console.log('client transaction harness: passed');

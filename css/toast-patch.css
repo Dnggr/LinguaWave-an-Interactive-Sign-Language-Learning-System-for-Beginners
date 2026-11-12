@@ -1,6 +1,3 @@
-/* ── TOAST NOTIFICATIONS (created by showToast() in js/main.js) ─────
-   Lives in style.css, not toast.css: toast.css was only linked on 7 pages, so on
-   every other page the toast rendered unstyled below the layout. */
 .toast {
   position: fixed;
   left: 50%;

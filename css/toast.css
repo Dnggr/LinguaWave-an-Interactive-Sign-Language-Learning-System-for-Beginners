@@ -1,6 +1,4 @@
-/* Append to style.css: Toast notification styles */
 
-/* ── 16. TOAST NOTIFICATIONS (injected by main.js) ──────────────── */
 .toast {
   position: fixed;
   bottom: var(--space-6);
