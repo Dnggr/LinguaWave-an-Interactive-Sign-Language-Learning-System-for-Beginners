@@ -2,7 +2,7 @@
 export const CACHE_NAME = 'lw-ml-v1';
 const MP_VERSION = '0.10.21';
 
-export const SELF_HOST_WASM = false;
+export const SELF_HOST_WASM = true;
 
 const CDN_WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
 const CDN_MODEL = 'https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task';
