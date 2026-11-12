@@ -1,194 +1,212 @@
 # LinguaWave
 
-<!-- AI ASSISTANTS: read AI_MEMORY.md at the repo root FIRST — it has
-     project conventions, prior decisions, and an open-threads/session
-     log so you don't re-derive context or contradict earlier calls. -->
+**LinguaWave: An Interactive Sign Language Learning System for Beginners**  
+Capstone Project 2026 · Colegio de San Gabriel Arcangel, Inc.
 
-> An interactive, web-based ASL (American Sign Language) learning system for beginners.
-> Capstone Project 2026
+LinguaWave is a web-based learning system for beginners studying **American Sign Language (ASL)**. It combines visual lessons, camera-based signing practice, quizzes, learning activities, progress tracking, and feedback. The system is designed to support guided, self-paced learning of the ASL alphabet, basic vocabulary and phrases, and simple sentence patterns.
 
-LinguaWave teaches beginner-level American Sign Language through structured, step-by-step lessons across three difficulty levels, with multiple-choice assessments and a survey-based feedback system. It's a static HTML/CSS/JS site designed to run on Firebase (Auth, Firestore, Storage, Hosting), though authentication currently runs in a **bypass/mock mode** so the frontend team can build against a stable flow while Firebase is wired in.
+> **Language scope:** LinguaWave teaches American Sign Language (ASL). It does not teach Filipino Sign Language (FSL), and the two languages should not be treated as interchangeable.
 
----
-
-## Table of Contents
+## Table of contents
 
 - [Features](#features)
-- [Limitations](#limitations)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Authentication (Bypass Mode)](#authentication-bypass-mode)
-- [Adding Content (Signs & Quiz Questions)](#adding-content-signs--quiz-questions)
-- [Design System](#design-system)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-
----
+- [Technology](#technology)
+- [System requirements](#system-requirements)
+- [Getting started](#getting-started)
+- [Windows desktop installer](#windows-desktop-installer)
+- [Firebase and media-service configuration](#firebase-and-media-service-configuration)
+- [Project structure](#project-structure)
+- [Scope and limitations](#scope-and-limitations)
+- [Project evaluation](#project-evaluation)
+- [Evaluation account information](#evaluation-account-information)
 
 ## Features
 
-- **ASL Alphabet (A–Z)** — image, text description, and video demo per letter
-- **Basic vocabulary module** — common words and everyday phrases
-- **Intermediate sentence construction module** — simple ASL sentence structures
-- **Combined login / sign-up landing page** — single entry point, no separate marketing page
-- **User dashboard** — account details, level progress, and a recap of learned signs
-- **Multiple-choice assessments** — 80% pass threshold to unlock the next lesson
-- **Survey-based feedback** — collected after completing each level
+### Learner features
 
-## Limitations
+- **Account access** — registration, sign-in, and account-based access using Firebase Authentication.
+- **ASL alphabet lessons** — visual references, descriptions, and video demonstrations for letters A–Z.
+- **Vocabulary and phrase lessons** — structured beginner material for common ASL words and expressions.
+- **Sentence construction** — activities introducing simple ASL sentence patterns.
+- **Camera practice and sign recognition** — webcam-based hand tracking and basic recognition practice for supported signs.
+- **Quizzes and learning games** — interactive activities that reinforce lesson content and provide scores or feedback.
+- **Progress tracking** — records learning activity and presents progress and achievement information.
+- **Feedback** — a survey/feedback feature for collecting learner comments and evaluations.
 
-- ASL only — no other sign languages
-- Beginner to basic-intermediate content only; no advanced grammar or discourse
-- No gesture recognition, motion tracking, or AI-based sign validation — content is static images/video
-- Assessments are multiple-choice and survey only; no open-ended or gesture-based grading
-- No admin panel or content-upload UI by design — see [Adding Content](#adding-content-signs--quiz-questions)
-- Requires an internet connection; no offline support
-- Optimized for desktop browsers; mobile responsiveness may be limited
+### Administrator features
 
-## Tech Stack
+- Manage learner accounts and review user-related information.
+- Manage learning content and lesson media.
+- Review submitted feedback and system reports.
+- Monitor learning activity and progress records.
 
-| Layer | Technology |
-|---|---|
-| Frontend | Plain HTML5, CSS3, vanilla JavaScript (no framework, no build step) |
-| Auth | Firebase Authentication (Email + Password) — *currently stubbed, see below* |
-| Database | Firebase Firestore (NoSQL) — *planned, not yet connected* |
-| Storage | Firebase Storage (images/videos) — *planned, not yet connected* |
-| Hosting | Firebase Hosting, or any static file host |
+The administrator tools and media-upload workflow depend on the project's configured Firebase and Cloudflare services.
 
-There is no package.json, bundler, or framework. Every page is a plain `.html` file that links its own CSS and loads shared/page-specific `.js` files via `<script>` tags.
+## Technology
 
-## Project Structure
+| Area | Technology / component | Purpose |
+|---|---|---|
+| Frontend | HTML5, CSS3, JavaScript | Web interface, lessons, navigation, and application logic |
+| Browser-based vision | MediaPipe Tasks Vision | Camera input and hand-landmark tracking for signing practice |
+| Gesture models | TensorFlow.js and project model assets | Browser-side processing/classification for supported sign-practice activities |
+| Authentication | Firebase Authentication | User registration and sign-in |
+| Database | Cloud Firestore | User information, learning records, progress, and application data |
+| Desktop launcher | Go | Serves the bundled web app on the local machine and opens it in the browser |
+| Windows installer | Inno Setup | Packages the Windows launcher and application files into an installer |
+| Version control | Git and GitHub | Source-code collaboration and release distribution |
 
-```
-linguawave/
-│
-├── index.html                  # Log In / Sign Up — the only entry point
-│
-├── pages/
-│   ├── dashboard.html          # Post-login hub: account details + content + progress
-│   ├── learn.html              # Level & lesson selector grid
-│   ├── lesson.html             # Individual sign lesson viewer
-│   ├── quiz.html               # Multiple-choice assessment
-│   └── feedback.html           # Post-level survey
-│
-├── css/
-│   ├── style.css               # Global design tokens, resets, shared components
-│   ├── auth.css                # index.html (login/register tabs) styles
-│   ├── dashboard.css           # dashboard.html styles (incl. account card)
-│   ├── learn.css               # learn.html styles
-│   ├── lesson.css              # lesson.html styles
-│   ├── quiz.css                # quiz.html styles
-│   ├── feedback.css            # feedback.html styles
-│   └── toast.css               # Shared toast notification styles
-│
-├── js/
-│   ├── auth.js                  # Auth API — currently in bypass mode (see below)
-│   ├── data.js                  # Hardcoded signs/questions content (no admin UI)
-│   ├── main.js                  # Shared utilities: nav, progress bars, user-detail rendering
-│   ├── learn.js                 # Tab switching + lesson grid render
-│   ├── lesson.js                # Sign navigation (PREV/NEXT), progress tracking
-│   ├── quiz.js                  # Question flow, score calculation, pass/fail
-│   └── feedback.js              # Survey submit handler
-│
-├── assets/
-│   ├── images/                  # Sign images
-│   └── videos/                  # Sign demo videos
-│
-└── SYSTEM_ARCHITECTURE.md       # Full architecture & developer handoff doc
-```
+The web frontend does not require a JavaScript framework or frontend build step. The Go component is used for the optional desktop package; it is not a replacement for Firebase as the application's cloud backend.
 
-See `SYSTEM_ARCHITECTURE.md` for a page-by-page breakdown, the planned Firestore schema, and the user flow diagram.
+## System requirements
 
-## Getting Started
+### Web application
 
-No build step, no dependencies, no `npm install`. Clone the repo and serve the folder with any static file server (opening `index.html` directly with `file://` mostly works too, but a local server avoids occasional CORS/relative-path quirks with fonts and video).
+- A desktop or laptop computer with a modern browser.
+- Internet access for Firebase sign-in, Firestore synchronization, Google sign-in, and configured cloud services.
+- A working webcam and permission to use it for camera-based practice.
+- A browser that supports modern JavaScript modules, webcam access, and WebAssembly.
+- For a hosted deployment, serve the application over HTTPS so browser camera and service-worker features can operate in a secure context. `localhost` is suitable for local development.
+
+### Windows desktop package
+
+- 64-bit Windows 10 or Windows 11.
+- A modern web browser available on the computer; the desktop launcher opens LinguaWave in the default browser.
+- Internet access for Firebase and other cloud-dependent features.
+- A webcam for camera-based practice.
+
+The capstone documentation identifies a computer/laptop, webcam, and internet/network connection as relevant hardware resources. It does not specify minimum CPU, RAM, or GPU values.
+
+## Getting started
+
+### Run the web application locally
+
+The frontend is served as static files. No `npm install` or frontend bundling step is required for the standard local run.
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/Dnggr/LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners.git
+   cd LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners
+   ```
+
+2. Start a local static file server from the project root. For example, with Python 3:
+
+   ```bash
+   python3 -m http.server 5500
+   ```
+
+3. Open the application in a browser:
+
+   ```text
+   http://localhost:5500/
+   ```
+
+4. When using camera practice, grant the browser permission to access the webcam.
+
+To stop the Python server, return to the terminal and press `Ctrl+C`.
+
+### Run with the Go local server (developer / desktop-launcher testing)
+
+Go 1.22 or a compatible newer Go release is required to build or run the launcher from source.
 
 ```bash
-git clone <your-repo-url>
-cd linguawave
-
-# Option A — Python (already on most machines)
-python3 -m http.server 5500
-
-# Option B — Node, if you have it
-npx serve .
-
-# Option C — VS Code "Live Server" extension
+cd desktop-packaging
+go run . -root .. -addr 127.0.0.1:5500
 ```
 
-Then open `http://localhost:5500` (or whichever port) in your browser. You'll land on the Log In / Sign Up page.
+The launcher serves the project root and opens the default browser. Press `Ctrl+C` in the terminal to stop this development run.
 
-## Authentication (Bypass Mode)
+## Windows desktop installer
 
-`js/auth.js` is **not connected to Firebase yet**. It accepts any input — or none at all — on both the Log In and Sign Up forms and immediately creates a local session in `localStorage`. This lets the team build and test every page in the user flow without waiting on Firebase Auth to be wired in.
+A Windows installer is published through the repository's GitHub Releases page:
 
-Every page calls the same small set of functions instead of touching `localStorage` directly, so swapping in real Firebase only means editing the inside of these four functions in `js/auth.js`:
+**[Download LinguaWave from GitHub Releases](https://github.com/Dnggr/LinguaWave-an-Interactive-Sign-Language-Learning-System-for-Beginners/releases)**
 
-| Function | Bypass behavior today | Replace with |
-|---|---|---|
-| `login(email, password)` | Accepts anything, stores a session | `firebase.auth().signInWithEmailAndPassword()` |
-| `register(name, email, password, level)` | Accepts anything, stores a session | `firebase.auth().createUserWithEmailAndPassword()` + Firestore write |
-| `logout(redirectPath)` | Clears the local session | `firebase.auth().signOut()` |
-| `getCurrentUser()` | Reads the local session | `firebase.auth().currentUser` + Firestore read |
+### Install and launch
 
-`requireAuth(loginPath)` (used on every protected page) and `redirectIfLoggedIn(dashboardPath)` (used on `index.html`) should keep working unchanged once those four functions are real.
+1. Open the GitHub Releases page and download `LinguaWave-Setup.exe`.
+2. Run the installer and follow the setup wizard.
+3. Launch **LinguaWave** from the Windows Start Menu.
+4. The Go launcher starts a local server and opens LinguaWave in the default browser at `http://localhost:5500/`.
 
-> **Before this goes anywhere a real user could reach it:** bypass mode means anyone can "log in" without an actual account. Replace the functions above first.
+### Exit the desktop application
 
-## Adding Content (Signs & Quiz Questions)
+Closing the browser tab does **not** stop the local server. To stop LinguaWave, select **Exit LinguaWave** from the Windows Start Menu. This sends a local authenticated shutdown request and stops the server gracefully.
 
-There's no admin panel or upload UI — content is added directly in code by the dev team via `js/data.js`. It holds two arrays, `SIGNS` and `QUESTIONS`, shaped to match the planned Firestore collections (see `SYSTEM_ARCHITECTURE.md` §5), so moving from this file to real Firestore reads later is a small change rather than a rewrite.
+### Verify the installer download
 
-```js
-// js/data.js
-const SIGNS = [
-  {
-    id: 'basic_A',
-    level: 'basic',
-    signId: 'A',
-    title: 'Letter A',
-    description: '…',
-    imageUrl: '../assets/images/basic/A.png',
-    videoUrl: '../assets/videos/basic/A.mp4',
-    order: 1,
-  },
-  // add more here
-];
+The release also includes `LinguaWave-Setup.exe.sha256`. After downloading both files into the same folder, verify the installer on Linux with:
+
+```bash
+sha256sum -c LinguaWave-Setup.exe.sha256
 ```
 
-`data.js` isn't wired into `learn.js` / `lesson.js` / `quiz.js` yet — those still render static HTML for the existing lessons. Looping over `LWData.SIGNS` / `LWData.QUESTIONS` in those files instead of hand-coded markup is the next step (see Roadmap).
+The SHA-256 checksum for the published build at the time this README was prepared is:
 
-## Design System
+```text
+aa6041b93c0561bbdc73de425ae520b355e15c3e13fe36090c880211eda09227
+```
 
-Tokens live in `css/style.css` under `:root` and are shared across every page.
+**Testing note:** The installer, launch flow, graceful shutdown, and uninstallation were tested in a Linux environment using Wine. Native Windows 10/11 testing has not yet been completed; verify the installer on a Windows computer before treating this build as a fully Windows-validated release.
 
-| Token | Value | Use |
+## Firebase and media-service configuration
+
+The application relies on project-specific cloud configuration. Before running a separate deployment or development copy:
+
+1. Configure the Firebase web application settings used by the frontend.
+2. Enable the Firebase Authentication providers used by the project (email/password and Google sign-in).
+3. Configure Cloud Firestore and deploy the repository's applicable security rules and indexes.
+4. Configure any Firebase Functions used by the application, if enabled in the deployment.
+
+## Project structure
+
+```text
+LinguaWave/
+├── index.html                 # Main entry page
+├── pages/                     # Learner, administrator, lesson, quiz, and activity pages
+├── css/                       # Shared and page-specific stylesheets
+├── js/                        # Authentication, learning modules, games, progress, admin, and camera logic
+│   ├── camera/                # Camera utilities
+│   ├── engine/                # Lesson/game and recognition logic
+│   └── tracking/              # MediaPipe and tracking integration
+├── assets/                    # Images, icons, videos, and MediaPipe assets
+├── asl_static_model/          # Static-sign model resources
+├── asl_motion_model/          # Motion-sign model resources
+├── sw.js                      # Service worker for selected runtime assets
+├── functions/                 # Firebase Functions source
+├── scripts/                   # Development and maintenance scripts
+├── firebase.json              # Firebase project/deployment configuration
+├── firestore.rules            # Firestore security rules
+├── firestore.indexes.json     # Firestore index configuration
+└── desktop-packaging/         # Go launcher and Inno Setup configuration
+    ├── main.go
+    ├── go.mod
+    └── installer/
+        └── LinguaWave.iss
+```
+
+Generated desktop build outputs (for example, staging, release, installer output, and compiled executables) are not part of the source-code tree committed to Git. Download the packaged Windows installer from GitHub Releases.
+
+## Scope and limitations
+
+- LinguaWave focuses on **American Sign Language (ASL)**. It does not provide FSL or other sign-language curricula.
+- The learning content targets beginner to basic-intermediate learners. Advanced grammar, complex discourse, and professional interpreter training are outside the system's scope.
+- Camera-based recognition is limited to supported ASL alphabet, vocabulary, and simple phrase gestures. It is not a general-purpose sign-language translator and does not assess continuous or free-form sentence signing.
+- Recognition results may vary with camera quality, lighting, framing, and hand positioning.
+- Assessments consist of multiple-choice quizzes, basic motion-practice checks, and surveys. The system does not provide certified or interpreter-grade performance assessment.
+- The service worker does not make the entire application fully offline. Firebase authentication, cloud synchronization, Google sign-in, and configured cloud services require internet access.
+
+## Project evaluation
+
+The capstone documentation reports an evaluation involving 20 respondents using ISO 9126 software quality metrics. The reported overall weighted mean was **4.5 (Agree)**. The reported metric means were Functionality **4.68**, Reliability **4.30**, Usability **4.49**, and Efficiency **4.53**. These are the study's reported respondent-evaluation results, not a guarantee of performance on every device or network.
+
+## Evaluation account information
+
+For the school's offline capstone handover copy, complete the following with the actual demonstration accounts approved for evaluators:
+
+| Account | Username / email | Password |
 |---|---|---|
-| `--clr-accent` | `#3fb950` | Primary actions, progress, done states |
-| `--clr-yellow` | `#d29922` | Medium level badge |
-| `--clr-orange` | `#e3822a` | Intermediate level badge |
-| `--clr-blue` | `#388bfd` | Links, info states |
-| `--clr-red` | `#f85149` | Errors, locked content |
-| `--font-display` | Space Grotesk | Headings |
-| `--font-body` | Inter | Body text |
+| Learner demonstration account | `[Add approved learner account]` | `[Provide in the restricted handover copy]` |
+| Administrator demonstration account | `[Add approved administrator account]` | `[Provide in the restricted handover copy]` |
 
-Quiz pass threshold: **80%**.
-
-## Roadmap
-
-1. Replace the 4 bypass functions in `js/auth.js` with real Firebase Auth calls
-2. Connect Firestore for progress — update `getActiveUser()` in `js/main.js` to read/write `users/{uid}`
-3. Wire `js/data.js` into `learn.js` / `lesson.js` / `quiz.js` rendering
-4. Move `signs` and `questions` from `data.js` into actual Firestore collections
-5. Write survey submissions in `feedback.js` to the Firestore `surveys` collection
-
-Full detail on each step is in `SYSTEM_ARCHITECTURE.md`.
-
-## Contributing
-
-This is a capstone project repo. If you're on the team:
-
-- Any page that should require login must call `LWAuth.requireAuth('../index.html')` at the top of `<head>`, matching the existing pages.
-- Add new signs/questions to `js/data.js` rather than hand-coding more HTML cards, where practical.
-- Update `SYSTEM_ARCHITECTURE.md` if you change the file structure, the Firestore schema, or the user flow.
+**Security:** Do not replace these placeholders with live passwords in the public GitHub README. Put evaluator credentials only in the authorized, offline handover copy or provide them to evaluators through the institution-approved secure method.
